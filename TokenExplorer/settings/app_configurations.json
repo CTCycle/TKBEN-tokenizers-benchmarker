@@ -3,26 +3,22 @@
    "TOKENIZERS": ["axiong/PMC_LLaMA_13B",
                   "stanford-crfm/BioMedLM",
                   "BioMistral/BioMistral-7B",
-                   "epfl-llm/meditron-70b",
-                   "EMBO/BioMegatron345mUncased",
-                   "microsoft/biogpt",
-                   "bert-base-uncased", 
-                   "dmis-lab/biobert-v1.1",                          
-                   "neuml/pubmedbert-base-embeddings",
-                   "pritamdeka/BioBert-PubMed200kRCT",
-                   "ggrn/e5-small-v2",                           
-                   "BAAI/bge-small-en-v1.5",
-                   "BAAI/bge-large-en-v1.5"],
+                  "epfl-llm/meditron-70b",
+                  "EMBO/BioMegatron345mUncased",
+                  "microsoft/biogpt",
+                  "bert-base-uncased", 
+                  "dmis-lab/biobert-v1.1",                          
+                  "neuml/pubmedbert-base-embeddings",
+                  "pritamdeka/BioBert-PubMed200kRCT",
+                  "ggrn/e5-small-v2",                           
+                  "BAAI/bge-small-en-v1.5",
+                  "BAAI/bge-large-en-v1.5"],
                    
    "DATASET": [{"corpus" : "wikitext", 
-                 "config": "wikitext-103-v1"}], 
+                "config": "wikitext-103-v1"}], 
 
    "benchmarks": {"MAX_NUM_DOCS": 1000,
                   "REDUCE_CSV_SIZE": true,
                   "INCLUDE_CUSTOM_DATASET": false,
-                  "INCLUDE_CUSTOM_TOKENIZER": false}
-
-
-
-  
+                  "INCLUDE_CUSTOM_TOKENIZER": false}  
 }

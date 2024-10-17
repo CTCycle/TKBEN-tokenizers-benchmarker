@@ -28,7 +28,7 @@ echo Install python libraries and packages
 call pip install numpy==1.26.4 pandas==2.1.4 openpyxl==3.1.5 tqdm==4.66.4
 call pip install transformers==4.43.3 sentencepiece==0.2.0 datasets==2.20.0 sacremoses==0.1.1
 call pip install seaborn==0.13.2 matplotlib==3.9.0
-call pip install ipykernel==6.29.5
+call pip install ipykernel==6.29.5 notebook==7.2.2
 
 :: [INSTALL PROJECT IN EDITABLE MODE] 
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
