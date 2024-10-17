@@ -22,7 +22,9 @@ On Windows, run `TokenExplorer.bat` to launch the main navigation menu and brows
 
 ### 3.1 Navigation menu
 
-**1) Run TokenExplorer:** run the main application and start TokenExplorer
+**1) Run tokenizers benchmarks:** runs the benchmarks on all selected tokenizers and save the results in `resources/benchmarks`. 
+
+**1) Tokenizers analysis:** launch a jupyter notebook to visualize benchmarks results for all given tokenizers (required generating the benchmarks results first).
 
 **2) TokenExplorer setup:** allows running some options command such as **install project packages** to run the developer model project installation, and **remove logs** to remove all logs saved in `resources/logs`. 
 
@@ -38,7 +40,7 @@ This folder is used to hold tokenizers and datasets, as well as to store the res
 **tokenizers:** contains the downloaded tokenizers that are used to run the benchmarks on the target dataset. While the tokenizers from HuggingFace are automatically saved in `tokenizers`, the custom tokenizers must be located in `custom tokenizers`.
 
 ## 4. Configurations
-For customization, you can modify the main configuration parameters using `settings/configurations.json` 
+For customization, you can modify the main configuration parameters using `settings/app_configurations.json` 
 
 #### General configuration
 

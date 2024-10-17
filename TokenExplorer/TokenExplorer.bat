@@ -76,7 +76,7 @@ if "%env_exists%"=="true" (
 :main_menu
 echo.
 echo =======================================
-echo                TokenExplorer 
+echo             TokenExplorer 
 echo =======================================
 echo 1. Run tokenizers benchmarks
 echo 2. Tokenizers analysis
@@ -86,7 +86,7 @@ echo.
 set /p choice="Select an option (1-4): "
 
 if "%choice%"=="1" goto :main
-if "%choice%"=="2" goto :datanalysis
+if "%choice%"=="2" goto :analysis
 if "%choice%"=="3" goto :setup_menu
 if "%choice%"=="4" goto exit
 echo Invalid option, try again.
@@ -96,11 +96,9 @@ goto :main_menu
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 :: Tokenizers analysis
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-:datanalysis
+:analysis
 cls
-echo Currently not implemented within the navigator due to the file format (jupyter notebook)
-echo Please execute the following command from within TokenExplorer/exploration ---> jupyter notebook visualize_tokenizers.ipynb 
-pause
+start cmd /k "call conda activate %env_name% && jupyter notebook .\exploration\visualize_tokenizers.ipynb"
 goto :main_menu
 
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
