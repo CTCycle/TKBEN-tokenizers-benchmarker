@@ -5,6 +5,9 @@ TokenExplorer/resources/datasets/datasets/*
 *.log
 *.csv
 *.txt
+setup/environment/*
+setup/miniconda/*
+
 *.egg-info
 !.gitkeep
 
