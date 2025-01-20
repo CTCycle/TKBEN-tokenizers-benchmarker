@@ -5,6 +5,7 @@ for /f "delims=" %%i in ("%~dp0..") do set "project_folder=%%~fi"
 set "env_name=TOKEXP"
 set "project_name=TokenExplorer"
 set "env_path=%project_folder%\setup\environment\%env_name%"
+set "app_path=%project_folder%\%project_name%"
 set "conda_path=%project_folder%\setup\miniconda"
 set "setup_path=%project_folder%\setup"
 
@@ -55,7 +56,7 @@ goto :dependencies
 :dependencies
 echo.
 echo Install python libraries and packages
-call pip install matplotlib==3.9.2 numpy==2.1.0 pandas==2.2.3 tqdm==4.66.4 scikit-learn==1.6.0
+call pip install matplotlib==3.10.0 numpy==2.0.2 pandas==2.2.3 tqdm==4.67.1 scikit-learn==1.6.1
 call pip install transformers==4.43.3 sentencepiece==0.2.0 datasets==2.20.0 sacremoses==0.1.1
 call pip install jupyter==1.1.1
 
@@ -64,7 +65,7 @@ call pip install jupyter==1.1.1
 :: Install project in developer mode
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 echo Install utils packages in editable mode
-call cd "%project_folder%" && pip install -e . --use-pep517 && cd "%setup_path%"
+call cd "%project_folder%" && pip install -e . --use-pep517
 
 :: [CLEAN CACHE] 
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
