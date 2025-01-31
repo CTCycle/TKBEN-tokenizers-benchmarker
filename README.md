@@ -16,7 +16,7 @@ The installation process on Windows has been designed for simplicity and ease of
     `pip install -e . --use-pep517` 
 
 ## 3. How to use
-On Windows, run *start_on_windows.bat* to launch the main navigation menu and browse through the various options. Alternatively, each file can be executed individually by running *python path/filename.py* for Python scripts or *jupyter notebook path/notebook.ipynb* for Jupyter notebooks. Please note that some antivirus software, such as Avast, may flag or quarantine python.exe when called by the .bat file. If you encounter unusual behavior, consider adding an exception for your Anaconda or Miniconda environments in your antivirus settings.
+On Windows, run *start_on_windows.bat* to launch the main navigation menu and browse through the various options. Please note that some antivirus software, such as Avast, may flag or quarantine python.exe when called by the .bat file. If you encounter unusual behavior, consider adding an exception for your Anaconda or Miniconda environments in your antivirus settings.
 
 ### 3.1 Navigation menu
 

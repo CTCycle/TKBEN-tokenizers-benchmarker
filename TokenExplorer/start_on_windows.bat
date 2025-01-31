@@ -69,9 +69,9 @@ if %ERRORLEVEL% neq 0 (
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 :main_menu
 echo.
-echo =======================================
-echo             TokenExplorer 
-echo =======================================
+echo ==========================================================================
+echo                              TokenExplorer 
+echo ==========================================================================
 echo 1. Run tokenizers benchmarks
 echo 2. Tokenizers analysis
 echo 3. Setup and Maintenance
@@ -108,9 +108,9 @@ goto :main_menu
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 :setup_menu
 cls
-echo =======================================
-echo         Setup and Maintenance
-echo =======================================
+echo ==========================================================================
+echo                         Setup  and Maintenance                          
+echo ==========================================================================
 echo 1. Install project in editable mode
 echo 2. Update project
 echo 3. Remove logs
