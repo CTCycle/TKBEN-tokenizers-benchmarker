@@ -1,5 +1,4 @@
 {   
-   "ACCESS_TOKEN" : "....",
    "TOKENIZERS": ["axiong/PMC_LLaMA_13B",
                   "stanford-crfm/BioMedLM",
                   "BioMistral/BioMistral-7B",
@@ -14,8 +13,8 @@
                   "BAAI/bge-small-en-v1.5",
                   "BAAI/bge-large-en-v1.5"],
                    
-   "DATASET": [{"corpus" : "wikitext", 
-                "config": "wikitext-103-v1"}], 
+   "DATASET": {"corpus" : "wikitext", 
+               "config": "wikitext-103-v1"}, 
 
    "benchmarks": {"MAX_NUM_DOCS": 1000,
                   "REDUCE_CSV_SIZE": true,

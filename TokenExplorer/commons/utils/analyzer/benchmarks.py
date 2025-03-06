@@ -3,9 +3,8 @@ import numpy as np
 import pandas as pd
 import transformers
 from tqdm import tqdm
-tqdm.pandas()
 
-from TokenExplorer.commons.constants import CONFIG
+from TokenExplorer.commons.constants import CONFIG, DATASETS_PATH, BENCHMARK_PATH
 from TokenExplorer.commons.logger import logger
 
              
@@ -13,112 +12,111 @@ from TokenExplorer.commons.logger import logger
 ###############################################################################
 class BenchmarkTokenizers:
 
-    def __init__(self, tokenizers):
-        self.tokenizers = tokenizers 
+    def __init__(self, configurations : dict, tokenizers):
         transformers.utils.logging.set_verbosity_error() 
+        self.configurations = configurations
+        self.tokenizers = tokenizers
+        self.benchmarks_config = configurations.get("benchmarks", {}) 
+        self.max_docs_number = self.benchmarks_config.get("MAX_NUM_DOCS", 1000)
+        self.reduce_size = self.benchmarks_config.get("REDUCE_CSV_SIZE", False)
+        self.benchmark_filepath = os.path.join(BENCHMARK_PATH, 'tokenizers_benchmark.csv')        
 
     #--------------------------------------------------------------------------
-    def aggregate_dataset_stats(self, documents, path, max_number=None):
-
-        if max_number is not None and max_number <= len(documents):
-            documents = documents[:max_number]
-        dataset_stats = pd.DataFrame()
-        logger.info('Aggregating dataset statistics')
+    def aggregate_dataset_stats(self, documents):
+        if self.max_docs_number is not None and self.max_docs_number <= len(documents):
+            documents = documents[:self.max_docs_number]
+        dataset_stats = pd.DataFrame()        
         dataset_stats['Text'] = documents      
-        dataset_stats['Words count'] = dataset_stats['Text'].progress_apply(lambda x : len(x.split()))
-        dataset_stats['Words length'] = dataset_stats['Text'].progress_apply(lambda doc : [len(x) for x in doc.split()])
+        dataset_stats['Words count'] = dataset_stats['Text'].apply(
+            lambda x : len(x.split()))
+        dataset_stats['Words length'] = dataset_stats['Text'].apply(
+            lambda doc : [len(x) for x in doc.split()])
 
-        filename = os.path.join(path, 'dataset_stats.csv')
+        filename = os.path.join(DATASETS_PATH, 'dataset_stats.csv')
         dataset_stats.to_csv(filename, encoding='utf-8', sep=';', index=False)           
     
     #--------------------------------------------------------------------------
-    def run_tokenizer_benchmarks(self, documents, path, max_number=None, reduce_size=False):        
+    def run_tokenizer_benchmarks(self, documents):        
+        if self.max_docs_number is not None and self.max_docs_number <= len(documents):
+            documents = documents[:self.max_docs_number]
         
-        try:
-            os.remove(os.path.join(path, 'tokenizers_benchmark.csv'))
-        except:
-            logger.debug('No tokenizers_benchmark.csv file found')
-        if max_number is not None and max_number <= len(documents):
-            documents = documents[:max_number]
-        for k, v in self.tokenizers.items():
-            k_rep = k.replace('/', '_')            
-            df = pd.DataFrame() 
-            df['Tokenizer'] = [k] * len(documents)       
-            df['Text'] = documents
-            df['Text characters'] = df['Text'].apply(lambda x : len(x))
-            df['Words count'] = df['Text'].apply(lambda x : len(x.split()))
-            df['Words length'] = df['Text'].apply(lambda doc : [len(x) for x in doc.split()])
-            df['AVG words length'] = df['Words length'].apply(lambda x : np.mean(x))
+        all_tokenizers = []
+        for tokenizer_name, tokenizer in self.tokenizers.items():
+            k_rep = tokenizer_name.replace('/', '_')
+            logger.info(f'Decoding documents with {tokenizer_name}')
+            data = pd.DataFrame({'Tokenizer': tokenizer_name,'Text': documents})
+            data['Text characters'] = data['Text'].str.len()
+            data['Words'] = data['Text'].str.split()
+            data['Words count'] = data['Words'].str.len()
+            data['AVG words length'] = data['Words'].apply(
+                lambda words: np.mean([len(word) for word in words]) if words else 0)
 
-            # tokenize each document looping over tokenizers        
-            logger.info(f'Decoding documents with {k}') 
-            if 'custom tokenizer' in k:                
-                df['Tokens'] = df['Text'].progress_apply(lambda text: v.encode(text).ids)
-                df['Tokens'] = df['Tokens'].progress_apply(lambda ids: v.decode(ids))
-                df['Tokens characters'] = df['Tokens'].progress_apply(lambda x : len(x))
-                df['Tokens count'] = df['Tokens'].progress_apply(lambda x : len(x.split()))
-                df['Tokens length'] = df['Tokens'].progress_apply(lambda doc : [len(x) for x in doc.split()])
-                df['AVG tokens length'] = df['Tokens length'].progress_apply(lambda x : np.mean(x))                      
-                df['Tokens/words ratio'] = df.progress_apply(lambda row: row['Tokens count']/row['Words count'] 
-                                                                         if row['Words count'] > 0 else 0, axis=1) 
-                df['Bytes per token'] = df.progress_apply(lambda row: row['Text characters']/row['Tokens count'] 
-                                                                         if row['Tokens count'] > 0 else 0, axis=1)              
-            else:                
-                df['Tokens'] = df['Text'].progress_apply(lambda text: v.tokenize(text))
-                df['Tokens characters'] = df['Tokens'].progress_apply(lambda x : len(' '.join(x)))               
-                df['Tokens count'] = df['Tokens'].progress_apply(lambda x : len(x))
-                df['Tokens length'] = df['Tokens'].progress_apply(lambda doc : [len(x) for x in doc])  
-                df['AVG tokens length'] = df['Tokens length'].progress_apply(lambda x : np.mean(x))                    
-                df['Tokens/words ratio'] = df.progress_apply(lambda row: row['Tokens count']/row['Words count'] 
-                                                                         if row['Words count'] > 0 else 0, axis=1)  
-                df['Bytes per token'] = df.progress_apply(lambda row: row['Text characters']/row['Tokens count'] 
-                                                                         if row['Tokens count'] > 0 else 0, axis=1)  
+            if 'CUSTOM' in tokenizer_name:
+                data['Tokens'] = data['Text'].apply(
+                    lambda text: tokenizer.decode(tokenizer.encode(text).ids))
+                data['Tokens split'] = data['Tokens'].str.split()
+            else:
+                data['Tokens split'] = data['Text'].apply(tokenizer.tokenize)
+                data['Tokens'] = data['Tokens split'].str.join(' ')
 
-            # save single .csv file for each tokenizer
-            filename = os.path.join(path, f'{k_rep}_benchmark.csv')
-            df['Tokens'] = df['Tokens'].apply(lambda x: ' '.join(str(token) for token in x))
-            df['Words length'] = df['Words length'].apply(lambda x: ' '.join(str(token) for token in x))
-            df['Tokens length'] = df['Tokens length'].apply(lambda x: ' '.join(str(token) for token in x))            
-            if reduce_size:
-                df = df.drop(columns=['Text', 'Tokens'], axis=1)               
-            df.to_csv(filename, encoding='utf-8', sep=';', index=False)        
-    
-        # merge all .csv files in a single benchmark dataset
-        csv_files = [file for file in os.listdir(path) if file.endswith('.csv')]   
-        csv_paths = [os.path.join(path, x) for x in csv_files]                 
-        data_frames = [pd.read_csv(x, encoding='utf-8', sep=';') for x in csv_paths]        
-        merged_data = pd.concat(data_frames, ignore_index=True)       
-        filename = os.path.join(path, 'tokenizers_benchmark.csv')
-        merged_data.to_csv(filename, index=False, encoding='utf-8', sep=';')     
+            data['Tokens count'] = data['Tokens split'].str.len()
+            data['Tokens characters'] = data['Tokens'].str.len()
+            data['AVG tokens length'] = data['Tokens split'].apply(
+                lambda tokens: np.mean([len(tok) for tok in tokens]) if tokens else 0)
 
+            data['Tokens/words ratio'] = np.where(
+                data['Words count'] > 0, data['Tokens count'] / data['Words count'], 0)
+            data['Bytes per token'] = np.where(
+                data['Tokens count'] > 0, data['Text characters'] / data['Tokens count'], 0)
 
-###############################################################################
-def normalized_sequence_length(source_path, save_path):            
-    
-    # load benchmarks and isolate df with only target columns
-    filepath = os.path.join(source_path, 'tokenizers_benchmark.csv')
-    df_tokens = pd.read_csv(filepath, sep=';', encoding='utf-8', usecols=['Tokenizer', 'Tokens count'])
-    df_custom = df_tokens[df_tokens['Tokenizer'].str.contains('custom tokenizer', case=False, na=False)]   
+            if self.reduce_size:
+                data = data.drop(columns=['Text', 'Tokens', 'Words', 'Tokens split'])
 
-    data = []
-    tokenizer_names = list(df_tokens['Tokenizer'].unique())
-    if df_custom.empty:
-        logger.info('NSL value cannot be calculated without a custom tokenizer as reference')
-    else:
-        for tok in tqdm(tokenizer_names):
-            logger.info(f'NSL value is calculated for {tok} versus custom tokenizers')
-            df_chunk = df_tokens[df_tokens['Tokenizer'] == tok]                                                 
-            df_chunk['NSL'] = [x/y if y != 0 else 0 for x, y in zip(df_custom['Tokens count'].to_list(),
-                                                                    df_chunk['Tokens count'].to_list())]            
-            data.append(df_chunk)
+            csv_path = os.path.join(BENCHMARK_PATH, f'{k_rep}_benchmark.csv')
+            data.to_csv(csv_path, encoding='utf-8', sep=';', index=False)
 
-        # merge all datasets and save them into .csv file
-        df_NSL = pd.concat(data, ignore_index=True)
-        filename = os.path.join(save_path, 'NSL_benchmark.csv')
-        df_NSL.to_csv(filename, index=False, encoding='utf-8', sep=';') 
+            all_tokenizers.append(data)
+
+        merged_data = pd.concat(all_tokenizers, ignore_index=True)        
+        merged_data.to_csv(self.benchmark_filepath, encoding='utf-8', sep=';', index=False) 
+
+        return merged_data
+
+    #--------------------------------------------------------------------------
+    def normalized_sequence_length(self):            
+        data_tokens = pd.read_csv(
+            self.benchmark_filepath, sep=';', encoding='utf-8', usecols=['Tokenizer', 'Tokens count'])
+        data_custom = data_tokens[
+            data_tokens['Tokenizer'].str.contains('custom tokenizer', case=False, na=False)]   
+
+        data = []
+        tokenizer_names = list(data_tokens['Tokenizer'].unique())
+        if data_custom.empty:
+            logger.info('NSL value cannot be calculated without a custom tokenizer as reference')
+        else:
+            for tok in tqdm(tokenizer_names):
+                logger.info(f'NSL value is calculated for {tok} versus custom tokenizers')
+                data_chunk = data_tokens[data_tokens['Tokenizer'] == tok]                                                 
+                data_chunk['NSL'] = [
+                    x/y if y != 0 else 0 for x, y in zip(
+                        data_custom['Tokens count'].to_list(),
+                        data_chunk['Tokens count'].to_list())]            
+                data.append(data_chunk)
+            
+            data_NSL = pd.concat(data, ignore_index=True)
+            filename = os.path.join(BENCHMARK_PATH, 'NSL_benchmark.csv')
+            data_NSL.to_csv(filename, index=False, encoding='utf-8', sep=';')
+
+        return data_NSL 
 
 
     
 
 
     
+            
+                    
+        
+      
+
+

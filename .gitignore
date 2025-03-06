@@ -1,6 +1,6 @@
 __pycache__
-TokenExplorer/resources/tokenizers/tokenizers/*
-TokenExplorer/resources/datasets/datasets/*
+TokenExplorer/resources/tokenizers/*
+TokenExplorer/resources/datasets/*
 
 *.log
 *.csv
