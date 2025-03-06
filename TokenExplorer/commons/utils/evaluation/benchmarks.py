@@ -64,7 +64,7 @@ class BenchmarkTokenizers:
             data['AVG tokens length'] = data['Tokens split'].apply(
                 lambda tokens: np.mean([len(tok) for tok in tokens]) if tokens else 0)
 
-            data['Tokens/words ratio'] = np.where(
+            data['Tokens to words ratio'] = np.where(
                 data['Words count'] > 0, data['Tokens count'] / data['Words count'], 0)
             data['Bytes per token'] = np.where(
                 data['Tokens count'] > 0, data['Text characters'] / data['Tokens count'], 0)
@@ -92,7 +92,8 @@ class BenchmarkTokenizers:
         data = []
         tokenizer_names = list(data_tokens['Tokenizer'].unique())
         if data_custom.empty:
-            logger.info('NSL value cannot be calculated without a custom tokenizer as reference')
+            logger.warning('NSL value cannot be calculated without a custom tokenizer as reference')
+            return None
         else:
             for tok in tqdm(tokenizer_names):
                 logger.info(f'NSL value is calculated for {tok} versus custom tokenizers')

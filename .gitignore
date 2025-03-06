@@ -5,6 +5,9 @@ TokenExplorer/resources/datasets/*
 *.log
 *.csv
 *.txt
+*.jpg
+*.jpeg
+
 setup/environment/*
 setup/miniconda/*
 setup/variables/*

@@ -10,9 +10,8 @@ warnings.simplefilter(action='ignore', category=Warning)
 
 # [IMPORT CUSTOM MODULES]
 from TokenExplorer.commons.utils.downloads import DownloadManager
-from TokenExplorer.commons.utils.plotter import DataPlotter
-from TokenExplorer.commons.utils.analyzer.explorer import ExploreTokenizers
-from TokenExplorer.commons.constants import BENCHMARK_FIGURES_PATH 
+from TokenExplorer.commons.utils.evaluation.explorer import ExploreTokenizers
+from TokenExplorer.commons.constants import CONFIG, BENCHMARK_FIGURES_PATH 
 from TokenExplorer.commons.logger import logger
 
 
@@ -23,7 +22,7 @@ if __name__ == '__main__':
     # 1. [DOWNLOAD TOKENIZERS AND DATASETS]
     #--------------------------------------------------------------------------      
     logger.info('Download tokenizers and text dataset')       
-    manager = DownloadManager()
+    manager = DownloadManager(CONFIG)
     tokenizers = manager.tokenizer_download()
     datasets = manager.dataset_download()
     
@@ -35,19 +34,19 @@ if __name__ == '__main__':
     logger.info('1) Extraction of the embedded vocabulary')
     logger.info('2) Decoding through vocabulary mapping')
     logger.info('Comparisong should highlight any possible discrepancy')
-    explorer.vocabulary_report()
-    explorer.plot_vocabulary_size() 
+    explorer.get_vocabulary_report()     
 
     logger.info('Analyze distribution of token by characters length using histograms and boxplots')
+    explorer.plot_vocabulary_size()
     explorer.plot_histogram_tokens_length()
     explorer.plot_boxplot_tokens_length()
     explorer.plot_subwords_vs_words()
-
 
     logger.info('Plot a series of metrics to evaluate the performance of the tokenizers on the given dataset')
     logger.info('1) Evaluate number of generate tokens versus number of words in text (by document)')
     logger.info('2) Average character length of tokens versus average length of words (average by document)')
     logger.info('3) Bytes per token calculated by dividing UTF-8 bytes by tokens number')
+    #explorer.boxplot_from_benchmarks_dataset()
     
 
 

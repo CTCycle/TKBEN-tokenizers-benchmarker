@@ -11,7 +11,7 @@ warnings.simplefilter(action='ignore', category=Warning)
 # [IMPORT CUSTOM MODULES]
 from TokenExplorer.commons.utils.downloads import DownloadManager
 from TokenExplorer.commons.utils.processing import ProcessDataSet
-from TokenExplorer.commons.utils.analyzer.benchmarks import BenchmarkTokenizers
+from TokenExplorer.commons.utils.evaluation.benchmarks import BenchmarkTokenizers
 from TokenExplorer.commons.constants import CONFIG
 from TokenExplorer.commons.logger import logger
 
@@ -39,7 +39,7 @@ if __name__ == '__main__':
     #--------------------------------------------------------------------------
     # aggregate text dataset statistics and save as .json    
     benchmark = BenchmarkTokenizers(CONFIG, tokenizers)    
-    benchmark.aggregate_dataset_stats(documents)        
+    benchmark.aggregate_dataset_stats(clean_documents)        
         
     # run benchmark on selected dataset and generate a series of dataframes with
     # results with various metrics       

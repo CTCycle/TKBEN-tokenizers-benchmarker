@@ -36,7 +36,7 @@ class ExploreTokenizers:
             decoded_words = decoded_words.split()                  
             intersection = set(vocab_words).intersection(set(decoded_words))    
             not_intersecting = set(vocab_words).symmetric_difference(set(decoded_words))        
-            logger.info(f'\nTokenizer: {k}')
+            logger.info(f'Tokenizer: {k}')
             logger.info(f'Number of tokens (from vocabulary): {len(vocab_words)}')
             logger.info(f'Number of tokens (from decoding): {len(decoded_words)}')
             logger.info(f'Number of common words: {len(intersection)}')
@@ -161,50 +161,23 @@ class ExploreTokenizers:
         plt.close()
 
     #--------------------------------------------------------------------------
-    def boxplot_from_benchmarks_dataset(self):        
-
-        if data is not None and hue is not None:
-            hue = data[hue]
-        
-        if data is not None:
-            plt.figure(figsize=(14, 16))
-            sns.boxplot(x=data[x_vals], y=data[y_vals], hue=hue, data=data)            
+    def boxplot_from_benchmarks_dataset(self, dataset):
+        observed_features = [
+            'Tokens to words ratio', 'AVG tokens length', 'Bytes per token']    
+        plt.figure(figsize=(14, 16))
+        for y in observed_features:
+            sns.boxplot(x=dataset['Tokenizer'], y=dataset[y], data=dataset)            
             plt.xticks(rotation=45, ha='right', fontsize=14)
             plt.yticks(fontsize=14)          
             plt.xlabel('', fontsize=14)
-            plt.ylabel(y_label, fontsize=14)
-            plt.title(title, fontsize=14, y=1.02) 
+            plt.ylabel(y, fontsize=14)
+            plt.title(f'Boxplot of {y}', fontsize=14, y=1.02) 
             plt.legend(fontsize=14)               
             plt.tight_layout()               
-            plot_loc = os.path.join(path, f'{title}_boxplot.jpeg')
-            plt.savefig(plot_loc, bbox_inches='tight', format='jpeg', dpi=600) 
-            plt.show(block=False)       
-            plt.close()  
+            plot_loc = os.path.join(BENCHMARK_FIGURES_PATH, f'boxplot_{y}.jpeg')                   
+            plt.savefig(
+            plot_loc, bbox_inches='tight', format='jpeg', dpi=self.DPI)  
+            plt.close()
 
-
-        # plot boxplots of token to word ratio by document for each tokenizer
-        plotter.benchmarks_boxplot(df_benchmarks, BENCHMARK_FIGURES_PATH, x_vals='Tokenizer', 
-                                y_vals='Tokens/words ratio', y_label='Token to word ratio (by document)',
-                                hue=None, title='Tokens to words ratio by tokenizer')
-
-        # create a df with melted AVG values columns to plot them using seaborn
-        # specify tokenizer name as hue parameter
-        df_melt = pd.melt(df_benchmarks, id_vars='Tokenizer', value_vars=['AVG words length', 'AVG tokens length'],
-                        var_name='Item type', value_name='AVG length')
-        plotter.benchmarks_boxplot(df_benchmarks, BENCHMARK_FIGURES_PATH, x_vals='Tokenizer', 
-                                y_vals='AVG tokens length', y_label='Token to word ratio (by document)',
-                                hue=None, title='Average token vs word length by tokenizer')
-
-        # create a df with melted AVG values columns to plot them using seaborn
-        # specify tokenizer name as hue parameter
-        plotter.benchmarks_boxplot(df_benchmarks, BENCHMARK_FIGURES_PATH, x_vals='Tokenizer', 
-                                y_vals='Bytes per token', y_label='',
-                                hue=None, title='Bytes (utf-8) per token')
         
-
-        if df_NSL is not None:
-            df_NSL = df_NSL[df_NSL['Tokenizer'] != 'custom tokenizer']
-            plotter.benchmarks_boxplot(df_NSL, BENCHMARK_FIGURES_PATH, x_vals='Tokenizer', 
-                            y_vals='NSL', y_label='', hue=None, title='Normalized Sequence Length (NSL)')
-
     
