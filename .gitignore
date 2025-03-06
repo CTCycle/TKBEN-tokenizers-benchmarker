@@ -10,7 +10,7 @@ TokenExplorer/resources/datasets/*
 
 setup/environment/*
 setup/miniconda/*
-setup/variables/*
+setup/variables/.env
 
 *.egg-info
 !.gitkeep
