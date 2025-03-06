@@ -10,9 +10,9 @@ warnings.simplefilter(action='ignore', category=Warning)
 
 # [IMPORT CUSTOM MODULES]
 from TokenExplorer.commons.utils.downloads import DownloadManager
-from TokenExplorer.commons.utils.processing import ProcessDataSet
-from TokenExplorer.commons.utils.analyzer.benchmarks import BenchmarkTokenizers, normalized_sequence_length
-from TokenExplorer.commons.constants import CONFIG, DATASETS_PATH, BENCHMARK_PATH, BENCHMARK_VALIDATION_PATH
+from TokenExplorer.commons.utils.plotter import DataPlotter
+from TokenExplorer.commons.utils.analyzer.explorer import ExploreTokenizers
+from TokenExplorer.commons.constants import BENCHMARK_FIGURES_PATH 
 from TokenExplorer.commons.logger import logger
 
 
@@ -23,27 +23,36 @@ if __name__ == '__main__':
     # 1. [DOWNLOAD TOKENIZERS AND DATASETS]
     #--------------------------------------------------------------------------      
     logger.info('Download tokenizers and text dataset')       
-    manager = DownloadManager()    
+    manager = DownloadManager()
     tokenizers = manager.tokenizer_download()
     datasets = manager.dataset_download()
     
+    # 2. [EXPLORE TOKENIZERS]
+    #--------------------------------------------------------------------------
     # extract wikitext-103-v1 data and split train and text corpora    
-    processor = ProcessDataSet(datasets)
-    documents = processor.split_dataset()    
+    explorer = ExploreTokenizers(tokenizers)
+    logger.info('Check length of tokenizers vocabulary by using two methods:')
+    logger.info('1) Extraction of the embedded vocabulary')
+    logger.info('2) Decoding through vocabulary mapping')
+    logger.info('Comparisong should highlight any possible discrepancy')
+    explorer.vocabulary_report()
+    explorer.plot_vocabulary_size() 
 
-    # aggregate text dataset statistics and save as .json    
-    benchmark = BenchmarkTokenizers(tokenizers)
-    if not os.path.exists(os.path.join(DATASETS_PATH, f'{processor.target_dataset}_stats.csv')):
-        benchmark.aggregate_dataset_stats(documents, DATASETS_PATH, 
-                                          max_number=CONFIG["benchmarks"]["MAX_NUM_DOCS"])        
-        
-    # run benchmark on selected dataset and generate a series of dataframes with
-    # results with various metrics       
-    benchmark_results = benchmark.run_tokenizer_benchmarks(documents, BENCHMARK_VALIDATION_PATH,                                                     
-                                                           max_number=CONFIG["benchmarks"]["MAX_NUM_DOCS"], 
-                                                           reduce_size=CONFIG["benchmarks"]["REDUCE_CSV_SIZE"])
+    logger.info('Analyze distribution of token by characters length using histograms and boxplots')
+    explorer.plot_histogram_tokens_length()
+    explorer.plot_boxplot_tokens_length()
+    explorer.plot_subwords_vs_words()
 
-    # run Normalized Sequence Length (NSL) benchmark using the custom tokenizer over
-    # the series of tokenizers as baseline     
-    logger.info('Calculate Normalized Sequence Length (NSL)')
-    normalized_sequence_length(BENCHMARK_VALIDATION_PATH, BENCHMARK_PATH)
+
+    logger.info('Plot a series of metrics to evaluate the performance of the tokenizers on the given dataset')
+    logger.info('1) Evaluate number of generate tokens versus number of words in text (by document)')
+    logger.info('2) Average character length of tokens versus average length of words (average by document)')
+    logger.info('3) Bytes per token calculated by dividing UTF-8 bytes by tokens number')
+    
+
+
+
+
+    
+
+    

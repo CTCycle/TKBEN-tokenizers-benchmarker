@@ -22,7 +22,7 @@ On Windows, run *start_on_windows.bat* to launch the main navigation menu and br
 
 **1) Run tokenizers benchmarks:** runs the benchmarks on all selected tokenizers and save the results in *resources/benchmarks*. 
 
-**1) Tokenizers analysis:** launch a jupyter notebook to visualize benchmarks results for all given tokenizers (required generating the benchmarks results first).
+**1) Tokenizers analysis:** visualize benchmarks results for all given tokenizers (required generating the benchmarks results first).
 
 **2) TokenExplorer setup:** allows running some options command such as *install project in editable mode* to run the developer model project installation, and *remove logs* to remove all logs saved in *resources/logs*.  
 
@@ -43,9 +43,7 @@ For customization, you can modify the main configuration parameters using *setti
 #### General configuration
 
 | Parameter          | Description                                                    |
-|--------------------|----------------------------------------------------------------|
-| ACCESS_TOKEN       | The personal access token from HuggingFace, required for the   |
-|                    | download of certain tokenizers                                 |
+|--------------------|----------------------------------------------------------------|                                |
 | TOKENIZERS         | List of tokenizers to download                                 |
 | DATASET            | Target dataset to benchmark tokenizers (it is needed to        |
 |                    | provide the config and corpus references)                      |
@@ -62,3 +60,5 @@ For customization, you can modify the main configuration parameters using *setti
 ## 5. License
 This project is licensed under the terms of the MIT license. See the LICENSE file for details.
 
+ ACCESS_TOKEN       | The personal access token from HuggingFace, required for the   |
+|                    | download of certain tokenizers 

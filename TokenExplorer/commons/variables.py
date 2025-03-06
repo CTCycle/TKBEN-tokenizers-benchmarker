@@ -17,6 +17,9 @@ class EnvironmentVariables:
     
     #--------------------------------------------------------------------------
     def get_environment_variables(self):                  
-        return {"HF_ACCESS_KEY": os.getenv("KERAS_BACKEND", "torch"),
-                "TF_CPP_MIN_LOG_LEVEL": os.getenv("TF_CPP_MIN_LOG_LEVEL", "1")}
+        return {"HF_ACCESS_TOKEN": os.getenv("HF_ACCESS_TOKEN", None)}
+    
+    #--------------------------------------------------------------------------
+    def get_HF_access_token(self):                  
+        return os.getenv("HF_ACCESS_TOKEN", None)
        
