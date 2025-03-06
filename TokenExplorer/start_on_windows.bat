@@ -90,7 +90,7 @@ goto :main_menu
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 :analysis
 cls
-start cmd /k "call conda activate "%env_path%" && jupyter notebook "%app_path%"\exploration\visualize_tokenizers.ipynb"
+start cmd /k "call conda activate "%env_path%" && python "%app_path%"\exploration\visualize_tokenizers.py"
 goto :main_menu
 
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::

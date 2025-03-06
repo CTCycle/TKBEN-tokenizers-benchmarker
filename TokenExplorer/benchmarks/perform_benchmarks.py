@@ -8,7 +8,7 @@ warnings.simplefilter(action='ignore', category=Warning)
 from TokenExplorer.commons.utils.downloads import DownloadManager
 from TokenExplorer.commons.utils.processing import ProcessDataSet
 from TokenExplorer.commons.utils.analyzer.benchmarks import BenchmarkTokenizers, normalized_sequence_length
-from TokenExplorer.commons.constants import CONFIG, DATASETS_PATH, BENCHMARK_PATH, BENCHMARK_RESULTS_PATH
+from TokenExplorer.commons.constants import CONFIG, DATASETS_PATH, BENCHMARK_PATH, BENCHMARK_VALIDATION_PATH
 from TokenExplorer.commons.logger import logger
 
 
@@ -35,11 +35,11 @@ if __name__ == '__main__':
         
     # run benchmark on selected dataset and generate a series of dataframes with
     # results with various metrics       
-    benchmark_results = benchmark.run_tokenizer_benchmarks(documents, BENCHMARK_RESULTS_PATH,                                                     
+    benchmark_results = benchmark.run_tokenizer_benchmarks(documents, BENCHMARK_VALIDATION_PATH,                                                     
                                                            max_number=CONFIG["benchmarks"]["MAX_NUM_DOCS"], 
                                                            reduce_size=CONFIG["benchmarks"]["REDUCE_CSV_SIZE"])
 
     # run Normalized Sequence Length (NSL) benchmark using the custom tokenizer over
     # the series of tokenizers as baseline     
     logger.info('Calculate Normalized Sequence Length (NSL)')
-    normalized_sequence_length(BENCHMARK_RESULTS_PATH, BENCHMARK_PATH)
+    normalized_sequence_length(BENCHMARK_VALIDATION_PATH, BENCHMARK_PATH)
