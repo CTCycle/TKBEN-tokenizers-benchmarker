@@ -6,7 +6,7 @@ import seaborn as sns
 from tqdm import tqdm
 tqdm.pandas()
 
-from TokenExplorer.commons.constants import CONFIG, BENCHMARK_RESULTS_PATH, BENCHMARK_PATH
+from TokenExplorer.commons.constants import CONFIG, BENCHMARK_VALIDATION_PATH, BENCHMARK_PATH
 from TokenExplorer.commons.logger import logger
 
              
@@ -17,10 +17,10 @@ class DataPlotter:
     def __init__(self):
 
         try:
-            filepath = os.path.join(BENCHMARK_RESULTS_PATH, 'tokenizers_benchmark.csv')                
+            filepath = os.path.join(BENCHMARK_VALIDATION_PATH, 'tokenizers_benchmark.csv')                
             self.benchmark_data = pd.read_csv(filepath, sep=';', encoding='utf-8')
         except:
-            logger.error(f'Could not load benchmark results from {BENCHMARK_RESULTS_PATH}')
+            logger.error(f'Could not load benchmark results from {BENCHMARK_VALIDATION_PATH}')
             self.benchmark_data = None
         try:
             filepath = os.path.join(BENCHMARK_PATH, 'NSL_benchmark.csv')                
