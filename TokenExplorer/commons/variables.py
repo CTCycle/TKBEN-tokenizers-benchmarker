@@ -17,7 +17,8 @@ class EnvironmentVariables:
     
     #--------------------------------------------------------------------------
     def get_environment_variables(self):                  
-        return {"HF_ACCESS_TOKEN": os.getenv("HF_ACCESS_TOKEN", None)}
+        return {"HF_ACCESS_TOKEN": os.getenv("HF_ACCESS_TOKEN", None),                
+                "TF_CPP_MIN_LOG_LEVEL": os.getenv("TF_CPP_MIN_LOG_LEVEL", "1")}
     
     #--------------------------------------------------------------------------
     def get_HF_access_token(self):                  

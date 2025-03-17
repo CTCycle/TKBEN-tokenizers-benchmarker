@@ -1,5 +1,3 @@
-import os
-
 # [SETTING ENVIRONMENT VARIABLES]
 from TokenExplorer.commons.variables import EnvironmentVariables
 EV = EnvironmentVariables()
