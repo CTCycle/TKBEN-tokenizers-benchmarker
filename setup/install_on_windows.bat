@@ -57,7 +57,7 @@ echo.
 echo Install python libraries and packages
 call pip install matplotlib==3.10.0 numpy==2.0.2 pandas==2.2.3 tqdm==4.67.1 scikit-learn==1.6.1
 call pip install transformers==4.43.3 sentencepiece==0.2.0 datasets==2.20.0 sacremoses==0.1.1
-call pip install jupyter==1.1.1
+
 
 :: [INSTALL PROJECT IN EDITABLE MODE] 
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
