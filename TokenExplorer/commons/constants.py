@@ -5,13 +5,11 @@ from os.path import join, abspath
 ###############################################################################
 ROOT_DIR = abspath(join(__file__, "../../.."))
 PROJECT_DIR = abspath(join(__file__, "../.."))
-DATA_PATH = join(PROJECT_DIR, 'resources')
-BENCHMARK_PATH = join(DATA_PATH, 'benchmarks')
-BENCHMARK_FIGURES_PATH = join(BENCHMARK_PATH, 'figures')
+DATA_PATH = join(PROJECT_DIR, 'resources', 'database')
+EVALUATION_PATH = join(DATA_PATH, 'evaluation')
 TOKENIZER_PATH = join(DATA_PATH, 'tokenizers')
 DATASETS_PATH = join(DATA_PATH, 'datasets')
 LOGS_PATH = join(DATA_PATH, 'logs')
-
 
 
 # [CONFIGURATIONS]

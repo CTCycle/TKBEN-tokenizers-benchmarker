@@ -4,7 +4,8 @@ import pandas as pd
 import transformers
 from tqdm import tqdm
 
-from TokenExplorer.commons.constants import CONFIG, DATASETS_PATH, BENCHMARK_PATH
+from TokenExplorer.commons.utils.data.database import TOKENDatabase
+from TokenExplorer.commons.constants import CONFIG, DATASETS_PATH, EVALUATION_PATH
 from TokenExplorer.commons.logger import logger
 
              
@@ -12,14 +13,19 @@ from TokenExplorer.commons.logger import logger
 ###############################################################################
 class BenchmarkTokenizers:
 
-    def __init__(self, configurations : dict, tokenizers):
+    def __init__(self, configuration : dict, tokenizers):
         transformers.utils.logging.set_verbosity_error() 
-        self.configurations = configurations
-        self.tokenizers = tokenizers
-        self.benchmarks_config = configurations.get("benchmarks", {}) 
+        
+        self.benchmarks_config = configuration.get("benchmarks", {}) 
         self.max_docs_number = self.benchmarks_config.get("MAX_NUM_DOCS", 1000)
         self.reduce_size = self.benchmarks_config.get("REDUCE_CSV_SIZE", False)
-        self.benchmark_filepath = os.path.join(BENCHMARK_PATH, 'tokenizers_benchmark.csv')        
+        
+
+        self.csv_kwargs = {'index': 'False', 'sep': ';', 'encoding': 'utf-8'}
+        self.database = TOKENDatabase(configuration)  
+        self.save_as_csv = configuration["BENHCMARKS"]["SAVE_CSV"]
+        self.configuration = configuration
+        self.tokenizers = tokenizers    
 
     #--------------------------------------------------------------------------
     def aggregate_dataset_stats(self, documents):
@@ -31,9 +37,13 @@ class BenchmarkTokenizers:
             lambda x : len(x.split()))
         dataset_stats['Words length'] = dataset_stats['Text'].apply(
             lambda doc : [len(x) for x in doc.split()])
+        
+        if self.save_as_csv:
+            logger.info('Export to CSV requested. Now saving preprocessed data to CSV file')
+            filename = os.path.join(DATASETS_PATH, 'dataset_statistics.csv')
+            dataset_stats.to_csv(filename, **self.csv_kwargs) 
 
-        filename = os.path.join(DATASETS_PATH, 'dataset_stats.csv')
-        dataset_stats.to_csv(filename, encoding='utf-8', sep=';', index=False)           
+        self.database.save_dataset_statistics(dataset_stats)          
     
     #--------------------------------------------------------------------------
     def run_tokenizer_benchmarks(self, documents):        
@@ -72,20 +82,27 @@ class BenchmarkTokenizers:
             if self.reduce_size:
                 data = data.drop(columns=['Text', 'Tokens', 'Words', 'Tokens split'])
 
-            csv_path = os.path.join(BENCHMARK_PATH, f'{k_rep}_benchmark.csv')
-            data.to_csv(csv_path, encoding='utf-8', sep=';', index=False)
+            if self.save_as_csv:
+                logger.info(f'Export to CSV requested. Now saving {k_rep} benchmark to CSV file')
+                csv_path = os.path.join(EVALUATION_PATH, f'{k_rep}_benchmark.csv')
+                data.to_csv(csv_path, **self.csv_kwargs)
 
+            self.database.save_benchmark_results(data, table_name=k_rep)
             all_tokenizers.append(data)
 
-        merged_data = pd.concat(all_tokenizers, ignore_index=True)        
-        merged_data.to_csv(self.benchmark_filepath, encoding='utf-8', sep=';', index=False) 
+        if self.save_as_csv:
+            logger.info(f'Export to CSV requested. Now saving all benchmarks to CSV file')
+            benchmark_path = os.path.join(EVALUATION_PATH, 'tokenizers_benchmark.csv')  
+            merged_data = pd.concat(all_tokenizers, ignore_index=True)        
+            merged_data.to_csv(benchmark_path, **self.csv_kwargs)
+
+        self.database.save_benchmark_results(merged_data)
 
         return merged_data
 
     #--------------------------------------------------------------------------
     def normalized_sequence_length(self):            
-        data_tokens = pd.read_csv(
-            self.benchmark_filepath, sep=';', encoding='utf-8', usecols=['Tokenizer', 'Tokens count'])
+        data_tokens = self.database.load_benchmark_results('OVERALL_BENCHMARK_RESULTS')            
         data_custom = data_tokens[
             data_tokens['Tokenizer'].str.contains('custom tokenizer', case=False, na=False)]   
 
@@ -100,13 +117,16 @@ class BenchmarkTokenizers:
                 data_chunk = data_tokens[data_tokens['Tokenizer'] == tok]                                                 
                 data_chunk['NSL'] = [
                     x/y if y != 0 else 0 for x, y in zip(
-                        data_custom['Tokens count'].to_list(),
-                        data_chunk['Tokens count'].to_list())]            
+                    data_custom['Tokens count'].to_list(),
+                    data_chunk['Tokens count'].to_list())]            
                 data.append(data_chunk)
             
-            data_NSL = pd.concat(data, ignore_index=True)
-            filename = os.path.join(BENCHMARK_PATH, 'NSL_benchmark.csv')
-            data_NSL.to_csv(filename, index=False, encoding='utf-8', sep=';')
+            if self.save_as_csv:
+                data_NSL = pd.concat(data, ignore_index=True)
+                filename = os.path.join(EVALUATION_PATH, 'NSL_benchmark.csv')
+                data_NSL.to_csv(filename, **self.csv_kwargs)
+
+            self.database.save_benchmark_results(data_NSL, table_name='NSL')
 
         return data_NSL 
 

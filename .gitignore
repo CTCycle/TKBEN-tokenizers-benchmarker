@@ -1,17 +1,17 @@
-__pycache__
-TokenExplorer/resources/tokenizers/*
-TokenExplorer/resources/datasets/*
-
-*.log
-*.csv
-*.txt
-*.jpg
-*.jpeg
+TokenExplorer/resources/database/tokenizers/*
+TokenExplorer/resources/database/datasets/*
 
 setup/environment/*
 setup/miniconda/*
 setup/variables/.env
 
+__pycache__
+*.csv
+*.txt
+*.jpg
+*.jpeg
+*.db
+*.log
 *.egg-info
 !.gitkeep
 
