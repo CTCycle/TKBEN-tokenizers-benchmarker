@@ -7,9 +7,9 @@ import warnings
 warnings.simplefilter(action='ignore', category=Warning)
 
 # [IMPORT CUSTOM MODULES]
-from TokenExplorer.commons.utils.downloads import DownloadManager
+from TokenExplorer.TokenExplorer.commons.utils.data.downloads import DownloadManager
 from TokenExplorer.commons.utils.evaluation.explorer import ExploreTokenizers
-from TokenExplorer.commons.constants import CONFIG, BENCHMARK_FIGURES_PATH 
+from TokenExplorer.commons.constants import CONFIG 
 from TokenExplorer.commons.logger import logger
 
 

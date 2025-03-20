@@ -7,8 +7,8 @@ import warnings
 warnings.simplefilter(action='ignore', category=Warning)
 
 # [IMPORT CUSTOM MODULES]
-from TokenExplorer.commons.utils.downloads import DownloadManager
-from TokenExplorer.commons.utils.processing import ProcessDataSet
+from TokenExplorer.TokenExplorer.commons.utils.data.downloads import DownloadManager
+from TokenExplorer.TokenExplorer.commons.utils.data.processing import ProcessDataset
 from TokenExplorer.commons.utils.evaluation.benchmarks import BenchmarkTokenizers
 from TokenExplorer.commons.constants import CONFIG
 from TokenExplorer.commons.logger import logger
@@ -28,7 +28,7 @@ if __name__ == '__main__':
     # 2. [PROCESS TEXT DATASET]
     #--------------------------------------------------------------------------
     # extract documents from text dataset and split train and text corpora    
-    processor = ProcessDataSet(CONFIG, datasets)
+    processor = ProcessDataset(CONFIG, datasets)
     documents, clean_documents = processor.split_text_dataset()  
     logger.info(f'Total number of documents: {len(documents)}')
     logger.info(f'Number of valid documents: {len(clean_documents)}')  

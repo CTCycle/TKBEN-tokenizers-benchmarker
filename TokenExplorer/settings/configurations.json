@@ -19,5 +19,6 @@
    "benchmarks": {"MAX_NUM_DOCS": 20000,
                   "REDUCE_CSV_SIZE": true,
                   "INCLUDE_CUSTOM_DATASET": false,
-                  "INCLUDE_CUSTOM_TOKENIZER": false}  
+                  "INCLUDE_CUSTOM_TOKENIZER": false,
+                  "SAVE_CSV" : false}  
 }

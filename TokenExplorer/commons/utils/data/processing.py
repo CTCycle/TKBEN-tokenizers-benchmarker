@@ -6,7 +6,7 @@ from TokenExplorer.commons.logger import logger
              
 # [TOKENIZERS EXPLORER]
 ###############################################################################
-class ProcessDataSet:
+class ProcessDataset:
 
     def __init__(self, configurations, datasets):
         self.datasets = datasets     
