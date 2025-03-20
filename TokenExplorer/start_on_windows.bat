@@ -4,10 +4,10 @@ setlocal enabledelayedexpansion
 for /f "delims=" %%i in ("%~dp0..") do set "project_folder=%%~fi"
 set "env_name=TOKEXP"
 set "project_name=TokenExplorer"
-set "env_path=%project_folder%\setup\environment\%env_name%"
-set "app_path=%project_folder%\%project_name%"
-set "conda_path=%project_folder%\setup\miniconda"
 set "setup_path=%project_folder%\setup"
+set "env_path=%setup_path%\environment\%env_name%"
+set "conda_path=%setup_path%\miniconda"
+set "app_path=%project_folder%\%project_name%"
 
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 :: Check if conda is installed
@@ -15,10 +15,10 @@ set "setup_path=%project_folder%\setup"
 :check_conda
 where conda >nul 2>&1
 if %ERRORLEVEL% neq 0 (
-    echo Anaconda/Miniconda is not installed. Installing Miniconda...   
+    echo Anaconda/Miniconda is not installed. Installing Miniconda..   
     cd /d "%conda_path%"        
     if not exist Miniconda3-latest-Windows-x86_64.exe (
-        echo Downloading Miniconda 64-bit installer...
+        echo Downloading Miniconda 64-bit installer..
         powershell -Command "Invoke-WebRequest -Uri https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe -OutFile Miniconda3-latest-Windows-x86_64.exe"
     )    
     echo Installing Miniconda to %conda_path%
@@ -49,7 +49,7 @@ if exist "%env_path%" (
 ) else (
     echo Running first-time installation for %env_name%. 
     echo Please wait until completion and do not close this window!
-    echo Depending on your internet connection, this may take a while...
+    echo Depending on your internet connection, this may take a while..
     call "%setup_path%\install_on_windows.bat"
     goto :conda_activation
 )
@@ -70,7 +70,7 @@ if %ERRORLEVEL% neq 0 (
 :main_menu
 echo.
 echo ==========================================================================
-echo                              TokenExplorer 
+echo                   TokenExplorer: tokenizers benchmarking 
 echo ==========================================================================
 echo 1. Run tokenizers benchmarks
 echo 2. Tokenizers analysis
@@ -91,7 +91,7 @@ goto :main_menu
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 :analysis
 cls
-start cmd /k "call conda activate "%env_path%" && jupyter notebook "%app_path%"\exploration\visualize_tokenizers.ipynb"
+start cmd /k "call conda activate "%env_path%" && python "%app_path%"\benchmarks\validate_benchmarks.py"
 goto :main_menu
 
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -99,7 +99,7 @@ goto :main_menu
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 :main
 cls
-start cmd /k "call conda activate "%env_path%" && python "%app_path%"\commons\main.py"
+start cmd /k "call conda activate "%env_path%" && python "%app_path%"\benchmarks\perform_benchmarks.py"
 pause
 goto :main_menu
 
@@ -109,7 +109,7 @@ goto :main_menu
 :setup_menu
 cls
 echo ==========================================================================
-echo                         Setup  and Maintenance                          
+echo                         Setup and Maintenance                          
 echo ==========================================================================
 echo 1. Install project in editable mode
 echo 2. Update project
