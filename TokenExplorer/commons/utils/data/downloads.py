@@ -36,8 +36,7 @@ class DownloadManager:
                     tokenizer_id, cache_dir=tokenizer_save_path, token=self.hf_access_token) 
                 tokenizers[tokenizer_id] = tokenizer
             except Exception as e:
-                logger.error(f"Failed to download tokenizer {tokenizer_id}: {e}", exc_info=True)
-    
+                logger.error(f"Failed to download tokenizer {tokenizer_id}: {e}", exc_info=True)    
 
         # load custom tokenizer in target subfolder if .json files are found 
         custom_tokenizer_path = os.path.join(TOKENIZER_PATH, 'custom')      

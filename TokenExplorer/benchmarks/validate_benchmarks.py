@@ -7,7 +7,7 @@ import warnings
 warnings.simplefilter(action='ignore', category=Warning)
 
 # [IMPORT CUSTOM MODULES]
-from TokenExplorer.TokenExplorer.commons.utils.data.downloads import DownloadManager
+from TokenExplorer.commons.utils.data.downloads import DownloadManager
 from TokenExplorer.commons.utils.evaluation.explorer import ExploreTokenizers
 from TokenExplorer.commons.constants import CONFIG 
 from TokenExplorer.commons.logger import logger
@@ -31,7 +31,7 @@ if __name__ == '__main__':
     logger.info('Check length of tokenizers vocabulary by using two methods:')
     logger.info('1) Extraction of the embedded vocabulary')
     logger.info('2) Decoding through vocabulary mapping')
-    logger.info('Comparisong should highlight any possible discrepancy')
+    logger.info('Comparison should highlight any possible discrepancy')
     explorer.get_vocabulary_report()     
 
     logger.info('Analyze distribution of token by characters length using histograms and boxplots')
@@ -44,7 +44,7 @@ if __name__ == '__main__':
     logger.info('1) Evaluate number of generate tokens versus number of words in text (by document)')
     logger.info('2) Average character length of tokens versus average length of words (average by document)')
     logger.info('3) Bytes per token calculated by dividing UTF-8 bytes by tokens number')
-    #explorer.boxplot_from_benchmarks_dataset()
+    #explorer.boxplot_from_benchmarks_dataset() # temporarely removed
     
 
 
