@@ -6,7 +6,6 @@ Tokenizers play a pivotal role in the preprocessing phase of text data, transfor
 ![Vocabulary size comparison](TokenExplorer/commons/assets/Vocabulary_size_comparison.jpeg)
 Comparison of vocabulary size for different tokenizers. The number of tokens is calculated both form the exracted vocabulary and from the tokenizer decoder method.
 
-
 ![LLaMa 13B words len](TokenExplorer/commons/assets/PMC_LLaMA_13B_length_words.jpeg)
 LLaMa 13B benchmark showing distribution of tokens length from both the vocabulary and the decoder method. 
 
@@ -45,13 +44,15 @@ On Windows, run *start_on_windows.bat* to launch the main navigation menu and br
 **3) Exit and close:** exit the program immediately
 
 ### 3.1 Resources
-This folder is used to hold tokenizers and datasets, as well as to store the benchmark results. Here you can find the following folders:
+This folder organizes data and results across various stages of the project, such as data validation, model training, and evaluation. By default, all data is stored within an SQLite database; however, users have the option to export data into separate CSV files if desired. To visualize and interact with SQLite database files, we recommend downloading and installing the DB Browser for SQLite, available at: https://sqlitebrowser.org/dl/.
 
-**benchmarks:** contains the results of the tokenizers benchmarks that have been run. Generate plots are saved in *benchmarks/figures* while benchmark .csv files will be located in *benchmarks/results*.
+The directory structure includes the following folders:
 
-**datasets:** contains the downloaded datasets that are used to test the tokenizers performance. While the datasets that are automatically downloaded are saved in *datasets*, the custom dataset are saved in *custom dataset*.
+- **database:** tokenizers benchmark results will be stored centrally within the main database *TOKENEXP_database.db*. Graphical evaluation outputs for the performed benchmarks will be saved separately in *database/evaluation*. Moreover, this folder contains the downloaded datasets that are used to test the tokenizers performance (open access datasets are saved in *datasets/open* while the custom dataset is saved into *datasets/custom*). Last but not least, the downloaded tokenizers are saved in *database/tokenizers* following the same organisation of the datasets folder. 
 
-**tokenizers:** contains the downloaded tokenizers that are used to run the benchmarks on the target dataset. While the tokenizers from HuggingFace are automatically saved in *tokenizers*, the custom tokenizers must be located in *custom tokenizers*.
+- **logs:** log files are saved here
+
+- **templates:** reference template files can be found here
 
 ## 4. Configurations
 For customization, you can modify the main configuration parameters using *settings/configurations.json* 
@@ -73,6 +74,7 @@ Tokenizers should be specified using their reference string. Regarding the text 
 | REDUCE_CSV_SIZE          | List of tokenizers to download                           |
 | INCLUDE_CUSTOM_DATASET   | Whether or not to include the custom dataset             |
 | INCLUDE_CUSTOM_TOKENIZER | Whether or not to include the custom tokenizer           |
+| SAVE_CSV                 | Save preprocessed data as .csv file                      |
 
 
 **Environmental variables** are stored in *setup/variables/.env*. For security reasons, this file is typically not uploaded to GitHub. Instead, you must create this file manually by copying the template from *resources/templates/.env* and placing it in the *setup/variables* directory.

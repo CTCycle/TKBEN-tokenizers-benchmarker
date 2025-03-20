@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from TokenExplorer.commons.constants import CONFIG, BENCHMARK_FIGURES_PATH
+from TokenExplorer.commons.constants import CONFIG, EVALUATION_PATH
 from TokenExplorer.commons.logger import logger
 
 
@@ -66,7 +66,7 @@ class ExploreTokenizers:
         plt.legend(fontsize=14)
         plt.tight_layout()        
         plot_loc = os.path.join(
-            BENCHMARK_FIGURES_PATH, 'vocabulary_size.jpeg')
+            EVALUATION_PATH, 'vocabulary_size.jpeg')
         plt.savefig(
             plot_loc, bbox_inches='tight', format='jpeg', dpi=self.DPI)        
         plt.close() 
@@ -97,7 +97,7 @@ class ExploreTokenizers:
         plt.yticks(fontsize=14)
         plt.legend(fontsize=14)
         plt.tight_layout() 
-        plot_loc = os.path.join(BENCHMARK_FIGURES_PATH, 'subwords_vs_words.jpeg')
+        plot_loc = os.path.join(EVALUATION_PATH, 'subwords_vs_words.jpeg')
         plt.savefig(
             plot_loc, bbox_inches='tight', format='jpeg', dpi=self.DPI)        
         plt.close()       
@@ -122,7 +122,7 @@ class ExploreTokenizers:
             axs[1].set_ylabel('Frequency', fontsize=14)
             axs[1].set_xlabel('Word Length', fontsize=14)
             plt.tight_layout()                  
-            plot_loc = os.path.join(BENCHMARK_FIGURES_PATH, f'{k_rep}_words_by_len.jpeg')
+            plot_loc = os.path.join(EVALUATION_PATH, f'{k_rep}_words_by_len.jpeg')
             plt.savefig(
                 plot_loc, bbox_inches='tight', format='jpeg', dpi=self.DPI)              
             plt.close()               
@@ -155,7 +155,7 @@ class ExploreTokenizers:
         plt.xticks(rotation=45, ha='right', fontsize=14)
         plt.legend(fontsize=14)
         plt.tight_layout()       
-        plot_loc = os.path.join(BENCHMARK_FIGURES_PATH, 'boxplot_words_by_len.jpeg')
+        plot_loc = os.path.join(EVALUATION_PATH, 'boxplot_words_by_len.jpeg')
         plt.savefig(
             plot_loc, bbox_inches='tight', format='jpeg', dpi=self.DPI)  
         plt.close()
@@ -174,7 +174,7 @@ class ExploreTokenizers:
             plt.title(f'Boxplot of {y}', fontsize=14, y=1.02) 
             plt.legend(fontsize=14)               
             plt.tight_layout()               
-            plot_loc = os.path.join(BENCHMARK_FIGURES_PATH, f'boxplot_{y}.jpeg')                   
+            plot_loc = os.path.join(EVALUATION_PATH, f'boxplot_{y}.jpeg')                   
             plt.savefig(
             plot_loc, bbox_inches='tight', format='jpeg', dpi=self.DPI)  
             plt.close()

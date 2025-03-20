@@ -1,4 +1,3 @@
-from tqdm import tqdm
 
 from TokenExplorer.commons.constants import CONFIG
 from TokenExplorer.commons.logger import logger

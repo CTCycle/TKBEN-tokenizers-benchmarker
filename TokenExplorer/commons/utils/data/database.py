@@ -9,8 +9,9 @@ from TokenExplorer.commons.logger import logger
 ###############################################################################
 class TOKENDatabase:
 
-    def __init__(self, configuration):             
-        self.db_path = os.path.join(DATA_PATH, 'XREPORT_database.db') 
+    def __init__(self, configuration): 
+        self.separator = ' '            
+        self.db_path = os.path.join(DATA_PATH, 'TOKENEXP_database.db') 
         self.configuration = configuration 
 
     #--------------------------------------------------------------------------
@@ -24,7 +25,7 @@ class TOKENDatabase:
         return data       
 
     #--------------------------------------------------------------------------
-    def save_dataset_statistics(self, data : pd.DataFrame): 
+    def save_dataset_statistics(self, data : pd.DataFrame):        
         # connect to sqlite database and save the preprocessed data as table
         conn = sqlite3.connect(self.db_path)         
         data.to_sql('DATASET_STATISTICS', conn, if_exists='replace')
@@ -37,7 +38,7 @@ class TOKENDatabase:
         # Connect to the database and inject a select all query
         # convert the extracted data directly into a pandas dataframe          
         conn = sqlite3.connect(self.db_path)        
-        processed_data.to_sql('PROCESSED_DATA', conn, if_exists='replace')
+        processed_data.to_sql(table_name, conn, if_exists='replace')
         conn.close()
 
    

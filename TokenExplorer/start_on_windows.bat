@@ -8,6 +8,7 @@ set "setup_path=%project_folder%\setup"
 set "env_path=%setup_path%\environment\%env_name%"
 set "conda_path=%setup_path%\miniconda"
 set "app_path=%project_folder%\%project_name%"
+
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 :: Check if conda is installed
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -69,7 +70,7 @@ if %ERRORLEVEL% neq 0 (
 :main_menu
 echo.
 echo ==========================================================================
-echo                              TokenExplorer 
+echo                   TokenExplorer: tokenizers benchmarking 
 echo ==========================================================================
 echo 1. Run tokenizers benchmarks
 echo 2. Tokenizers analysis
@@ -90,7 +91,7 @@ goto :main_menu
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 :analysis
 cls
-start cmd /k "call conda activate "%env_path%" && python "%app_path%"\exploration\visualize_tokenizers.py"
+start cmd /k "call conda activate "%env_path%" && python "%app_path%"\benchmarks\validate_benchmarks.py"
 goto :main_menu
 
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -98,7 +99,7 @@ goto :main_menu
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 :main
 cls
-start cmd /k "call conda activate "%env_path%" && python "%app_path%"\commons\main.py"
+start cmd /k "call conda activate "%env_path%" && python "%app_path%"\benchmarks\perform_benchmarks.py"
 pause
 goto :main_menu
 
@@ -108,7 +109,7 @@ goto :main_menu
 :setup_menu
 cls
 echo ==========================================================================
-echo                         Setup  and Maintenance                          
+echo                         Setup and Maintenance                          
 echo ==========================================================================
 echo 1. Install project in editable mode
 echo 2. Update project

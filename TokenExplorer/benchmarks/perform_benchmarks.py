@@ -7,8 +7,8 @@ import warnings
 warnings.simplefilter(action='ignore', category=Warning)
 
 # [IMPORT CUSTOM MODULES]
-from TokenExplorer.TokenExplorer.commons.utils.data.downloads import DownloadManager
-from TokenExplorer.TokenExplorer.commons.utils.data.processing import ProcessDataset
+from TokenExplorer.commons.utils.data.downloads import DownloadManager
+from TokenExplorer.commons.utils.data.processing import ProcessDataset
 from TokenExplorer.commons.utils.evaluation.benchmarks import BenchmarkTokenizers
 from TokenExplorer.commons.constants import CONFIG
 from TokenExplorer.commons.logger import logger
@@ -36,7 +36,8 @@ if __name__ == '__main__':
     # 3. [PERFORM BENCHMARKS]
     #--------------------------------------------------------------------------
     # aggregate text dataset statistics and save as .json    
-    benchmark = BenchmarkTokenizers(CONFIG, tokenizers)    
+    benchmark = BenchmarkTokenizers(CONFIG, tokenizers)  
+    logger.info('Calculate text dataset statistics')  
     benchmark.aggregate_dataset_stats(clean_documents)        
         
     # run benchmark on selected dataset and generate a series of dataframes with
@@ -46,4 +47,4 @@ if __name__ == '__main__':
     # run Normalized Sequence Length (NSL) benchmark using the custom tokenizer over
     # the series of tokenizers as baseline     
     logger.info('Calculate Normalized Sequence Length (NSL) vs custom tokenizer')
-    NSL_benchmarks = benchmark.normalized_sequence_length()
+    NSL_benchmarks = benchmark.normalized_sequence_length(benchmark_results)
