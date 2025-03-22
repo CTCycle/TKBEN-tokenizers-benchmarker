@@ -17,11 +17,9 @@ class BenchmarkTokenizers:
         transformers.utils.logging.set_verbosity_error()         
         self.benchmarks_config = configuration.get("benchmarks", {}) 
         self.max_docs_number = self.benchmarks_config.get("MAX_NUM_DOCS", 1000)
-        self.reduce_size = self.benchmarks_config.get("REDUCE_CSV_SIZE", False)        
+        self.reduce_size = self.benchmarks_config.get("REDUCE_CSV_SIZE", False)
 
-        self.csv_kwargs = {'index': 'False', 'sep': ';', 'encoding': 'utf-8'}
-        self.database = TOKENDatabase(configuration)  
-        self.save_as_csv = self.benchmarks_config["SAVE_CSV"]
+        self.database = TOKENDatabase(configuration) 
         self.configuration = configuration
         self.tokenizers = tokenizers    
 
@@ -37,12 +35,7 @@ class BenchmarkTokenizers:
             lambda doc : np.mean([len(w) for w in doc.split()]))    
         dataset_stats['STD word length'] = dataset_stats['Text'].apply(
             lambda doc : np.std([len(w) for w in doc.split()]))        
-        
-        if self.save_as_csv:
-            logger.info('Export to CSV requested. Now saving preprocessed data to CSV file')
-            filename = os.path.join(DATASETS_PATH, 'dataset_statistics.csv')
-            dataset_stats.to_csv(filename, **self.csv_kwargs) 
-
+       
         self.database.save_dataset_statistics(dataset_stats)          
     
     #--------------------------------------------------------------------------
@@ -58,7 +51,7 @@ class BenchmarkTokenizers:
             data['Text characters'] = data['Text'].str.len()
             data['Words'] = data['Text'].str.split()
             data['Words count'] = data['Words'].str.len()
-            data['AVG words length'] = data['Words'].apply(
+            data['AVG wordslength'] = data['Words'].apply(
                 lambda words: np.mean([len(word) for word in words]) if words else 0)
 
             if 'CUSTOM' in tokenizer_name:
@@ -80,23 +73,13 @@ class BenchmarkTokenizers:
                 data['Tokens count'] > 0, data['Text characters'] / data['Tokens count'], 0)
 
             if self.reduce_size:
-                data = data.drop(columns=['Text', 'Tokens', 'Words', 'Tokens split'])
-
-            if self.save_as_csv:
-                logger.info(f'Export to CSV requested. Now saving {k_rep} benchmark to CSV file')
-                csv_path = os.path.join(EVALUATION_PATH, f'{k_rep}_benchmark.csv')
-                data.to_csv(csv_path, **self.csv_kwargs)
+                data = data.drop(columns=['Text', 'Tokens', 'Words', 'Tokens split'])           
 
             self.database.save_benchmark_results(data, table_name=k_rep)
             all_tokenizers.append(data)
 
         merged_data = pd.concat(all_tokenizers, ignore_index=True)
         self.database.save_benchmark_results(merged_data)
-
-        if self.save_as_csv:
-            logger.info(f'Export to CSV requested. Now saving all benchmarks to CSV file')
-            benchmark_path = os.path.join(EVALUATION_PATH, 'tokenizers_benchmark.csv')                     
-            merged_data.to_csv(benchmark_path, **self.csv_kwargs)
 
         return merged_data
 

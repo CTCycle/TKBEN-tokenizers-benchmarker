@@ -9,10 +9,47 @@ from TokenExplorer.commons.logger import logger
 ###############################################################################
 class TOKENDatabase:
 
-    def __init__(self, configuration): 
-        self.separator = ' '            
+    def __init__(self, configuration):                   
         self.db_path = os.path.join(DATA_PATH, 'TOKENEXP_database.db') 
         self.configuration = configuration 
+        self.initialize_database()
+
+    #--------------------------------------------------------------------------       
+    def initialize_database(self):        
+        # Connect to the SQLite database and create the database if does not exist
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        create_overall_benchmark_table = '''
+        CREATE TABLE IF NOT EXISTS OVERALL_BENCHMARK_RESULTS (
+           id INTEGER PRIMARY KEY AUTOINCREMENT,
+           tokenizer TEXT,
+           text_characters INTEGER,
+           words_count INTEGER,
+           AVG_words_length REAL,
+           Tokens_count INTEGER,
+           Tokens_characters INTEGER,
+           AVG_tokens_length REAL,
+           Tokens_to_words_ratio REAL,
+           Bytes_per_token REAL
+        );
+        '''
+
+        create_dataset_stats_table = '''
+        CREATE TABLE IF NOT EXISTS OVERALL_BENCHMARK_RESULTS (
+           id INTEGER PRIMARY KEY AUTOINCREMENT,
+           Text TEXT,
+           Words_count INTEGER,
+           AVG_word_length REAL,
+           STD_word_length REAL       
+        );
+        '''
+      
+        cursor.execute(create_overall_benchmark_table)  
+        cursor.execute(create_dataset_stats_table)  
+        
+        conn.commit()
+        conn.close()
 
     #--------------------------------------------------------------------------
     def load_benchmark_results(self, table_name=None):

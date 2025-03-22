@@ -44,7 +44,7 @@ On Windows, run *start_on_windows.bat* to launch the main navigation menu and br
 **3) Exit and close:** exit the program immediately
 
 ### 3.1 Resources
-This folder organizes data and results across various stages of the project, such as data validation, model training, and evaluation. By default, all data is stored within an SQLite database; however, users have the option to export data into separate CSV files if desired. To visualize and interact with SQLite database files, we recommend downloading and installing the DB Browser for SQLite, available at: https://sqlitebrowser.org/dl/.
+This folder organizes dataset and tokenizers benchmark results. By default, all data is stored within an SQLite database. To visualize and interact with the SQLite database, we recommend downloading and installing the DB Browser for SQLite, available at: https://sqlitebrowser.org/dl/.
 
 The directory structure includes the following folders:
 
@@ -74,8 +74,6 @@ Tokenizers should be specified using their reference string. Regarding the text 
 | REDUCE_CSV_SIZE          | List of tokenizers to download                           |
 | INCLUDE_CUSTOM_DATASET   | Whether or not to include the custom dataset             |
 | INCLUDE_CUSTOM_TOKENIZER | Whether or not to include the custom tokenizer           |
-| SAVE_CSV                 | Save preprocessed data as .csv file                      |
-
 
 **Environmental variables** are stored in *setup/variables/.env*. For security reasons, this file is typically not uploaded to GitHub. Instead, you must create this file manually by copying the template from *resources/templates/.env* and placing it in the *setup/variables* directory.
 
