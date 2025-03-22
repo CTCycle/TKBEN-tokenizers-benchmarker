@@ -104,11 +104,7 @@ class BenchmarkTokenizers:
                 data.append(data_chunk)
             
             data_NSL = pd.concat(data, ignore_index=True)
-            self.database.save_benchmark_results(data_NSL, table_name='NSL')
-
-            if self.save_as_csv:                
-                filename = os.path.join(EVALUATION_PATH, 'NSL_benchmark.csv')
-                data_NSL.to_csv(filename, **self.csv_kwargs)
+            self.database.save_benchmark_results(data_NSL, table_name='NSL')          
 
         return data_NSL 
 
