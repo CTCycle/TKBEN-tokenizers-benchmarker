@@ -48,7 +48,7 @@ This folder organizes dataset and tokenizers benchmark results. By default, all 
 
 The directory structure includes the following folders:
 
-- **database:** tokenizers benchmark results will be stored centrally within the main database *TOKENEXP_database.db*. Graphical evaluation outputs for the performed benchmarks will be saved separately in *database/evaluation*. Moreover, this folder contains the downloaded datasets that are used to test the tokenizers performance (open access datasets are saved in *datasets/open* while the custom dataset is saved into *datasets/custom*). Last but not least, the downloaded tokenizers are saved in *database/tokenizers* following the same organisation of the datasets folder. 
+- **database:** tokenizers benchmark results will be stored centrally within the main database *TokenBenchy_database.db*. Graphical evaluation outputs for the performed benchmarks will be saved separately in *database/evaluation*. Moreover, this folder contains the downloaded datasets that are used to test the tokenizers performance (open access datasets are saved in *datasets/open* while the custom dataset is saved into *datasets/custom*). Last but not least, the downloaded tokenizers are saved in *database/tokenizers* following the same organisation of the datasets folder. 
 
 - **logs:** log files are saved here
 

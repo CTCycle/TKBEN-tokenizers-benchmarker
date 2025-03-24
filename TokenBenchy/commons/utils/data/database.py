@@ -10,7 +10,7 @@ from TokenBenchy.commons.logger import logger
 class TOKENDatabase:
 
     def __init__(self, configuration):                   
-        self.db_path = os.path.join(DATA_PATH, 'TOKENEXP_database.db') 
+        self.db_path = os.path.join(DATA_PATH, 'TokenBenchy_database.db') 
         self.configuration = configuration 
         self.initialize_database()
 

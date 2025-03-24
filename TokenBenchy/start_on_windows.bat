@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 for /f "delims=" %%i in ("%~dp0..") do set "project_folder=%%~fi"
-set "env_name=TOKEXP"
+set "env_name=TokenBenchy"
 set "project_name=TokenBenchy"
 set "setup_path=%project_folder%\setup"
 set "env_path=%setup_path%\environment\%env_name%"
