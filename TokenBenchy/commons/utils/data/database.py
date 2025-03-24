@@ -2,8 +2,8 @@ import os
 import sqlite3
 import pandas as pd
 
-from TokenExplorer.commons.constants import DATA_PATH
-from TokenExplorer.commons.logger import logger
+from TokenBenchy.commons.constants import DATA_PATH
+from TokenBenchy.commons.logger import logger
 
 # [DATABASE]
 ###############################################################################

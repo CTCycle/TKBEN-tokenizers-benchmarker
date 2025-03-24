@@ -1,6 +1,6 @@
 
-from TokenExplorer.commons.constants import CONFIG
-from TokenExplorer.commons.logger import logger
+from TokenBenchy.commons.constants import CONFIG
+from TokenBenchy.commons.logger import logger
 
              
 # [TOKENIZERS EXPLORER]

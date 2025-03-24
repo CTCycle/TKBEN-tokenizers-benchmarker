@@ -1,5 +1,6 @@
-TokenExplorer/resources/database/tokenizers/*
-TokenExplorer/resources/database/datasets/*
+TokenBenchy/resources/database/tokenizers/*
+TokenBenchy/resources/database/datasets/*
+TokenBenchy/resources/database/evaluation/*
 
 setup/environment/*
 setup/miniconda/*
@@ -8,8 +9,6 @@ setup/variables/.env
 __pycache__
 *.csv
 *.txt
-*.jpg
-*.jpeg
 *.db
 *.log
 *.egg-info

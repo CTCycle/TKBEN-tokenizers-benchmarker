@@ -1,5 +1,5 @@
 # [SETTING ENVIRONMENT VARIABLES]
-from TokenExplorer.commons.variables import EnvironmentVariables
+from TokenBenchy.commons.variables import EnvironmentVariables
 EV = EnvironmentVariables()
 
 # [SETTING WARNINGS]
@@ -7,11 +7,11 @@ import warnings
 warnings.simplefilter(action='ignore', category=Warning)
 
 # [IMPORT CUSTOM MODULES]
-from TokenExplorer.commons.utils.data.downloads import DownloadManager
-from TokenExplorer.commons.utils.data.processing import ProcessDataset
-from TokenExplorer.commons.utils.evaluation.benchmarks import BenchmarkTokenizers
-from TokenExplorer.commons.constants import CONFIG
-from TokenExplorer.commons.logger import logger
+from TokenBenchy.commons.utils.data.downloads import DownloadManager
+from TokenBenchy.commons.utils.data.processing import ProcessDataset
+from TokenBenchy.commons.utils.evaluation.benchmarks import BenchmarkTokenizers
+from TokenBenchy.commons.constants import CONFIG
+from TokenBenchy.commons.logger import logger
 
 
 # [RUN MAIN]

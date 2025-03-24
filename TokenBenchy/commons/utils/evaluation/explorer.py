@@ -3,8 +3,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from TokenExplorer.commons.constants import CONFIG, EVALUATION_PATH
-from TokenExplorer.commons.logger import logger
+from TokenBenchy.commons.constants import CONFIG, EVALUATION_PATH
+from TokenBenchy.commons.logger import logger
 
 
 # [TOKENIZERS EXPLORER]
