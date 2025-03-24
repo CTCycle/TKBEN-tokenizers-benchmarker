@@ -4,9 +4,9 @@ from datasets import load_dataset
 from tokenizers import Tokenizer
 from transformers import AutoTokenizer
 
-from TokenExplorer.commons.variables import EnvironmentVariables
-from TokenExplorer.commons.constants import DATASETS_PATH, TOKENIZER_PATH
-from TokenExplorer.commons.logger import logger
+from TokenBenchy.commons.variables import EnvironmentVariables
+from TokenBenchy.commons.constants import DATASETS_PATH, TOKENIZER_PATH
+from TokenBenchy.commons.logger import logger
 
 
 # [DOWNLOADS]

@@ -1,12 +1,12 @@
 # TokenBenchy: Exploring and Benchmarking Open Source Tokenizers
 
 ## 1. Project Overview
-Tokenizers play a pivotal role in the preprocessing phase of text data, transforming raw text into a structured format that models can understand. The effectiveness of this step significantly impacts the overall performance of NLP models, making the choice of tokenizer a crucial decision in the development of language-based applications. However, with the plethora of tokenizers available, each with its unique approach and capabilities, selecting the most suitable one can be a daunting task. TokenExplorer aims to offer a comprehensive toolkit for analyzing and comparing the performance and characteristics of open source tokenizers (currently based on English language), through a simple yet effective jupyter notebook. This facilitates the exploration of tokenizer characteristics such as tokenization speed, token granularity, handling of special characters, language support, and adaptability to domain-specific vocabularies. Users can perform detailed comparisons between tokenizers, assessing their suitability for specific applications, such as text classification, sentiment analysis, language translation, or semantic search.
+Tokenizers play a pivotal role in the preprocessing phase of text data, transforming raw text into a structured format that models can understand. The effectiveness of this step significantly impacts the overall performance of NLP models, making the choice of tokenizer a crucial decision in the development of language-based applications. However, with the plethora of tokenizers available, each with its unique approach and capabilities, selecting the most suitable one can be a daunting task. TokenBenchy aims to offer a comprehensive toolkit for analyzing and comparing the performance and characteristics of open source tokenizers (currently based on English language), through a simple yet effective jupyter notebook. This facilitates the exploration of tokenizer characteristics such as tokenization speed, token granularity, handling of special characters, language support, and adaptability to domain-specific vocabularies. Users can perform detailed comparisons between tokenizers, assessing their suitability for specific applications, such as text classification, sentiment analysis, language translation, or semantic search.
 
-![Vocabulary size comparison](TokenExplorer/commons/assets/Vocabulary_size_comparison.jpeg)
+![Vocabulary size comparison](TokenBenchy/commons/assets/vocabulary_size_comparison.jpeg)
 Comparison of vocabulary size for different tokenizers. The number of tokens is calculated both form the exracted vocabulary and from the tokenizer decoder method.
 
-![LLaMa 13B words len](TokenExplorer/commons/assets/PMC_LLaMA_13B_length_words.jpeg)
+![LLaMa 13B words len](TokenBenchy/commons/assets/PMC_LLaMA_13B_length_words.jpeg)
 LLaMa 13B benchmark showing distribution of tokens length from both the vocabulary and the decoder method. 
 
 ## 2. Installation 
@@ -39,7 +39,7 @@ On Windows, run *start_on_windows.bat* to launch the main navigation menu and br
 
 **1) Tokenizers analysis:** previosuly calculated benchmarks are visualized using different types of plots and visualization techniques (boxplots, histograms, bar plots). Requires generating the benchmarks results first!
 
-**2) TokenExplorer setup:** allows running some options command such as *install project in editable mode* to reinstall the project within your environment, and *remove logs* to remove all logs saved in *resources/logs*.  
+**2) TokenBenchy setup:** allows running some options command such as *install project in editable mode* to reinstall the project within your environment, and *remove logs* to remove all logs saved in *resources/logs*.  
 
 **3) Exit and close:** exit the program immediately
 

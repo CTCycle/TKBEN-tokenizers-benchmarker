@@ -3,7 +3,7 @@ import logging
 import logging.config
 from datetime import datetime
 
-from TokenExplorer.commons.constants import LOGS_PATH
+from TokenBenchy.commons.constants import LOGS_PATH
 
 
 # Generate timestamp for the log filename

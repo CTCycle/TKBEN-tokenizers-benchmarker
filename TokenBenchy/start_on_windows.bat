@@ -3,7 +3,7 @@ setlocal enabledelayedexpansion
 
 for /f "delims=" %%i in ("%~dp0..") do set "project_folder=%%~fi"
 set "env_name=TOKEXP"
-set "project_name=TokenExplorer"
+set "project_name=TokenBenchy"
 set "setup_path=%project_folder%\setup"
 set "env_path=%setup_path%\environment\%env_name%"
 set "conda_path=%setup_path%\miniconda"
@@ -70,7 +70,7 @@ if %ERRORLEVEL% neq 0 (
 :main_menu
 echo.
 echo ==========================================================================
-echo                   TokenExplorer: tokenizers benchmarking 
+echo                   TokenBenchy: tokenizers benchmarking 
 echo ==========================================================================
 echo 1. Run tokenizers benchmarks
 echo 2. Tokenizers analysis

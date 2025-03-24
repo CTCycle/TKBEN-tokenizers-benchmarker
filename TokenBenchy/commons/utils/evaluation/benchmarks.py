@@ -4,9 +4,9 @@ import pandas as pd
 import transformers
 from tqdm import tqdm
 
-from TokenExplorer.commons.utils.data.database import TOKENDatabase
-from TokenExplorer.commons.constants import CONFIG, DATASETS_PATH, EVALUATION_PATH
-from TokenExplorer.commons.logger import logger
+from TokenBenchy.commons.utils.data.database import TOKENDatabase
+from TokenBenchy.commons.constants import CONFIG, DATASETS_PATH, EVALUATION_PATH
+from TokenBenchy.commons.logger import logger
 
              
 # [TOKENIZERS EXPLORER]

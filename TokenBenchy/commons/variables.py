@@ -1,8 +1,8 @@
 import os
 from dotenv import load_dotenv
 
-from TokenExplorer.commons.constants import ROOT_DIR
-from TokenExplorer.commons.logger import logger
+from TokenBenchy.commons.constants import ROOT_DIR
+from TokenBenchy.commons.logger import logger
 
 # [IMPORT CUSTOM MODULES]
 ###############################################################################
