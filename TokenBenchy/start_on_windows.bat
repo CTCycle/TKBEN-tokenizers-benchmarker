@@ -73,7 +73,7 @@ echo ==========================================================================
 echo                   TokenBenchy: tokenizers benchmarking 
 echo ==========================================================================
 echo 1. Run tokenizers benchmarks
-echo 2. Tokenizers analysis
+echo 2. Benchmarks analysis
 echo 3. Setup and Maintenance
 echo 4. Exit
 echo.
@@ -87,20 +87,20 @@ echo Invalid option, try again.
 goto :main_menu
 
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-:: Tokenizers analysis
-:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-:analysis
-cls
-start cmd /k "call conda activate "%env_path%" && python "%app_path%"\benchmarks\validate_benchmarks.py"
-goto :main_menu
-
-:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 :: Run main application
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 :main
 cls
 start cmd /k "call conda activate "%env_path%" && python "%app_path%"\benchmarks\perform_benchmarks.py"
 pause
+goto :main_menu
+
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+:: Tokenizers analysis
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+:analysis
+cls
+start cmd /k "call conda activate "%env_path%" && python "%app_path%"\benchmarks\validate_benchmarks.py"
 goto :main_menu
 
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
