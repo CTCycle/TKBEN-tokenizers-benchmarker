@@ -1,12 +1,13 @@
+from functools import partial
 from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlainTextEdit, QSpinBox, 
                                QMessageBox, QComboBox, QTextEdit)
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, QIODevice, Slot, QThreadPool
 
 from TokenBenchy.commons.variables import EnvironmentVariables
-from TokenBenchy.commons.utils.data.downloads import DatasetDownloadManager, TokenizersDownloadManager
+from TokenBenchy.commons.interface.events import LoadingEvents, BenchmarkEvents
 from TokenBenchy.commons.interface.configurations import Configurations
-from TokenBenchy.commons.interface.workers import DatasetWorker
+from TokenBenchy.commons.interface.workers import DatasetWorker, BenchmarkWorker
 from TokenBenchy.commons.constants import UI_PATH
 from TokenBenchy.commons.logger import logger
         
@@ -25,12 +26,16 @@ class MainWindow:
         self.main_win.showMaximized()
 
         self.text_dataset = None
+        self.tokenizers = []
 
         # initial settings
         self.config_manager = Configurations()
         self.configurations = self.config_manager.get_configurations()
     
         self.threadpool = QThreadPool.globalInstance()
+        self._dataset_worker = None
+        self._tokenizer_worker = None
+        self._benchmark_worker = None
 
         # get Hugging Face access token from environmental variables
         EV = EnvironmentVariables()
@@ -38,10 +43,8 @@ class MainWindow:
 
         # --- Create persistent handlers ---
         # These objects will live as long as the MainWindow instance lives 
-        self.dataset_handler = DatasetDownloadManager(
-            self.configurations, self.hf_access_token)    
-        self.token_handler = TokenizersDownloadManager(
-            self.configurations, self.hf_access_token)     
+        self.loading_handler = LoadingEvents(self.configurations, self.hf_access_token) 
+        self.benchmark_handler = BenchmarkEvents(self.configurations)           
         
         # --- modular checkbox setup ---
         self._setup_configurations()
@@ -64,6 +67,7 @@ class MainWindow:
         self.check_custom_data = self.main_win.findChild(QCheckBox, "includeCustomDataset")
         self.check_custom_token = self.main_win.findChild(QCheckBox, "includeCustomToken")
         self.check_include_NSL = self.main_win.findChild(QCheckBox, "includeNSL")
+        self.check_reduce = self.main_win.findChild(QCheckBox, "reduceSize")
         # set the default value of the wait time box to the current wait time
         self.set_num_docs = self.main_win.findChild(QSpinBox, "numDocs")
         self.set_num_docs.setValue(self.configurations.get('num_docs', 0))       
@@ -71,13 +75,16 @@ class MainWindow:
         # connect their toggled signals to our updater
         self.check_custom_data.toggled.connect(self._update_settings)
         self.check_custom_token.toggled.connect(self._update_settings) 
-        self.check_include_NSL.toggled.connect(self._update_settings) 
-        self.set_num_docs.valueChanged.connect(self._update_settings) 
+        self.check_include_NSL.toggled.connect(self._update_settings)
+        self.check_reduce.toggled.connect(self._update_settings) 
+        self.set_num_docs.valueChanged.connect(self._update_settings)         
       
     #--------------------------------------------------------------------------
     def _connect_signals(self):        
         self._connect_combo_box("selectTokenizers", self.on_tokenizer_selection_from_combo)
-        self._connect_button("loadDataset", self.load_selected_dataset)
+        self._connect_button("loadDataset", self.load_and_process_dataset)
+        self._connect_button("analyzeDataset", self.run_dataset_analysis)
+        self._connect_button("loadTokenizers", self.load_tokenizers)
         
 
     # --- Slots ---
@@ -90,37 +97,35 @@ class MainWindow:
         self.config_manager.update_value('include_custom_dataset', self.check_custom_data.isChecked())
         self.config_manager.update_value('include_custom_tokenizer', self.check_custom_token.isChecked())
         self.config_manager.update_value('include_NSL', self.check_include_NSL.isChecked())
-        self.config_manager.update_value('wait_time', self.set_num_docs.value())
-        self.configurations = self.config_manager.get_configurations()
-        
-    #--------------------------------------------------------------------------
-    @Slot(str)
-    def on_tokenizer_selection_from_combo(self, text: str):
-        text_edit = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark")  
-        existing = set(text_edit.toPlainText().splitlines())
-        if text not in existing:
-            text_edit.appendPlainText(text)     
+        self.config_manager.update_value('reduce_output_size', self.check_reduce.isChecked())
+        self.config_manager.update_value('num_documents', self.set_num_docs.value())      
 
     #--------------------------------------------------------------------------
     @Slot()
-    def load_selected_dataset(self):  
+    def load_and_process_dataset(self):  
         set_data_corpus = self.main_win.findChild(QTextEdit, "datasetCorpus")
         set_data_config = self.main_win.findChild(QTextEdit, "datasetConfig")
-        dataset_config = {'corpus' : set_data_corpus.toPlainText(),
-                          'config' : set_data_config.toPlainText()}     
+        # extract text from input text boxes and strip leading/trailing whitespace and newlines
+        corpus_text = set_data_corpus.toPlainText()
+        config_text = set_data_config.toPlainText()        
+        corpus_text = corpus_text.replace('\n', ' ').strip()
+        config_text = config_text.replace('\n', ' ').strip()
 
+        # update configurations with the text from the input boxes and reinitialize
+        # the loading handler with the new configurations
+        dataset_config = {'corpus': corpus_text, 'config': config_text} 
         self.config_manager.update_value('DATASET', dataset_config)
-        self.configurations = self.config_manager.get_configurations()  
+        self.configurations = self.config_manager.get_configurations() 
+        self.loading_handler = LoadingEvents(self.configurations, self.hf_access_token) 
+        
+        # send message to status bar
+        self.main_win.statusBar().showMessage(f"Downloading dataset {corpus_text} (configuration: {config_text})")
 
-        # 4. Kick off the background download
-        self.download_handler = DatasetDownloadManager(
-            self.configurations, self.hf_access_token)
-        
+        # initialize worker for asynchronous loading of the dataset
+        # functions that are passed to the worker will be executed in a separate thread
         self._dataset_worker = DatasetWorker(
-            self.download_handler.dataset_download)
-        worker = self._dataset_worker
-        
-        # 3) Wrap it in a Worker and hook up inline callbacks:        
+            self.loading_handler.load_and_process_dataset)
+        worker = self._dataset_worker       
         worker.signals.finished.connect(self.on_dataset_loaded)
         worker.signals.error.connect(self.on_dataset_error)
         self.threadpool.start(worker)      
@@ -129,56 +134,97 @@ class MainWindow:
     @Slot(object)
     def on_dataset_loaded(self, datasets):             
         self.text_dataset = datasets
-        # 2) retrieve the dataset name from your live config
         cfg = self.config_manager.get_configurations().get('DATASET', {})
-        corpus = cfg.get('corpus', 'No dataset specified')        
-
-        # 3) build and exec a properly parented, modal dialog
-        message = f'"Downloaded text dataset: {corpus}'
-        QMessageBox.information(
-        self.main_win, 
-        "Loading dataset",
-        message,
-        QMessageBox.Ok)
+        self.loading_handler.handle_dataset_success(self.main_win, cfg)
 
     #--------------------------------------------------------------------------
     @Slot(tuple)
     def on_dataset_error(self, err_tb):
-        exc, tb = err_tb
-        QMessageBox.critical(self.main_win, "Download Failed", f"{exc}\n\n{tb}")       
-       
-
-    #--------------------------------------------------------------------------                 
-        # worker = Worker(self.download_handler.dataset_download)
-        # worker.signals.finished.connect(
-        # lambda ds: QMessageBox.information(
-        #     self.main_win, "Downloaded", f"Got {len(ds)} items."))
-        # worker.signals.error.connect(lambda err_tb: QMessageBox.critical(
-        #     self.main_win, "Download Failed", str(err_tb[0])))
-    
-        # self.threadpool.start(worker)
+        self.loading_handler.handle_error(self.main_win, err_tb)  
 
     #--------------------------------------------------------------------------
-    # @Slot()
-    # def verify_webdriver_slot(self):        
-    #     is_installed = self.webdriver_handler.is_chromedriver_installed()
-    #     QMessageBox.information(
-    #     self.main_win,
-    #     "Verify Chrome webdriver installation",
-    #     is_installed,
-    #     QMessageBox.Ok)
+    @Slot()
+    def run_dataset_analysis(self): 
+        # make sure you've actually loaded a dataset
+        if self.text_dataset is None:
+            QMessageBox.warning(self.main_win,
+                                "Missing dataset",
+                                "Please load a dataset before running analysis!")
+            return None
+            
+        self.configurations = self.config_manager.get_configurations() 
+        self.benchmark_handler = BenchmarkEvents(self.configurations)
 
-    # #--------------------------------------------------------------------------
-    # @Slot()
-    # def check_webdriver_version_slot(self):        
-    #     version = self.webdriver_handler.check_chrome_version()
-    #     QMessageBox.information(
-    #     self.main_win,
-    #     "WebDriver Version",
-    #     f"Current ChromeDriver version: {version}",
-    #     QMessageBox.Ok)
-        
-    # #--------------------------------------------------------------------------
+        # send message to status bar
+        self.main_win.statusBar().showMessage("Computing statistics for the selected dataset")
+
+        analysis_fn = partial(
+            self.benchmark_handler.calculate_dataset_statistics,
+            self.text_dataset)
+
+        # initialize worker for asynchronous loading of the dataset
+        self._dataset_worker = DatasetWorker(analysis_fn)
+        worker = self._dataset_worker      
+        worker.signals.finished.connect(self.on_analysis_success)
+        worker.signals.error.connect(self.on_analysis_error)
+        self.threadpool.start(worker)   
+
+    #--------------------------------------------------------------------------
+    @Slot(object)
+    def on_analysis_success(self, result):           
+        cfg = self.config_manager.get_configurations().get('DATASET', {})
+        self.benchmark_handler.handle_analysis_success(self.main_win, cfg)
+
+    #--------------------------------------------------------------------------
+    @Slot(tuple)
+    def on_analysis_error(self, err_tb):
+        self.benchmark_handler.handle_analysis_error(self.main_win, err_tb) 
+
+    #--------------------------------------------------------------------------
+    @Slot(str)
+    def on_tokenizer_selection_from_combo(self, text: str):
+        tokenizers = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark")  
+        existing = set(tokenizers.toPlainText().splitlines())
+        if text not in existing:
+            tokenizers.appendPlainText(text) 
+
+    #--------------------------------------------------------------------------
+    @Slot()
+    def load_tokenizers(self):  
+        tokenizers = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark") 
+        tokenizers_name = tokenizers.toPlainText().splitlines()
+        tokenizers_name = [x.replace('\n', ' ').strip() for x in tokenizers_name]
+
+        self.config_manager.update_value('TOKENIZERS', tokenizers_name)
+        self.configurations = self.config_manager.get_configurations() 
+        self.loading_handler = LoadingEvents(self.configurations, self.hf_access_token) 
+
+        # send message to status bar
+        self.main_win.statusBar().showMessage("Downloading selected tokenizers")
+
+        # initialize worker for asynchronous loading of the dataset
+        # functions that are passed to the worker will be executed in a separate thread
+        self._dataset_worker = BenchmarkWorker(
+            self.loading_handler.load_tokenizers)
+        worker = self._dataset_worker       
+        worker.signals.finished.connect(self.on_tokenizers_loaded)
+        worker.signals.error.connect(self.on_tokenizers_error)
+        self.threadpool.start(worker) 
+
+    #--------------------------------------------------------------------------
+    @Slot(object)
+    def on_tokenizers_loaded(self, tokenizers):             
+        self.tokenizers = tokenizers
+        cfg = self.config_manager.get_configurations().get('TOKENIZERS', [])
+        self.loading_handler.handle_tokenizers_success(self.main_win)
+
+    #--------------------------------------------------------------------------
+    @Slot(tuple)
+    def on_tokenizers_error(self, err_tb):
+        self.loading_handler.handle_error(self.main_win, err_tb)     
+
+
+    #--------------------------------------------------------------------------
     def show(self):        
         self.main_win.show()   
 

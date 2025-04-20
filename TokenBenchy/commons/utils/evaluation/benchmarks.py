@@ -13,19 +13,16 @@ from TokenBenchy.commons.logger import logger
 ###############################################################################
 class BenchmarkTokenizers:
 
-    def __init__(self, configuration : dict, tokenizers):
-        transformers.utils.logging.set_verbosity_error()         
-        self.benchmarks_config = configuration.get("benchmarks", {}) 
-        self.max_docs_number = self.benchmarks_config.get("MAX_NUM_DOCS", 1000)
-        self.reduce_size = self.benchmarks_config.get("REDUCE_CSV_SIZE", False)
-
+    def __init__(self, configuration : dict):
+        transformers.utils.logging.set_verbosity_error()        
+        self.max_docs_number = configuration.get('num_documents', 0)
+        self.reduce_size = configuration.get("reduce_output_size", False)
         self.database = TOKENDatabase(configuration) 
-        self.configuration = configuration
-        self.tokenizers = tokenizers    
+        self.configuration = configuration           
 
     #--------------------------------------------------------------------------
-    def aggregate_dataset_stats(self, documents):
-        if self.max_docs_number is not None and self.max_docs_number <= len(documents):
+    def calculate_dataset_stats(self, documents):
+        if self.max_docs_number !=0 and self.max_docs_number <= len(documents):
             documents = documents[:self.max_docs_number]
         dataset_stats = pd.DataFrame()        
         dataset_stats['Text'] = documents      
@@ -39,12 +36,12 @@ class BenchmarkTokenizers:
         self.database.save_dataset_statistics(dataset_stats)          
     
     #--------------------------------------------------------------------------
-    def run_tokenizer_benchmarks(self, documents):        
+    def run_tokenizer_benchmarks(self, documents, tokenizers : dict):        
         if self.max_docs_number is not None and self.max_docs_number <= len(documents):
             documents = documents[:self.max_docs_number]
         
         all_tokenizers = []
-        for tokenizer_name, tokenizer in self.tokenizers.items():
+        for tokenizer_name, tokenizer in tokenizers.items():
             k_rep = tokenizer_name.replace('/', '_')
             logger.info(f'Decoding documents with {tokenizer_name}')
             data = pd.DataFrame({'Tokenizer': tokenizer_name,'Text': documents})

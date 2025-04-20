@@ -1,4 +1,3 @@
-
 from TokenBenchy.commons.constants import CONFIG
 from TokenBenchy.commons.logger import logger
 
@@ -9,8 +8,8 @@ class ProcessDataset:
 
     def __init__(self, configurations, datasets):
         self.datasets = datasets     
-        self.target_dataset = configurations["DATASET"]["corpus"]
-        self.target_config = configurations["DATASET"]["config"]
+        self.target_dataset = configurations["DATASET"].get("corpus", "wikitext")
+        self.target_config = configurations["DATASET"].get("config", "wikitext-103-v1")
 
     #--------------------------------------------------------------------------
     def split_text_dataset(self):

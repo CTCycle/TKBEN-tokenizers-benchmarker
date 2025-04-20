@@ -17,7 +17,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>EMADB</string>
+   <string>TokenBenchy v1.0</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <property name="styleSheet">
@@ -110,7 +110,11 @@ li.checked::marker { content: &quot;\2612&quot;; }
                 </widget>
                </item>
                <item>
-                <widget class="QSpinBox" name="numDocs"/>
+                <widget class="QSpinBox" name="numDocs">
+                 <property name="maximum">
+                  <number>1000000000</number>
+                 </property>
+                </widget>
                </item>
               </layout>
              </item>
@@ -228,6 +232,13 @@ li.checked::marker { content: &quot;\2612&quot;; }
             </widget>
            </item>
            <item>
+            <widget class="QPushButton" name="loadTokenizers">
+             <property name="text">
+              <string>Load tokenizers</string>
+             </property>
+            </widget>
+           </item>
+           <item>
             <widget class="QPushButton" name="runTokenBench">
              <property name="text">
               <string>Run tokenizer benchmarks</string>
@@ -264,14 +275,14 @@ li.checked::marker { content: &quot;\2612&quot;; }
            <item>
             <layout class="QHBoxLayout" name="horizontalLayout_3">
              <item>
-              <widget class="QPushButton" name="pushButton_2">
+              <widget class="QPushButton" name="previousImg">
                <property name="text">
                 <string>Previous</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="pushButton_3">
+              <widget class="QPushButton" name="nextImg">
                <property name="text">
                 <string>Next</string>
                </property>
