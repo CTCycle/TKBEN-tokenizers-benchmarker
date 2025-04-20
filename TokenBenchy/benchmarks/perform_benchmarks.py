@@ -38,7 +38,7 @@ if __name__ == '__main__':
     # aggregate text dataset statistics and save as .json    
     benchmark = BenchmarkTokenizers(CONFIG, tokenizers)  
     logger.info('Calculate text dataset statistics')  
-    benchmark.aggregate_dataset_stats(clean_documents)        
+    benchmark.calculate_dataset_stats(clean_documents)        
         
     # run benchmark on selected dataset and generate a series of dataframes with
     # results with various metrics       

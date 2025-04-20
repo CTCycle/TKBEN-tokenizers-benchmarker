@@ -1,39 +1,113 @@
-import os
+from PySide6.QtWidgets import QMessageBox
 
-from TokenBenchy.commons.utils.data.downloads import DownloadManager
+from TokenBenchy.commons.utils.data.downloads import DatasetDownloadManager, TokenizersDownloadManager
+from TokenBenchy.commons.utils.evaluation.benchmarks import BenchmarkTokenizers
+from TokenBenchy.commons.utils.data.processing import ProcessDataset
 from TokenBenchy.commons.constants import ROOT_DIR, DATA_PATH
 from TokenBenchy.commons.logger import logger
 
 
 # [MAIN WINDOW]
 ###############################################################################
-class DownloadEvents:
+class LoadingEvents:
+
+    def __init__(self, configurations, hf_access_token):
+        self.configurations = configurations
+        self.hf_access_token = hf_access_token  
+        self.dataset_handler = DatasetDownloadManager(
+            self.configurations, self.hf_access_token)    
+        self.token_handler = TokenizersDownloadManager(
+            self.configurations, self.hf_access_token)
+           
+    #--------------------------------------------------------------------------
+    def load_and_process_dataset(self):
+        dataset = self.dataset_handler.dataset_download()
+        processor = ProcessDataset(self.configurations, dataset) 
+        documents, clean_documents = processor.split_text_dataset()  
+        logger.info(f'Total number of documents: {len(documents)}')
+        logger.info(f'Number of valid documents: {len(clean_documents)}')  
+
+        return clean_documents
+    
+    #--------------------------------------------------------------------------
+    def load_tokenizers(self):
+        tokenizers = self.token_handler.tokenizer_download()
+
+        return tokenizers
+    
+    # define the logic to handle successfull data retrieval outside the main UI loop
+    #--------------------------------------------------------------------------
+    def handle_dataset_success(self, window, config):        
+        corpus = config.get('corpus', 'NA')  
+        config = config.get('config', 'NA')         
+        message = f'Text dataset has been loaded: {corpus} with config {config}'        
+        QMessageBox.information(
+        window, 
+        "Loading dataset",
+        message,
+        QMessageBox.Ok)
+
+        # send message to status bar
+        window.statusBar().showMessage(message)     
+
+    # define the logic to handle successfull data retrieval outside the main UI loop
+    #--------------------------------------------------------------------------
+    def handle_tokenizers_success(self, window):              
+        message = 'Tokenizers have been loaded'        
+        QMessageBox.information(
+        window, 
+        "Loading tokenizers",
+        message,
+        QMessageBox.Ok)
+
+        # send message to status bar
+        window.statusBar().showMessage(message)  
+    
+
+    # define the logic to handle error during data retrieval outside the main UI loop
+    #--------------------------------------------------------------------------
+    def handle_error(self, window, err_tb):
+        exc, tb = err_tb
+        QMessageBox.critical(window, 'Download Failed', f"{exc}\n\n{tb}") 
+
+
+
+    
+
+# [MAIN WINDOW]
+###############################################################################
+class BenchmarkEvents:
 
     def __init__(self, configurations):
-        self.configurations = configurations
-        self.manager = DownloadManager(self.configurations)
-       
-
+        self.configurations = configurations      
+        self.benchmarker = BenchmarkTokenizers(configurations)          
+           
     #--------------------------------------------------------------------------
-    def load_dataset(self):         
-        filepath = os.path.join(DATA_PATH, 'drugs_to_search.txt')  
-        with open(filepath, 'r') as file:
-            drug_list = [x.lower().strip() for x in file.readlines()]
+    def calculate_dataset_statistics(self, documents):
+        self.benchmarker.calculate_dataset_stats(documents) 
 
-        return drug_list  
+        return True
 
+    # define the logic to handle successfull data retrieval outside the main UI loop
     #--------------------------------------------------------------------------
-    def search_using_webdriver(self, drug_list=None):
-        webdriver = self.toolkit.initialize_webdriver()
-        webscraper = EMAWebPilot(webdriver, self.wait_time)  
-        # check if files downloaded in the past are still present, then remove them
-        # create a dictionary of drug names with their initial letter as key    
-        file_remover()
-        if drug_list is None:
-            drug_list = self.get_drug_names()
+    def handle_analysis_success(self, window, configs):        
+        corpus = configs.get('corpus', 'NA')  
+        config = configs.get('config', 'NA')         
+        message = f'{corpus} - {config} analysis is finished'        
+        QMessageBox.information(
+        window, 
+        "Loading dataset",
+        message,
+        QMessageBox.Ok)
 
-        grouped_drugs = drug_to_letter_aggregator(drug_list)
-        # click on letter page (based on first letter of names group) and then iterate over
-        # all drugs in that page (from the list). Download excel reports and rename them automatically         
-        webscraper.download_manager(grouped_drugs) 
+        # send message to status bar
+        window.statusBar().showMessage(message)
+    
+    # define the logic to handle error during data retrieval outside the main UI loop
+    #--------------------------------------------------------------------------
+    def handle_analysis_error(self, window, err_tb):
+        exc, tb = err_tb
+        QMessageBox.critical(window, 'Analysis failed', f"{exc}\n\n{tb}")  
+
+        
 
