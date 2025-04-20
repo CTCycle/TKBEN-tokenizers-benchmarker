@@ -1,12 +1,12 @@
 from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlainTextEdit, QSpinBox, 
                                QMessageBox, QComboBox, QTextEdit)
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QFile, QIODevice, Slot, QObject, Signal, QRunnable, QThreadPool
+from PySide6.QtCore import QFile, QIODevice, Slot, QThreadPool
 
 from TokenBenchy.commons.variables import EnvironmentVariables
 from TokenBenchy.commons.utils.data.downloads import DatasetDownloadManager, TokenizersDownloadManager
 from TokenBenchy.commons.interface.configurations import Configurations
-from TokenBenchy.commons.interface.workers import Worker
+from TokenBenchy.commons.interface.workers import DatasetWorker
 from TokenBenchy.commons.constants import UI_PATH
 from TokenBenchy.commons.logger import logger
         
@@ -116,21 +116,36 @@ class MainWindow:
         self.download_handler = DatasetDownloadManager(
             self.configurations, self.hf_access_token)
         
-        # 3) Wrap it in a Worker and hook up inline callbacks:
-        worker = Worker(self.download_handler.dataset_download)
+        self._dataset_worker = DatasetWorker(
+            self.download_handler.dataset_download)
+        worker = self._dataset_worker
+        
+        # 3) Wrap it in a Worker and hook up inline callbacks:        
+        worker.signals.finished.connect(self.on_dataset_loaded)
+        worker.signals.error.connect(self.on_dataset_error)
+        self.threadpool.start(worker)      
 
-        # -- on success: stash the dict and pop an info box:
-        worker.signals.finished.connect(
-        lambda datasets: setattr(self, 'text_dataset', datasets) or
-            QMessageBox.information(
-            self.main_win, "Text dataset", f"Loaded dataset {dataset_config['corpus']}"))
-        worker.signals.error.connect(
-            lambda err: QMessageBox.critical(
-            self.main_win, "Error", str(err[0])))
-       
-        self.threadpool.start(worker)
+    #--------------------------------------------------------------------------
+    @Slot(object)
+    def on_dataset_loaded(self, datasets):             
+        self.text_dataset = datasets
+        # 2) retrieve the dataset name from your live config
+        cfg = self.config_manager.get_configurations().get('DATASET', {})
+        corpus = cfg.get('corpus', 'No dataset specified')        
 
-         
+        # 3) build and exec a properly parented, modal dialog
+        message = f'"Downloaded text dataset: {corpus}'
+        QMessageBox.information(
+        self.main_win, 
+        "Loading dataset",
+        message,
+        QMessageBox.Ok)
+
+    #--------------------------------------------------------------------------
+    @Slot(tuple)
+    def on_dataset_error(self, err_tb):
+        exc, tb = err_tb
+        QMessageBox.critical(self.main_win, "Download Failed", f"{exc}\n\n{tb}")       
        
 
     #--------------------------------------------------------------------------                 
