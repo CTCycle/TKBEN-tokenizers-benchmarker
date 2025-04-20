@@ -3,7 +3,8 @@ from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlainTextEdit, QSpinBox,
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, QIODevice, Slot, QObject, Signal, QRunnable, QThreadPool
 
-from TokenBenchy.commons.utils.data.downloads import DownloadManager
+from TokenBenchy.commons.variables import EnvironmentVariables
+from TokenBenchy.commons.utils.data.downloads import DatasetDownloadManager, TokenizersDownloadManager
 from TokenBenchy.commons.interface.configurations import Configurations
 from TokenBenchy.commons.interface.workers import Worker
 from TokenBenchy.commons.constants import UI_PATH
@@ -21,6 +22,9 @@ class MainWindow:
         ui_file.open(QIODevice.ReadOnly)
         self.main_win = loader.load(ui_file)
         ui_file.close()  
+        self.main_win.showMaximized()
+
+        self.text_dataset = None
 
         # initial settings
         self.config_manager = Configurations()
@@ -28,15 +32,22 @@ class MainWindow:
     
         self.threadpool = QThreadPool.globalInstance()
 
+        # get Hugging Face access token from environmental variables
+        EV = EnvironmentVariables()
+        self.hf_access_token = EV.get_HF_access_token()
+
         # --- Create persistent handlers ---
         # These objects will live as long as the MainWindow instance lives 
-        self.download_handler = DownloadManager(self.configurations)        
+        self.dataset_handler = DatasetDownloadManager(
+            self.configurations, self.hf_access_token)    
+        self.token_handler = TokenizersDownloadManager(
+            self.configurations, self.hf_access_token)     
         
         # --- modular checkbox setup ---
         self._setup_configurations()
 
         # --- Connect signals to slots ---
-        self._connect_signals()      
+        self._connect_signals()           
 
     #--------------------------------------------------------------------------
     def _connect_button(self, button_name: str, slot):        
@@ -86,7 +97,9 @@ class MainWindow:
     @Slot(str)
     def on_tokenizer_selection_from_combo(self, text: str):
         text_edit = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark")  
-        text_edit.appendPlainText(text)     
+        existing = set(text_edit.toPlainText().splitlines())
+        if text not in existing:
+            text_edit.appendPlainText(text)     
 
     #--------------------------------------------------------------------------
     @Slot()
@@ -97,17 +110,38 @@ class MainWindow:
                           'config' : set_data_config.toPlainText()}     
 
         self.config_manager.update_value('DATASET', dataset_config)
-        self.configurations = self.config_manager.get_configurations()        
-        self.download_handler = DownloadManager(self.configurations)   
-                 
+        self.configurations = self.config_manager.get_configurations()  
+
+        # 4. Kick off the background download
+        self.download_handler = DatasetDownloadManager(
+            self.configurations, self.hf_access_token)
+        
+        # 3) Wrap it in a Worker and hook up inline callbacks:
         worker = Worker(self.download_handler.dataset_download)
+
+        # -- on success: stash the dict and pop an info box:
         worker.signals.finished.connect(
-        lambda ds: QMessageBox.information(
-            self.main_win, "Downloaded", f"Got {len(ds)} items."))
-        worker.signals.error.connect(lambda err_tb: QMessageBox.critical(
-            self.main_win, "Download Failed", str(err_tb[0])))
-    
+        lambda datasets: setattr(self, 'text_dataset', datasets) or
+            QMessageBox.information(
+            self.main_win, "Text dataset", f"Loaded dataset {dataset_config['corpus']}"))
+        worker.signals.error.connect(
+            lambda err: QMessageBox.critical(
+            self.main_win, "Error", str(err[0])))
+       
         self.threadpool.start(worker)
+
+         
+       
+
+    #--------------------------------------------------------------------------                 
+        # worker = Worker(self.download_handler.dataset_download)
+        # worker.signals.finished.connect(
+        # lambda ds: QMessageBox.information(
+        #     self.main_win, "Downloaded", f"Got {len(ds)} items."))
+        # worker.signals.error.connect(lambda err_tb: QMessageBox.critical(
+        #     self.main_win, "Download Failed", str(err_tb[0])))
+    
+        # self.threadpool.start(worker)
 
     #--------------------------------------------------------------------------
     # @Slot()
