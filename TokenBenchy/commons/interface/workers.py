@@ -1,4 +1,4 @@
-import os
+import traceback
 from PySide6.QtCore import QObject, Signal, QRunnable, Slot
 
 from TokenBenchy.commons.constants import ROOT_DIR, DATA_PATH
@@ -27,6 +27,8 @@ class Worker(QRunnable):
     def run(self):
         try:
             result = self.fn(*self.args, **self.kwargs)
-            self.signals.finished.emit(None, result)
-        except Exception as e:
-            self.signals.error.emit(e, None)
+            self.signals.finished.emit(result)
+        except Exception as e:        
+            tb = traceback.format_exc()
+            # pack both exception and traceback into one tuple
+            self.signals.error.emit((e, tb))

@@ -23,224 +23,269 @@
    <property name="styleSheet">
     <string notr="true"/>
    </property>
-   <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="1" rowspan="2">
-     <widget class="QGroupBox" name="groupBox_3">
-      <property name="title">
-       <string>Show benchmarks</string>
-      </property>
-      <layout class="QVBoxLayout" name="verticalLayout_9">
-       <item>
-        <layout class="QVBoxLayout" name="verticalLayout_5">
-         <item>
-          <widget class="QStackedWidget" name="stackedWidget">
-           <property name="currentIndex">
-            <number>0</number>
+   <layout class="QHBoxLayout" name="horizontalLayout_5">
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout_4">
+      <item>
+       <layout class="QVBoxLayout" name="leftLayout" stretch="1,4">
+        <item>
+         <widget class="QGroupBox" name="datasetGroup">
+          <property name="font">
+           <font>
+            <pointsize>11</pointsize>
+           </font>
+          </property>
+          <property name="title">
+           <string>Dataset</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_4" stretch="1,1,1,4">
+           <property name="spacing">
+            <number>5</number>
            </property>
-           <widget class="QWidget" name="page"/>
-           <widget class="QWidget" name="page_2"/>
-          </widget>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_3">
+           <property name="topMargin">
+            <number>20</number>
+           </property>
+           <property name="bottomMargin">
+            <number>20</number>
+           </property>
            <item>
-            <widget class="QPushButton" name="pushButton_2">
+            <layout class="QHBoxLayout" name="horizontalLayout_2">
+             <item>
+              <layout class="QVBoxLayout" name="verticalLayout_8">
+               <item>
+                <widget class="QLabel" name="label_4">
+                 <property name="text">
+                  <string>Corpus</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="label_5">
+                 <property name="text">
+                  <string>Configuration</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QVBoxLayout" name="verticalLayout_7">
+               <item>
+                <widget class="QTextEdit" name="datasetCorpus">
+                 <property name="html">
+                  <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+hr { height: 1px; border-width: 0; }
+li.unchecked::marker { content: &quot;\2610&quot;; }
+li.checked::marker { content: &quot;\2612&quot;; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Segoe UI'; font-size:11pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;wikitext&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QTextEdit" name="datasetConfig">
+                 <property name="html">
+                  <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+hr { height: 1px; border-width: 0; }
+li.unchecked::marker { content: &quot;\2610&quot;; }
+li.checked::marker { content: &quot;\2612&quot;; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Segoe UI'; font-size:11pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:9.75pt;&quot;&gt;wikitext-103-v1&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-size:9.75pt;&quot;&gt;&lt;br /&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QVBoxLayout" name="verticalLayout_6">
+               <item>
+                <widget class="QLabel" name="label">
+                 <property name="text">
+                  <string>Number of documents</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="numDocs"/>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="includeCustomDataset">
              <property name="text">
-              <string>Previous</string>
+              <string>Include custom dataset</string>
              </property>
             </widget>
            </item>
            <item>
-            <widget class="QPushButton" name="pushButton_3">
+            <widget class="QPushButton" name="loadDataset">
              <property name="text">
-              <string>Next</string>
+              <string>Load dataset</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="analyzeDataset">
+             <property name="text">
+              <string>Analyze text dataset</string>
              </property>
             </widget>
            </item>
           </layout>
-         </item>
-        </layout>
-       </item>
-      </layout>
-     </widget>
-    </item>
-    <item row="0" column="0">
-     <widget class="QGroupBox" name="groupBox_2">
-      <property name="title">
-       <string>Dataset</string>
-      </property>
-      <layout class="QVBoxLayout" name="verticalLayout_4" stretch="0,0,0,0">
-       <property name="topMargin">
-        <number>20</number>
-       </property>
-       <property name="bottomMargin">
-        <number>20</number>
-       </property>
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout">
-         <item>
-          <widget class="QCheckBox" name="includeCustomDataset">
-           <property name="text">
-            <string>Include custom dataset</string>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="tokenizerGroup">
+          <property name="font">
+           <font>
+            <pointsize>11</pointsize>
+           </font>
+          </property>
+          <property name="title">
+           <string>Tokenizer </string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_3">
+           <property name="spacing">
+            <number>5</number>
            </property>
-          </widget>
-         </item>
-         <item>
-          <layout class="QVBoxLayout" name="verticalLayout_6">
+           <property name="bottomMargin">
+            <number>20</number>
+           </property>
            <item>
-            <widget class="QLabel" name="label">
+            <layout class="QVBoxLayout" name="verticalLayout_2">
+             <item>
+              <widget class="QLabel" name="label_3">
+               <property name="text">
+                <string>Select tokenizers from list or write the name in the text box</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QComboBox" name="selectTokenizers">
+               <item>
+                <property name="text">
+                 <string>axiong/PMC_LLaMA_13B</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>BAAI/bge-small-en-v1.5</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>bert-base-uncased</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>BioMistral/BioMistral-7B</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QVBoxLayout" name="verticalLayout">
+             <item>
+              <widget class="QLabel" name="label_2">
+               <property name="text">
+                <string>Selected tokenizers</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPlainTextEdit" name="tokenizersToBenchmark"/>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="includeCustomToken">
              <property name="text">
-              <string>Number of documents</string>
+              <string>Include custom tokenizer</string>
              </property>
             </widget>
            </item>
            <item>
-            <widget class="QSpinBox" name="numDocs"/>
-           </item>
-          </layout>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_2">
-         <item>
-          <layout class="QVBoxLayout" name="verticalLayout_8">
-           <item>
-            <widget class="QLabel" name="label_4">
+            <widget class="QCheckBox" name="includeNSL">
              <property name="text">
-              <string>Corpus</string>
+              <string>Include normalized sequence length</string>
              </property>
             </widget>
            </item>
            <item>
-            <widget class="QLabel" name="label_5">
+            <widget class="QCheckBox" name="reduceSize">
              <property name="text">
-              <string>Configuration</string>
+              <string>Reduce output size</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="runTokenBench">
+             <property name="text">
+              <string>Run tokenizer benchmarks</string>
              </property>
             </widget>
            </item>
           </layout>
-         </item>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="imageVisualizationGroup">
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
+        <property name="title">
+         <string>Show benchmarks</string>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout_9">
          <item>
-          <layout class="QVBoxLayout" name="verticalLayout_7">
+          <layout class="QVBoxLayout" name="verticalLayout_5">
            <item>
-            <widget class="QTextEdit" name="datasetCorpus"/>
+            <widget class="QStackedWidget" name="stackedWidget">
+             <property name="currentIndex">
+              <number>0</number>
+             </property>
+             <widget class="QWidget" name="page"/>
+             <widget class="QWidget" name="page_2"/>
+            </widget>
            </item>
            <item>
-            <widget class="QTextEdit" name="datasetConfig"/>
+            <layout class="QHBoxLayout" name="horizontalLayout_3">
+             <item>
+              <widget class="QPushButton" name="pushButton_2">
+               <property name="text">
+                <string>Previous</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="pushButton_3">
+               <property name="text">
+                <string>Next</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </item>
           </layout>
          </item>
         </layout>
-       </item>
-       <item>
-        <widget class="QPushButton" name="loadDataset">
-         <property name="text">
-          <string>Load dataset</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="analyzeDataset">
-         <property name="text">
-          <string>Analyze text dataset</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
-    </item>
-    <item row="1" column="0">
-     <widget class="QGroupBox" name="groupBox">
-      <property name="title">
-       <string>Tokenizer </string>
-      </property>
-      <layout class="QVBoxLayout" name="verticalLayout_3">
-       <property name="spacing">
-        <number>5</number>
-       </property>
-       <property name="bottomMargin">
-        <number>20</number>
-       </property>
-       <item>
-        <layout class="QVBoxLayout" name="verticalLayout_2">
-         <item>
-          <widget class="QLabel" name="label_3">
-           <property name="text">
-            <string>Select tokenizers from list</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QComboBox" name="selectTokenizers">
-           <item>
-            <property name="text">
-             <string>axiong/PMC_LLaMA_13B</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>BAAI/bge-small-en-v1.5</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>bert-base-uncased</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>BioMistral/BioMistral-7B</string>
-            </property>
-           </item>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <layout class="QVBoxLayout" name="verticalLayout">
-         <item>
-          <widget class="QLabel" name="label_2">
-           <property name="text">
-            <string>Add tokenizer string</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPlainTextEdit" name="tokenizersToBenchmark"/>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <widget class="QCheckBox" name="includeCustomToken">
-         <property name="text">
-          <string>Include custom tokenizer</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QCheckBox" name="includeNSL">
-         <property name="text">
-          <string>Include normalized sequence length</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QCheckBox" name="reduceSize">
-         <property name="text">
-          <string>Reduce output size</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="runTokenBench">
-         <property name="text">
-          <string>Run tokenizer benchmarks</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
+       </widget>
+      </item>
+     </layout>
     </item>
    </layout>
   </widget>
