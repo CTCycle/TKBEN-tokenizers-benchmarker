@@ -45,11 +45,10 @@ class BenchmarkTokenizers:
             k_rep = tokenizer_name.replace('/', '_')
             logger.info(f'Decoding documents with {tokenizer_name}')
             data = pd.DataFrame({'Tokenizer': tokenizer_name,'Text': documents})
-            data['Text characters'] = data['Text'].str.len()
-            data['Words'] = data['Text'].str.split()
-            data['Words count'] = data['Words'].str.len()
-            data['AVG wordslength'] = data['Words'].apply(
-                lambda words: np.mean([len(word) for word in words]) if words else 0)
+            data['Text characters'] = data['Text'].str.len()            
+            data['Words count'] = data['Text'].apply(lambda x : len(x.split()))
+            data['AVG words length'] = data['Text'].apply(
+                lambda text: np.mean([len(word) for word in text.split()]) if text else 0)
 
             if 'CUSTOM' in tokenizer_name:
                 data['Tokens'] = data['Text'].apply(
@@ -70,7 +69,7 @@ class BenchmarkTokenizers:
                 data['Tokens count'] > 0, data['Text characters'] / data['Tokens count'], 0)
 
             if self.reduce_size:
-                data = data.drop(columns=['Text', 'Tokens', 'Words', 'Tokens split'])           
+                data = data.drop(columns=['Text', 'Tokens', 'Tokens split'])           
 
             self.database.save_benchmark_results(data, table_name=k_rep)
             all_tokenizers.append(data)

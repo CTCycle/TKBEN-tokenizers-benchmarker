@@ -33,30 +33,14 @@ class LoadingEvents:
     def load_tokenizers(self):
         tokenizers = self.token_handler.tokenizer_download()
 
-        return tokenizers
-    
-    # define the logic to handle successfull data retrieval outside the main UI loop
-    #--------------------------------------------------------------------------
-    def handle_dataset_success(self, window, config):        
-        corpus = config.get('corpus', 'NA')  
-        config = config.get('config', 'NA')         
-        message = f'Text dataset has been loaded: {corpus} with config {config}'        
-        QMessageBox.information(
-        window, 
-        "Loading dataset",
-        message,
-        QMessageBox.Ok)
-
-        # send message to status bar
-        window.statusBar().showMessage(message)     
+        return tokenizers   
 
     # define the logic to handle successfull data retrieval outside the main UI loop
     #--------------------------------------------------------------------------
-    def handle_tokenizers_success(self, window):              
-        message = 'Tokenizers have been loaded'        
+    def handle_success(self, window, message):            
         QMessageBox.information(
         window, 
-        "Loading tokenizers",
+        "Task successful",
         message,
         QMessageBox.Ok)
 
@@ -68,7 +52,7 @@ class LoadingEvents:
     #--------------------------------------------------------------------------
     def handle_error(self, window, err_tb):
         exc, tb = err_tb
-        QMessageBox.critical(window, 'Download Failed', f"{exc}\n\n{tb}") 
+        QMessageBox.critical(window, 'Something went wrong!', f"{exc}\n\n{tb}") 
 
 
 
@@ -80,23 +64,26 @@ class BenchmarkEvents:
 
     def __init__(self, configurations):
         self.configurations = configurations      
-        self.benchmarker = BenchmarkTokenizers(configurations)          
+        self.benchmarker = BenchmarkTokenizers(configurations)                  
            
     #--------------------------------------------------------------------------
     def calculate_dataset_statistics(self, documents):
         self.benchmarker.calculate_dataset_stats(documents) 
 
         return True
+    
+    #--------------------------------------------------------------------------
+    def execute_benchmarks(self, documents, tokenizers):
+        results = self.benchmarker.run_tokenizer_benchmarks(documents, tokenizers) 
+
+        return results   
 
     # define the logic to handle successfull data retrieval outside the main UI loop
     #--------------------------------------------------------------------------
-    def handle_analysis_success(self, window, configs):        
-        corpus = configs.get('corpus', 'NA')  
-        config = configs.get('config', 'NA')         
-        message = f'{corpus} - {config} analysis is finished'        
+    def handle_success(self, window, message):                 
         QMessageBox.information(
         window, 
-        "Loading dataset",
+        "Task successful",
         message,
         QMessageBox.Ok)
 
@@ -105,9 +92,9 @@ class BenchmarkEvents:
     
     # define the logic to handle error during data retrieval outside the main UI loop
     #--------------------------------------------------------------------------
-    def handle_analysis_error(self, window, err_tb):
+    def handle_error(self, window, err_tb):
         exc, tb = err_tb
-        QMessageBox.critical(window, 'Analysis failed', f"{exc}\n\n{tb}")  
+        QMessageBox.critical(window, 'Something went wrong!', f"{exc}\n\n{tb}")  
 
         
 

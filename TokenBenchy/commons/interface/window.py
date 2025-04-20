@@ -7,7 +7,7 @@ from PySide6.QtCore import QFile, QIODevice, Slot, QThreadPool
 from TokenBenchy.commons.variables import EnvironmentVariables
 from TokenBenchy.commons.interface.events import LoadingEvents, BenchmarkEvents
 from TokenBenchy.commons.interface.configurations import Configurations
-from TokenBenchy.commons.interface.workers import DatasetWorker, BenchmarkWorker
+from TokenBenchy.commons.interface.workers import DataWorker, BenchmarkWorker
 from TokenBenchy.commons.constants import UI_PATH
 from TokenBenchy.commons.logger import logger
         
@@ -26,14 +26,14 @@ class MainWindow:
         self.main_win.showMaximized()
 
         self.text_dataset = None
-        self.tokenizers = []
+        self.tokenizers = None
 
         # initial settings
         self.config_manager = Configurations()
         self.configurations = self.config_manager.get_configurations()
     
         self.threadpool = QThreadPool.globalInstance()
-        self._dataset_worker = None
+        self._data_worker = None
         self._tokenizer_worker = None
         self._benchmark_worker = None
 
@@ -85,7 +85,7 @@ class MainWindow:
         self._connect_button("loadDataset", self.load_and_process_dataset)
         self._connect_button("analyzeDataset", self.run_dataset_analysis)
         self._connect_button("loadTokenizers", self.load_tokenizers)
-        
+        self._connect_button("runTokenBench", self.run_tokenizers_benchmark)        
 
     # --- Slots ---
     # It's good practice to define methods that act as slots within the class
@@ -123,9 +123,9 @@ class MainWindow:
 
         # initialize worker for asynchronous loading of the dataset
         # functions that are passed to the worker will be executed in a separate thread
-        self._dataset_worker = DatasetWorker(
+        self._data_worker = DataWorker(
             self.loading_handler.load_and_process_dataset)
-        worker = self._dataset_worker       
+        worker = self._data_worker       
         worker.signals.finished.connect(self.on_dataset_loaded)
         worker.signals.error.connect(self.on_dataset_error)
         self.threadpool.start(worker)      
@@ -134,8 +134,12 @@ class MainWindow:
     @Slot(object)
     def on_dataset_loaded(self, datasets):             
         self.text_dataset = datasets
-        cfg = self.config_manager.get_configurations().get('DATASET', {})
-        self.loading_handler.handle_dataset_success(self.main_win, cfg)
+        config = self.config_manager.get_configurations().get('DATASET', {})
+
+        corpus = config.get('corpus', 'NA')  
+        config = config.get('config', 'NA')         
+        message = f'Text dataset has been loaded: {corpus} with config {config}' 
+        self.loading_handler.handle_success(self.main_win, message)
 
     #--------------------------------------------------------------------------
     @Slot(tuple)
@@ -158,13 +162,14 @@ class MainWindow:
         # send message to status bar
         self.main_win.statusBar().showMessage("Computing statistics for the selected dataset")
 
+        # use partial from functools to pass arguments to the function
         analysis_fn = partial(
             self.benchmark_handler.calculate_dataset_statistics,
             self.text_dataset)
 
         # initialize worker for asynchronous loading of the dataset
-        self._dataset_worker = DatasetWorker(analysis_fn)
-        worker = self._dataset_worker      
+        self._data_worker = DataWorker(analysis_fn)
+        worker = self._data_worker      
         worker.signals.finished.connect(self.on_analysis_success)
         worker.signals.error.connect(self.on_analysis_error)
         self.threadpool.start(worker)   
@@ -172,13 +177,16 @@ class MainWindow:
     #--------------------------------------------------------------------------
     @Slot(object)
     def on_analysis_success(self, result):           
-        cfg = self.config_manager.get_configurations().get('DATASET', {})
-        self.benchmark_handler.handle_analysis_success(self.main_win, cfg)
+        config = self.config_manager.get_configurations().get('DATASET', {})
+        corpus = config.get('corpus', 'NA')  
+        config = config.get('config', 'NA')         
+        message = f'{corpus} - {config} analysis is finished' 
+        self.benchmark_handler.handle_success(self.main_win, message)
 
     #--------------------------------------------------------------------------
     @Slot(tuple)
     def on_analysis_error(self, err_tb):
-        self.benchmark_handler.handle_analysis_error(self.main_win, err_tb) 
+        self.benchmark_handler.handle_error(self.main_win, err_tb) 
 
     #--------------------------------------------------------------------------
     @Slot(str)
@@ -204,9 +212,9 @@ class MainWindow:
 
         # initialize worker for asynchronous loading of the dataset
         # functions that are passed to the worker will be executed in a separate thread
-        self._dataset_worker = BenchmarkWorker(
+        self._data_worker = DataWorker(
             self.loading_handler.load_tokenizers)
-        worker = self._dataset_worker       
+        worker = self._data_worker       
         worker.signals.finished.connect(self.on_tokenizers_loaded)
         worker.signals.error.connect(self.on_tokenizers_error)
         self.threadpool.start(worker) 
@@ -214,14 +222,56 @@ class MainWindow:
     #--------------------------------------------------------------------------
     @Slot(object)
     def on_tokenizers_loaded(self, tokenizers):             
-        self.tokenizers = tokenizers
-        cfg = self.config_manager.get_configurations().get('TOKENIZERS', [])
-        self.loading_handler.handle_tokenizers_success(self.main_win)
+        self.tokenizers = tokenizers      
+
+        message = 'Tokenizers have been loaded'  
+        self.loading_handler.handle_success(self.main_win, message)
 
     #--------------------------------------------------------------------------
     @Slot(tuple)
     def on_tokenizers_error(self, err_tb):
-        self.loading_handler.handle_error(self.main_win, err_tb)     
+        self.loading_handler.handle_error(self.main_win, err_tb) 
+
+    #--------------------------------------------------------------------------
+    @Slot()
+    def run_tokenizers_benchmark(self):
+        # make sure you've actually loaded a dataset
+        if self.tokenizers is None:
+            QMessageBox.warning(self.main_win,
+                                "Missing tokenizers",
+                                "Please load tokenizers before running benchmarks!")
+            return None
+        
+        self.configurations = self.config_manager.get_configurations() 
+        self.benchmark_handler = BenchmarkEvents(self.configurations)
+
+        # send message to status bar
+        self.main_win.statusBar().showMessage("Running benchmarks for selected tokenizers")
+
+        # use partial from functools to pass arguments to the function
+        benchmark_fn = partial(
+            self.benchmark_handler.execute_benchmarks,
+            self.text_dataset, self.tokenizers)
+
+        # initialize worker for asynchronous loading of the dataset
+        # functions that are passed to the worker will be executed in a separate thread
+        self._benchmark_worker = BenchmarkWorker(benchmark_fn)            
+        worker = self._benchmark_worker      
+        worker.signals.finished.connect(self.on_benchmark_finished)
+        worker.signals.error.connect(self.on_benchmark_error)
+        self.threadpool.start(worker)    
+
+    #--------------------------------------------------------------------------
+    @Slot(object)
+    def on_benchmark_finished(self, tokenizers):             
+        self.tokenizers = tokenizers        
+        message = 'Benchmarking is finished'   
+        self.benchmark_handler.handle_success(self.main_win, message)
+
+    #--------------------------------------------------------------------------
+    @Slot(tuple)
+    def on_benchmark_error(self, err_tb):
+        self.benchmark_handler.handle_error(self.main_win, err_tb)   
 
 
     #--------------------------------------------------------------------------
