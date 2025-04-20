@@ -7,20 +7,20 @@ from TokenBenchy.commons.logger import logger
 
 # [MAIN WINDOW]
 ###############################################################################
-class WorkerSignals(QObject):
+class DatasetWorkerSignals(QObject):
     finished = Signal(object)      
     error = Signal(tuple)       
 
 
 # [MAIN WINDOW]
 ###############################################################################
-class Worker(QRunnable):
+class DatasetWorker(QRunnable):
     def __init__(self, fn, *args, **kwargs):
         super().__init__()
         self.fn = fn
         self.args = args
         self.kwargs = kwargs
-        self.signals = WorkerSignals()
+        self.signals = DatasetWorkerSignals()
 
     #--------------------------------------------------------------------------
     @Slot()
