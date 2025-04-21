@@ -1,13 +1,12 @@
-from functools import partial
 from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlainTextEdit, QSpinBox, 
-                               QMessageBox, QComboBox, QTextEdit)
+                               QMessageBox, QComboBox, QTextEdit, QProgressBar)
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, QIODevice, Slot, QThreadPool
 
 from TokenBenchy.commons.variables import EnvironmentVariables
 from TokenBenchy.commons.interface.events import LoadingEvents, BenchmarkEvents
 from TokenBenchy.commons.interface.configurations import Configurations
-from TokenBenchy.commons.interface.workers import DataWorker, BenchmarkWorker
+from TokenBenchy.commons.interface.workers import Worker
 from TokenBenchy.commons.constants import UI_PATH
 from TokenBenchy.commons.logger import logger
         
@@ -44,7 +43,10 @@ class MainWindow:
         # --- Create persistent handlers ---
         # These objects will live as long as the MainWindow instance lives 
         self.loading_handler = LoadingEvents(self.configurations, self.hf_access_token) 
-        self.benchmark_handler = BenchmarkEvents(self.configurations)           
+        self.benchmark_handler = BenchmarkEvents(self.configurations) 
+
+        self.progress_bar = self.main_win.findChild(QProgressBar, "progressBar")
+        self.progress_bar.setValue(0)        
         
         # --- modular checkbox setup ---
         self._setup_configurations()
@@ -123,8 +125,7 @@ class MainWindow:
 
         # initialize worker for asynchronous loading of the dataset
         # functions that are passed to the worker will be executed in a separate thread
-        self._data_worker = DataWorker(
-            self.loading_handler.load_and_process_dataset)
+        self._data_worker = Worker(self.loading_handler.load_and_process_dataset)
         worker = self._data_worker       
         worker.signals.finished.connect(self.on_dataset_loaded)
         worker.signals.error.connect(self.on_dataset_error)
@@ -161,14 +162,12 @@ class MainWindow:
 
         # send message to status bar
         self.main_win.statusBar().showMessage("Computing statistics for the selected dataset")
-
-        # use partial from functools to pass arguments to the function
-        analysis_fn = partial(
+       
+        # initialize worker for asynchronous loading of the dataset
+        self._data_worker = Worker(
             self.benchmark_handler.calculate_dataset_statistics,
             self.text_dataset)
-
-        # initialize worker for asynchronous loading of the dataset
-        self._data_worker = DataWorker(analysis_fn)
+        
         worker = self._data_worker      
         worker.signals.finished.connect(self.on_analysis_success)
         worker.signals.error.connect(self.on_analysis_error)
@@ -212,8 +211,7 @@ class MainWindow:
 
         # initialize worker for asynchronous loading of the dataset
         # functions that are passed to the worker will be executed in a separate thread
-        self._data_worker = DataWorker(
-            self.loading_handler.load_tokenizers)
+        self._data_worker = Worker(self.loading_handler.load_tokenizers)
         worker = self._data_worker       
         worker.signals.finished.connect(self.on_tokenizers_loaded)
         worker.signals.error.connect(self.on_tokenizers_error)
@@ -222,8 +220,7 @@ class MainWindow:
     #--------------------------------------------------------------------------
     @Slot(object)
     def on_tokenizers_loaded(self, tokenizers):             
-        self.tokenizers = tokenizers      
-
+        self.tokenizers = tokenizers    
         message = 'Tokenizers have been loaded'  
         self.loading_handler.handle_success(self.main_win, message)
 
@@ -242,21 +239,23 @@ class MainWindow:
                                 "Please load tokenizers before running benchmarks!")
             return None
         
+        # initialize the benchmark handler with the current configurations
         self.configurations = self.config_manager.get_configurations() 
-        self.benchmark_handler = BenchmarkEvents(self.configurations)
+        self.benchmark_handler = BenchmarkEvents(self.configurations)        
 
         # send message to status bar
-        self.main_win.statusBar().showMessage("Running benchmarks for selected tokenizers")
-
-        # use partial from functools to pass arguments to the function
-        benchmark_fn = partial(
-            self.benchmark_handler.execute_benchmarks,
-            self.text_dataset, self.tokenizers)
+        self.main_win.statusBar().showMessage("Running benchmarks for selected tokenizers")       
 
         # initialize worker for asynchronous loading of the dataset
         # functions that are passed to the worker will be executed in a separate thread
-        self._benchmark_worker = BenchmarkWorker(benchmark_fn)            
-        worker = self._benchmark_worker      
+        self._benchmark_worker = Worker(
+           self.benchmark_handler.execute_benchmarks,
+           self.text_dataset,
+           self.tokenizers)
+                 
+        worker = self._benchmark_worker          
+        worker.signals.progress.connect(self.progress_bar.setValue)
+
         worker.signals.finished.connect(self.on_benchmark_finished)
         worker.signals.error.connect(self.on_benchmark_error)
         self.threadpool.start(worker)    
@@ -267,11 +266,13 @@ class MainWindow:
         self.tokenizers = tokenizers        
         message = 'Benchmarking is finished'   
         self.benchmark_handler.handle_success(self.main_win, message)
+        self.progress_bar.setValue(0)
 
     #--------------------------------------------------------------------------
     @Slot(tuple)
     def on_benchmark_error(self, err_tb):
-        self.benchmark_handler.handle_error(self.main_win, err_tb)   
+        self.benchmark_handler.handle_error(self.main_win, err_tb)  
+        self.progress_bar.setValue(0) 
 
 
     #--------------------------------------------------------------------------

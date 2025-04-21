@@ -18,7 +18,7 @@ class BenchmarkTokenizers:
         self.max_docs_number = configuration.get('num_documents', 0)
         self.reduce_size = configuration.get("reduce_output_size", False)
         self.database = TOKENDatabase(configuration) 
-        self.configuration = configuration           
+        self.configuration = configuration       
 
     #--------------------------------------------------------------------------
     def calculate_dataset_stats(self, documents):
@@ -36,12 +36,12 @@ class BenchmarkTokenizers:
         self.database.save_dataset_statistics(dataset_stats)          
     
     #--------------------------------------------------------------------------
-    def run_tokenizer_benchmarks(self, documents, tokenizers : dict):        
+    def run_tokenizer_benchmarks(self, documents, tokenizers : dict, progress_callback=None):        
         if self.max_docs_number is not None and self.max_docs_number <= len(documents):
             documents = documents[:self.max_docs_number]
         
         all_tokenizers = []
-        for tokenizer_name, tokenizer in tokenizers.items():
+        for i, (tokenizer_name, tokenizer) in enumerate(tokenizers.items()):
             k_rep = tokenizer_name.replace('/', '_')
             logger.info(f'Decoding documents with {tokenizer_name}')
             data = pd.DataFrame({'Tokenizer': tokenizer_name,'Text': documents})
@@ -67,12 +67,19 @@ class BenchmarkTokenizers:
                 data['Words count'] > 0, data['Tokens count'] / data['Words count'], 0)
             data['Bytes per token'] = np.where(
                 data['Tokens count'] > 0, data['Text characters'] / data['Tokens count'], 0)
-
+            
+            drop_cols = ['Tokens split']
             if self.reduce_size:
-                data = data.drop(columns=['Text', 'Tokens', 'Tokens split'])           
+                drop_cols.extend(['Text', 'Tokens'])
+            data = data.drop(columns=drop_cols)           
 
             self.database.save_benchmark_results(data, table_name=k_rep)
             all_tokenizers.append(data)
+
+            if progress_callback is not None:
+                total = len(tokenizers.items())
+                percent = int((i + 1) * 100 / total)
+                progress_callback(percent)
 
         merged_data = pd.concat(all_tokenizers, ignore_index=True)
         self.database.save_benchmark_results(merged_data)

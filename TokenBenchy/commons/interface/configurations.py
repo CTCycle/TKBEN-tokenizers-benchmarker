@@ -11,10 +11,7 @@ class Configurations:
                                'reduce_output_size' : False,
                                "DATASET": {"corpus" : "wikitext", 
                                            "config": "wikitext-103-v1"},
-                               "TOKENIZERS": ["axiong/PMC_LLaMA_13B",                                              
-                                              "BioMistral/BioMistral-7B",                                               
-                                              "bert-base-uncased",                                                        
-                                              "BAAI/bge-small-en-v1.5"]} 
+                               "TOKENIZERS": []} 
 
     #--------------------------------------------------------------------------  
     def get_configurations(self):
