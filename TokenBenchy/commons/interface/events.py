@@ -64,7 +64,7 @@ class BenchmarkEvents:
 
     def __init__(self, configurations):
         self.configurations = configurations      
-        self.benchmarker = BenchmarkTokenizers(configurations)                  
+        self.benchmarker = BenchmarkTokenizers(configurations)                         
            
     #--------------------------------------------------------------------------
     def calculate_dataset_statistics(self, documents):
@@ -73,8 +73,9 @@ class BenchmarkEvents:
         return True
     
     #--------------------------------------------------------------------------
-    def execute_benchmarks(self, documents, tokenizers):
-        results = self.benchmarker.run_tokenizer_benchmarks(documents, tokenizers) 
+    def execute_benchmarks(self, documents, tokenizers, progress_callback=None):
+        results = self.benchmarker.run_tokenizer_benchmarks(
+           documents, tokenizers, progress_callback=progress_callback) 
 
         return results   
 
