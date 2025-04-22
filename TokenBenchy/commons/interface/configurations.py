@@ -4,7 +4,7 @@
 class Configurations:
     
     def __init__(self):
-        self.configurations = {'include_custom_dataset' : False,
+        self.configurations = {'use_custom_dataset' : False,
                                'include_custom_tokenizer' : False,
                                'include_NSL' : False,
                                'num_documents' : 0,

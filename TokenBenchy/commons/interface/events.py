@@ -9,15 +9,14 @@ from TokenBenchy.commons.logger import logger
 
 # [MAIN WINDOW]
 ###############################################################################
-class LoadingEvents:
+class DatasetEvents:
 
     def __init__(self, configurations, hf_access_token):
         self.configurations = configurations
         self.hf_access_token = hf_access_token  
         self.dataset_handler = DatasetDownloadManager(
             self.configurations, self.hf_access_token)    
-        self.token_handler = TokenizersDownloadManager(
-            self.configurations, self.hf_access_token)
+        
            
     #--------------------------------------------------------------------------
     def load_and_process_dataset(self):
@@ -27,14 +26,8 @@ class LoadingEvents:
         logger.info(f'Total number of documents: {len(documents)}')
         logger.info(f'Number of valid documents: {len(clean_documents)}')  
 
-        return clean_documents
-    
-    #--------------------------------------------------------------------------
-    def load_tokenizers(self):
-        tokenizers = self.token_handler.tokenizer_download()
-
-        return tokenizers   
-
+        return clean_documents    
+  
     # define the logic to handle successfull data retrieval outside the main UI loop
     #--------------------------------------------------------------------------
     def handle_success(self, window, message):            
@@ -52,9 +45,7 @@ class LoadingEvents:
     #--------------------------------------------------------------------------
     def handle_error(self, window, err_tb):
         exc, tb = err_tb
-        QMessageBox.critical(window, 'Something went wrong!', f"{exc}\n\n{tb}") 
-
-
+        QMessageBox.critical(window, 'Dataset loading failed!', f"{exc}\n\n{tb}") 
 
     
 
@@ -62,8 +53,11 @@ class LoadingEvents:
 ###############################################################################
 class BenchmarkEvents:
 
-    def __init__(self, configurations):
-        self.configurations = configurations      
+    def __init__(self, configurations, hf_access_token):
+        self.configurations = configurations    
+        self.hf_access_token = hf_access_token  
+        self.token_handler = TokenizersDownloadManager(
+            self.configurations, self.hf_access_token)
         self.benchmarker = BenchmarkTokenizers(configurations)                         
            
     #--------------------------------------------------------------------------
@@ -73,7 +67,8 @@ class BenchmarkEvents:
         return True
     
     #--------------------------------------------------------------------------
-    def execute_benchmarks(self, documents, tokenizers, progress_callback=None):
+    def execute_benchmarks(self, documents, progress_callback=None):
+        tokenizers = self.token_handler.tokenizer_download()
         results = self.benchmarker.run_tokenizer_benchmarks(
            documents, tokenizers, progress_callback=progress_callback) 
 
