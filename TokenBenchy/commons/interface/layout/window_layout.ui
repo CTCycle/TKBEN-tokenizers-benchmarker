@@ -621,6 +621,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
                </item>
                <item>
                 <widget class="QSpinBox" name="numDocs">
+                 <property name="toolTip">
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Maximum number of documents to consider for both dataset analysis and tokenizers benchmarks&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
                  <property name="maximum">
                   <number>1000000000</number>
                  </property>
@@ -631,9 +634,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
             </layout>
            </item>
            <item>
-            <widget class="QCheckBox" name="includeCustomDataset">
+            <widget class="QCheckBox" name="useCustomDataset">
              <property name="text">
-              <string>Include custom dataset</string>
+              <string>Use custom dataset</string>
              </property>
             </widget>
            </item>
@@ -716,12 +719,19 @@ li.checked::marker { content: &quot;\2612&quot;; }
               </widget>
              </item>
              <item>
-              <widget class="QPlainTextEdit" name="tokenizersToBenchmark"/>
+              <widget class="QPlainTextEdit" name="tokenizersToBenchmark">
+               <property name="toolTip">
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Add tokenizers here using their string identifier from HuggingFace&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+              </widget>
              </item>
             </layout>
            </item>
            <item>
             <widget class="QCheckBox" name="includeCustomToken">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If you have a custom tokenizer, you can include it in the benchmarks. Remember to add the tokenizer files into resources/tokenizers/custom&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
              <property name="text">
               <string>Include custom tokenizer</string>
              </property>
@@ -742,14 +752,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
             </widget>
            </item>
            <item>
-            <widget class="QPushButton" name="loadTokenizers">
-             <property name="text">
-              <string>Load tokenizers</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QPushButton" name="runTokenBench">
+            <widget class="QPushButton" name="runBenchmarks">
              <property name="text">
               <string>Run tokenizer benchmarks</string>
              </property>
