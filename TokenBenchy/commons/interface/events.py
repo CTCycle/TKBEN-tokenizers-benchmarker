@@ -1,7 +1,8 @@
 from PySide6.QtWidgets import QMessageBox
 
 from TokenBenchy.commons.utils.data.downloads import DatasetDownloadManager, TokenizersDownloadManager
-from TokenBenchy.commons.utils.evaluation.benchmarks import BenchmarkTokenizers
+from TokenBenchy.commons.utils.benchmarks.core import BenchmarkTokenizers
+from TokenBenchy.commons.utils.benchmarks.visualizer import VisualizeBenchmarkResults
 from TokenBenchy.commons.utils.data.processing import ProcessDataset
 from TokenBenchy.commons.constants import ROOT_DIR, DATA_PATH
 from TokenBenchy.commons.logger import logger
@@ -58,12 +59,11 @@ class BenchmarkEvents:
         self.hf_access_token = hf_access_token  
         self.token_handler = TokenizersDownloadManager(
             self.configurations, self.hf_access_token)
-        self.benchmarker = BenchmarkTokenizers(configurations)                         
+        self.benchmarker = BenchmarkTokenizers(configurations)                                 
            
     #--------------------------------------------------------------------------
     def calculate_dataset_statistics(self, documents):
         self.benchmarker.calculate_dataset_stats(documents) 
-
         return True
     
     #--------------------------------------------------------------------------
@@ -73,6 +73,19 @@ class BenchmarkEvents:
            documents, tokenizers, progress_callback=progress_callback) 
 
         return results   
+    
+    #--------------------------------------------------------------------------
+    def visualize_benchmark_results(self, tokenizers):
+        visualizer = VisualizeBenchmarkResults(self.configurations, tokenizers)
+
+        visualizer.get_vocabulary_report()          
+        visualizer.plot_vocabulary_size()
+        visualizer.plot_histogram_tokens_length()
+        visualizer.plot_boxplot_tokens_length()
+        visualizer.plot_subwords_vs_words()
+        visualizer.boxplot_from_benchmarks_dataset() 
+
+        return True 
 
     # define the logic to handle successfull data retrieval outside the main UI loop
     #--------------------------------------------------------------------------

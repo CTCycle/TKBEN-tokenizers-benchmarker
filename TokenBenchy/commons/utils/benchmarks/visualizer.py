@@ -9,11 +9,13 @@ from TokenBenchy.commons.logger import logger
 
 # [TOKENIZERS EXPLORER]
 ###############################################################################
-class ExploreTokenizers:
+class VisualizeBenchmarkResults:
 
-    def __init__(self, tokenizers):
-        self.DPI = 600
+    def __init__(self, configuration : dict, tokenizers : dict):        
+        self.configuration = configuration
         self.tokenizers = tokenizers
+        self.DPI = 600
+        
         self.vocabularies = {k : v.get_vocab() for k, v in tokenizers.items()}        
         self.vocab_len = {k: len(v) for k, v in self.vocabularies.items()}  
         self.vocab_decoded = {}

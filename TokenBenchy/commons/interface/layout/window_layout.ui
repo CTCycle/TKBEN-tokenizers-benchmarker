@@ -759,6 +759,13 @@ li.checked::marker { content: &quot;\2612&quot;; }
             </widget>
            </item>
            <item>
+            <widget class="QPushButton" name="visualizeResults">
+             <property name="text">
+              <string>Visualize benchmarks results</string>
+             </property>
+            </widget>
+           </item>
+           <item>
             <widget class="QProgressBar" name="progressBar">
              <property name="maximumSize">
               <size>
@@ -787,6 +794,16 @@ li.checked::marker { content: &quot;\2612&quot;; }
          <string>Show benchmarks</string>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_9">
+         <item>
+          <widget class="QCheckBox" name="saveImages">
+           <property name="text">
+            <string>Automatically save images</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
          <item>
           <layout class="QVBoxLayout" name="verticalLayout_5">
            <item>

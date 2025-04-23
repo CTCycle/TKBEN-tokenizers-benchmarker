@@ -17,6 +17,8 @@ class BenchmarkTokenizers:
         transformers.utils.logging.set_verbosity_error()        
         self.max_docs_number = configuration.get('num_documents', 0)
         self.reduce_size = configuration.get("reduce_output_size", False)
+        self.include_custom_tokenizer = configuration.get("include_custom_tokenizer", False)
+        self.include_NSL = configuration.get("include_NSL", False)
         self.database = TOKENDatabase(configuration) 
         self.configuration = configuration       
 
@@ -50,7 +52,7 @@ class BenchmarkTokenizers:
             data['AVG words length'] = data['Text'].apply(
                 lambda text: np.mean([len(word) for word in text.split()]) if text else 0)
 
-            if 'CUSTOM' in tokenizer_name:
+            if 'CUSTOM' in tokenizer_name and self.include_custom_tokenizer:
                 data['Tokens'] = data['Text'].apply(
                     lambda text: tokenizer.decode(tokenizer.encode(text).ids))
                 data['Tokens split'] = data['Tokens'].str.split()
@@ -81,15 +83,19 @@ class BenchmarkTokenizers:
                 percent = int((i + 1) * 100 / total)
                 progress_callback(percent)
 
-        merged_data = pd.concat(all_tokenizers, ignore_index=True)
-        self.database.save_benchmark_results(merged_data)
+        benchmark_results = pd.concat(all_tokenizers, ignore_index=True)
+        self.database.save_benchmark_results(benchmark_results)
 
-        return merged_data
+        if self.include_NSL and self.include_custom_tokenizer:
+            NSL_benchmark_results = self.normalized_sequence_length(benchmark_results)
+
+        return benchmark_results
 
     #--------------------------------------------------------------------------
     def normalized_sequence_length(self, benchmark_results : pd.DataFrame):                    
         data_custom = benchmark_results[
-            benchmark_results['Tokenizer'].str.contains('custom tokenizer', case=False, na=False)]   
+            benchmark_results['Tokenizer'].str.contains(
+                'custom tokenizer', case=False, na=False)]   
 
         data = []
         tokenizer_names = list(benchmark_results['Tokenizer'].unique())
