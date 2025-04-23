@@ -5,7 +5,7 @@ from PySide6.QtCore import QFile, QIODevice, Slot, QThreadPool
 
 from TokenBenchy.commons.variables import EnvironmentVariables
 from TokenBenchy.commons.interface.events import DatasetEvents, BenchmarkEvents
-from TokenBenchy.commons.interface.configurations import Configurations
+from TokenBenchy.commons.configurations import Configurations
 from TokenBenchy.commons.interface.workers import Worker
 from TokenBenchy.commons.constants import UI_PATH
 from TokenBenchy.commons.logger import logger
@@ -47,14 +47,26 @@ class MainWindow:
         self.benchmark_handler = BenchmarkEvents(
             self.configurations, self.hf_access_token)  
 
-        self.progress_bar = self.main_win.findChild(QProgressBar, "progressBar")
-        self.progress_bar.setValue(0)        
+               
         
         # --- modular checkbox setup ---
         self._setup_configurations()
 
         # --- Connect signals to slots ---
-        self._connect_signals()           
+        self._connect_signals()  
+
+        # --- modular checkbox setup ---
+        self._set_states() 
+
+    #--------------------------------------------------------------------------
+    def _set_states(self): 
+        self.analyze_dataset = self.main_win.findChild(QPushButton, "analyzeDataset") 
+        self.visualize_btn = self.main_win.findChild(QPushButton, "visualizeResults")
+        self.analyze_dataset.setEnabled(False) 
+        self.visualize_btn.setEnabled(False) 
+
+        self.progress_bar = self.main_win.findChild(QProgressBar, "progressBar")
+        self.progress_bar.setValue(0)    
 
     #--------------------------------------------------------------------------
     def _connect_button(self, button_name: str, slot):        
@@ -89,6 +101,7 @@ class MainWindow:
         self._connect_button("loadDataset", self.load_and_process_dataset)
         self._connect_button("analyzeDataset", self.run_dataset_analysis)       
         self._connect_button("runBenchmarks", self.run_tokenizers_benchmark)        
+        self._connect_button("visualizeResults", self.run_tokenizers_benchmark)  
 
     # --- Slots ---
     # It's good practice to define methods that act as slots within the class
@@ -101,6 +114,7 @@ class MainWindow:
         self.config_manager.update_value('include_custom_tokenizer', self.check_custom_token.isChecked())
         self.config_manager.update_value('include_NSL', self.check_include_NSL.isChecked())
         self.config_manager.update_value('reduce_output_size', self.check_reduce.isChecked())
+        self.config_manager.update_value('num_documents', self.set_num_docs.value())    
         self.config_manager.update_value('num_documents', self.set_num_docs.value())      
 
     #--------------------------------------------------------------------------
@@ -137,11 +151,11 @@ class MainWindow:
     def on_dataset_loaded(self, datasets):             
         self.text_dataset = datasets
         config = self.config_manager.get_configurations().get('DATASET', {})
-
         corpus = config.get('corpus', 'NA')  
         config = config.get('config', 'NA')         
         message = f'Text dataset has been loaded: {corpus} with config {config}' 
-        self.loading_handler.handle_success(self.main_win, message)
+        self.loading_handler.handle_success(self.main_win, message)        
+        self.analyze_dataset.setEnabled(True)
 
     #--------------------------------------------------------------------------
     @Slot(tuple)
@@ -241,14 +255,14 @@ class MainWindow:
         self.tokenizers = tokenizers        
         message = 'Benchmarking is finished'   
         self.benchmark_handler.handle_success(self.main_win, message)
-        #self.progress_bar.setValue(0)
+
+        self.visualize_btn.setEnabled(True)       
 
     #--------------------------------------------------------------------------
     @Slot(tuple)
     def on_benchmark_error(self, err_tb):
-        self.benchmark_handler.handle_error(self.main_win, err_tb)  
+        self.benchmark_handler.handle_error(self.main_win, err_tb)         
         self.progress_bar.setValue(0) 
-
 
     #--------------------------------------------------------------------------
     def show(self):        

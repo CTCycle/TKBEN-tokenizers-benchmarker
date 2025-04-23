@@ -1,5 +1,6 @@
 import os
 import glob
+import pandas as pd
 from datasets import load_dataset
 from tokenizers import Tokenizer
 from transformers import AutoTokenizer
@@ -12,9 +13,9 @@ from TokenBenchy.commons.logger import logger
 ###############################################################################
 class DatasetDownloadManager:
 
-    def __init__(self, configuration, hf_access_token):
-        self.hf_access_token = hf_access_token        
-        # extract configurations from given JSON                                 
+    def __init__(self, configuration, hf_access_token):         
+        self.configurations = configuration  
+        self.hf_access_token = hf_access_token                                           
         self.dataset = configuration.get("DATASET", {})  
         self.dataset_corpus = self.dataset.get('corpus', 'wikitext')
         self.dataset_config = self.dataset.get('config', 'wikitext-103-v1')   
@@ -22,14 +23,32 @@ class DatasetDownloadManager:
 
     #--------------------------------------------------------------------------
     def dataset_download(self):        
-        datasets = {}                
-        corpus, config = self.dataset['corpus'], self.dataset['config']
-        dataset_path = os.path.join(DATASETS_PATH, 'open', f'{corpus}_{config}') 
-        os.mkdir(dataset_path) if not os.path.exists(dataset_path) else None              
-        logger.info(f'Downloading and saving dataset: {corpus} - {config}')
-        dataset = load_dataset(corpus, config, cache_dir=dataset_path)            
-        datasets[config] = dataset       
-        
+        datasets = {}   
+        subfolder = 'custom' if self.has_custom_dataset else 'open'
+        base_path = os.path.join(DATASETS_PATH, subfolder)
+        if self.has_custom_dataset:            
+            csv_pattern = os.path.join(base_path, '*.csv')
+            csv_files = glob.glob(csv_pattern)
+
+            if not csv_files:
+                logger.warning(f'No CSV files found in custom folder: {base_path}')
+            else:
+                if len(csv_files) > 1:
+                    logger.warning(
+                        f'Multiple CSV files found in {base_path}, using the first one: {os.path.basename(csv_files[0])}')
+                file_path = csv_files[0]
+                df = pd.read_csv(file_path)
+                key = os.path.splitext(os.path.basename(file_path))[0]
+                datasets[key] = df
+
+        else:            
+            corpus, config = self.dataset['corpus'], self.dataset['config']
+            dataset_path = os.path.join(base_path, f'{corpus}_{config}')
+            os.makedirs(dataset_path, exist_ok=True)
+            logger.info(f'Downloading and saving dataset: {corpus} - {config}')
+            dataset = load_dataset(corpus, config, cache_dir=dataset_path)
+            datasets[config] = dataset  
+            
         return datasets
         
        
@@ -57,9 +76,10 @@ class TokenizersDownloadManager:
             except Exception as e:
                 logger.error(f"Failed to download tokenizer {tokenizer_id}: {e}", exc_info=True)    
 
-        # load custom tokenizer in target subfolder if .json files are found 
+        # load custom tokenizer in target subfolder if .json files are found and
+        # if the user has selected the option to include custom tokenizers 
         custom_tokenizer_path = os.path.join(TOKENIZER_PATH, 'custom')      
-        if os.path.exists(custom_tokenizer_path):            
+        if os.path.exists(custom_tokenizer_path) and self.has_custom_tokenizer:            
             search_pattern = os.path.join(custom_tokenizer_path, '*.json')   
             json_files = glob.glob(search_pattern)
             if len(json_files) > 0 and self.has_custom_tokenizer:
