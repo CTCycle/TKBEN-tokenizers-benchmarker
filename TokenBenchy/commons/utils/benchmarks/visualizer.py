@@ -11,11 +11,17 @@ from TokenBenchy.commons.logger import logger
 ###############################################################################
 class VisualizeBenchmarkResults:
 
-    def __init__(self, configuration : dict, tokenizers : dict):        
-        self.configuration = configuration
-        self.tokenizers = tokenizers
+    def __init__(self, configuration : dict): 
+        self.tokenizers = None       
+        self.configuration = configuration                
+        self.save_images = configuration.get('save_images', True)
+        self.observed_features = [
+            'Tokens to words ratio', 'AVG tokens length', 'Bytes per token'] 
         self.DPI = 600
         
+    #--------------------------------------------------------------------------
+    def update_tokenizers_dictionaries(self, tokenizers): 
+        self.tokenizers = tokenizers
         self.vocabularies = {k : v.get_vocab() for k, v in tokenizers.items()}        
         self.vocab_len = {k: len(v) for k, v in self.vocabularies.items()}  
         self.vocab_decoded = {}
@@ -45,8 +51,7 @@ class VisualizeBenchmarkResults:
             logger.info(f'Number of words not in common: {len(not_intersecting)}')
 
     #--------------------------------------------------------------------------
-    def plot_vocabulary_size(self):      
-        # Convert dictionaries to a DataFrame for easier plotting
+    def plot_vocabulary_size(self):            
         data = []
         for k, v in self.vocab_len.items():
             data.append(
@@ -55,28 +60,29 @@ class VisualizeBenchmarkResults:
             data.append(
                 {'Tokenizer': k, 'Length': v, 'Type': 'Decoded Length'})
         df = pd.DataFrame(data)      
-        plt.figure(figsize=(16, 18)) 
+        fig, ax = plt.figure(figsize=(16, 18)) 
         plt.subplot() 
         sns.barplot(
             x='Tokenizer', y='Length', hue='Type', data=df, 
             palette='viridis', edgecolor='black')        
-        plt.xlabel('', fontsize=14)
-        plt.ylabel('Vocabulary size', fontsize=14)
-        plt.title('Vocabulary size by tokenizer', fontsize=14, y=1.05)
-        plt.xticks(rotation=45, ha='right', fontsize=14)
-        plt.yticks(fontsize=14)
-        plt.legend(fontsize=14)
-        plt.tight_layout()        
-        plot_loc = os.path.join(
-            EVALUATION_PATH, 'vocabulary_size.jpeg')
-        plt.savefig(
-            plot_loc, bbox_inches='tight', format='jpeg', dpi=self.DPI)        
-        plt.close() 
+        ax.set_xlabel('', fontsize=14)        
+        ax.set_ylabel('Vocabulary size', fontsize=14)
+        ax.set_title('Vocabulary size by tokenizer', fontsize=14, y=1.05)
+        ax.tick_params(axis='x', rotation=45, labelsize=14, labelright=False)
+        ax.tick_params(axis='y', labelsize=14)
+        ax.legend(fontsize=14)
+        plt.tight_layout()
 
+        if self.save_images:     
+            plot_loc = os.path.join(EVALUATION_PATH, 'vocabulary_size.jpeg')
+            plt.savefig(
+                plot_loc, bbox_inches='tight', format='jpeg', dpi=self.DPI)   
+
+        return fig     
+           
     #--------------------------------------------------------------------------
     def plot_subwords_vs_words(self):
-        word_types_data = []
-        # Preparing data for plotting
+        word_types_data = []        
         for k, v in self.vocabularies.items():
             vocab_words = list(v.keys())
             subwords = [x for x in vocab_words if '##' in x]
@@ -85,27 +91,31 @@ class VisualizeBenchmarkResults:
             words_perc = len(words)/(len(words) + len(subwords)) * 100
             word_types_data.append({'Vocabulary': k, 'Type': 'Subwords', 'Percentage': subwords_perc})
             word_types_data.append({'Vocabulary': k, 'Type': 'Words', 'Percentage': words_perc})
-
-        # Converting data to DataFrame for easier plotting
+        
         df = pd.DataFrame(word_types_data)
-        plt.figure(figsize=(18, 16))       
+        fig, ax = plt.figure(figsize=(18, 16))       
         sns.barplot(
             data=df, x='Vocabulary', y='Percentage', hue='Type', 
             palette='viridis', edgecolor='black')
-        plt.ylabel('Percentage (%)', fontsize=14)
-        plt.xlabel('', fontsize=14)
-        plt.title('Subwords vs Complete Words', fontsize=14, y=1.05)
-        plt.xticks(rotation=45, ha='right', fontsize=14)
-        plt.yticks(fontsize=14)
-        plt.legend(fontsize=14)
-        plt.tight_layout() 
-        plot_loc = os.path.join(EVALUATION_PATH, 'subwords_vs_words.jpeg')
-        plt.savefig(
-            plot_loc, bbox_inches='tight', format='jpeg', dpi=self.DPI)        
-        plt.close()       
         
+        ax.set_xlabel('', fontsize=14)
+        ax.set_ylabel('Percentage (%)', fontsize=14)        
+        ax.set_title('Subwords vs Complete Words', fontsize=14, y=1.05)
+        ax.tick_params(axis='x', rotation=45, labelsize=14, labelright=False)
+        ax.tick_params(axis='y', labelsize=14)
+        ax.legend(fontsize=14)       
+        plt.tight_layout()
+
+        if self.save_images:      
+            plot_loc = os.path.join(EVALUATION_PATH, 'subwords_vs_words.jpeg')
+            plt.savefig(
+                plot_loc, bbox_inches='tight', format='jpeg', dpi=self.DPI)     
+
+        return fig   
+          
     #--------------------------------------------------------------------------
-    def plot_histogram_tokens_length(self):        
+    def plot_histogram_tokens_length(self):
+        histograms = {}        
         for k, v in self.vocabularies.items():
             k_rep = k.replace('/', '_')
             vocab_words = list(v.keys()) 
@@ -123,20 +133,27 @@ class VisualizeBenchmarkResults:
             axs[1].set_title(f'Decoded Words - {k}', fontsize=14)
             axs[1].set_ylabel('Frequency', fontsize=14)
             axs[1].set_xlabel('Word Length', fontsize=14)
-            plt.tight_layout()                  
-            plot_loc = os.path.join(EVALUATION_PATH, f'{k_rep}_words_by_len.jpeg')
-            plt.savefig(
-                plot_loc, bbox_inches='tight', format='jpeg', dpi=self.DPI)              
-            plt.close()               
+            plt.tight_layout()
+
+            histograms[k_rep] = fig      
+
+            if self.save_images:            
+                plot_loc = os.path.join(EVALUATION_PATH, f'{k_rep}_words_by_len.jpeg')
+                plt.savefig(
+                    plot_loc, bbox_inches='tight', format='jpeg', dpi=self.DPI)       
+
+            return histograms       
+                        
 
     #--------------------------------------------------------------------------
     def plot_boxplot_tokens_length(self):        
-        word_lengths = {k : [len(x) for x in list(v.keys())] 
-                        for k, v in self.vocabularies.items()}
-        word_lengths_decoded = {k : [len(x) for x in v] 
-                                for k, v in self.vocab_decoded.items()} 
-
-        # Combine both dictionaries into a single DataFrame
+        word_lengths = {
+            k : [len(x) for x in list(v.keys())] 
+            for k, v in self.vocabularies.items()}
+        word_lengths_decoded = {
+            k : [len(x) for x in v] 
+            for k, v in self.vocab_decoded.items()} 
+        
         data = []
         for key in word_lengths.keys():
             for length in word_lengths[key]:
@@ -145,41 +162,22 @@ class VisualizeBenchmarkResults:
             for length in word_lengths_decoded.get(key, []):
                 data.append(
                     {'Tokenizer': key, 'Word Length': length, 'Type': 'Decoded'})
+                
         df = pd.DataFrame(data)
-        plt.figure(figsize=(14, 16))
+        fig, ax = plt.figure(figsize=(14, 16))
         sns.boxplot(x='Tokenizer', y='Word Length', hue='Type', data=df)
-        plt.xticks(rotation=45, ha='right', va='top', fontsize=12)
-        plt.ylabel('Word Length', fontsize=14)
-        plt.xlabel('', fontsize=14)
-        plt.title('Distribution of Word Lengths by Tokenizer', 
-                  fontsize=14, y=1.02)
-        plt.yticks(fontsize=14)
-        plt.xticks(rotation=45, ha='right', fontsize=14)
-        plt.legend(fontsize=14)
-        plt.tight_layout()       
-        plot_loc = os.path.join(EVALUATION_PATH, 'boxplot_words_by_len.jpeg')
-        plt.savefig(
-            plot_loc, bbox_inches='tight', format='jpeg', dpi=self.DPI)  
-        plt.close()
+   
+        ax.set_xlabel('', fontsize=14)
+        ax.set_ylabel('Word Length', fontsize=14)        
+        ax.set_title('Distribution of words by length', fontsize=14, y=1.05)
+        ax.tick_params(axis='x', rotation=45, labelsize=14, labelright=False)
+        ax.tick_params(axis='y', labelsize=14)
+        ax.legend(fontsize=14)       
 
-    #--------------------------------------------------------------------------
-    def boxplot_from_benchmarks_dataset(self, dataset):
-        observed_features = [
-            'Tokens to words ratio', 'AVG tokens length', 'Bytes per token']    
-        plt.figure(figsize=(14, 16))
-        for y in observed_features:
-            sns.boxplot(x=dataset['Tokenizer'], y=dataset[y], data=dataset)            
-            plt.xticks(rotation=45, ha='right', fontsize=14)
-            plt.yticks(fontsize=14)          
-            plt.xlabel('', fontsize=14)
-            plt.ylabel(y, fontsize=14)
-            plt.title(f'Boxplot of {y}', fontsize=14, y=1.02) 
-            plt.legend(fontsize=14)               
-            plt.tight_layout()               
-            plot_loc = os.path.join(EVALUATION_PATH, f'boxplot_{y}.jpeg')                   
+        if self.save_images:
+            plot_loc = os.path.join(EVALUATION_PATH, 'boxplot_words_by_len.jpeg')
             plt.savefig(
-            plot_loc, bbox_inches='tight', format='jpeg', dpi=self.DPI)  
-            plt.close()
-
+                plot_loc, bbox_inches='tight', format='jpeg', dpi=self.DPI)  
+            
+        return fig
         
-    

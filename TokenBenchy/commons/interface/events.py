@@ -1,4 +1,6 @@
+import io
 from PySide6.QtWidgets import QMessageBox
+from PySide6.QtGui import QImage, QPixmap
 
 from TokenBenchy.commons.utils.data.downloads import DatasetDownloadManager, TokenizersDownloadManager
 from TokenBenchy.commons.utils.benchmarks.core import BenchmarkTokenizers
@@ -46,6 +48,7 @@ class DatasetEvents:
     #--------------------------------------------------------------------------
     def handle_error(self, window, err_tb):
         exc, tb = err_tb
+        logger.error(exc, tb)
         QMessageBox.critical(window, 'Dataset loading failed!', f"{exc}\n\n{tb}") 
 
     
@@ -72,29 +75,18 @@ class BenchmarkEvents:
         results = self.benchmarker.run_tokenizer_benchmarks(
            documents, tokenizers, progress_callback=progress_callback) 
 
-        return results   
+        return results  
     
-    #--------------------------------------------------------------------------
-    def visualize_benchmark_results(self, tokenizers):
-        visualizer = VisualizeBenchmarkResults(self.configurations, tokenizers)
-
-        visualizer.get_vocabulary_report()          
-        visualizer.plot_vocabulary_size()
-        visualizer.plot_histogram_tokens_length()
-        visualizer.plot_boxplot_tokens_length()
-        visualizer.plot_subwords_vs_words()
-        visualizer.boxplot_from_benchmarks_dataset() 
-
-        return True 
 
     # define the logic to handle successfull data retrieval outside the main UI loop
     #--------------------------------------------------------------------------
-    def handle_success(self, window, message):                 
-        QMessageBox.information(
-        window, 
-        "Task successful",
-        message,
-        QMessageBox.Ok)
+    def handle_success(self, window, message, popup=False): 
+        if popup:                
+            QMessageBox.information(
+            window, 
+            "Task successful",
+            message,
+            QMessageBox.Ok)
 
         # send message to status bar
         window.statusBar().showMessage(message)
@@ -107,3 +99,34 @@ class BenchmarkEvents:
 
         
 
+# [MAIN WINDOW]
+###############################################################################
+class VisualizationEnvents:
+
+    def __init__(self, configurations):
+        self.configurations = configurations     
+        self.visualizer = VisualizeBenchmarkResults(self.configurations)
+        self.DPI = 400
+
+    #--------------------------------------------------------------------------
+    def visualize_benchmark_results(self, tokenizers):        
+        self.visualizer.update_tokenizers_dictionaries(tokenizers)
+
+        figures = {}
+        self.visualizer.get_vocabulary_report()          
+        figures['vocabulary_size'] = self.visualizer.plot_vocabulary_size()
+        figures['token_len_histograms'] = self.visualizer.plot_histogram_tokens_length()
+        figures['token_len_boxplot'] = self.visualizer.plot_boxplot_tokens_length()
+        figures['subwords_vs_words'] = self.visualizer.plot_subwords_vs_words()        
+
+        return figures  
+    
+    #--------------------------------------------------------------------------
+    def convert_fig_to_qpixmap(self, fig):    
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png", dpi=self.DPI)
+        buf.seek(0)
+        img_data = buf.read()       
+        qimg = QImage.fromData(img_data)
+
+        return QPixmap.fromImage(qimg)
