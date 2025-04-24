@@ -60,7 +60,7 @@ class VisualizeBenchmarkResults:
             data.append(
                 {'Tokenizer': k, 'Length': v, 'Type': 'Decoded Length'})
         df = pd.DataFrame(data)      
-        fig, ax = plt.figure(figsize=(16, 18)) 
+        fig, ax = plt.subplots(figsize=(16, 18), dpi=self.DPI) 
         plt.subplot() 
         sns.barplot(
             x='Tokenizer', y='Length', hue='Type', data=df, 
@@ -76,7 +76,7 @@ class VisualizeBenchmarkResults:
         if self.save_images:     
             plot_loc = os.path.join(EVALUATION_PATH, 'vocabulary_size.jpeg')
             plt.savefig(
-                plot_loc, bbox_inches='tight', format='jpeg', dpi=self.DPI)   
+                plot_loc, bbox_inches='tight', format='jpeg', dpi=self.DPI)  
 
         return fig     
            
@@ -93,7 +93,7 @@ class VisualizeBenchmarkResults:
             word_types_data.append({'Vocabulary': k, 'Type': 'Words', 'Percentage': words_perc})
         
         df = pd.DataFrame(word_types_data)
-        fig, ax = plt.figure(figsize=(18, 16))       
+        fig, ax = plt.subplots(figsize=(16, 18), dpi=self.DPI)    
         sns.barplot(
             data=df, x='Vocabulary', y='Percentage', hue='Type', 
             palette='viridis', edgecolor='black')
@@ -115,14 +115,14 @@ class VisualizeBenchmarkResults:
           
     #--------------------------------------------------------------------------
     def plot_histogram_tokens_length(self):
-        histograms = {}        
+        histograms = []       
         for k, v in self.vocabularies.items():
             k_rep = k.replace('/', '_')
             vocab_words = list(v.keys()) 
             decoded_words = self.vocab_decoded[k]               
             vocab_word_lens = [len(x) for x in vocab_words]
             decoded_word_lens = [len(x) for x in decoded_words]
-            fig, axs = plt.subplots(2, 1, figsize=(14, 16), sharex=False)          
+            fig, axs = plt.subplots(2, 1, figsize=(14, 16), sharex=False, dpi=self.DPI)          
             sns.histplot(vocab_word_lens, ax=axs[0], color='skyblue', edgecolor='black', 
                          label='Vocab Words', binwidth=1)
             axs[0].set_title(f'Vocab Words - {k}', fontsize=16)
@@ -134,15 +134,15 @@ class VisualizeBenchmarkResults:
             axs[1].set_ylabel('Frequency', fontsize=14)
             axs[1].set_xlabel('Word Length', fontsize=14)
             plt.tight_layout()
-
-            histograms[k_rep] = fig      
+            histograms.append(fig)              
 
             if self.save_images:            
                 plot_loc = os.path.join(EVALUATION_PATH, f'{k_rep}_words_by_len.jpeg')
                 plt.savefig(
-                    plot_loc, bbox_inches='tight', format='jpeg', dpi=self.DPI)       
+                    plot_loc, bbox_inches='tight', format='jpeg', dpi=self.DPI)
+                   
 
-            return histograms       
+        return histograms       
                         
 
     #--------------------------------------------------------------------------
@@ -164,9 +164,8 @@ class VisualizeBenchmarkResults:
                     {'Tokenizer': key, 'Word Length': length, 'Type': 'Decoded'})
                 
         df = pd.DataFrame(data)
-        fig, ax = plt.figure(figsize=(14, 16))
-        sns.boxplot(x='Tokenizer', y='Word Length', hue='Type', data=df)
-   
+        fig, ax = plt.subplots(figsize=(16, 18), dpi=self.DPI) 
+        sns.boxplot(x='Tokenizer', y='Word Length', hue='Type', data=df)   
         ax.set_xlabel('', fontsize=14)
         ax.set_ylabel('Word Length', fontsize=14)        
         ax.set_title('Distribution of words by length', fontsize=14, y=1.05)

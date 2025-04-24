@@ -1,4 +1,3 @@
-import io
 from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlainTextEdit, QSpinBox,
                                QMessageBox, QComboBox, QTextEdit, QProgressBar,
                                QGraphicsScene, QGraphicsPixmapItem, QGraphicsView)
@@ -28,9 +27,9 @@ class MainWindow:
         self.main_win.showMaximized()
 
         self.text_dataset = None
-        self.tokenizers = None
-        self.benchmark_results = None
+        self.tokenizers = None       
         self.figures = []
+        self.pixmaps = None
 
         # initial settings
         self.config_manager = Configurations()
@@ -59,7 +58,7 @@ class MainWindow:
 
         # --- prepare graphics view for figures ---
         self.view = self.main_win.findChild(QGraphicsView, "figureCanvas")
-        self.scene = QGraphicsScene(self)
+        self.scene = QGraphicsScene()
         self.pixmap_item = QGraphicsPixmapItem()
         self.scene.addItem(self.pixmap_item)
         self.view.setScene(self.scene)
@@ -264,8 +263,8 @@ class MainWindow:
 
     #--------------------------------------------------------------------------
     @Slot(object)
-    def on_benchmark_finished(self, results):
-        self.benchmark_results = results                
+    def on_benchmark_finished(self, tokenizers):
+        self.tokenizers = tokenizers               
         message = 'Benchmarking is finished'   
         self.benchmark_handler.handle_success(self.main_win, message)             
 
@@ -301,24 +300,24 @@ class MainWindow:
     @Slot(object)    
     def on_plots_generated(self, figures):        
         self.figures = figures
+        self.pixmaps = [self.figures_handler.convert_fig_to_qpixmap(p) for p in self.figures]
         self.current_fig = 0
         self._update_graphics_view()
-        self.benchmark_handler.handle_success(
+        self.figures_handler.handle_success(
             self.main_win, 'Benchmark results plots have been generated')
        
     #--------------------------------------------------------------------------
     @Slot(tuple)
     def on_plots_error(self, err_tb):
-        self.benchmark_handler.handle_error(self.main_win, err_tb)  
+        self.figures_handler.handle_error(self.main_win, err_tb)  
 
     #--------------------------------------------------------------------------
     @Slot()
     def _update_graphics_view(self):
         if not self.figures:
-            return
-        pix = self.figures_handler.convert_fig_to_qpixmap(self.figures[self.current_fig])
-        self.pixmap_item.setPixmap(pix)
-        self.scene.setSceneRect(pix.rect())
+            return      
+        self.pixmap_item.setPixmap(self.pixmaps[self.current_fig])
+        self.scene.setSceneRect(self.pixmaps[self.current_fig].rect())
         self.view.fitInView(self.pixmap_item, Qt.KeepAspectRatio)
 
     #--------------------------------------------------------------------------

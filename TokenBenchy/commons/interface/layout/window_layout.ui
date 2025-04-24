@@ -523,7 +523,7 @@ QTimeEdit, QToolBox, QToolBox::tab, QToolBox::tab:selected {
    </property>
    <layout class="QHBoxLayout" name="horizontalLayout_5">
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_4">
+     <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,2">
       <item>
        <layout class="QVBoxLayout" name="leftLayout" stretch="1,4">
         <item>
@@ -815,7 +815,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
           </widget>
          </item>
          <item>
-          <widget class="QGraphicsView" name="graphicsView"/>
+          <widget class="QGraphicsView" name="figureCanvas"/>
          </item>
          <item>
           <layout class="QVBoxLayout" name="verticalLayout_5">
