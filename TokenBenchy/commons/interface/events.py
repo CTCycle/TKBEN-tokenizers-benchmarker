@@ -75,7 +75,7 @@ class BenchmarkEvents:
         results = self.benchmarker.run_tokenizer_benchmarks(
            documents, tokenizers, progress_callback=progress_callback) 
 
-        return results  
+        return tokenizers 
     
 
     # define the logic to handle successfull data retrieval outside the main UI loop
@@ -112,12 +112,12 @@ class VisualizationEnvents:
     def visualize_benchmark_results(self, tokenizers):        
         self.visualizer.update_tokenizers_dictionaries(tokenizers)
 
-        figures = {}
+        figures = []
         self.visualizer.get_vocabulary_report()          
-        figures['vocabulary_size'] = self.visualizer.plot_vocabulary_size()
-        figures['token_len_histograms'] = self.visualizer.plot_histogram_tokens_length()
-        figures['token_len_boxplot'] = self.visualizer.plot_boxplot_tokens_length()
-        figures['subwords_vs_words'] = self.visualizer.plot_subwords_vs_words()        
+        figures.append(self.visualizer.plot_vocabulary_size())
+        figures.extend(self.visualizer.plot_histogram_tokens_length())
+        figures.append(self.visualizer.plot_boxplot_tokens_length())
+        figures.append(self.visualizer.plot_subwords_vs_words())       
 
         return figures  
     
@@ -130,3 +130,22 @@ class VisualizationEnvents:
         qimg = QImage.fromData(img_data)
 
         return QPixmap.fromImage(qimg)
+    
+    # define the logic to handle successfull data retrieval outside the main UI loop
+    #--------------------------------------------------------------------------
+    def handle_success(self, window, message, popup=False): 
+        if popup:                
+            QMessageBox.information(
+            window, 
+            "Task successful",
+            message,
+            QMessageBox.Ok)
+
+        # send message to status bar
+        window.statusBar().showMessage(message)
+    
+    # define the logic to handle error during data retrieval outside the main UI loop
+    #--------------------------------------------------------------------------
+    def handle_error(self, window, err_tb):
+        exc, tb = err_tb
+        QMessageBox.critical(window, 'Something went wrong!', f"{exc}\n\n{tb}")  
