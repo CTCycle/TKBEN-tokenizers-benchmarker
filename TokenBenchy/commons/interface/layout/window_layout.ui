@@ -536,7 +536,7 @@ QTimeEdit, QToolBox, QToolBox::tab, QToolBox::tab:selected {
           <property name="title">
            <string>Dataset</string>
           </property>
-          <layout class="QVBoxLayout" name="verticalLayout_4" stretch="1,1,1,4">
+          <layout class="QVBoxLayout" name="verticalLayout_4" stretch="1,1,0,1,4">
            <property name="spacing">
             <number>5</number>
            </property>
@@ -637,6 +637,16 @@ li.checked::marker { content: &quot;\2612&quot;; }
             <widget class="QCheckBox" name="useCustomDataset">
              <property name="text">
               <string>Use custom dataset</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="removeInvalid">
+             <property name="text">
+              <string>Remove invalid documents</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
              </property>
             </widget>
            </item>
@@ -805,16 +815,10 @@ li.checked::marker { content: &quot;\2612&quot;; }
           </widget>
          </item>
          <item>
+          <widget class="QGraphicsView" name="graphicsView"/>
+         </item>
+         <item>
           <layout class="QVBoxLayout" name="verticalLayout_5">
-           <item>
-            <widget class="QStackedWidget" name="stackedWidget">
-             <property name="currentIndex">
-              <number>0</number>
-             </property>
-             <widget class="QWidget" name="page"/>
-             <widget class="QWidget" name="page_2"/>
-            </widget>
-           </item>
            <item>
             <layout class="QHBoxLayout" name="horizontalLayout_3">
              <item>

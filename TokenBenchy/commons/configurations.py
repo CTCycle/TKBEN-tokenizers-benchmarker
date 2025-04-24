@@ -5,6 +5,7 @@ class Configurations:
     
     def __init__(self):
         self.configurations = {'use_custom_dataset' : False,
+                               'remove_invalid_documents' : True, 
                                'include_custom_tokenizer' : False,
                                'include_NSL' : False,
                                'num_documents' : 0,

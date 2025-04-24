@@ -1,10 +1,13 @@
-from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlainTextEdit, QSpinBox, 
-                               QMessageBox, QComboBox, QTextEdit, QProgressBar)
+import io
+from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlainTextEdit, QSpinBox,
+                               QMessageBox, QComboBox, QTextEdit, QProgressBar,
+                               QGraphicsScene, QGraphicsPixmapItem, QGraphicsView)
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QFile, QIODevice, Slot, QThreadPool
+from PySide6.QtCore import QFile, QIODevice, Slot, QThreadPool, Qt
+from PySide6.QtGui import QPixmap, QImage 
 
 from TokenBenchy.commons.variables import EnvironmentVariables
-from TokenBenchy.commons.interface.events import DatasetEvents, BenchmarkEvents
+from TokenBenchy.commons.interface.events import DatasetEvents, BenchmarkEvents, VisualizationEnvents
 from TokenBenchy.commons.configurations import Configurations
 from TokenBenchy.commons.interface.workers import Worker
 from TokenBenchy.commons.constants import UI_PATH
@@ -26,6 +29,8 @@ class MainWindow:
 
         self.text_dataset = None
         self.tokenizers = None
+        self.benchmark_results = None
+        self.figures = []
 
         # initial settings
         self.config_manager = Configurations()
@@ -36,37 +41,34 @@ class MainWindow:
         self._tokenizer_worker = None
         self._benchmark_worker = None
 
-        # get Hugging Face access token from environmental variables
+        # get Hugging Face access token
         EV = EnvironmentVariables()
         self.hf_access_token = EV.get_HF_access_token()
 
-        # --- Create persistent handlers ---
-        # These objects will live as long as the MainWindow instance lives 
+        # persistent handlers
         self.loading_handler = DatasetEvents(
-            self.configurations, self.hf_access_token) 
+            self.configurations, self.hf_access_token)
         self.benchmark_handler = BenchmarkEvents(
-            self.configurations, self.hf_access_token)  
-
-               
+            self.configurations, self.hf_access_token)
+        self.figures_handler = VisualizationEnvents(self.configurations)              
         
-        # --- modular checkbox setup ---
+        # setup UI elements
         self._setup_configurations()
+        self._connect_signals()
+        self._set_states()
 
-        # --- Connect signals to slots ---
-        self._connect_signals()  
+        # --- prepare graphics view for figures ---
+        self.view = self.main_win.findChild(QGraphicsView, "figureCanvas")
+        self.scene = QGraphicsScene(self)
+        self.pixmap_item = QGraphicsPixmapItem()
+        self.scene.addItem(self.pixmap_item)
+        self.view.setScene(self.scene)
 
-        # --- modular checkbox setup ---
-        self._set_states() 
 
     #--------------------------------------------------------------------------
     def _set_states(self): 
-        self.analyze_dataset = self.main_win.findChild(QPushButton, "analyzeDataset") 
-        self.visualize_btn = self.main_win.findChild(QPushButton, "visualizeResults")
-        self.analyze_dataset.setEnabled(False) 
-        self.visualize_btn.setEnabled(False) 
-
         self.progress_bar = self.main_win.findChild(QProgressBar, "progressBar")
-        self.progress_bar.setValue(0)    
+        self.progress_bar.setValue(0)   
 
     #--------------------------------------------------------------------------
     def _connect_button(self, button_name: str, slot):        
@@ -79,17 +81,25 @@ class MainWindow:
         combo.currentTextChanged.connect(slot)
 
     #--------------------------------------------------------------------------
+    def _send_message(self, message): 
+        self.main_win.statusBar().showMessage(message)
+
+    #--------------------------------------------------------------------------
     def _setup_configurations(self):              
         self.use_custom_data = self.main_win.findChild(QCheckBox, "useCustomDataset")
+        self.set_remove_invalid = self.main_win.findChild(QCheckBox, "removeInvalid")
         self.check_custom_token = self.main_win.findChild(QCheckBox, "includeCustomToken")
         self.check_include_NSL = self.main_win.findChild(QCheckBox, "includeNSL")
         self.check_reduce = self.main_win.findChild(QCheckBox, "reduceSize")
+        self.set_save_imgs = self.main_win.findChild(QCheckBox, "saveImages")
+
         # set the default value of the wait time box to the current wait time
         self.set_num_docs = self.main_win.findChild(QSpinBox, "numDocs")
         self.set_num_docs.setValue(self.configurations.get('num_docs', 0))       
 
         # connect their toggled signals to our updater
         self.use_custom_data.toggled.connect(self._update_settings)
+        self.set_remove_invalid.toggled.connect(self._update_settings) 
         self.check_custom_token.toggled.connect(self._update_settings) 
         self.check_include_NSL.toggled.connect(self._update_settings)
         self.check_reduce.toggled.connect(self._update_settings) 
@@ -101,8 +111,10 @@ class MainWindow:
         self._connect_button("loadDataset", self.load_and_process_dataset)
         self._connect_button("analyzeDataset", self.run_dataset_analysis)       
         self._connect_button("runBenchmarks", self.run_tokenizers_benchmark)        
-        self._connect_button("visualizeResults", self.run_tokenizers_benchmark)  
-
+        self._connect_button("visualizeResults", self.generate_figures)  
+        self._connect_button("previousImg", self.show_previous_figure)
+        self._connect_button("nextImg", self.show_next_figure)       
+       
     # --- Slots ---
     # It's good practice to define methods that act as slots within the class
     # that manages the UI elements. These slots can then call methods on the
@@ -111,22 +123,22 @@ class MainWindow:
     @Slot()
     def _update_settings(self):        
         self.config_manager.update_value('use_custom_dataset', self.use_custom_data.isChecked())
+        self.config_manager.update_value('remove_invalid_documents', self.set_remove_invalid.isChecked())
         self.config_manager.update_value('include_custom_tokenizer', self.check_custom_token.isChecked())
         self.config_manager.update_value('include_NSL', self.check_include_NSL.isChecked())
         self.config_manager.update_value('reduce_output_size', self.check_reduce.isChecked())
-        self.config_manager.update_value('num_documents', self.set_num_docs.value())    
-        self.config_manager.update_value('num_documents', self.set_num_docs.value())      
+        self.config_manager.update_value('save_images', self.set_save_imgs.isChecked())  
+        self.config_manager.update_value('num_documents', self.set_num_docs.value())   
+    
 
     #--------------------------------------------------------------------------
     @Slot()
     def load_and_process_dataset(self):  
-        set_data_corpus = self.main_win.findChild(QTextEdit, "datasetCorpus")
-        set_data_config = self.main_win.findChild(QTextEdit, "datasetConfig")
-        # extract text from input text boxes and strip leading/trailing whitespace and newlines
-        corpus_text = set_data_corpus.toPlainText()
-        config_text = set_data_config.toPlainText()        
+        corpus_text = self.main_win.findChild(QTextEdit, "datasetCorpus").toPlainText()
+        config_text = self.main_win.findChild(QTextEdit, "datasetConfig").toPlainText()
+         
         corpus_text = corpus_text.replace('\n', ' ').strip()
-        config_text = config_text.replace('\n', ' ').strip()
+        config_text = config_text.replace('\n', ' ').strip()     
 
         # update configurations with the text from the input boxes and reinitialize
         # the loading handler with the new configurations
@@ -136,7 +148,8 @@ class MainWindow:
         self.loading_handler = DatasetEvents(self.configurations, self.hf_access_token) 
         
         # send message to status bar
-        self.main_win.statusBar().showMessage(f"Downloading dataset {corpus_text} (configuration: {config_text})")
+        self._send_message(
+            f"Downloading dataset {corpus_text} (configuration: {config_text})")
 
         # initialize worker for asynchronous loading of the dataset
         # functions that are passed to the worker will be executed in a separate thread
@@ -155,8 +168,7 @@ class MainWindow:
         config = config.get('config', 'NA')         
         message = f'Text dataset has been loaded: {corpus} with config {config}' 
         self.loading_handler.handle_success(self.main_win, message)        
-        self.analyze_dataset.setEnabled(True)
-
+       
     #--------------------------------------------------------------------------
     @Slot(tuple)
     def on_dataset_error(self, err_tb):
@@ -164,20 +176,20 @@ class MainWindow:
 
     #--------------------------------------------------------------------------
     @Slot()
-    def run_dataset_analysis(self): 
-        # make sure you've actually loaded a dataset
+    def run_dataset_analysis(self):
         if self.text_dataset is None:
+            message = "Please load a dataset before running analysis!"
             QMessageBox.warning(self.main_win,
                                 "Missing dataset",
-                                "Please load a dataset before running analysis!")
-            return None
+                                message)
+            return None    
             
         self.configurations = self.config_manager.get_configurations() 
         self.benchmark_handler = BenchmarkEvents(
             self.configurations, self.hf_access_token)  
 
-        # send message to status bar
-        self.main_win.statusBar().showMessage("Computing statistics for the selected dataset")
+        # send message to status bar        
+        self._send_message("Computing statistics for the selected dataset")
        
         # initialize worker for asynchronous loading of the dataset
         self._data_worker = Worker(
@@ -216,10 +228,11 @@ class MainWindow:
     def run_tokenizers_benchmark(self):
         tokenizers = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark") 
         tokenizers_name = tokenizers.toPlainText().splitlines()
-        if len(tokenizers_name) == 0:
+        if len(tokenizers_name) == 0 or self.text_dataset is None:
+            message = "Please load both the tokenizers and the text dataset before running benchmarks!"
             QMessageBox.warning(self.main_win,
-                                "Missing tokenizers",
-                                "Please load tokenizers before running benchmarks!")
+                                "Cannot run benchmarks",
+                                message)
             return None
 
         tokenizers_name = [x.replace('\n', ' ').strip() for x in tokenizers_name]
@@ -231,7 +244,7 @@ class MainWindow:
             self.configurations, self.hf_access_token)              
 
         # send message to status bar
-        self.main_win.statusBar().showMessage("Running tokenizers benchmark...")  
+        self._send_message("Running tokenizers benchmark...")  
 
         # initialize worker for asynchronous loading of the dataset
         # functions that are passed to the worker will be executed in a separate thread
@@ -251,12 +264,10 @@ class MainWindow:
 
     #--------------------------------------------------------------------------
     @Slot(object)
-    def on_benchmark_finished(self, tokenizers):             
-        self.tokenizers = tokenizers        
+    def on_benchmark_finished(self, results):
+        self.benchmark_results = results                
         message = 'Benchmarking is finished'   
-        self.benchmark_handler.handle_success(self.main_win, message)
-
-        self.visualize_btn.setEnabled(True)       
+        self.benchmark_handler.handle_success(self.main_win, message)             
 
     #--------------------------------------------------------------------------
     @Slot(tuple)
@@ -264,6 +275,66 @@ class MainWindow:
         self.benchmark_handler.handle_error(self.main_win, err_tb)         
         self.progress_bar.setValue(0) 
 
+    #--------------------------------------------------------------------------
+    @Slot()
+    def generate_figures(self):        
+        self.configurations = self.config_manager.get_configurations() 
+        self.figures_handler = VisualizationEnvents(self.configurations)
+        
+        # send message to status bar
+        self._send_message("Generating benchmark results figures")  
+
+        # initialize worker for asynchronous loading of the dataset
+        # functions that are passed to the worker will be executed in a separate thread
+        self._benchmark_worker = Worker(
+           self.figures_handler.visualize_benchmark_results, 
+           self.tokenizers)  
+        
+        worker = self._benchmark_worker         
+       
+        # connect the finished and error signals to their respective slots 
+        worker.signals.finished.connect(self.on_plots_generated)
+        worker.signals.error.connect(self.on_plots_error)
+        self.threadpool.start(worker)  
+
+    #--------------------------------------------------------------------------
+    @Slot(object)    
+    def on_plots_generated(self, figures):        
+        self.figures = figures
+        self.current_fig = 0
+        self._update_graphics_view()
+        self.benchmark_handler.handle_success(
+            self.main_win, 'Benchmark results plots have been generated')
+       
+    #--------------------------------------------------------------------------
+    @Slot(tuple)
+    def on_plots_error(self, err_tb):
+        self.benchmark_handler.handle_error(self.main_win, err_tb)  
+
+    #--------------------------------------------------------------------------
+    @Slot()
+    def _update_graphics_view(self):
+        if not self.figures:
+            return
+        pix = self.figures_handler.convert_fig_to_qpixmap(self.figures[self.current_fig])
+        self.pixmap_item.setPixmap(pix)
+        self.scene.setSceneRect(pix.rect())
+        self.view.fitInView(self.pixmap_item, Qt.KeepAspectRatio)
+
+    #--------------------------------------------------------------------------
+    @Slot()
+    def show_previous_figure(self):       
+        if self.current_fig > 0:
+            self.current_fig -= 1
+            self._update_graphics_view()
+
+    #--------------------------------------------------------------------------
+    @Slot()
+    def show_next_figure(self):       
+        if self.current_fig < len(self.figures) - 1:
+            self.current_fig += 1
+            self._update_graphics_view()
+        
     #--------------------------------------------------------------------------
     def show(self):        
         self.main_win.show()   
