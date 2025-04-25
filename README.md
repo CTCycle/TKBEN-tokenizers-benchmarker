@@ -1,20 +1,17 @@
 # TokenBenchy: Exploring and Benchmarking Open Source Tokenizers
 
 ## 1. Project Overview
-Tokenizers play a pivotal role in the preprocessing phase of text data, transforming raw text into a structured format that models can understand. The effectiveness of this step significantly impacts the overall performance of NLP models, making the choice of tokenizer a crucial decision in the development of language-based applications. However, with the plethora of tokenizers available, each with its unique approach and capabilities, selecting the most suitable one can be a daunting task. TokenBenchy aims to offer a comprehensive toolkit for analyzing and comparing the performance and characteristics of open source tokenizers (currently based on English language), through a simple yet effective jupyter notebook. This facilitates the exploration of tokenizer characteristics such as tokenization speed, token granularity, handling of special characters, language support, and adaptability to domain-specific vocabularies. Users can perform detailed comparisons between tokenizers, assessing their suitability for specific applications, such as text classification, sentiment analysis, language translation, or semantic search.
+Tokenizers are essential components in text preprocessing, converting raw text into structured data understandable by NLP models. The choice of tokenizer directly influences model performance, making it a critical decision in building effective language-based applications. However, selecting an appropriate tokenizer can be challenging due to the diverse array of options available, each with distinct approaches and strengths.
 
-![Vocabulary size comparison](TokenBenchy/commons/assets/vocabulary_size_comparison.jpeg)
-Comparison of vocabulary size for different tokenizers. The number of tokens is calculated both form the exracted vocabulary and from the tokenizer decoder method.
-
-![LLaMa 13B words len](TokenBenchy/commons/assets/PMC_LLaMA_13B_length_words.jpeg)
-LLaMa 13B benchmark showing distribution of tokens length from both the vocabulary and the decoder method. 
+TokenBenchy is a comprehensive toolkit designed to simplify tokenizer analysis and comparison. This fully Python-based UI application allows users to effortlessly download HuggingFace's open-source tokenizers and publicly available text datasets to conduct detailed benchmarks. TokenBenchy enables exploration and comparison of tokenizer attributes including tokenization speed, granularity, handling of special characters, language support, and adaptability to domain-specific vocabularies. 
+With TokenBenchy, users can effectively evaluate tokenizer performance in various NLP tasks such as text classification, sentiment analysis, language translation, and semantic search, ensuring informed decisions and optimized model performance.
 
 ## 2. Installation 
-The installation process on Windows has been designed to be fully automated. To begin, simply run *start_on_windows.bat.* On its first execution, the installation procedure will execute with minimal user input required. The script will check if either Anaconda or Miniconda is installed and can be accessed from your system path. If neither is found, it will automatically download and install the latest Miniconda release from https://docs.anaconda.com/miniconda/. Following this step, the script will proceed with the installation of all necessary Python dependencies. Should you prefer to handle the installation process separately, you can run the standalone installer by running *setup/install_on_windows.bat*. 
+The installation process on Windows has been designed to be fully automated. To begin, simply run *start_on_windows.bat.* On its first execution, the installation procedure will execute with minimal user input required. The script will check if either Anaconda or Miniconda is installed and can be accessed from your system path. If neither is found, it will automatically download and install the latest Miniconda release from https://docs.anaconda.com/miniconda/. Following this step, the script will proceed with the installation of all necessary Python dependencies. Should you prefer to handle the installation process separately, you can run the standalone installer by running *setup/install_on_windows.bat* or *setup/setup_and_maintenance.bat* and select *Run installation*.  
 
 **Important:** After installation, if the project folder is moved or its path is changed, the application will no longer function correctly. To fix this, you can either:
 
-- Open the main menu, select *Setup and maintentance* and choose *Install project in editable mode*
+- Open *setup/setup_and_maintenance.bat* and select *Enable root path imports* 
 - Manually run the following commands in the terminal, ensuring the project folder is set as the current working directory (CWD):
 
     `conda activate TOKEXP`
@@ -22,11 +19,11 @@ The installation process on Windows has been designed to be fully automated. To 
     `pip install -e . --use-pep517` 
 
 ## 3. How to use
-On Windows, run *start_on_windows.bat* to launch the main navigation menu and browse through the various options. Please note that some antivirus software, such as Avast, may flag or quarantine python.exe when called by the .bat file. If you encounter unusual behavior, consider adding an exception for your Anaconda or Miniconda environments in your antivirus settings.
+On Windows, run *start_on_windows.bat* to launch the application. Please note that some antivirus software, such as Avast, may flag or quarantine python.exe when called by the .bat file. If you encounter unusual behavior, consider adding an exception for your Anaconda or Miniconda environments in your antivirus settings.
 
-### 3.1 Navigation menu
+![main_UI](EMADB/commons/assets/main_window.jpg)
 
-**1) Run tokenizers benchmarks:** runs the benchmarks on all selected tokenizers and save the results in *resources/benchmarks*. For each tokenizer, the following benchmarking metrics are calculated, both using the extracted vocabulary and the decoder methods (from HF library), showing any possible discrepancy between the two approaches:
+The intuitive main interface facilitates easy selection of text datasets and tokenizers, allowing users to run benchmarks across multiple tokenizers simultaneously. Benchmark results are conveniently stored in the application's database. For each tokenizer, benchmarking metrics are calculated using both the extracted vocabulary and HuggingFace's decoder methods, highlighting any discrepancies between these approaches. 
 
 - **Text characters**: The number of characters in the original text.
 - **Words count**: The number of words in the text.
@@ -37,43 +34,20 @@ On Windows, run *start_on_windows.bat* to launch the main navigation menu and br
 - **Tokens to words ratio**: The ratio of token count to word count.
 - **Bytes per token**: The number of bytes per token, derived from the original text length.  
 
-**1) Tokenizers analysis:** previosuly calculated benchmarks are visualized using different types of plots and visualization techniques (boxplots, histograms, bar plots). Requires generating the benchmarks results first!
-
-**2) TokenBenchy setup:** allows running some options command such as *install project in editable mode* to reinstall the project within your environment, and *remove logs* to remove all logs saved in *resources/logs*.  
-
-**3) Exit and close:** exit the program immediately
+**Setup and Maintenance:** you can run *setup/setup_and_maintenance.bat* to start the external tools for maintenance. Available options are:
+- Run installation: run the application installer for Windows
+- Enable root path imports: Enable root path imports if the main folder has been moved or renamed
+- Update project: check for updates from Github
+- Remove logs: remove all logs file from *resources/logs*
 
 ### 3.1 Resources
-This folder organizes dataset and tokenizers benchmark results. By default, all data is stored within an SQLite database. To visualize and interact with the SQLite database, we recommend downloading and installing the DB Browser for SQLite, available at: https://sqlitebrowser.org/dl/.
-
-The directory structure includes the following folders:
+This folder organizes dataset and tokenizers benchmark results. By default, all data is stored within an SQLite database. To visualize and interact with the SQLite database, we recommend downloading and installing the DB Browser for SQLite, available at: https://sqlitebrowser.org/dl/. The directory structure includes the following folders:
 
 - **database:** tokenizers benchmark results will be stored centrally within the main database *TokenBenchy_database.db*. Graphical evaluation outputs for the performed benchmarks will be saved separately in *database/evaluation*. Moreover, this folder contains the downloaded datasets that are used to test the tokenizers performance (open access datasets are saved in *datasets/open* while the custom dataset is saved into *datasets/custom*). Last but not least, the downloaded tokenizers are saved in *database/tokenizers* following the same organisation of the datasets folder. 
 
 - **logs:** log files are saved here
 
 - **templates:** reference template files can be found here
-
-## 4. Configurations
-For customization, you can modify the main configuration parameters using *settings/configurations.json* 
-
-#### General configuration
-
-| Parameter          | Description                                                    |
-|--------------------|----------------------------------------------------------------|
-| TOKENIZERS         | List of tokenizers to download                                 |
-| DATASET            | Target dataset to benchmark tokenizers                         |
-
-Tokenizers should be specified using their reference string. Regarding the text dataset used for the benchmarks, it is necessary to provide both the configuration and corpus as per dataset specifics. 
-
-#### Benchmark configuration
-
-| Parameter                | Description                                              |
-|--------------------------|----------------------------------------------------------|
-| MAX_NUM_DOCS             | Maximum number of documents to use from the dataset      |
-| REDUCE_CSV_SIZE          | List of tokenizers to download                           |
-| INCLUDE_CUSTOM_DATASET   | Whether or not to include the custom dataset             |
-| INCLUDE_CUSTOM_TOKENIZER | Whether or not to include the custom tokenizer           |
 
 **Environmental variables** are stored in *setup/variables/.env*. For security reasons, this file is typically not uploaded to GitHub. Instead, you must create this file manually by copying the template from *resources/templates/.env* and placing it in the *setup/variables* directory.
 
@@ -83,6 +57,6 @@ Tokenizers should be specified using their reference string. Regarding the text 
 | TF_CPP_MIN_LOG_LEVEL  | TensorFlow logging verbosity                             |
 
 
-## 5. License
+## 4. License
 This project is licensed under the terms of the MIT license. See the LICENSE file for details.
 
