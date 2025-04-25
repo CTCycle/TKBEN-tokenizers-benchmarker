@@ -65,12 +65,12 @@ class VisualizeBenchmarkResults:
         sns.barplot(
             x='Tokenizer', y='Length', hue='Type', data=df, 
             palette='viridis', edgecolor='black')        
-        ax.set_xlabel('', fontsize=14)        
-        ax.set_ylabel('Vocabulary size', fontsize=14)
-        ax.set_title('Vocabulary size by tokenizer', fontsize=14, y=1.05)
-        ax.tick_params(axis='x', rotation=45, labelsize=14, labelright=False)
-        ax.tick_params(axis='y', labelsize=14)
-        ax.legend(fontsize=14)
+        ax.set_xlabel('', fontsize=16)        
+        ax.set_ylabel('Vocabulary size', fontsize=16)
+        ax.set_title('Vocabulary size by tokenizer', fontsize=16, y=1.05)
+        ax.tick_params(axis='x', rotation=45, labelsize=16, labelright=False)
+        ax.tick_params(axis='y', labelsize=16)
+        ax.legend(fontsize=16)
         plt.tight_layout()
 
         if self.save_images:     
@@ -98,12 +98,12 @@ class VisualizeBenchmarkResults:
             data=df, x='Vocabulary', y='Percentage', hue='Type', 
             palette='viridis', edgecolor='black')
         
-        ax.set_xlabel('', fontsize=14)
-        ax.set_ylabel('Percentage (%)', fontsize=14)        
-        ax.set_title('Subwords vs Complete Words', fontsize=14, y=1.05)
-        ax.tick_params(axis='x', rotation=45, labelsize=14, labelright=False)
-        ax.tick_params(axis='y', labelsize=14)
-        ax.legend(fontsize=14)       
+        ax.set_xlabel('', fontsize=16)
+        ax.set_ylabel('Percentage (%)', fontsize=16)        
+        ax.set_title('Subwords vs Complete Words', fontsize=16, y=1.05)
+        ax.tick_params(axis='x', rotation=45, labelsize=16, labelright=False)
+        ax.tick_params(axis='y', labelsize=16)
+        ax.legend(fontsize=16)       
         plt.tight_layout()
 
         if self.save_images:      
@@ -122,17 +122,17 @@ class VisualizeBenchmarkResults:
             decoded_words = self.vocab_decoded[k]               
             vocab_word_lens = [len(x) for x in vocab_words]
             decoded_word_lens = [len(x) for x in decoded_words]
-            fig, axs = plt.subplots(2, 1, figsize=(14, 16), sharex=False, dpi=self.DPI)          
+            fig, axs = plt.subplots(2, 1, figsize=(16, 18), sharex=False, dpi=self.DPI)          
             sns.histplot(vocab_word_lens, ax=axs[0], color='skyblue', edgecolor='black', 
                          label='Vocab Words', binwidth=1)
             axs[0].set_title(f'Vocab Words - {k}', fontsize=16)
-            axs[0].set_ylabel('Frequency', fontsize=14)
-            axs[0].set_xlabel('Word Length', fontsize=14)                         
+            axs[0].set_ylabel('Frequency', fontsize=16)
+            axs[0].set_xlabel('Word Length', fontsize=16)                         
             sns.histplot(decoded_word_lens, ax=axs[1], color='orange', edgecolor='black', 
                          label='Decoded Words', binwidth=1)
-            axs[1].set_title(f'Decoded Words - {k}', fontsize=14)
-            axs[1].set_ylabel('Frequency', fontsize=14)
-            axs[1].set_xlabel('Word Length', fontsize=14)
+            axs[1].set_title(f'Decoded Words - {k}', fontsize=16)
+            axs[1].set_ylabel('Frequency', fontsize=16)
+            axs[1].set_xlabel('Word Length', fontsize=16)
             plt.tight_layout()
             histograms.append(fig)              
 
@@ -166,12 +166,12 @@ class VisualizeBenchmarkResults:
         df = pd.DataFrame(data)
         fig, ax = plt.subplots(figsize=(16, 18), dpi=self.DPI) 
         sns.boxplot(x='Tokenizer', y='Word Length', hue='Type', data=df)   
-        ax.set_xlabel('', fontsize=14)
-        ax.set_ylabel('Word Length', fontsize=14)        
-        ax.set_title('Distribution of words by length', fontsize=14, y=1.05)
-        ax.tick_params(axis='x', rotation=45, labelsize=14, labelright=False)
-        ax.tick_params(axis='y', labelsize=14)
-        ax.legend(fontsize=14)       
+        ax.set_xlabel('', fontsize=16)
+        ax.set_ylabel('Word Length', fontsize=16)        
+        ax.set_title('Distribution of words by length', fontsize=16, y=1.05)
+        ax.tick_params(axis='x', rotation=45, labelsize=16, labelright=False)
+        ax.tick_params(axis='y', labelsize=16)
+        ax.legend(fontsize=16)       
 
         if self.save_images:
             plot_loc = os.path.join(EVALUATION_PATH, 'boxplot_words_by_len.jpeg')
