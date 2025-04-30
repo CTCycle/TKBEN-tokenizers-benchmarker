@@ -10,7 +10,7 @@ from TokenBenchy.commons.constants import ROOT_DIR, DATA_PATH
 from TokenBenchy.commons.logger import logger
 
 
-# [MAIN WINDOW]
+
 ###############################################################################
 class DatasetEvents:
 
@@ -18,8 +18,7 @@ class DatasetEvents:
         self.configurations = configurations
         self.hf_access_token = hf_access_token  
         self.dataset_handler = DatasetDownloadManager(
-            self.configurations, self.hf_access_token)    
-        
+            self.configurations, self.hf_access_token)          
            
     #--------------------------------------------------------------------------
     def load_and_process_dataset(self):
@@ -53,7 +52,7 @@ class DatasetEvents:
 
     
 
-# [MAIN WINDOW]
+
 ###############################################################################
 class BenchmarkEvents:
 
@@ -99,7 +98,7 @@ class BenchmarkEvents:
 
         
 
-# [MAIN WINDOW]
+
 ###############################################################################
 class VisualizationEnvents:
 

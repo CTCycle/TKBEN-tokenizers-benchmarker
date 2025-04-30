@@ -3,7 +3,6 @@ from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlainTextEdit, QSpinBox,
                                QGraphicsScene, QGraphicsPixmapItem, QGraphicsView)
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, QIODevice, Slot, QThreadPool, Qt
-from PySide6.QtGui import QPixmap, QImage 
 
 from TokenBenchy.commons.variables import EnvironmentVariables
 from TokenBenchy.commons.interface.events import DatasetEvents, BenchmarkEvents, VisualizationEnvents
@@ -13,7 +12,7 @@ from TokenBenchy.commons.constants import UI_PATH
 from TokenBenchy.commons.logger import logger
         
 
-# [MAIN WINDOW]
+
 ###############################################################################
 class MainWindow:
     
@@ -30,6 +29,7 @@ class MainWindow:
         self.tokenizers = None       
         self.figures = []
         self.pixmaps = None
+        self.current_fig = 0
 
         # initial settings
         self.config_manager = Configurations()
@@ -45,10 +45,8 @@ class MainWindow:
         self.hf_access_token = EV.get_HF_access_token()
 
         # persistent handlers
-        self.loading_handler = DatasetEvents(
-            self.configurations, self.hf_access_token)
-        self.benchmark_handler = BenchmarkEvents(
-            self.configurations, self.hf_access_token)
+        self.loading_handler = DatasetEvents(self.configurations, self.hf_access_token)
+        self.benchmark_handler = BenchmarkEvents(self.configurations, self.hf_access_token)
         self.figures_handler = VisualizationEnvents(self.configurations)              
         
         # setup UI elements
@@ -63,8 +61,13 @@ class MainWindow:
         self.scene.addItem(self.pixmap_item)
         self.view.setScene(self.scene)
 
+    # [SHOW WINDOW]
+    ###########################################################################
+    def show(self):        
+        self.main_win.show()
 
-    #--------------------------------------------------------------------------
+    # [HELPERS FOR SETTING CONNECTIONS]
+    ###########################################################################
     def _set_states(self): 
         self.progress_bar = self.main_win.findChild(QProgressBar, "progressBar")
         self.progress_bar.setValue(0)   
@@ -83,7 +86,8 @@ class MainWindow:
     def _send_message(self, message): 
         self.main_win.statusBar().showMessage(message)
 
-    #--------------------------------------------------------------------------
+    # [SETUP]
+    ###########################################################################
     def _setup_configurations(self):              
         self.use_custom_data = self.main_win.findChild(QCheckBox, "useCustomDataset")
         self.set_remove_invalid = self.main_win.findChild(QCheckBox, "removeInvalid")
@@ -91,11 +95,9 @@ class MainWindow:
         self.check_include_NSL = self.main_win.findChild(QCheckBox, "includeNSL")
         self.check_reduce = self.main_win.findChild(QCheckBox, "reduceSize")
         self.set_save_imgs = self.main_win.findChild(QCheckBox, "saveImages")
-
-        # set the default value of the wait time box to the current wait time
+        
         self.set_num_docs = self.main_win.findChild(QSpinBox, "numDocs")
-        self.set_num_docs.setValue(self.configurations.get('num_docs', 0))       
-
+       
         # connect their toggled signals to our updater
         self.use_custom_data.toggled.connect(self._update_settings)
         self.set_remove_invalid.toggled.connect(self._update_settings) 
@@ -106,7 +108,7 @@ class MainWindow:
       
     #--------------------------------------------------------------------------
     def _connect_signals(self):        
-        self._connect_combo_box("selectTokenizers", self.on_tokenizer_selection_from_combo)
+        self._connect_combo_box("selectTokenizers", self.update_tokenizers_from_combo)
         self._connect_button("loadDataset", self.load_and_process_dataset)
         self._connect_button("analyzeDataset", self.run_dataset_analysis)       
         self._connect_button("runBenchmarks", self.run_tokenizers_benchmark)        
@@ -114,7 +116,8 @@ class MainWindow:
         self._connect_button("previousImg", self.show_previous_figure)
         self._connect_button("nextImg", self.show_next_figure)       
        
-    # --- Slots ---
+    # [SLOT]
+    ###########################################################################
     # It's good practice to define methods that act as slots within the class
     # that manages the UI elements. These slots can then call methods on the
     # handler objects. Using @Slot decorator is optional but good practice
@@ -127,15 +130,15 @@ class MainWindow:
         self.config_manager.update_value('include_NSL', self.check_include_NSL.isChecked())
         self.config_manager.update_value('reduce_output_size', self.check_reduce.isChecked())
         self.config_manager.update_value('save_images', self.set_save_imgs.isChecked())  
-        self.config_manager.update_value('num_documents', self.set_num_docs.value())   
-    
+        self.config_manager.update_value('num_documents', self.set_num_docs.value())    
 
     #--------------------------------------------------------------------------
     @Slot()
-    def load_and_process_dataset(self):  
+    def load_and_process_dataset(self): 
+        self.main_win.findChild(QPushButton, "loadDataset").setEnabled(False)
+
         corpus_text = self.main_win.findChild(QTextEdit, "datasetCorpus").toPlainText()
-        config_text = self.main_win.findChild(QTextEdit, "datasetConfig").toPlainText()
-         
+        config_text = self.main_win.findChild(QTextEdit, "datasetConfig").toPlainText()         
         corpus_text = corpus_text.replace('\n', ' ').strip()
         config_text = config_text.replace('\n', ' ').strip()     
 
@@ -156,22 +159,7 @@ class MainWindow:
         worker = self._data_worker       
         worker.signals.finished.connect(self.on_dataset_loaded)
         worker.signals.error.connect(self.on_dataset_error)
-        self.threadpool.start(worker)      
-
-    #--------------------------------------------------------------------------
-    @Slot(object)
-    def on_dataset_loaded(self, datasets):             
-        self.text_dataset = datasets
-        config = self.config_manager.get_configurations().get('DATASET', {})
-        corpus = config.get('corpus', 'NA')  
-        config = config.get('config', 'NA')         
-        message = f'Text dataset has been loaded: {corpus} with config {config}' 
-        self.loading_handler.handle_success(self.main_win, message)        
-       
-    #--------------------------------------------------------------------------
-    @Slot(tuple)
-    def on_dataset_error(self, err_tb):
-        self.loading_handler.handle_error(self.main_win, err_tb)  
+        self.threadpool.start(worker)
 
     #--------------------------------------------------------------------------
     @Slot()
@@ -183,6 +171,8 @@ class MainWindow:
                                 message)
             return None    
             
+        self.main_win.findChild(QPushButton, "analyzeDataset").setEnabled(False)
+
         self.configurations = self.config_manager.get_configurations() 
         self.benchmark_handler = BenchmarkEvents(
             self.configurations, self.hf_access_token)  
@@ -198,25 +188,11 @@ class MainWindow:
         worker = self._data_worker      
         worker.signals.finished.connect(self.on_analysis_success)
         worker.signals.error.connect(self.on_analysis_error)
-        self.threadpool.start(worker)   
-
-    #--------------------------------------------------------------------------
-    @Slot(object)
-    def on_analysis_success(self, result):           
-        config = self.config_manager.get_configurations().get('DATASET', {})
-        corpus = config.get('corpus', 'NA')  
-        config = config.get('config', 'NA')         
-        message = f'{corpus} - {config} analysis is finished' 
-        self.benchmark_handler.handle_success(self.main_win, message)
-
-    #--------------------------------------------------------------------------
-    @Slot(tuple)
-    def on_analysis_error(self, err_tb):
-        self.benchmark_handler.handle_error(self.main_win, err_tb) 
+        self.threadpool.start(worker)  
 
     #--------------------------------------------------------------------------
     @Slot(str)
-    def on_tokenizer_selection_from_combo(self, text: str):
+    def update_tokenizers_from_combo(self, text: str):
         tokenizers = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark")  
         existing = set(tokenizers.toPlainText().splitlines())
         if text not in existing:
@@ -225,6 +201,8 @@ class MainWindow:
     #--------------------------------------------------------------------------
     @Slot()
     def run_tokenizers_benchmark(self):
+        self.main_win.findChild(QPushButton, "runBenchmarks").setEnabled(False)
+
         tokenizers = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark") 
         tokenizers_name = tokenizers.toPlainText().splitlines()
         if len(tokenizers_name) == 0 or self.text_dataset is None:
@@ -259,24 +237,13 @@ class MainWindow:
         # connect the finished and error signals to their respective slots 
         worker.signals.finished.connect(self.on_benchmark_finished)
         worker.signals.error.connect(self.on_benchmark_error)
-        self.threadpool.start(worker)    
-
-    #--------------------------------------------------------------------------
-    @Slot(object)
-    def on_benchmark_finished(self, tokenizers):
-        self.tokenizers = tokenizers               
-        message = 'Benchmarking is finished'   
-        self.benchmark_handler.handle_success(self.main_win, message)             
-
-    #--------------------------------------------------------------------------
-    @Slot(tuple)
-    def on_benchmark_error(self, err_tb):
-        self.benchmark_handler.handle_error(self.main_win, err_tb)         
-        self.progress_bar.setValue(0) 
+        self.threadpool.start(worker)  
 
     #--------------------------------------------------------------------------
     @Slot()
-    def generate_figures(self):        
+    def generate_figures(self):     
+        self.main_win.findChild(QPushButton, "visualizeResults").setEnabled(False)
+
         self.configurations = self.config_manager.get_configurations() 
         self.figures_handler = VisualizationEnvents(self.configurations)
         
@@ -294,22 +261,7 @@ class MainWindow:
         # connect the finished and error signals to their respective slots 
         worker.signals.finished.connect(self.on_plots_generated)
         worker.signals.error.connect(self.on_plots_error)
-        self.threadpool.start(worker)  
-
-    #--------------------------------------------------------------------------
-    @Slot(object)    
-    def on_plots_generated(self, figures):        
-        self.figures = figures
-        self.pixmaps = [self.figures_handler.convert_fig_to_qpixmap(p) for p in self.figures]
-        self.current_fig = 0
-        self._update_graphics_view()
-        self.figures_handler.handle_success(
-            self.main_win, 'Benchmark results plots have been generated')
-       
-    #--------------------------------------------------------------------------
-    @Slot(tuple)
-    def on_plots_error(self, err_tb):
-        self.figures_handler.handle_error(self.main_win, err_tb)  
+        self.threadpool.start(worker) 
 
     #--------------------------------------------------------------------------
     @Slot()
@@ -333,9 +285,78 @@ class MainWindow:
         if self.current_fig < len(self.figures) - 1:
             self.current_fig += 1
             self._update_graphics_view()
-        
+
+
+    # [POSITIVE OUTCOME HANDLERS]
+    ###########################################################################    
+    @Slot(object)
+    def on_dataset_loaded(self, datasets):             
+        self.text_dataset = datasets
+        config = self.config_manager.get_configurations().get('DATASET', {})
+        corpus = config.get('corpus', 'NA')  
+        config = config.get('config', 'NA')         
+        message = f'Text dataset has been loaded: {corpus} with config {config}' 
+        self.loading_handler.handle_success(self.main_win, message)  
+        self.main_win.findChild(QPushButton, "loadDataset").setEnabled(True)
+
     #--------------------------------------------------------------------------
-    def show(self):        
-        self.main_win.show()   
+    @Slot(object)
+    def on_analysis_success(self, result):                  
+        config = self.config_manager.get_configurations().get('DATASET', {})
+        corpus = config.get('corpus', 'NA')  
+        config = config.get('config', 'NA')         
+        message = f'{corpus} - {config} analysis is finished' 
+        self.benchmark_handler.handle_success(self.main_win, message)
+        self.main_win.findChild(QPushButton, "analyzeDataset").setEnabled(True) 
+    
+    #--------------------------------------------------------------------------
+    @Slot(object)
+    def on_benchmark_finished(self, tokenizers):
+        self.tokenizers = tokenizers               
+        message = 'Benchmarking is finished'   
+        self.benchmark_handler.handle_success(self.main_win, message)   
+        self.main_win.findChild(QPushButton, "runBenchmarks").setEnabled(True)    
+    
+    #--------------------------------------------------------------------------
+    @Slot(object)    
+    def on_plots_generated(self, figures):        
+        self.figures = figures
+        self.pixmaps = [self.figures_handler.convert_fig_to_qpixmap(p) for p in self.figures]
+        self.current_fig = 0
+        self._update_graphics_view()
+        self.figures_handler.handle_success(
+            self.main_win, 'Benchmark results plots have been generated')
+        self.main_win.findChild(QPushButton, "visualizeResults").setEnabled(True)       
+    
+    # [NEGATIVE OUTCOME HANDLERS]
+    ###########################################################################    
+    @Slot(tuple)
+    def on_dataset_error(self, err_tb):
+        self.loading_handler.handle_error(self.main_win, err_tb)  
+        self.main_win.findChild(QPushButton, "loadDataset").setEnabled(True)
+
+    #--------------------------------------------------------------------------
+    @Slot(tuple)
+    def on_analysis_error(self, err_tb):
+        self.benchmark_handler.handle_error(self.main_win, err_tb) 
+        self.main_win.findChild(QPushButton, "analyzeDataset").setEnabled(True) 
+
+    #--------------------------------------------------------------------------
+    @Slot(tuple)
+    def on_benchmark_error(self, err_tb):
+        self.benchmark_handler.handle_error(self.main_win, err_tb)         
+        self.progress_bar.setValue(0) 
+        self.main_win.findChild(QPushButton, "runBenchmarks").setEnabled(True) 
+
+    #--------------------------------------------------------------------------
+    @Slot(tuple)
+    def on_plots_error(self, err_tb):
+        self.figures_handler.handle_error(self.main_win, err_tb) 
+        self.main_win.findChild(QPushButton, "visualizeResults").setEnabled(True)
+    
+
+    
+        
+   
 
     
