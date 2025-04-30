@@ -87,7 +87,7 @@ class BenchmarkTokenizers:
         self.database.save_benchmark_results(benchmark_results)
 
         if self.include_NSL and self.include_custom_tokenizer:
-            NSL_benchmark_results = self.normalized_sequence_length(benchmark_results)
+            NSL_results = self.normalized_sequence_length(benchmark_results)
 
         return benchmark_results
 
