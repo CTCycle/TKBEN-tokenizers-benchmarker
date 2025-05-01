@@ -1,8 +1,9 @@
-from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlainTextEdit, QSpinBox,
-                               QMessageBox, QComboBox, QTextEdit, QProgressBar,
-                               QGraphicsScene, QGraphicsPixmapItem, QGraphicsView)
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, QIODevice, Slot, QThreadPool, Qt
+from PySide6.QtGui import QGuiApplication
+from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlaintextEdit, QSpinBox,
+                               QMessageBox, QComboBox, QtextEdit, QProgressBar,
+                               QGraphicsScene, QGraphicsPixmapItem, QGraphicsView)
 
 from TokenBenchy.commons.variables import EnvironmentVariables
 from TokenBenchy.commons.interface.events import DatasetEvents, BenchmarkEvents, VisualizationEnvents
@@ -55,6 +56,7 @@ class MainWindow:
         self._set_states()
 
         # --- prepare graphics view for figures ---
+        QGuiApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
         self.view = self.main_win.findChild(QGraphicsView, "figureCanvas")
         self.scene = QGraphicsScene()
         self.pixmap_item = QGraphicsPixmapItem()
@@ -80,7 +82,7 @@ class MainWindow:
     #--------------------------------------------------------------------------
     def _connect_combo_box(self, combo_name: str, slot):        
         combo = self.main_win.findChild(QComboBox, combo_name)
-        combo.currentTextChanged.connect(slot)
+        combo.currenttextChanged.connect(slot)
 
     #--------------------------------------------------------------------------
     def _send_message(self, message): 
@@ -137,8 +139,8 @@ class MainWindow:
     def load_and_process_dataset(self): 
         self.main_win.findChild(QPushButton, "loadDataset").setEnabled(False)
 
-        corpus_text = self.main_win.findChild(QTextEdit, "datasetCorpus").toPlainText()
-        config_text = self.main_win.findChild(QTextEdit, "datasetConfig").toPlainText()         
+        corpus_text = self.main_win.findChild(QtextEdit, "datasetCorpus").toPlaintext()
+        config_text = self.main_win.findChild(QtextEdit, "datasetConfig").toPlaintext()         
         corpus_text = corpus_text.replace('\n', ' ').strip()
         config_text = config_text.replace('\n', ' ').strip()     
 
@@ -193,18 +195,18 @@ class MainWindow:
     #--------------------------------------------------------------------------
     @Slot(str)
     def update_tokenizers_from_combo(self, text: str):
-        tokenizers = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark")  
-        existing = set(tokenizers.toPlainText().splitlines())
+        tokenizers = self.main_win.findChild(QPlaintextEdit, "tokenizersToBenchmark")  
+        existing = set(tokenizers.toPlaintext().splitlines())
         if text not in existing:
-            tokenizers.appendPlainText(text)   
+            tokenizers.appendPlaintext(text)   
 
     #--------------------------------------------------------------------------
     @Slot()
     def run_tokenizers_benchmark(self):
         self.main_win.findChild(QPushButton, "runBenchmarks").setEnabled(False)
 
-        tokenizers = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark") 
-        tokenizers_name = tokenizers.toPlainText().splitlines()
+        tokenizers = self.main_win.findChild(QPlaintextEdit, "tokenizersToBenchmark") 
+        tokenizers_name = tokenizers.toPlaintext().splitlines()
         if len(tokenizers_name) == 0 or self.text_dataset is None:
             message = "Please load both the tokenizers and the text dataset before running benchmarks!"
             QMessageBox.warning(self.main_win,
@@ -295,7 +297,7 @@ class MainWindow:
         config = self.config_manager.get_configurations().get('DATASET', {})
         corpus = config.get('corpus', 'NA')  
         config = config.get('config', 'NA')         
-        message = f'Text dataset has been loaded: {corpus} with config {config}' 
+        message = f'text dataset has been loaded: {corpus} with config {config}' 
         self.loading_handler.handle_success(self.main_win, message)  
         self.main_win.findChild(QPushButton, "loadDataset").setEnabled(True)
 
@@ -313,7 +315,7 @@ class MainWindow:
     @Slot(object)
     def on_benchmark_finished(self, tokenizers):
         self.tokenizers = tokenizers               
-        message = 'Benchmarking is finished'   
+        message = f'{len(tokenizers)} selected tokenizers have been benchmarked'   
         self.benchmark_handler.handle_success(self.main_win, message)   
         self.main_win.findChild(QPushButton, "runBenchmarks").setEnabled(True)    
     

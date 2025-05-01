@@ -74,8 +74,7 @@ class BenchmarkEvents:
         results = self.benchmarker.run_tokenizer_benchmarks(
            documents, tokenizers, progress_callback=progress_callback) 
 
-        return tokenizers 
-    
+        return tokenizers     
 
     # define the logic to handle successfull data retrieval outside the main UI loop
     #--------------------------------------------------------------------------
@@ -94,8 +93,7 @@ class BenchmarkEvents:
     #--------------------------------------------------------------------------
     def handle_error(self, window, err_tb):
         exc, tb = err_tb
-        QMessageBox.critical(window, 'Something went wrong!', f"{exc}\n\n{tb}")  
-
+        QMessageBox.critical(window, 'Something went wrong!', f"{exc}\n\n{tb}")
         
 
 
@@ -105,7 +103,7 @@ class VisualizationEnvents:
     def __init__(self, configurations):
         self.configurations = configurations     
         self.visualizer = VisualizeBenchmarkResults(self.configurations)
-        self.DPI = 400
+        self.DPI = 600
 
     #--------------------------------------------------------------------------
     def visualize_benchmark_results(self, tokenizers):        
@@ -122,7 +120,7 @@ class VisualizationEnvents:
     
     #--------------------------------------------------------------------------
     def convert_fig_to_qpixmap(self, fig):    
-        buf = io.BytesIO()
+        buf = io.bytesIO()
         fig.savefig(buf, format="png", dpi=self.DPI)
         buf.seek(0)
         img_data = buf.read()       
