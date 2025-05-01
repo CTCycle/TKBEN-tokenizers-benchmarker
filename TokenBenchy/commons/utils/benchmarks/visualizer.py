@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from TokenBenchy.commons.constants import CONFIG, EVALUATION_PATH
+from TokenBenchy.commons.constants import EVALUATION_PATH
 from TokenBenchy.commons.logger import logger
 
 
@@ -16,8 +16,8 @@ class VisualizeBenchmarkResults:
         self.configuration = configuration                
         self.save_images = configuration.get('save_images', True)
         self.observed_features = [
-            'Tokens to words ratio', 'AVG tokens length', 'Bytes per token'] 
-        self.DPI = 600
+            'tokens_to_words_ratio', 'AVG_tokens_length', 'bytes_per_token'] 
+        self.DPI = 400
         
     #--------------------------------------------------------------------------
     def update_tokenizers_dictionaries(self, tokenizers): 
@@ -60,16 +60,16 @@ class VisualizeBenchmarkResults:
             data.append(
                 {'Tokenizer': k, 'Length': v, 'Type': 'Decoded Length'})
         df = pd.DataFrame(data)      
-        fig, ax = plt.subplots(figsize=(16, 18), dpi=self.DPI) 
+        fig, ax = plt.subplots(figsize=(18, 20), dpi=self.DPI) 
         plt.subplot() 
         sns.barplot(
             x='Tokenizer', y='Length', hue='Type', data=df, 
             palette='viridis', edgecolor='black')        
-        ax.set_xlabel('', fontsize=16)        
-        ax.set_ylabel('Vocabulary size', fontsize=16)
-        ax.set_title('Vocabulary size by tokenizer', fontsize=16, y=1.05)
-        ax.tick_params(axis='x', rotation=45, labelsize=16, labelright=False)
-        ax.tick_params(axis='y', labelsize=16)
+        ax.set_xlabel('', fontsize=20)        
+        ax.set_ylabel('Vocabulary size', fontsize=20)
+        ax.set_title('Vocabulary size by tokenizer', fontsize=20, y=1.05)
+        ax.tick_params(axis='x', rotation=45, labelsize=20, labelright=False)
+        ax.tick_params(axis='y', labelsize=20)
         ax.legend(fontsize=16)
         plt.tight_layout()
 
@@ -90,7 +90,7 @@ class VisualizeBenchmarkResults:
             subwords_perc = len(subwords)/(len(words) + len(subwords)) * 100
             words_perc = len(words)/(len(words) + len(subwords)) * 100
             word_types_data.append({'Vocabulary': k, 'Type': 'Subwords', 'Percentage': subwords_perc})
-            word_types_data.append({'Vocabulary': k, 'Type': 'Words', 'Percentage': words_perc})
+            word_types_data.append({'Vocabulary': k, 'Type': 'words', 'Percentage': words_perc})
         
         df = pd.DataFrame(word_types_data)
         fig, ax = plt.subplots(figsize=(16, 18), dpi=self.DPI)    
@@ -100,7 +100,7 @@ class VisualizeBenchmarkResults:
         
         ax.set_xlabel('', fontsize=16)
         ax.set_ylabel('Percentage (%)', fontsize=16)        
-        ax.set_title('Subwords vs Complete Words', fontsize=16, y=1.05)
+        ax.set_title('Subwords vs Complete words', fontsize=16, y=1.05)
         ax.tick_params(axis='x', rotation=45, labelsize=16, labelright=False)
         ax.tick_params(axis='y', labelsize=16)
         ax.legend(fontsize=16)       
@@ -124,23 +124,22 @@ class VisualizeBenchmarkResults:
             decoded_word_lens = [len(x) for x in decoded_words]
             fig, axs = plt.subplots(2, 1, figsize=(16, 18), sharex=False, dpi=self.DPI)          
             sns.histplot(vocab_word_lens, ax=axs[0], color='skyblue', edgecolor='black', 
-                         label='Vocab Words', binwidth=1)
-            axs[0].set_title(f'Vocab Words - {k}', fontsize=16)
+                         label='Vocab words', binwidth=1)
+            axs[0].set_title(f'Vocab words - {k}', fontsize=16)
             axs[0].set_ylabel('Frequency', fontsize=16)
-            axs[0].set_xlabel('Word Length', fontsize=16)                         
+            axs[0].set_xlabel('word Length', fontsize=16)                         
             sns.histplot(decoded_word_lens, ax=axs[1], color='orange', edgecolor='black', 
-                         label='Decoded Words', binwidth=1)
-            axs[1].set_title(f'Decoded Words - {k}', fontsize=16)
+                         label='Decoded words', binwidth=1)
+            axs[1].set_title(f'Decoded words - {k}', fontsize=16)
             axs[1].set_ylabel('Frequency', fontsize=16)
-            axs[1].set_xlabel('Word Length', fontsize=16)
+            axs[1].set_xlabel('word Length', fontsize=16)
             plt.tight_layout()
             histograms.append(fig)              
 
             if self.save_images:            
                 plot_loc = os.path.join(EVALUATION_PATH, f'{k_rep}_words_by_len.jpeg')
                 plt.savefig(
-                    plot_loc, bbox_inches='tight', format='jpeg', dpi=self.DPI)
-                   
+                    plot_loc, bbox_inches='tight', format='jpeg', dpi=self.DPI)                   
 
         return histograms       
                         
@@ -158,16 +157,16 @@ class VisualizeBenchmarkResults:
         for key in word_lengths.keys():
             for length in word_lengths[key]:
                 data.append(
-                    {'Tokenizer': key, 'Word Length': length, 'Type': 'Original'})
+                    {'Tokenizer': key, 'word Length': length, 'Type': 'Original'})
             for length in word_lengths_decoded.get(key, []):
                 data.append(
-                    {'Tokenizer': key, 'Word Length': length, 'Type': 'Decoded'})
+                    {'Tokenizer': key, 'word Length': length, 'Type': 'Decoded'})
                 
         df = pd.DataFrame(data)
         fig, ax = plt.subplots(figsize=(16, 18), dpi=self.DPI) 
-        sns.boxplot(x='Tokenizer', y='Word Length', hue='Type', data=df)   
+        sns.boxplot(x='Tokenizer', y='word Length', hue='Type', data=df)   
         ax.set_xlabel('', fontsize=16)
-        ax.set_ylabel('Word Length', fontsize=16)        
+        ax.set_ylabel('word Length', fontsize=16)        
         ax.set_title('Distribution of words by length', fontsize=16, y=1.05)
         ax.tick_params(axis='x', rotation=45, labelsize=16, labelright=False)
         ax.tick_params(axis='y', labelsize=16)

@@ -16,11 +16,11 @@ class BenchmarkResultsTable:
             'text_characters': 'INTEGER',
             'words_count': 'INTEGER',
             'AVG_words_length': 'FLOAT',
-            'Tokens_count': 'INTEGER',
-            'Tokens_characters': 'INTEGER',
+            'tokens_count': 'INTEGER',
+            'tokens_characters': 'INTEGER',
             'AVG_tokens_length': 'FLOAT',
-            'Tokens_to_words_ratio': 'FLOAT',
-            'Bytes_per_token': 'FLOAT'}
+            'tokens_to_words_ratio': 'FLOAT',
+            'bytes_per_token': 'FLOAT'}
         
     #--------------------------------------------------------------------------
     def get_dtypes(self):
@@ -34,14 +34,43 @@ class BenchmarkResultsTable:
             text_characters INTEGER,
             words_count INTEGER,
             AVG_words_length FLOAT,
-            Tokens_count INTEGER,
-            Tokens_characters INTEGER,
+            tokens_count INTEGER,
+            tokens_characters INTEGER,
             AVG_tokens_length FLOAT,
-            Tokens_to_words_ratio FLOAT,
-            Bytes_per_token FLOAT
+            tokens_to_words_ratio FLOAT,
+            bytes_per_token FLOAT
         );
         '''
 
+        cursor.execute(query)
+
+
+###############################################################################
+class VocabularyStatsTable:
+
+    def __init__(self):
+        self.name = 'VOCABULARY_STATISTICS'
+        self.dtypes = {
+            'number_of_tokens_from_vocabulary': 'INTEGER',
+            'number_of_tokens_from_decode': 'INTEGER',
+            'number_shared_tokens': 'INTEGER',
+            'number_unshared_tokens': 'INTEGER'}
+        
+    #--------------------------------------------------------------------------
+    def get_dtypes(self):
+        return self.dtypes
+    
+    #--------------------------------------------------------------------------
+    def create_table(self, cursor):
+        query = f'''
+        CREATE TABLE IF NOT EXISTS {self.name} (
+            number_of_tokens_from_vocabulary INTEGER,
+            number_of_tokens_from_decode INTEGER,
+            number_shared_tokens INTEGER,
+            number_unshared_tokens INTEGER'
+        );
+        '''
+       
         cursor.execute(query)
 
 
@@ -51,8 +80,8 @@ class DatasetStatsTable:
     def __init__(self):
         self.name = 'DATASET_STATISTICS'
         self.dtypes = {
-            'Text': 'VARCHAR',
-            'Words_count': 'INTEGER',
+            'text': 'VARCHAR',
+            'words_count': 'INTEGER',
             'AVG_word_length': 'FLOAT',
             'STD_word_length': 'FLOAT'}
         
@@ -64,8 +93,8 @@ class DatasetStatsTable:
     def create_table(self, cursor):
         query = f'''
         CREATE TABLE IF NOT EXISTS {self.name} (
-            Text VARCHAR,
-            Words_count INTEGER,
+            text VARCHAR,
+            words_count INTEGER,
             AVG_word_length FLOAT,
             STD_word_length FLOAT
         );
@@ -84,6 +113,7 @@ class TOKENDatabase:
         self.db_path = os.path.join(DATA_PATH, 'TokenBenchy_database.db') 
         self.configuration = configuration 
         self.benchmark_results = BenchmarkResultsTable()
+        self.vocabulary_results = VocabularyStatsTable()
         self.dataset_summary = DatasetStatsTable()         
         self.initialize_database()  
        
@@ -119,6 +149,15 @@ class TOKENDatabase:
         conn = sqlite3.connect(self.db_path)         
         data.to_sql(table_name, conn, if_exists='replace', index=False,
             dtype=self.benchmark_results.get_dtypes())
+        conn.commit()
+        conn.close() 
+
+    #--------------------------------------------------------------------------
+    def save_vocabulary_results(self, data : pd.DataFrame):        
+        conn = sqlite3.connect(self.db_path)         
+        data.to_sql(
+            self.vocabulary_results.name, conn, if_exists='replace', index=False,
+            dtype=self.vocabulary_results.get_dtypes())
         conn.commit()
         conn.close() 
 
