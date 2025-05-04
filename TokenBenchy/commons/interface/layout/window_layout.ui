@@ -685,36 +685,53 @@ li.checked::marker { content: &quot;\2612&quot;; }
             <number>20</number>
            </property>
            <item>
-            <layout class="QVBoxLayout" name="verticalLayout_2">
+            <layout class="QHBoxLayout" name="horizontalLayout">
+             <property name="spacing">
+              <number>15</number>
+             </property>
+             <property name="rightMargin">
+              <number>5</number>
+             </property>
              <item>
-              <widget class="QLabel" name="label_3">
-               <property name="text">
-                <string>Select tokenizers from list or write the name in the text box</string>
-               </property>
-              </widget>
+              <layout class="QVBoxLayout" name="verticalLayout_2">
+               <item>
+                <widget class="QLabel" name="label_3">
+                 <property name="text">
+                  <string>Select tokenizers from list or write the name in the text box</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QComboBox" name="selectTokenizers">
+                 <item>
+                  <property name="text">
+                   <string>axiong/PMC_LLaMA_13B</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>BAAI/bge-small-en-v1.5</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>bert-base-uncased</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>BioMistral/BioMistral-7B</string>
+                  </property>
+                 </item>
+                </widget>
+               </item>
+              </layout>
              </item>
              <item>
-              <widget class="QComboBox" name="selectTokenizers">
-               <item>
-                <property name="text">
-                 <string>axiong/PMC_LLaMA_13B</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>BAAI/bge-small-en-v1.5</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>bert-base-uncased</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>BioMistral/BioMistral-7B</string>
-                </property>
-               </item>
+              <widget class="QPushButton" name="scanHF">
+               <property name="text">
+                <string>Scan</string>
+               </property>
               </widget>
              </item>
             </layout>

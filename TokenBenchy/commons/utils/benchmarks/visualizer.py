@@ -82,8 +82,16 @@ class VisualizeBenchmarkResults:
     def plot_histogram_tokens_length(self):
         histograms = []
         for tokenizer, grp in self.vocab_stats.groupby('tokenizer'):
-            fig, axs = plt.subplots(2, 1,  figsize=(16, 18), sharex=False,
-                dpi=self.DPI)
+            fig, axs = plt.subplots(2, 1, figsize=(16,18), dpi=self.DPI)
+            for ax, col in zip(axs, ['number_tokens_from_vocabulary',
+                                    'number_tokens_from_decode']):
+                vals = grp[col]                
+                num_bins = max(int(vals.max() - vals.min() + 1), 1)
+                sns.histplot(
+                    data=grp, x=col, ax=ax,
+                    bins=num_bins,
+                    discrete=True,
+                    edgecolor='black')
 
             # Plot vocab tokens count
             sns.histplot(data=grp, x='number_tokens_from_vocabulary',
@@ -122,8 +130,7 @@ class VisualizeBenchmarkResults:
             'number_tokens_from_decode': 'Decoded'})
 
         fig, ax = plt.subplots(figsize=(16, 18), dpi=self.DPI)
-        sns.boxplot(x='tokenizer', y='Token Count', hue='Type',
-            data=df, ax=ax)
+        sns.boxplot(x='tokenizer', y='Token Count', hue='Type', data=df, ax=ax)
     
         ax.set_xlabel('', fontsize=16)
         ax.set_ylabel('Number of Tokens', fontsize=16)

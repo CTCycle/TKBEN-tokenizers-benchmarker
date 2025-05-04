@@ -71,7 +71,6 @@ class BenchmarkTokenizers:
     #--------------------------------------------------------------------------
     def run_tokenizer_benchmarks(self, documents, tokenizers : dict, progress_callback=None):  
         vocabulary_stats = self.calculate_vocabulary_statistics(tokenizers)
-
         if self.max_docs_number is not None and self.max_docs_number <= len(documents):
             documents = documents[:self.max_docs_number]      
         
