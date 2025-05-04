@@ -1,8 +1,8 @@
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, QIODevice, Slot, QThreadPool, Qt
 from PySide6.QtGui import QGuiApplication
-from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlaintextEdit, QSpinBox,
-                               QMessageBox, QComboBox, QtextEdit, QProgressBar,
+from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlainTextEdit, QSpinBox,
+                               QMessageBox, QComboBox, QTextEdit, QProgressBar,
                                QGraphicsScene, QGraphicsPixmapItem, QGraphicsView)
 
 from TokenBenchy.commons.variables import EnvironmentVariables
@@ -82,7 +82,7 @@ class MainWindow:
     #--------------------------------------------------------------------------
     def _connect_combo_box(self, combo_name: str, slot):        
         combo = self.main_win.findChild(QComboBox, combo_name)
-        combo.currenttextChanged.connect(slot)
+        combo.currentTextChanged.connect(slot)
 
     #--------------------------------------------------------------------------
     def _send_message(self, message): 
@@ -139,8 +139,8 @@ class MainWindow:
     def load_and_process_dataset(self): 
         self.main_win.findChild(QPushButton, "loadDataset").setEnabled(False)
 
-        corpus_text = self.main_win.findChild(QtextEdit, "datasetCorpus").toPlaintext()
-        config_text = self.main_win.findChild(QtextEdit, "datasetConfig").toPlaintext()         
+        corpus_text = self.main_win.findChild(QTextEdit, "datasetCorpus").toPlainText()
+        config_text = self.main_win.findChild(QTextEdit, "datasetConfig").toPlainText()         
         corpus_text = corpus_text.replace('\n', ' ').strip()
         config_text = config_text.replace('\n', ' ').strip()     
 
@@ -195,18 +195,18 @@ class MainWindow:
     #--------------------------------------------------------------------------
     @Slot(str)
     def update_tokenizers_from_combo(self, text: str):
-        tokenizers = self.main_win.findChild(QPlaintextEdit, "tokenizersToBenchmark")  
-        existing = set(tokenizers.toPlaintext().splitlines())
+        tokenizers = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark")  
+        existing = set(tokenizers.toPlainText().splitlines())
         if text not in existing:
-            tokenizers.appendPlaintext(text)   
+            tokenizers.appendPlainText(text)   
 
     #--------------------------------------------------------------------------
     @Slot()
     def run_tokenizers_benchmark(self):
         self.main_win.findChild(QPushButton, "runBenchmarks").setEnabled(False)
 
-        tokenizers = self.main_win.findChild(QPlaintextEdit, "tokenizersToBenchmark") 
-        tokenizers_name = tokenizers.toPlaintext().splitlines()
+        tokenizers = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark") 
+        tokenizers_name = tokenizers.toPlainText().splitlines()
         if len(tokenizers_name) == 0 or self.text_dataset is None:
             message = "Please load both the tokenizers and the text dataset before running benchmarks!"
             QMessageBox.warning(self.main_win,
@@ -255,8 +255,7 @@ class MainWindow:
         # initialize worker for asynchronous loading of the dataset
         # functions that are passed to the worker will be executed in a separate thread
         self._benchmark_worker = Worker(
-           self.figures_handler.visualize_benchmark_results, 
-           self.tokenizers)  
+           self.figures_handler.visualize_benchmark_results)  
         
         worker = self._benchmark_worker         
        

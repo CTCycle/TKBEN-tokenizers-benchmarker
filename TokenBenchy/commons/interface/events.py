@@ -40,17 +40,14 @@ class DatasetEvents:
         QMessageBox.Ok)
 
         # send message to status bar
-        window.statusBar().showMessage(message)  
-    
+        window.statusBar().showMessage(message)    
 
     # define the logic to handle error during data retrieval outside the main UI loop
     #--------------------------------------------------------------------------
     def handle_error(self, window, err_tb):
         exc, tb = err_tb
-        logger.error(exc, tb)
-        QMessageBox.critical(window, 'Dataset loading failed!', f"{exc}\n\n{tb}") 
-
-    
+        logger.error(f"{exc}\n\n{tb}")
+        QMessageBox.critical(window, 'Something went wrong!', f"{exc}\n\n{tb}")
 
 
 ###############################################################################
@@ -93,6 +90,7 @@ class BenchmarkEvents:
     #--------------------------------------------------------------------------
     def handle_error(self, window, err_tb):
         exc, tb = err_tb
+        logger.error(f"{exc}\n\n{tb}")
         QMessageBox.critical(window, 'Something went wrong!', f"{exc}\n\n{tb}")
         
 
@@ -106,11 +104,8 @@ class VisualizationEnvents:
         self.DPI = 600
 
     #--------------------------------------------------------------------------
-    def visualize_benchmark_results(self, tokenizers):        
-        self.visualizer.update_tokenizers_dictionaries(tokenizers)
-
-        figures = []
-        self.visualizer.get_vocabulary_report()          
+    def visualize_benchmark_results(self): 
+        figures = []                
         figures.append(self.visualizer.plot_vocabulary_size())
         figures.extend(self.visualizer.plot_histogram_tokens_length())
         figures.append(self.visualizer.plot_boxplot_tokens_length())
@@ -145,4 +140,5 @@ class VisualizationEnvents:
     #--------------------------------------------------------------------------
     def handle_error(self, window, err_tb):
         exc, tb = err_tb
-        QMessageBox.critical(window, 'Something went wrong!', f"{exc}\n\n{tb}")  
+        logger.error(f"{exc}\n\n{tb}")
+        QMessageBox.critical(window, 'Something went wrong!', f"{exc}\n\n{tb}")
