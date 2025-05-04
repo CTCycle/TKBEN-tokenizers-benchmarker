@@ -30,7 +30,7 @@ class Worker(QRunnable):
         # or if it has a **kwargs catch‑all
         accepts_progress = any(
             p.name == "progress_callback" or
-            p.kind == inspect.Parameter.VAR_KEYword
+            p.kind == inspect.Parameter.VAR_KEYWORD
             for p in params)
 
         # Only inject if it's safe to do so

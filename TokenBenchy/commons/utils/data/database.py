@@ -51,10 +51,13 @@ class VocabularyStatsTable:
     def __init__(self):
         self.name = 'VOCABULARY_STATISTICS'
         self.dtypes = {
-            'number_of_tokens_from_vocabulary': 'INTEGER',
-            'number_of_tokens_from_decode': 'INTEGER',
+            'tokenizer': 'VARCHAR',
+            'number_tokens_from_vocabulary': 'INTEGER',
+            'number_tokens_from_decode': 'INTEGER',
             'number_shared_tokens': 'INTEGER',
-            'number_unshared_tokens': 'INTEGER'}
+            'number_unshared_tokens': 'INTEGER',
+            'percentage_subwords': 'FLOAT',
+            'percentage_true_words': 'FLOAT'}
         
     #--------------------------------------------------------------------------
     def get_dtypes(self):
@@ -64,10 +67,13 @@ class VocabularyStatsTable:
     def create_table(self, cursor):
         query = f'''
         CREATE TABLE IF NOT EXISTS {self.name} (
-            number_of_tokens_from_vocabulary INTEGER,
-            number_of_tokens_from_decode INTEGER,
+            tokenizer VARCHAR,
+            number_tokens_from_vocabulary INTEGER,
+            number_tokens_from_decode INTEGER,
             number_shared_tokens INTEGER,
-            number_unshared_tokens INTEGER'
+            number_unshared_tokens INTEGER,
+            percentage_subwords FLOAT,
+            percentage_true_words FLOAT
         );
         '''
        
@@ -100,9 +106,7 @@ class DatasetStatsTable:
         );
         '''
        
-        cursor.execute(query)
-    
-      
+        cursor.execute(query)     
 
 
 # [DATABASE]
@@ -122,18 +126,22 @@ class TOKENDatabase:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor() 
         self.benchmark_results.create_table(cursor)  
+        self.vocabulary_results.create_table(cursor)  
         self.dataset_summary.create_table(cursor)   
+        
         conn.commit()
         conn.close() 
 
     #--------------------------------------------------------------------------
     def load_benchmark_results(self):            
         conn = sqlite3.connect(self.db_path)        
-        data = pd.read_sql_query(
+        benchmarks = pd.read_sql_query(
             f"SELECT * FROM {self.benchmark_results.name}", conn)
+        stats = pd.read_sql_query(
+            f"SELECT * FROM {self.vocabulary_results.name}", conn)
         conn.close()  
 
-        return data       
+        return benchmarks, stats       
 
     #--------------------------------------------------------------------------
     def save_dataset_statistics(self, data : pd.DataFrame):         

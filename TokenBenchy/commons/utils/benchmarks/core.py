@@ -39,32 +39,41 @@ class BenchmarkTokenizers:
 
     #--------------------------------------------------------------------------
     def calculate_vocabulary_statistics(self, tokenizers):
-        vocabularies = {k : v.get_vocab() for k, v in tokenizers.items()}        
-        self.vocab_len = {k: len(v) for k, v in vocabularies.items()}  
-        self.vocab_decoded = {}
-        self.vocab_len_decoded = {} 
-                
-        vocab_data = pd.DataFrame({'Tokenizer': name})
-        for i, (name, tokenizer) in enumerate(tokenizers.items()):
-            vocabulary = vocabularies[name] 
-            vocab_indexes = list(vocabulary.values())
-            vocab_words = list(vocabulary.keys())
-            decoded_words = tokenizer.decode(vocab_indexes).split()                  
-                        
-            intersection = set(vocab_words).intersection(set(decoded_words))    
-            not_intersecting = set(vocab_words).symmetric_difference(set(decoded_words))
-            vocab_data['number_of_tokens_from_vocabulary'] = len(vocab_words)
-            vocab_data['number_of_tokens_from_decode'] = len(decoded_words)
-            vocab_data['number_shared_tokens'] = len(intersection)
-            vocab_data['number_unshared_tokens'] = len(not_intersecting)
-
-        return vocab_data
-                    
+        rows = []
+        for name, tokenizer in tokenizers.items():
+            vocab = tokenizer.get_vocab()              
+            vocab_words = list(vocab.keys())
+            vocab_idxs = list(vocab.values())
+            subwords = [x for x in vocab_words if '##' in x]
+            true_words = [x for x in vocab_words if x not in subwords]
+            
+            decoded = tokenizer.decode(vocab_idxs).split()            
+            shared = set(vocab_words).intersection(decoded)
+            unshared = set(vocab_words).symmetric_difference(decoded)            
+           
+            subwords_perc = len(subwords)/(len(true_words) + len(subwords)) * 100
+            words_perc = len(true_words)/(len(true_words) + len(subwords)) * 100           
+            
+            rows.append({
+                'tokenizer': name,
+                'number_tokens_from_vocabulary': len(vocab_words),
+                'number_tokens_from_decode': len(decoded),
+                'number_shared_tokens': len(shared),
+                'number_unshared_tokens': len(unshared),
+                'percentage_subwords': subwords_perc,
+                'percentage_true_words' : words_perc})
+            
+            vocabulary_stats = pd.DataFrame(rows)
+            self.database.save_vocabulary_results(vocabulary_stats)
+        
+        return pd.DataFrame(rows)
     
     #--------------------------------------------------------------------------
-    def run_tokenizer_benchmarks(self, documents, tokenizers : dict, progress_callback=None):        
+    def run_tokenizer_benchmarks(self, documents, tokenizers : dict, progress_callback=None):  
+        vocabulary_stats = self.calculate_vocabulary_statistics(tokenizers)
+
         if self.max_docs_number is not None and self.max_docs_number <= len(documents):
-            documents = documents[:self.max_docs_number]
+            documents = documents[:self.max_docs_number]      
         
         all_tokenizers = []
         for i, (tokenizer_name, tokenizer) in enumerate(tokenizers.items()):
@@ -100,8 +109,7 @@ class BenchmarkTokenizers:
                 drop_cols.extend(['text', 'tokens'])
             data = data.drop(columns=drop_cols)           
 
-            self.database.save_benchmark_results(data, table_name=k_rep)
-            self.database.save_benchmark_results(data, table_name=k_rep)
+            self.database.save_benchmark_results(data, table_name=k_rep)            
             all_tokenizers.append(data)
 
             if progress_callback is not None:
