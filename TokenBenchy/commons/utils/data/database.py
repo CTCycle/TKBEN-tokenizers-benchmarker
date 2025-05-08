@@ -81,6 +81,33 @@ class VocabularyStatsTable:
 
 
 ###############################################################################
+class VocabularyTable:
+
+    def __init__(self):
+        self.name = 'VOCABULARY'
+        self.dtypes = {
+            'id': 'INTEGER',
+            'vocabulary_tokens': 'VARCHAR',
+            'decoded_tokens': 'VARCHAR'}
+        
+    #--------------------------------------------------------------------------
+    def get_dtypes(self):
+        return self.dtypes
+    
+    #--------------------------------------------------------------------------
+    def create_table(self, cursor):
+        query = f'''
+        CREATE TABLE IF NOT EXISTS {self.name} (
+            id INTEGER,
+            vocabulary_tokens VARCHAR
+            decoded_tokens VARCHAR
+        );
+        '''
+       
+        cursor.execute(query)    
+
+
+###############################################################################
 class DatasetStatsTable:
 
     def __init__(self):
@@ -104,20 +131,23 @@ class DatasetStatsTable:
             AVG_word_length FLOAT,
             STD_word_length FLOAT
         );
-        '''
-       
+        '''       
         cursor.execute(query)     
+
+
+
 
 
 # [DATABASE]
 ###############################################################################
-class TOKENDatabase:
+class TokenBenchyDatabase:
 
     def __init__(self, configuration):                   
         self.db_path = os.path.join(DATA_PATH, 'TokenBenchy_database.db') 
         self.configuration = configuration 
         self.benchmark_results = BenchmarkResultsTable()
         self.vocabulary_results = VocabularyStatsTable()
+        self.vocabulary_tokens = VocabularyTable()
         self.dataset_summary = DatasetStatsTable()         
         self.initialize_database()  
        
@@ -166,6 +196,16 @@ class TOKENDatabase:
         data.to_sql(
             self.vocabulary_results.name, conn, if_exists='replace', index=False,
             dtype=self.vocabulary_results.get_dtypes())
+        conn.commit()
+        conn.close() 
+
+    #--------------------------------------------------------------------------
+    def save_vocabulary_tokens(self, data : pd.DataFrame, table_name=None):
+        table_name = self.vocabulary_tokens.name if table_name is None else f'{table_name}_VOCABULARY'       
+        conn = sqlite3.connect(self.db_path)         
+        data.to_sql(
+            self.vocabulary_tokens.name, conn, if_exists='replace', index=False,
+            dtype=self.vocabulary_tokens.get_dtypes())
         conn.commit()
         conn.close() 
 
