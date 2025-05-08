@@ -4,7 +4,7 @@ import pandas as pd
 import transformers
 from tqdm import tqdm
 
-from TokenBenchy.commons.utils.data.database import TOKENDatabase
+from TokenBenchy.commons.utils.data.database import TokenBenchyDatabase
 from TokenBenchy.commons.constants import DATASETS_PATH, EVALUATION_PATH
 from TokenBenchy.commons.logger import logger
 
@@ -19,7 +19,8 @@ class BenchmarkTokenizers:
         self.reduce_size = configuration.get("reduce_output_size", False)
         self.include_custom_tokenizer = configuration.get("include_custom_tokenizer", False)
         self.include_NSL = configuration.get("include_NSL", False)
-        self.database = TOKENDatabase(configuration) 
+        self.database = TokenBenchyDatabase(configuration)
+        self.vocab_columns = ['id', 'vocabulary_tokens', 'decoded_tokens'] 
         self.configuration = configuration       
 
     #--------------------------------------------------------------------------
@@ -43,13 +44,13 @@ class BenchmarkTokenizers:
         for name, tokenizer in tokenizers.items():
             vocab = tokenizer.get_vocab()              
             vocab_words = list(vocab.keys())
-            vocab_idxs = list(vocab.values())
+            vocab_indices = list(vocab.values())
             subwords = [x for x in vocab_words if '##' in x]
             true_words = [x for x in vocab_words if x not in subwords]
             
-            decoded = tokenizer.decode(vocab_idxs).split()            
-            shared = set(vocab_words).intersection(decoded)
-            unshared = set(vocab_words).symmetric_difference(decoded)            
+            decoded_words = tokenizer.decode(vocab_indices).split()            
+            shared = set(vocab_words).intersection(decoded_words)
+            unshared = set(vocab_words).symmetric_difference(decoded_words)            
            
             subwords_perc = len(subwords)/(len(true_words) + len(subwords)) * 100
             words_perc = len(true_words)/(len(true_words) + len(subwords)) * 100           
@@ -57,20 +58,27 @@ class BenchmarkTokenizers:
             rows.append({
                 'tokenizer': name,
                 'number_tokens_from_vocabulary': len(vocab_words),
-                'number_tokens_from_decode': len(decoded),
+                'number_tokens_from_decode': len(decoded_words),
                 'number_shared_tokens': len(shared),
                 'number_unshared_tokens': len(unshared),
                 'percentage_subwords': subwords_perc,
-                'percentage_true_words' : words_perc})
-            
-            vocabulary_stats = pd.DataFrame(rows)
-            self.database.save_vocabulary_results(vocabulary_stats)
+                'percentage_true_words' : words_perc})            
+
+            # save entire vocabulary into database
+            vocabulary = pd.DataFrame(
+                [vocab_indices, vocab_words, decoded_words], 
+                columns=self.vocab_columns)
+            self.database.save_vocabulary_tokens(vocabulary, name) 
+
+        # save vocabulary statistics into database 
+        vocabulary_stats = pd.DataFrame(rows)
+        self.database.save_vocabulary_results(vocabulary_stats)           
         
-        return pd.DataFrame(rows)
+        return vocabulary, vocabulary_stats
     
     #--------------------------------------------------------------------------
     def run_tokenizer_benchmarks(self, documents, tokenizers : dict, progress_callback=None):  
-        vocabulary_stats = self.calculate_vocabulary_statistics(tokenizers)
+        vocab, vocab_stats = self.calculate_vocabulary_statistics(tokenizers)
         if self.max_docs_number is not None and self.max_docs_number <= len(documents):
             documents = documents[:self.max_docs_number]      
         
