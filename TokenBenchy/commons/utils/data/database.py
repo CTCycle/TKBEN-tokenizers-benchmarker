@@ -13,7 +13,7 @@ class BenchmarkResultsTable:
         self.name = 'BENCHMARK_RESULTS'
         self.dtypes = {
             'tokenizer': 'VARCHAR',
-            'text_characters': 'INTEGER',
+            'num_characters': 'INTEGER',
             'words_count': 'INTEGER',
             'AVG_words_length': 'FLOAT',
             'tokens_count': 'INTEGER',
@@ -171,7 +171,17 @@ class TokenBenchyDatabase:
             f"SELECT * FROM {self.vocabulary_results.name}", conn)
         conn.close()  
 
-        return benchmarks, stats       
+        return benchmarks, stats  
+
+    #--------------------------------------------------------------------------
+    def load_vocabulary_tokens(self, table_name=None):
+        table_name = self.vocabulary_tokens.name if table_name is None else f'{table_name}_VOCABULARY'       
+        conn = sqlite3.connect(self.db_path)        
+        vocabulary = pd.read_sql_query(
+            f"SELECT * FROM {self.benchmark_results.name}", conn)       
+        conn.close()  
+
+        return vocabulary
 
     #--------------------------------------------------------------------------
     def save_dataset_statistics(self, data : pd.DataFrame):         

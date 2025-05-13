@@ -1,5 +1,7 @@
 import os
 import pandas as pd
+import matplotlib
+matplotlib.use("Agg")   
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -13,16 +15,18 @@ from TokenBenchy.commons.logger import logger
 class VisualizeBenchmarkResults:
 
     def __init__(self, configuration : dict):         
-        self.database = TokenBenchyDatabase(configuration) 
-        self.benchmarks, self.vocab_stats = self.database.load_benchmark_results()                       
+        self.database = TokenBenchyDatabase(configuration)                               
         self.save_images = configuration.get('save_images', True)
         self.observed_features = [
             'tokens_to_words_ratio', 'AVG_tokens_length', 'bytes_per_token']
         self.configuration = configuration    
-        self.DPI = 400   
+        self.DPI = 400 
+
+        self.benchmarks, self.vocab_stats = self.database.load_benchmark_results()
+        self.tokenizers = self.vocab_stats['tokenizer'].to_list()  
 
     #--------------------------------------------------------------------------
-    def plot_vocabulary_size(self):                 
+    def plot_vocabulary_size(self):                        
         df = (self.vocab_stats.melt(id_vars="tokenizer",
               value_vars=["number_tokens_from_vocabulary",
                          "number_tokens_from_decode"],
@@ -51,14 +55,16 @@ class VisualizeBenchmarkResults:
            
     #--------------------------------------------------------------------------
     def plot_subwords_vs_words(self):
-        df = (self.vocab_stats.melt(id_vars="tokenizer", value_vars=[
-                        "percentage_subwords",
-                        "percentage_true_words"],
-                    var_name="Type",
-                    value_name="Percentage")
-                .assign(Type=lambda d: d["Type"].map({
-                        "percentage_subwords": "Subwords",
-                        "percentage_true_words": "True words"})))
+        for name in self.tokenizers:
+            vocabulary = self.database.load_vocabulary_tokens()
+            df = (self.vocab_stats.melt(id_vars="tokenizer", value_vars=[
+                            "percentage_subwords",
+                            "percentage_true_words"],
+                        var_name="Type",
+                        value_name="Percentage")
+                    .assign(Type=lambda d: d["Type"].map({
+                            "percentage_subwords": "Subwords",
+                            "percentage_true_words": "True words"})))
 
         fig, ax = plt.subplots(figsize=(18, 6), dpi=self.DPI)
         sns.barplot(
@@ -81,41 +87,46 @@ class VisualizeBenchmarkResults:
     #--------------------------------------------------------------------------
     def plot_histogram_tokens_length(self):
         histograms = []
-        for tokenizer, grp in self.vocab_stats.groupby('tokenizer'):
-            fig, axs = plt.subplots(2, 1, figsize=(16,18), dpi=self.DPI)
-            for ax, col in zip(axs, ['number_tokens_from_vocabulary',
-                                    'number_tokens_from_decode']):
-                vals = grp[col]                
-                num_bins = max(int(vals.max() - vals.min() + 1), 1)
-                sns.histplot(
-                    data=grp, x=col, ax=ax,
-                    bins=num_bins,
-                    discrete=True,
-                    edgecolor='black')
+        for tokenizer, grp in self.benchmarks.groupby('tokenizer'):           
+            vocab_counts = grp['number_tokens_from_vocabulary']
+            decode_counts = grp['number_tokens_from_decode']         
 
-            # Plot vocab tokens count
-            sns.histplot(data=grp, x='number_tokens_from_vocabulary',
-                ax=axs[0], binwidth=1, edgecolor='black')
+            fig, axs = plt.subplots(2, 1, figsize=(16, 18), dpi=self.DPI)
+
+            # Vocabulary tokens histogram
+            if not vocab_counts.empty:
+                sns.histplot(
+                    data=vocab_counts,
+                    ax=axs[0],
+                    binwidth=1,
+                    edgecolor='black')
+                
             axs[0].set_title(f'Tokens from Vocabulary – {tokenizer}', fontsize=16)
             axs[0].set_ylabel('Frequency', fontsize=14)
             axs[0].set_xlabel('Number of Tokens (vocab)', fontsize=14)
 
-            sns.histplot(data=grp, x='number_tokens_from_decode', ax=axs[1],
-                binwidth=1, edgecolor='black')
-            axs[1].set_title(f'Tokens from Decode – {tokenizer}', fontsize=16)
+            # Decode tokens histogram
+            if not decode_counts.empty:
+                sns.histplot(
+                    data=decode_counts,
+                    ax=axs[1],
+                    binwidth=1,
+                    edgecolor='black')
+                
+            axs[1].set_title(f'Tokens from Decode {tokenizer}', fontsize=16)
             axs[1].set_ylabel('Frequency', fontsize=14)
             axs[1].set_xlabel('Number of Tokens (decode)', fontsize=14)
 
             plt.tight_layout()
             histograms.append(fig)
-
-            # save if requested
+            
             if self.save_images:
-                fname = f"{tokenizer.replace('/', '_')}_token_counts.jpeg"
-                out_path = os.path.join(EVALUATION_PATH, fname)
+                out_path = os.path.join(EVALUATION_PATH, f'{tokenizer}_histogram_tokens.jpeg')
                 fig.savefig(out_path, bbox_inches='tight', dpi=self.DPI)
 
-        return histograms                        
+       
+
+        return histograms               
 
     #--------------------------------------------------------------------------
     def plot_boxplot_tokens_length(self):        
@@ -189,15 +200,15 @@ class ExploreTokenizers:
         data = []
         for k, v in self.vocab_len.items():
             data.append(
-            {'Tokenizer': k, 'Length': v, 'Type': 'Vocab Length'})
+            {'tokenizer': k, 'Length': v, 'Type': 'Vocab Length'})
         for k, v in self.vocab_len_decoded.items():
             data.append(
-                {'Tokenizer': k, 'Length': v, 'Type': 'Decoded Length'})
+                {'tokenizer': k, 'Length': v, 'Type': 'Decoded Length'})
         df = pd.DataFrame(data)      
         plt.figure(figsize=(16, 18)) 
         plt.subplot() 
         sns.barplot(
-            x='Tokenizer', y='Length', hue='Type', data=df, 
+            x='tokenizer', y='Length', hue='Type', data=df, 
             palette='viridis', edgecolor='black')        
         plt.xlabel('', fontsize=14)
         plt.ylabel('Vocabulary size', fontsize=14)
@@ -280,13 +291,13 @@ class ExploreTokenizers:
         for key in word_lengths.keys():
             for length in word_lengths[key]:
                 data.append(
-                    {'Tokenizer': key, 'Word Length': length, 'Type': 'Original'})
+                    {'tokenizer': key, 'Word Length': length, 'Type': 'Original'})
             for length in word_lengths_decoded.get(key, []):
                 data.append(
-                    {'Tokenizer': key, 'Word Length': length, 'Type': 'Decoded'})
+                    {'tokenizer': key, 'Word Length': length, 'Type': 'Decoded'})
         df = pd.DataFrame(data)
         plt.figure(figsize=(14, 16))
-        sns.boxplot(x='Tokenizer', y='Word Length', hue='Type', data=df)
+        sns.boxplot(x='tokenizer', y='Word Length', hue='Type', data=df)
         plt.xticks(rotation=45, ha='right', va='top', fontsize=12)
         plt.ylabel('Word Length', fontsize=14)
         plt.xlabel('', fontsize=14)
@@ -307,7 +318,7 @@ class ExploreTokenizers:
             'Tokens to words ratio', 'AVG tokens length', 'Bytes per token']    
         plt.figure(figsize=(14, 16))
         for y in observed_features:
-            sns.boxplot(x=dataset['Tokenizer'], y=dataset[y], data=dataset)            
+            sns.boxplot(x=dataset['tokenizer'], y=dataset[y], data=dataset)            
             plt.xticks(rotation=45, ha='right', fontsize=14)
             plt.yticks(fontsize=14)          
             plt.xlabel('', fontsize=14)
