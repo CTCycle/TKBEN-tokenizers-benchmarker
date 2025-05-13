@@ -204,7 +204,7 @@ class TokenBenchyDatabase:
         table_name = self.vocabulary_tokens.name if table_name is None else f'{table_name}_VOCABULARY'       
         conn = sqlite3.connect(self.db_path)         
         data.to_sql(
-            self.vocabulary_tokens.name, conn, if_exists='replace', index=False,
+            table_name, conn, if_exists='replace', index=False,
             dtype=self.vocabulary_tokens.get_dtypes())
         conn.commit()
         conn.close() 
