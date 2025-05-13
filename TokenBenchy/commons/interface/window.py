@@ -55,8 +55,7 @@ class MainWindow:
         self._connect_signals()
         self._set_states()
 
-        # --- prepare graphics view for figures ---
-        QGuiApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+        # --- prepare graphics view for figures ---        
         self.view = self.main_win.findChild(QGraphicsView, "figureCanvas")
         self.scene = QGraphicsScene()
         self.pixmap_item = QGraphicsPixmapItem()
@@ -204,7 +203,6 @@ class MainWindow:
     @Slot()
     def run_tokenizers_benchmark(self):
         self.main_win.findChild(QPushButton, "runBenchmarks").setEnabled(False)
-
         tokenizers = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark") 
         tokenizers_name = tokenizers.toPlainText().splitlines()
         if len(tokenizers_name) == 0 or self.text_dataset is None:

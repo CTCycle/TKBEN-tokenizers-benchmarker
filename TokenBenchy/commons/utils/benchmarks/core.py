@@ -1,4 +1,3 @@
-import os
 import numpy as np
 import pandas as pd
 import transformers
@@ -65,9 +64,10 @@ class BenchmarkTokenizers:
                 'percentage_true_words' : words_perc})            
 
             # save entire vocabulary into database
-            vocabulary = pd.DataFrame(
-                [vocab_indices, vocab_words, decoded_words], 
-                columns=self.vocab_columns)
+            vocabulary = pd.DataFrame({
+                self.vocab_columns[0]: pd.Series(vocab_indices),
+                self.vocab_columns[1]: pd.Series(vocab_words),
+                self.vocab_columns[2]: pd.Series(decoded_words)})
             self.database.save_vocabulary_tokens(vocabulary, name) 
 
         # save vocabulary statistics into database 
@@ -86,7 +86,7 @@ class BenchmarkTokenizers:
         for i, (tokenizer_name, tokenizer) in enumerate(tokenizers.items()):
             k_rep = tokenizer_name.replace('/', '_')
             logger.info(f'Decoding documents with {tokenizer_name}')
-            data = pd.DataFrame({'Tokenizer': tokenizer_name,'text': documents})            
+            data = pd.DataFrame({'Tokenizer': tokenizer_name, 'text': documents})            
             
             data['text_characters'] = data['text'].str.len()            
             data['words_count'] = data['text'].apply(lambda x : len(x.split()))
