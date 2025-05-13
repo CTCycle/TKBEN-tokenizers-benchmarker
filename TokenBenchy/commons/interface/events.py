@@ -32,13 +32,7 @@ class DatasetEvents:
   
     # define the logic to handle successfull data retrieval outside the main UI loop
     #--------------------------------------------------------------------------
-    def handle_success(self, window, message):            
-        QMessageBox.information(
-        window, 
-        "Task successful",
-        message,
-        QMessageBox.Ok)
-
+    def handle_success(self, window, message):        
         # send message to status bar
         window.statusBar().showMessage(message)    
 
@@ -75,14 +69,7 @@ class BenchmarkEvents:
 
     # define the logic to handle successfull data retrieval outside the main UI loop
     #--------------------------------------------------------------------------
-    def handle_success(self, window, message, popup=False): 
-        if popup:                
-            QMessageBox.information(
-            window, 
-            "Task successful",
-            message,
-            QMessageBox.Ok)
-
+    def handle_success(self, window, message): 
         # send message to status bar
         window.statusBar().showMessage(message)
     
@@ -125,14 +112,7 @@ class VisualizationEnvents:
     
     # define the logic to handle successfull data retrieval outside the main UI loop
     #--------------------------------------------------------------------------
-    def handle_success(self, window, message, popup=False): 
-        if popup:                
-            QMessageBox.information(
-            window, 
-            "Task successful",
-            message,
-            QMessageBox.Ok)
-
+    def handle_success(self, window, message):         
         # send message to status bar
         window.statusBar().showMessage(message)
     

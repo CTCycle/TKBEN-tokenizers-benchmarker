@@ -86,9 +86,9 @@ class BenchmarkTokenizers:
         for i, (tokenizer_name, tokenizer) in enumerate(tokenizers.items()):
             k_rep = tokenizer_name.replace('/', '_')
             logger.info(f'Decoding documents with {tokenizer_name}')
-            data = pd.DataFrame({'Tokenizer': tokenizer_name, 'text': documents})            
+            data = pd.DataFrame({'tokenizer': tokenizer_name, 'text': documents})            
             
-            data['text_characters'] = data['text'].str.len()            
+            data['num_characters'] = data['text'].apply(lambda x : len(str(x)))       
             data['words_count'] = data['text'].apply(lambda x : len(x.split()))
             data['AVG_words_length'] = data['text'].apply(
                 lambda text: np.mean([len(word) for word in text.split()]) if text else 0)
@@ -109,7 +109,7 @@ class BenchmarkTokenizers:
             data['tokens_to_words_ratio'] = np.where(
                 data['words_count'] > 0, data['tokens_count'] / data['words_count'], 0)
             data['bytes_per_token'] = np.where(
-                data['tokens_count'] > 0, data['text_characters'] / data['tokens_count'], 0)
+                data['tokens_count'] > 0, data['num_characters'] / data['tokens_count'], 0)
             
             drop_cols = ['tokens split']
             if self.reduce_size:
@@ -135,18 +135,18 @@ class BenchmarkTokenizers:
     #--------------------------------------------------------------------------
     def normalized_sequence_length(self, benchmark_results : pd.DataFrame):                    
         data_custom = benchmark_results[
-            benchmark_results['Tokenizer'].str.contains(
+            benchmark_results['tokenizer'].str.contains(
                 'custom tokenizer', case=False, na=False)]   
 
         data = []
-        tokenizer_names = list(benchmark_results['Tokenizer'].unique())
+        tokenizer_names = list(benchmark_results['tokenizer'].unique())
         if data_custom.empty:
             logger.warning('NSL value cannot be calculated without a custom tokenizer as reference')
             return None
         else:
             for tok in tqdm(tokenizer_names):
                 logger.info(f'NSL value is calculated for {tok} versus custom tokenizers')
-                data_chunk = benchmark_results[benchmark_results['Tokenizer'] == tok]                                                 
+                data_chunk = benchmark_results[benchmark_results['tokenizer'] == tok]                                                 
                 data_chunk['NSL'] = [
                     x/y if y != 0 else 0 for x, y in zip(
                     data_custom['tokens_count'].to_list(),
