@@ -1,6 +1,6 @@
-import io
 from PySide6.QtWidgets import QMessageBox
 from PySide6.QtGui import QImage, QPixmap
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 from TokenBenchy.commons.utils.data.downloads import DatasetDownloadManager, TokenizersDownloadManager
 from TokenBenchy.commons.utils.benchmarks.core import BenchmarkTokenizers
@@ -94,19 +94,20 @@ class VisualizationEnvents:
     def visualize_benchmark_results(self): 
         figures = []                
         figures.append(self.visualizer.plot_vocabulary_size())
-        figures.extend(self.visualizer.plot_histogram_tokens_length())
-        figures.append(self.visualizer.plot_boxplot_tokens_length())
+        figures.extend(self.visualizer.plot_tokens_length_distribution())        
         figures.append(self.visualizer.plot_subwords_vs_words())       
 
         return figures  
     
     #--------------------------------------------------------------------------
     def convert_fig_to_qpixmap(self, fig):    
-        buf = io.bytesIO()
-        fig.savefig(buf, format="png", dpi=self.DPI)
-        buf.seek(0)
-        img_data = buf.read()       
-        qimg = QImage.fromData(img_data)
+        canvas = FigureCanvasAgg(fig)
+        canvas.draw()
+        # get the size in pixels and initialize raw RGBA buffer
+        width, height = canvas.get_width_height()        
+        buf = canvas.buffer_rgba()
+        # construct a QImage pointing at that memory (no PNG decoding)
+        qimg = QImage(buf, width, height, QImage.Format_RGBA8888)
 
         return QPixmap.fromImage(qimg)
     

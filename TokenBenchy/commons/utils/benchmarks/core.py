@@ -40,7 +40,7 @@ class BenchmarkTokenizers:
     #--------------------------------------------------------------------------
     def calculate_vocabulary_statistics(self, tokenizers):
         rows = []
-        for name, tokenizer in tokenizers.items():
+        for name, tokenizer in tokenizers.items():            
             vocab = tokenizer.get_vocab()              
             vocab_words = list(vocab.keys())
             vocab_indices = list(vocab.values())
@@ -83,26 +83,32 @@ class BenchmarkTokenizers:
             documents = documents[:self.max_docs_number]      
         
         all_tokenizers = []
-        for i, (tokenizer_name, tokenizer) in enumerate(tokenizers.items()):
-            k_rep = tokenizer_name.replace('/', '_')
-            logger.info(f'Decoding documents with {tokenizer_name}')
-            data = pd.DataFrame({'tokenizer': tokenizer_name, 'text': documents})            
+        for i, (name, tokenizer) in enumerate(tokenizers.items()):
+            k = name.replace('/', '_')
+            logger.info(f'Decoding documents with {name}')
+            data = pd.DataFrame({'tokenizer': name, 'text': documents})            
             
             data['num_characters'] = data['text'].apply(lambda x : len(str(x)))       
             data['words_count'] = data['text'].apply(lambda x : len(x.split()))
             data['AVG_words_length'] = data['text'].apply(
                 lambda text: np.mean([len(word) for word in text.split()]) if text else 0)
 
-            if 'CUSTOM' in tokenizer_name and self.include_custom_tokenizer:
+            if 'CUSTOM' in name and self.include_custom_tokenizer:
                 data['tokens'] = data['text'].apply(
                     lambda text: tokenizer.decode(tokenizer.encode(text).ids))
-                data['tokens split'] = data['tokens'].str.split()
+                data['tokens split'] = data['tokens'].apply(
+                    lambda tok: tok.split() if isinstance(tok, str) else [])
             else:
                 data['tokens split'] = data['text'].apply(tokenizer.tokenize)
-                data['tokens'] = data['tokens split'].str.join(' ')
+                data['tokens'] = data['tokens split'].apply(
+                    lambda toks: ' '.join(toks) if isinstance(toks, (list, tuple)) else '')
 
-            data['tokens_count'] = data['tokens split'].str.len()
-            data['tokens_characters'] = data['tokens'].str.len()
+            data['tokens_count'] = data['tokens split'].apply(
+                lambda toks: len(toks) if isinstance(toks, (list, tuple)) else 0)
+            
+            data['tokens_characters'] = data['tokens'].apply(
+                lambda s: len(s) if isinstance(s, str) else 0)
+
             data['AVG_tokens_length'] = data['tokens split'].apply(
                 lambda tokens: np.mean([len(tok) for tok in tokens]) if tokens else 0)
 
@@ -116,7 +122,7 @@ class BenchmarkTokenizers:
                 drop_cols.extend(['text', 'tokens'])
             data = data.drop(columns=drop_cols)           
 
-            self.database.save_benchmark_results(data, table_name=k_rep)            
+            self.database.save_benchmark_results(data, table_name=k)            
             all_tokenizers.append(data)
 
             if progress_callback is not None:
@@ -139,12 +145,12 @@ class BenchmarkTokenizers:
                 'custom tokenizer', case=False, na=False)]   
 
         data = []
-        tokenizer_names = list(benchmark_results['tokenizer'].unique())
+        names = list(benchmark_results['tokenizer'].unique())
         if data_custom.empty:
             logger.warning('NSL value cannot be calculated without a custom tokenizer as reference')
             return None
         else:
-            for tok in tqdm(tokenizer_names):
+            for tok in tqdm(names):
                 logger.info(f'NSL value is calculated for {tok} versus custom tokenizers')
                 data_chunk = benchmark_results[benchmark_results['tokenizer'] == tok]                                                 
                 data_chunk['NSL'] = [

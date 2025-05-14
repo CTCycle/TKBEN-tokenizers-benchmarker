@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1142</width>
+    <width>1163</width>
     <height>866</height>
    </rect>
   </property>
@@ -854,6 +854,13 @@ li.checked::marker { content: &quot;\2612&quot;; }
              </item>
             </layout>
            </item>
+           <item>
+            <widget class="QPushButton" name="clearImg">
+             <property name="text">
+              <string>Clear</string>
+             </property>
+            </widget>
+           </item>
           </layout>
          </item>
         </layout>
@@ -868,7 +875,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1142</width>
+     <width>1163</width>
      <height>26</height>
     </rect>
    </property>
