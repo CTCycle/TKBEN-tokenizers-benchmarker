@@ -21,7 +21,7 @@ The installation process on Windows has been designed to be fully automated. To 
 ## 3. How to use
 On Windows, run *start_on_windows.bat* to launch the application. Please note that some antivirus software, such as Avast, may flag or quarantine python.exe when called by the .bat file. If you encounter unusual behavior, consider adding an exception for your Anaconda or Miniconda environments in your antivirus settings.
 
-![main_UI](TokenBenchy/commons/assets/main_window.jpg)
+![main_UI](TokenBenchy/commons/assets/main_window.png)
 
 The intuitive main interface facilitates easy selection of text datasets and tokenizers, allowing users to run benchmarks across multiple tokenizers simultaneously. Benchmark results are conveniently stored in the application's database. For each tokenizer, benchmarking metrics are calculated using both the extracted vocabulary and HuggingFace's decoder methods, highlighting any discrepancies between these approaches. 
 
@@ -34,7 +34,8 @@ The intuitive main interface facilitates easy selection of text datasets and tok
 - **tokens to words ratio**: The ratio of token count to word count.
 - **bytes per token**: The number of bytes per token, derived from the original text length.  
 
-**Setup and Maintenance:** you can run *setup/setup_and_maintenance.bat* to start the external tools for maintenance. Available options are:
+**Setup and Maintenance:** you can run *setup/setup_and_maintenance.bat* to start the external tools for maintenance with the following options:
+
 - Run installation: run the application installer for Windows
 - Enable root path imports: Enable root path imports if the main folder has been moved or renamed
 - Update project: check for updates from Github
