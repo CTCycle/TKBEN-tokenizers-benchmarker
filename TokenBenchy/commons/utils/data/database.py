@@ -1,4 +1,5 @@
 import os
+import re
 import sqlite3
 import pandas as pd
 
@@ -175,10 +176,11 @@ class TokenBenchyDatabase:
 
     #--------------------------------------------------------------------------
     def load_vocabulary_tokens(self, table_name=None):
+        table_name = re.sub(r'[^0-9A-Za-z_]', '_', table_name) if table_name is not None else None
         table_name = self.vocabulary_tokens.name if table_name is None else f'{table_name}_VOCABULARY'       
         conn = sqlite3.connect(self.db_path)        
         vocabulary = pd.read_sql_query(
-            f"SELECT * FROM {self.benchmark_results.name}", conn)       
+            f"SELECT * FROM {table_name}", conn)       
         conn.close()  
 
         return vocabulary
@@ -193,7 +195,8 @@ class TokenBenchyDatabase:
         
     #--------------------------------------------------------------------------
     def save_benchmark_results(self, data : pd.DataFrame, table_name=None):
-        table_name = self.benchmark_results.name if table_name is None else f'{table_name}_BENCHMARK_RESULTS'
+        table_name = re.sub(r'[^0-9A-Za-z_]', '_', table_name) if table_name is not None else None
+        table_name = self.vocabulary_tokens.name if table_name is None else f'{table_name}_BENCHMARK_RESULTS'       
         conn = sqlite3.connect(self.db_path)         
         data.to_sql(table_name, conn, if_exists='replace', index=False,
             dtype=self.benchmark_results.get_dtypes())
@@ -211,6 +214,7 @@ class TokenBenchyDatabase:
 
     #--------------------------------------------------------------------------
     def save_vocabulary_tokens(self, data : pd.DataFrame, table_name=None):
+        table_name = re.sub(r'[^0-9A-Za-z_]', '_', table_name) if table_name is not None else None
         table_name = self.vocabulary_tokens.name if table_name is None else f'{table_name}_VOCABULARY'       
         conn = sqlite3.connect(self.db_path)         
         data.to_sql(

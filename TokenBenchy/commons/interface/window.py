@@ -1,6 +1,6 @@
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, QIODevice, Slot, QThreadPool, Qt
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QPainter
 from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlainTextEdit, QSpinBox,
                                QMessageBox, QComboBox, QTextEdit, QProgressBar,
                                QGraphicsScene, QGraphicsPixmapItem, QGraphicsView)
@@ -55,12 +55,18 @@ class MainWindow:
         self._connect_signals()
         self._set_states()
 
-        # --- prepare graphics view for figures ---        
+        # --- prepare graphics view for figures ---
         self.view = self.main_win.findChild(QGraphicsView, "figureCanvas")
         self.scene = QGraphicsScene()
         self.pixmap_item = QGraphicsPixmapItem()
+        # make pixmap scaling use smooth interpolation
+        self.pixmap_item.setTransformationMode(Qt.SmoothTransformation)
         self.scene.addItem(self.pixmap_item)
         self.view.setScene(self.scene)
+        # set canvas hints
+        self.view.setRenderHint(QPainter.Antialiasing, True)
+        self.view.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        self.view.setRenderHint(QPainter.TextAntialiasing, True) 
 
     # [SHOW WINDOW]
     ###########################################################################
@@ -116,6 +122,7 @@ class MainWindow:
         self._connect_button("visualizeResults", self.generate_figures)  
         self._connect_button("previousImg", self.show_previous_figure)
         self._connect_button("nextImg", self.show_next_figure)       
+        self._connect_button("clearImg", self.clear_figures) 
        
     # [SLOT]
     ###########################################################################
@@ -266,10 +273,17 @@ class MainWindow:
     @Slot()
     def _update_graphics_view(self):
         if not self.figures:
-            return      
-        self.pixmap_item.setPixmap(self.pixmaps[self.current_fig])
-        self.scene.setSceneRect(self.pixmaps[self.current_fig].rect())
-        self.view.fitInView(self.pixmap_item, Qt.KeepAspectRatio)
+            return
+
+        raw_pix = self.pixmaps[self.current_fig]
+        view_size = self.view.viewport().size()
+        # scale images to the canvas pixel dimensions with smooth filtering
+        scaled = raw_pix.scaled(
+            view_size,
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation)
+        self.pixmap_item.setPixmap(scaled)
+        self.scene.setSceneRect(scaled.rect())
 
     #--------------------------------------------------------------------------
     @Slot()
@@ -284,6 +298,12 @@ class MainWindow:
         if self.current_fig < len(self.figures) - 1:
             self.current_fig += 1
             self._update_graphics_view()
+
+    #--------------------------------------------------------------------------
+    @Slot()
+    def clear_figures(self):       
+        self.figures = []
+        self.pixmaps = None
 
 
     # [POSITIVE OUTCOME HANDLERS]
