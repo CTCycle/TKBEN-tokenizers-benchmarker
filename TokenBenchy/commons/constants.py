@@ -1,4 +1,3 @@
-import json
 from os.path import join, abspath 
 
 # [PATHS]
