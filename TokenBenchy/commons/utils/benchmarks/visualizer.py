@@ -72,7 +72,7 @@ class VisualizeBenchmarkResults:
                             "percentage_subwords": "Subwords",
                             "percentage_true_words": "True words"})))
 
-        fig, ax = plt.subplots(figsize=(18, 6), dpi=self.DPI)
+        fig, ax = plt.subplots(figsize=(18, 16), dpi=self.DPI)
         sns.barplot(
             x="tokenizer", y="Percentage", hue="Type", data=df,
             palette="viridis", edgecolor="black", ax=ax)
