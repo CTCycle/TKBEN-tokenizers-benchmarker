@@ -56,8 +56,9 @@ goto :dependencies
 :dependencies
 echo.
 echo Install python libraries and packages
-call pip install PySide6==6.9.0 matplotlib==3.10.1 numpy==2.1.3 pandas==2.2.3 scikit-learn==1.6.1
-call pip install transformers==4.50.3 sentencepiece==0.2.0 datasets==2.20.0 sacremoses==0.1.1
+call pip install PySide6==6.9.0 matplotlib==3.10.1 seaborn==0.13.2 numpy==2.1.3 pandas==2.2.3 
+call pip install transformers==4.50.3 sentencepiece==0.2.0 datasets==3.2.0 sacremoses==0.1.1
+call pip install python-dotenv==1.1.0
 
 
 :: [INSTALL PROJECT IN EDITABLE MODE] 
