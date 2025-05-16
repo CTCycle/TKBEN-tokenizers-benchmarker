@@ -50,10 +50,7 @@ class MainWindow:
         self.benchmark_handler = BenchmarkEvents(self.configurations, self.hf_access_token)
         self.figures_handler = VisualizationEnvents(self.configurations)              
         
-        # setup UI elements
-        self._setup_configurations()
-        self._connect_signals()
-        self._set_states()
+        
 
         # --- prepare graphics view for figures ---
         self.view = self.main_win.findChild(QGraphicsView, "figureCanvas")
@@ -67,6 +64,48 @@ class MainWindow:
         self.view.setRenderHint(QPainter.Antialiasing, True)
         self.view.setRenderHint(QPainter.SmoothPixmapTransform, True)
         self.view.setRenderHint(QPainter.TextAntialiasing, True) 
+
+        # setup UI elements
+        self._set_states()
+        self.widgets = {}
+        self._setup_configurations([
+            (QCheckBox, "useCustomDataset", 'use_custom_data'),
+            (QCheckBox, "removeInvalid", 'set_remove_invalid'),
+            (QCheckBox, "includeCustomToken", 'check_custom_token'),
+            (QCheckBox, "includeNSL", 'check_include_NSL'),
+            (QCheckBox, "reduceSize", 'check_reduce'),
+            (QCheckBox, "saveImages", 'set_save_imgs'),
+            (QSpinBox,  "numDocs", 'set_num_docs'),
+            (QComboBox, "selectTokenizers", 'combo_tokenizers'),
+            (QPushButton, "loadDataset", 'btn_load_dataset'),
+            (QPushButton, "analyzeDataset", 'btn_analyze_dataset'),
+            (QPushButton, "runBenchmarks", 'btn_run_benchmarks'),
+            (QPushButton, "visualizeResults", 'btn_visualize_results'),
+            (QPushButton, "previousImg", 'btn_prev_img'),
+            (QPushButton, "nextImg", 'btn_next_img'),
+            (QPushButton, "clearImg", 'btn_clear_img'),
+            (QProgressBar, "progressBar", 'progress_bar'),
+            (QPlainTextEdit, "tokenizersToBenchmark",'tokenizers_to_bench'),
+            (QTextEdit, "datasetCorpus", 'text_corpus'),
+            (QTextEdit, "datasetConfig", 'text_config'),
+            (QGraphicsView, "figureCanvas",  'view')])
+        
+        self._connect_signals([
+            ('use_custom_data', 'toggled', self._update_settings),
+            ('set_remove_invalid', 'toggled', self._update_settings),
+            ('check_custom_token', 'toggled', self._update_settings),
+            ('check_include_NSL', 'toggled', self._update_settings),
+            ('check_reduce', 'toggled', self._update_settings),
+            ('set_save_imgs', 'toggled', self._update_settings),
+            ('set_num_docs', 'valueChanged', self._update_settings),
+            ('combo_tokenizers', 'currentTextChanged', self.update_tokenizers_from_combo),
+            ('btn_load_dataset', 'clicked', self.load_and_process_dataset),
+            ('btn_analyze_dataset', 'clicked', self.run_dataset_analysis),
+            ('btn_run_benchmarks', 'clicked', self.run_tokenizers_benchmark),
+            ('btn_visualize_results', 'clicked', self.generate_figures),
+            ('btn_prev_img', 'clicked', self.show_previous_figure),
+            ('btn_next_img', 'clicked', self.show_next_figure),
+            ('btn_clear_img', 'clicked', self.clear_figures)])
 
     # [SHOW WINDOW]
     ###########################################################################
@@ -95,34 +134,17 @@ class MainWindow:
 
     # [SETUP]
     ###########################################################################
-    def _setup_configurations(self):              
-        self.use_custom_data = self.main_win.findChild(QCheckBox, "useCustomDataset")
-        self.set_remove_invalid = self.main_win.findChild(QCheckBox, "removeInvalid")
-        self.check_custom_token = self.main_win.findChild(QCheckBox, "includeCustomToken")
-        self.check_include_NSL = self.main_win.findChild(QCheckBox, "includeNSL")
-        self.check_reduce = self.main_win.findChild(QCheckBox, "reduceSize")
-        self.set_save_imgs = self.main_win.findChild(QCheckBox, "saveImages")
-        
-        self.set_num_docs = self.main_win.findChild(QSpinBox, "numDocs")
-       
-        # connect their toggled signals to our updater
-        self.use_custom_data.toggled.connect(self._update_settings)
-        self.set_remove_invalid.toggled.connect(self._update_settings) 
-        self.check_custom_token.toggled.connect(self._update_settings) 
-        self.check_include_NSL.toggled.connect(self._update_settings)
-        self.check_reduce.toggled.connect(self._update_settings) 
-        self.set_num_docs.valueChanged.connect(self._update_settings)         
-      
+    def _setup_configurations(self, widget_defs):
+        for cls, name, attr in widget_defs:
+            w = self.main_win.findChild(cls, name)
+            setattr(self, attr, w)
+            self.widgets[attr] = w
+
     #--------------------------------------------------------------------------
-    def _connect_signals(self):        
-        self._connect_combo_box("selectTokenizers", self.update_tokenizers_from_combo)
-        self._connect_button("loadDataset", self.load_and_process_dataset)
-        self._connect_button("analyzeDataset", self.run_dataset_analysis)       
-        self._connect_button("runBenchmarks", self.run_tokenizers_benchmark)        
-        self._connect_button("visualizeResults", self.generate_figures)  
-        self._connect_button("previousImg", self.show_previous_figure)
-        self._connect_button("nextImg", self.show_next_figure)       
-        self._connect_button("clearImg", self.clear_figures) 
+    def _connect_signals(self, connections):
+        for attr, signal, slot in connections:
+            widget = self.widgets[attr]
+            getattr(widget, signal).connect(slot)
        
     # [SLOT]
     ###########################################################################
