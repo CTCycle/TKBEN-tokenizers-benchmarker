@@ -14,16 +14,16 @@ from TokenBenchy.commons.logger import logger
 ###############################################################################
 class DatasetEvents:
 
-    def __init__(self, configurations, hf_access_token):
-        self.configurations = configurations
+    def __init__(self, configuration, hf_access_token):
+        self.configuration = configuration
         self.hf_access_token = hf_access_token  
         self.dataset_handler = DatasetDownloadManager(
-            self.configurations, self.hf_access_token)          
+            self.configuration, self.hf_access_token)          
            
     #--------------------------------------------------------------------------
     def load_and_process_dataset(self):
         dataset = self.dataset_handler.dataset_download()
-        processor = ProcessDataset(self.configurations, dataset) 
+        processor = ProcessDataset(self.configuration, dataset) 
         documents, clean_documents = processor.split_text_dataset()  
         logger.info(f'Total number of documents: {len(documents)}')
         logger.info(f'Number of valid documents: {len(clean_documents)}')  
@@ -47,12 +47,12 @@ class DatasetEvents:
 ###############################################################################
 class BenchmarkEvents:
 
-    def __init__(self, configurations, hf_access_token):
-        self.configurations = configurations    
+    def __init__(self, configuration, hf_access_token):
+        self.configuration = configuration    
         self.hf_access_token = hf_access_token  
         self.token_handler = TokenizersDownloadManager(
-            self.configurations, self.hf_access_token)
-        self.benchmarker = BenchmarkTokenizers(configurations)                                 
+            self.configuration, self.hf_access_token)
+        self.benchmarker = BenchmarkTokenizers(configuration)                                 
            
     #--------------------------------------------------------------------------
     def calculate_dataset_statistics(self, documents):
@@ -85,9 +85,9 @@ class BenchmarkEvents:
 ###############################################################################
 class VisualizationEnvents:
 
-    def __init__(self, configurations):
-        self.configurations = configurations     
-        self.visualizer = VisualizeBenchmarkResults(self.configurations)
+    def __init__(self, configuration):
+        self.configuration = configuration     
+        self.visualizer = VisualizeBenchmarkResults(self.configuration)
         self.DPI = 600
 
     #--------------------------------------------------------------------------

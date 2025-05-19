@@ -14,7 +14,7 @@ from TokenBenchy.commons.logger import logger
 class DatasetDownloadManager:
 
     def __init__(self, configuration, hf_access_token):         
-        self.configurations = configuration  
+        self.configuration = configuration  
         self.hf_access_token = hf_access_token                                           
         self.dataset = configuration.get("DATASET", {})  
         self.dataset_corpus = self.dataset.get('corpus', 'wikitext')
