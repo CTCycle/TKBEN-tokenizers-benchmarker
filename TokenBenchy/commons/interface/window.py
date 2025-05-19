@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlainTextEdit, QSpinBox,
 
 from TokenBenchy.commons.variables import EnvironmentVariables
 from TokenBenchy.commons.interface.events import DatasetEvents, BenchmarkEvents, VisualizationEnvents
-from TokenBenchy.commons.configurations import Configurations
+from TokenBenchy.commons.configuration import Configuration
 from TokenBenchy.commons.interface.workers import Worker
 from TokenBenchy.commons.constants import UI_PATH
 from TokenBenchy.commons.logger import logger
@@ -36,8 +36,8 @@ class MainWindow:
         self.current_fig = 0
 
         # initial settings
-        self.config_manager = Configurations()
-        self.configurations = self.config_manager.get_configurations()
+        self.config_manager = Configuration()
+        self.configuration = self.config_manager.get_configuration()
     
         self.threadpool = QThreadPool.globalInstance()
         self._data_worker = None
@@ -48,14 +48,14 @@ class MainWindow:
         self.hf_access_token = EV.get_HF_access_token()
 
         # persistent handlers
-        self.loading_handler = DatasetEvents(self.configurations, self.hf_access_token)
-        self.benchmark_handler = BenchmarkEvents(self.configurations, self.hf_access_token)
-        self.figures_handler = VisualizationEnvents(self.configurations)         
+        self.loading_handler = DatasetEvents(self.configuration, self.hf_access_token)
+        self.benchmark_handler = BenchmarkEvents(self.configuration, self.hf_access_token)
+        self.figures_handler = VisualizationEnvents(self.configuration)         
 
         # setup UI elements
         self._set_states()
         self.widgets = {}
-        self._setup_configurations([
+        self._setup_configuration([
             (QCheckBox, "useCustomDataset", 'use_custom_data'),
             (QCheckBox, "removeInvalid", 'set_remove_invalid'),
             (QCheckBox, "includeCustomToken", 'check_custom_token'),
@@ -134,7 +134,7 @@ class MainWindow:
 
     # [SETUP]
     ###########################################################################
-    def _setup_configurations(self, widget_defs):
+    def _setup_configuration(self, widget_defs):
         for cls, name, attr in widget_defs:
             w = self.main_win.findChild(cls, name)
             setattr(self, attr, w)
@@ -171,12 +171,12 @@ class MainWindow:
         corpus_text = corpus_text.replace('\n', ' ').strip()
         config_text = config_text.replace('\n', ' ').strip()     
 
-        # update configurations with the text from the input boxes and reinitialize
-        # the loading handler with the new configurations
+        # update configuration with the text from the input boxes and reinitialize
+        # the loading handler with the new configuration
         dataset_config = {'corpus': corpus_text, 'config': config_text} 
         self.config_manager.update_value('DATASET', dataset_config)
-        self.configurations = self.config_manager.get_configurations() 
-        self.loading_handler = DatasetEvents(self.configurations, self.hf_access_token) 
+        self.configuration = self.config_manager.get_configuration() 
+        self.loading_handler = DatasetEvents(self.configuration, self.hf_access_token) 
         
         # send message to status bar
         self._send_message(
@@ -202,9 +202,9 @@ class MainWindow:
             
         self.main_win.findChild(QPushButton, "analyzeDataset").setEnabled(False)
 
-        self.configurations = self.config_manager.get_configurations() 
+        self.configuration = self.config_manager.get_configuration() 
         self.benchmark_handler = BenchmarkEvents(
-            self.configurations, self.hf_access_token)  
+            self.configuration, self.hf_access_token)  
 
         # send message to status bar        
         self._send_message("Computing statistics for the selected dataset")
@@ -243,10 +243,10 @@ class MainWindow:
         tokenizers_name = [x.replace('\n', ' ').strip() for x in tokenizers_name]
         self.config_manager.update_value('TOKENIZERS', tokenizers_name)
 
-        # initialize the benchmark handler with the current configurations
-        self.configurations = self.config_manager.get_configurations() 
+        # initialize the benchmark handler with the current configuration
+        self.configuration = self.config_manager.get_configuration() 
         self.benchmark_handler = BenchmarkEvents(
-            self.configurations, self.hf_access_token)              
+            self.configuration, self.hf_access_token)              
 
         # send message to status bar
         self._send_message("Running tokenizers benchmark...")  
@@ -272,8 +272,8 @@ class MainWindow:
     def generate_figures(self):     
         self.main_win.findChild(QPushButton, "visualizeResults").setEnabled(False)
 
-        self.configurations = self.config_manager.get_configurations() 
-        self.figures_handler = VisualizationEnvents(self.configurations)
+        self.configuration = self.config_manager.get_configuration() 
+        self.figures_handler = VisualizationEnvents(self.configuration)
         
         # send message to status bar
         self._send_message("Generating benchmark results figures")  
@@ -332,7 +332,7 @@ class MainWindow:
     @Slot(object)
     def on_dataset_loaded(self, datasets):             
         self.text_dataset = datasets
-        config = self.config_manager.get_configurations().get('DATASET', {})
+        config = self.config_manager.get_configuration().get('DATASET', {})
         corpus = config.get('corpus', 'NA')  
         config = config.get('config', 'NA')         
         message = f'text dataset has been loaded: {corpus} with config {config}' 
@@ -342,7 +342,7 @@ class MainWindow:
     #--------------------------------------------------------------------------
     @Slot(object)
     def on_analysis_success(self, result):                  
-        config = self.config_manager.get_configurations().get('DATASET', {})
+        config = self.config_manager.get_configuration().get('DATASET', {})
         corpus = config.get('corpus', 'NA')  
         config = config.get('config', 'NA')         
         message = f'{corpus} - {config} analysis is finished' 

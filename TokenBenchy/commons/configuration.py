@@ -1,10 +1,10 @@
 
 
 ###############################################################################
-class Configurations:
+class Configuration:
     
     def __init__(self):
-        self.configurations = {'use_custom_dataset' : False,
+        self.configuration = {'use_custom_dataset' : False,
                                'remove_invalid_documents' : True, 
                                'include_custom_tokenizer' : False,
                                'include_NSL' : False,
@@ -16,9 +16,9 @@ class Configurations:
                                "TOKENIZERS": []} 
 
     #--------------------------------------------------------------------------  
-    def get_configurations(self):
-        return self.configurations
+    def get_configuration(self):
+        return self.configuration
     
     #--------------------------------------------------------------------------
     def update_value(self, key: str, value: bool):       
-        self.configurations[key] = value
+        self.configuration[key] = value
