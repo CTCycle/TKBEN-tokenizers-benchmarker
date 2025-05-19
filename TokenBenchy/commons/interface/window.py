@@ -1,3 +1,6 @@
+from TokenBenchy.commons.variables import EnvironmentVariables
+EV = EnvironmentVariables()
+
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, QIODevice, Slot, QThreadPool, Qt
 from PySide6.QtGui import QPainter
@@ -41,29 +44,13 @@ class MainWindow:
         self._tokenizer_worker = None
         self._benchmark_worker = None
 
-        # get Hugging Face access token
-        EV = EnvironmentVariables()
+        # get Hugging Face access token        
         self.hf_access_token = EV.get_HF_access_token()
 
         # persistent handlers
         self.loading_handler = DatasetEvents(self.configurations, self.hf_access_token)
         self.benchmark_handler = BenchmarkEvents(self.configurations, self.hf_access_token)
-        self.figures_handler = VisualizationEnvents(self.configurations)              
-        
-        
-
-        # --- prepare graphics view for figures ---
-        self.view = self.main_win.findChild(QGraphicsView, "figureCanvas")
-        self.scene = QGraphicsScene()
-        self.pixmap_item = QGraphicsPixmapItem()
-        # make pixmap scaling use smooth interpolation
-        self.pixmap_item.setTransformationMode(Qt.SmoothTransformation)
-        self.scene.addItem(self.pixmap_item)
-        self.view.setScene(self.scene)
-        # set canvas hints
-        self.view.setRenderHint(QPainter.Antialiasing, True)
-        self.view.setRenderHint(QPainter.SmoothPixmapTransform, True)
-        self.view.setRenderHint(QPainter.TextAntialiasing, True) 
+        self.figures_handler = VisualizationEnvents(self.configurations)         
 
         # setup UI elements
         self._set_states()
@@ -74,16 +61,16 @@ class MainWindow:
             (QCheckBox, "includeCustomToken", 'check_custom_token'),
             (QCheckBox, "includeNSL", 'check_include_NSL'),
             (QCheckBox, "reduceSize", 'check_reduce'),
-            (QCheckBox, "saveImages", 'set_save_imgs'),
+            (QCheckBox, "saveImages", 'set_save_img'),
             (QSpinBox,  "numDocs", 'set_num_docs'),
             (QComboBox, "selectTokenizers", 'combo_tokenizers'),
-            (QPushButton, "loadDataset", 'btn_load_dataset'),
-            (QPushButton, "analyzeDataset", 'btn_analyze_dataset'),
-            (QPushButton, "runBenchmarks", 'btn_run_benchmarks'),
-            (QPushButton, "visualizeResults", 'btn_visualize_results'),
-            (QPushButton, "previousImg", 'btn_prev_img'),
-            (QPushButton, "nextImg", 'btn_next_img'),
-            (QPushButton, "clearImg", 'btn_clear_img'),
+            (QPushButton, "loadDataset", 'load_dataset'),
+            (QPushButton, "analyzeDataset", 'analyze_dataset'),
+            (QPushButton, "runBenchmarks", 'run_benchmarks'),
+            (QPushButton, "visualizeResults", 'visualize_results'),
+            (QPushButton, "previousImg", 'prev_img'),
+            (QPushButton, "nextImg", 'next_img'),
+            (QPushButton, "clearImg", 'clear_img'),
             (QProgressBar, "progressBar", 'progress_bar'),
             (QPlainTextEdit, "tokenizersToBenchmark",'tokenizers_to_bench'),
             (QTextEdit, "datasetCorpus", 'text_corpus'),
@@ -96,16 +83,29 @@ class MainWindow:
             ('check_custom_token', 'toggled', self._update_settings),
             ('check_include_NSL', 'toggled', self._update_settings),
             ('check_reduce', 'toggled', self._update_settings),
-            ('set_save_imgs', 'toggled', self._update_settings),
+            ('set_save_img', 'toggled', self._update_settings),
             ('set_num_docs', 'valueChanged', self._update_settings),
             ('combo_tokenizers', 'currentTextChanged', self.update_tokenizers_from_combo),
-            ('btn_load_dataset', 'clicked', self.load_and_process_dataset),
-            ('btn_analyze_dataset', 'clicked', self.run_dataset_analysis),
-            ('btn_run_benchmarks', 'clicked', self.run_tokenizers_benchmark),
-            ('btn_visualize_results', 'clicked', self.generate_figures),
-            ('btn_prev_img', 'clicked', self.show_previous_figure),
-            ('btn_next_img', 'clicked', self.show_next_figure),
-            ('btn_clear_img', 'clicked', self.clear_figures)])
+            ('load_dataset', 'clicked', self.load_and_process_dataset),
+            ('analyze_dataset', 'clicked', self.run_dataset_analysis),
+            ('run_benchmarks', 'clicked', self.run_tokenizers_benchmark),
+            ('visualize_results', 'clicked', self.generate_figures),
+            ('prev_img', 'clicked', self.show_previous_figure),
+            ('next_img', 'clicked', self.show_next_figure),
+            ('clear_img', 'clicked', self.clear_figures)])
+        
+        # --- prepare graphics view for figures ---
+        self.view = self.main_win.findChild(QGraphicsView, "figureCanvas")
+        self.scene = QGraphicsScene()
+        self.pixmap_item = QGraphicsPixmapItem()
+        # make pixmap scaling use smooth interpolation
+        self.pixmap_item.setTransformationMode(Qt.SmoothTransformation)
+        self.scene.addItem(self.pixmap_item)
+        self.view.setScene(self.scene)
+        # set canvas hints
+        self.view.setRenderHint(QPainter.Antialiasing, True)
+        self.view.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        self.view.setRenderHint(QPainter.TextAntialiasing, True) 
 
     # [SHOW WINDOW]
     ###########################################################################
@@ -159,14 +159,13 @@ class MainWindow:
         self.config_manager.update_value('include_custom_tokenizer', self.check_custom_token.isChecked())
         self.config_manager.update_value('include_NSL', self.check_include_NSL.isChecked())
         self.config_manager.update_value('reduce_output_size', self.check_reduce.isChecked())
-        self.config_manager.update_value('save_images', self.set_save_imgs.isChecked())  
+        self.config_manager.update_value('save_images', self.set_save_img.isChecked())  
         self.config_manager.update_value('num_documents', self.set_num_docs.value())    
 
     #--------------------------------------------------------------------------
     @Slot()
     def load_and_process_dataset(self): 
         self.main_win.findChild(QPushButton, "loadDataset").setEnabled(False)
-
         corpus_text = self.main_win.findChild(QTextEdit, "datasetCorpus").toPlainText()
         config_text = self.main_win.findChild(QTextEdit, "datasetConfig").toPlainText()         
         corpus_text = corpus_text.replace('\n', ' ').strip()
