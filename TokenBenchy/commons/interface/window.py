@@ -1,6 +1,7 @@
 from TokenBenchy.commons.variables import EnvironmentVariables
 EV = EnvironmentVariables()
 
+from functools import partial
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, QIODevice, Slot, QThreadPool, Qt
 from PySide6.QtGui import QPainter
@@ -56,13 +57,13 @@ class MainWindow:
         self._set_states()
         self.widgets = {}
         self._setup_configuration([
-            (QCheckBox, "useCustomDataset", 'use_custom_data'),
-            (QCheckBox, "removeInvalid", 'set_remove_invalid'),
-            (QCheckBox, "includeCustomToken", 'check_custom_token'),
-            (QCheckBox, "includeNSL", 'check_include_NSL'),
-            (QCheckBox, "reduceSize", 'check_reduce'),
-            (QCheckBox, "saveImages", 'set_save_img'),
-            (QSpinBox,  "numDocs", 'set_num_docs'),
+            (QCheckBox, "useCustomDataset", 'custom_dataset'),
+            (QCheckBox, "removeInvalid", 'remove_invalid_docs'),
+            (QCheckBox, "includeCustomToken", 'custom_tokenizer'),
+            (QCheckBox, "includeNSL", 'include_NSL'),
+            (QCheckBox, "reduceSize", 'reduce_size'),
+            (QCheckBox, "saveImages", 'save_images'),
+            (QSpinBox,  "numDocs", 'num_documents'),
             (QComboBox, "selectTokenizers", 'combo_tokenizers'),
             (QPushButton, "loadDataset", 'load_dataset'),
             (QPushButton, "analyzeDataset", 'analyze_dataset'),
@@ -78,13 +79,13 @@ class MainWindow:
             (QGraphicsView, "figureCanvas",  'view')])
         
         self._connect_signals([
-            ('use_custom_data', 'toggled', self._update_settings),
-            ('set_remove_invalid', 'toggled', self._update_settings),
-            ('check_custom_token', 'toggled', self._update_settings),
-            ('check_include_NSL', 'toggled', self._update_settings),
-            ('check_reduce', 'toggled', self._update_settings),
-            ('set_save_img', 'toggled', self._update_settings),
-            ('set_num_docs', 'valueChanged', self._update_settings),
+            ('custom_dataset', 'toggled', self._update_settings),
+            ('remove_invalid_docs', 'toggled', self._update_settings),
+            ('custom_tokenizer', 'toggled', self._update_settings),
+            ('include_NSL', 'toggled', self._update_settings),
+            ('reduce_size', 'toggled', self._update_settings),
+            ('save_images', 'toggled', self._update_settings),
+            ('num_documents', 'valueChanged', self._update_settings),
             ('combo_tokenizers', 'currentTextChanged', self.update_tokenizers_from_combo),
             ('load_dataset', 'clicked', self.load_and_process_dataset),
             ('analyze_dataset', 'clicked', self.run_dataset_analysis),
@@ -94,6 +95,55 @@ class MainWindow:
             ('next_img', 'clicked', self.show_next_figure),
             ('clear_img', 'clicked', self.clear_figures)])
         
+        self._auto_connect_settings() 
+        self._set_graphics() 
+        
+    # ------------------- Helpers for configuration updates -------------------
+    def connect_update_setting(self, widget, signal_name, config_key, getter=None):
+        if getter is None:
+            if isinstance(widget, (QCheckBox)):
+                getter = widget.isChecked
+            elif isinstance(widget, (QSpinBox)):
+                getter = widget.value
+            elif isinstance(widget, QComboBox):
+                getter = widget.currentText
+           
+        signal = getattr(widget, signal_name)
+        signal.connect(partial(self._update_single_setting, config_key, getter))
+
+    #--------------------------------------------------------------------------
+    def _update_single_setting(self, config_key, getter, *args):
+        value = getter()
+        self.config_manager.update_value(config_key, value)
+
+    #--------------------------------------------------------------------------
+    def _auto_connect_settings(self):
+        connections = [            
+            ('use_custom_dataset', 'toggled', 'use_custom_dataset'),
+            ('remove_invalid_docs', 'toggled', 'remove_invalid_documents'),
+            ('custom_tokenizer', 'toggled', 'include_custom_tokenizer'),
+            ('include_NSL', 'toggled', 'include_NSL'),
+            ('save_images', 'toggled', 'save_images'),
+            ('num_documents', 'valueChanged', 'num_documents')]    
+
+        for attr, signal_name, config_key in connections:
+            widget = self.widgets[attr]
+            self.connect_update_setting(widget, signal_name, config_key)
+        
+
+    # [SHOW WINDOW]
+    ###########################################################################
+    def show(self):        
+        self.main_win.show()
+
+    # [HELPERS FOR SETTING CONNECTIONS]
+    ###########################################################################
+    def _set_states(self): 
+        self.progress_bar = self.main_win.findChild(QProgressBar, "progressBar")
+        self.progress_bar.setValue(0)   
+
+    #--------------------------------------------------------------------------
+    def _set_graphics(self):
         # --- prepare graphics view for figures ---
         self.view = self.main_win.findChild(QGraphicsView, "figureCanvas")
         self.scene = QGraphicsScene()
@@ -106,17 +156,6 @@ class MainWindow:
         self.view.setRenderHint(QPainter.Antialiasing, True)
         self.view.setRenderHint(QPainter.SmoothPixmapTransform, True)
         self.view.setRenderHint(QPainter.TextAntialiasing, True) 
-
-    # [SHOW WINDOW]
-    ###########################################################################
-    def show(self):        
-        self.main_win.show()
-
-    # [HELPERS FOR SETTING CONNECTIONS]
-    ###########################################################################
-    def _set_states(self): 
-        self.progress_bar = self.main_win.findChild(QProgressBar, "progressBar")
-        self.progress_bar.setValue(0)   
 
     #--------------------------------------------------------------------------
     def _connect_button(self, button_name: str, slot):        
@@ -150,18 +189,7 @@ class MainWindow:
     ###########################################################################
     # It's good practice to define methods that act as slots within the class
     # that manages the UI elements. These slots can then call methods on the
-    # handler objects. Using @Slot decorator is optional but good practice
-    #--------------------------------------------------------------------------
-    @Slot()
-    def _update_settings(self):        
-        self.config_manager.update_value('use_custom_dataset', self.use_custom_data.isChecked())
-        self.config_manager.update_value('remove_invalid_documents', self.set_remove_invalid.isChecked())
-        self.config_manager.update_value('include_custom_tokenizer', self.check_custom_token.isChecked())
-        self.config_manager.update_value('include_NSL', self.check_include_NSL.isChecked())
-        self.config_manager.update_value('reduce_output_size', self.check_reduce.isChecked())
-        self.config_manager.update_value('save_images', self.set_save_img.isChecked())  
-        self.config_manager.update_value('num_documents', self.set_num_docs.value())    
-
+    # handler objects. Using @Slot decorator is optional but good practice    
     #--------------------------------------------------------------------------
     @Slot()
     def load_and_process_dataset(self): 
