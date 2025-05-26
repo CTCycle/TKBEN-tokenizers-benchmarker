@@ -4,6 +4,7 @@ import transformers
 from tqdm import tqdm
 
 from TokenBenchy.commons.utils.data.database import TokenBenchyDatabase
+from TokenBenchy.commons.interface.workers import check_thread_status, update_progress_callback
 from TokenBenchy.commons.constants import DATASETS_PATH, EVALUATION_PATH
 from TokenBenchy.commons.logger import logger
 
@@ -38,7 +39,7 @@ class BenchmarkTokenizers:
         self.database.save_dataset_statistics(dataset_stats)
 
     #--------------------------------------------------------------------------
-    def calculate_vocabulary_statistics(self, tokenizers):
+    def calculate_vocabulary_statistics(self, tokenizers, worker=None):
         rows = []
         for name, tokenizer in tokenizers.items():            
             vocab = tokenizer.get_vocab()              
@@ -68,7 +69,9 @@ class BenchmarkTokenizers:
                 self.vocab_columns[0]: pd.Series(vocab_indices),
                 self.vocab_columns[1]: pd.Series(vocab_words),
                 self.vocab_columns[2]: pd.Series(decoded_words)})
-            self.database.save_vocabulary_tokens(vocabulary, name) 
+            self.database.save_vocabulary_tokens(vocabulary, name)
+
+            check_thread_status(worker) 
 
         # save vocabulary statistics into database 
         vocabulary_stats = pd.DataFrame(rows)
@@ -77,7 +80,9 @@ class BenchmarkTokenizers:
         return vocabulary, vocabulary_stats
     
     #--------------------------------------------------------------------------
-    def run_tokenizer_benchmarks(self, documents, tokenizers : dict, progress_callback=None):  
+    def run_tokenizer_benchmarks(self, documents, tokenizers : dict, progress_callback=None,
+                                 worker=None):
+        
         vocab, vocab_stats = self.calculate_vocabulary_statistics(tokenizers)
         if self.max_docs_number is not None and self.max_docs_number <= len(documents):
             documents = documents[:self.max_docs_number]      
@@ -125,10 +130,8 @@ class BenchmarkTokenizers:
             self.database.save_benchmark_results(data, table_name=k)            
             all_tokenizers.append(data)
 
-            if progress_callback is not None:
-                total = len(tokenizers.items())
-                percent = int((i + 1) * 100 / total)
-                progress_callback(percent)
+            check_thread_status(worker)
+            update_progress_callback(i, len(tokenizers.items()), progress_callback)         
 
         benchmark_results = pd.concat(all_tokenizers, ignore_index=True)
         self.database.save_benchmark_results(benchmark_results)

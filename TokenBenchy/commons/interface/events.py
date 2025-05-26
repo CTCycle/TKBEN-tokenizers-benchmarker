@@ -6,6 +6,7 @@ from TokenBenchy.commons.utils.data.downloads import DatasetDownloadManager, Tok
 from TokenBenchy.commons.utils.benchmarks.core import BenchmarkTokenizers
 from TokenBenchy.commons.utils.benchmarks.visualizer import VisualizeBenchmarkResults
 from TokenBenchy.commons.utils.data.processing import ProcessDataset
+from TokenBenchy.commons.interface.workers import check_thread_status
 from TokenBenchy.commons.constants import ROOT_DIR, DATA_PATH
 from TokenBenchy.commons.logger import logger
 
@@ -55,15 +56,15 @@ class BenchmarkEvents:
         self.benchmarker = BenchmarkTokenizers(configuration)                                 
            
     #--------------------------------------------------------------------------
-    def calculate_dataset_statistics(self, documents):
-        self.benchmarker.calculate_dataset_stats(documents) 
+    def calculate_dataset_statistics(self, documents, worker=None):
+        self.benchmarker.calculate_dataset_stats(documents, worker=worker) 
         return True
     
     #--------------------------------------------------------------------------
-    def execute_benchmarks(self, documents, progress_callback=None):
-        tokenizers = self.token_handler.tokenizer_download()
+    def execute_benchmarks(self, documents, progress_callback=None, worker=None):
+        tokenizers = self.token_handler.tokenizer_download(worker=worker)
         results = self.benchmarker.run_tokenizer_benchmarks(
-           documents, tokenizers, progress_callback=progress_callback) 
+           documents, tokenizers, progress_callback=progress_callback, worker=worker) 
 
         return tokenizers     
 
@@ -91,10 +92,16 @@ class VisualizationEnvents:
         self.DPI = 600
 
     #--------------------------------------------------------------------------
-    def visualize_benchmark_results(self): 
-        figures = []                
+    def visualize_benchmark_results(self, worker=None): 
+        figures = []       
+                 
+        check_thread_status(worker)
         figures.append(self.visualizer.plot_vocabulary_size())
-        figures.extend(self.visualizer.plot_tokens_length_distribution())        
+
+        check_thread_status(worker)
+        figures.extend(self.visualizer.plot_tokens_length_distribution())
+
+        check_thread_status(worker)        
         figures.append(self.visualizer.plot_subwords_vs_words())       
 
         return figures  

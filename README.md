@@ -23,7 +23,7 @@ On Windows, run *start_on_windows.bat* to launch the application. Please note th
 
 ![main_UI](TokenBenchy/commons/assets/main_window.png)
 
-The intuitive main interface facilitates easy selection of text datasets and tokenizers, allowing users to run benchmarks across multiple tokenizers simultaneously. Benchmark results are conveniently stored in the application's database. For each tokenizer, benchmarking metrics are calculated using both the extracted vocabulary and HuggingFace's decoder methods, highlighting any discrepancies between these approaches. 
+The intuitive main interface facilitates easy selection of text datasets and tokenizers, allowing users to run benchmarks across multiple tokenizers simultaneously. Benchmark results are conveniently stored in the application's database. For each tokenizer, benchmarking metrics are calculated using both the extracted vocabulary and HuggingFace's decoder methods, highlighting any discrepancies between these approaches. The following statistics are analyzed for each selected tokenizer:
 
 - **text characters**: The number of characters in the original text.
 - **words count**: The number of words in the text.
@@ -36,10 +36,10 @@ The intuitive main interface facilitates easy selection of text datasets and tok
 
 **Setup and Maintenance:** you can run *setup/setup_and_maintenance.bat* to start the external tools for maintenance with the following options:
 
-- Run installation: run the application installer for Windows
-- Enable root path imports: Enable root path imports if the main folder has been moved or renamed
-- Update project: check for updates from Github
-- Remove logs: remove all logs file from *resources/logs*
+- **Run installation:** run the application installer for Windows
+- **Enable root path imports:** refresh root path imports if the main folder has been moved or renamed
+- **Update project:** check for updates from Github
+- **Remove logs:** remove all logs file from *resources/logs*
 
 ### 3.1 Resources
 This folder organizes dataset and tokenizers benchmark results. By default, all data is stored within an SQLite database. To visualize and interact with the SQLite database, we recommend downloading and installing the DB Browser for SQLite, available at: https://sqlitebrowser.org/dl/. The directory structure includes the following folders:
