@@ -4,7 +4,7 @@ EV = EnvironmentVariables()
 from functools import partial
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, QIODevice, Slot, QThreadPool, Qt
-from PySide6.QtGui import QPainter
+from PySide6.QtGui import QPainter, QPixmap
 from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlainTextEdit, QSpinBox,
                                QMessageBox, QComboBox, QTextEdit, QProgressBar,
                                QGraphicsScene, QGraphicsPixmapItem, QGraphicsView)
@@ -31,9 +31,8 @@ class MainWindow:
         self.main_win.showMaximized()
 
         self.text_dataset = None
-        self.tokenizers = None       
-        self.figures = []
-        self.pixmaps = None
+        self.tokenizers = []            
+        self.pixmaps = []
         self.current_fig = 0
 
         # initial settings
@@ -41,9 +40,7 @@ class MainWindow:
         self.configuration = self.config_manager.get_configuration()
     
         self.threadpool = QThreadPool.globalInstance()
-        self._data_worker = None
-        self._tokenizer_worker = None
-        self._benchmark_worker = None
+        self.worker = None        
 
         # get Hugging Face access token        
         self.hf_access_token = EV.get_HF_access_token()
@@ -57,7 +54,9 @@ class MainWindow:
         self._set_states()
         self.widgets = {}
         self._setup_configuration([
-            (QCheckBox, "useCustomDataset", 'custom_dataset'),
+            (QPushButton,'stopThread','stop_thread'),
+            (QProgressBar, "progressBar", 'progress_bar'), 
+            (QCheckBox, "useCustomDataset", 'use_custom_dataset'),
             (QCheckBox, "removeInvalid", 'remove_invalid_docs'),
             (QCheckBox, "includeCustomToken", 'custom_tokenizer'),
             (QCheckBox, "includeNSL", 'include_NSL'),
@@ -71,21 +70,14 @@ class MainWindow:
             (QPushButton, "visualizeResults", 'visualize_results'),
             (QPushButton, "previousImg", 'prev_img'),
             (QPushButton, "nextImg", 'next_img'),
-            (QPushButton, "clearImg", 'clear_img'),
-            (QProgressBar, "progressBar", 'progress_bar'),
+            (QPushButton, "clearImg", 'clear_img'),            
             (QPlainTextEdit, "tokenizersToBenchmark",'tokenizers_to_bench'),
             (QTextEdit, "datasetCorpus", 'text_corpus'),
             (QTextEdit, "datasetConfig", 'text_config'),
             (QGraphicsView, "figureCanvas",  'view')])
         
         self._connect_signals([
-            ('custom_dataset', 'toggled', self._update_settings),
-            ('remove_invalid_docs', 'toggled', self._update_settings),
-            ('custom_tokenizer', 'toggled', self._update_settings),
-            ('include_NSL', 'toggled', self._update_settings),
-            ('reduce_size', 'toggled', self._update_settings),
-            ('save_images', 'toggled', self._update_settings),
-            ('num_documents', 'valueChanged', self._update_settings),
+            ('stop_thread','clicked',self.stop_running_worker),           
             ('combo_tokenizers', 'currentTextChanged', self.update_tokenizers_from_combo),
             ('load_dataset', 'clicked', self.load_and_process_dataset),
             ('analyze_dataset', 'clicked', self.run_dataset_analysis),
@@ -97,8 +89,15 @@ class MainWindow:
         
         self._auto_connect_settings() 
         self._set_graphics() 
+
+    # [SHOW WINDOW]
+    ###########################################################################
+    def show(self):        
+        self.main_win.show()
         
-    # ------------------- Helpers for configuration updates -------------------
+    
+    
+    ###########################################################################
     def connect_update_setting(self, widget, signal_name, config_key, getter=None):
         if getter is None:
             if isinstance(widget, (QCheckBox)):
@@ -128,13 +127,7 @@ class MainWindow:
 
         for attr, signal_name, config_key in connections:
             widget = self.widgets[attr]
-            self.connect_update_setting(widget, signal_name, config_key)
-        
-
-    # [SHOW WINDOW]
-    ###########################################################################
-    def show(self):        
-        self.main_win.show()
+            self.connect_update_setting(widget, signal_name, config_key)       
 
     # [HELPERS FOR SETTING CONNECTIONS]
     ###########################################################################
@@ -169,7 +162,7 @@ class MainWindow:
 
     #--------------------------------------------------------------------------
     def _send_message(self, message): 
-        self.main_win.statusBar().showMessage(message)
+        self.main_win.statusBar().showMessage(message)    
 
     # [SETUP]
     ###########################################################################
@@ -190,6 +183,13 @@ class MainWindow:
     # It's good practice to define methods that act as slots within the class
     # that manages the UI elements. These slots can then call methods on the
     # handler objects. Using @Slot decorator is optional but good practice    
+    #--------------------------------------------------------------------------    
+    Slot()
+    def stop_running_worker(self):
+        if self.worker is not None:
+            self.worker.stop()       
+        self._send_message("Interrupt requested. Waiting for threads to stop...")
+
     #--------------------------------------------------------------------------
     @Slot()
     def load_and_process_dataset(self): 
@@ -212,11 +212,12 @@ class MainWindow:
 
         # initialize worker for asynchronous loading of the dataset
         # functions that are passed to the worker will be executed in a separate thread
-        self._data_worker = Worker(self.loading_handler.load_and_process_dataset)
-        worker = self._data_worker       
-        worker.signals.finished.connect(self.on_dataset_loaded)
-        worker.signals.error.connect(self.on_dataset_error)
-        self.threadpool.start(worker)
+        self.worker = Worker(self.loading_handler.load_and_process_dataset)
+            
+        self.worker.signals.finished.connect(self.on_dataset_loaded)
+        self.worker.signals.error.connect(self.on_dataset_error)
+        self.worker.signals.interrupted.connect(self.on_task_interrupted)
+        self.threadpool.start(self.worker)
 
     #--------------------------------------------------------------------------
     @Slot()
@@ -238,14 +239,14 @@ class MainWindow:
         self._send_message("Computing statistics for the selected dataset")
        
         # initialize worker for asynchronous loading of the dataset
-        self._data_worker = Worker(
+        self.worker = Worker(
             self.benchmark_handler.calculate_dataset_statistics,
-            self.text_dataset)
-        
-        worker = self._data_worker      
-        worker.signals.finished.connect(self.on_analysis_success)
-        worker.signals.error.connect(self.on_analysis_error)
-        self.threadpool.start(worker)  
+            self.text_dataset)        
+            
+        self.worker.signals.finished.connect(self.on_analysis_success)
+        self.worker.signals.error.connect(self.on_analysis_error)
+        self.worker.signals.interrupted.connect(self.on_task_interrupted)
+        self.threadpool.start(self.worker)  
 
     #--------------------------------------------------------------------------
     @Slot(str)
@@ -258,7 +259,8 @@ class MainWindow:
     #--------------------------------------------------------------------------
     @Slot()
     def run_tokenizers_benchmark(self):
-        self.main_win.findChild(QPushButton, "runBenchmarks").setEnabled(False)
+        self.run_benchmarks.setEnabled(False)
+
         tokenizers = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark") 
         tokenizers_name = tokenizers.toPlainText().splitlines()
         if len(tokenizers_name) == 0 or self.text_dataset is None:
@@ -293,13 +295,13 @@ class MainWindow:
         # connect the finished and error signals to their respective slots 
         worker.signals.finished.connect(self.on_benchmark_finished)
         worker.signals.error.connect(self.on_benchmark_error)
+        self.worker.signals.interrupted.connect(self.on_task_interrupted)
         self.threadpool.start(worker)  
 
     #--------------------------------------------------------------------------
     @Slot()
     def generate_figures(self):     
-        self.main_win.findChild(QPushButton, "visualizeResults").setEnabled(False)
-
+        self.visualize_results.setEnabled(False)
         self.configuration = self.config_manager.get_configuration() 
         self.figures_handler = VisualizationEnvents(self.configuration)
         
@@ -308,15 +310,13 @@ class MainWindow:
 
         # initialize worker for asynchronous loading of the dataset
         # functions that are passed to the worker will be executed in a separate thread
-        self._benchmark_worker = Worker(
-           self.figures_handler.visualize_benchmark_results)  
-        
-        worker = self._benchmark_worker         
+        self.worker = Worker(self.figures_handler.visualize_benchmark_results)               
        
         # connect the finished and error signals to their respective slots 
-        worker.signals.finished.connect(self.on_plots_generated)
-        worker.signals.error.connect(self.on_plots_error)
-        self.threadpool.start(worker) 
+        self.worker.signals.finished.connect(self.on_plots_generated)
+        self.worker.signals.error.connect(self.on_plots_error)
+        self.worker.signals.interrupted.connect(self.on_task_interrupted)
+        self.threadpool.start(self.worker) 
 
     #--------------------------------------------------------------------------
     @Slot()
@@ -350,9 +350,15 @@ class MainWindow:
 
     #--------------------------------------------------------------------------
     @Slot()
-    def clear_figures(self):       
-        self.figures = []
-        self.pixmaps = None
+    def clear_figures(self):
+        self.pixmaps.clear()
+        self.current_fig = 0
+        # set the existing pixmap_item to an empty QPixmap
+        self.pixmap_item.setPixmap(QPixmap())
+        # Shrink the scene rect so nothing is visible
+        self.scene.setSceneRect(0, 0, 0, 0)
+        # Force an immediate repaint
+        self.view.viewport().update()
 
 
     # [POSITIVE OUTCOME HANDLERS]
@@ -365,7 +371,7 @@ class MainWindow:
         config = config.get('config', 'NA')         
         message = f'text dataset has been loaded: {corpus} with config {config}' 
         self.loading_handler.handle_success(self.main_win, message)  
-        self.main_win.findChild(QPushButton, "loadDataset").setEnabled(True)
+        self.load_dataset.setEnabled(True) 
 
     #--------------------------------------------------------------------------
     @Slot(object)
@@ -375,7 +381,7 @@ class MainWindow:
         config = config.get('config', 'NA')         
         message = f'{corpus} - {config} analysis is finished' 
         self.benchmark_handler.handle_success(self.main_win, message)
-        self.main_win.findChild(QPushButton, "analyzeDataset").setEnabled(True) 
+        self.analyze_dataset.setEnabled(True)
     
     #--------------------------------------------------------------------------
     @Slot(object)
@@ -383,44 +389,53 @@ class MainWindow:
         self.tokenizers = tokenizers               
         message = f'{len(tokenizers)} selected tokenizers have been benchmarked'   
         self.benchmark_handler.handle_success(self.main_win, message)   
-        self.main_win.findChild(QPushButton, "runBenchmarks").setEnabled(True)    
+        self.run_benchmarks.setEnabled(True) 
     
     #--------------------------------------------------------------------------
     @Slot(object)    
-    def on_plots_generated(self, figures):        
-        self.figures = figures
-        self.pixmaps = [self.figures_handler.convert_fig_to_qpixmap(p) for p in self.figures]
+    def on_plots_generated(self, figures):         
+        self.pixmaps = [self.figures_handler.convert_fig_to_qpixmap(p) for p in figures]
         self.current_fig = 0
         self._update_graphics_view()
         self.figures_handler.handle_success(
             self.main_win, 'Benchmark results plots have been generated')
-        self.main_win.findChild(QPushButton, "visualizeResults").setEnabled(True)       
+        self.visualize_results.setEnabled(True)      
     
     # [NEGATIVE OUTCOME HANDLERS]
     ###########################################################################    
     @Slot(tuple)
     def on_dataset_error(self, err_tb):
         self.loading_handler.handle_error(self.main_win, err_tb)  
-        self.main_win.findChild(QPushButton, "loadDataset").setEnabled(True)
+        self.load_dataset.setEnabled(True) 
 
     #--------------------------------------------------------------------------
     @Slot(tuple)
     def on_analysis_error(self, err_tb):
         self.benchmark_handler.handle_error(self.main_win, err_tb) 
-        self.main_win.findChild(QPushButton, "analyzeDataset").setEnabled(True) 
+        self.analyze_dataset.setEnabled(True)
 
     #--------------------------------------------------------------------------
     @Slot(tuple)
     def on_benchmark_error(self, err_tb):
         self.benchmark_handler.handle_error(self.main_win, err_tb)         
         self.progress_bar.setValue(0) 
-        self.main_win.findChild(QPushButton, "runBenchmarks").setEnabled(True) 
+        self.run_benchmarks.setEnabled(True)
 
     #--------------------------------------------------------------------------
     @Slot(tuple)
     def on_plots_error(self, err_tb):
         self.figures_handler.handle_error(self.main_win, err_tb) 
-        self.main_win.findChild(QPushButton, "visualizeResults").setEnabled(True)
+        self.visualize_results.setEnabled(True)  
+
+    #--------------------------------------------------------------------------
+    def on_task_interrupted(self): 
+        self.load_dataset.setEnabled(True) 
+        self.analyze_dataset.setEnabled(True)
+        self.run_benchmarks.setEnabled(True) 
+        self.visualize_results.setEnabled(True)         
+        self.progress_bar.setValue(0)
+        self._send_message('Current task has been interrupted by user') 
+        logger.warning('Current task has been interrupted by user')        
     
 
     

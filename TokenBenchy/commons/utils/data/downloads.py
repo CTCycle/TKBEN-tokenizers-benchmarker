@@ -5,6 +5,7 @@ from datasets import load_dataset
 from tokenizers import Tokenizer
 from transformers import AutoTokenizer
 
+from TokenBenchy.commons.interface.workers import check_thread_status
 from TokenBenchy.commons.constants import DATASETS_PATH, TOKENIZER_PATH
 from TokenBenchy.commons.logger import logger
 
@@ -62,9 +63,10 @@ class TokenizersDownloadManager:
         self.has_custom_tokenizer = configuration.get('include_custom_tokenizer', False)      
         
     #--------------------------------------------------------------------------
-    def tokenizer_download(self):
+    def tokenizer_download(self, worker=None):
         tokenizers = {}
         for tokenizer_id in self.tokenizers: 
+            check_thread_status(worker)  
             try:            
                 tokenizer_name = tokenizer_id.replace('/', '_')                 
                 tokenizer_save_path = os.path.join(TOKENIZER_PATH, 'open', tokenizer_name)           
@@ -76,8 +78,9 @@ class TokenizersDownloadManager:
             except Exception as e:
                 logger.error(f"Failed to download tokenizer {tokenizer_id}: {e}", exc_info=True)    
 
+        check_thread_status(worker)
         # load custom tokenizer in target subfolder if .json files are found and
-        # if the user has selected the option to include custom tokenizers 
+        # if the user has selected the option to include custom tokenizers         
         custom_tokenizer_path = os.path.join(TOKENIZER_PATH, 'custom')      
         if os.path.exists(custom_tokenizer_path) and self.has_custom_tokenizer:            
             search_pattern = os.path.join(custom_tokenizer_path, '*.json')   
