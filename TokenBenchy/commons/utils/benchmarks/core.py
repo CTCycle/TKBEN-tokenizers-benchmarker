@@ -28,6 +28,7 @@ class BenchmarkTokenizers:
         if self.max_docs_number !=0 and self.max_docs_number <= len(documents):
             documents = documents[:self.max_docs_number]
         dataset_stats = pd.DataFrame()        
+        # calculate dataset statistics       
         dataset_stats['text'] = documents      
         dataset_stats['words_count'] = dataset_stats['text'].apply(
             lambda doc : len(doc.split()))

@@ -93,10 +93,9 @@ class MainWindow:
     # [SHOW WINDOW]
     ###########################################################################
     def show(self):        
-        self.main_win.show()
-        
+        self.main_win.show()    
     
-    
+    # [HELPERS]
     ###########################################################################
     def connect_update_setting(self, widget, signal_name, config_key, getter=None):
         if getter is None:
@@ -129,8 +128,7 @@ class MainWindow:
             widget = self.widgets[attr]
             self.connect_update_setting(widget, signal_name, config_key)       
 
-    # [HELPERS FOR SETTING CONNECTIONS]
-    ###########################################################################
+    #--------------------------------------------------------------------------
     def _set_states(self): 
         self.progress_bar = self.main_win.findChild(QProgressBar, "progressBar")
         self.progress_bar.setValue(0)   
@@ -159,6 +157,17 @@ class MainWindow:
     def _connect_combo_box(self, combo_name: str, slot):        
         combo = self.main_win.findChild(QComboBox, combo_name)
         combo.currentTextChanged.connect(slot)
+
+    #--------------------------------------------------------------------------
+    def _start_worker(self, worker : Worker, on_finished, on_error, on_interrupted,
+                      update_progress=True): 
+        if update_progress:       
+            self.progress_bar.setValue(0)
+            worker.signals.progress.connect(self.progress_bar.setValue)
+        worker.signals.finished.connect(on_finished)
+        worker.signals.error.connect(on_error)        
+        worker.signals.interrupted.connect(on_interrupted)
+        self.threadpool.start(worker)
 
     #--------------------------------------------------------------------------
     def _send_message(self, message): 
@@ -193,7 +202,7 @@ class MainWindow:
     #--------------------------------------------------------------------------
     @Slot()
     def load_and_process_dataset(self): 
-        self.main_win.findChild(QPushButton, "loadDataset").setEnabled(False)
+        self.load_dataset.setEnabled(False)
         corpus_text = self.main_win.findChild(QTextEdit, "datasetCorpus").toPlainText()
         config_text = self.main_win.findChild(QTextEdit, "datasetConfig").toPlainText()         
         corpus_text = corpus_text.replace('\n', ' ').strip()
@@ -208,16 +217,16 @@ class MainWindow:
         
         # send message to status bar
         self._send_message(
-            f"Downloading dataset {corpus_text} (configuration: {config_text})")
-
-        # initialize worker for asynchronous loading of the dataset
+            f"Downloading dataset {corpus_text} (configuration: {config_text})")        
         # functions that are passed to the worker will be executed in a separate thread
         self.worker = Worker(self.loading_handler.load_and_process_dataset)
-            
-        self.worker.signals.finished.connect(self.on_dataset_loaded)
-        self.worker.signals.error.connect(self.on_dataset_error)
-        self.worker.signals.interrupted.connect(self.on_task_interrupted)
-        self.threadpool.start(self.worker)
+
+        # start worker and inject signals
+        self._start_worker(
+            self.worker, on_finished=self.on_dataset_loaded,
+            on_error=self.on_dataset_error,
+            on_interrupted=self.on_task_interrupted,
+            update_progress=False)       
 
     #--------------------------------------------------------------------------
     @Slot()
@@ -229,24 +238,24 @@ class MainWindow:
                                 message)
             return None    
             
-        self.main_win.findChild(QPushButton, "analyzeDataset").setEnabled(False)
-
+        self.analyze_dataset.setEnabled(False)
         self.configuration = self.config_manager.get_configuration() 
         self.benchmark_handler = BenchmarkEvents(
             self.configuration, self.hf_access_token)  
 
         # send message to status bar        
-        self._send_message("Computing statistics for the selected dataset")
-       
-        # initialize worker for asynchronous loading of the dataset
+        self._send_message("Computing statistics for the selected dataset")       
+        # functions that are passed to the worker will be executed in a separate thread
         self.worker = Worker(
             self.benchmark_handler.calculate_dataset_statistics,
-            self.text_dataset)        
-            
-        self.worker.signals.finished.connect(self.on_analysis_success)
-        self.worker.signals.error.connect(self.on_analysis_error)
-        self.worker.signals.interrupted.connect(self.on_task_interrupted)
-        self.threadpool.start(self.worker)  
+            self.text_dataset)   
+
+        # start worker and inject signals
+        self._start_worker(
+            self.worker, on_finished=self.on_analysis_success,
+            on_error=self.on_analysis_error,
+            on_interrupted=self.on_task_interrupted,
+            update_progress=False)       
 
     #--------------------------------------------------------------------------
     @Slot(str)
@@ -260,10 +269,9 @@ class MainWindow:
     @Slot()
     def run_tokenizers_benchmark(self):
         self.run_benchmarks.setEnabled(False)
-
         tokenizers = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark") 
         tokenizers_name = tokenizers.toPlainText().splitlines()
-        if len(tokenizers_name) == 0 or self.text_dataset is None:
+        if len(tokenizers_name)==0 or self.text_dataset is None:
             message = "Please load both the tokenizers and the text dataset before running benchmarks!"
             QMessageBox.warning(self.main_win,
                                 "Cannot run benchmarks",
@@ -279,49 +287,39 @@ class MainWindow:
             self.configuration, self.hf_access_token)              
 
         # send message to status bar
-        self._send_message("Running tokenizers benchmark...")  
-
-        # initialize worker for asynchronous loading of the dataset
+        self._send_message("Running tokenizers benchmark...")          
         # functions that are passed to the worker will be executed in a separate thread
-        self._benchmark_worker = Worker(
+        self.worker = Worker(
            self.benchmark_handler.execute_benchmarks, 
-           self.text_dataset)  
+           self.text_dataset)         
         
-        worker = self._benchmark_worker   
-
-        # inject the progress signal into the worker   
-        self.progress_bar.setValue(0)    
-        worker.signals.progress.connect(self.progress_bar.setValue)
-        # connect the finished and error signals to their respective slots 
-        worker.signals.finished.connect(self.on_benchmark_finished)
-        worker.signals.error.connect(self.on_benchmark_error)
-        self.worker.signals.interrupted.connect(self.on_task_interrupted)
-        self.threadpool.start(worker)  
+        # start worker and inject signals
+        self._start_worker(
+            self.worker, on_finished=self.on_benchmark_finished,
+            on_error=self.on_benchmark_error,
+            on_interrupted=self.on_task_interrupted)      
 
     #--------------------------------------------------------------------------
     @Slot()
     def generate_figures(self):     
         self.visualize_results.setEnabled(False)
         self.configuration = self.config_manager.get_configuration() 
-        self.figures_handler = VisualizationEnvents(self.configuration)
-        
+        self.figures_handler = VisualizationEnvents(self.configuration)        
         # send message to status bar
-        self._send_message("Generating benchmark results figures")  
-
-        # initialize worker for asynchronous loading of the dataset
+        self._send_message("Generating benchmark results figures")   
         # functions that are passed to the worker will be executed in a separate thread
-        self.worker = Worker(self.figures_handler.visualize_benchmark_results)               
-       
-        # connect the finished and error signals to their respective slots 
-        self.worker.signals.finished.connect(self.on_plots_generated)
-        self.worker.signals.error.connect(self.on_plots_error)
-        self.worker.signals.interrupted.connect(self.on_task_interrupted)
-        self.threadpool.start(self.worker) 
+        self.worker = Worker(self.figures_handler.visualize_benchmark_results) 
+
+        # start worker and inject signals
+        self._start_worker(
+            self.worker, on_finished=self.on_plots_generated,
+            on_error=self.on_plots_error,
+            on_interrupted=self.on_task_interrupted)        
 
     #--------------------------------------------------------------------------
     @Slot()
     def _update_graphics_view(self):
-        if not self.figures:
+        if not self.pixmaps:
             return
 
         raw_pix = self.pixmaps[self.current_fig]
@@ -344,7 +342,7 @@ class MainWindow:
     #--------------------------------------------------------------------------
     @Slot()
     def show_next_figure(self):       
-        if self.current_fig < len(self.figures) - 1:
+        if self.current_fig < len(self.pixmaps) - 1:
             self.current_fig += 1
             self._update_graphics_view()
 
@@ -393,8 +391,10 @@ class MainWindow:
     
     #--------------------------------------------------------------------------
     @Slot(object)    
-    def on_plots_generated(self, figures):         
-        self.pixmaps = [self.figures_handler.convert_fig_to_qpixmap(p) for p in figures]
+    def on_plots_generated(self, figures): 
+        if figures:        
+            self.pixmaps.extend(
+                [self.figures_handler.convert_fig_to_qpixmap(p) for p in figures])
         self.current_fig = 0
         self._update_graphics_view()
         self.figures_handler.handle_success(
