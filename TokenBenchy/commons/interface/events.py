@@ -56,8 +56,8 @@ class BenchmarkEvents:
         self.benchmarker = BenchmarkTokenizers(configuration)                                 
            
     #--------------------------------------------------------------------------
-    def calculate_dataset_statistics(self, documents, worker=None):
-        self.benchmarker.calculate_dataset_stats(documents, worker=worker) 
+    def calculate_dataset_statistics(self, documents):
+        self.benchmarker.calculate_dataset_stats(documents) 
         return True
     
     #--------------------------------------------------------------------------
