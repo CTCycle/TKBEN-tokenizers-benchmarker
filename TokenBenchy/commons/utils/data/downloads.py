@@ -1,10 +1,9 @@
 import os
-import glob
 import pandas as pd
 from datasets import load_dataset
 from tokenizers import Tokenizer
 from transformers import AutoTokenizer
-from huggingface_hub import list_models
+from huggingface_hub import HfApi
 
 from TokenBenchy.commons.interface.workers import check_thread_status
 from TokenBenchy.commons.constants import DATASETS_PATH, TOKENIZER_PATH
@@ -28,9 +27,10 @@ class DatasetDownloadManager:
         datasets = {}   
         subfolder = 'custom' if self.has_custom_dataset else 'open'
         base_path = os.path.join(DATASETS_PATH, subfolder)
-        if self.has_custom_dataset:            
-            csv_pattern = os.path.join(base_path, '*.csv')
-            csv_files = glob.glob(csv_pattern)
+        if self.has_custom_dataset:              
+            csv_files = [os.path.join(base_path, fn)
+                        for fn in os.listdir(base_path)
+                        if fn.lower().endswith(".csv")]
 
             if not csv_files:
                 logger.warning(f'No CSV files found in custom folder: {base_path}')
@@ -68,17 +68,16 @@ class TokenizersDownloadManager:
         "translation", "summarization", "conversational", "zero-shot-classification"]
 
     #--------------------------------------------------------------------------
-    def get_tokenizer_identifiers(self, limit=1000, worker=None):        
-        all_ids = set()
-        for tag in self.pipeline_tags:            
-            logger.info(f"Fetching tokenizers model for [{tag}] tag")
-            models = list_models(filter=f"pipeline_tag={tag}", limit=limit)
-            identifiers = [m.modelId for m in models]
-            logger.info(f'Found {len(identifiers)} models with said tag')            
-            all_ids.update(identifiers)
-            check_thread_status(worker)
+    def get_tokenizer_identifiers(self, limit=100, worker=None):        
+        api = HfApi(token=self.hf_access_token) if "downloads" else HfApi()
 
-        return list(all_ids)
+        # query the Hub to search for “tokenizer” in metadata, sort by downloads 
+        models = api.list_models(
+            search="tokenizer", sort="downloads", direction=-1, limit=limit)
+        # extract and return just the model IDs
+        identifiers = [m.modelId for m in models]
+
+        return identifiers
             
     #--------------------------------------------------------------------------
     def tokenizer_download(self, worker=None):
@@ -101,8 +100,9 @@ class TokenizersDownloadManager:
         check_thread_status(worker)        
         custom_tokenizer_path = os.path.join(TOKENIZER_PATH, 'custom')      
         if os.path.exists(custom_tokenizer_path) and self.has_custom_tokenizer:            
-            search_pattern = os.path.join(custom_tokenizer_path, '*.json')   
-            json_files = glob.glob(search_pattern)
+            json_files = [os.path.join(custom_tokenizer_path, fn)
+                          for fn in os.listdir(custom_tokenizer_path)
+                          if fn.lower().endswith(".json")]
             if len(json_files) > 0 and self.has_custom_tokenizer:
                 logger.info(f'Loading custom tokenizers from {custom_tokenizer_path}')                
                 for js in json_files:
