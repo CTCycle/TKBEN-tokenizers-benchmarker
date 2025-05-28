@@ -62,7 +62,8 @@ class BenchmarkEvents:
     
     #--------------------------------------------------------------------------
     def get_tokenizer_identifiers(self, limit=1000, worker=None):
-        return self.token_handler.get_tokenizer_identifiers(limit=limit, worker=worker)
+        return self.token_handler.get_tokenizer_identifiers(
+            limit=limit, worker=worker)
     
     #--------------------------------------------------------------------------
     def execute_benchmarks(self, documents, progress_callback=None, worker=None):

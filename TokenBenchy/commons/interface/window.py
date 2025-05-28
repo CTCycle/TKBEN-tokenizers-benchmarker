@@ -407,10 +407,11 @@ class MainWindow:
     #--------------------------------------------------------------------------
     @Slot(object)
     def on_tokenizers_fetched(self, identifiers):
-        tokenizers = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark")  
-        existing = set(tokenizers.toPlainText().splitlines())
-        for id in identifiers:
-            tokenizers.appendPlainText(id) if id not in existing else None
+        combo = self.main_win.findChild(QComboBox, "selectTokenizers")
+        existing = {combo.itemText(i) for i in range(combo.count())}
+        for identifier in identifiers:
+            if identifier not in existing:
+                combo.addItem(identifier)
                   
         message = f'{len(identifiers)} tokenizer identifiers fetched from HuggingFace'   
         self.benchmark_handler.handle_success(self.main_win, message)   
