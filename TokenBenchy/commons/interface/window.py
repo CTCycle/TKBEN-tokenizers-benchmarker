@@ -46,7 +46,7 @@ class MainWindow:
         self.hf_access_token = EV.get_HF_access_token()
 
         # persistent handlers
-        self.loading_handler = DatasetEvents(self.configuration, self.hf_access_token)
+        self.loading_handler = DatasetEvents(self.configuration, self.hf_access_token)        
         self.benchmark_handler = BenchmarkEvents(self.configuration, self.hf_access_token)
         self.figures_handler = VisualizationEnvents(self.configuration)         
 
@@ -63,6 +63,7 @@ class MainWindow:
             (QCheckBox, "reduceSize", 'reduce_size'),
             (QCheckBox, "saveImages", 'save_images'),
             (QSpinBox,  "numDocs", 'num_documents'),
+            (QPushButton,'scanHF','scan_for_tokenizers'),
             (QComboBox, "selectTokenizers", 'combo_tokenizers'),
             (QPushButton, "loadDataset", 'load_dataset'),
             (QPushButton, "analyzeDataset", 'analyze_dataset'),
@@ -79,6 +80,7 @@ class MainWindow:
         self._connect_signals([
             ('stop_thread','clicked',self.stop_running_worker),           
             ('combo_tokenizers', 'currentTextChanged', self.update_tokenizers_from_combo),
+            ('scan_for_tokenizers', 'clicked', self.find_tokenizers_identifiers),
             ('load_dataset', 'clicked', self.load_and_process_dataset),
             ('analyze_dataset', 'clicked', self.run_dataset_analysis),
             ('run_benchmarks', 'clicked', self.run_tokenizers_benchmark),
@@ -255,7 +257,28 @@ class MainWindow:
             self.worker, on_finished=self.on_analysis_success,
             on_error=self.on_analysis_error,
             on_interrupted=self.on_task_interrupted,
-            update_progress=False)       
+            update_progress=False)  
+
+    #--------------------------------------------------------------------------
+    @Slot(str)
+    def find_tokenizers_identifiers(self, text: str):
+        self.scan_for_tokenizers.setEnabled(False)        
+        self.configuration = self.config_manager.get_configuration() 
+        self.benchmark_handler = BenchmarkEvents(
+            self.configuration, self.hf_access_token)
+
+        # send message to status bar        
+        self._send_message("Looking for available tokenizers in Hugging Face")       
+        # functions that are passed to the worker will be executed in a separate thread
+        self.worker = Worker(
+            self.benchmark_handler.get_tokenizer_identifiers, limit=1000)
+          
+        # start worker and inject signals
+        self._start_worker(
+            self.worker, on_finished=self.on_tokenizers_fetched,
+            on_error=self.on_benchmark_error,
+            on_interrupted=self.on_task_interrupted,
+            update_progress=False)          
 
     #--------------------------------------------------------------------------
     @Slot(str)
@@ -263,7 +286,7 @@ class MainWindow:
         tokenizers = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark")  
         existing = set(tokenizers.toPlainText().splitlines())
         if text not in existing:
-            tokenizers.appendPlainText(text)   
+            tokenizers.appendPlainText(text) 
 
     #--------------------------------------------------------------------------
     @Slot()
@@ -380,6 +403,18 @@ class MainWindow:
         message = f'{corpus} - {config} analysis is finished' 
         self.benchmark_handler.handle_success(self.main_win, message)
         self.analyze_dataset.setEnabled(True)
+
+    #--------------------------------------------------------------------------
+    @Slot(object)
+    def on_tokenizers_fetched(self, identifiers):
+        tokenizers = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark")  
+        existing = set(tokenizers.toPlainText().splitlines())
+        for id in identifiers:
+            tokenizers.appendPlainText(id) if id not in existing else None
+                  
+        message = f'{len(identifiers)} tokenizer identifiers fetched from HuggingFace'   
+        self.benchmark_handler.handle_success(self.main_win, message)   
+        self.scan_for_tokenizers.setEnabled(True)           
     
     #--------------------------------------------------------------------------
     @Slot(object)
@@ -420,6 +455,7 @@ class MainWindow:
         self.benchmark_handler.handle_error(self.main_win, err_tb)         
         self.progress_bar.setValue(0) 
         self.run_benchmarks.setEnabled(True)
+        self.scan_for_tokenizers.setEnabled(True)
 
     #--------------------------------------------------------------------------
     @Slot(tuple)

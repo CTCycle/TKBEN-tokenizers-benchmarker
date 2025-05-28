@@ -83,8 +83,9 @@ class BenchmarkTokenizers:
     #--------------------------------------------------------------------------
     def run_tokenizer_benchmarks(self, documents, tokenizers : dict, progress_callback=None,
                                  worker=None):
-        
+        # calculate basic dataset statistics and extract vocabulary for each tokenizer
         vocab, vocab_stats = self.calculate_vocabulary_statistics(tokenizers)
+        # filter only a fraction of documents if requested by the user
         if self.max_docs_number is not None and self.max_docs_number <= len(documents):
             documents = documents[:self.max_docs_number]      
         
@@ -92,34 +93,48 @@ class BenchmarkTokenizers:
         for i, (name, tokenizer) in enumerate(tokenizers.items()):
             k = name.replace('/', '_')
             logger.info(f'Decoding documents with {name}')
+            # initialize dataframe with tokenizers name and extracted dataset document
             data = pd.DataFrame({'tokenizer': name, 'text': documents})            
             
+            # calculate basic statistics such as:
+            # 1. number of characters in text
+            # 2. number of words in text
+            # 3. average word length in characters            
             data['num_characters'] = data['text'].apply(lambda x : len(str(x)))       
             data['words_count'] = data['text'].apply(lambda x : len(x.split()))
             data['AVG_words_length'] = data['text'].apply(
-                lambda text: np.mean([len(word) for word in text.split()]) if text else 0)
-
+                lambda text: np.mean([len(word) for word in text.split()]) if text else 0)            
+            # If this is a custom tokenizer and the user decided to include it:
+            # 1. encode raw text into token IDs
+            # 2. decode those IDs back into a single string to ensure getting
+            # the the tokenizer’s canonical spacing/pieces
             if 'CUSTOM' in name and self.include_custom_tokenizer:
                 data['tokens'] = data['text'].apply(
                     lambda text: tokenizer.decode(tokenizer.encode(text).ids))
                 data['tokens split'] = data['tokens'].apply(
                     lambda tok: tok.split() if isinstance(tok, str) else [])
+            # If this is not a custom tokenizer or the user decided to avoid including those:
+            # 1. encode raw text into token IDs
+            # 2. decode those IDs back into a single string to ensure getting
+            # the the tokenizer’s canonical spacing/pieces
             else:
                 data['tokens split'] = data['text'].apply(tokenizer.tokenize)
                 data['tokens'] = data['tokens split'].apply(
                     lambda toks: ' '.join(toks) if isinstance(toks, (list, tuple)) else '')
-
+                
+            # count number of tokens from text encoding
             data['tokens_count'] = data['tokens split'].apply(
                 lambda toks: len(toks) if isinstance(toks, (list, tuple)) else 0)
-            
+            # count number of characters in all tokens from text encoding
             data['tokens_characters'] = data['tokens'].apply(
                 lambda s: len(s) if isinstance(s, str) else 0)
-
+            # calculate the average token length
             data['AVG_tokens_length'] = data['tokens split'].apply(
                 lambda tokens: np.mean([len(tok) for tok in tokens]) if tokens else 0)
-
+            # calculate the ratio between number of tokens and number of original words
             data['tokens_to_words_ratio'] = np.where(
                 data['words_count'] > 0, data['tokens_count'] / data['words_count'], 0)
+            # calculate varchar bytes occupied by each token
             data['bytes_per_token'] = np.where(
                 data['tokens_count'] > 0, data['num_characters'] / data['tokens_count'], 0)
             
@@ -131,6 +146,7 @@ class BenchmarkTokenizers:
             self.database.save_benchmark_results(data, table_name=k)            
             all_tokenizers.append(data)
 
+            # check for worker thread status and update progress callback
             check_thread_status(worker)
             update_progress_callback(i, len(tokenizers.items()), progress_callback)         
 
