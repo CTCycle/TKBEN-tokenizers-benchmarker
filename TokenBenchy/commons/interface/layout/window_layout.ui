@@ -696,28 +696,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                 </widget>
                </item>
                <item>
-                <widget class="QComboBox" name="selectTokenizers">
-                 <item>
-                  <property name="text">
-                   <string>axiong/PMC_LLaMA_13B</string>
-                  </property>
-                 </item>
-                 <item>
-                  <property name="text">
-                   <string>BAAI/bge-small-en-v1.5</string>
-                  </property>
-                 </item>
-                 <item>
-                  <property name="text">
-                   <string>bert-base-uncased</string>
-                  </property>
-                 </item>
-                 <item>
-                  <property name="text">
-                   <string>BioMistral/BioMistral-7B</string>
-                  </property>
-                 </item>
-                </widget>
+                <widget class="QComboBox" name="selectTokenizers"/>
                </item>
               </layout>
              </item>
