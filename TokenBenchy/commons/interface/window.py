@@ -40,7 +40,8 @@ class MainWindow:
         self.configuration = self.config_manager.get_configuration()
     
         self.threadpool = QThreadPool.globalInstance()
-        self.worker = None        
+        self.worker = None
+        self.worker_running = False        
 
         # get Hugging Face access token        
         self.hf_access_token = EV.get_HF_access_token()
@@ -170,6 +171,7 @@ class MainWindow:
         worker.signals.error.connect(on_error)        
         worker.signals.interrupted.connect(on_interrupted)
         self.threadpool.start(worker)
+        self.worker_running = True
 
     #--------------------------------------------------------------------------
     def _send_message(self, message): 
@@ -204,7 +206,9 @@ class MainWindow:
     #--------------------------------------------------------------------------
     @Slot()
     def load_and_process_dataset(self): 
-        self.load_dataset.setEnabled(False)
+        if self.worker_running:            
+            return 
+        
         corpus_text = self.main_win.findChild(QTextEdit, "datasetCorpus").toPlainText()
         config_text = self.main_win.findChild(QTextEdit, "datasetConfig").toPlainText()         
         corpus_text = corpus_text.replace('\n', ' ').strip()
@@ -233,14 +237,16 @@ class MainWindow:
     #--------------------------------------------------------------------------
     @Slot()
     def run_dataset_analysis(self):
+        if self.worker_running:            
+            return 
+
         if self.text_dataset is None:
             message = "Please load a dataset before running analysis!"
             QMessageBox.warning(self.main_win,
                                 "Missing dataset",
                                 message)
-            return None    
-            
-        self.analyze_dataset.setEnabled(False)
+            return    
+        
         self.configuration = self.config_manager.get_configuration() 
         self.benchmark_handler = BenchmarkEvents(
             self.configuration, self.hf_access_token)  
@@ -261,8 +267,10 @@ class MainWindow:
 
     #--------------------------------------------------------------------------
     @Slot(str)
-    def find_tokenizers_identifiers(self, text: str):
-        self.scan_for_tokenizers.setEnabled(False)        
+    def find_tokenizers_identifiers(self):
+        if self.worker_running:            
+            return 
+             
         self.configuration = self.config_manager.get_configuration() 
         self.benchmark_handler = BenchmarkEvents(
             self.configuration, self.hf_access_token)
@@ -291,7 +299,9 @@ class MainWindow:
     #--------------------------------------------------------------------------
     @Slot()
     def run_tokenizers_benchmark(self):
-        self.run_benchmarks.setEnabled(False)
+        if self.worker_running:            
+            return 
+        
         tokenizers = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark") 
         tokenizers_name = tokenizers.toPlainText().splitlines()
         if len(tokenizers_name)==0 or self.text_dataset is None:
@@ -325,7 +335,9 @@ class MainWindow:
     #--------------------------------------------------------------------------
     @Slot()
     def generate_figures(self):     
-        self.visualize_results.setEnabled(False)
+        if self.worker_running:            
+            return 
+        
         self.configuration = self.config_manager.get_configuration() 
         self.figures_handler = VisualizationEnvents(self.configuration)        
         # send message to status bar
@@ -392,7 +404,7 @@ class MainWindow:
         config = config.get('config', 'NA')         
         message = f'text dataset has been loaded: {corpus} with config {config}' 
         self.loading_handler.handle_success(self.main_win, message)  
-        self.load_dataset.setEnabled(True) 
+        self.worker_running = False 
 
     #--------------------------------------------------------------------------
     @Slot(object)
@@ -402,7 +414,7 @@ class MainWindow:
         config = config.get('config', 'NA')         
         message = f'{corpus} - {config} analysis is finished' 
         self.benchmark_handler.handle_success(self.main_win, message)
-        self.analyze_dataset.setEnabled(True)
+        self.worker_running = False
 
     #--------------------------------------------------------------------------
     @Slot(object)
@@ -415,7 +427,7 @@ class MainWindow:
                   
         message = f'{len(identifiers)} tokenizer identifiers fetched from HuggingFace'   
         self.benchmark_handler.handle_success(self.main_win, message)   
-        self.scan_for_tokenizers.setEnabled(True)           
+        self.worker_running = False           
     
     #--------------------------------------------------------------------------
     @Slot(object)
@@ -423,7 +435,7 @@ class MainWindow:
         self.tokenizers = tokenizers               
         message = f'{len(tokenizers)} selected tokenizers have been benchmarked'   
         self.benchmark_handler.handle_success(self.main_win, message)   
-        self.run_benchmarks.setEnabled(True) 
+        self.worker_running = False 
     
     #--------------------------------------------------------------------------
     @Slot(object)    
@@ -435,44 +447,40 @@ class MainWindow:
         self._update_graphics_view()
         self.figures_handler.handle_success(
             self.main_win, 'Benchmark results plots have been generated')
-        self.visualize_results.setEnabled(True)      
+        self.worker_running = False      
     
     # [NEGATIVE OUTCOME HANDLERS]
     ###########################################################################    
     @Slot(tuple)
     def on_dataset_error(self, err_tb):
         self.loading_handler.handle_error(self.main_win, err_tb)  
-        self.load_dataset.setEnabled(True) 
+        self.worker_running = False 
 
     #--------------------------------------------------------------------------
     @Slot(tuple)
     def on_analysis_error(self, err_tb):
         self.benchmark_handler.handle_error(self.main_win, err_tb) 
-        self.analyze_dataset.setEnabled(True)
+        self.worker_running = False
 
     #--------------------------------------------------------------------------
     @Slot(tuple)
     def on_benchmark_error(self, err_tb):
         self.benchmark_handler.handle_error(self.main_win, err_tb)         
         self.progress_bar.setValue(0) 
-        self.run_benchmarks.setEnabled(True)
-        self.scan_for_tokenizers.setEnabled(True)
+        self.worker_running = False
 
     #--------------------------------------------------------------------------
     @Slot(tuple)
     def on_plots_error(self, err_tb):
         self.figures_handler.handle_error(self.main_win, err_tb) 
-        self.visualize_results.setEnabled(True)  
+        self.worker_running = False  
 
     #--------------------------------------------------------------------------
-    def on_task_interrupted(self): 
-        self.load_dataset.setEnabled(True) 
-        self.analyze_dataset.setEnabled(True)
-        self.run_benchmarks.setEnabled(True) 
-        self.visualize_results.setEnabled(True)         
+    def on_task_interrupted(self):
         self.progress_bar.setValue(0)
         self._send_message('Current task has been interrupted by user') 
-        logger.warning('Current task has been interrupted by user')        
+        logger.warning('Current task has been interrupted by user')   
+        self.worker_running = False     
     
 
     
