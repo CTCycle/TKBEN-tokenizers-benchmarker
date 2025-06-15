@@ -15,7 +15,8 @@ from TokenBenchy.commons.logger import logger
 ###############################################################################
 class DatasetEvents:
 
-    def __init__(self, configuration, hf_access_token):
+    def __init__(self, database, configuration, hf_access_token):
+        self.database = database
         self.configuration = configuration
         self.hf_access_token = hf_access_token 
            
@@ -48,13 +49,14 @@ class DatasetEvents:
 ###############################################################################
 class BenchmarkEvents:
 
-    def __init__(self, configuration, hf_access_token):
+    def __init__(self, database, configuration, hf_access_token):
+        self.database = database
         self.configuration = configuration    
         self.hf_access_token = hf_access_token 
            
     #--------------------------------------------------------------------------
     def calculate_dataset_statistics(self, documents):
-        benchmarker = BenchmarkTokenizers(self.configuration)
+        benchmarker = BenchmarkTokenizers(self.database, self.configuration)
         benchmarker.calculate_dataset_stats(documents) 
         return True
     
@@ -68,7 +70,7 @@ class BenchmarkEvents:
     #--------------------------------------------------------------------------
     def execute_benchmarks(self, documents, progress_callback=None, worker=None):
         downloader = TokenizersDownloadManager(self.configuration, self.hf_access_token)
-        benchmarker = BenchmarkTokenizers(self.configuration)
+        benchmarker = BenchmarkTokenizers(self.database, self.configuration)
         tokenizers = downloader.tokenizer_download(worker=worker)
         results = benchmarker.run_tokenizer_benchmarks(
            documents, tokenizers, progress_callback=progress_callback, worker=worker) 
