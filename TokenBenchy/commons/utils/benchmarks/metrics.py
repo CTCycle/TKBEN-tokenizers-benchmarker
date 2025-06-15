@@ -1,11 +1,10 @@
 import numpy as np
 import pandas as pd
-import transformers
+from transformers.utils.logging import set_verbosity_error
 from tqdm import tqdm
 
 from TokenBenchy.commons.utils.data.database import TokenBenchyDatabase
 from TokenBenchy.commons.interface.workers import check_thread_status, update_progress_callback
-from TokenBenchy.commons.constants import DATASETS_PATH, EVALUATION_PATH
 from TokenBenchy.commons.logger import logger
 
              
@@ -14,12 +13,11 @@ from TokenBenchy.commons.logger import logger
 class BenchmarkTokenizers:
 
     def __init__(self, configuration : dict):
-        transformers.utils.logging.set_verbosity_error()        
+        set_verbosity_error()        
         self.max_docs_number = configuration.get('num_documents', 0)
         self.reduce_size = configuration.get("reduce_output_size", False)
         self.include_custom_tokenizer = configuration.get("include_custom_tokenizer", False)
-        self.include_NSL = configuration.get("include_NSL", False)
-        self.database = TokenBenchyDatabase(configuration)
+        self.include_NSL = configuration.get("include_NSL", False)        
         self.vocab_columns = ['id', 'vocabulary_tokens', 'decoded_tokens'] 
         self.configuration = configuration       
 
@@ -37,12 +35,14 @@ class BenchmarkTokenizers:
         dataset_stats['STD word length'] = dataset_stats['text'].apply(
             lambda doc : np.std([len(w) for w in doc.split()]))        
        
-        self.database.save_dataset_statistics(dataset_stats)
+        database = TokenBenchyDatabase(self.configuration)
+        database.save_dataset_statistics(dataset_stats)
 
     #--------------------------------------------------------------------------
-    def calculate_vocabulary_statistics(self, tokenizers, worker=None):
+    def calculate_vocabulary_statistics(self, tokenizers, **kwargs):
         rows = []
-        for name, tokenizer in tokenizers.items():            
+        database = TokenBenchyDatabase(self.configuration)
+        for i, (name, tokenizer) in enumerate(tokenizers.items()):            
             vocab = tokenizer.get_vocab()              
             vocab_words = list(vocab.keys())
             vocab_indices = list(vocab.values())
@@ -70,19 +70,19 @@ class BenchmarkTokenizers:
                 self.vocab_columns[0]: pd.Series(vocab_indices),
                 self.vocab_columns[1]: pd.Series(vocab_words),
                 self.vocab_columns[2]: pd.Series(decoded_words)})
-            self.database.save_vocabulary_tokens(vocabulary, name)
-
-            check_thread_status(worker) 
+            database.save_vocabulary_tokens(vocabulary, name)
+            # check for worker thread status and update progress callback
+            check_thread_status(kwargs.get('worker', None))            
 
         # save vocabulary statistics into database 
         vocabulary_stats = pd.DataFrame(rows)
-        self.database.save_vocabulary_results(vocabulary_stats)           
+        database.save_vocabulary_results(vocabulary_stats)           
         
         return vocabulary, vocabulary_stats
     
     #--------------------------------------------------------------------------
-    def run_tokenizer_benchmarks(self, documents, tokenizers : dict, progress_callback=None,
-                                 worker=None):
+    def run_tokenizer_benchmarks(self, documents, tokenizers : dict, **kwargs):
+        database = TokenBenchyDatabase(self.configuration)
         # calculate basic dataset statistics and extract vocabulary for each tokenizer
         vocab, vocab_stats = self.calculate_vocabulary_statistics(tokenizers)
         # filter only a fraction of documents if requested by the user
@@ -142,16 +142,17 @@ class BenchmarkTokenizers:
             if self.reduce_size:
                 drop_cols.extend(['text', 'tokens'])
             data = data.drop(columns=drop_cols)           
-
-            self.database.save_benchmark_results(data, table_name=k)            
+            
+            database.save_benchmark_results(data, table_name=k)            
             all_tokenizers.append(data)
 
-            # check for worker thread status and update progress callback
-            check_thread_status(worker)
-            update_progress_callback(i, len(tokenizers.items()), progress_callback)         
+            # check for worker thread status and update progress callback          
+            check_thread_status(kwargs.get('worker', None))
+            update_progress_callback(
+                i, len(tokenizers.items()), kwargs.get('progress_callback', None))         
 
         benchmark_results = pd.concat(all_tokenizers, ignore_index=True)
-        self.database.save_benchmark_results(benchmark_results)
+        database.save_benchmark_results(benchmark_results)
 
         if self.include_NSL and self.include_custom_tokenizer:
             NSL_results = self.normalized_sequence_length(benchmark_results)
@@ -159,7 +160,8 @@ class BenchmarkTokenizers:
         return benchmark_results
 
     #--------------------------------------------------------------------------
-    def normalized_sequence_length(self, benchmark_results : pd.DataFrame):                    
+    def normalized_sequence_length(self, benchmark_results : pd.DataFrame):
+        database = TokenBenchyDatabase(self.configuration)                    
         data_custom = benchmark_results[
             benchmark_results['tokenizer'].str.contains(
                 'custom tokenizer', case=False, na=False)]   
@@ -180,7 +182,7 @@ class BenchmarkTokenizers:
                 data.append(data_chunk)
             
             data_NSL = pd.concat(data, ignore_index=True)
-            self.database.save_benchmark_results(data_NSL, table_name='NSL')          
+            database.save_benchmark_results(data_NSL, table_name='NSL')          
 
         return data_NSL 
 

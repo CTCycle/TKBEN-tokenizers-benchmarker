@@ -63,14 +63,13 @@ class TokenizersDownloadManager:
         self.tokenizers = configuration.get("TOKENIZERS", [])
         self.has_custom_tokenizer = configuration.get('include_custom_tokenizer', False)
         self.pipeline_tags = [
-        "text-generation", "fill-mask", "text-classification", "token-classification",
-        "text2text-generation", "question-answering", "sentence-similarity",
-        "translation", "summarization", "conversational", "zero-shot-classification"]
+            "text-generation", "fill-mask", "text-classification", "token-classification",
+            "text2text-generation", "question-answering", "sentence-similarity",
+            "translation", "summarization", "conversational", "zero-shot-classification"]
 
     #--------------------------------------------------------------------------
-    def get_tokenizer_identifiers(self, limit=100, worker=None):        
+    def get_tokenizer_identifiers(self, limit=100, **kwargs):        
         api = HfApi(token=self.hf_access_token) if "downloads" else HfApi()
-
         # query the Hub to search for “tokenizer” in metadata, sort by downloads 
         models = api.list_models(
             search="tokenizer", sort="downloads", direction=-1, limit=limit)
@@ -80,10 +79,9 @@ class TokenizersDownloadManager:
         return identifiers
             
     #--------------------------------------------------------------------------
-    def tokenizer_download(self, worker=None):
+    def tokenizer_download(self, **kwargs):
         tokenizers = {}
-        for tokenizer_id in self.tokenizers: 
-            check_thread_status(worker)  
+        for tokenizer_id in self.tokenizers:             
             try:            
                 tokenizer_name = tokenizer_id.replace('/', '_')                 
                 tokenizer_save_path = os.path.join(TOKENIZER_PATH, 'open', tokenizer_name)           
@@ -92,12 +90,15 @@ class TokenizersDownloadManager:
                 tokenizer = AutoTokenizer.from_pretrained(
                     tokenizer_id, cache_dir=tokenizer_save_path, token=self.hf_access_token) 
                 tokenizers[tokenizer_id] = tokenizer
+                # check for worker thread status and update progress callback
+                check_thread_status(kwargs.get('worker', None))
             except Exception as e:
                 logger.error(f"Failed to download tokenizer {tokenizer_id}: {e}", exc_info=True)    
         
+        # check for worker thread status and update progress callback
+        check_thread_status(kwargs.get('worker', None))
         # load custom tokenizer in target subfolder if .json files are found and
-        # if the user has selected the option to include custom tokenizers 
-        check_thread_status(worker)        
+        # if the user has selected the option to include custom tokenizers
         custom_tokenizer_path = os.path.join(TOKENIZER_PATH, 'custom')      
         if os.path.exists(custom_tokenizer_path) and self.has_custom_tokenizer:            
             json_files = [os.path.join(custom_tokenizer_path, fn)

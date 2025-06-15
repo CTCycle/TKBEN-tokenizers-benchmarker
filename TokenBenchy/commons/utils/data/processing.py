@@ -1,6 +1,3 @@
-from TokenBenchy.commons.constants import DATA_PATH
-from TokenBenchy.commons.logger import logger
-
              
 # [TOKENIZERS EXPLORER]
 ###############################################################################
