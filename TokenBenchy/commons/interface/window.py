@@ -9,11 +9,9 @@ from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlainTextEdit, QSpinBox,
                                QMessageBox, QComboBox, QTextEdit, QProgressBar,
                                QGraphicsScene, QGraphicsPixmapItem, QGraphicsView)
 
-from TokenBenchy.commons.variables import EnvironmentVariables
 from TokenBenchy.commons.interface.events import DatasetEvents, BenchmarkEvents, VisualizationEnvents
 from TokenBenchy.commons.configuration import Configuration
 from TokenBenchy.commons.interface.workers import Worker
-from TokenBenchy.commons.constants import UI_PATH
 from TokenBenchy.commons.logger import logger
         
 
@@ -231,8 +229,7 @@ class MainWindow:
         self._start_worker(
             self.worker, on_finished=self.on_dataset_loaded,
             on_error=self.on_dataset_error,
-            on_interrupted=self.on_task_interrupted,
-            update_progress=False)       
+            on_interrupted=self.on_task_interrupted)       
 
     #--------------------------------------------------------------------------
     @Slot()
@@ -261,9 +258,9 @@ class MainWindow:
         # start worker and inject signals
         self._start_worker(
             self.worker, on_finished=self.on_analysis_success,
-            on_error=self.on_analysis_error,
-            on_interrupted=self.on_task_interrupted,
-            update_progress=False)  
+            on_error=self.on_benchmark_error,
+            on_interrupted=self.on_task_interrupted)
+            
 
     #--------------------------------------------------------------------------
     @Slot(str)
@@ -285,8 +282,7 @@ class MainWindow:
         self._start_worker(
             self.worker, on_finished=self.on_tokenizers_fetched,
             on_error=self.on_benchmark_error,
-            on_interrupted=self.on_task_interrupted,
-            update_progress=False)          
+            on_interrupted=self.on_task_interrupted)          
 
     #--------------------------------------------------------------------------
     @Slot(str)
@@ -454,13 +450,7 @@ class MainWindow:
     @Slot(tuple)
     def on_dataset_error(self, err_tb):
         self.loading_handler.handle_error(self.main_win, err_tb)  
-        self.worker_running = False 
-
-    #--------------------------------------------------------------------------
-    @Slot(tuple)
-    def on_analysis_error(self, err_tb):
-        self.benchmark_handler.handle_error(self.main_win, err_tb) 
-        self.worker_running = False
+        self.worker_running = False     
 
     #--------------------------------------------------------------------------
     @Slot(tuple)
