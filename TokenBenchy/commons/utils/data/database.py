@@ -145,8 +145,7 @@ class TokenBenchyDatabase:
         self.benchmark_results = BenchmarkResultsTable()
         self.vocabulary_results = VocabularyStatsTable()
         self.vocabulary_tokens = VocabularyTable()
-        self.dataset_summary = DatasetStatsTable()         
-        self.initialize_database()  
+        self.dataset_summary = DatasetStatsTable()       
        
     #--------------------------------------------------------------------------       
     def initialize_database(self):        
