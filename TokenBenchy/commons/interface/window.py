@@ -39,9 +39,10 @@ class MainWindow:
         self.config_manager = Configuration()
         self.configuration = self.config_manager.get_configuration()
     
+        # set thread pool for the workers
         self.threadpool = QThreadPool.globalInstance()
         self.worker = None
-        self.worker_running = False        
+        self.worker_running = False          
 
         # get Hugging Face access token        
         self.hf_access_token = EV.get_HF_access_token()
