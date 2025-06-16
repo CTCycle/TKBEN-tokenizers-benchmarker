@@ -157,7 +157,7 @@ class BenchmarkTokenizers:
         return benchmark_results
 
     #--------------------------------------------------------------------------
-    def normalized_sequence_length(self, benchmark_results : pd.DataFrame):                            
+    def normalized_sequence_length(self, benchmark_results):                            
         data_custom = benchmark_results[
             benchmark_results['tokenizer'].str.contains(
                 'custom tokenizer', case=False, na=False)]   

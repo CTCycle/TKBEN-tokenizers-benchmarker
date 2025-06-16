@@ -9,22 +9,20 @@ from TokenBenchy.commons.utils.data.processing import ProcessDataset
 from TokenBenchy.commons.interface.workers import check_thread_status
 from TokenBenchy.commons.logger import logger
 
-   
-    
+
 
 ###############################################################################
 class DatasetEvents:
 
-    def __init__(self, database, configuration, hf_access_token):
-        self.database = database
+    def __init__(self, configuration, hf_access_token):
         self.configuration = configuration
-        self.hf_access_token = hf_access_token 
+        self.hf_access_token = hf_access_token  
+        self.dataset_handler = DatasetDownloadManager(
+            self.configuration, self.hf_access_token)          
            
     #--------------------------------------------------------------------------
     def load_and_process_dataset(self):
-        downloader = DatasetDownloadManager(self.configuration, self.hf_access_token)  
-        dataset = downloader.dataset_download()
-
+        dataset = self.dataset_handler.dataset_download()
         processor = ProcessDataset(self.configuration, dataset) 
         documents, clean_documents = processor.split_text_dataset()  
         logger.info(f'Total number of documents: {len(documents)}')
@@ -49,31 +47,28 @@ class DatasetEvents:
 ###############################################################################
 class BenchmarkEvents:
 
-    def __init__(self, database, configuration, hf_access_token):
-        self.database = database
+    def __init__(self, configuration, hf_access_token):
         self.configuration = configuration    
-        self.hf_access_token = hf_access_token 
+        self.hf_access_token = hf_access_token  
+        self.token_handler = TokenizersDownloadManager(
+            self.configuration, self.hf_access_token)
+        self.benchmarker = BenchmarkTokenizers(configuration)                                 
            
     #--------------------------------------------------------------------------
     def calculate_dataset_statistics(self, documents):
-        benchmarker = BenchmarkTokenizers(self.database, self.configuration)
-        benchmarker.calculate_dataset_stats(documents) 
+        self.benchmarker.calculate_dataset_stats(documents) 
         return True
     
     #--------------------------------------------------------------------------
     def get_tokenizer_identifiers(self, limit=1000, worker=None):
-        downloader = TokenizersDownloadManager(self.configuration, self.hf_access_token)
-        identifiers = downloader.get_tokenizer_identifiers(limit, worker=worker)
-
-        return identifiers
+        return self.token_handler.get_tokenizer_identifiers(
+            limit=limit, worker=worker)
     
     #--------------------------------------------------------------------------
-    def execute_benchmarks(self, documents, progress_callback=None, worker=None):
-        downloader = TokenizersDownloadManager(self.configuration, self.hf_access_token)
-        benchmarker = BenchmarkTokenizers(self.database, self.configuration)
-        tokenizers = downloader.tokenizer_download(worker=worker)
-        results = benchmarker.run_tokenizer_benchmarks(
-           documents, tokenizers, progress_callback=progress_callback, worker=worker) 
+    def execute_benchmarks(self, documents, progress_callback=None, worker_kwargs=None):
+        tokenizers = self.token_handler.tokenizer_download(worker=kwargs.get('worker', None))
+        results = self.benchmarker.run_tokenizer_benchmarks(
+           documents, tokenizers, progress_callback=kwargs.get('progress_callback', None), worker=kwargs.get('worker', None)) 
 
         return tokenizers     
 
@@ -96,22 +91,22 @@ class BenchmarkEvents:
 class VisualizationEnvents:
 
     def __init__(self, configuration):
-        self.configuration = configuration       
+        self.configuration = configuration     
+        self.visualizer = VisualizeBenchmarkResults(self.configuration)
         self.DPI = 600
 
     #--------------------------------------------------------------------------
     def visualize_benchmark_results(self, worker=None): 
-        figures = []      
-        visualizer = VisualizeBenchmarkResults(self.configuration)
-        # 1. Generate plots for vocabulary size comparison      
-        check_thread_status(worker)
-        figures.append(visualizer.plot_vocabulary_size())
-        # 2. Generate plots for tokens distribution by length
-        check_thread_status(worker)
-        figures.extend(visualizer.plot_tokens_length_distribution())
-        # 2. Generate plots for words versus subwords in tokenizers
-        check_thread_status(worker)        
-        figures.append(visualizer.plot_subwords_vs_words())       
+        figures = []       
+                 
+        check_thread_status(kwargs.get('worker', None))
+        figures.append(self.visualizer.plot_vocabulary_size())
+
+        check_thread_status(kwargs.get('worker', None))
+        figures.extend(self.visualizer.plot_tokens_length_distribution())
+
+        check_thread_status(kwargs.get('worker', None))        
+        figures.append(self.visualizer.plot_subwords_vs_words())       
 
         return figures  
     
