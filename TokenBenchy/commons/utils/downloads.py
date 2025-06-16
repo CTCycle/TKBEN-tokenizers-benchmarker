@@ -1,8 +1,8 @@
 import os
 import pandas as pd
+import transformers 
 from datasets import load_dataset
 from tokenizers import Tokenizer
-from transformers import AutoTokenizer
 from huggingface_hub import HfApi
 
 from TokenBenchy.commons.interface.workers import check_thread_status
@@ -87,15 +87,16 @@ class TokenizersDownloadManager:
                 tokenizer_save_path = os.path.join(TOKENIZER_PATH, 'open', tokenizer_name)           
                 os.mkdir(tokenizer_save_path) if not os.path.exists(tokenizer_save_path) else None            
                 logger.info(f'Downloading and saving tokenizer: {tokenizer_id}')
-                tokenizer = AutoTokenizer.from_pretrained(
+                tokenizer = transformers.AutoTokenizer.from_pretrained(
                     tokenizer_id, cache_dir=tokenizer_save_path, token=self.hf_access_token) 
-                tokenizers[tokenizer_id] = tokenizer
-
-                # check for worker thread status
-                check_thread_status(kwargs.get('worker', None))
+                tokenizers[tokenizer_id] = tokenizer                
 
             except Exception as e:
-                logger.error(f"Failed to download tokenizer {tokenizer_id}: {e}", exc_info=True)        
+                logger.error(f"Failed to download tokenizer {tokenizer_id}: {e}", exc_info=True) 
+
+            finally:
+                # check for worker thread status
+                check_thread_status(kwargs.get('worker', None))                       
         
         # load custom tokenizer in target subfolder if .json files are found and
         # if the user has selected the option to include custom tokenizers
@@ -106,6 +107,7 @@ class TokenizersDownloadManager:
             json_files = [os.path.join(custom_tokenizer_path, fn)
                           for fn in os.listdir(custom_tokenizer_path)
                           if fn.lower().endswith(".json")]
+            
             if len(json_files) > 0 and self.has_custom_tokenizer:
                 logger.info(f'Loading custom tokenizers from {custom_tokenizer_path}')                
                 for js in json_files:

@@ -10,12 +10,13 @@ from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlainTextEdit, QSpinBox,
                                QGraphicsScene, QGraphicsPixmapItem, QGraphicsView)
 
 
-from TokenBenchy.commons.utils.data.database import TokenBenchyDatabase
+from TokenBenchy.commons.utils.database import TokenBenchyDatabase
 from TokenBenchy.commons.interface.events import DatasetEvents, BenchmarkEvents, VisualizationEnvents
 from TokenBenchy.commons.configuration import Configuration
 from TokenBenchy.commons.interface.workers import Worker
 from TokenBenchy.commons.logger import logger
-        
+
+
 
 
 ###############################################################################
@@ -56,7 +57,8 @@ class MainWindow:
             self.database, self.configuration, self.hf_access_token)        
         self.benchmark_handler = BenchmarkEvents(
             self.database, self.configuration, self.hf_access_token)
-        self.figures_handler = VisualizationEnvents(self.configuration)
+        self.figures_handler = VisualizationEnvents(
+            self.database, self.configuration)
 
         # setup UI elements
         self._set_states()
@@ -217,13 +219,12 @@ class MainWindow:
             return 
         
         corpus_text = self.main_win.findChild(QTextEdit, "datasetCorpus").toPlainText()
-        config_text = self.main_win.findChild(QTextEdit, "datasetConfig").toPlainText()         
-        corpus_text = corpus_text.replace('\n', ' ').strip()
-        config_text = config_text.replace('\n', ' ').strip()     
-
+        config_text = self.main_win.findChild(QTextEdit, "datasetConfig").toPlainText()  
+        dataset_config = {'corpus': corpus_text.replace('\n', ' ').strip(), 
+                          'config': config_text.replace('\n', ' ').strip()} 
+        
         # update configuration with the text from the input boxes and reinitialize
-        # the loading handler with the new configuration
-        dataset_config = {'corpus': corpus_text, 'config': config_text} 
+        # the loading handler with the new configuration        
         self.config_manager.update_value('DATASET', dataset_config)
         self.configuration = self.config_manager.get_configuration() 
         self.loading_handler = DatasetEvents(self.database, self.configuration, self.hf_access_token) 
@@ -261,7 +262,7 @@ class MainWindow:
         self._send_message("Computing statistics for the selected dataset")       
         # functions that are passed to the worker will be executed in a separate thread
         self.worker = Worker(
-            self.benchmark_handler.calculate_dataset_statistics,
+            self.benchmark_handler.run_dataset_evaluation_pipeline,
             self.text_dataset)   
 
         # start worker and inject signals
@@ -308,11 +309,7 @@ class MainWindow:
         
         tokenizers = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark") 
         tokenizers_name = tokenizers.toPlainText().splitlines()
-        if len(tokenizers_name)==0 or self.text_dataset is None:
-            message = "Please load both the tokenizers and the text dataset before running benchmarks!"
-            QMessageBox.warning(self.main_win,
-                                "Cannot run benchmarks",
-                                message)
+        if len(tokenizers_name)==0 or self.text_dataset is None:            
             return None
 
         tokenizers_name = [x.replace('\n', ' ').strip() for x in tokenizers_name]
@@ -405,8 +402,10 @@ class MainWindow:
         self.text_dataset = datasets
         config = self.config_manager.get_configuration().get('DATASET', {})
         corpus = config.get('corpus', 'NA')  
-        config = config.get('config', 'NA')         
-        message = f'text dataset has been loaded: {corpus} with config {config}' 
+        config = config.get('config', 'NA')             
+        message = f'Text dataset has been loaded: {corpus} with config {config}' 
+        logger.info(message)
+
         self.loading_handler.handle_success(self.main_win, message)  
         self.worker_running = False 
 
