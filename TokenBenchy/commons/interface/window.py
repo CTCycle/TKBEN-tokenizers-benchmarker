@@ -17,8 +17,6 @@ from TokenBenchy.commons.interface.workers import Worker
 from TokenBenchy.commons.logger import logger
 
 
-
-
 ###############################################################################
 class MainWindow:
     

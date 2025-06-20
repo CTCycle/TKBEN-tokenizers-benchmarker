@@ -2,13 +2,11 @@ TokenBenchy/resources/database/tokenizers/*
 TokenBenchy/resources/database/datasets/*
 TokenBenchy/resources/database/evaluation/*
 
-setup/environment/*
-setup/miniconda/*
-setup/variables/.env
+TokenBenchy/app/python/*
+TokenBenchy/app/.env
 
 __pycache__
 *.csv
-*.txt
 *.db
 *.log
 *.egg-info
