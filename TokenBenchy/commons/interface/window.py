@@ -68,8 +68,7 @@ class MainWindow:
             (QCheckBox, "removeInvalid", 'remove_invalid_docs'),
             (QCheckBox, "includeCustomToken", 'custom_tokenizer'),
             (QCheckBox, "includeNSL", 'include_NSL'),
-            (QCheckBox, "reduceSize", 'reduce_size'),
-            (QCheckBox, "saveImages", 'save_images'),
+            (QCheckBox, "reduceSize", 'reduce_size'),           
             (QSpinBox,  "numDocs", 'num_documents'),
             (QPushButton,'scanHF','scan_for_tokenizers'),
             (QComboBox, "selectTokenizers", 'combo_tokenizers'),
@@ -130,8 +129,7 @@ class MainWindow:
             ('use_custom_dataset', 'toggled', 'use_custom_dataset'),
             ('remove_invalid_docs', 'toggled', 'remove_invalid_documents'),
             ('custom_tokenizer', 'toggled', 'include_custom_tokenizer'),
-            ('include_NSL', 'toggled', 'include_NSL'),
-            ('save_images', 'toggled', 'save_images'),
+            ('include_NSL', 'toggled', 'include_NSL'),      
             ('num_documents', 'valueChanged', 'num_documents')]    
 
         for attr, signal_name, config_key in connections:
