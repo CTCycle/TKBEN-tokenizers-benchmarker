@@ -208,14 +208,13 @@ class BenchmarkTokenizers:
 ###############################################################################
 class VisualizeBenchmarkResults:
 
-    def __init__(self, database, configuration : dict):                               
-        self.save_images = configuration.get('save_images', True)
-        self.observed_features = [
-            'tokens_to_words_ratio', 'AVG_tokens_length', 'bytes_per_token']
-        
+    def __init__(self, database, configuration : dict):        
         self.database = database
         self.configuration = configuration    
         self.DPI = 400 
+
+        self.observed_features = [
+            'tokens_to_words_ratio', 'AVG_tokens_length', 'bytes_per_token']
 
         self.benchmarks, self.vocab_stats = self.database.load_benchmark_results()
         self.tokenizers = self.vocab_stats['tokenizer'].to_list() 
@@ -246,10 +245,8 @@ class VisualizeBenchmarkResults:
         ax.tick_params(axis="x", rotation=45, labelsize=14)
         ax.tick_params(axis="y", labelsize=14)
         ax.legend(title="", fontsize=14)
-        plt.tight_layout()   
-
-        if self.save_images:
-            self.save_image(fig, "vocabulary_size.jpeg") 
+        plt.tight_layout()                
+        self.save_image(fig, "vocabulary_size.jpeg") 
         plt.close()          
 
         return fig
@@ -277,8 +274,7 @@ class VisualizeBenchmarkResults:
         ax.tick_params(axis="y", labelsize=14)
         ax.legend(title="", fontsize=14)
         plt.tight_layout()
-        if self.save_images:
-            self.save_image(fig, "subwords_vs_words.jpeg") 
+        self.save_image(fig, "subwords_vs_words.jpeg") 
         plt.close()          
 
         return fig
@@ -305,7 +301,7 @@ class VisualizeBenchmarkResults:
             axs[1].set_ylabel('Frequency', fontsize=14)
             plt.tight_layout()
             distributions.append(fig)
-            self.save_image(fig, f'{tokenizer}_histogram_tokens.jpeg') if self.save_images else None
+            self.save_image(fig, f'{tokenizer}_histogram_tokens.jpeg') 
             plt.close(fig)
 
             # Accumulate data for boxplot
@@ -329,8 +325,7 @@ class VisualizeBenchmarkResults:
         plt.tight_layout()
 
         distributions.append(fig)
-        if self.save_images:
-            self.save_image(fig, 'boxplot_token_lengths_by_tokenizer.jpeg')   
+        self.save_image(fig, 'boxplot_token_lengths_by_tokenizer.jpeg')   
         plt.close(fig)
 
         return distributions

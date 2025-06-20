@@ -9,8 +9,7 @@ class Configuration:
                               'include_custom_tokenizer' : False,
                               'include_NSL' : False,
                               'num_documents' : 0,
-                              'reduce_output_size' : False,
-                              'save_images' : True,
+                              'reduce_output_size' : False,                              
                               "DATASET": {"corpus" : "wikitext", 
                                            "config": "wikitext-103-v1"},
                               "TOKENIZERS": []} 
