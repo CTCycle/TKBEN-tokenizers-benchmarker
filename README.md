@@ -11,7 +11,7 @@ The installation process for Windows is fully automated. Simply run the script *
 
 **Important:** After installation, if the project folder is moved or its path is changed, the application will no longer function correctly. To fix this, you can either:
 
-- Open *setup/setup_and_maintenance.bat* and select *Enable root path imports* 
+- Open *setup_and_maintenance.bat* and select *Enable root path imports* 
 - Manually run the following commands in the terminal, ensuring the project folder is set as the current working directory (CWD):
 
     `conda activate TOKEXP`
@@ -34,7 +34,7 @@ The intuitive main interface facilitates easy selection of text datasets and tok
 - **tokens to words ratio**: The ratio of token count to word count.
 - **bytes per token**: The number of bytes per token, derived from the original text length.  
 
-**Setup and Maintenance:** you can run *setup/setup_and_maintenance.bat* to start the external tools for maintenance with the following options:
+**Setup and Maintenance:** you can run *setup_and_maintenance.bat* to start the external tools for maintenance with the following options:
 
 - **Run installation:** run the application installer for Windows
 - **Enable root path imports:** refresh root path imports if the main folder has been moved or renamed
