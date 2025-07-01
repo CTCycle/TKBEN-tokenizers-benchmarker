@@ -27,14 +27,17 @@ class DatasetDownloadManager:
         datasets = {}   
         subfolder = 'custom' if self.has_custom_dataset else 'open'
         base_path = os.path.join(DATASETS_PATH, subfolder)
+        # load a custom text dataset from .csv file
         if self.has_custom_dataset:              
             csv_files = [os.path.join(base_path, fn)
                         for fn in os.listdir(base_path)
                         if fn.lower().endswith(".csv")]
-
             if not csv_files:
+                # do not return anything if no files are found and custom dataset is required
                 logger.warning(f'No CSV files found in custom folder: {base_path}')
+                return None
             else:
+                # if multiple files are found only the first one will be loaded
                 if len(csv_files) > 1:
                     logger.warning(
                         f'Multiple CSV files found in {base_path}, using the first one: {os.path.basename(csv_files[0])}')
@@ -70,7 +73,7 @@ class TokenizersDownloadManager:
     #--------------------------------------------------------------------------
     def get_tokenizer_identifiers(self, limit=100, **kwargs):        
         api = HfApi(token=self.hf_access_token) if "downloads" else HfApi()
-        # query the Hub to search for “tokenizer” in metadata, sort by downloads 
+        # query HuggingFace Hub to search for tokenizer tag in metadata, sort by downloads 
         models = api.list_models(
             search="tokenizer", sort="downloads", direction=-1, limit=limit)
         # extract and return just the model IDs
