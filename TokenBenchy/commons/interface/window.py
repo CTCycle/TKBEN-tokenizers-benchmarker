@@ -55,7 +55,7 @@ class MainWindow:
             self.database, self.configuration, self.hf_access_token)        
         self.benchmark_handler = BenchmarkEvents(
             self.database, self.configuration, self.hf_access_token)
-        self.figures_handler = VisualizationEnvents(
+        self.viewer_handler = VisualizationEnvents(
             self.database, self.configuration)
 
         # setup UI elements
@@ -68,7 +68,7 @@ class MainWindow:
             (QCheckBox, "removeInvalid", 'remove_invalid_docs'),
             (QCheckBox, "includeCustomToken", 'custom_tokenizer'),
             (QCheckBox, "includeNSL", 'include_NSL'),
-            (QCheckBox, "reduceSize", 'reduce_size'),           
+            (QCheckBox, "reduceSize", 'reduce_data_size'),           
             (QSpinBox,  "numDocs", 'num_documents'),
             (QPushButton,'scanHF','scan_for_tokenizers'),
             (QComboBox, "selectTokenizers", 'combo_tokenizers'),
@@ -76,13 +76,14 @@ class MainWindow:
             (QPushButton, "analyzeDataset", 'analyze_dataset'),
             (QPushButton, "runBenchmarks", 'run_benchmarks'),
             (QPushButton, "visualizeResults", 'visualize_results'),
+            (QSpinBox, "imageDPI", 'image_resolution'),
             (QPushButton, "previousImg", 'prev_img'),
             (QPushButton, "nextImg", 'next_img'),
             (QPushButton, "clearImg", 'clear_img'),            
             (QPlainTextEdit, "tokenizersToBenchmark",'tokenizers_to_bench'),
-            (QTextEdit, "datasetCorpus", 'text_corpus'),
-            (QTextEdit, "datasetConfig", 'text_config'),
-            (QGraphicsView, "figureCanvas",  'view')])
+            (QTextEdit, "datasetCorpus",'text_corpus'),
+            (QTextEdit, "datasetConfig",'text_config'),
+            (QGraphicsView, "figureCanvas",'view')])
         
         self._connect_signals([
             ('stop_thread','clicked',self.stop_running_worker),           
@@ -129,8 +130,11 @@ class MainWindow:
             ('use_custom_dataset', 'toggled', 'use_custom_dataset'),
             ('remove_invalid_docs', 'toggled', 'remove_invalid_documents'),
             ('custom_tokenizer', 'toggled', 'include_custom_tokenizer'),
-            ('include_NSL', 'toggled', 'include_NSL'),      
-            ('num_documents', 'valueChanged', 'num_documents')]    
+            ('include_NSL', 'toggled', 'include_NSL'),
+            ('reduce_data_size', 'toggled', 'reduce_data_size'),      
+            ('num_documents', 'valueChanged', 'num_documents'),
+            ('image_resolution', 'valueChanged', 'image_resolution')
+            ]    
 
         for attr, signal_name, config_key in connections:
             widget = self.widgets[attr]
@@ -223,7 +227,8 @@ class MainWindow:
         # the loading handler with the new configuration        
         self.config_manager.update_value('DATASET', dataset_config)
         self.configuration = self.config_manager.get_configuration() 
-        self.loading_handler = DatasetEvents(self.database, self.configuration, self.hf_access_token) 
+        self.loading_handler = DatasetEvents(
+            self.database, self.configuration, self.hf_access_token) 
         
         # send message to status bar
         self._send_message(
@@ -336,11 +341,11 @@ class MainWindow:
             return 
         
         self.configuration = self.config_manager.get_configuration() 
-        self.figures_handler = VisualizationEnvents(self.configuration)        
+        self.viewer_handler = VisualizationEnvents(self.database, self.configuration)        
         # send message to status bar
         self._send_message("Generating benchmark results figures")   
         # functions that are passed to the worker will be executed in a separate thread
-        self.worker = Worker(self.figures_handler.visualize_benchmark_results) 
+        self.worker = Worker(self.viewer_handler.visualize_benchmark_results) 
 
         # start worker and inject signals
         self._start_worker(
@@ -441,10 +446,10 @@ class MainWindow:
     def on_plots_generated(self, figures): 
         if figures:        
             self.pixmaps.extend(
-                [self.figures_handler.convert_fig_to_qpixmap(p) for p in figures])
+                [self.viewer_handler.convert_fig_to_qpixmap(p) for p in figures])
         self.current_fig = 0
         self._update_graphics_view()
-        self.figures_handler.handle_success(
+        self.viewer_handler.handle_success(
             self.main_win, 'Benchmark results plots have been generated')
         self.worker_running = False      
     
@@ -465,7 +470,7 @@ class MainWindow:
     #--------------------------------------------------------------------------
     @Slot(tuple)
     def on_plots_error(self, err_tb):
-        self.figures_handler.handle_error(self.main_win, err_tb) 
+        self.viewer_handler.handle_error(self.main_win, err_tb) 
         self.worker_running = False  
 
     #--------------------------------------------------------------------------
