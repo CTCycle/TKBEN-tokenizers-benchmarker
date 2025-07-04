@@ -45,6 +45,7 @@ class DatasetEvents:
         QMessageBox.critical(window, 'Something went wrong!', f"{exc}\n\n{tb}")
 
 
+
 ###############################################################################
 class BenchmarkEvents:
 
@@ -89,7 +90,8 @@ class BenchmarkEvents:
         logger.error(exc, '\n', tb)
         logger.error(f"{exc}\n\n{tb}")
         QMessageBox.critical(window, 'Something went wrong!', f"{exc}\n\n{tb}")
-        
+
+
 
 
 ###############################################################################
@@ -142,3 +144,4 @@ class VisualizationEnvents:
         logger.error(exc, '\n', tb)
         logger.error(f"{exc}\n\n{tb}")
         QMessageBox.critical(window, 'Something went wrong!', f"{exc}\n\n{tb}")
+
