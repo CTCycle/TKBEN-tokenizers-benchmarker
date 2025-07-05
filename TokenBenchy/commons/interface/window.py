@@ -208,7 +208,7 @@ class MainWindow:
     def stop_running_worker(self):
         if self.worker is not None:
             self.worker.stop()       
-        self._send_message("Interrupt requested. Waiting for threads to stop...")
+            self._send_message("Interrupt requested. Waiting for threads to stop...")
 
     #--------------------------------------------------------------------------
     @Slot()
@@ -405,9 +405,9 @@ class MainWindow:
         config = config.get('config', 'NA')             
         message = f'Text dataset has been loaded: {corpus} with config {config}' 
         logger.info(message)
-
-        self.loading_handler.handle_success(self.main_win, message)  
+        self._send_message(message)  
         self.worker = None 
+        self.loading_handler = None 
 
     #--------------------------------------------------------------------------
     @Slot(object)
@@ -415,9 +415,9 @@ class MainWindow:
         config = self.config_manager.get_configuration().get('DATASET', {})
         corpus = config.get('corpus', 'NA')  
         config = config.get('config', 'NA')         
-        message = f'{corpus} - {config} analysis is finished' 
-        self.benchmark_handler.handle_success(self.main_win, message)
-        self.worker = None
+        self._send_message(f'{corpus} - {config} analysis is finished')
+        self.worker = None 
+        self.benchmark_handler = None 
 
     #--------------------------------------------------------------------------
     @Slot(object)
@@ -428,17 +428,17 @@ class MainWindow:
             if identifier not in existing:
                 combo.addItem(identifier)
                   
-        message = f'{len(identifiers)} tokenizer identifiers fetched from HuggingFace'   
-        self.benchmark_handler.handle_success(self.main_win, message)   
-        self.worker = None           
+        self._send_message(f'{len(identifiers)} tokenizer identifiers fetched from HuggingFace')   
+        self.worker = None 
+        self.benchmark_handler = None          
     
     #--------------------------------------------------------------------------
     @Slot(object)
     def on_benchmark_finished(self, tokenizers):
         self.tokenizers = tokenizers               
-        message = f'{len(tokenizers)} selected tokenizers have been benchmarked'   
-        self.benchmark_handler.handle_success(self.main_win, message)   
+        self._send_message(f'{len(tokenizers)} selected tokenizers have been benchmarked') 
         self.worker = None 
+        self.benchmark_handler = None     
     
     #--------------------------------------------------------------------------
     @Slot(object)    
@@ -448,37 +448,23 @@ class MainWindow:
                 [self.viewer_handler.convert_fig_to_qpixmap(p) for p in figures])
         self.current_fig = 0
         self._update_graphics_view()
-        self.viewer_handler.handle_success(
-            self.main_win, 'Benchmark results plots have been generated')
-        self.worker = None      
+        self._send_message('Benchmark results plots have been generated')
+        self.worker = None 
+        self.viewer_handler = None     
     
     ###########################################################################   
     # [NEGATIVE OUTCOME HANDLERS]
     ###########################################################################   
     @Slot(tuple)
-    def on_dataset_error(self, err_tb):
-        self.loading_handler.handle_error(self.main_win, err_tb)  
-        self.worker = None     
-
-    #--------------------------------------------------------------------------
-    @Slot(tuple)
-    def on_benchmark_error(self, err_tb):
-        self.benchmark_handler.handle_error(self.main_win, err_tb)         
-        self.progress_bar.setValue(0) 
-        self.worker = None
-
-    #--------------------------------------------------------------------------
-    @Slot(tuple)
-    def on_plots_error(self, err_tb):
-        self.viewer_handler.handle_error(self.main_win, err_tb) 
-        self.worker = None  
-
-    #--------------------------------------------------------------------------
-    def on_task_interrupted(self):
+    def on_error(self, err_tb):         
+        exc, tb = err_tb
+        logger.error(exc, '\n', tb)
+        QMessageBox.critical(self.main_win, 'Something went wrong!', f"{exc}\n\n{tb}")
         self.progress_bar.setValue(0)
-        self._send_message('Current task has been interrupted by user') 
-        logger.warning('Current task has been interrupted by user')   
-        self.worker = None  
+        self.worker = None    
+        self.loading_handler = None
+        self.benchmark_handler = None
+        self.viewer_handler = None   
 
     ###########################################################################   
     # [INTERRUPTION HANDLERS]
@@ -487,7 +473,10 @@ class MainWindow:
         self.progress_bar.setValue(0)        
         self._send_message('Current task has been interrupted by user')
         logger.warning('Current task has been interrupted by user')
-        self.worker = None     
+        self.worker = None
+        self.loading_handler = None
+        self.benchmark_handler = None
+        self.viewer_handler = None   
     
 
     
