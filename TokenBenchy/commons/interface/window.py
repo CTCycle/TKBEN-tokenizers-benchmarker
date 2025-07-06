@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlainTextEdit, QSpinBox,
 from TokenBenchy.commons.utils.database import TokenBenchyDatabase
 from TokenBenchy.commons.interface.events import DatasetEvents, BenchmarkEvents, VisualizationEnvents
 from TokenBenchy.commons.configuration import Configuration
-from TokenBenchy.commons.interface.workers import Worker
+from TokenBenchy.commons.interface.workers import ThreadWorker
 from TokenBenchy.commons.logger import logger
 
 
@@ -170,7 +170,7 @@ class MainWindow:
         combo.currentTextChanged.connect(slot)
 
     #--------------------------------------------------------------------------
-    def _start_worker(self, worker : Worker, on_finished, on_error, on_interrupted,
+    def _start_worker(self, worker : ThreadWorker, on_finished, on_error, on_interrupted,
                       update_progress=True): 
         if update_progress:       
             self.progress_bar.setValue(0)
@@ -232,7 +232,7 @@ class MainWindow:
         self._send_message(
             f"Downloading dataset {corpus_text} (configuration: {config_text})")        
         # functions that are passed to the worker will be executed in a separate thread
-        self.worker = Worker(self.loading_handler.load_and_process_dataset)
+        self.worker = ThreadWorker(self.loading_handler.load_and_process_dataset)
 
         # start worker and inject signals
         self._start_worker(
@@ -260,7 +260,7 @@ class MainWindow:
         # send message to status bar        
         self._send_message("Computing statistics for the selected dataset")       
         # functions that are passed to the worker will be executed in a separate thread
-        self.worker = Worker(
+        self.worker = ThreadWorker(
             self.benchmark_handler.run_dataset_evaluation_pipeline,
             self.text_dataset)   
 
@@ -283,7 +283,7 @@ class MainWindow:
         # send message to status bar        
         self._send_message("Looking for available tokenizers in Hugging Face")       
         # functions that are passed to the worker will be executed in a separate thread
-        self.worker = Worker(
+        self.worker = ThreadWorker(
             self.benchmark_handler.get_tokenizer_identifiers, limit=1000)
           
         # start worker and inject signals
@@ -322,7 +322,7 @@ class MainWindow:
         # send message to status bar
         self._send_message("Running tokenizers benchmark...")          
         # functions that are passed to the worker will be executed in a separate thread
-        self.worker = Worker(
+        self.worker = ThreadWorker(
            self.benchmark_handler.execute_benchmarks, 
            self.text_dataset)         
         
@@ -343,7 +343,7 @@ class MainWindow:
         # send message to status bar
         self._send_message("Generating benchmark results figures")   
         # functions that are passed to the worker will be executed in a separate thread
-        self.worker = Worker(self.viewer_handler.visualize_benchmark_results) 
+        self.worker = ThreadWorker(self.viewer_handler.visualize_benchmark_results) 
 
         # start worker and inject signals
         self._start_worker(
@@ -406,8 +406,7 @@ class MainWindow:
         message = f'Text dataset has been loaded: {corpus} with config {config}' 
         logger.info(message)
         self._send_message(message)  
-        self.worker = None 
-        self.loading_handler = None 
+        self.worker = self.worker.cleanup()
 
     #--------------------------------------------------------------------------
     @Slot(object)
@@ -416,8 +415,7 @@ class MainWindow:
         corpus = config.get('corpus', 'NA')  
         config = config.get('config', 'NA')         
         self._send_message(f'{corpus} - {config} analysis is finished')
-        self.worker = None 
-        self.benchmark_handler = None 
+        self.worker = self.worker.cleanup()
 
     #--------------------------------------------------------------------------
     @Slot(object)
@@ -429,16 +427,14 @@ class MainWindow:
                 combo.addItem(identifier)
                   
         self._send_message(f'{len(identifiers)} tokenizer identifiers fetched from HuggingFace')   
-        self.worker = None 
-        self.benchmark_handler = None          
+        self.worker = self.worker.cleanup()        
     
     #--------------------------------------------------------------------------
     @Slot(object)
     def on_benchmark_finished(self, tokenizers):
         self.tokenizers = tokenizers               
         self._send_message(f'{len(tokenizers)} selected tokenizers have been benchmarked') 
-        self.worker = None 
-        self.benchmark_handler = None     
+        self.worker = self.worker.cleanup()  
     
     #--------------------------------------------------------------------------
     @Slot(object)    
@@ -449,8 +445,7 @@ class MainWindow:
         self.current_fig = 0
         self._update_graphics_view()
         self._send_message('Benchmark results plots have been generated')
-        self.worker = None 
-        self.viewer_handler = None     
+        self.worker = self.worker.cleanup()    
     
     ###########################################################################   
     # [NEGATIVE OUTCOME HANDLERS]
@@ -461,10 +456,7 @@ class MainWindow:
         logger.error(exc, '\n', tb)
         QMessageBox.critical(self.main_win, 'Something went wrong!', f"{exc}\n\n{tb}")
         self.progress_bar.setValue(0)
-        self.worker = None    
-        self.loading_handler = None
-        self.benchmark_handler = None
-        self.viewer_handler = None   
+        self.worker = self.worker.cleanup()
 
     ###########################################################################   
     # [INTERRUPTION HANDLERS]
@@ -473,10 +465,7 @@ class MainWindow:
         self.progress_bar.setValue(0)        
         self._send_message('Current task has been interrupted by user')
         logger.warning('Current task has been interrupted by user')
-        self.worker = None
-        self.loading_handler = None
-        self.benchmark_handler = None
-        self.viewer_handler = None   
+        self.worker = self.worker.cleanup()
     
 
     
