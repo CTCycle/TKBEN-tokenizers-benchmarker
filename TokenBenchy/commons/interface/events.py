@@ -30,19 +30,8 @@ class DatasetEvents:
 
         return clean_documents    
   
-    # define the logic to handle successfull data retrieval outside the main UI loop
-    #--------------------------------------------------------------------------
-    def handle_success(self, window, message):        
-        # send message to status bar
-        window.statusBar().showMessage(message)    
+   
 
-    # define the logic to handle error during data retrieval outside the main UI loop
-    #--------------------------------------------------------------------------
-    def handle_error(self, window, err_tb):
-        exc, tb = err_tb
-        logger.error(exc, '\n', tb)
-        logger.error(f"{exc}\n\n{tb}")
-        QMessageBox.critical(window, 'Something went wrong!', f"{exc}\n\n{tb}")
 
 
 ###############################################################################
@@ -75,21 +64,6 @@ class BenchmarkEvents:
            documents, tokenizers, progress_callback=progress_callback, worker=worker) 
 
         return tokenizers     
-
-    # define the logic to handle successfull data retrieval outside the main UI loop
-    #--------------------------------------------------------------------------
-    def handle_success(self, window, message): 
-        # send message to status bar
-        window.statusBar().showMessage(message)
-    
-    # define the logic to handle error during data retrieval outside the main UI loop
-    #--------------------------------------------------------------------------
-    def handle_error(self, window, err_tb):
-        exc, tb = err_tb
-        logger.error(exc, '\n', tb)
-        logger.error(f"{exc}\n\n{tb}")
-        QMessageBox.critical(window, 'Something went wrong!', f"{exc}\n\n{tb}")
-        
 
 
 ###############################################################################
@@ -129,16 +103,3 @@ class VisualizationEnvents:
 
         return QPixmap.fromImage(qimg)
     
-    # define the logic to handle successfull data retrieval outside the main UI loop
-    #--------------------------------------------------------------------------
-    def handle_success(self, window, message):         
-        # send message to status bar
-        window.statusBar().showMessage(message)
-    
-    # define the logic to handle error during data retrieval outside the main UI loop
-    #--------------------------------------------------------------------------
-    def handle_error(self, window, err_tb):
-        exc, tb = err_tb
-        logger.error(exc, '\n', tb)
-        logger.error(f"{exc}\n\n{tb}")
-        QMessageBox.critical(window, 'Something went wrong!', f"{exc}\n\n{tb}")
