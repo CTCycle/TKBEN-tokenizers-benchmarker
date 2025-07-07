@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlainTextEdit, QSpinBox,
 from TokenBenchy.commons.utils.database import TokenBenchyDatabase
 from TokenBenchy.commons.interface.events import DatasetEvents, BenchmarkEvents, VisualizationEnvents
 from TokenBenchy.commons.configuration import Configuration
-from TokenBenchy.commons.interface.workers import Worker
+from TokenBenchy.commons.interface.workers import ThreadWorker
 from TokenBenchy.commons.logger import logger
 
 
@@ -40,8 +40,7 @@ class MainWindow:
     
         # set thread pool for the workers
         self.threadpool = QThreadPool.globalInstance()
-        self.worker = None
-        self.worker_running = False          
+        self.worker = None          
 
         # get Hugging Face access token        
         self.hf_access_token = EV.get_HF_access_token()
@@ -171,7 +170,7 @@ class MainWindow:
         combo.currentTextChanged.connect(slot)
 
     #--------------------------------------------------------------------------
-    def _start_worker(self, worker : Worker, on_finished, on_error, on_interrupted,
+    def _start_thread_worker(self, worker : ThreadWorker, on_finished, on_error, on_interrupted,
                       update_progress=True): 
         if update_progress:       
             self.progress_bar.setValue(0)
@@ -180,7 +179,6 @@ class MainWindow:
         worker.signals.error.connect(on_error)        
         worker.signals.interrupted.connect(on_interrupted)
         self.threadpool.start(worker)
-        self.worker_running = True
 
     #--------------------------------------------------------------------------
     def _send_message(self, message): 
@@ -210,12 +208,12 @@ class MainWindow:
     def stop_running_worker(self):
         if self.worker is not None:
             self.worker.stop()       
-        self._send_message("Interrupt requested. Waiting for threads to stop...")
+            self._send_message("Interrupt requested. Waiting for threads to stop...")
 
     #--------------------------------------------------------------------------
     @Slot()
     def load_and_process_dataset(self): 
-        if self.worker_running:            
+        if self.worker:            
             return 
         
         corpus_text = self.main_win.findChild(QTextEdit, "datasetCorpus").toPlainText()
@@ -234,18 +232,18 @@ class MainWindow:
         self._send_message(
             f"Downloading dataset {corpus_text} (configuration: {config_text})")        
         # functions that are passed to the worker will be executed in a separate thread
-        self.worker = Worker(self.loading_handler.load_and_process_dataset)
+        self.worker = ThreadWorker(self.loading_handler.load_and_process_dataset)
 
         # start worker and inject signals
-        self._start_worker(
+        self._start_thread_worker(
             self.worker, on_finished=self.on_dataset_loaded,
-            on_error=self.on_dataset_error,
+            on_error=self.on_error,
             on_interrupted=self.on_task_interrupted)       
 
     #--------------------------------------------------------------------------
     @Slot()
     def run_dataset_analysis(self):
-        if self.worker_running:            
+        if self.worker:            
             return 
 
         if self.text_dataset is None:
@@ -262,20 +260,20 @@ class MainWindow:
         # send message to status bar        
         self._send_message("Computing statistics for the selected dataset")       
         # functions that are passed to the worker will be executed in a separate thread
-        self.worker = Worker(
+        self.worker = ThreadWorker(
             self.benchmark_handler.run_dataset_evaluation_pipeline,
             self.text_dataset)   
 
         # start worker and inject signals
-        self._start_worker(
+        self._start_thread_worker(
             self.worker, on_finished=self.on_analysis_success,
-            on_error=self.on_benchmark_error,
+            on_error=self.on_error,
             on_interrupted=self.on_task_interrupted)            
 
     #--------------------------------------------------------------------------
     @Slot(str)
     def find_tokenizers_identifiers(self):
-        if self.worker_running:            
+        if self.worker:            
             return 
              
         self.configuration = self.config_manager.get_configuration() 
@@ -285,13 +283,13 @@ class MainWindow:
         # send message to status bar        
         self._send_message("Looking for available tokenizers in Hugging Face")       
         # functions that are passed to the worker will be executed in a separate thread
-        self.worker = Worker(
+        self.worker = ThreadWorker(
             self.benchmark_handler.get_tokenizer_identifiers, limit=1000)
           
         # start worker and inject signals
-        self._start_worker(
+        self._start_thread_worker(
             self.worker, on_finished=self.on_tokenizers_fetched,
-            on_error=self.on_benchmark_error,
+            on_error=self.on_error,
             on_interrupted=self.on_task_interrupted)          
 
     #--------------------------------------------------------------------------
@@ -305,7 +303,7 @@ class MainWindow:
     #--------------------------------------------------------------------------
     @Slot()
     def run_tokenizers_benchmark(self):
-        if self.worker_running:            
+        if self.worker:            
             return 
         
         tokenizers = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark") 
@@ -324,20 +322,20 @@ class MainWindow:
         # send message to status bar
         self._send_message("Running tokenizers benchmark...")          
         # functions that are passed to the worker will be executed in a separate thread
-        self.worker = Worker(
+        self.worker = ThreadWorker(
            self.benchmark_handler.execute_benchmarks, 
            self.text_dataset)         
         
         # start worker and inject signals
-        self._start_worker(
+        self._start_thread_worker(
             self.worker, on_finished=self.on_benchmark_finished,
-            on_error=self.on_benchmark_error,
+            on_error=self.on_error,
             on_interrupted=self.on_task_interrupted)      
 
     #--------------------------------------------------------------------------
     @Slot()
     def generate_figures(self):     
-        if self.worker_running:            
+        if self.worker:            
             return 
         
         self.configuration = self.config_manager.get_configuration() 
@@ -345,12 +343,12 @@ class MainWindow:
         # send message to status bar
         self._send_message("Generating benchmark results figures")   
         # functions that are passed to the worker will be executed in a separate thread
-        self.worker = Worker(self.viewer_handler.visualize_benchmark_results) 
+        self.worker = ThreadWorker(self.viewer_handler.visualize_benchmark_results) 
 
         # start worker and inject signals
-        self._start_worker(
+        self._start_thread_worker(
             self.worker, on_finished=self.on_plots_generated,
-            on_error=self.on_plots_error,
+            on_error=self.on_error,
             on_interrupted=self.on_task_interrupted)        
 
     #--------------------------------------------------------------------------
@@ -396,6 +394,7 @@ class MainWindow:
         self.view.viewport().update()
 
 
+    ###########################################################################
     # [POSITIVE OUTCOME HANDLERS]
     ###########################################################################    
     @Slot(object)
@@ -406,9 +405,8 @@ class MainWindow:
         config = config.get('config', 'NA')             
         message = f'Text dataset has been loaded: {corpus} with config {config}' 
         logger.info(message)
-
-        self.loading_handler.handle_success(self.main_win, message)  
-        self.worker_running = False 
+        self._send_message(message)  
+        self.worker = self.worker.cleanup()
 
     #--------------------------------------------------------------------------
     @Slot(object)
@@ -416,9 +414,8 @@ class MainWindow:
         config = self.config_manager.get_configuration().get('DATASET', {})
         corpus = config.get('corpus', 'NA')  
         config = config.get('config', 'NA')         
-        message = f'{corpus} - {config} analysis is finished' 
-        self.benchmark_handler.handle_success(self.main_win, message)
-        self.worker_running = False
+        self._send_message(f'{corpus} - {config} analysis is finished')
+        self.worker = self.worker.cleanup()
 
     #--------------------------------------------------------------------------
     @Slot(object)
@@ -429,17 +426,15 @@ class MainWindow:
             if identifier not in existing:
                 combo.addItem(identifier)
                   
-        message = f'{len(identifiers)} tokenizer identifiers fetched from HuggingFace'   
-        self.benchmark_handler.handle_success(self.main_win, message)   
-        self.worker_running = False           
+        self._send_message(f'{len(identifiers)} tokenizer identifiers fetched from HuggingFace')   
+        self.worker = self.worker.cleanup()        
     
     #--------------------------------------------------------------------------
     @Slot(object)
     def on_benchmark_finished(self, tokenizers):
         self.tokenizers = tokenizers               
-        message = f'{len(tokenizers)} selected tokenizers have been benchmarked'   
-        self.benchmark_handler.handle_success(self.main_win, message)   
-        self.worker_running = False 
+        self._send_message(f'{len(tokenizers)} selected tokenizers have been benchmarked') 
+        self.worker = self.worker.cleanup()  
     
     #--------------------------------------------------------------------------
     @Slot(object)    
@@ -449,36 +444,29 @@ class MainWindow:
                 [self.viewer_handler.convert_fig_to_qpixmap(p) for p in figures])
         self.current_fig = 0
         self._update_graphics_view()
-        self.viewer_handler.handle_success(
-            self.main_win, 'Benchmark results plots have been generated')
-        self.worker_running = False      
+        self._send_message('Benchmark results plots have been generated')
+        self.worker = self.worker.cleanup()    
     
+    ###########################################################################   
     # [NEGATIVE OUTCOME HANDLERS]
-    ###########################################################################    
+    ###########################################################################   
     @Slot(tuple)
-    def on_dataset_error(self, err_tb):
-        self.loading_handler.handle_error(self.main_win, err_tb)  
-        self.worker_running = False     
-
-    #--------------------------------------------------------------------------
-    @Slot(tuple)
-    def on_benchmark_error(self, err_tb):
-        self.benchmark_handler.handle_error(self.main_win, err_tb)         
-        self.progress_bar.setValue(0) 
-        self.worker_running = False
-
-    #--------------------------------------------------------------------------
-    @Slot(tuple)
-    def on_plots_error(self, err_tb):
-        self.viewer_handler.handle_error(self.main_win, err_tb) 
-        self.worker_running = False  
-
-    #--------------------------------------------------------------------------
-    def on_task_interrupted(self):
+    def on_error(self, err_tb):         
+        exc, tb = err_tb
+        logger.error(f"{exc}\n{tb}")
+        QMessageBox.critical(self.main_win, 'Something went wrong!', f"{exc}\n\n{tb}")
         self.progress_bar.setValue(0)
-        self._send_message('Current task has been interrupted by user') 
-        logger.warning('Current task has been interrupted by user')   
-        self.worker_running = False     
+        self.worker = self.worker.cleanup()
+
+    ###########################################################################   
+    # [INTERRUPTION HANDLERS]
+    ###########################################################################     
+    def on_task_interrupted(self):         
+        self.progress_bar.setValue(0)        
+        self._send_message('Current task has been interrupted by user')
+        logger.warning('Current task has been interrupted by user')
+        self.worker = self.worker.cleanup()
+        
     
 
     
