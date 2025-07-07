@@ -170,7 +170,7 @@ class MainWindow:
         combo.currentTextChanged.connect(slot)
 
     #--------------------------------------------------------------------------
-    def _start_worker(self, worker : ThreadWorker, on_finished, on_error, on_interrupted,
+    def _start_thread_worker(self, worker : ThreadWorker, on_finished, on_error, on_interrupted,
                       update_progress=True): 
         if update_progress:       
             self.progress_bar.setValue(0)
@@ -235,9 +235,9 @@ class MainWindow:
         self.worker = ThreadWorker(self.loading_handler.load_and_process_dataset)
 
         # start worker and inject signals
-        self._start_worker(
+        self._start_thread_worker(
             self.worker, on_finished=self.on_dataset_loaded,
-            on_error=self.on_dataset_error,
+            on_error=self.on_error,
             on_interrupted=self.on_task_interrupted)       
 
     #--------------------------------------------------------------------------
@@ -265,9 +265,9 @@ class MainWindow:
             self.text_dataset)   
 
         # start worker and inject signals
-        self._start_worker(
+        self._start_thread_worker(
             self.worker, on_finished=self.on_analysis_success,
-            on_error=self.on_benchmark_error,
+            on_error=self.on_error,
             on_interrupted=self.on_task_interrupted)            
 
     #--------------------------------------------------------------------------
@@ -287,9 +287,9 @@ class MainWindow:
             self.benchmark_handler.get_tokenizer_identifiers, limit=1000)
           
         # start worker and inject signals
-        self._start_worker(
+        self._start_thread_worker(
             self.worker, on_finished=self.on_tokenizers_fetched,
-            on_error=self.on_benchmark_error,
+            on_error=self.on_error,
             on_interrupted=self.on_task_interrupted)          
 
     #--------------------------------------------------------------------------
@@ -327,9 +327,9 @@ class MainWindow:
            self.text_dataset)         
         
         # start worker and inject signals
-        self._start_worker(
+        self._start_thread_worker(
             self.worker, on_finished=self.on_benchmark_finished,
-            on_error=self.on_benchmark_error,
+            on_error=self.on_error,
             on_interrupted=self.on_task_interrupted)      
 
     #--------------------------------------------------------------------------
@@ -346,9 +346,9 @@ class MainWindow:
         self.worker = ThreadWorker(self.viewer_handler.visualize_benchmark_results) 
 
         # start worker and inject signals
-        self._start_worker(
+        self._start_thread_worker(
             self.worker, on_finished=self.on_plots_generated,
-            on_error=self.on_plots_error,
+            on_error=self.on_error,
             on_interrupted=self.on_task_interrupted)        
 
     #--------------------------------------------------------------------------
@@ -453,7 +453,7 @@ class MainWindow:
     @Slot(tuple)
     def on_error(self, err_tb):         
         exc, tb = err_tb
-        logger.error(exc, '\n', tb)
+        logger.error(f"{exc}\n{tb}")
         QMessageBox.critical(self.main_win, 'Something went wrong!', f"{exc}\n\n{tb}")
         self.progress_bar.setValue(0)
         self.worker = self.worker.cleanup()
@@ -466,6 +466,7 @@ class MainWindow:
         self._send_message('Current task has been interrupted by user')
         logger.warning('Current task has been interrupted by user')
         self.worker = self.worker.cleanup()
+        
     
 
     

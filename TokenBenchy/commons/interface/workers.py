@@ -1,4 +1,3 @@
-import gc
 import traceback
 import inspect
 
@@ -81,33 +80,11 @@ class ThreadWorker(QRunnable):
             self.signals.error.emit((e, tb))
        
     #--------------------------------------------------------------------------
-    @Slot()
     def cleanup(self):
-        """
-        Disconnects all signals and cleans up resources.
-        Call this from the main thread after the worker has completed.
-        """        
-        try:
-            # Disconnect all signals explicitly to prevent dangling connections
-            if self.signals:
-                self.signals.finished.disconnect()
-                self.signals.error.disconnect()
-                self.signals.interrupted.disconnect()
-                self.signals.progress.disconnect()
-            
-            # 3. Break potential reference cycles for faster garbage collection
-            self.fn = None
-            self.args = None
-            self.kwargs = None
-            self.signals = None
-            
-            # 4. Force garbage collection
-            gc.collect()           
-            
-        except Exception as e:
-            logger.error(f"Error during worker cleanup: {e}")
+        pass 
 
 
+# [HELPERS FUNCTIONS]
 #------------------------------------------------------------------------------
 def check_thread_status(worker : ThreadWorker):
     if worker is not None and worker.is_interrupted():        
