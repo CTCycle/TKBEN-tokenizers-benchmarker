@@ -10,6 +10,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from seaborn import barplot, boxplot, histplot
 
+from TokenBenchy.commons.utils.database import TokenBenchyDatabase
 from TokenBenchy.commons.interface.workers import check_thread_status, update_progress_callback
 from TokenBenchy.commons.constants import EVALUATION_PATH
 from TokenBenchy.commons.logger import logger
@@ -19,7 +20,7 @@ from TokenBenchy.commons.logger import logger
 ###############################################################################
 class BenchmarkTokenizers:
 
-    def __init__(self, database, configuration : dict):
+    def __init__(self, database : TokenBenchyDatabase, configuration : dict):
         set_verbosity_error()        
         self.max_docs_number = configuration.get('num_documents', 0)
         self.reduce_data_size = configuration.get("reduce_output_size", False)
@@ -40,21 +41,21 @@ class BenchmarkTokenizers:
             lambda doc: len(doc.split()))
         
         check_thread_status(kwargs.get('worker', None))
-        update_progress_callback(1, 3, kwargs.get('progress_callback', None))
+        update_progress_callback(0, 2, kwargs.get('progress_callback', None))
 
         # 2/3 - Average word length
         dataset_stats['AVG word length'] = dataset_stats['text'].apply(
             lambda doc: np.mean([len(w) for w in doc.split()]))
         
         check_thread_status(kwargs.get('worker', None))
-        update_progress_callback(2, 3, kwargs.get('progress_callback', None))
+        update_progress_callback(1, 2, kwargs.get('progress_callback', None))
 
         # 3/3 - Standard deviation of word length
         dataset_stats['STD word length'] = dataset_stats['text'].apply(
             lambda doc: np.std([len(w) for w in doc.split()]))
         
         check_thread_status(kwargs.get('worker', None))
-        update_progress_callback(3, 3, kwargs.get('progress_callback', None))    
+        update_progress_callback(2, 2, kwargs.get('progress_callback', None))    
         
         self.database.save_dataset_statistics(dataset_stats)
 
