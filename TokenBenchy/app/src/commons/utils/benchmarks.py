@@ -10,10 +10,10 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from seaborn import barplot, boxplot, histplot
 
-from TokenBenchy.commons.utils.database import TokenBenchyDatabase
-from TokenBenchy.commons.interface.workers import check_thread_status, update_progress_callback
-from TokenBenchy.commons.constants import EVALUATION_PATH
-from TokenBenchy.commons.logger import logger
+from TokenBenchy.app.src.commons.utils.database import TokenBenchyDatabase
+from TokenBenchy.app.src.commons.interface.workers import check_thread_status, update_progress_callback
+from TokenBenchy.app.src.commons.constants import EVALUATION_PATH
+from TokenBenchy.app.src.commons.logger import logger
 
              
 # [TOKENIZERS EXPLORER]
