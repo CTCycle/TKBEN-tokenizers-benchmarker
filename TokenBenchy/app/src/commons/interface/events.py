@@ -1,12 +1,11 @@
-from PySide6.QtWidgets import QMessageBox
 from PySide6.QtGui import QImage, QPixmap
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 
-from TokenBenchy.commons.utils.downloads import DatasetDownloadManager, TokenizersDownloadManager
-from TokenBenchy.commons.utils.benchmarks import BenchmarkTokenizers, VisualizeBenchmarkResults
-from TokenBenchy.commons.utils.processing import ProcessDataset
-from TokenBenchy.commons.interface.workers import check_thread_status
-from TokenBenchy.commons.logger import logger
+from TokenBenchy.app.src.commons.utils.downloads import DatasetDownloadManager, TokenizersDownloadManager
+from TokenBenchy.app.src.commons.utils.benchmarks import BenchmarkTokenizers, VisualizeBenchmarkResults
+from TokenBenchy.app.src.commons.utils.processing import ProcessDataset
+from TokenBenchy.app.src.commons.interface.workers import check_thread_status
+from TokenBenchy.app.src.commons.logger import logger
 
 
 
