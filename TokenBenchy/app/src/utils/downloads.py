@@ -5,9 +5,9 @@ from datasets import load_dataset
 from tokenizers import Tokenizer
 from huggingface_hub import HfApi
 
-from TokenBenchy.app.src.commons.interface.workers import check_thread_status
-from TokenBenchy.app.src.commons.constants import DATASETS_PATH, TOKENIZER_PATH
-from TokenBenchy.app.src.commons.logger import logger
+from TokenBenchy.app.src.interface.workers import check_thread_status
+from TokenBenchy.app.src.constants import DATASETS_PATH, TOKENIZER_PATH
+from TokenBenchy.app.src.logger import logger
 
 
 # [DOWNLOADS]

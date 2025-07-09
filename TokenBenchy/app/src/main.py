@@ -6,8 +6,8 @@ import warnings
 warnings.simplefilter(action='ignore', category=Warning)
 
 # [IMPORT CUSTOM MODULES]
-from TokenBenchy.app.src.commons.interface.window import MainWindow
-from TokenBenchy.app.src.commons.constants import UI_PATH
+from TokenBenchy.app.src.interface.window import MainWindow
+from TokenBenchy.app.src.constants import UI_PATH
 
 
 # [RUN MAIN]

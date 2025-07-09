@@ -3,8 +3,8 @@ import re
 import sqlite3
 import pandas as pd
 
-from TokenBenchy.app.src.commons.constants import DATA_PATH
-from TokenBenchy.app.src.commons.logger import logger
+from TokenBenchy.app.src.constants import DATA_PATH
+from TokenBenchy.app.src.logger import logger
 
 
 ###############################################################################

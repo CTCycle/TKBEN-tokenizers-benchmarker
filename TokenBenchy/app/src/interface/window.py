@@ -1,4 +1,4 @@
-from TokenBenchy.app.src.commons.variables import EnvironmentVariables
+from TokenBenchy.app.src.variables import EnvironmentVariables
 EV = EnvironmentVariables()
 
 from functools import partial
@@ -10,11 +10,11 @@ from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlainTextEdit, QSpinBox,
                                QGraphicsScene, QGraphicsPixmapItem, QGraphicsView)
 
 
-from TokenBenchy.app.src.commons.utils.database import TokenBenchyDatabase
-from TokenBenchy.app.src.commons.interface.events import DatasetEvents, BenchmarkEvents, VisualizationEnvents
-from TokenBenchy.app.src.commons.configuration import Configuration
-from TokenBenchy.app.src.commons.interface.workers import ThreadWorker
-from TokenBenchy.app.src.commons.logger import logger
+from TokenBenchy.app.src.utils.database import TokenBenchyDatabase
+from TokenBenchy.app.src.interface.events import DatasetEvents, BenchmarkEvents, VisualizationEnvents
+from TokenBenchy.app.src.configuration import Configuration
+from TokenBenchy.app.src.interface.workers import ThreadWorker
+from TokenBenchy.app.src.logger import logger
 
 
 ###############################################################################
