@@ -3,7 +3,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 from TokenBenchy.app.src.utils.downloads import DatasetDownloadManager, TokenizersDownloadManager
 from TokenBenchy.app.src.utils.benchmarks import BenchmarkTokenizers, VisualizeBenchmarkResults
-from TokenBenchy.app.src.utils.processing import ProcessDataset
+from TokenBenchy.app.src.utils.data.processing import ProcessDataset
 from TokenBenchy.app.src.interface.workers import check_thread_status
 from TokenBenchy.app.src.logger import logger
 
@@ -12,8 +12,7 @@ from TokenBenchy.app.src.logger import logger
 ###############################################################################
 class DatasetEvents:
 
-    def __init__(self, database, configuration, hf_access_token):
-        self.database = database
+    def __init__(self, configuration, hf_access_token):
         self.configuration = configuration
         self.hf_access_token = hf_access_token           
            
@@ -27,23 +26,20 @@ class DatasetEvents:
         logger.info(f'Total number of documents: {len(documents)}')
         logger.info(f'Number of valid documents: {len(clean_documents)}')  
 
-        return clean_documents    
-  
-   
-
+        return clean_documents   
 
 
 ###############################################################################
 class BenchmarkEvents:
 
-    def __init__(self, database, configuration, hf_access_token): 
-        self.database = database
+    def __init__(self, configuration, hf_access_token): 
+        
         self.configuration = configuration    
         self.hf_access_token = hf_access_token                                   
            
     #--------------------------------------------------------------------------
     def run_dataset_evaluation_pipeline(self, documents, progress_callback=None, worker=None):        
-        benchmarker = BenchmarkTokenizers(self.database, self.configuration)
+        benchmarker = BenchmarkTokenizers(self.configuration)
         benchmarker.calculate_dataset_statistics(
             documents, progress_callback=progress_callback, worker=worker)         
     
@@ -56,7 +52,7 @@ class BenchmarkEvents:
     
     #--------------------------------------------------------------------------
     def execute_benchmarks(self, documents, progress_callback=None, worker=None):
-        benchmarker = BenchmarkTokenizers(self.database, self.configuration)
+        benchmarker = BenchmarkTokenizers(self.configuration)
         downloader = TokenizersDownloadManager(self.configuration, self.hf_access_token)
         tokenizers = downloader.tokenizer_download(worker=worker)
         results = benchmarker.run_tokenizer_benchmarks(
@@ -68,14 +64,13 @@ class BenchmarkEvents:
 ###############################################################################
 class VisualizationEnvents:
 
-    def __init__(self, database, configuration):        
-        self.database = database
+    def __init__(self, configuration):
         self.configuration = configuration 
         self.DPI = 600 
 
     #--------------------------------------------------------------------------
     def visualize_benchmark_results(self, worker=None):
-        visualizer = VisualizeBenchmarkResults(self.database, self.configuration)
+        visualizer = VisualizeBenchmarkResults(self.configuration)
 
         figures = []      
         # 1. generate plot of different vocabulary sizes  

@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlainTextEdit, QSpinBox,
                                QGraphicsScene, QGraphicsPixmapItem, QGraphicsView)
 
 
-from TokenBenchy.app.src.utils.database import TokenBenchyDatabase
+from TokenBenchy.app.src.utils.data.database import TokenBenchyDatabase
 from TokenBenchy.app.src.interface.events import DatasetEvents, BenchmarkEvents, VisualizationEnvents
 from TokenBenchy.app.src.configuration import Configuration
 from TokenBenchy.app.src.interface.workers import ThreadWorker
@@ -46,16 +46,13 @@ class MainWindow:
         self.hf_access_token = EV.get_HF_access_token()
 
         # initialize database
-        self.database = TokenBenchyDatabase(self.configuration)
+        self.database = TokenBenchyDatabase()
         self.database.initialize_database() 
 
         # persistent handlers
-        self.loading_handler = DatasetEvents(
-            self.database, self.configuration, self.hf_access_token)        
-        self.benchmark_handler = BenchmarkEvents(
-            self.database, self.configuration, self.hf_access_token)
-        self.viewer_handler = VisualizationEnvents(
-            self.database, self.configuration)
+        self.loading_handler = DatasetEvents(self.configuration, self.hf_access_token)        
+        self.benchmark_handler = BenchmarkEvents(self.configuration, self.hf_access_token)
+        self.viewer_handler = VisualizationEnvents(self.configuration)
 
         # setup UI elements
         self._set_states()
@@ -226,7 +223,7 @@ class MainWindow:
         self.config_manager.update_value('DATASET', dataset_config)
         self.configuration = self.config_manager.get_configuration() 
         self.loading_handler = DatasetEvents(
-            self.database, self.configuration, self.hf_access_token) 
+            self.configuration, self.hf_access_token) 
         
         # send message to status bar
         self._send_message(
@@ -255,7 +252,7 @@ class MainWindow:
         
         self.configuration = self.config_manager.get_configuration() 
         self.benchmark_handler = BenchmarkEvents(
-            self.database, self.configuration, self.hf_access_token)  
+            self.configuration, self.hf_access_token)  
 
         # send message to status bar        
         self._send_message("Computing statistics for the selected dataset")       
@@ -278,7 +275,7 @@ class MainWindow:
              
         self.configuration = self.config_manager.get_configuration() 
         self.benchmark_handler = BenchmarkEvents(
-            self.database, self.configuration, self.hf_access_token)
+            self.configuration, self.hf_access_token)
 
         # send message to status bar        
         self._send_message("Looking for available tokenizers in Hugging Face")       
@@ -317,7 +314,7 @@ class MainWindow:
         # initialize the benchmark handler with the current configuration
         self.configuration = self.config_manager.get_configuration() 
         self.benchmark_handler = BenchmarkEvents(
-            self.database, self.configuration, self.hf_access_token)              
+            self.configuration, self.hf_access_token)              
 
         # send message to status bar
         self._send_message("Running tokenizers benchmark...")          
@@ -339,7 +336,7 @@ class MainWindow:
             return 
         
         self.configuration = self.config_manager.get_configuration() 
-        self.viewer_handler = VisualizationEnvents(self.database, self.configuration)        
+        self.viewer_handler = VisualizationEnvents(self.configuration)        
         # send message to status bar
         self._send_message("Generating benchmark results figures")   
         # functions that are passed to the worker will be executed in a separate thread
