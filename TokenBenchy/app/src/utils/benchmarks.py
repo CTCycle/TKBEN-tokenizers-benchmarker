@@ -10,7 +10,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from seaborn import barplot, boxplot, histplot
 
-from TokenBenchy.app.src.utils.database import TokenBenchyDatabase
+from TokenBenchy.app.src.utils.data.serializer import DataSerializer
 from TokenBenchy.app.src.interface.workers import check_thread_status, update_progress_callback
 from TokenBenchy.app.src.constants import EVALUATION_PATH
 from TokenBenchy.app.src.logger import logger
@@ -20,18 +20,19 @@ from TokenBenchy.app.src.logger import logger
 ###############################################################################
 class BenchmarkTokenizers:
 
-    def __init__(self, database : TokenBenchyDatabase, configuration : dict):
+    def __init__(self, configuration : dict):
         set_verbosity_error()        
         self.max_docs_number = configuration.get('num_documents', 0)
         self.reduce_data_size = configuration.get("reduce_output_size", False)
         self.include_custom_tokenizer = configuration.get("include_custom_tokenizer", False)
         self.include_NSL = configuration.get("include_NSL", False)        
         self.vocab_columns = ['id', 'vocabulary_tokens', 'decoded_tokens'] 
-        self.database = database
         self.configuration = configuration       
 
     #--------------------------------------------------------------------------
     def calculate_dataset_statistics(self, documents, **kwargs):
+        serializer = DataSerializer(self.configuration)
+
         max_documents = min(self.max_docs_number, len(documents))
         documents = documents[:max_documents] if max_documents > 0 else documents
         dataset_stats = pd.DataFrame(columns=['text'], data=documents)
@@ -57,10 +58,12 @@ class BenchmarkTokenizers:
         check_thread_status(kwargs.get('worker', None))
         update_progress_callback(2, 2, kwargs.get('progress_callback', None))    
         
-        self.database.save_dataset_statistics(dataset_stats)
+        serializer.save_dataset_statistics(dataset_stats)
 
     #--------------------------------------------------------------------------
     def calculate_vocabulary_statistics(self, tokenizers, **kwargs):
+        serializer = DataSerializer(self.configuration)
+
         rows = []        
         for i, (name, tokenizer) in enumerate(tokenizers.items()):            
             vocab = tokenizer.get_vocab()              
@@ -90,18 +93,19 @@ class BenchmarkTokenizers:
                 self.vocab_columns[0]: pd.Series(vocab_indices),
                 self.vocab_columns[1]: pd.Series(vocab_words),
                 self.vocab_columns[2]: pd.Series(decoded_words)})
-            self.database.save_vocabulary_tokens(vocabulary, name)
+            serializer.save_vocabulary_tokens(vocabulary, name)
             # check for worker thread status and update progress callback
             check_thread_status(kwargs.get('worker', None))            
 
         # save vocabulary statistics into database 
         vocabulary_stats = pd.DataFrame(rows)
-        self.database.save_vocabulary_results(vocabulary_stats)           
+        serializer.save_vocabulary_results(vocabulary_stats)           
         
         return vocabulary, vocabulary_stats
     
     #--------------------------------------------------------------------------
-    def run_tokenizer_benchmarks(self, documents, tokenizers : dict, **kwargs):        
+    def run_tokenizer_benchmarks(self, documents, tokenizers : dict, **kwargs):
+        serializer = DataSerializer(self.configuration)        
         # calculate basic dataset statistics and extract vocabulary for each tokenizer
         vocab, vocab_stats = self.calculate_vocabulary_statistics(tokenizers)
         # filter only a fraction of documents if requested by the user
@@ -162,7 +166,7 @@ class BenchmarkTokenizers:
                 drop_cols.extend(['text', 'tokens'])
             data = data.drop(columns=drop_cols)           
             
-            self.database.save_benchmark_results(data, table_name=k)            
+            serializer.save_benchmark_results(data, table_name=k)            
             all_tokenizers.append(data)
 
             # check for worker thread status and update progress callback          
@@ -171,7 +175,7 @@ class BenchmarkTokenizers:
                 i, len(tokenizers.items()), kwargs.get('progress_callback', None))         
 
         benchmark_results = pd.concat(all_tokenizers, ignore_index=True)
-        self.database.save_benchmark_results(benchmark_results)
+        serializer.save_benchmark_results(benchmark_results)
 
         if self.include_NSL and self.include_custom_tokenizer:
             NSL_results = self.normalized_sequence_length(benchmark_results)
@@ -179,7 +183,8 @@ class BenchmarkTokenizers:
         return benchmark_results
 
     #--------------------------------------------------------------------------
-    def normalized_sequence_length(self, benchmark_results):                            
+    def normalized_sequence_length(self, benchmark_results): 
+        serializer = DataSerializer(self.configuration)                           
         data_custom = benchmark_results[
             benchmark_results['tokenizer'].str.contains(
                 'custom tokenizer', case=False, na=False)]   
@@ -200,7 +205,7 @@ class BenchmarkTokenizers:
                 data.append(data_chunk)
             
             data_NSL = pd.concat(data, ignore_index=True)
-            self.database.save_benchmark_results(data_NSL, table_name='NSL')          
+            serializer.save_benchmark_results(data_NSL, table_name='NSL')          
 
         return data_NSL 
 
@@ -209,25 +214,24 @@ class BenchmarkTokenizers:
 ###############################################################################
 class VisualizeBenchmarkResults:
 
-    def __init__(self, database, configuration : dict):        
-        self.database = database
+    def __init__(self, configuration : dict):  
         self.configuration = configuration    
         self.DPI = configuration.get('image_resolution', 400)
-
         self.observed_features = [
             'tokens_to_words_ratio', 'AVG_tokens_length', 'bytes_per_token']
-
-        self.benchmarks, self.vocab_stats = self.database.load_benchmark_results()
-        self.tokenizers = self.vocab_stats['tokenizer'].to_list() 
+        
+        self.serializer = DataSerializer(self.configuration)   
+        _, self.vocab_stats = self.serializer.load_benchmark_results()
+        self.tokenizers = self.vocab_stats['tokenizer'].to_list()
 
     #--------------------------------------------------------------------------
     def save_image(self, fig, name):
         name = re.sub(r'[^0-9A-Za-z_]', '_', name)
         out_path = os.path.join(EVALUATION_PATH, name)
-        fig.savefig(out_path, bbox_inches='tight', dpi=self.DPI)   
+        fig.savefig(out_path, bbox_inches='tight', dpi=self.DPI)  
 
     #--------------------------------------------------------------------------
-    def plot_vocabulary_size(self):                        
+    def plot_vocabulary_size(self):           
         df = (self.vocab_stats.melt(id_vars="tokenizer",
           value_vars=["number_tokens_from_vocabulary",
                      "number_tokens_from_decode"],
@@ -261,9 +265,9 @@ class VisualizeBenchmarkResults:
         return fig
            
     #--------------------------------------------------------------------------
-    def plot_subwords_vs_words(self):
+    def plot_subwords_vs_words(self):        
         for name in self.tokenizers:
-            vocabulary = self.database.load_vocabulary_tokens()
+            vocabulary = self.serializer.load_vocabulary_tokens()
             df = (self.vocab_stats.melt(id_vars="tokenizer", value_vars=[
                     "percentage_subwords",
                     "percentage_true_words"],
@@ -299,7 +303,7 @@ class VisualizeBenchmarkResults:
         records = []
         # Loop through each tokenizer to plot histograms
         for tokenizer, _ in self.vocab_stats.groupby('tokenizer'):
-            vocabulary = self.database.load_vocabulary_tokens(tokenizer)
+            vocabulary = self.serializer.load_vocabulary_tokens(tokenizer)
             # Histogram of vocabulary token lengths
             fig, axs = plt.subplots(2, 1, figsize=(24, 22), dpi=self.DPI)
             tokens_len_vocab = vocabulary['vocabulary_tokens'].dropna().str.len().to_numpy()

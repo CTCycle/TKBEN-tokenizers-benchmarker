@@ -67,12 +67,11 @@ class DatasetStatistics(Base):
 ###############################################################################
 class TokenBenchyDatabase:
 
-    def __init__(self, configuration):                   
+    def __init__(self):                   
         self.db_path = os.path.join(DATA_PATH, 'TokenBenchy_database.db')
         self.engine = create_engine(f'sqlite:///{self.db_path}', echo=False, future=True)
         self.Session = sessionmaker(bind=self.engine, future=True)
-        self.insert_batch_size = 10000
-        self.configuration = configuration  
+        self.insert_batch_size = 10000        
        
     #--------------------------------------------------------------------------       
     def initialize_database(self): 
