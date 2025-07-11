@@ -3,8 +3,8 @@ TokenBenchy/resources/database/datasets/*
 TokenBenchy/resources/database/evaluation/*
 
 !TokenBenchy/app/assets/*
-TokenBenchy/app/python/*
-TokenBenchy/app/.env
+TokenBenchy/setup/python/*
+TokenBenchy/setup/.env
 
 __pycache__
 *.csv
