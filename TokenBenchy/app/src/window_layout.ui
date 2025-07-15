@@ -554,7 +554,7 @@ QTimeEdit, QToolBox, QToolBox::tab, QToolBox::tab:selected {
              <item>
               <widget class="QLabel" name="datasetLabel">
                <property name="text">
-                <string>Dataset is identified by corpus and configuration</string>
+                <string>Dataset is identified by corpus (above) and configuration (below)</string>
                </property>
               </widget>
              </item>
@@ -720,6 +720,13 @@ li.checked::marker { content: &quot;\2612&quot;; }
                 <widget class="QPlainTextEdit" name="tokenizersToBenchmark">
                  <property name="toolTip">
                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Add tokenizers here using their string identifier from HuggingFace&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="Line" name="line_2">
+                 <property name="orientation">
+                  <enum>Qt::Orientation::Horizontal</enum>
                  </property>
                 </widget>
                </item>
@@ -906,6 +913,21 @@ li.checked::marker { content: &quot;\2612&quot;; }
      <height>26</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuApplication">
+    <property name="title">
+     <string>Application</string>
+    </property>
+    <addaction name="actionReloadApp"/>
+   </widget>
+   <widget class="QMenu" name="menuConfiguration">
+    <property name="title">
+     <string>Configuration</string>
+    </property>
+    <addaction name="actionSaveConfig"/>
+    <addaction name="actionLoadConfig"/>
+   </widget>
+   <addaction name="menuApplication"/>
+   <addaction name="menuConfiguration"/>
   </widget>
   <widget class="QToolBar" name="toolBar">
    <property name="windowTitle">
@@ -918,6 +940,21 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <bool>false</bool>
    </attribute>
   </widget>
+  <action name="actionReloadApp">
+   <property name="text">
+    <string>Reload application</string>
+   </property>
+  </action>
+  <action name="actionSaveConfig">
+   <property name="text">
+    <string>Save current configuration</string>
+   </property>
+  </action>
+  <action name="actionLoadConfig">
+   <property name="text">
+    <string>Load configuration</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>
