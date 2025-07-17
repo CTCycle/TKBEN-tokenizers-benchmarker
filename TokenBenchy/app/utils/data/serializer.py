@@ -1,9 +1,4 @@
-import os
-import json
 
-from keras.utils import plot_model
-from keras.models import load_model
-from datetime import datetime
 
 from TokenBenchy.app.utils.data.database import TokenBenchyDatabase
 
@@ -36,25 +31,37 @@ class DataSerializer:
         vocabulary = self.database.load_vocabulary_tokens(table_name)
 
         return vocabulary
+    
+    # get all valid images within a specified directory and return a list of paths
+    #--------------------------------------------------------------------------
+    def load_text_dataset(self):            
+        text_dataset = self.database.load_text_dataset() 
+
+        return text_dataset
 
     # get all valid images within a specified directory and return a list of paths
     #--------------------------------------------------------------------------
-    def save_dataset_statistics(self, dataset_stats):            
-        self.database.save_dataset_statistics(dataset_stats)   
+    def save_text_dataset(self, text_dataset):            
+        self.database.save_text_dataset(text_dataset) 
 
     # get all valid images within a specified directory and return a list of paths
     #--------------------------------------------------------------------------
-    def save_vocabulary_tokens(self, dataset_stats, table_name=None):            
-        self.database.save_vocabulary_tokens(dataset_stats, table_name=table_name)   
+    def save_dataset_statistics(self, text_dataset):            
+        self.database.save_dataset_statistics(text_dataset)  
 
     # get all valid images within a specified directory and return a list of paths
     #--------------------------------------------------------------------------
-    def save_vocabulary_results(self, dataset_stats):            
-        self.database.save_vocabulary_results(dataset_stats)     
+    def save_vocabulary_tokens(self, data, table_name=None):            
+        self.database.save_vocabulary_tokens(data, table_name=table_name)   
 
     # get all valid images within a specified directory and return a list of paths
     #--------------------------------------------------------------------------
-    def save_benchmark_results(self, dataset_stats, table_name=None):            
-        self.database.save_benchmark_results(dataset_stats, table_name=table_name)            
+    def save_vocabulary_results(self, data):            
+        self.database.save_vocabulary_results(data)     
+
+    # get all valid images within a specified directory and return a list of paths
+    #--------------------------------------------------------------------------
+    def save_benchmark_results(self, data, table_name=None):            
+        self.database.save_benchmark_results(data, table_name=table_name)            
     
     
