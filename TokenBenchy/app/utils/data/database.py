@@ -53,14 +53,15 @@ class Vocabulary(Base):
 
 
 ###############################################################################
-class DatasetStatistics(Base):
-    __tablename__ = 'DATASET_STATISTICS'
+class TextDataset(Base):
+    __tablename__ = 'TEXT_DATASET'
+    dataset_name = Column(String, primary_key=True)
     text = Column(String, primary_key=True)
     words_count = Column(Integer)
     AVG_word_length = Column(Float)
     STD_word_length = Column(Float)
     __table_args__ = (
-        UniqueConstraint('text'),
+        UniqueConstraint('dataset_name', 'text'),
     )
 
 # [DATABASE]
@@ -104,7 +105,14 @@ class TokenBenchyDatabase:
                 session.execute(stmt)
             session.commit()
         finally:
-            session.close()       
+            session.close()  
+
+    #--------------------------------------------------------------------------
+    def load_text_dataset(self):            
+        with self.engine.connect() as conn:
+            text_dataset = pd.read_sql_table("TEXT_DATASET", conn)
+
+        return text_dataset   
 
     #--------------------------------------------------------------------------
     def load_benchmark_results(self):            
@@ -121,11 +129,15 @@ class TokenBenchyDatabase:
         with self.engine.connect() as conn:
             vocabulary = pd.read_sql_table(table_name, conn)
         return vocabulary
+    
+    #--------------------------------------------------------------------------
+    def save_text_dataset(self, data : pd.DataFrame):         
+        with self.engine.begin() as conn:
+            data.to_sql("TEXT_DATASET", conn, if_exists='replace', index=False)
 
     #--------------------------------------------------------------------------
-    def save_dataset_statistics(self, data):         
-        with self.engine.begin() as conn:
-            data.to_sql("DATASET_STATISTICS", conn, if_exists='replace', index=False)
+    def save_dataset_statistics(self, data : pd.DataFrame):         
+        self.upsert_dataframe(data, TextDataset)
 
     #--------------------------------------------------------------------------
     def save_benchmark_results(self, data: pd.DataFrame, table_name=None):

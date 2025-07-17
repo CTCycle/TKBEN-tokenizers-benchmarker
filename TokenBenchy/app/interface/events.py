@@ -1,7 +1,10 @@
+import numpy as np
+import pandas as pd
 from PySide6.QtGui import QImage, QPixmap
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 
-from TokenBenchy.app.utils.downloads import DatasetDownloadManager, TokenizersDownloadManager
+from TokenBenchy.app.utils.data.serializer import DataSerializer
+from TokenBenchy.app.utils.downloads import DatasetManager, TokenizersDownloadManager
 from TokenBenchy.app.utils.benchmarks import BenchmarkTokenizers, VisualizeBenchmarkResults
 from TokenBenchy.app.utils.data.processing import ProcessDataset
 from TokenBenchy.app.interface.workers import check_thread_status
@@ -18,30 +21,46 @@ class DatasetEvents:
            
     #--------------------------------------------------------------------------
     def load_and_process_dataset(self):
-        downloader = DatasetDownloadManager(self.configuration, self.hf_access_token)      
-        dataset = downloader.dataset_download()
+        manager = DatasetManager(self.configuration, self.hf_access_token) 
+        dataset_name = manager.get_dataset_name() 
+        logger.info(f'Downloading and saving dataset: {dataset_name}')    
+        dataset = manager.dataset_download()
         
+        # process text dataset to remove invalid documents
         processor = ProcessDataset(self.configuration, dataset) 
-        documents, clean_documents = processor.split_text_dataset()  
-        logger.info(f'Total number of documents: {len(documents)}')
-        logger.info(f'Number of valid documents: {len(clean_documents)}')  
+        documents = processor.clean_dataset() 
+        n_removed_docs = processor.num_documents - len(documents)
+        logger.info(f'Total number of documents: {processor.num_documents}')
+        logger.info(f'Number of filtered documents: {len(documents)} ({n_removed_docs} removed)')
 
-        return clean_documents   
+        # create dataframe for text dataset
+        text_dataset = pd.DataFrame(
+            {'dataset_name': [dataset_name] * len(documents),
+             'text': documents,
+             'words_count' : [np.nan] * len(documents),
+             'AVG_words_length': [np.nan] * len(documents),
+             'STD_words_length': [np.nan] * len(documents)})
+        
+        # serialize text dataset by saving it into database
+        serializer = DataSerializer(self.configuration)        
+        serializer.save_text_dataset(text_dataset)  
+
+        return dataset_name
+        
 
 
 ###############################################################################
 class BenchmarkEvents:
 
     def __init__(self, configuration, hf_access_token): 
-        
         self.configuration = configuration    
         self.hf_access_token = hf_access_token                                   
            
     #--------------------------------------------------------------------------
-    def run_dataset_evaluation_pipeline(self, documents, progress_callback=None, worker=None):        
+    def run_dataset_evaluation_pipeline(self, progress_callback=None, worker=None):        
         benchmarker = BenchmarkTokenizers(self.configuration)
-        benchmarker.calculate_dataset_statistics(
-            documents, progress_callback=progress_callback, worker=worker)         
+        benchmarker.calculate_text_statistics(
+            progress_callback=progress_callback, worker=worker)         
     
     #--------------------------------------------------------------------------
     def get_tokenizer_identifiers(self, limit=1000, worker=None):

@@ -12,15 +12,21 @@ from TokenBenchy.app.logger import logger
 
 # [DOWNLOADS]
 ###############################################################################
-class DatasetDownloadManager:
+class DatasetManager:
 
-    def __init__(self, configuration, hf_access_token):         
-        self.configuration = configuration  
-        self.hf_access_token = hf_access_token                                           
+    def __init__(self, configuration, hf_access_token): 
         self.dataset = configuration.get("DATASET", {})  
         self.dataset_corpus = self.dataset.get('corpus', 'wikitext')
         self.dataset_config = self.dataset.get('config', 'wikitext-103-v1')   
-        self.has_custom_dataset = configuration.get('include_custom_dataset', False)      
+        self.has_custom_dataset = configuration.get('use_custom_dataset', False)
+        self.configuration = configuration  
+        self.hf_access_token = hf_access_token 
+
+    #--------------------------------------------------------------------------
+    def get_dataset_name(self):
+        if self.dataset_config:  
+            return f"{self.dataset_corpus}/{self.dataset_config}"
+        return self.dataset_corpus     
 
     #--------------------------------------------------------------------------
     def dataset_download(self):        
@@ -34,7 +40,7 @@ class DatasetDownloadManager:
                         if fn.lower().endswith(".csv")]
             if not csv_files:
                 # do not return anything if no files are found and custom dataset is required
-                logger.warning(f'No CSV files found in custom folder: {base_path}')
+                logger.warning(f'No CSV files found in custom dataset folder: {base_path}')
                 return None
             else:
                 # if multiple files are found only the first one will be loaded
@@ -47,10 +53,10 @@ class DatasetDownloadManager:
                 datasets[key] = df
 
         else:            
-            corpus, config = self.dataset['corpus'], self.dataset['config']
+            corpus = self.dataset.get('corpus', None)
+            config = self.dataset.get('config', None)            
             dataset_path = os.path.join(base_path, f'{corpus}_{config}')
             os.makedirs(dataset_path, exist_ok=True)
-            logger.info(f'Downloading and saving dataset: {corpus} - {config}')
             dataset = load_dataset(corpus, config, cache_dir=dataset_path)
             datasets[config] = dataset  
             

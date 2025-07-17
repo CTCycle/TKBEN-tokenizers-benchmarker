@@ -30,35 +30,47 @@ class BenchmarkTokenizers:
         self.configuration = configuration       
 
     #--------------------------------------------------------------------------
-    def calculate_dataset_statistics(self, documents, **kwargs):
-        serializer = DataSerializer(self.configuration)
+    def calculate_text_statistics(self, **kwargs):
+        # load previously saved text dataset from database using the serializer
+        serializer = DataSerializer(self.configuration)        
+        documents = serializer.load_text_dataset()
+        # interrupt the operation if no text dataset is available
+        if documents.empty:
+            logger.info('No text dataset available for statistics calculation')
+            return 
+
+        dataset_name = documents["dataset_name"].iloc[0]
+        logger.info(f'Loaded dataset {dataset_name} with {documents.shape[0]} records')
 
         max_documents = min(self.max_docs_number, len(documents))
         documents = documents[:max_documents] if max_documents > 0 else documents
-        dataset_stats = pd.DataFrame(columns=['text'], data=documents)
 
         # 1/3 - Word count
-        dataset_stats['words_count'] = dataset_stats['text'].apply(
+        logger.info('Calculating word count for each document')
+        documents['words_count'] = documents['text'].apply(
             lambda doc: len(doc.split()))
         
         check_thread_status(kwargs.get('worker', None))
-        update_progress_callback(0, 2, kwargs.get('progress_callback', None))
+        update_progress_callback(1, 3, kwargs.get('progress_callback', None))
 
         # 2/3 - Average word length
-        dataset_stats['AVG word length'] = dataset_stats['text'].apply(
+        logger.info('Calculating average word length for each document')
+        documents['AVG_words_length'] = documents['text'].apply(
             lambda doc: np.mean([len(w) for w in doc.split()]))
         
         check_thread_status(kwargs.get('worker', None))
-        update_progress_callback(1, 2, kwargs.get('progress_callback', None))
+        update_progress_callback(2, 3, kwargs.get('progress_callback', None))
 
         # 3/3 - Standard deviation of word length
-        dataset_stats['STD word length'] = dataset_stats['text'].apply(
+        logger.info('Calculating standard deviation of words length for each document')
+        documents['STD_words_length'] = documents['text'].apply(
             lambda doc: np.std([len(w) for w in doc.split()]))
         
         check_thread_status(kwargs.get('worker', None))
-        update_progress_callback(2, 2, kwargs.get('progress_callback', None))    
+        update_progress_callback(3, 3, kwargs.get('progress_callback', None))    
         
-        serializer.save_dataset_statistics(dataset_stats)
+        # save dataset statistics through upserting into the the text dataset table
+        serializer.save_dataset_statistics(documents)
 
     #--------------------------------------------------------------------------
     def calculate_vocabulary_statistics(self, tokenizers, **kwargs):

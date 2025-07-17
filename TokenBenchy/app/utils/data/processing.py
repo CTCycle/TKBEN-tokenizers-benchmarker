@@ -9,13 +9,14 @@ class ProcessDataset:
         self.dataset_config = configuration.get("DATASET", {})             
         self.target_dataset = self.dataset_config.get("corpus", "wikitext")
         self.target_config = self.dataset_config.get("config", "wikitext-103-v1")
+        self.text_data = self.datasets[self.target_config]
+        self.documents = self.text_data['train']['text']
+        self.num_documents = len(self.documents)
 
     #--------------------------------------------------------------------------
-    def split_text_dataset(self):
-        benchmark_data = self.datasets[self.target_config]
-        documents = benchmark_data['train']['text']  
-        clean_docs = [x for x in documents if len(x) > 0] if self.clean_docs else documents         
+    def clean_dataset(self):        
+        clean_docs = [x for x in self.documents if len(x) > 0] if self.clean_docs else self.documents         
 
-        return documents, clean_docs    
+        return clean_docs    
     
     

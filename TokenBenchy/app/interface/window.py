@@ -28,8 +28,7 @@ class MainWindow:
         self.main_win = loader.load(ui_file)
         ui_file.close()  
         self.main_win.showMaximized()
-
-        self.text_dataset = None
+        
         self.tokenizers = []            
         self.pixmaps = []
         self.current_fig = 0
@@ -63,7 +62,7 @@ class MainWindow:
             (QCheckBox, "useCustomDataset", 'use_custom_dataset'),
             (QCheckBox, "removeInvalid", 'remove_invalid_docs'),
             (QCheckBox, "includeCustomToken", 'custom_tokenizer'),
-            (QCheckBox, "includeNSL", 'include_NSL'),
+            (QCheckBox, "includeNSL", 'perform_NSL'),
             (QCheckBox, "reduceSize", 'reduce_data_size'),           
             (QSpinBox,  "numDocs", 'num_documents'),
             (QPushButton,'scanHF','scan_for_tokenizers'),
@@ -126,7 +125,7 @@ class MainWindow:
             ('use_custom_dataset', 'toggled', 'use_custom_dataset'),
             ('remove_invalid_docs', 'toggled', 'remove_invalid_documents'),
             ('custom_tokenizer', 'toggled', 'include_custom_tokenizer'),
-            ('include_NSL', 'toggled', 'include_NSL'),
+            ('perform_NSL', 'toggled', 'perform_NSL'),
             ('reduce_data_size', 'toggled', 'reduce_data_size'),      
             ('num_documents', 'valueChanged', 'num_documents'),
             ('image_resolution', 'valueChanged', 'image_resolution')
@@ -211,6 +210,8 @@ class MainWindow:
     @Slot()
     def load_and_process_dataset(self): 
         if self.worker:            
+            message = "A task is currently running, wait for it to finish and then try again"
+            QMessageBox.warning(self.main_win, "Application is still busy", message)
             return 
         
         corpus_text = self.main_win.findChild(QTextEdit, "datasetCorpus").toPlainText()
@@ -241,12 +242,9 @@ class MainWindow:
     @Slot()
     def run_dataset_analysis(self):
         if self.worker:            
+            message = "A task is currently running, wait for it to finish and then try again"
+            QMessageBox.warning(self.main_win, "Application is still busy", message)
             return 
-
-        if self.text_dataset is None:
-            message = "Please load a dataset before running analysis!"
-            QMessageBox.warning(self.main_win, "Missing dataset", message)
-            return    
         
         self.configuration = self.config_manager.get_configuration() 
         self.benchmark_handler = BenchmarkEvents(
@@ -255,10 +253,8 @@ class MainWindow:
         # send message to status bar        
         self._send_message("Computing statistics for the selected dataset")       
         # functions that are passed to the worker will be executed in a separate thread
-        self.worker = ThreadWorker(
-            self.benchmark_handler.run_dataset_evaluation_pipeline,
-            self.text_dataset)   
-
+        self.worker = ThreadWorker(self.benchmark_handler.run_dataset_evaluation_pipeline)
+           
         # start worker and inject signals
         self._start_thread_worker(
             self.worker, on_finished=self.on_analysis_success,
@@ -269,6 +265,8 @@ class MainWindow:
     @Slot(str)
     def find_tokenizers_identifiers(self):
         if self.worker:            
+            message = "A task is currently running, wait for it to finish and then try again"
+            QMessageBox.warning(self.main_win, "Application is still busy", message)
             return 
              
         self.configuration = self.config_manager.get_configuration() 
@@ -299,11 +297,14 @@ class MainWindow:
     @Slot()
     def run_tokenizers_benchmark(self):
         if self.worker:            
+            message = "A task is currently running, wait for it to finish and then try again"
+            QMessageBox.warning(self.main_win, "Application is still busy", message)
             return 
         
         tokenizers = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark") 
         tokenizers_name = tokenizers.toPlainText().splitlines()
-        if len(tokenizers_name)==0 or self.text_dataset is None:            
+        if len(tokenizers_name) == 0:   
+            logger.warning('No tokenizers selected for benchmarking')         
             return None
 
         tokenizers_name = [x.replace('\n', ' ').strip() for x in tokenizers_name]
@@ -331,6 +332,8 @@ class MainWindow:
     @Slot()
     def generate_figures(self):     
         if self.worker:            
+            message = "A task is currently running, wait for it to finish and then try again"
+            QMessageBox.warning(self.main_win, "Application is still busy", message)
             return 
         
         self.configuration = self.config_manager.get_configuration() 
@@ -393,23 +396,21 @@ class MainWindow:
     # [POSITIVE OUTCOME HANDLERS]
     ###########################################################################    
     @Slot(object)
-    def on_dataset_loaded(self, datasets):             
-        self.text_dataset = datasets
-        config = self.config_manager.get_configuration().get('DATASET', {})
-        corpus = config.get('corpus', 'NA')  
-        config = config.get('config', 'NA')             
-        message = f'Text dataset has been loaded: {corpus} with config {config}' 
+    def on_dataset_loaded(self, name):           
+        message = f'Text dataset {name} has been saved into database' 
         logger.info(message)
         self._send_message(message)  
-        self.worker = self.worker.cleanup()
+        self.worker = self.worker.cleanup()        
 
     #--------------------------------------------------------------------------
     @Slot(object)
     def on_analysis_success(self, result):                  
         config = self.config_manager.get_configuration().get('DATASET', {})
         corpus = config.get('corpus', 'NA')  
-        config = config.get('config', 'NA')         
-        self._send_message(f'{corpus} - {config} analysis is finished')
+        config = config.get('config', 'NA')      
+        message = f'{corpus} - {config} analysis is finished'
+        self._send_message(message)
+        logger.info(message)
         self.worker = self.worker.cleanup()
 
     #--------------------------------------------------------------------------
