@@ -53,8 +53,7 @@ class DatasetEvents:
         serializer = DataSerializer(self.configuration)        
         serializer.save_text_dataset(text_dataset)  
 
-        # check thread for interruption 
-        check_thread_status(worker)
+        # check thread for interruption         
         update_progress_callback(3, 3, progress_callback)
 
         return dataset_name
@@ -82,12 +81,12 @@ class BenchmarkEvents:
         return identifiers
     
     #--------------------------------------------------------------------------
-    def execute_benchmarks(self, documents, progress_callback=None, worker=None):
+    def execute_benchmarks(self, progress_callback=None, worker=None):
         benchmarker = BenchmarkTokenizers(self.configuration)
         downloader = TokenizersDownloadManager(self.configuration, self.hf_access_token)
         tokenizers = downloader.tokenizer_download(worker=worker)
         results = benchmarker.run_tokenizer_benchmarks(
-           documents, tokenizers, progress_callback=progress_callback, worker=worker) 
+           tokenizers, progress_callback=progress_callback, worker=worker) 
 
         return tokenizers     
 
@@ -97,22 +96,23 @@ class VisualizationEnvents:
 
     def __init__(self, configuration):
         self.configuration = configuration 
-        self.DPI = 600 
+        self.DPI = configuration.get('image_resolution', 400)
 
     #--------------------------------------------------------------------------
-    def visualize_benchmark_results(self, worker=None):
+    def visualize_benchmark_results(self, worker=None, progress_callback=None):
         visualizer = VisualizeBenchmarkResults(self.configuration)
-
         figures = []      
-        # 1. generate plot of different vocabulary sizes  
-        check_thread_status(worker)
+        # 1. generate plot of different vocabulary sizes
         figures.append(visualizer.plot_vocabulary_size())
-        # 2. generate plot of token length distribution
         check_thread_status(worker)
+        update_progress_callback(1, 3, progress_callback)
+        # 2. generate plot of token length distribution
         figures.extend(visualizer.plot_tokens_length_distribution())
+        check_thread_status(worker)
+        update_progress_callback(2, 3, progress_callback)        
         # 2. generate plot of words versus subwords
-        check_thread_status(worker)      
-        figures.append(visualizer.plot_subwords_vs_words())       
+        figures.append(visualizer.plot_subwords_vs_words())    
+        update_progress_callback(3, 3, progress_callback)        
 
         return figures  
     

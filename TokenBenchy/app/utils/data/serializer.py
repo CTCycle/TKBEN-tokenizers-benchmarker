@@ -27,8 +27,8 @@ class DataSerializer:
     
     # get all valid images within a specified directory and return a list of paths
     #--------------------------------------------------------------------------
-    def load_vocabulary_tokens(self, table_name):            
-        vocabulary = self.database.load_vocabulary_tokens(table_name)
+    def load_vocabularies(self):            
+        vocabulary = self.database.load_vocabularies()
 
         return vocabulary
     
@@ -51,17 +51,22 @@ class DataSerializer:
 
     # get all valid images within a specified directory and return a list of paths
     #--------------------------------------------------------------------------
-    def save_vocabulary_tokens(self, data, table_name=None):            
-        self.database.save_vocabulary_tokens(data, table_name=table_name)   
+    def save_vocabulary_tokens(self, data):            
+        self.database.save_vocabulary_tokens(data)   
 
     # get all valid images within a specified directory and return a list of paths
     #--------------------------------------------------------------------------
-    def save_vocabulary_results(self, data):            
-        self.database.save_vocabulary_results(data)     
+    def save_vocabulary_statistics(self, data):            
+        self.database.save_vocabulary_statistics(data)     
 
     # get all valid images within a specified directory and return a list of paths
     #--------------------------------------------------------------------------
-    def save_benchmark_results(self, data, table_name=None):            
-        self.database.save_benchmark_results(data, table_name=table_name)            
+    def save_benchmark_results(self, data):            
+        self.database.save_benchmark_results(data)       
+
+    # get all valid images within a specified directory and return a list of paths
+    #--------------------------------------------------------------------------
+    def save_NSL_benchmark(self, data):            
+        self.database.save_NSL_benchmark(data)       
     
     

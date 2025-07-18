@@ -5,6 +5,7 @@ import sqlalchemy
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy import Column, Float, Integer, String, UniqueConstraint, create_engine
 from sqlalchemy.dialects.sqlite import insert
+from tqdm import tqdm
 
 from TokenBenchy.app.constants import DATA_PATH
 from TokenBenchy.app.logger import logger
@@ -15,6 +16,7 @@ Base = declarative_base()
 class BenchmarkResults(Base):
     __tablename__ = 'BENCHMARK_RESULTS'
     tokenizer = Column(String, primary_key=True)
+    text = Column(String, primary_key=True)
     num_characters = Column(Integer)
     words_count = Column(Integer)
     AVG_words_length = Column(Float)
@@ -24,8 +26,18 @@ class BenchmarkResults(Base):
     tokens_to_words_ratio = Column(Float)
     bytes_per_token = Column(Float)
     __table_args__ = (
+        UniqueConstraint('tokenizer', 'text'),
+    )
+
+###############################################################################
+class NSLBenchmark(Base):
+    __tablename__ = 'NSL_RESULTS'
+    tokenizer = Column(String, primary_key=True)
+    tokens_count = Column(Integer)
+    __table_args__ = (
         UniqueConstraint('tokenizer'),
     )
+
 
 ###############################################################################
 class VocabularyStatistics(Base):
@@ -45,11 +57,12 @@ class VocabularyStatistics(Base):
 ###############################################################################
 class Vocabulary(Base):
     __tablename__ = 'VOCABULARY'
-    id = Column(Integer, primary_key=True)
-    vocabulary_tokens = Column(String, primary_key=True)
+    tokenizer = Column(String, primary_key=True)
+    token_id = Column(Integer, primary_key=True)
+    vocabulary_tokens = Column(String)
     decoded_tokens = Column(String)
     __table_args__ = (
-        UniqueConstraint('id', 'vocabulary_tokens'),
+        UniqueConstraint('tokenizer', 'token_id'),
     )
 
 
@@ -74,7 +87,7 @@ class TokenBenchyDatabase:
         self.db_path = os.path.join(DATA_PATH, 'TokenBenchy_database.db')
         self.engine = create_engine(f'sqlite:///{self.db_path}', echo=False, future=True)
         self.Session = sessionmaker(bind=self.engine, future=True)
-        self.insert_batch_size = 50000        
+        self.insert_batch_size = 20000     
        
     #--------------------------------------------------------------------------       
     def initialize_database(self): 
@@ -96,7 +109,7 @@ class TokenBenchyDatabase:
 
             # Batch insertions for speed
             records = df.to_dict(orient='records')
-            for i in range(0, len(records), batch_size):
+            for i in tqdm(range(0, len(records), batch_size), desc=f'[INFO] Updating database'):
                 batch = records[i:i + batch_size]
                 stmt = insert(table).values(batch)
                 # Columns to update on conflict
@@ -106,6 +119,7 @@ class TokenBenchyDatabase:
                     set_=update_cols
                 )
                 session.execute(stmt)
+                session.commit()
             session.commit()
         finally:
             session.close()  
@@ -126,11 +140,9 @@ class TokenBenchyDatabase:
         return benchmarks, stats
 
     #--------------------------------------------------------------------------
-    def load_vocabulary_tokens(self, table_name=None):
-        table_name = re.sub(r'[^0-9A-Za-z_]', '_', table_name) if table_name else None
-        table_name = "VOCABULARY" if table_name is None else f'{table_name}_VOCABULARY'
+    def load_vocabularies(self):        
         with self.engine.connect() as conn:
-            vocabulary = pd.read_sql_table(table_name, conn)
+            vocabulary = pd.read_sql_table('VOCABULARY', conn)
         return vocabulary
     
     #--------------------------------------------------------------------------
@@ -144,25 +156,24 @@ class TokenBenchyDatabase:
         self.upsert_dataframe(data, TextDataset)
 
     #--------------------------------------------------------------------------
-    def save_benchmark_results(self, data: pd.DataFrame, table_name=None):
-        table_name = re.sub(r'[^0-9A-Za-z_]', '_', table_name) if table_name else None
-        table_name = "BENCHMARK_RESULTS" if table_name is None else f'{table_name}_BENCHMARK_RESULTS'
+    def save_benchmark_results(self, data: pd.DataFrame):
+        self.upsert_dataframe(data, BenchmarkResults)
+
+    #--------------------------------------------------------------------------
+    def save_NSL_benchmark(self, data: pd.DataFrame):
         with self.engine.begin() as conn:
-            conn.execute(sqlalchemy.text(f"DELETE FROM {table_name}"))        
-        data.to_sql(table_name, self.engine, if_exists='append', index=False)
+            conn.execute(sqlalchemy.text(f"DELETE FROM NSL_RESULTS"))        
+        data.to_sql('NSL_RESULTS', self.engine, if_exists='append', index=False) 
     
     #--------------------------------------------------------------------------
-    def save_vocabulary_results(self, data: pd.DataFrame):
+    def save_vocabulary_statistics(self, data: pd.DataFrame):
         with self.engine.begin() as conn:
             conn.execute(sqlalchemy.text(f"DELETE FROM VOCABULARY_STATISTICS"))        
         data.to_sql('VOCABULARY_STATISTICS', self.engine, if_exists='append', index=False)       
 
     #--------------------------------------------------------------------------
-    def save_vocabulary_tokens(self, data: pd.DataFrame, table_name=None):
-        table_name = re.sub(r'[^0-9A-Za-z_]', '_', table_name) if table_name else None        
-        with self.engine.begin() as conn:
-            conn.execute(sqlalchemy.text(f"DELETE FROM {table_name}"))         
-        data.to_sql(table_name, self.engine, if_exists='append', index=False)
+    def save_vocabulary_tokens(self, data: pd.DataFrame):
+        self.upsert_dataframe(data, Vocabulary)
     
 
    

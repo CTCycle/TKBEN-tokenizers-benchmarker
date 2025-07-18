@@ -63,7 +63,6 @@ class MainWindow:
             (QCheckBox, "removeInvalid", 'remove_invalid_docs'),
             (QCheckBox, "includeCustomToken", 'custom_tokenizer'),
             (QCheckBox, "includeNSL", 'perform_NSL'),
-            (QCheckBox, "reduceSize", 'reduce_data_size'),           
             (QSpinBox,  "numDocs", 'num_documents'),
             (QPushButton,'scanHF','scan_for_tokenizers'),
             (QComboBox, "selectTokenizers", 'combo_tokenizers'),
@@ -126,7 +125,6 @@ class MainWindow:
             ('remove_invalid_docs', 'toggled', 'remove_invalid_documents'),
             ('custom_tokenizer', 'toggled', 'include_custom_tokenizer'),
             ('perform_NSL', 'toggled', 'perform_NSL'),
-            ('reduce_data_size', 'toggled', 'reduce_data_size'),      
             ('num_documents', 'valueChanged', 'num_documents'),
             ('image_resolution', 'valueChanged', 'image_resolution')
             ]    
@@ -318,9 +316,7 @@ class MainWindow:
         # send message to status bar
         self._send_message("Running tokenizers benchmark...")          
         # functions that are passed to the worker will be executed in a separate thread
-        self.worker = ThreadWorker(
-           self.benchmark_handler.execute_benchmarks, 
-           self.text_dataset)         
+        self.worker = ThreadWorker(self.benchmark_handler.execute_benchmarks)         
         
         # start worker and inject signals
         self._start_thread_worker(
