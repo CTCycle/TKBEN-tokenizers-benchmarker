@@ -175,6 +175,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
               <layout class="QHBoxLayout" name="horizontalLayout_2">
                <item>
                 <widget class="QPushButton" name="loadDataset">
+                 <property name="toolTip">
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:400;&quot;&gt;Download and save the selected text dataset from HuggingFace. Database update may take a while if the dataset is very large &lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
                  <property name="text">
                   <string>Load dataset</string>
                  </property>

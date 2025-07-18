@@ -13,10 +13,13 @@ class ProcessDataset:
         self.documents = self.text_data['train']['text']
         self.num_documents = len(self.documents)
 
-    #--------------------------------------------------------------------------
-    def clean_dataset(self):        
-        clean_docs = [x for x in self.documents if len(x) > 0] if self.clean_docs else self.documents         
+     #--------------------------------------------------------------------------
+    def process_text_dataset(self):
+        processed_docs = self.documents
+        if self.clean_docs:
+            processed_docs = [x for x in processed_docs if len(x) > 0]           
+        processed_docs = list(dict.fromkeys(processed_docs))         
 
-        return clean_docs    
+        return processed_docs   
     
     
