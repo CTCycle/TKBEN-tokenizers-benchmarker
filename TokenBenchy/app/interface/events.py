@@ -7,7 +7,7 @@ from TokenBenchy.app.utils.data.serializer import DataSerializer
 from TokenBenchy.app.utils.downloads import DatasetManager, TokenizersDownloadManager
 from TokenBenchy.app.utils.benchmarks import BenchmarkTokenizers, VisualizeBenchmarkResults
 from TokenBenchy.app.utils.data.processing import ProcessDataset
-from TokenBenchy.app.interface.workers import check_thread_status
+from TokenBenchy.app.interface.workers import check_thread_status, update_progress_callback
 from TokenBenchy.app.logger import logger
 
 
@@ -20,18 +20,26 @@ class DatasetEvents:
         self.hf_access_token = hf_access_token           
            
     #--------------------------------------------------------------------------
-    def load_and_process_dataset(self):
+    def load_and_process_dataset(self, worker=None, progress_callback=None):
         manager = DatasetManager(self.configuration, self.hf_access_token) 
         dataset_name = manager.get_dataset_name() 
         logger.info(f'Downloading and saving dataset: {dataset_name}')    
         dataset = manager.dataset_download()
+
+        # check thread for interruption 
+        check_thread_status(worker)
+        update_progress_callback(1, 3, progress_callback)
         
         # process text dataset to remove invalid documents
         processor = ProcessDataset(self.configuration, dataset) 
-        documents = processor.clean_dataset() 
+        documents = processor.process_text_dataset() 
         n_removed_docs = processor.num_documents - len(documents)
         logger.info(f'Total number of documents: {processor.num_documents}')
         logger.info(f'Number of filtered documents: {len(documents)} ({n_removed_docs} removed)')
+
+        # check thread for interruption 
+        check_thread_status(worker)
+        update_progress_callback(2, 3, progress_callback)
 
         # create dataframe for text dataset
         text_dataset = pd.DataFrame(
@@ -44,6 +52,10 @@ class DatasetEvents:
         # serialize text dataset by saving it into database
         serializer = DataSerializer(self.configuration)        
         serializer.save_text_dataset(text_dataset)  
+
+        # check thread for interruption 
+        check_thread_status(worker)
+        update_progress_callback(3, 3, progress_callback)
 
         return dataset_name
         

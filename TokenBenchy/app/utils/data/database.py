@@ -1,6 +1,7 @@
 import os
 import re
 import pandas as pd
+import sqlalchemy
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy import Column, Float, Integer, String, UniqueConstraint, create_engine
 from sqlalchemy.dialects.sqlite import insert
@@ -58,11 +59,12 @@ class TextDataset(Base):
     dataset_name = Column(String, primary_key=True)
     text = Column(String, primary_key=True)
     words_count = Column(Integer)
-    AVG_word_length = Column(Float)
-    STD_word_length = Column(Float)
+    AVG_words_length = Column(Float)
+    STD_words_length = Column(Float)
     __table_args__ = (
         UniqueConstraint('dataset_name', 'text'),
     )
+
 
 # [DATABASE]
 ###############################################################################
@@ -72,14 +74,15 @@ class TokenBenchyDatabase:
         self.db_path = os.path.join(DATA_PATH, 'TokenBenchy_database.db')
         self.engine = create_engine(f'sqlite:///{self.db_path}', echo=False, future=True)
         self.Session = sessionmaker(bind=self.engine, future=True)
-        self.insert_batch_size = 10000        
+        self.insert_batch_size = 50000        
        
     #--------------------------------------------------------------------------       
     def initialize_database(self): 
         Base.metadata.create_all(self.engine)
 
     #--------------------------------------------------------------------------
-    def upsert_dataframe(self, df: pd.DataFrame, table_cls):
+    def upsert_dataframe(self, df: pd.DataFrame, table_cls, batch_size=None):
+        batch_size = batch_size if batch_size else self.insert_batch_size
         table = table_cls.__table__
         session = self.Session()
         try:
@@ -93,8 +96,8 @@ class TokenBenchyDatabase:
 
             # Batch insertions for speed
             records = df.to_dict(orient='records')
-            for i in range(0, len(records), self.insert_batch_size):
-                batch = records[i:i + self.insert_batch_size]
+            for i in range(0, len(records), batch_size):
+                batch = records[i:i + batch_size]
                 stmt = insert(table).values(batch)
                 # Columns to update on conflict
                 update_cols = {c: getattr(stmt.excluded, c) for c in batch[0] if c not in unique_cols}
@@ -131,9 +134,10 @@ class TokenBenchyDatabase:
         return vocabulary
     
     #--------------------------------------------------------------------------
-    def save_text_dataset(self, data : pd.DataFrame):         
+    def save_text_dataset(self, data : pd.DataFrame):
         with self.engine.begin() as conn:
-            data.to_sql("TEXT_DATASET", conn, if_exists='replace', index=False)
+            conn.execute(sqlalchemy.text(f"DELETE FROM TEXT_DATASET"))         
+        data.to_sql('TEXT_DATASET', self.engine, if_exists='append', index=False)
 
     #--------------------------------------------------------------------------
     def save_dataset_statistics(self, data : pd.DataFrame):         
@@ -144,19 +148,21 @@ class TokenBenchyDatabase:
         table_name = re.sub(r'[^0-9A-Za-z_]', '_', table_name) if table_name else None
         table_name = "BENCHMARK_RESULTS" if table_name is None else f'{table_name}_BENCHMARK_RESULTS'
         with self.engine.begin() as conn:
-            data.to_sql(table_name, conn, if_exists='replace', index=False)
-
+            conn.execute(sqlalchemy.text(f"DELETE FROM {table_name}"))        
+        data.to_sql(table_name, self.engine, if_exists='append', index=False)
+    
     #--------------------------------------------------------------------------
     def save_vocabulary_results(self, data: pd.DataFrame):
         with self.engine.begin() as conn:
-            data.to_sql("VOCABULARY_STATISTICS", conn, if_exists='replace', index=False)
+            conn.execute(sqlalchemy.text(f"DELETE FROM VOCABULARY_STATISTICS"))        
+        data.to_sql('VOCABULARY_STATISTICS', self.engine, if_exists='append', index=False)       
 
     #--------------------------------------------------------------------------
     def save_vocabulary_tokens(self, data: pd.DataFrame, table_name=None):
-        table_name = re.sub(r'[^0-9A-Za-z_]', '_', table_name) if table_name else None
-        table_name = "VOCABULARY" if table_name is None else f'{table_name}_VOCABULARY'
+        table_name = re.sub(r'[^0-9A-Za-z_]', '_', table_name) if table_name else None        
         with self.engine.begin() as conn:
-            data.to_sql(table_name, conn, if_exists='replace', index=False)
+            conn.execute(sqlalchemy.text(f"DELETE FROM {table_name}"))         
+        data.to_sql(table_name, self.engine, if_exists='append', index=False)
     
 
    
