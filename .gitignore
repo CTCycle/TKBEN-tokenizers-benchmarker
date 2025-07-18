@@ -2,9 +2,8 @@ TokenBenchy/resources/database/tokenizers/*
 TokenBenchy/resources/database/datasets/*
 TokenBenchy/resources/database/evaluation/*
 
-!TokenBenchy/commons/assets/*
-TokenBenchy/app/python/*
-TokenBenchy/app/.env
+TokenBenchy/setup/python/*
+TokenBenchy/setup/.env
 
 __pycache__
 *.csv
