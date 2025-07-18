@@ -97,11 +97,12 @@ class TokenizersDownloadManager:
                 os.mkdir(tokenizer_save_path) if not os.path.exists(tokenizer_save_path) else None            
                 logger.info(f'Downloading and saving tokenizer: {tokenizer_id}')
                 tokenizer = transformers.AutoTokenizer.from_pretrained(
-                    tokenizer_id, cache_dir=tokenizer_save_path, token=self.hf_access_token) 
-                tokenizers[tokenizer_id] = tokenizer                
+                tokenizer_id, cache_dir=tokenizer_save_path, token=self.hf_access_token) 
+                tokenizers[tokenizer_id] = tokenizer 
 
             except Exception as e:
-                logger.error(f"Failed to download tokenizer {tokenizer_id}: {e}", exc_info=True) 
+                logger.warning(f'Failed to download tokenizer {tokenizer_id}')
+                logger.debug(f"Failed to download tokenizer {tokenizer_id}: {e}", exc_info=True) 
 
             finally:
                 # check for worker thread status

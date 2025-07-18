@@ -142,12 +142,18 @@ li.checked::marker { content: &quot;\2612&quot;; }
                    <property name="maximum">
                     <number>1000000000</number>
                    </property>
+                   <property name="value">
+                    <number>50000</number>
+                   </property>
                   </widget>
                  </item>
                 </layout>
                </item>
                <item>
                 <widget class="QCheckBox" name="removeInvalid">
+                 <property name="toolTip">
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Empty documents will be removed from the dataset and never saved&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
                  <property name="text">
                   <string>Remove invalid documents</string>
                  </property>
@@ -264,13 +270,6 @@ li.checked::marker { content: &quot;\2612&quot;; }
                 <widget class="QCheckBox" name="includeNSL">
                  <property name="text">
                   <string>Include normalized sequence length</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QCheckBox" name="reduceSize">
-                 <property name="text">
-                  <string>Reduce output size</string>
                  </property>
                 </widget>
                </item>
