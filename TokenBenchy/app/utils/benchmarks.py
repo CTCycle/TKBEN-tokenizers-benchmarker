@@ -207,7 +207,7 @@ class BenchmarkTokenizers:
             # Progress update and thread safety
             check_thread_status(kwargs.get('worker', None))
             update_progress_callback(
-                i + 1, len(tokenizers), kwargs.get('progress_callback', None))
+                i+1, len(tokenizers), kwargs.get('progress_callback', None))
 
         # Concatenate all tokenizer benchmark results
         benchmark_results = pd.concat(all_tokenizers, ignore_index=True)

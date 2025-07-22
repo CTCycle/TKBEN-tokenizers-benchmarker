@@ -5,7 +5,7 @@ datasets==3.2.0
 sacremoses==0.1.1
 
 # GUI, Plotting & Data
-PySide6==6.9.0
+PySide6==6.9.1
 matplotlib==3.10.1
 seaborn==0.13.2
 numpy==2.1.3
