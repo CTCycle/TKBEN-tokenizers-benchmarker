@@ -1,5 +1,4 @@
 import os
-import re
 import pandas as pd
 import sqlalchemy
 from sqlalchemy.orm import declarative_base, sessionmaker
@@ -87,7 +86,7 @@ class TokenBenchyDatabase:
         self.db_path = os.path.join(DATA_PATH, 'TokenBenchy_database.db')
         self.engine = create_engine(f'sqlite:///{self.db_path}', echo=False, future=True)
         self.Session = sessionmaker(bind=self.engine, future=True)
-        self.insert_batch_size = 20000     
+        self.insert_batch_size = 2000     
        
     #--------------------------------------------------------------------------       
     def initialize_database(self): 
