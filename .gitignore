@@ -3,6 +3,7 @@ TokenBenchy/resources/database/datasets/*
 TokenBenchy/resources/database/evaluation/*
 
 TokenBenchy/setup/python/*
+TokenBenchy/setup/git/*
 TokenBenchy/setup/.env
 
 __pycache__
