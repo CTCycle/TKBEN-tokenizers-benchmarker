@@ -402,8 +402,8 @@ class MainWindow:
     @Slot(object)
     def on_analysis_success(self, result):                  
         config = self.config_manager.get_configuration().get('DATASET', {})
-        corpus = config.get('corpus', 'NA')  
-        config = config.get('config', 'NA')      
+        corpus = config.get('corpus', np.nan)  
+        config = config.get('config', np.nan)      
         message = f'{corpus} - {config} analysis is finished'
         self._send_message(message)
         logger.info(message)
@@ -444,13 +444,14 @@ class MainWindow:
     ###########################################################################   
     # [NEGATIVE OUTCOME HANDLERS]
     ###########################################################################   
-    @Slot(tuple)
-    def on_error(self, err_tb):         
+    def on_error(self, err_tb):
         exc, tb = err_tb
         logger.error(f"{exc}\n{tb}")
-        QMessageBox.critical(self.main_win, 'Something went wrong!', f"{exc}\n\n{tb}")
-        self.progress_bar.setValue(0)
-        self.worker = self.worker.cleanup()
+        message = "An error occurred during the operation. Check the logs for details."
+        QMessageBox.critical(self.main_win, 'Something went wrong!', message)
+        self.progress_bar.setValue(0)      
+        self.worker = self.worker.cleanup()  
+
 
     ###########################################################################   
     # [INTERRUPTION HANDLERS]
