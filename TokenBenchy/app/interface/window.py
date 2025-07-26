@@ -7,10 +7,10 @@ from PySide6.QtCore import QFile, QIODevice, Slot, QThreadPool, Qt
 from PySide6.QtGui import QPainter, QPixmap, QAction
 from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlainTextEdit, QSpinBox,
                                QMessageBox, QComboBox, QTextEdit, QProgressBar,
-                               QGraphicsScene, QGraphicsPixmapItem, QGraphicsView,
-                               QDialog, QVBoxLayout, QLineEdit, QLabel, QDialogButtonBox)
+                               QGraphicsScene, QGraphicsPixmapItem, QGraphicsView, QDialog)
 
 from TokenBenchy.app.utils.data.database import TokenBenchyDatabase
+from TokenBenchy.app.interface.dialogs import SaveConfigDialog, LoadConfigDialog
 from TokenBenchy.app.interface.events import DatasetEvents, BenchmarkEvents, VisualizationEnvents
 from TokenBenchy.app.configuration import Configuration
 from TokenBenchy.app.interface.workers import ThreadWorker
@@ -58,8 +58,8 @@ class MainWindow:
         self.widgets = {}
         self._setup_configuration([
             # actions
-            (QAction, 'actionLoadConfig', 'load_configuration'),
-            (QAction, 'actionSaveConfig', 'save_configuration'),
+            (QAction, 'actionLoadConfig', 'load_configuration_action'),
+            (QAction, 'actionSaveConfig', 'save_configuration_action'),
             (QPushButton,'stopThread','stop_thread'),
             (QProgressBar, "progressBar", 'progress_bar'), 
             (QCheckBox, "useCustomDataset", 'use_custom_dataset'),
@@ -84,7 +84,8 @@ class MainWindow:
         
         self._connect_signals([
             # actions
-            ('save_configuration', 'triggered', self.save_config_to_json),
+            ('save_configuration_action', 'triggered', self.save_configuration),   
+            ('load_configuration_action', 'triggered', self.load_configuration), 
             ('stop_thread','clicked',self.stop_running_worker),           
             ('combo_tokenizers', 'currentTextChanged', self.update_tokenizers_from_combo),
             ('scan_for_tokenizers', 'clicked', self.find_tokenizers_identifiers),
@@ -196,6 +197,26 @@ class MainWindow:
         for attr, signal, slot in connections:
             widget = self.widgets[attr]
             getattr(widget, signal).connect(slot)
+
+    #--------------------------------------------------------------------------
+    def _set_widgets_from_configuration(self):
+        cfg = self.config_manager.get_configuration()
+        for attr, widget in self.widgets.items():
+            if attr not in cfg:
+                continue
+            v = cfg[attr]
+            # CheckBox
+            if hasattr(widget, "setChecked") and isinstance(v, bool):
+                widget.setChecked(v)
+            # Numeric widgets (SpinBox/DoubleSpinBox)
+            elif hasattr(widget, "setValue") and isinstance(v, (int, float)):
+                widget.setValue(v)
+            # PlainTextEdit/TextEdit
+            elif hasattr(widget, "setPlainText") and isinstance(v, str):
+                widget.setPlainText(v)
+            # LineEdit (or any widget with setText)
+            elif hasattr(widget, "setText") and isinstance(v, str):
+                widget.setText(v)
        
     # [SLOT]
     ###########################################################################
@@ -213,13 +234,23 @@ class MainWindow:
     # [ACTIONS]
     #--------------------------------------------------------------------------
     @Slot()
-    def save_config_to_json(self):
-        dialog = NameInputDialog(self.main_win)
+    def save_configuration(self):
+        dialog = SaveConfigDialog(self.main_win)
         if dialog.exec() == QDialog.Accepted:
             name = dialog.get_name()
             name = 'default_config' if not name else name            
             self.config_manager.save_configuration_to_json(name)
             self._send_message(f"Configuration [{name}] has been saved")
+
+    #--------------------------------------------------------------------------
+    @Slot()
+    def load_configuration(self):
+        dialog = LoadConfigDialog(self.main_win)
+        if dialog.exec() == QDialog.Accepted:
+            name = dialog.get_selected_config()
+            self.config_manager.load_configuration_from_json(name)                
+            self._set_widgets_from_configuration()
+            self._send_message(f"Loaded configuration [{name}]")
 
     #--------------------------------------------------------------------------
     # [GRAPHICS]
@@ -486,30 +517,4 @@ class MainWindow:
         logger.warning('Current task has been interrupted by user')
         self.worker = self.worker.cleanup()
         
-    
-###############################################################################
-class NameInputDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Save Configuration As")
-        self.layout = QVBoxLayout(self)
-
-        self.label = QLabel("Enter a name for your configuration:", self)
-        self.layout.addWidget(self.label)
-
-        self.name_edit = QLineEdit(self)
-        self.layout.addWidget(self.name_edit)
-
-        self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
-        self.layout.addWidget(self.buttons)
-
-        self.buttons.accepted.connect(self.accept)
-        self.buttons.rejected.connect(self.reject)
-
-    def get_name(self):
-        return self.name_edit.text().strip()
-    
-        
-   
-
     
