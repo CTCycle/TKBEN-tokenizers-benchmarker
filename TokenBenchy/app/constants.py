@@ -10,6 +10,7 @@ DATA_PATH = join(RSC_PATH, 'database')
 EVALUATION_PATH = join(DATA_PATH, 'evaluation')
 TOKENIZER_PATH = join(DATA_PATH, 'tokenizers')
 DATASETS_PATH = join(DATA_PATH, 'datasets')
+CONFIG_PATH = join(RSC_PATH, 'configurations')
 LOGS_PATH = join(RSC_PATH, 'logs')
 
 # [UI LAYOUT PATH]

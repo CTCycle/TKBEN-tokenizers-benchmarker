@@ -4,11 +4,11 @@ EV = EnvironmentVariables()
 from functools import partial
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, QIODevice, Slot, QThreadPool, Qt
-from PySide6.QtGui import QPainter, QPixmap
+from PySide6.QtGui import QPainter, QPixmap, QAction
 from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlainTextEdit, QSpinBox,
                                QMessageBox, QComboBox, QTextEdit, QProgressBar,
-                               QGraphicsScene, QGraphicsPixmapItem, QGraphicsView)
-
+                               QGraphicsScene, QGraphicsPixmapItem, QGraphicsView,
+                               QDialog, QVBoxLayout, QLineEdit, QLabel, QDialogButtonBox)
 
 from TokenBenchy.app.utils.data.database import TokenBenchyDatabase
 from TokenBenchy.app.interface.events import DatasetEvents, BenchmarkEvents, VisualizationEnvents
@@ -57,6 +57,9 @@ class MainWindow:
         self._set_states()
         self.widgets = {}
         self._setup_configuration([
+            # actions
+            (QAction, 'actionLoadConfig', 'load_configuration'),
+            (QAction, 'actionSaveConfig', 'save_configuration'),
             (QPushButton,'stopThread','stop_thread'),
             (QProgressBar, "progressBar", 'progress_bar'), 
             (QCheckBox, "useCustomDataset", 'use_custom_dataset'),
@@ -80,6 +83,8 @@ class MainWindow:
             (QGraphicsView, "figureCanvas",'view')])
         
         self._connect_signals([
+            # actions
+            ('save_configuration', 'triggered', self.save_config_to_json),
             ('stop_thread','clicked',self.stop_running_worker),           
             ('combo_tokenizers', 'currentTextChanged', self.update_tokenizers_from_combo),
             ('scan_for_tokenizers', 'clicked', self.find_tokenizers_identifiers),
@@ -205,6 +210,64 @@ class MainWindow:
             self._send_message("Interrupt requested. Waiting for threads to stop...")
 
     #--------------------------------------------------------------------------
+    # [ACTIONS]
+    #--------------------------------------------------------------------------
+    @Slot()
+    def save_config_to_json(self):
+        dialog = NameInputDialog(self.main_win)
+        if dialog.exec() == QDialog.Accepted:
+            name = dialog.get_name()
+            name = 'default_config' if not name else name            
+            self.config_manager.save_configuration_to_json(name)
+            self._send_message(f"Configuration [{name}] has been saved")
+
+    #--------------------------------------------------------------------------
+    # [GRAPHICS]
+    #--------------------------------------------------------------------------
+    @Slot()
+    def _update_graphics_view(self):
+        if not self.pixmaps:
+            return
+
+        raw_pix = self.pixmaps[self.current_fig]
+        view_size = self.view.viewport().size()
+        # scale images to the canvas pixel dimensions with smooth filtering
+        scaled = raw_pix.scaled(
+            view_size,
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation)
+        self.pixmap_item.setPixmap(scaled)
+        self.scene.setSceneRect(scaled.rect())
+
+    #--------------------------------------------------------------------------
+    @Slot()
+    def show_previous_figure(self):       
+        if self.current_fig > 0:
+            self.current_fig -= 1
+            self._update_graphics_view()
+
+    #--------------------------------------------------------------------------
+    @Slot()
+    def show_next_figure(self):       
+        if self.current_fig < len(self.pixmaps) - 1:
+            self.current_fig += 1
+            self._update_graphics_view()
+
+    #--------------------------------------------------------------------------
+    @Slot()
+    def clear_figures(self):
+        self.pixmaps.clear()
+        self.current_fig = 0
+        # set the existing pixmap_item to an empty QPixmap
+        self.pixmap_item.setPixmap(QPixmap())
+        # Shrink the scene rect so nothing is visible
+        self.scene.setSceneRect(0, 0, 0, 0)
+        # Force an immediate repaint
+        self.view.viewport().update()
+
+    #--------------------------------------------------------------------------
+    # [DATASET]
+    #--------------------------------------------------------------------------
     @Slot()
     def load_and_process_dataset(self): 
         if self.worker:            
@@ -259,6 +322,8 @@ class MainWindow:
             on_error=self.on_error,
             on_interrupted=self.on_task_interrupted)            
 
+    #--------------------------------------------------------------------------
+    # [TOKENIZERS AND BENCHMARKS]
     #--------------------------------------------------------------------------
     @Slot(str)
     def find_tokenizers_identifiers(self):
@@ -345,48 +410,7 @@ class MainWindow:
             on_error=self.on_error,
             on_interrupted=self.on_task_interrupted)        
 
-    #--------------------------------------------------------------------------
-    @Slot()
-    def _update_graphics_view(self):
-        if not self.pixmaps:
-            return
-
-        raw_pix = self.pixmaps[self.current_fig]
-        view_size = self.view.viewport().size()
-        # scale images to the canvas pixel dimensions with smooth filtering
-        scaled = raw_pix.scaled(
-            view_size,
-            Qt.KeepAspectRatio,
-            Qt.SmoothTransformation)
-        self.pixmap_item.setPixmap(scaled)
-        self.scene.setSceneRect(scaled.rect())
-
-    #--------------------------------------------------------------------------
-    @Slot()
-    def show_previous_figure(self):       
-        if self.current_fig > 0:
-            self.current_fig -= 1
-            self._update_graphics_view()
-
-    #--------------------------------------------------------------------------
-    @Slot()
-    def show_next_figure(self):       
-        if self.current_fig < len(self.pixmaps) - 1:
-            self.current_fig += 1
-            self._update_graphics_view()
-
-    #--------------------------------------------------------------------------
-    @Slot()
-    def clear_figures(self):
-        self.pixmaps.clear()
-        self.current_fig = 0
-        # set the existing pixmap_item to an empty QPixmap
-        self.pixmap_item.setPixmap(QPixmap())
-        # Shrink the scene rect so nothing is visible
-        self.scene.setSceneRect(0, 0, 0, 0)
-        # Force an immediate repaint
-        self.view.viewport().update()
-
+       
 
     ###########################################################################
     # [POSITIVE OUTCOME HANDLERS]
@@ -402,8 +426,8 @@ class MainWindow:
     @Slot(object)
     def on_analysis_success(self, result):                  
         config = self.config_manager.get_configuration().get('DATASET', {})
-        corpus = config.get('corpus', np.nan)  
-        config = config.get('config', np.nan)      
+        corpus = config.get('corpus', None)  
+        config = config.get('config', None)      
         message = f'{corpus} - {config} analysis is finished'
         self._send_message(message)
         logger.info(message)
@@ -463,7 +487,27 @@ class MainWindow:
         self.worker = self.worker.cleanup()
         
     
+###############################################################################
+class NameInputDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Save Configuration As")
+        self.layout = QVBoxLayout(self)
 
+        self.label = QLabel("Enter a name for your configuration:", self)
+        self.layout.addWidget(self.label)
+
+        self.name_edit = QLineEdit(self)
+        self.layout.addWidget(self.name_edit)
+
+        self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        self.layout.addWidget(self.buttons)
+
+        self.buttons.accepted.connect(self.accept)
+        self.buttons.rejected.connect(self.reject)
+
+    def get_name(self):
+        return self.name_edit.text().strip()
     
         
    
