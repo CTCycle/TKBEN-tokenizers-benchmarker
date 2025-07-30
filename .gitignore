@@ -7,6 +7,8 @@ TokenBenchy/setup/git/*
 TokenBenchy/setup/.env
 
 __pycache__
+*.vscode
+*.json
 *.csv
 *.db
 *.log
