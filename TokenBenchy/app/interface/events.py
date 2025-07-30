@@ -115,16 +115,4 @@ class VisualizationEnvents:
         update_progress_callback(3, 3, progress_callback)        
 
         return figures  
-    
-    #--------------------------------------------------------------------------
-    def convert_fig_to_qpixmap(self, fig):    
-        canvas = FigureCanvasAgg(fig)
-        canvas.draw()
-        # get the size in pixels and initialize raw RGBA buffer
-        width, height = canvas.get_width_height()        
-        buf = canvas.buffer_rgba()
-        # construct a QImage pointing at that memory (no PNG decoding)
-        qimg = QImage(buf, width, height, QImage.Format_RGBA8888)
-
-        return QPixmap.fromImage(qimg)
-    
+  

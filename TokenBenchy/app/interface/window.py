@@ -30,9 +30,7 @@ class MainWindow:
         self.main_win.showMaximized()
         
         self.tokenizers = []            
-        self.pixmaps = []
-        self.current_fig = 0
-
+        
         # initial settings
         self.config_manager = Configuration()
         self.configuration = self.config_manager.get_configuration()
@@ -60,27 +58,26 @@ class MainWindow:
             # actions
             (QAction, 'actionLoadConfig', 'load_configuration_action'),
             (QAction, 'actionSaveConfig', 'save_configuration_action'),
+            # progress widgets
             (QPushButton,'stopThread','stop_thread'),
-            (QProgressBar, "progressBar", 'progress_bar'), 
+            (QProgressBar, "progressBar", 'progress_bar'),
+            # dataset selection and analysis
+            (QPushButton, "loadDataset", 'load_dataset'),
+            (QPushButton, "analyzeDataset", 'analyze_dataset'), 
             (QCheckBox, "useCustomDataset", 'use_custom_dataset'),
             (QCheckBox, "removeInvalid", 'remove_invalid_docs'),
             (QCheckBox, "includeCustomToken", 'custom_tokenizer'),
-            (QCheckBox, "includeNSL", 'perform_NSL'),
             (QSpinBox,  "numDocs", 'num_documents'),
-            (QPushButton,'scanHF','scan_for_tokenizers'),
-            (QComboBox, "selectTokenizers", 'combo_tokenizers'),
-            (QPushButton, "loadDataset", 'load_dataset'),
-            (QPushButton, "analyzeDataset", 'analyze_dataset'),
-            (QPushButton, "runBenchmarks", 'run_benchmarks'),
-            (QPushButton, "visualizeResults", 'visualize_results'),
-            (QSpinBox, "imageDPI", 'image_resolution'),
-            (QPushButton, "previousImg", 'prev_img'),
-            (QPushButton, "nextImg", 'next_img'),
-            (QPushButton, "clearImg", 'clear_img'),            
-            (QPlainTextEdit, "tokenizersToBenchmark",'tokenizers_to_bench'),
             (QTextEdit, "datasetCorpus",'text_corpus'),
-            (QTextEdit, "datasetConfig",'text_config'),
-            (QGraphicsView, "figureCanvas",'view')])
+            (QTextEdit, "datasetConfig",'text_config')
+            # tokenizer benchmarks
+            (QPushButton,'scanHF','scan_for_tokenizers'),
+            (QComboBox, "selectTokenizers", 'combo_tokenizers'),            
+            (QCheckBox, "includeNSL", 'perform_NSL'),
+            (QPushButton, "runBenchmarks", 'run_benchmarks'),
+            (QPushButton, "generatePlots", 'generate_plots'),
+            (QPlainTextEdit, "tokenizersToBenchmark",'tokenizers_to_bench'),
+            ])
         
         self._connect_signals([
             # actions
@@ -92,13 +89,10 @@ class MainWindow:
             ('load_dataset', 'clicked', self.load_and_process_dataset),
             ('analyze_dataset', 'clicked', self.run_dataset_analysis),
             ('run_benchmarks', 'clicked', self.run_tokenizers_benchmark),
-            ('visualize_results', 'clicked', self.generate_figures),
-            ('prev_img', 'clicked', self.show_previous_figure),
-            ('next_img', 'clicked', self.show_next_figure),
-            ('clear_img', 'clicked', self.clear_figures)])
+            ('generate_plots', 'clicked', self.generate_figures)])
         
         self._auto_connect_settings() 
-        self._set_graphics() 
+         
 
     # [SHOW WINDOW]
     ###########################################################################
@@ -132,7 +126,6 @@ class MainWindow:
             ('custom_tokenizer', 'toggled', 'include_custom_tokenizer'),
             ('perform_NSL', 'toggled', 'perform_NSL'),
             ('num_documents', 'valueChanged', 'num_documents'),
-            ('image_resolution', 'valueChanged', 'image_resolution')
             ]    
 
         for attr, signal_name, config_key in connections:
@@ -142,22 +135,7 @@ class MainWindow:
     #--------------------------------------------------------------------------
     def _set_states(self): 
         self.progress_bar = self.main_win.findChild(QProgressBar, "progressBar")
-        self.progress_bar.setValue(0)   
-
-    #--------------------------------------------------------------------------
-    def _set_graphics(self):
-        # --- prepare graphics view for figures ---
-        self.view = self.main_win.findChild(QGraphicsView, "figureCanvas")
-        self.scene = QGraphicsScene()
-        self.pixmap_item = QGraphicsPixmapItem()
-        # make pixmap scaling use smooth interpolation
-        self.pixmap_item.setTransformationMode(Qt.SmoothTransformation)
-        self.scene.addItem(self.pixmap_item)
-        self.view.setScene(self.scene)
-        # set canvas hints
-        self.view.setRenderHint(QPainter.Antialiasing, True)
-        self.view.setRenderHint(QPainter.SmoothPixmapTransform, True)
-        self.view.setRenderHint(QPainter.TextAntialiasing, True) 
+        self.progress_bar.setValue(0)  
 
     #--------------------------------------------------------------------------
     def _connect_button(self, button_name: str, slot):        
@@ -251,50 +229,6 @@ class MainWindow:
             self.config_manager.load_configuration_from_json(name)                
             self._set_widgets_from_configuration()
             self._send_message(f"Loaded configuration [{name}]")
-
-    #--------------------------------------------------------------------------
-    # [GRAPHICS]
-    #--------------------------------------------------------------------------
-    @Slot()
-    def _update_graphics_view(self):
-        if not self.pixmaps:
-            return
-
-        raw_pix = self.pixmaps[self.current_fig]
-        view_size = self.view.viewport().size()
-        # scale images to the canvas pixel dimensions with smooth filtering
-        scaled = raw_pix.scaled(
-            view_size,
-            Qt.KeepAspectRatio,
-            Qt.SmoothTransformation)
-        self.pixmap_item.setPixmap(scaled)
-        self.scene.setSceneRect(scaled.rect())
-
-    #--------------------------------------------------------------------------
-    @Slot()
-    def show_previous_figure(self):       
-        if self.current_fig > 0:
-            self.current_fig -= 1
-            self._update_graphics_view()
-
-    #--------------------------------------------------------------------------
-    @Slot()
-    def show_next_figure(self):       
-        if self.current_fig < len(self.pixmaps) - 1:
-            self.current_fig += 1
-            self._update_graphics_view()
-
-    #--------------------------------------------------------------------------
-    @Slot()
-    def clear_figures(self):
-        self.pixmaps.clear()
-        self.current_fig = 0
-        # set the existing pixmap_item to an empty QPixmap
-        self.pixmap_item.setPixmap(QPixmap())
-        # Shrink the scene rect so nothing is visible
-        self.scene.setSceneRect(0, 0, 0, 0)
-        # Force an immediate repaint
-        self.view.viewport().update()
 
     #--------------------------------------------------------------------------
     # [DATASET]
@@ -439,9 +373,7 @@ class MainWindow:
         self._start_thread_worker(
             self.worker, on_finished=self.on_plots_generated,
             on_error=self.on_error,
-            on_interrupted=self.on_task_interrupted)        
-
-       
+            on_interrupted=self.on_task_interrupted)               
 
     ###########################################################################
     # [POSITIVE OUTCOME HANDLERS]
@@ -488,11 +420,6 @@ class MainWindow:
     #--------------------------------------------------------------------------
     @Slot(object)    
     def on_plots_generated(self, figures): 
-        if figures:        
-            self.pixmaps.extend(
-                [self.viewer_handler.convert_fig_to_qpixmap(p) for p in figures])
-        self.current_fig = 0
-        self._update_graphics_view()
         self._send_message('Benchmark results plots have been generated')
         self.worker = self.worker.cleanup()    
     
