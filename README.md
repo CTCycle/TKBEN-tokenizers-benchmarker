@@ -32,7 +32,7 @@ The intuitive main interface facilitates easy selection of text datasets and tok
 - **tokens to words ratio**: The ratio of token count to word count.
 - **bytes per token**: The number of bytes per token, derived from the original text length. 
 
-![benchmark_tab](TokenBenchy/app/assets/figures/benchmark_tab.png)
+![benchmark_tab](TokenBenchy/app/assets/figures/main_tab.png)
 
 **Setup and Maintenance:** you can run *setup_and_maintenance.bat* to start the external tools for maintenance with the following options:
 
