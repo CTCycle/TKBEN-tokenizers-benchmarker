@@ -69,7 +69,7 @@ class MainWindow:
             (QCheckBox, "includeCustomToken", 'custom_tokenizer'),
             (QSpinBox,  "numDocs", 'num_documents'),
             (QTextEdit, "datasetCorpus",'text_corpus'),
-            (QTextEdit, "datasetConfig",'text_config')
+            (QTextEdit, "datasetConfig",'text_config'),
             # tokenizer benchmarks
             (QPushButton,'scanHF','scan_for_tokenizers'),
             (QComboBox, "selectTokenizers", 'combo_tokenizers'),            
