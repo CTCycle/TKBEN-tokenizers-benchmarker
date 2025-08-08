@@ -55,6 +55,8 @@ This folder organizes dataset and tokenizers benchmark results. By default, all 
 | Variable              | Description                                              |
 |-----------------------|----------------------------------------------------------|
 | ACCESS_TOKEN          | HuggingFace access token (required for some tokenizers)  |
+| TF_CPP_MIN_LOG_LEVEL  | TensorFlow logging verbosity                             |
+| MPLBACKEND            | Matplotlib backend, keep default as Agg                  |
 
 
 ## 4. License
