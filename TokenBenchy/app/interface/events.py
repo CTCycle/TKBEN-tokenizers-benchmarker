@@ -94,7 +94,7 @@ class BenchmarkEvents:
 ###############################################################################
 class VisualizationEnvents:
 
-    def __init__(self, configuration):
+    def __init__(self, configuration : dict):
         self.configuration = configuration 
         self.DPI = configuration.get('image_resolution', 400)
 
