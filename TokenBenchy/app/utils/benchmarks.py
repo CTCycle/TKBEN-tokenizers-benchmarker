@@ -1,14 +1,12 @@
 import os
 import re
+
 import numpy as np
 import pandas as pd
 from transformers.utils.logging import set_verbosity_error
-from tqdm import tqdm
-
-import matplotlib
-matplotlib.use("Agg")   
 import matplotlib.pyplot as plt
 from seaborn import barplot, boxplot, histplot
+from tqdm import tqdm
 
 from TokenBenchy.app.utils.data.serializer import DataSerializer
 from TokenBenchy.app.interface.workers import check_thread_status, update_progress_callback

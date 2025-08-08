@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-from PySide6.QtGui import QImage, QPixmap
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 from TokenBenchy.app.utils.data.serializer import DataSerializer
