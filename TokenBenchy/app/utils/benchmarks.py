@@ -9,7 +9,7 @@ from seaborn import barplot, boxplot, histplot
 from tqdm import tqdm
 
 from TokenBenchy.app.utils.data.serializer import DataSerializer
-from TokenBenchy.app.interface.workers import check_thread_status, update_progress_callback
+from TokenBenchy.app.client.workers import check_thread_status, update_progress_callback
 from TokenBenchy.app.constants import EVALUATION_PATH
 from TokenBenchy.app.logger import logger
 
