@@ -7,7 +7,7 @@ TokenBenchy is a comprehensive toolkit designed to simplify tokenizer analysis a
 With TokenBenchy, users can effectively evaluate tokenizer performance in various NLP tasks such as text classification, sentiment analysis, language translation, and semantic search, ensuring informed decisions and optimized model performance.
 
 ## 2. Installation 
-The installation process for Windows is fully automated. Simply run the script *start_on_windows.bat* to begin. During its initial execution, the script installs portable Python, necessary dependencies, and a portable version of Git, minimizing user interaction and ensuring all components are ready for local use.  
+The installation process for Windows is fully automated. Simply run the script *start_on_windows.bat* to begin. During its initial execution, the script installs portable Python, necessary dependencies, minimizing user interaction and ensuring all components are ready for local use.  
 
 **Important:** After installation, if the project folder is moved or its path is changed, the application will no longer function correctly. To fix this, you can either:
 
@@ -19,7 +19,7 @@ The installation process for Windows is fully automated. Simply run the script *
     `pip install -e . --use-pep517` 
 
 ## 3. How to use
-On Windows, run *start_on_windows.bat* to launch the application. Please note that some antivirus software, such as Avast, may flag or quarantine python.exe when called by the .bat file. If you encounter unusual behavior, consider adding an exception for your Anaconda or Miniconda environments in your antivirus settings.
+On Windows, run *start_on_windows.bat* to launch the application. Please note that some antivirus software, such as Avast, may flag or quarantine python.exe when called by the .bat file. If you encounter unusual behavior, consider adding an exception in your antivirus settings.
 
 The intuitive main interface facilitates easy selection of text datasets and tokenizers, allowing users to run benchmarks across multiple tokenizers simultaneously. Benchmark results are conveniently stored in the application's database. For each tokenizer, benchmarking metrics are calculated using both the extracted vocabulary and HuggingFace's decoder methods, highlighting any discrepancies between these approaches. The following statistics are analyzed for each selected tokenizer:
 
@@ -55,6 +55,8 @@ This folder organizes dataset and tokenizers benchmark results. By default, all 
 | Variable              | Description                                              |
 |-----------------------|----------------------------------------------------------|
 | ACCESS_TOKEN          | HuggingFace access token (required for some tokenizers)  |
+| TF_CPP_MIN_LOG_LEVEL  | TensorFlow logging verbosity                             |
+| MPLBACKEND            | Matplotlib backend, keep default as Agg                  |
 
 
 ## 4. License
