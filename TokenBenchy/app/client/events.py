@@ -1,13 +1,12 @@
 import numpy as np
 import pandas as pd
-from PySide6.QtGui import QImage, QPixmap
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 from TokenBenchy.app.utils.data.serializer import DataSerializer
 from TokenBenchy.app.utils.downloads import DatasetManager, TokenizersDownloadManager
 from TokenBenchy.app.utils.benchmarks import BenchmarkTokenizers, VisualizeBenchmarkResults
 from TokenBenchy.app.utils.data.processing import ProcessDataset
-from TokenBenchy.app.interface.workers import check_thread_status, update_progress_callback
+from TokenBenchy.app.client.workers import check_thread_status, update_progress_callback
 from TokenBenchy.app.logger import logger
 
 
@@ -94,7 +93,7 @@ class BenchmarkEvents:
 ###############################################################################
 class VisualizationEnvents:
 
-    def __init__(self, configuration):
+    def __init__(self, configuration : dict):
         self.configuration = configuration 
         self.DPI = configuration.get('image_resolution', 400)
 

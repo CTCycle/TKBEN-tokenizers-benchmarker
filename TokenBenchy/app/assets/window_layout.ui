@@ -34,7 +34,7 @@
         <property name="font">
          <font>
           <pointsize>11</pointsize>
-          <bold>true</bold>
+          <bold>false</bold>
          </font>
         </property>
         <property name="title">
@@ -197,7 +197,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <property name="font">
          <font>
           <pointsize>11</pointsize>
-          <bold>true</bold>
+          <bold>false</bold>
          </font>
         </property>
         <property name="title">
@@ -333,8 +333,16 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <addaction name="actionSaveConfig"/>
     <addaction name="actionLoadConfig"/>
    </widget>
+   <widget class="QMenu" name="menuDatabase">
+    <property name="title">
+     <string>Database</string>
+    </property>
+    <addaction name="actionDeleteData"/>
+    <addaction name="actionExportData"/>
+   </widget>
    <addaction name="menuApplication"/>
    <addaction name="menuConfiguration"/>
+   <addaction name="menuDatabase"/>
   </widget>
   <widget class="QToolBar" name="toolBar">
    <property name="windowTitle">
@@ -360,6 +368,16 @@ li.checked::marker { content: &quot;\2612&quot;; }
   <action name="actionLoadConfig">
    <property name="text">
     <string>Load configuration</string>
+   </property>
+  </action>
+  <action name="actionDeleteData">
+   <property name="text">
+    <string>Delete data</string>
+   </property>
+  </action>
+  <action name="actionExportData">
+   <property name="text">
+    <string>Export data</string>
    </property>
   </action>
  </widget>
