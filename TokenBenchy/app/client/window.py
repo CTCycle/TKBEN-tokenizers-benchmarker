@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlainTextEdit, QSpinBox,
                                QMessageBox, QComboBox, QTextEdit, QProgressBar,                                
                                QDialog, QApplication)
 
-from TokenBenchy.app.utils.data.database import TokenBenchyDatabase
+from TokenBenchy.app.utils.data.database import database
 from TokenBenchy.app.client.dialogs import SaveConfigDialog, LoadConfigDialog
 from TokenBenchy.app.client.events import DatasetEvents, BenchmarkEvents, VisualizationEnvents
 from TokenBenchy.app.configuration import Configuration
@@ -59,9 +59,8 @@ class MainWindow:
         # get Hugging Face access token        
         self.hf_access_token = EV.get_HF_access_token()
 
-        # initialize database
-        self.database = TokenBenchyDatabase()
-        self.database.initialize_database() 
+        # initialize database        
+        database.initialize_database() 
 
         # persistent handlers
         self.loading_handler = DatasetEvents(self.configuration, self.hf_access_token)        
@@ -255,7 +254,7 @@ class MainWindow:
     #--------------------------------------------------------------------------
     @Slot()
     def export_all_data(self):
-        self.database.export_all_tables_as_csv()
+        database.export_all_tables_as_csv()
         message = 'All data from database has been exported'
         logger.info(message)
         self._send_message(message)
@@ -263,7 +262,7 @@ class MainWindow:
     #--------------------------------------------------------------------------
     @Slot()
     def delete_all_data(self):      
-        self.database.delete_all_data()        
+        database.delete_all_data()        
         message = 'All data from database has been deleted'
         logger.info(message)
         self._send_message(message)
