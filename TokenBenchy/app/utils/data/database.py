@@ -6,6 +6,7 @@ from sqlalchemy import Column, Float, Integer, String, UniqueConstraint, create_
 from sqlalchemy.dialects.sqlite import insert
 from tqdm import tqdm
 
+from TokenBenchy.app.utils.singleton import singleton
 from TokenBenchy.app.constants import DATA_PATH
 from TokenBenchy.app.logger import logger
 
@@ -80,6 +81,7 @@ class TextDataset(Base):
 
 # [DATABASE]
 ###############################################################################
+@singleton
 class TokenBenchyDatabase:
 
     def __init__(self):                   
@@ -218,10 +220,9 @@ class TokenBenchyDatabase:
         with self.engine.begin() as conn:
             for table in reversed(Base.metadata.sorted_tables): 
                 conn.execute(table.delete())
-    
+       
 
-   
-
- 
+#------------------------------------------------------------------------------
+database = TokenBenchyDatabase()   
     
     
