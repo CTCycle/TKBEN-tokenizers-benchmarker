@@ -1,6 +1,6 @@
 # TokenBenchy: Exploring and Benchmarking Open Source Tokenizers
 
-## 1. Project Overview
+## 1. Introduction
 Tokenizers are essential components in text preprocessing, converting raw text into structured data understandable by NLP models. The choice of tokenizer directly influences model performance, making it a critical decision in building effective language-based applications. However, selecting an appropriate tokenizer can be challenging due to the diverse array of options available, each with distinct approaches and strengths.
 
 TokenBenchy is a comprehensive toolkit designed to simplify tokenizer analysis and comparison. This fully Python-based UI application allows users to effortlessly download HuggingFace's open-source tokenizers and publicly available text datasets to conduct detailed benchmarks. TokenBenchy enables exploration and comparison of tokenizer attributes including tokenization speed, granularity, handling of special characters, language support, and adaptability to domain-specific vocabularies. 
@@ -9,14 +9,7 @@ With TokenBenchy, users can effectively evaluate tokenizer performance in variou
 ## 2. Installation 
 The installation process for Windows is fully automated. Simply run the script *start_on_windows.bat* to begin. During its initial execution, the script installs portable Python, necessary dependencies, minimizing user interaction and ensuring all components are ready for local use.  
 
-**Important:** After installation, if the project folder is moved or its path is changed, the application will no longer function correctly. To fix this, you can either:
-
-- Open *setup_and_maintenance.bat* and select *Enable root path imports* 
-- Manually run the following commands in the terminal, ensuring the project folder is set as the current working directory (CWD):
-
-    `conda activate TOKEXP`
-
-    `pip install -e . --use-pep517` 
+**Important:** After installation, if the project folder is moved or its path is changed, the application will no longer function correctly. To fix this, you can open *setup_and_maintenance.bat* and select *Enable root path imports*.
 
 ## 3. How to use
 On Windows, run *start_on_windows.bat* to launch the application. Please note that some antivirus software, such as Avast, may flag or quarantine python.exe when called by the .bat file. If you encounter unusual behavior, consider adding an exception in your antivirus settings.
