@@ -1,9 +1,11 @@
 import os
 import re
+from typing import Dict, Any, Tuple, List
 
 import numpy as np
 import pandas as pd
 from transformers.utils.logging import set_verbosity_error
+from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 from seaborn import barplot, boxplot, histplot
 from tqdm import tqdm
@@ -27,17 +29,15 @@ class BenchmarkTokenizers:
         self.configuration = configuration 
 
     #--------------------------------------------------------------------------
-    def process_tokens(text, tokenizer):
+    def process_tokens(self, text : str, tokenizer):
         ids = tokenizer.encode(text).ids
         decoded = tokenizer.decode(ids)
         toks = decoded.split()
+
         return decoded, toks      
 
     #--------------------------------------------------------------------------
-    def calculate_text_statistics(self, **kwargs):
-        # load previously saved text dataset from database using the serializer
-        serializer = DataSerializer(self.configuration)        
-        documents = serializer.load_text_dataset()
+    def calculate_text_statistics(self, documents : pd.DataFrame, **kwargs) -> pd.DataFrame: 
         # interrupt the operation if no text dataset is available
         if documents.empty:
             logger.info('No text dataset available for statistics calculation')
@@ -55,7 +55,7 @@ class BenchmarkTokenizers:
             lambda doc: len(doc.split()))
         
         check_thread_status(kwargs.get('worker', None))
-        update_progress_callback(1, 4, kwargs.get('progress_callback', None))
+        update_progress_callback(1, 3, kwargs.get('progress_callback', None))
 
         # 2/3 - Average word length
         logger.info('Calculating average word length for each document')
@@ -63,7 +63,7 @@ class BenchmarkTokenizers:
             lambda doc: np.mean([len(w) for w in doc.split()]))
         
         check_thread_status(kwargs.get('worker', None))
-        update_progress_callback(2, 4, kwargs.get('progress_callback', None))
+        update_progress_callback(2, 3, kwargs.get('progress_callback', None))
 
         # 3/3 - Standard deviation of word length
         logger.info('Calculating standard deviation of words length for each document')
@@ -71,17 +71,14 @@ class BenchmarkTokenizers:
             lambda doc: np.std([len(w) for w in doc.split()]))
         
         check_thread_status(kwargs.get('worker', None))
-        update_progress_callback(3, 4, kwargs.get('progress_callback', None))    
-        
-        # save dataset statistics through upserting into the the text dataset table
-        serializer.save_dataset_statistics(documents)
+        update_progress_callback(3, 3, kwargs.get('progress_callback', None))    
 
-        update_progress_callback(4, 4, kwargs.get('progress_callback', None))    
+        return documents
 
     #--------------------------------------------------------------------------
-    def calculate_vocabulary_statistics(self, tokenizers, **kwargs):
-        vocabulary_stats = [] 
-        serializer = DataSerializer(self.configuration) 
+    def calculate_vocabulary_statistics(self, tokenizers : Dict, **kwargs):
+        vocabulary_stats = []
+        vocabularies = []         
         # Iterate over each selected tokenizer from the combobox      
         for i, (name, tokenizer) in enumerate(tokenizers.items()):            
             vocab = tokenizer.get_vocab()              
@@ -119,16 +116,15 @@ class BenchmarkTokenizers:
             # check for worker thread status and update progress callback
             check_thread_status(kwargs.get('worker', None))
         
-            serializer.save_vocabulary_tokens(vocabulary)
+            vocabularies.append(vocabulary)
         
         # save vocabulary statistics into database 
-        vocabulary_stats = pd.DataFrame(vocabulary_stats)
-        serializer.save_vocabulary_statistics(vocabulary_stats)           
+        vocabulary_stats = pd.DataFrame(vocabulary_stats)              
         
-        return vocabulary_stats
+        return vocabularies, vocabulary_stats
     
     #--------------------------------------------------------------------------
-    def run_tokenizer_benchmarks(self, tokenizers : dict, **kwargs):
+    def run_tokenizer_benchmarks(self, dataset : pd.DataFrame, tokenizers : dict, **kwargs):
 
         """
         Run benchmarking for each tokenizer over a set of text documents.
@@ -142,22 +138,20 @@ class BenchmarkTokenizers:
             pd.DataFrame: Concatenated benchmark results for all tokenizers.
 
         """
-        # Load previously saved text dataset from database using the serializer
-        serializer = DataSerializer(self.configuration)
-        documents = serializer.load_text_dataset()
-
+        
         # Calculate basic dataset statistics and extract vocabulary for each tokenizer
-        _ = self.calculate_vocabulary_statistics(tokenizers, worker=kwargs.get('worker', None))
-
+        vocabularies, vocabulary_stats = self.calculate_vocabulary_statistics(
+            tokenizers, worker=kwargs.get('worker', None))
+        
         # Filter only a fraction of documents if requested by the user
-        if 0 < self.max_docs_number <= len(documents):
-            documents = documents.iloc[:self.max_docs_number].reset_index(drop=True)
+        if 0 < self.max_docs_number <= len(dataset):
+            dataset = dataset.iloc[:self.max_docs_number].reset_index(drop=True)
 
         # Prepare texts series only once for efficiency
-        texts = documents['text'].astype(str)
+        texts = dataset['text'].astype(str)
         num_docs = len(texts)
         all_tokenizers = []
-
+     
         for i, (name, tokenizer) in enumerate(tokenizers.items()):
             k = name.replace('/', '_')
             logger.info(f'Decoding documents with {name}')
@@ -196,10 +190,7 @@ class BenchmarkTokenizers:
 
             # Drop intermediate columns if reduce_data_size is set
             drop_cols = ['tokens', 'tokens_split', 'words_split']
-            data.drop(columns=drop_cols, inplace=True)
-
-            # Save results for this tokenizer and append
-            serializer.save_benchmark_results(data)
+            data.drop(columns=drop_cols, inplace=True)           
             all_tokenizers.append(data)
 
             # Progress update and thread safety
@@ -209,20 +200,18 @@ class BenchmarkTokenizers:
 
         # Concatenate all tokenizer benchmark results
         benchmark_results = pd.concat(all_tokenizers, ignore_index=True)
-        serializer.save_benchmark_results(benchmark_results)
-
+        
         # Calculate NSL if required
+        data_NSL = None
         if self.include_NSL and self.include_custom_tokenizer:
             self.calculate_normalized_sequence_length(benchmark_results)
 
-        return benchmark_results
+        return vocabularies, vocabulary_stats, benchmark_results, data_NSL
 
     #--------------------------------------------------------------------------
-    def calculate_normalized_sequence_length(self, benchmark_results): 
-        serializer = DataSerializer(self.configuration)                           
-        data_custom = benchmark_results[
-            benchmark_results['tokenizer'].str.contains(
-                'custom tokenizer', case=False, na=False)]   
+    def calculate_normalized_sequence_length(self, benchmark_results : pd.DataFrame):                               
+        data_custom = benchmark_results[benchmark_results['tokenizer'].str.contains(
+                      'custom tokenizer', case=False, na=False)]   
 
         data = []
         names = list(benchmark_results['tokenizer'].unique())
@@ -240,8 +229,7 @@ class BenchmarkTokenizers:
                 data.append(data_chunk)
             
             data_NSL = pd.concat(data, ignore_index=True)
-            serializer.save_NSL_benchmark(data_NSL)          
-
+            
         return data_NSL 
 
 
@@ -249,21 +237,21 @@ class BenchmarkTokenizers:
 ###############################################################################
 class VisualizeBenchmarkResults:
 
-    def __init__(self, configuration : dict):  
-        self.configuration = configuration    
-        self.DPI = configuration.get('image_resolution', 400)
+    def __init__(self, configuration : dict):           
+        self.img_resolution = 400
         self.observed_features = [
             'tokens_to_words_ratio', 'AVG_tokens_length', 'bytes_per_token']
+        self.configuration = configuration  
         
-        self.serializer = DataSerializer(self.configuration)   
+        self.serializer = DataSerializer()   
         _, self.vocab_stats = self.serializer.load_benchmark_results()
         self.tokenizers = self.vocab_stats['tokenizer'].to_list()
 
     #--------------------------------------------------------------------------
-    def save_image(self, fig, name):
+    def save_image(self, fig : Figure, name):
         name = re.sub(r'[^0-9A-Za-z_]', '_', name)
         out_path = os.path.join(EVALUATION_PATH, name)
-        fig.savefig(out_path, bbox_inches='tight', dpi=self.DPI)  
+        fig.savefig(out_path, bbox_inches='tight', dpi=self.img_resolution)  
 
     #--------------------------------------------------------------------------
     def plot_vocabulary_size(self):           
@@ -276,7 +264,7 @@ class VisualizeBenchmarkResults:
                     "number_tokens_from_vocabulary": "Vocabulary",
                     "number_tokens_from_decode": "Decoded"})))
 
-        fig, ax = plt.subplots(figsize=(24, 22), dpi=self.DPI)
+        fig, ax = plt.subplots(figsize=(24, 22), dpi=self.img_resolution)
         barplot(x="tokenizer", y="Count", hue="Type", data=df,
                 palette="viridis", edgecolor="black", ax=ax)
                
@@ -312,7 +300,7 @@ class VisualizeBenchmarkResults:
                         "percentage_subwords": "Subwords",
                         "percentage_true_words": "True words"})))
 
-        fig, ax = plt.subplots(figsize=(24, 22), dpi=self.DPI)
+        fig, ax = plt.subplots(figsize=(24, 22), dpi=self.img_resolution)
         barplot(x="tokenizer", y="Percentage", hue="Type", data=df,
                 palette="viridis", edgecolor="black", ax=ax)
         # Axis labels and title
@@ -343,7 +331,7 @@ class VisualizeBenchmarkResults:
             tokenizer_data = vocabularies[vocabularies['tokenizer'] == tk]
             
             # Histogram of vocabulary token lengths
-            fig, axs = plt.subplots(2, 1, figsize=(24, 22), dpi=self.DPI)
+            fig, axs = plt.subplots(2, 1, figsize=(24, 22), dpi=self.img_resolution)
             tokens_len_vocab = vocabularies['vocabulary_tokens'].dropna().str.len().to_numpy()
             histplot(data=tokens_len_vocab, ax=axs[0], binwidth=1, edgecolor='black')
             axs[0].set_title(f'Token Lengths from {tk} Vocabulary (Raw Tokens)', fontsize=20, fontweight="bold")
@@ -380,7 +368,7 @@ class VisualizeBenchmarkResults:
 
         # Create combined boxplot across tokenizers
         df = pd.DataFrame(records)
-        fig, ax = plt.subplots(figsize=(24, 22), dpi=self.DPI)
+        fig, ax = plt.subplots(figsize=(24, 22), dpi=self.img_resolution)
         boxplot(x='tokenizer', y='length', hue='type',  data=df, ax=ax)        
         ax.set_title('Token Length Distribution by Tokenizer and Type', fontsize=22, fontweight="bold", y=1.02)
         ax.set_xlabel('Tokenizer', fontsize=18, fontweight="bold")

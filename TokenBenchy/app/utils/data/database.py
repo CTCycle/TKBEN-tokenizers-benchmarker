@@ -1,4 +1,5 @@
 import os
+
 import pandas as pd
 import sqlalchemy
 from sqlalchemy.orm import declarative_base, sessionmaker
@@ -69,14 +70,24 @@ class Vocabulary(Base):
 ###############################################################################
 class TextDataset(Base):
     __tablename__ = 'TEXT_DATASET'
-    dataset_name = Column(String, primary_key=True)
+    name = Column(String, primary_key=True)
+    text = Column(String, primary_key=True)    
+    __table_args__ = (
+        UniqueConstraint('name', 'text'),
+    )
+
+###############################################################################
+class TextDatasetStatistics(Base):
+    __tablename__ = 'TEXT_DATASET_STATISTICS'
+    name = Column(String, primary_key=True)
     text = Column(String, primary_key=True)
     words_count = Column(Integer)
     AVG_words_length = Column(Float)
     STD_words_length = Column(Float)
     __table_args__ = (
-        UniqueConstraint('dataset_name', 'text'),
+        UniqueConstraint('name', 'text'),
     )
+
 
 
 # [DATABASE]
@@ -94,8 +105,15 @@ class TokenBenchyDatabase:
     def initialize_database(self): 
         Base.metadata.create_all(self.engine)
 
+    #-------------------------------------------------------------------------- 
+    def get_table_class(self, table_name: str):    
+        for cls in Base.__subclasses__():
+            if hasattr(cls, '__tablename__') and cls.__tablename__ == table_name:
+                return cls
+        raise ValueError(f"No table class found for name {table_name}")   
+
     #--------------------------------------------------------------------------
-    def upsert_dataframe(self, df: pd.DataFrame, table_cls, batch_size=None):
+    def _upsert_dataframe(self, df: pd.DataFrame, table_cls, batch_size=None):
         batch_size = batch_size if batch_size else self.insert_batch_size
         table = table_cls.__table__
         session = self.Session()
@@ -123,7 +141,25 @@ class TokenBenchyDatabase:
                 session.commit()
             session.commit()
         finally:
-            session.close()  
+            session.close()
+
+    #--------------------------------------------------------------------------
+    def load_from_database(self, table_name: str) -> pd.DataFrame:        
+        with self.engine.connect() as conn:
+            data = pd.read_sql_table(table_name, conn)
+
+        return data
+
+    #--------------------------------------------------------------------------
+    def save_into_database(self, df: pd.DataFrame, table_name: str):        
+        with self.engine.begin() as conn:            
+            conn.execute(sqlalchemy.text(f'DELETE FROM "{table_name}"'))
+            df.to_sql(table_name, self.engine, if_exists='append', index=False)
+
+    #--------------------------------------------------------------------------
+    def upsert_into_database(self, df: pd.DataFrame, table_name: str):
+        table_cls = self.get_table_class(table_name)
+        self._upsert_dataframe(df, table_cls)    
 
     #--------------------------------------------------------------------------
     def load_text_dataset(self):            
