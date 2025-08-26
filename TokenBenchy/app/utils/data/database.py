@@ -154,63 +154,12 @@ class TokenBenchyDatabase:
     def save_into_database(self, df: pd.DataFrame, table_name: str):        
         with self.engine.begin() as conn:            
             conn.execute(sqlalchemy.text(f'DELETE FROM "{table_name}"'))
-            df.to_sql(table_name, self.engine, if_exists='append', index=False)
+            df.to_sql(table_name, conn, if_exists='append', index=False)
 
     #--------------------------------------------------------------------------
     def upsert_into_database(self, df: pd.DataFrame, table_name: str):
         table_cls = self.get_table_class(table_name)
-        self._upsert_dataframe(df, table_cls)    
-
-    #--------------------------------------------------------------------------
-    def load_text_dataset(self):            
-        with self.engine.connect() as conn:
-            text_dataset = pd.read_sql_table("TEXT_DATASET", conn)
-
-        return text_dataset   
-
-    #--------------------------------------------------------------------------
-    def load_benchmark_results(self):            
-        with self.engine.connect() as conn:
-            benchmarks = pd.read_sql_table("BENCHMARK_RESULTS", conn)
-            stats = pd.read_sql_table("VOCABULARY_STATISTICS", conn)
-
-        return benchmarks, stats
-
-    #--------------------------------------------------------------------------
-    def load_vocabularies(self):        
-        with self.engine.connect() as conn:
-            vocabulary = pd.read_sql_table('VOCABULARY', conn)
-        return vocabulary
-    
-    #--------------------------------------------------------------------------
-    def save_text_dataset(self, data : pd.DataFrame):
-        with self.engine.begin() as conn:
-            conn.execute(sqlalchemy.text(f"DELETE FROM TEXT_DATASET"))         
-        data.to_sql('TEXT_DATASET', self.engine, if_exists='append', index=False)
-
-    #--------------------------------------------------------------------------
-    def save_dataset_statistics(self, data : pd.DataFrame):         
-        self.upsert_dataframe(data, TextDataset)
-
-    #--------------------------------------------------------------------------
-    def save_benchmark_results(self, data: pd.DataFrame):
-        self.upsert_dataframe(data, BenchmarkResults)
-
-    #--------------------------------------------------------------------------
-    def save_NSL_benchmark(self, data: pd.DataFrame):
-        with self.engine.begin() as conn:
-            conn.execute(sqlalchemy.text(f"DELETE FROM NSL_RESULTS"))        
-        data.to_sql('NSL_RESULTS', self.engine, if_exists='append', index=False) 
-    
-    #--------------------------------------------------------------------------
-    def save_vocabulary_statistics(self, data: pd.DataFrame):
-        with self.engine.begin() as conn:
-            conn.execute(sqlalchemy.text(f"DELETE FROM VOCABULARY_STATISTICS"))        
-        data.to_sql('VOCABULARY_STATISTICS', self.engine, if_exists='append', index=False)       
-
-    #--------------------------------------------------------------------------
-    def save_vocabulary_tokens(self, data: pd.DataFrame):
-        self.upsert_dataframe(data, Vocabulary)
+        self._upsert_dataframe(df, table_cls)     
 
     #--------------------------------------------------------------------------
     def export_all_tables_as_csv(self, chunksize: int | None = None):        
