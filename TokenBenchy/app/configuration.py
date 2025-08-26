@@ -12,8 +12,7 @@ class Configuration:
             'remove_invalid_documents' : True, 
             'include_custom_tokenizer' : False,
             'perform_NSL' : False,
-            'num_documents' : 50000,
-            'image_resolution' : 400,                          
+            'num_documents' : 50000,                          
             "DATASET": {"corpus" : "wikitext", 
                         "config": "wikitext-103-v1"},
             "TOKENIZERS": []} 
