@@ -128,7 +128,7 @@ class TokenBenchyDatabase:
 
             # Batch insertions for speed
             records = df.to_dict(orient='records')
-            for i in tqdm(range(0, len(records), batch_size), desc=f'[INFO] Updating database'):
+            for i in tqdm(range(0, len(records), batch_size), desc='[INFO] Updating database'):
                 batch = records[i:i + batch_size]
                 stmt = insert(table).values(batch)
                 # Columns to update on conflict
