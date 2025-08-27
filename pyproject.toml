@@ -4,7 +4,23 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "TokenBenchy"
-version = "1.5"
+dependencies = [    
+    "transformers==4.50.3",
+    "sentencepiece==0.2.0",
+    "datasets==3.2.0",
+    "sacremoses==0.1.1",
+    "transformers==4.50.3",   
+    "PySide6==6.9.1",
+    "qt-material==2.17",
+    "matplotlib==3.10.1",
+    "seaborn==0.13.2",
+    "numpy==2.3.2",
+    "pandas==2.2.3",
+    "tqdm==4.67.1",   
+    "SQLAlchemy==2.0.41",     
+    "python-dotenv==1.1.0"
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
+
