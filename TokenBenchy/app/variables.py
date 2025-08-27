@@ -15,13 +15,13 @@ class EnvironmentVariables:
         else:
             logger.error(f".env file not found at: {self.env_path}")    
     
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def get_environment_variables(self):                  
         return {"HF_ACCESS_TOKEN": os.getenv("HF_ACCESS_TOKEN", None),                
                 "TF_CPP_MIN_LOG_LEVEL": os.getenv("TF_CPP_MIN_LOG_LEVEL", "1"),
                 "MPLBACKEND": os.getenv("MPLBACKEND", "Agg")}
     
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def get_HF_access_token(self):                  
         return os.getenv("HF_ACCESS_TOKEN", None)
        

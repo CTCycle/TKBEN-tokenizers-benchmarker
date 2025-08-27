@@ -13,7 +13,7 @@ class ProcessDataset:
         self.documents = self.text_data['train']['text']
         self.num_documents = len(self.documents)
 
-     #--------------------------------------------------------------------------
+     #-------------------------------------------------------------------------
     def process_text_dataset(self):
         processed_docs = self.documents
         if self.clean_docs:

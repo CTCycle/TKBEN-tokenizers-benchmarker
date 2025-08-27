@@ -28,7 +28,7 @@ class BenchmarkTokenizers:
         self.include_NSL = configuration.get("include_NSL", False)  
         self.configuration = configuration 
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def process_tokens(self, text : str, tokenizer):
         ids = tokenizer.encode(text).ids
         decoded = tokenizer.decode(ids)
@@ -36,7 +36,7 @@ class BenchmarkTokenizers:
 
         return decoded, toks      
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def calculate_text_statistics(self, documents : pd.DataFrame, **kwargs) -> pd.DataFrame: 
         # interrupt the operation if no text dataset is available
         if documents.empty:
@@ -75,7 +75,7 @@ class BenchmarkTokenizers:
 
         return documents
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def calculate_vocabulary_statistics(self, tokenizers : Dict, **kwargs):
         vocabulary_stats = []
         vocabularies = []         
@@ -123,7 +123,7 @@ class BenchmarkTokenizers:
         
         return vocabularies, vocabulary_stats
     
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def run_tokenizer_benchmarks(self, dataset : pd.DataFrame, tokenizers : dict, **kwargs):
 
         """
@@ -208,7 +208,7 @@ class BenchmarkTokenizers:
 
         return vocabularies, vocabulary_stats, benchmark_results, data_NSL
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def calculate_normalized_sequence_length(self, benchmark_results : pd.DataFrame):                               
         data_custom = benchmark_results[benchmark_results['tokenizer'].str.contains(
                       'custom tokenizer', case=False, na=False)]   
@@ -247,13 +247,13 @@ class VisualizeBenchmarkResults:
         _, self.vocab_stats = self.serializer.load_benchmark_results()
         self.tokenizers = self.vocab_stats['tokenizer'].to_list()
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def save_image(self, fig : Figure, name):
         name = re.sub(r'[^0-9A-Za-z_]', '_', name)
         out_path = os.path.join(EVALUATION_PATH, name)
         fig.savefig(out_path, bbox_inches='tight', dpi=self.img_resolution)  
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def plot_vocabulary_size(self):           
         df = (self.vocab_stats.melt(id_vars="tokenizer",
           value_vars=["number_tokens_from_vocabulary",
@@ -287,7 +287,7 @@ class VisualizeBenchmarkResults:
 
         return fig
            
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def plot_subwords_vs_words(self):        
         for name in self.tokenizers:
             vocabulary = self.serializer.load_vocabularies()
@@ -320,7 +320,7 @@ class VisualizeBenchmarkResults:
 
         return fig
             
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def plot_tokens_length_distribution(self):
         distributions = []   
         records = []

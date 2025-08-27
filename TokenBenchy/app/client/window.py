@@ -134,12 +134,12 @@ class MainWindow:
         signal = getattr(widget, signal_name)
         signal.connect(partial(self._update_single_setting, config_key, getter))
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def _update_single_setting(self, config_key, getter, *args):
         value = getter()
         self.config_manager.update_value(config_key, value)
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def _auto_connect_settings(self):
         connections = [            
             ('use_custom_dataset', 'toggled', 'use_custom_dataset'),
@@ -153,22 +153,22 @@ class MainWindow:
             widget = self.widgets[attr]
             self.connect_update_setting(widget, signal_name, config_key)       
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def _set_states(self): 
         self.progress_bar = self.main_win.findChild(QProgressBar, "progressBar")
         self.progress_bar.setValue(0)  
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def _connect_button(self, button_name: str, slot):        
         button = self.main_win.findChild(QPushButton, button_name)
         button.clicked.connect(slot) 
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def _connect_combo_box(self, combo_name: str, slot):        
         combo = self.main_win.findChild(QComboBox, combo_name)
         combo.currentTextChanged.connect(slot)
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def _start_thread_worker(self, worker : ThreadWorker, on_finished, on_error, on_interrupted,
                       update_progress=True): 
         if update_progress:       
@@ -179,7 +179,7 @@ class MainWindow:
         worker.signals.interrupted.connect(on_interrupted)
         self.threadpool.start(worker)
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def _send_message(self, message): 
         self.main_win.statusBar().showMessage(message)    
 
@@ -191,13 +191,13 @@ class MainWindow:
             setattr(self, attr, w)
             self.widgets[attr] = w
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def _connect_signals(self, connections):
         for attr, signal, slot in connections:
             widget = self.widgets[attr]
             getattr(widget, signal).connect(slot)
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def _set_widgets_from_configuration(self):
         cfg = self.config_manager.get_configuration()
         for attr, widget in self.widgets.items():
@@ -228,16 +228,16 @@ class MainWindow:
     # It's good practice to define methods that act as slots within the class
     # that manages the UI elements. These slots can then call methods on the
     # handler objects. Using @Slot decorator is optional but good practice    
-    #--------------------------------------------------------------------------    
+    #-------------------------------------------------------------------------    
     Slot()
     def stop_running_worker(self):
         if self.worker is not None:
             self.worker.stop()       
             self._send_message("Interrupt requested. Waiting for threads to stop...")
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     # [ACTIONS]
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     @Slot()
     def save_configuration(self):
         dialog = SaveConfigDialog(self.main_win)
@@ -247,7 +247,7 @@ class MainWindow:
             self.config_manager.save_configuration_to_json(name)
             self._send_message(f"Configuration [{name}] has been saved")
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     @Slot()
     def load_configuration(self):
         dialog = LoadConfigDialog(self.main_win)
@@ -257,7 +257,7 @@ class MainWindow:
             self._set_widgets_from_configuration()
             self._send_message(f"Loaded configuration [{name}]")
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     @Slot()
     def export_all_data(self):
         database.export_all_tables_as_csv()
@@ -265,7 +265,7 @@ class MainWindow:
         logger.info(message)
         self._send_message(message)
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     @Slot()
     def delete_all_data(self):      
         database.delete_all_data()        
@@ -273,9 +273,9 @@ class MainWindow:
         logger.info(message)
         self._send_message(message)
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     # [DATASET]
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     @Slot()
     def load_and_process_dataset(self): 
         if self.worker:            
@@ -307,7 +307,7 @@ class MainWindow:
             on_error=self.on_error,
             on_interrupted=self.on_task_interrupted)       
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     @Slot()
     def run_dataset_analysis(self):
         if self.worker:            
@@ -330,9 +330,9 @@ class MainWindow:
             on_error=self.on_error,
             on_interrupted=self.on_task_interrupted)            
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     # [TOKENIZERS AND BENCHMARKS]
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     @Slot(str)
     def find_tokenizers_identifiers(self):
         if self.worker:            
@@ -356,7 +356,7 @@ class MainWindow:
             on_error=self.on_error,
             on_interrupted=self.on_task_interrupted)          
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     @Slot(str)
     def update_tokenizers_from_combo(self, text: str):
         tokenizers = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark")  
@@ -364,7 +364,7 @@ class MainWindow:
         if text not in existing:
             tokenizers.appendPlainText(text) 
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     @Slot()
     def run_tokenizers_benchmark(self):
         if self.worker:            
@@ -397,7 +397,7 @@ class MainWindow:
             on_error=self.on_error,
             on_interrupted=self.on_task_interrupted)      
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     @Slot()
     def generate_figures(self):     
         if self.worker:            
@@ -428,7 +428,7 @@ class MainWindow:
         self._send_message(message)  
         self.worker = self.worker.cleanup()        
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     @Slot(object)
     def on_analysis_success(self, result):                  
         config = self.config_manager.get_configuration().get('DATASET', {})
@@ -439,7 +439,7 @@ class MainWindow:
         logger.info(message)
         self.worker = self.worker.cleanup()
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     @Slot(object)
     def on_tokenizers_fetched(self, identifiers):
         combo = self.main_win.findChild(QComboBox, "selectTokenizers")
@@ -451,7 +451,7 @@ class MainWindow:
         self._send_message(f'{len(identifiers)} tokenizer identifiers fetched from HuggingFace')   
         self.worker = self.worker.cleanup()        
     
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     @Slot(object)
     def on_benchmark_finished(self, tokenizers):
         self.tokenizers = tokenizers 
@@ -460,7 +460,7 @@ class MainWindow:
         logger.info(message)
         self.worker = self.worker.cleanup()  
     
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     @Slot(object)    
     def on_plots_generated(self, figures): 
         self._send_message('Benchmark results plots have been generated')
