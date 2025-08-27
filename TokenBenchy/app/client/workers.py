@@ -3,8 +3,6 @@ import inspect
 
 from PySide6.QtCore import QObject, Signal, QRunnable, Slot
 
-from TokenBenchy.app.constants import ROOT_DIR, DATA_PATH
-from TokenBenchy.app.logger import logger
 
 
 ###############################################################################
