@@ -3,7 +3,7 @@ TokenBenchy/resources/database/datasets/*
 TokenBenchy/resources/database/evaluation/*
 
 TokenBenchy/setup/python/*
-TokenBenchy/setup/git/*
+TokenBenchy/setup/uv/*
 TokenBenchy/setup/.env
 
 __pycache__
@@ -12,7 +12,8 @@ __pycache__
 *.csv
 *.db
 *.log
+*.lock
+*.venv
 *.egg-info
 !.gitkeep
-
 
