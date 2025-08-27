@@ -4,7 +4,7 @@ EV = EnvironmentVariables()
 from functools import partial
 from qt_material import apply_stylesheet
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QFile, QIODevice, Slot, QThreadPool, Qt
+from PySide6.QtCore import QFile, QIODevice, Slot, QThreadPool
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (QPushButton, QCheckBox, QPlainTextEdit, QSpinBox,
                                QMessageBox, QComboBox, QTextEdit, QProgressBar,                                
