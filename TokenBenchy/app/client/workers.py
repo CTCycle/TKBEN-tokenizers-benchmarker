@@ -50,15 +50,15 @@ class ThreadWorker(QRunnable):
         if accepts_worker:
             self.kwargs["worker"] = self 
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def stop(self):
         self._is_interrupted = True
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def is_interrupted(self):
         return self._is_interrupted   
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     @Slot()    
     def run(self):
         try:
@@ -77,18 +77,18 @@ class ThreadWorker(QRunnable):
             tb = traceback.format_exc()
             self.signals.error.emit((e, tb))
        
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def cleanup(self):
         pass 
 
 
 # [HELPERS FUNCTIONS]
-#------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 def check_thread_status(worker : ThreadWorker):
     if worker is not None and worker.is_interrupted():        
         raise WorkerInterrupted()    
 
-#------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 def update_progress_callback(progress, total, progress_callback=None):   
     if progress_callback is not None:        
         percent = int(progress * 100 / total)

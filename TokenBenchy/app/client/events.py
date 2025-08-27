@@ -18,7 +18,7 @@ class DatasetEvents:
         self.configuration = configuration
         self.hf_access_token = hf_access_token           
            
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def load_and_process_dataset(self, worker=None, progress_callback=None):
         manager = DatasetManager(self.configuration, self.hf_access_token) 
         dataset_name = manager.get_dataset_name() 
@@ -66,7 +66,7 @@ class BenchmarkEvents:
         self.configuration = configuration    
         self.hf_access_token = hf_access_token                                   
            
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def run_dataset_evaluation_pipeline(self, progress_callback=None, worker=None): 
         text_dataset = self.serializer.load_text_dataset()
         benchmarker = BenchmarkTokenizers(self.configuration)         
@@ -76,14 +76,14 @@ class BenchmarkEvents:
         # save dataset statistics through upserting into the the text dataset table
         self.serializer.save_dataset_statistics(documents)         
     
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def get_tokenizer_identifiers(self, limit=1000, worker=None):
         downloader = TokenizersDownloadManager(self.configuration, self.hf_access_token)
         identifiers = downloader.get_tokenizer_identifiers(limit=limit, worker=worker)
 
         return identifiers
     
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def execute_benchmarks(self, progress_callback=None, worker=None):
         benchmarker = BenchmarkTokenizers(self.configuration)
         downloader = TokenizersDownloadManager(self.configuration, self.hf_access_token)
@@ -109,7 +109,7 @@ class VisualizationEnvents:
         self.img_resolution = 400
         self.configuration = configuration 
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def visualize_benchmark_results(self, worker=None, progress_callback=None):
         visualizer = VisualizeBenchmarkResults(self.configuration)
         figures = []      
