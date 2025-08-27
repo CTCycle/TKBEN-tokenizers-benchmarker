@@ -22,13 +22,13 @@ class DatasetManager:
         self.configuration = configuration  
         self.hf_access_token = hf_access_token 
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def get_dataset_name(self):
         if self.dataset_config:  
             return f"{self.dataset_corpus}/{self.dataset_config}"
         return self.dataset_corpus     
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def dataset_download(self):        
         datasets = {}   
         subfolder = 'custom' if self.has_custom_dataset else 'open'
@@ -76,7 +76,7 @@ class TokenizersDownloadManager:
             "text2text-generation", "question-answering", "sentence-similarity",
             "translation", "summarization", "conversational", "zero-shot-classification"]
 
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def get_tokenizer_identifiers(self, limit=100, **kwargs):        
         api = HfApi(token=self.hf_access_token) if "downloads" else HfApi()
         # query HuggingFace Hub to search for tokenizer tag in metadata, sort by downloads 
@@ -87,7 +87,7 @@ class TokenizersDownloadManager:
 
         return identifiers
             
-    #--------------------------------------------------------------------------
+    #-------------------------------------------------------------------------
     def tokenizer_download(self, **kwargs):
         tokenizers = {}
         for tokenizer_id in self.tokenizers:             
