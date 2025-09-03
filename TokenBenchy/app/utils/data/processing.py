@@ -1,7 +1,12 @@
-# [TOKENIZERS EXPLORER]
+from __future__ import annotations
+
+from typing import Any
+
+
+# [PROCESS TEXT DATASET]
 ###############################################################################
 class ProcessDataset:
-    def __init__(self, configuration, datasets):
+    def __init__(self, configuration: dict[str, Any], datasets: dict[str, Any]) -> None:
         self.datasets = datasets
         self.clean_docs = configuration.get("remove_invalid_documents", True)
         self.dataset_config = configuration.get("DATASET", {})
@@ -12,7 +17,7 @@ class ProcessDataset:
         self.num_documents = len(self.documents)
 
     # -------------------------------------------------------------------------
-    def process_text_dataset(self):
+    def process_text_dataset(self) -> list[Any]:
         processed_docs = self.documents
         if self.clean_docs:
             processed_docs = [x for x in processed_docs if len(x) > 0]

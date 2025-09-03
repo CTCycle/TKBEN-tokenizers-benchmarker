@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import os
+from typing import Any
 
 import pandas as pd
 import transformers
@@ -14,7 +17,9 @@ from TokenBenchy.app.logger import logger
 # [DOWNLOADS]
 ###############################################################################
 class DatasetManager:
-    def __init__(self, configuration, hf_access_token):
+    def __init__(
+        self, configuration: dict[str, Any], hf_access_token: str | None
+    ) -> None:
         self.dataset = configuration.get("DATASET", {})
         self.dataset_corpus = self.dataset.get("corpus", "wikitext")
         self.dataset_config = self.dataset.get("config", "wikitext-103-v1")
@@ -23,13 +28,13 @@ class DatasetManager:
         self.hf_access_token = hf_access_token
 
     # -------------------------------------------------------------------------
-    def get_dataset_name(self):
+    def get_dataset_name(self) -> str | Any:
         if self.dataset_config:
             return f"{self.dataset_corpus}/{self.dataset_config}"
         return self.dataset_corpus
 
     # -------------------------------------------------------------------------
-    def dataset_download(self):
+    def dataset_download(self) -> None | dict[str, Any]:
         datasets = {}
         subfolder = "custom" if self.has_custom_dataset else "open"
         base_path = os.path.join(DATASETS_PATH, subfolder)
@@ -71,7 +76,9 @@ class DatasetManager:
 # [DOWNLOADS]
 ###############################################################################
 class TokenizersDownloadManager:
-    def __init__(self, configuration, hf_access_token):
+    def __init__(
+        self, configuration: dict[str, Any], hf_access_token: str | None
+    ) -> None:
         self.hf_access_token = hf_access_token
         self.tokenizers = configuration.get("TOKENIZERS", [])
         self.has_custom_tokenizer = configuration.get("include_custom_tokenizer", False)
@@ -90,19 +97,19 @@ class TokenizersDownloadManager:
         ]
 
     # -------------------------------------------------------------------------
-    def get_tokenizer_identifiers(self, limit=100, **kwargs):
+    def get_tokenizer_identifiers(self, limit: int = 100, **kwargs) -> list[Any]:
         api = HfApi(token=self.hf_access_token) if "downloads" else HfApi()
         # query HuggingFace Hub to search for tokenizer tag in metadata, sort by downloads
         models = api.list_models(
             search="tokenizer", sort="downloads", direction=-1, limit=limit
         )
         # extract and return just the model IDs
-        identifiers = [m.modelId for m in models]
+        identifiers = [m.model_index for m in models]
 
         return identifiers
 
     # -------------------------------------------------------------------------
-    def tokenizer_download(self, **kwargs):
+    def tokenizer_download(self, **kwargs) -> dict[str, Any]:
         tokenizers = {}
         for tokenizer_id in self.tokenizers:
             try:
