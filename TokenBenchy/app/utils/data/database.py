@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import os
+from typing import Any
 
 import pandas as pd
 import sqlalchemy
@@ -84,7 +87,7 @@ class TextDatasetStatistics(Base):
 ###############################################################################
 @singleton
 class TokenBenchyDatabase:
-    def __init__(self):
+    def __init__(self) -> None:
         self.db_path = os.path.join(DATA_PATH, "TokenBenchy_database.db")
         self.engine = create_engine(
             f"sqlite:///{self.db_path}", echo=False, future=True
@@ -93,18 +96,20 @@ class TokenBenchyDatabase:
         self.insert_batch_size = 2000
 
     # -------------------------------------------------------------------------
-    def initialize_database(self):
+    def initialize_database(self) -> None:
         Base.metadata.create_all(self.engine)
 
     # -------------------------------------------------------------------------
-    def get_table_class(self, table_name: str):
+    def get_table_class(self, table_name: str) -> Any:
         for cls in Base.__subclasses__():
             if hasattr(cls, "__tablename__") and cls.__tablename__ == table_name:
                 return cls
         raise ValueError(f"No table class found for name {table_name}")
 
     # -------------------------------------------------------------------------
-    def _upsert_dataframe(self, df: pd.DataFrame, table_cls, batch_size=None):
+    def _upsert_dataframe(
+        self, df: pd.DataFrame, table_cls: Any, batch_size: int | None = None
+    ) -> None:
         batch_size = batch_size if batch_size else self.insert_batch_size
         table = table_cls.__table__
         session = self.Session()
@@ -126,7 +131,7 @@ class TokenBenchyDatabase:
                 stmt = insert(table).values(batch)
                 # Columns to update on conflict
                 update_cols = {
-                    c: getattr(stmt.excluded, c)
+                    c: getattr(stmt.excluded, c)  # type: ignore
                     for c in batch[0]
                     if c not in unique_cols
                 }
@@ -147,18 +152,18 @@ class TokenBenchyDatabase:
         return data
 
     # -------------------------------------------------------------------------
-    def save_into_database(self, df: pd.DataFrame, table_name: str):
+    def save_into_database(self, df: pd.DataFrame, table_name: str) -> None:
         with self.engine.begin() as conn:
             conn.execute(sqlalchemy.text(f'DELETE FROM "{table_name}"'))
             df.to_sql(table_name, conn, if_exists="append", index=False)
 
     # -------------------------------------------------------------------------
-    def upsert_into_database(self, df: pd.DataFrame, table_name: str):
+    def upsert_into_database(self, df: pd.DataFrame, table_name: str) -> None:
         table_cls = self.get_table_class(table_name)
         self._upsert_dataframe(df, table_cls)
 
     # -------------------------------------------------------------------------
-    def export_all_tables_as_csv(self, chunksize: int | None = None):
+    def export_all_tables_as_csv(self, chunksize: int | None = None) -> None:
         export_path = os.path.join(DATA_PATH, "export")
         os.makedirs(export_path, exist_ok=True)
         with self.engine.connect() as conn:
@@ -198,7 +203,7 @@ class TokenBenchyDatabase:
         logger.info(f"All tables exported to CSV at {os.path.abspath(export_path)}")
 
     # -------------------------------------------------------------------------
-    def delete_all_data(self):
+    def delete_all_data(self) -> None:
         with self.engine.begin() as conn:
             for table in reversed(Base.metadata.sorted_tables):
                 conn.execute(table.delete())
