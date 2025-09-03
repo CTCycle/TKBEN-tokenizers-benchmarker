@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pandas as pd
 
 from TokenBenchy.app.utils.data.database import database
@@ -6,7 +8,7 @@ from TokenBenchy.app.utils.data.database import database
 # [DATA SERIALIZATION]
 ###############################################################################
 class DataSerializer:
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     # -------------------------------------------------------------------------
@@ -18,29 +20,29 @@ class DataSerializer:
         return database.load_from_database("VOCABULARY")
 
     # -------------------------------------------------------------------------
-    def load_text_dataset(self):
+    def load_text_dataset(self) -> pd.DataFrame:
         return database.load_from_database("TEXT_DATASET")
 
     # -------------------------------------------------------------------------
-    def save_text_dataset(self, dataset: pd.DataFrame):
+    def save_text_dataset(self, dataset: pd.DataFrame) -> None:
         database.save_into_database(dataset, "TEXT_DATASET")
 
     # -------------------------------------------------------------------------
-    def save_dataset_statistics(self, dataset: pd.DataFrame):
+    def save_dataset_statistics(self, dataset: pd.DataFrame) -> None:
         database.upsert_into_database(dataset, "TEXT_DATASET_STATISTICS")
 
     # -------------------------------------------------------------------------
-    def save_vocabulary_tokens(self, dataset: pd.DataFrame):
+    def save_vocabulary_tokens(self, dataset: pd.DataFrame) -> None:
         database.upsert_into_database(dataset, "VOCABULARY")
 
     # -------------------------------------------------------------------------
-    def save_vocabulary_statistics(self, dataset: pd.DataFrame):
+    def save_vocabulary_statistics(self, dataset: pd.DataFrame) -> None:
         database.save_into_database(dataset, "VOCABULARY_STATISTICS")
 
     # -------------------------------------------------------------------------
-    def save_benchmark_results(self, dataset: pd.DataFrame):
+    def save_benchmark_results(self, dataset: pd.DataFrame) -> None:
         database.save_into_database(dataset, "BENCHMARK_RESULTS")
 
     # -------------------------------------------------------------------------
-    def save_NSL_benchmark(self, dataset: pd.DataFrame):
+    def save_NSL_benchmark(self, dataset: pd.DataFrame) -> None:
         database.save_into_database(dataset, "NSL_RESULTS")

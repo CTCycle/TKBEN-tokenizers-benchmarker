@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import os
 import re
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,7 +21,7 @@ from TokenBenchy.app.utils.data.serializer import DataSerializer
 # [TOKENIZERS EXPLORER]
 ###############################################################################
 class BenchmarkTokenizers:
-    def __init__(self, configuration: dict):
+    def __init__(self, configuration: dict[str, Any]) -> None:
         set_verbosity_error()
         self.max_docs_number = configuration.get("num_documents", 0)
         self.reduce_data_size = configuration.get("reduce_output_size", False)
@@ -29,7 +32,7 @@ class BenchmarkTokenizers:
         self.configuration = configuration
 
     # -------------------------------------------------------------------------
-    def process_tokens(self, text: str, tokenizer):
+    def process_tokens(self, text: str, tokenizer: Any) -> tuple[Any, Any]:
         ids = tokenizer.encode(text).ids
         decoded = tokenizer.decode(ids)
         toks = decoded.split()
@@ -39,7 +42,7 @@ class BenchmarkTokenizers:
     # -------------------------------------------------------------------------
     def calculate_text_statistics(
         self, documents: pd.DataFrame, **kwargs
-    ) -> pd.DataFrame:
+    ) -> pd.DataFrame | None:
         # interrupt the operation if no text dataset is available
         if documents.empty:
             logger.info("No text dataset available for statistics calculation")
@@ -79,7 +82,9 @@ class BenchmarkTokenizers:
         return documents
 
     # -------------------------------------------------------------------------
-    def calculate_vocabulary_statistics(self, tokenizers: dict, **kwargs):
+    def calculate_vocabulary_statistics(
+        self, tokenizers: dict[str, Any], **kwargs
+    ) -> tuple[list[Any], pd.DataFrame]:
         vocabulary_stats = []
         vocabularies = []
         # Iterate over each selected tokenizer from the combobox
@@ -137,7 +142,7 @@ class BenchmarkTokenizers:
     # -------------------------------------------------------------------------
     def run_tokenizer_benchmarks(
         self, dataset: pd.DataFrame, tokenizers: dict, **kwargs
-    ):
+    ) -> tuple[list[Any], pd.DataFrame, pd.DataFrame, pd.DataFrame | None]:
         """
         Run benchmarking for each tokenizer over a set of text documents.
         Optimized for speed and robustness, using vectorized operations where possible.
@@ -235,7 +240,9 @@ class BenchmarkTokenizers:
         return vocabularies, vocabulary_stats, benchmark_results, data_NSL
 
     # -------------------------------------------------------------------------
-    def calculate_normalized_sequence_length(self, benchmark_results: pd.DataFrame):
+    def calculate_normalized_sequence_length(
+        self, benchmark_results: pd.DataFrame
+    ) -> None | pd.DataFrame:
         data_custom = benchmark_results[
             benchmark_results["tokenizer"].str.contains(
                 "custom tokenizer", case=False, na=False
@@ -272,7 +279,7 @@ class BenchmarkTokenizers:
 # [TOKENIZERS EXPLORER]
 ###############################################################################
 class VisualizeBenchmarkResults:
-    def __init__(self, configuration: dict):
+    def __init__(self, configuration: dict[str, Any]) -> None:
         self.img_resolution = 400
         self.observed_features = [
             "tokens_to_words_ratio",
@@ -282,17 +289,17 @@ class VisualizeBenchmarkResults:
         self.configuration = configuration
 
         self.serializer = DataSerializer()
-        _, self.vocab_stats = self.serializer.load_benchmark_results()
+        self.vocab_stats = self.serializer.load_benchmark_results()
         self.tokenizers = self.vocab_stats["tokenizer"].to_list()
 
     # -------------------------------------------------------------------------
-    def save_image(self, fig: Figure, name):
+    def save_image(self, fig: Figure, name: str) -> None:
         name = re.sub(r"[^0-9A-Za-z_]", "_", name)
         out_path = os.path.join(EVALUATION_PATH, name)
         fig.savefig(out_path, bbox_inches="tight", dpi=self.img_resolution)
 
     # -------------------------------------------------------------------------
-    def plot_vocabulary_size(self):
+    def plot_vocabulary_size(self) -> Figure:
         df = self.vocab_stats.melt(
             id_vars="tokenizer",
             value_vars=["number_tokens_from_vocabulary", "number_tokens_from_decode"],
@@ -340,10 +347,11 @@ class VisualizeBenchmarkResults:
         return fig
 
     # -------------------------------------------------------------------------
-    def plot_subwords_vs_words(self):
+    def plot_subwords_vs_words(self) -> Figure:
+        data = None
         for name in self.tokenizers:
             vocabulary = self.serializer.load_vocabularies()
-            df = self.vocab_stats.melt(
+            data = self.vocab_stats.melt(
                 id_vars="tokenizer",
                 value_vars=["percentage_subwords", "percentage_true_words"],
                 var_name="Type",
@@ -357,12 +365,13 @@ class VisualizeBenchmarkResults:
                 )
             )
 
+        merged_data = data if data is not None else self.vocab_stats
         fig, ax = plt.subplots(figsize=(24, 22), dpi=self.img_resolution)
         barplot(
             x="tokenizer",
             y="Percentage",
             hue="Type",
-            data=df,
+            data=merged_data,
             palette="viridis",
             edgecolor="black",
             ax=ax,
@@ -387,7 +396,7 @@ class VisualizeBenchmarkResults:
         return fig
 
     # -------------------------------------------------------------------------
-    def plot_tokens_length_distribution(self):
+    def plot_tokens_length_distribution(self) -> list[Any]:
         distributions = []
         records = []
         vocabularies = self.serializer.load_vocabularies()
