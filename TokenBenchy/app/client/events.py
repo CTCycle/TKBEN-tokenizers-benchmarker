@@ -1,7 +1,15 @@
+from __future__ import annotations
+
+from typing import Any
+
 import numpy as np
 import pandas as pd
 
-from TokenBenchy.app.client.workers import check_thread_status, update_progress_callback
+from TokenBenchy.app.client.workers import (
+    ThreadWorker,
+    check_thread_status,
+    update_progress_callback,
+)
 from TokenBenchy.app.logger import logger
 from TokenBenchy.app.utils.benchmarks import (
     BenchmarkTokenizers,
@@ -14,17 +22,26 @@ from TokenBenchy.app.utils.downloads import DatasetManager, TokenizersDownloadMa
 
 ###############################################################################
 class DatasetEvents:
-    def __init__(self, configuration, hf_access_token):
+    def __init__(
+        self, configuration: dict[str, Any], hf_access_token: str | None
+    ) -> None:
         self.serializer = DataSerializer()
         self.configuration = configuration
         self.hf_access_token = hf_access_token
 
     # -------------------------------------------------------------------------
-    def load_and_process_dataset(self, worker=None, progress_callback=None):
+    def load_and_process_dataset(
+        self, worker: ThreadWorker | None = None, progress_callback: Any | None = None
+    ) -> str | Any | None:
         manager = DatasetManager(self.configuration, self.hf_access_token)
         dataset_name = manager.get_dataset_name()
         logger.info(f"Downloading and saving dataset: {dataset_name}")
         dataset = manager.dataset_download()
+        if dataset is None:
+            logger.warning(
+                "Dataset could not be loaded, try again or change identifier"
+            )
+            return
 
         # check thread for interruption
         check_thread_status(worker)
@@ -66,13 +83,17 @@ class DatasetEvents:
 
 ###############################################################################
 class BenchmarkEvents:
-    def __init__(self, configuration, hf_access_token):
+    def __init__(
+        self, configuration: dict[str, Any], hf_access_token: str | None
+    ) -> None:
         self.serializer = DataSerializer()
         self.configuration = configuration
         self.hf_access_token = hf_access_token
 
     # -------------------------------------------------------------------------
-    def run_dataset_evaluation_pipeline(self, progress_callback=None, worker=None):
+    def run_dataset_evaluation_pipeline(
+        self, progress_callback: Any | None = None, worker: ThreadWorker | None = None
+    ) -> None:
         text_dataset = self.serializer.load_text_dataset()
         benchmarker = BenchmarkTokenizers(self.configuration)
         documents = benchmarker.calculate_text_statistics(
@@ -80,29 +101,40 @@ class BenchmarkEvents:
         )
 
         # save dataset statistics through upserting into the the text dataset table
-        self.serializer.save_dataset_statistics(documents)
+        if documents is not None:
+            self.serializer.save_dataset_statistics(documents)
 
     # -------------------------------------------------------------------------
-    def get_tokenizer_identifiers(self, limit=1000, worker=None):
+    def get_tokenizer_identifiers(
+        self, limit=1000, worker: ThreadWorker | None = None
+    ) -> list[Any]:
         downloader = TokenizersDownloadManager(self.configuration, self.hf_access_token)
         identifiers = downloader.get_tokenizer_identifiers(limit=limit, worker=worker)
 
         return identifiers
 
     # -------------------------------------------------------------------------
-    def execute_benchmarks(self, progress_callback=None, worker=None):
+    def execute_benchmarks(
+        self, progress_callback: Any | None = None, worker: ThreadWorker | None = None
+    ) -> dict[Any, Any]:
         benchmarker = BenchmarkTokenizers(self.configuration)
         downloader = TokenizersDownloadManager(self.configuration, self.hf_access_token)
+        text_dataset = self.serializer.load_text_dataset()
         tokenizers = downloader.tokenizer_download(worker=worker)
-        vocabularies, vocab_stats, benchmarks, NSL = (
+        vocabularies, vocab_stats, benchmarks, NSL_results = (
             benchmarker.run_tokenizer_benchmarks(
-                tokenizers, progress_callback=progress_callback, worker=worker
+                text_dataset,
+                tokenizers,
+                progress_callback=progress_callback,
+                worker=worker,
             )
         )
         # save results into database
         self.serializer.save_benchmark_results(benchmarks)
         self.serializer.save_vocabulary_statistics(vocab_stats)
-        self.serializer.save_NSL_benchmark(NSL) if NSL else None
+        self.serializer.save_NSL_benchmark(
+            NSL_results
+        ) if NSL_results is not None else None
         for voc in vocabularies:
             self.serializer.save_vocabulary_tokens(voc)
 
@@ -111,13 +143,15 @@ class BenchmarkEvents:
 
 ###############################################################################
 class VisualizationEnvents:
-    def __init__(self, configuration: dict):
+    def __init__(self, configuration: dict[str, Any]) -> None:
         self.serializer = DataSerializer()
         self.img_resolution = 400
         self.configuration = configuration
 
     # -------------------------------------------------------------------------
-    def visualize_benchmark_results(self, worker=None, progress_callback=None):
+    def visualize_benchmark_results(
+        self, worker: ThreadWorker | None = None, progress_callback: Any | None = None
+    ) -> list[Any]:
         visualizer = VisualizeBenchmarkResults(self.configuration)
         figures = []
         # 1. generate plot of different vocabulary sizes

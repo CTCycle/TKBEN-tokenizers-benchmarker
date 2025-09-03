@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import Any, cast
+
 from TokenBenchy.app.variables import EnvironmentVariables
 
 EV = EnvironmentVariables()
@@ -12,10 +17,13 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
+    QDoubleSpinBox,
+    QMainWindow,
     QMessageBox,
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
+    QRadioButton,
     QSpinBox,
     QTextEdit,
 )
@@ -34,7 +42,7 @@ from TokenBenchy.app.utils.data.database import database
 
 
 ###############################################################################
-def apply_style(app: QApplication):
+def apply_style(app: QApplication) -> QApplication:
     theme = "dark_yellow"
     extra = {"density_scale": "-1"}
     apply_stylesheet(app, theme=f"{theme}.xml", extra=extra)
@@ -44,7 +52,7 @@ def apply_style(app: QApplication):
         app.styleSheet()
         + """
     QProgressBar {
-        text-align: center;  /* align percentage to the center */
+        text-align: center;   /* align percentage to the center */
         color: black;        /* black text for yellow bar */
         font-weight: bold;   /* bold percentage */        
     }
@@ -56,12 +64,12 @@ def apply_style(app: QApplication):
 
 ###############################################################################
 class MainWindow:
-    def __init__(self, ui_file_path: str):
+    def __init__(self, ui_file_path: str) -> None:
         super().__init__()
         loader = QUiLoader()
         ui_file = QFile(ui_file_path)
-        ui_file.open(QIODevice.ReadOnly)
-        self.main_win = loader.load(ui_file)
+        ui_file.open(QIODevice.OpenModeFlag.ReadOnly)
+        self.main_win = cast(QMainWindow, loader.load(ui_file))
         ui_file.close()
         self.main_win.showMaximized()
 
@@ -73,7 +81,7 @@ class MainWindow:
 
         # set thread pool for the workers
         self.threadpool = QThreadPool.globalInstance()
-        self.worker = None
+        self.worker: ThreadWorker | None = None
 
         # get Hugging Face access token
         self.hf_access_token = EV.get_HF_access_token()
@@ -144,18 +152,29 @@ class MainWindow:
 
         self._auto_connect_settings()
 
+    # -------------------------------------------------------------------------
+    def __getattr__(self, name: str) -> Any:
+        try:
+            return self.widgets[name]
+        except (AttributeError, KeyError) as e:
+            raise AttributeError(
+                f"{type(self).__name__!s} has no attribute {name!r}"
+            ) from e
+
     # [SHOW WINDOW]
     ###########################################################################
-    def show(self):
+    def show(self) -> None:
         self.main_win.show()
 
     # [HELPERS]
     ###########################################################################
-    def connect_update_setting(self, widget, signal_name, config_key, getter=None):
+    def connect_update_setting(
+        self, widget: Any, signal_name: str, config_key: str, getter: Any | None = None
+    ) -> None:
         if getter is None:
-            if isinstance(widget, (QCheckBox)):
+            if isinstance(widget, (QCheckBox, QRadioButton)):
                 getter = widget.isChecked
-            elif isinstance(widget, (QSpinBox)):
+            elif isinstance(widget, (QSpinBox, QDoubleSpinBox)):
                 getter = widget.value
             elif isinstance(widget, QComboBox):
                 getter = widget.currentText
@@ -164,12 +183,12 @@ class MainWindow:
         signal.connect(partial(self._update_single_setting, config_key, getter))
 
     # -------------------------------------------------------------------------
-    def _update_single_setting(self, config_key, getter, *args):
+    def _update_single_setting(self, config_key: str, getter: Any, *args) -> None:
         value = getter()
         self.config_manager.update_value(config_key, value)
 
     # -------------------------------------------------------------------------
-    def _auto_connect_settings(self):
+    def _auto_connect_settings(self) -> None:
         connections = [
             ("use_custom_dataset", "toggled", "use_custom_dataset"),
             ("remove_invalid_docs", "toggled", "remove_invalid_documents"),
@@ -183,31 +202,31 @@ class MainWindow:
             self.connect_update_setting(widget, signal_name, config_key)
 
     # -------------------------------------------------------------------------
-    def _set_states(self):
+    def _set_states(self) -> None:
         self.progress_bar = self.main_win.findChild(QProgressBar, "progressBar")
-        self.progress_bar.setValue(0)
+        self.progress_bar.setValue(0) if self.progress_bar else None
 
     # -------------------------------------------------------------------------
-    def _connect_button(self, button_name: str, slot):
+    def _connect_button(self, button_name: str, slot: Any) -> None:
         button = self.main_win.findChild(QPushButton, button_name)
-        button.clicked.connect(slot)
+        button.clicked.connect(slot) if button else None
 
     # -------------------------------------------------------------------------
-    def _connect_combo_box(self, combo_name: str, slot):
+    def _connect_combo_box(self, combo_name: str, slot: Any) -> None:
         combo = self.main_win.findChild(QComboBox, combo_name)
-        combo.currentTextChanged.connect(slot)
+        combo.currentTextChanged.connect(slot) if combo else None
 
     # -------------------------------------------------------------------------
     def _start_thread_worker(
         self,
         worker: ThreadWorker,
-        on_finished,
-        on_error,
-        on_interrupted,
-        update_progress=True,
-    ):
-        if update_progress:
-            self.progress_bar.setValue(0)
+        on_finished: Callable,
+        on_error: Callable,
+        on_interrupted: Callable,
+        update_progress: bool = True,
+    ) -> None:
+        if update_progress and self.progress_bar:
+            self.progress_bar.setValue(0) if self.progress_bar else None
             worker.signals.progress.connect(self.progress_bar.setValue)
         worker.signals.finished.connect(on_finished)
         worker.signals.error.connect(on_error)
@@ -215,25 +234,25 @@ class MainWindow:
         self.threadpool.start(worker)
 
     # -------------------------------------------------------------------------
-    def _send_message(self, message):
+    def _send_message(self, message: str) -> None:
         self.main_win.statusBar().showMessage(message)
 
     # [SETUP]
     ###########################################################################
-    def _setup_configuration(self, widget_defs):
+    def _setup_configuration(self, widget_defs: Any) -> None:
         for cls, name, attr in widget_defs:
             w = self.main_win.findChild(cls, name)
             setattr(self, attr, w)
             self.widgets[attr] = w
 
     # -------------------------------------------------------------------------
-    def _connect_signals(self, connections):
+    def _connect_signals(self, connections: Any) -> None:
         for attr, signal, slot in connections:
             widget = self.widgets[attr]
             getattr(widget, signal).connect(slot)
 
     # -------------------------------------------------------------------------
-    def _set_widgets_from_configuration(self):
+    def _set_widgets_from_configuration(self) -> None:
         cfg = self.config_manager.get_configuration()
         for attr, widget in self.widgets.items():
             if attr not in cfg:
@@ -264,9 +283,8 @@ class MainWindow:
     # that manages the UI elements. These slots can then call methods on the
     # handler objects. Using @Slot decorator is optional but good practice
     # -------------------------------------------------------------------------
-    Slot()
-
-    def stop_running_worker(self):
+    @Slot()
+    def stop_running_worker(self) -> None:
         if self.worker is not None:
             self.worker.stop()
             self._send_message("Interrupt requested. Waiting for threads to stop...")
@@ -275,9 +293,9 @@ class MainWindow:
     # [ACTIONS]
     # -------------------------------------------------------------------------
     @Slot()
-    def save_configuration(self):
+    def save_configuration(self) -> None:
         dialog = SaveConfigDialog(self.main_win)
-        if dialog.exec() == QDialog.Accepted:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             name = dialog.get_name()
             name = "default_config" if not name else name
             self.config_manager.save_configuration_to_json(name)
@@ -285,17 +303,18 @@ class MainWindow:
 
     # -------------------------------------------------------------------------
     @Slot()
-    def load_configuration(self):
+    def load_configuration(self) -> None:
         dialog = LoadConfigDialog(self.main_win)
-        if dialog.exec() == QDialog.Accepted:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             name = dialog.get_selected_config()
-            self.config_manager.load_configuration_from_json(name)
-            self._set_widgets_from_configuration()
-            self._send_message(f"Loaded configuration [{name}]")
+            if name:
+                self.config_manager.load_configuration_from_json(name)
+                self._set_widgets_from_configuration()
+                self._send_message(f"Loaded configuration [{name}]")
 
     # -------------------------------------------------------------------------
     @Slot()
-    def export_all_data(self):
+    def export_all_data(self) -> None:
         database.export_all_tables_as_csv()
         message = "All data from database has been exported"
         logger.info(message)
@@ -303,7 +322,7 @@ class MainWindow:
 
     # -------------------------------------------------------------------------
     @Slot()
-    def delete_all_data(self):
+    def delete_all_data(self) -> None:
         database.delete_all_data()
         message = "All data from database has been deleted"
         logger.info(message)
@@ -313,7 +332,7 @@ class MainWindow:
     # [DATASET]
     # -------------------------------------------------------------------------
     @Slot()
-    def load_and_process_dataset(self):
+    def load_and_process_dataset(self) -> None:
         if self.worker:
             message = (
                 "A task is currently running, wait for it to finish and then try again"
@@ -321,8 +340,15 @@ class MainWindow:
             QMessageBox.warning(self.main_win, "Application is still busy", message)
             return
 
-        corpus_text = self.main_win.findChild(QTextEdit, "datasetCorpus").toPlainText()
-        config_text = self.main_win.findChild(QTextEdit, "datasetConfig").toPlainText()
+        corpus_widget = self.main_win.findChild(QTextEdit, "datasetCorpus")
+        config_widget = self.main_win.findChild(QTextEdit, "datasetConfig")
+
+        if corpus_widget is None:
+            return
+
+        corpus_text = corpus_widget.toPlainText()
+        config_text = config_widget.toPlainText() if config_widget else ""
+
         dataset_config = {
             "corpus": corpus_text.replace("\n", " ").strip(),
             "config": config_text.replace("\n", " ").strip(),
@@ -351,7 +377,7 @@ class MainWindow:
 
     # -------------------------------------------------------------------------
     @Slot()
-    def run_dataset_analysis(self):
+    def run_dataset_analysis(self) -> None:
         if self.worker:
             message = (
                 "A task is currently running, wait for it to finish and then try again"
@@ -382,8 +408,8 @@ class MainWindow:
     # -------------------------------------------------------------------------
     # [TOKENIZERS AND BENCHMARKS]
     # -------------------------------------------------------------------------
-    @Slot(str)
-    def find_tokenizers_identifiers(self):
+    @Slot()
+    def find_tokenizers_identifiers(self) -> None:
         if self.worker:
             message = (
                 "A task is currently running, wait for it to finish and then try again"
@@ -412,16 +438,17 @@ class MainWindow:
         )
 
     # -------------------------------------------------------------------------
-    @Slot(str)
-    def update_tokenizers_from_combo(self, text: str):
+    @Slot()
+    def update_tokenizers_from_combo(self, text: str) -> None:
         tokenizers = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark")
-        existing = set(tokenizers.toPlainText().splitlines())
-        if text not in existing:
-            tokenizers.appendPlainText(text)
+        if tokenizers is not None:
+            existing = set(tokenizers.toPlainText().splitlines())
+            if text not in existing:
+                tokenizers.appendPlainText(text)
 
     # -------------------------------------------------------------------------
     @Slot()
-    def run_tokenizers_benchmark(self):
+    def run_tokenizers_benchmark(self) -> None:
         if self.worker:
             message = (
                 "A task is currently running, wait for it to finish and then try again"
@@ -430,6 +457,9 @@ class MainWindow:
             return
 
         tokenizers = self.main_win.findChild(QPlainTextEdit, "tokenizersToBenchmark")
+        if tokenizers is None:
+            return
+
         tokenizers_name = tokenizers.toPlainText().splitlines()
         if len(tokenizers_name) == 0:
             logger.warning("No tokenizers selected for benchmarking")
@@ -459,7 +489,7 @@ class MainWindow:
 
     # -------------------------------------------------------------------------
     @Slot()
-    def generate_figures(self):
+    def generate_figures(self) -> None:
         if self.worker:
             message = (
                 "A task is currently running, wait for it to finish and then try again"
@@ -486,68 +516,69 @@ class MainWindow:
     # [POSITIVE OUTCOME HANDLERS]
     ###########################################################################
     @Slot(object)
-    def on_dataset_loaded(self, name):
+    def on_dataset_loaded(self, name) -> None:
         message = f"Text dataset {name} has been saved into database"
         logger.info(message)
         self._send_message(message)
-        self.worker = self.worker.cleanup()
+        self.worker = self.worker.cleanup() if self.worker else None
 
     # -------------------------------------------------------------------------
     @Slot(object)
-    def on_analysis_success(self, result):
+    def on_analysis_success(self, result) -> None:
         config = self.config_manager.get_configuration().get("DATASET", {})
         corpus = config.get("corpus", None)
         config = config.get("config", None)
         message = f"{corpus} - {config} analysis is finished"
         self._send_message(message)
         logger.info(message)
-        self.worker = self.worker.cleanup()
+        self.worker = self.worker.cleanup() if self.worker else None
 
     # -------------------------------------------------------------------------
     @Slot(object)
-    def on_tokenizers_fetched(self, identifiers):
+    def on_tokenizers_fetched(self, identifiers: list[str]) -> None:
         combo = self.main_win.findChild(QComboBox, "selectTokenizers")
-        existing = {combo.itemText(i) for i in range(combo.count())}
-        for identifier in identifiers:
-            if identifier not in existing:
-                combo.addItem(identifier)
+        if combo is not None:
+            existing = {combo.itemText(i) for i in range(combo.count())}
+            for identifier in identifiers:
+                if identifier not in existing:
+                    combo.addItem(identifier)
 
         self._send_message(
             f"{len(identifiers)} tokenizer identifiers fetched from HuggingFace"
         )
-        self.worker = self.worker.cleanup()
+        self.worker = self.worker.cleanup() if self.worker else None
 
     # -------------------------------------------------------------------------
     @Slot(object)
-    def on_benchmark_finished(self, tokenizers):
+    def on_benchmark_finished(self, tokenizers: list[str]) -> None:
         self.tokenizers = tokenizers
         message = f"{len(tokenizers)} selected tokenizers have been benchmarked"
         self._send_message(message)
         logger.info(message)
-        self.worker = self.worker.cleanup()
+        self.worker = self.worker.cleanup() if self.worker else None
 
     # -------------------------------------------------------------------------
     @Slot(object)
-    def on_plots_generated(self, figures):
+    def on_plots_generated(self, figures: list[Any]) -> None:
         self._send_message("Benchmark results plots have been generated")
-        self.worker = self.worker.cleanup()
+        self.worker = self.worker.cleanup() if self.worker else None
 
     ###########################################################################
     # [NEGATIVE OUTCOME HANDLERS]
     ###########################################################################
-    def on_error(self, err_tb):
+    def on_error(self, err_tb: tuple[str, str]) -> None:
         exc, tb = err_tb
         logger.error(f"{exc}\n{tb}")
         message = "An error occurred during the operation. Check the logs for details."
         QMessageBox.critical(self.main_win, "Something went wrong!", message)
-        self.progress_bar.setValue(0)
-        self.worker = self.worker.cleanup()
+        self.progress_bar.setValue(0) if self.progress_bar else None
+        self.worker = self.worker.cleanup() if self.worker else None
 
     ###########################################################################
     # [INTERRUPTION HANDLERS]
     ###########################################################################
-    def on_task_interrupted(self):
-        self.progress_bar.setValue(0)
+    def on_task_interrupted(self) -> None:
+        self.progress_bar.setValue(0) if self.progress_bar else None
         self._send_message("Current task has been interrupted by user")
         logger.warning("Current task has been interrupted by user")
-        self.worker = self.worker.cleanup()
+        self.worker = self.worker.cleanup() if self.worker else None
