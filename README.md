@@ -4,6 +4,7 @@
 Tokenizers are essential components in text preprocessing, converting raw text into structured data understandable by NLP models. The choice of tokenizer directly influences model performance, making it a critical decision in building effective language-based applications. However, selecting an appropriate tokenizer can be challenging due to the diverse array of options available, each with distinct approaches and strengths.
 
 TokenBenchy is a comprehensive toolkit designed to simplify tokenizer analysis and comparison. This fully Python-based UI application allows users to effortlessly download HuggingFace's open-source tokenizers and publicly available text datasets to conduct detailed benchmarks. TokenBenchy enables exploration and comparison of tokenizer attributes including tokenization speed, granularity, handling of special characters, language support, and adaptability to domain-specific vocabularies. 
+
 With TokenBenchy, users can effectively evaluate tokenizer performance in various NLP tasks such as text classification, sentiment analysis, language translation, and semantic search, ensuring informed decisions and optimized model performance.
 
 ## 2. Installation 

@@ -62,17 +62,10 @@ class DatasetEvents:
 
         # create dataframe for text dataset
         text_dataset = pd.DataFrame(
-            {
-                "dataset_name": [dataset_name] * len(documents),
-                "text": documents,
-                "words_count": [np.nan] * len(documents),
-                "AVG_words_length": [np.nan] * len(documents),
-                "STD_words_length": [np.nan] * len(documents),
-            }
+            {"dataset_name": [dataset_name] * len(documents), "text": documents}
         )
 
         # serialize text dataset by saving it into database
-        # TO DO: change database assignation
         self.serializer.save_text_dataset(text_dataset)
 
         # check thread for interruption
@@ -132,9 +125,10 @@ class BenchmarkEvents:
         # save results into database
         self.serializer.save_benchmark_results(benchmarks)
         self.serializer.save_vocabulary_statistics(vocab_stats)
-        self.serializer.save_NSL_benchmark(
-            NSL_results
-        ) if NSL_results is not None else None
+
+        if NSL_results is not None:
+            self.serializer.save_NSL_benchmark(NSL_results)
+       
         for voc in vocabularies:
             self.serializer.save_vocabulary_tokens(voc)
 
@@ -154,18 +148,25 @@ class VisualizationEnvents:
     ) -> list[Any]:
         visualizer = VisualizeBenchmarkResults(self.configuration)
         figures = []
+        
+        vocab_stats = self.serializer.load_vocabularies()
+        benchmark_results = self.serializer.load_benchmark_results()
+
         # 1. generate plot of different vocabulary sizes
-        figures.append(visualizer.plot_vocabulary_size())
+        logger.info('Generating boxplots of vocabulary sizes')
+        figures.append(visualizer.plot_vocabulary_size(vocab_stats))
         check_thread_status(worker)
         update_progress_callback(1, 3, progress_callback)
 
         # 2. generate plot of token length distribution
-        figures.extend(visualizer.plot_tokens_length_distribution())
+        logger.info('Generating plots of tokens distribution by length')
+        figures.extend(visualizer.plot_tokens_length_distribution(vocab_stats))
         check_thread_status(worker)
         update_progress_callback(2, 3, progress_callback)
 
         # 2. generate plot of words versus subwords
-        figures.append(visualizer.plot_subwords_vs_words())
+        logger.info('Generating plots to compare subwords to words populations')
+        figures.append(visualizer.plot_subwords_vs_words(vocab_stats))
         update_progress_callback(3, 3, progress_callback)
 
         return figures
