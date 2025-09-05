@@ -67,20 +67,20 @@ class Vocabulary(Base):
 ###############################################################################
 class TextDataset(Base):
     __tablename__ = "TEXT_DATASET"
-    name = Column(String, primary_key=True)
+    dataset_name = Column(String, primary_key=True)
     text = Column(String, primary_key=True)
-    __table_args__ = (UniqueConstraint("name", "text"),)
+    __table_args__ = (UniqueConstraint("dataset_name", "text"),)
 
 
 ###############################################################################
 class TextDatasetStatistics(Base):
     __tablename__ = "TEXT_DATASET_STATISTICS"
-    name = Column(String, primary_key=True)
+    dataset_name = Column(String, primary_key=True)
     text = Column(String, primary_key=True)
     words_count = Column(Integer)
     AVG_words_length = Column(Float)
     STD_words_length = Column(Float)
-    __table_args__ = (UniqueConstraint("name", "text"),)
+    __table_args__ = (UniqueConstraint("dataset_name", "text"),)
 
 
 # [DATABASE]
