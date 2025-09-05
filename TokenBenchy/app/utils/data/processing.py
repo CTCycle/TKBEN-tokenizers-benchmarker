@@ -17,7 +17,7 @@ class ProcessDataset:
         self.num_documents = len(self.documents)
 
     # -------------------------------------------------------------------------
-    def process_text_dataset(self) -> list[Any]:
+    def process_text_dataset(self) -> list[str]:
         processed_docs = self.documents
         if self.clean_docs:
             processed_docs = [x for x in processed_docs if len(x) > 0]
