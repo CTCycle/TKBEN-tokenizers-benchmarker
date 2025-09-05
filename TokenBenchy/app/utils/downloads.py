@@ -104,7 +104,7 @@ class TokenizersDownloadManager:
             search="tokenizer", sort="downloads", direction=-1, limit=limit
         )
         # extract and return just the model IDs
-        identifiers = [m.model_index for m in models]
+        identifiers = [m.modelId for m in models]  # type: ignore
 
         return identifiers
 
