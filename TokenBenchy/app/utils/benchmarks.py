@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import os
 import re
-from typing import Any, Final
+from typing import Any
 
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.figure import Figure
-from seaborn import barplot, boxplot, histplot
 from tqdm import tqdm
 from transformers.utils.logging import set_verbosity_error
 
@@ -288,7 +286,7 @@ class VisualizeBenchmarkResults:
             "bytes_per_token",
         ]
         self.configuration = configuration
-        self.serializer = DataSerializer()  
+        self.serializer = DataSerializer()
 
     # -------------------------------------------------------------------------
     def save_image(self, fig: Figure, name: str) -> None:
@@ -297,7 +295,7 @@ class VisualizeBenchmarkResults:
         fig.savefig(out_path, bbox_inches="tight", dpi=self.img_resolution)
 
     # -------------------------------------------------------------------------
-    def plot_vocabulary_size(self, data : pd.DataFrame) -> Figure:        
+    def plot_vocabulary_size(self, data: pd.DataFrame) -> Figure:
         df = data.dropna(subset=["vocabulary_tokens"])
         df["vocabulary_tokens"] = df["vocabulary_tokens"].astype(str)
         df = df[df["vocabulary_tokens"].str.len() > 0]
@@ -318,7 +316,7 @@ class VisualizeBenchmarkResults:
         y_pos = np.arange(n_tok, dtype=float)
         widths = counts.to_numpy(dtype=float)
 
-        ax.barh(y_pos, widths, edgecolor="black")        
+        ax.barh(y_pos, widths, edgecolor="black")
         ax.set_yticks(y_pos)
         ax.set_yticklabels(list(counts.index))
 
@@ -329,7 +327,6 @@ class VisualizeBenchmarkResults:
             pad=12,
         )
         ax.set_xlabel("Number of tokens", fontsize=13, fontweight="bold")
-        ax.set_ylabel("Tokenizer", fontsize=13, fontweight="bold")
         ax.grid(axis="x", linestyle="--", alpha=0.3)
 
         for label in ax.get_xticklabels() + ax.get_yticklabels():
@@ -341,148 +338,214 @@ class VisualizeBenchmarkResults:
         return fig
 
     # -------------------------------------------------------------------------
-    def plot_subwords_vs_words(self, data : pd.DataFrame) -> Figure | None:
-        tokenizers = data["tokenizer"].to_list()  
-        tokenizer_data = None      
-        for name in tokenizers:            
-            tokenizer_data = data.melt(
-                id_vars="tokenizer",
-                value_vars=["percentage_subwords", "percentage_true_words"],
-                var_name="Type",
-                value_name="Percentage",
-            ).assign(
-                Type=lambda d: d["Type"].map(
-                    {
-                        "percentage_subwords": "Subwords",
-                        "percentage_true_words": "True words",
-                    }
-                )
-            )
+    def plot_subwords_vs_words(self, data: pd.DataFrame) -> Figure | None:
+        df = data.loc[:, ["tokenizer", "vocabulary_tokens"]].copy()
+        df = df.dropna(subset=["tokenizer", "vocabulary_tokens"])
+        if df.empty:
+            logger.info("plot_subwords_vs_words: no data to plot")
+            return None
 
-        if tokenizer_data is None:
-            return
-        
-        fig, ax = plt.subplots(figsize=(24, 22), dpi=self.img_resolution)
-        barplot(
-            x="tokenizer",
-            y="Percentage",
-            hue="Type",
-            orient='h',
-            data=tokenizer_data,
-            palette="viridis",
+        # Normalize types and trim whitespace, sanitize all strings to avoid ambiguity
+        df["tokenizer"] = df["tokenizer"].astype(str)
+        df["vocabulary_tokens"] = df["vocabulary_tokens"].astype(str).str.strip()
+        df = df[df["vocabulary_tokens"].str.len() > 0]
+        if df.empty:
+            return None
+
+        # Special tokens to exclude from both categories
+        special_pat = r"^(?:\[.*\]|<.*>|{.*}|</?s>|</?pad>|UNK|PAD)$"
+        is_special = df["vocabulary_tokens"].str.match(special_pat, case=False)
+        df = df[~is_special]
+        if df.empty:
+            logger.info("plot_subwords_vs_words: only special tokens present")
+            return None
+
+        # identify BERT subwords starting with '##'
+        bert_sub = df["vocabulary_tokens"].str.startswith("##")
+
+        # identify SentencePiece rule subwords, where leading '▁' denotes word start
+        # tokens with '▁' in other positions are subwords
+        sp_has = df["vocabulary_tokens"].str.contains("▁", regex=False)
+        sp_word_start = df["vocabulary_tokens"].str.startswith("▁")
+        sp_sub = sp_has & (~sp_word_start)
+
+        # identify GPT-2/BBPE rule subwords, where leading 'Ġ' denotes word start
+        bbpe_has = df["vocabulary_tokens"].str.contains("Ġ", regex=False)
+        bbpe_word_start = df["vocabulary_tokens"].str.startswith("Ġ")
+        bbpe_sub = bbpe_has & (~bbpe_word_start)
+
+        is_subword = bert_sub | sp_sub | bbpe_sub
+        is_word = ~is_subword
+
+        # Aggregate counts per tokenizer
+        df["is_subword"] = is_subword.astype(int)
+        df["is_word"] = is_word.astype(int)
+
+        grouped = (
+            df.groupby("tokenizer", sort=False)
+            .agg(subwords_count=("is_subword", "sum"), words_count=("is_word", "sum"))
+            .reset_index()
+        )
+
+        # Sort by subwords count
+        grouped = grouped.sort_values("subwords_count", ascending=False).reset_index(
+            drop=True
+        )
+
+        if grouped.empty:
+            logger.info("plot_subwords_vs_words: nothing to plot after aggregation")
+            return None
+
+        tokenizers = grouped["tokenizer"].tolist()
+        n = len(tokenizers)
+        x = np.arange(n, dtype=float)
+        width = 0.4
+
+        subwords = grouped["subwords_count"].to_numpy(dtype=float)
+        words = grouped["words_count"].to_numpy(dtype=float)
+
+        fig, ax = plt.subplots(figsize=(max(10, n * 0.9), 7), dpi=self.img_resolution)
+        ax.bar(
+            x - width / 2,
+            subwords,
+            width=width,
             edgecolor="black",
-            ax=ax,
+            color="#105D8D",
+            label="Subwords (vocabulary)",
         )
-        # Axis labels and title
-        ax.set_xlabel("", fontsize=20, fontweight="bold")
-        ax.set_ylabel("Percentage (%)", fontsize=20, fontweight="bold")
-        ax.set_title(
-            "Subwords vs complete words", fontsize=24, fontweight="bold", y=1.02
+        ax.bar(
+            x + width / 2,
+            words,
+            width=width,
+            edgecolor="black",
+            color="#107F40",
+            label="Words (vocabulary)",
         )
-        ax.tick_params(axis="x", rotation=45, labelsize=18)
-        ax.tick_params(axis="y", labelsize=18)
-        for label in ax.get_xticklabels() + ax.get_yticklabels():
-            label.set_fontweight("bold")
-        legend = ax.legend(title="", fontsize=18)
-        for text in legend.get_texts():
-            text.set_fontweight("bold")
-        plt.tight_layout()
-        self.save_image(fig, "subwords_vs_words.jpeg")
-        plt.close()
 
+        ax.set_title(
+            "Subwords vs Words by tokenizer (vocabulary)",
+            fontsize=16,
+            fontweight="bold",
+            pad=12,
+        )
+        ax.set_xlabel("Tokenizer", fontsize=13, fontweight="bold")
+        ax.set_ylabel("Count", fontsize=13, fontweight="bold")
+        ax.set_xticks(x)
+        ax.set_xticklabels(tokenizers, rotation=35, ha="right")
+
+        ax.grid(axis="y", linestyle="--", alpha=0.3)
+        ax.legend(title="", fontsize=11)
+
+        for lbl in ax.get_xticklabels() + ax.get_yticklabels():
+            try:
+                lbl.set_fontweight("bold")
+            except Exception:
+                pass
+
+        fig.tight_layout()
+        self.save_image(fig, "subwords_vs_words.jpeg")
+        plt.close(fig)
         return fig
 
     # -------------------------------------------------------------------------
-    def plot_tokens_length_distribution(self, data : pd.DataFrame) -> list[Any]:
-        distributions = []
-        records = []
-        vocabularies = self.serializer.load_vocabularies()
-        tokenizers = data["tokenizer"].to_list()
-        # Loop through each tokenizer to plot histograms
+    def plot_tokens_length_distribution(self, data: pd.DataFrame) -> list[Any]:
+        figures = []
+        # Preserve tokenizer order as encountered
+        tokenizers = data["tokenizer"].astype(str).dropna().unique().tolist()
         for tk in tokenizers:
-            tokenizer_data = vocabularies[vocabularies["tokenizer"] == tk]
+            df_tk = data[data["tokenizer"] == tk]
+            # Prepare series and compute lengths (exclude NaNs and empty strings)
+            vocab_series = df_tk["vocabulary_tokens"].dropna().astype(str)
+            decoded_series = df_tk["decoded_tokens"].dropna().astype(str)
 
-            # Histogram of vocabulary token lengths
-            fig, axs = plt.subplots(2, 1, figsize=(24, 22), dpi=self.img_resolution)
-            tokens_len_vocab = (
-                vocabularies["vocabulary_tokens"].dropna().str.len().to_numpy()
+            vocab_lengths = (
+                vocab_series[vocab_series.str.len() > 0].str.len().to_numpy(dtype=int)
             )
-            histplot(data=tokens_len_vocab, ax=axs[0], binwidth=1, edgecolor="black")
+            decoded_lengths = (
+                decoded_series[decoded_series.str.len() > 0]
+                .str.len()
+                .to_numpy(dtype=int)
+            )
+
+            # Determine common integer-aligned bins across both panels for comparability
+            max_len = int(
+                max(
+                    (vocab_lengths.max() if vocab_lengths.size else 0),
+                    (decoded_lengths.max() if decoded_lengths.size else 0),
+                )
+            )
+
+            # Create figure
+            fig, axs = plt.subplots(
+                2, 1, figsize=(16, 10), dpi=self.img_resolution, sharex=True
+            )
+
+            if max_len == 0:
+                titles = (
+                    f"{tk} • Vocabulary token length distribution",
+                    f"{tk} • Decoded token length distribution",
+                )
+                for ax, title in zip(axs, titles):
+                    ax.text(
+                        0.5, 0.5, "No token data", ha="center", va="center", fontsize=14
+                    )
+                    ax.set_title(title, fontsize=16, fontweight="bold", pad=10)
+                    ax.set_xlabel(
+                        "Token length (chars)", fontsize=13, fontweight="bold"
+                    )
+                    ax.set_ylabel("Frequency", fontsize=13, fontweight="bold")
+                    ax.grid(axis="both", linestyle="--", alpha=0.3)
+
+                fig.tight_layout()
+                # Save and collect
+                self.save_image(fig, f"{tk}_token_length_hist.jpeg")
+                figures.append(fig)
+                plt.close(fig)
+                continue
+
+            # Integer-centered bins: [0.5, 1.5, ..., max_len + 0.5]
+            bin_edges = np.arange(0.5, max_len + 1.5, 1.0, dtype=float)
+
+            # Panel 1 — vocabulary token lengths
+            axs[0].hist(vocab_lengths, bins=bin_edges, edgecolor="black")
             axs[0].set_title(
-                f"Token Lengths from {tk} Vocabulary (Raw Tokens)",
-                fontsize=20,
+                f"{tk} • Vocabulary token length distribution",
+                fontsize=16,
                 fontweight="bold",
+                pad=10,
             )
-            axs[0].set_xlabel("Length of Tokens", fontsize=18, fontweight="bold")
-            axs[0].set_ylabel("Frequency", fontsize=18, fontweight="bold")
-            axs[0].tick_params(axis="x", labelsize=16)
-            axs[0].tick_params(axis="y", labelsize=16)
-            for label in axs[0].get_xticklabels() + axs[0].get_yticklabels():
-                label.set_fontweight("bold")
+            axs[0].set_ylabel("Frequency", fontsize=13, fontweight="bold")
+            axs[0].grid(axis="both", linestyle="--", alpha=0.3)
 
-            # Histogram of decoded token lengths
-            tokens_len_decoded = (
-                tokenizer_data["decoded_tokens"].dropna().str.len().to_numpy()
-            )
-            histplot(
-                data=tokens_len_decoded,
-                ax=axs[1],
-                binwidth=1,
-                edgecolor="black",
-                color="skyblue",
-            )
+            # Panel 2 — decoded token lengths
+            axs[1].hist(decoded_lengths, bins=bin_edges, edgecolor="black")
             axs[1].set_title(
-                f"Token Lengths from Decoding {tk} Tokens",
-                fontsize=20,
+                f"{tk} • Decoded token length distribution",
+                fontsize=16,
                 fontweight="bold",
+                pad=10,
             )
-            axs[1].set_xlabel(
-                "Length of Decoded Tokens", fontsize=18, fontweight="bold"
-            )
-            axs[1].set_ylabel("Frequency", fontsize=18, fontweight="bold")
-            axs[1].tick_params(axis="x", labelsize=16)
-            axs[1].tick_params(axis="y", labelsize=16)
-            for label in axs[1].get_xticklabels() + axs[1].get_yticklabels():
-                label.set_fontweight("bold")
+            axs[1].set_xlabel("Token length (chars)", fontsize=13, fontweight="bold")
+            axs[1].set_ylabel("Frequency", fontsize=13, fontweight="bold")
+            axs[1].grid(axis="both", linestyle="--", alpha=0.3)
 
-            plt.tight_layout()
-            distributions.append(fig)
-            self.save_image(fig, f"{tk}_histogram_tokens.jpeg")
+            # Ticks & layout
+            axs[1].set_xticks(np.arange(1, max_len + 1, 1))
+            for ax in axs:
+                ax.tick_params(axis="x", labelsize=11)
+                ax.tick_params(axis="y", labelsize=11)
+                # Embolden tick labels for readability
+                for lbl in ax.get_xticklabels() + ax.get_yticklabels():
+                    try:
+                        lbl.set_fontweight("bold")
+                    except Exception:
+                        pass
+
+            fig.tight_layout()
+
+            # Save and collect
+            self.save_image(fig, f"{tk}_token_length_hist.jpeg")
+            figures.append(fig)
             plt.close(fig)
 
-            # Accumulate data for boxplot
-            records += [
-                {"tokenizer": tk, "type": "vocabulary", "length": length}
-                for length in tokens_len_vocab
-            ]
-            records += [
-                {"tokenizer": tk, "type": "decoded", "length": length}
-                for length in tokens_len_decoded
-            ]
-
-        # Create combined boxplot across tokenizers
-        data = pd.DataFrame(records)
-        fig, ax = plt.subplots(figsize=(24, 22), dpi=self.img_resolution)
-        boxplot(x="tokenizer", y="length", hue="type", data=data, orient='h', ax=ax)
-        ax.set_title(
-            "Token Length Distribution by Tokenizer and Type",
-            fontsize=22,
-            fontweight="bold",
-            y=1.02,
-        )
-        ax.set_xlabel("Tokenizer", fontsize=18, fontweight="bold")
-        ax.set_ylabel("Token Length", fontsize=18, fontweight="bold")
-        ax.tick_params(axis="x", rotation=45, labelsize=16)
-        ax.tick_params(axis="y", labelsize=16)
-        for label in ax.get_xticklabels() + ax.get_yticklabels():
-            label.set_fontweight("bold")
-        legend = plt.legend(fontsize=16)
-        for text in legend.get_texts():
-            text.set_fontweight("bold")
-        plt.tight_layout()
-
-        distributions.append(fig)
-        self.save_image(fig, "boxplot_token_lengths_by_tokenizer.jpeg")
-        plt.close(fig)
-
-        return distributions
+        return figures
