@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import numpy as np
 import pandas as pd
 
 from TokenBenchy.app.client.workers import (
@@ -128,7 +127,7 @@ class BenchmarkEvents:
 
         if NSL_results is not None:
             self.serializer.save_NSL_benchmark(NSL_results)
-       
+
         for voc in vocabularies:
             self.serializer.save_vocabulary_tokens(voc)
 
@@ -148,24 +147,28 @@ class VisualizationEnvents:
     ) -> list[Any]:
         visualizer = VisualizeBenchmarkResults(self.configuration)
         figures = []
-        
+
         vocab_stats = self.serializer.load_vocabularies()
         benchmark_results = self.serializer.load_benchmark_results()
+        logger.info(f"Vocabulary data loaded from database: {len(vocab_stats)} records")
+        logger.info(
+            f"Benchmarks results loaded from database: {len(benchmark_results)} records"
+        )
 
         # 1. generate plot of different vocabulary sizes
-        logger.info('Generating boxplots of vocabulary sizes')
+        logger.info("Generating boxplots of vocabulary sizes")
         figures.append(visualizer.plot_vocabulary_size(vocab_stats))
         check_thread_status(worker)
         update_progress_callback(1, 3, progress_callback)
 
         # 2. generate plot of token length distribution
-        logger.info('Generating plots of tokens distribution by length')
+        logger.info("Generating plots of tokens distribution by length")
         figures.extend(visualizer.plot_tokens_length_distribution(vocab_stats))
         check_thread_status(worker)
         update_progress_callback(2, 3, progress_callback)
 
         # 2. generate plot of words versus subwords
-        logger.info('Generating plots to compare subwords to words populations')
+        logger.info("Generating plots to compare subwords to words populations")
         figures.append(visualizer.plot_subwords_vs_words(vocab_stats))
         update_progress_callback(3, 3, progress_callback)
 
