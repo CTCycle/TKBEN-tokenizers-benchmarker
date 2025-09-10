@@ -253,7 +253,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
            <item>
             <widget class="QCheckBox" name="includeNSL">
              <property name="text">
-              <string>Include normalized sequence length</string>
+              <string>Calculate Normalized Sequence Length (NSL)</string>
              </property>
             </widget>
            </item>
@@ -343,17 +343,6 @@ li.checked::marker { content: &quot;\2612&quot;; }
    <addaction name="menuApplication"/>
    <addaction name="menuConfiguration"/>
    <addaction name="menuDatabase"/>
-  </widget>
-  <widget class="QToolBar" name="toolBar">
-   <property name="windowTitle">
-    <string>toolBar</string>
-   </property>
-   <attribute name="toolBarArea">
-    <enum>RightToolBarArea</enum>
-   </attribute>
-   <attribute name="toolBarBreak">
-    <bool>false</bool>
-   </attribute>
   </widget>
   <action name="actionReloadApp">
    <property name="text">
