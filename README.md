@@ -24,7 +24,8 @@ The intuitive main interface facilitates easy selection of text datasets and tok
 - **tokens to words ratio**: The ratio of token count to word count.
 - **bytes per token**: The number of bytes per token, derived from the original text length. 
 
-**Setup and Maintenance:** you can run *setup_and_maintenance.bat* to start the external tools for maintenance with the following options:
+## 4.1 Setup and Maintenance
+You can run *setup_and_maintenance.bat* to start the external tools for maintenance with the following options:
 
 - **Update project:** check for updates from Github
 - **Remove logs:** remove all logs file from *resources/logs*
