@@ -18,8 +18,8 @@ Base = declarative_base()
 
 
 ###############################################################################
-class BenchmarkResults(Base):
-    __tablename__ = "BENCHMARK_RESULTS"
+class TokenizationLocalStats(Base):
+    __tablename__ = "TOKENIZATION_LOCAL_STATS"
     tokenizer = Column(String, primary_key=True)
     text = Column(String, primary_key=True)
     num_characters = Column(Integer)
@@ -39,6 +39,24 @@ class NSLBenchmark(Base):
     tokenizer = Column(String, primary_key=True)
     tokens_count = Column(Integer)
     __table_args__ = (UniqueConstraint("tokenizer"),)
+
+
+###############################################################################
+class TokenizationGlobalMetrics(Base):
+    __tablename__ = "TOKENIZATION_GLOBAL_METRICS"
+    tokenizer = Column(String, primary_key=True)
+    dataset_name = Column(String, primary_key=True)
+    tokenization_speed_tps = Column(Float)
+    throughput_chars_per_sec = Column(Float)
+    model_size_mb = Column(Float)
+    vocabulary_size = Column(Integer)
+    avg_sequence_length = Column(Float)
+    median_sequence_length = Column(Float)
+    subword_fertility = Column(Float)
+    oov_rate = Column(Float)
+    word_recovery_rate = Column(Float)
+    character_coverage = Column(Float)
+    __table_args__ = (UniqueConstraint("tokenizer", "dataset_name"),)
 
 
 ###############################################################################
