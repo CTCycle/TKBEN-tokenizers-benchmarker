@@ -113,7 +113,7 @@ class BenchmarkEvents:
         downloader = TokenizersDownloadManager(self.configuration, self.hf_access_token)
         text_dataset = self.serializer.load_text_dataset()
         tokenizers = downloader.tokenizer_download(worker=worker)
-        vocabularies, vocab_stats, benchmarks, NSL_results = (
+        vocabularies, vocab_stats, benchmarks, NSL_results, global_metrics = (
             benchmarker.run_tokenizer_benchmarks(
                 text_dataset,
                 tokenizers,
@@ -122,8 +122,9 @@ class BenchmarkEvents:
             )
         )
         # save results into database
-        self.serializer.save_benchmark_results(benchmarks)
+        self.serializer.save_local_metrics(benchmarks)
         self.serializer.save_vocabulary_statistics(vocab_stats)
+        self.serializer.save_global_metrics(global_metrics)
 
         if NSL_results is not None:
             self.serializer.save_NSL_benchmark(NSL_results)
@@ -149,7 +150,7 @@ class VisualizationEnvents:
         figures = []
 
         vocab_stats = self.serializer.load_vocabularies()
-        benchmark_results = self.serializer.load_benchmark_results()
+        benchmark_results = self.serializer.load_local_metrics()
         logger.info(f"Vocabulary data loaded from database: {len(vocab_stats)} records")
         logger.info(
             f"Benchmarks results loaded from database: {len(benchmark_results)} records"
