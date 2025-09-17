@@ -113,6 +113,11 @@ class BenchmarkEvents:
         downloader = TokenizersDownloadManager(self.configuration, self.hf_access_token)
         text_dataset = self.serializer.load_text_dataset()
         tokenizers = downloader.tokenizer_download(worker=worker)
+
+        if not tokenizers:
+            logger.warning('Tokenizers download returned no valid entries; skipping benchmarks')
+            return tokenizers
+
         vocabularies, vocab_stats, benchmarks, NSL_results, global_metrics = (
             benchmarker.run_tokenizer_benchmarks(
                 text_dataset,
@@ -122,15 +127,29 @@ class BenchmarkEvents:
             )
         )
         # save results into database
-        self.serializer.save_local_metrics(benchmarks)
-        self.serializer.save_vocabulary_statistics(vocab_stats)
-        self.serializer.save_global_metrics(global_metrics)
+        if not benchmarks.empty:
+            self.serializer.save_local_metrics(benchmarks)
+        else:
+            logger.warning('Local benchmark metrics are empty and will not be stored')
 
-        if NSL_results is not None:
+        if not vocab_stats.empty:
+            self.serializer.save_vocabulary_statistics(vocab_stats)
+        else:
+            logger.warning('Vocabulary statistics are empty and will not be stored')
+
+        if not global_metrics.empty:
+            self.serializer.save_global_metrics(global_metrics)
+        else:
+            logger.warning('Global benchmark metrics are empty and will not be stored')
+
+        if NSL_results is not None and not NSL_results.empty:
             self.serializer.save_NSL_benchmark(NSL_results)
+        elif self.configuration.get('perform_NSL', False):
+            logger.warning('NSL results are unavailable and will not be stored')
 
         for voc in vocabularies:
-            self.serializer.save_vocabulary_tokens(voc)
+            if not voc.empty:
+                self.serializer.save_vocabulary_tokens(voc)
 
         return tokenizers
 

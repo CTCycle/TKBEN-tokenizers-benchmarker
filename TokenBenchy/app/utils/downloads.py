@@ -58,19 +58,35 @@ class DatasetManager:
                         f"Multiple CSV files found in {base_path}, using the first one: {os.path.basename(csv_files[0])}"
                     )
                 file_path = csv_files[0]
-                df = pd.read_csv(file_path)
-                key = os.path.splitext(os.path.basename(file_path))[0]
-                datasets[key] = df
+                try:
+                    df = pd.read_csv(file_path)
+                except Exception:
+                    logger.warning('Failed to load custom dataset from %s', file_path)
+                    logger.debug(
+                        'Custom dataset load failed for %s', file_path, exc_info=True
+                    )
+                else:
+                    key = os.path.splitext(os.path.basename(file_path))[0]
+                    datasets[key] = df
 
         else:
-            corpus = self.dataset.get("corpus", None)
-            config = self.dataset.get("config", None)
-            dataset_path = os.path.join(base_path, f"{corpus}_{config}")
+            corpus = self.dataset.get('corpus', None)
+            config = self.dataset.get('config', None)
+            dataset_path = os.path.join(base_path, f'{corpus}_{config}')
             os.makedirs(dataset_path, exist_ok=True)
-            dataset = load_dataset(corpus, config, cache_dir=dataset_path)
+            try:
+                dataset = load_dataset(corpus, config, cache_dir=dataset_path)
+            except Exception:
+                logger.warning(
+                    'Failed to download dataset %s with configuration %s', corpus, config
+                )
+                logger.debug(
+                    'Dataset download failure for %s/%s', corpus, config, exc_info=True
+                )
+                return None
             datasets[config] = dataset
 
-        return datasets
+        return datasets if datasets else None
 
 
 # [DOWNLOADS]
@@ -96,14 +112,32 @@ class TokenizersDownloadManager:
             "zero-shot-classification",
         ]
 
+    def _is_tokenizer_compatible(self, tokenizer: Any) -> bool:
+        if tokenizer is None or isinstance(tokenizer, bool):
+            return False
+
+        if callable(getattr(tokenizer, "tokenize", None)):
+            return True
+
+        encode_method = getattr(tokenizer, "encode", None)
+        decode_method = getattr(tokenizer, "decode", None)
+        if callable(encode_method) and callable(decode_method):
+            return True
+
+        return False
+
     # -------------------------------------------------------------------------
     def get_tokenizer_identifiers(self, limit: int = 100, **kwargs) -> list[Any]:
-        api = HfApi(token=self.hf_access_token) if "downloads" else HfApi()
-        # query HuggingFace Hub to search for tokenizer tag in metadata, sort by downloads
-        models = api.list_models(
-            search="tokenizer", sort="downloads", direction=-1, limit=limit
-        )
-        # extract and return just the model IDs
+        api = HfApi(token=self.hf_access_token) if self.hf_access_token else HfApi()
+        try:
+            models = api.list_models(
+                search="tokenizer", sort="downloads", direction=-1, limit=limit
+            )
+        except Exception:
+            logger.warning('Failed to retrieve tokenizer identifiers from HuggingFace')
+            logger.debug('Tokenizer identifier fetch failed', exc_info=True)
+            return []
+
         identifiers = [m.modelId for m in models]  # type: ignore
 
         return identifiers
@@ -113,48 +147,67 @@ class TokenizersDownloadManager:
         tokenizers = {}
         for tokenizer_id in self.tokenizers:
             try:
-                tokenizer_name = tokenizer_id.replace("/", "_")
+                tokenizer_name = tokenizer_id.replace('/', '_')
                 tokenizer_save_path = os.path.join(
-                    TOKENIZER_PATH, "open", tokenizer_name
+                    TOKENIZER_PATH, 'open', tokenizer_name
                 )
-                os.mkdir(tokenizer_save_path) if not os.path.exists(
-                    tokenizer_save_path
-                ) else None
-                logger.info(f"Downloading and saving tokenizer: {tokenizer_id}")
+                os.makedirs(tokenizer_save_path, exist_ok=True)
+                logger.info(f'Downloading and saving tokenizer: {tokenizer_id}')
                 tokenizer = transformers.AutoTokenizer.from_pretrained(
                     tokenizer_id,
                     cache_dir=tokenizer_save_path,
                     token=self.hf_access_token,
                 )
+                if not self._is_tokenizer_compatible(tokenizer):
+                    logger.warning(
+                        'Downloaded tokenizer %s is not compatible and will be skipped',
+                        tokenizer_id,
+                    )
+                    continue
                 tokenizers[tokenizer_id] = tokenizer
 
-            except Exception as e:
-                logger.warning(f"Failed to download tokenizer {tokenizer_id}")
+            except Exception:
+                logger.warning('Failed to download tokenizer %s', tokenizer_id)
                 logger.debug(
-                    f"Failed to download tokenizer {tokenizer_id}: {e}", exc_info=True
+                    'Tokenizer download error for %s', tokenizer_id, exc_info=True
                 )
 
             finally:
-                # check for worker thread status
-                check_thread_status(kwargs.get("worker", None))
+                check_thread_status(kwargs.get('worker', None))
 
         # load custom tokenizer in target subfolder if .json files are found and
         # if the user has selected the option to include custom tokenizers
-        custom_tokenizer_path = os.path.join(TOKENIZER_PATH, "custom")
+        custom_tokenizer_path = os.path.join(TOKENIZER_PATH, 'custom')
         if os.path.exists(custom_tokenizer_path) and self.has_custom_tokenizer:
-            # check for worker thread status
-            check_thread_status(kwargs.get("worker", None))
+            check_thread_status(kwargs.get('worker', None))
             json_files = [
                 os.path.join(custom_tokenizer_path, fn)
                 for fn in os.listdir(custom_tokenizer_path)
-                if fn.lower().endswith(".json")
+                if fn.lower().endswith('.json')
             ]
 
-            if len(json_files) > 0 and self.has_custom_tokenizer:
-                logger.info(f"Loading custom tokenizers from {custom_tokenizer_path}")
+            if json_files:
+                logger.info(f'Loading custom tokenizers from {custom_tokenizer_path}')
                 for js in json_files:
-                    tokenizer = Tokenizer.from_file(js)
-                    tokenizer_name = os.path.basename(js).split(".")[0]
-                    tokenizers[f"CUSTOM {tokenizer_name}"] = tokenizer
+                    try:
+                        tokenizer = Tokenizer.from_file(js)
+                    except Exception:
+                        logger.warning('Failed to load custom tokenizer from %s', js)
+                        logger.debug(
+                            'Custom tokenizer load failed for %s', js, exc_info=True
+                        )
+                        continue
+
+                    if not self._is_tokenizer_compatible(tokenizer):
+                        logger.warning(
+                            'Custom tokenizer at %s is not compatible and will be skipped',
+                            js,
+                        )
+                        continue
+
+                    tokenizer_name = os.path.basename(js).split('.')[0]
+                    tokenizers[f'CUSTOM {tokenizer_name}'] = tokenizer
+
+
 
         return tokenizers
