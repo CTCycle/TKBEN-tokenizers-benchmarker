@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import os
 import re
-from typing import Any
 import time
+from collections.abc import Iterable, Mapping, Sequence
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -32,12 +33,160 @@ class BenchmarkTokenizers:
         self.configuration = configuration
 
     # -------------------------------------------------------------------------
-    def process_tokens(self, text: str, tokenizer: Any) -> tuple[Any, Any]:
-        ids = tokenizer.encode(text).ids
-        decoded = tokenizer.decode(ids)
-        toks = decoded.split()
+    def process_tokens(self, text: str, tokenizer: Any) -> tuple[str, list[str]]:
+        if not isinstance(text, str):
+            text = str(text)
+        if not text:
+            return "", []
 
-        return decoded, toks
+        tokenizer_name = getattr(tokenizer, "name_or_path", type(tokenizer).__name__)
+
+        try:
+            encoded = tokenizer.encode(text)
+        except Exception:
+            logger.debug(
+                "Tokenizer %s raised an exception while encoding text",
+                tokenizer_name,
+                exc_info=True,
+            )
+            return "", []
+
+        tokens_from_encoding: list[str] = []
+        if hasattr(encoded, "tokens"):
+            tokens_attr = getattr(encoded, "tokens")
+            if callable(tokens_attr):
+                try:
+                    raw_tokens = tokens_attr()
+                except Exception:
+                    logger.debug(
+                        "Tokenizer %s failed to extract tokens from encoding",
+                        tokenizer_name,
+                        exc_info=True,
+                    )
+                else:
+                    tokens_from_encoding = self._normalize_token_output(raw_tokens)
+            elif isinstance(tokens_attr, (list, tuple)):
+                tokens_from_encoding = [str(tok) for tok in tokens_attr]
+            elif isinstance(tokens_attr, Iterable) and not isinstance(
+                tokens_attr, (str, bytes)
+            ):
+                tokens_from_encoding = [str(tok) for tok in tokens_attr]
+
+        token_ids = self._extract_token_ids(encoded)
+        if token_ids:
+            decoded = self._safe_decode(tokenizer, token_ids)
+        else:
+            decoded = " ".join(tokens_from_encoding)
+
+        if not tokens_from_encoding:
+            tokens_from_encoding = self._convert_ids_to_tokens(
+                tokenizer, token_ids, decoded
+            )
+
+        return decoded, tokens_from_encoding
+
+    def _extract_token_ids(self, encoded: Any) -> list[int]:
+        ids_source: Any | None = None
+        if hasattr(encoded, 'ids'):
+            ids_source = getattr(encoded, 'ids')
+        elif isinstance(encoded, np.ndarray):
+            ids_source = encoded.tolist()
+        elif isinstance(encoded, (list, tuple)):
+            ids_source = encoded
+
+        if ids_source is None:
+            return []
+
+        try:
+            return [int(i) for i in ids_source]
+        except Exception:
+            logger.debug('Failed to coerce token ids from encoding', exc_info=True)
+            return []
+
+    def _safe_decode(self, tokenizer: Any, token_ids: list[int]) -> str:
+        if not token_ids:
+            return ''
+        try:
+            decoded = tokenizer.decode(token_ids)
+        except Exception:
+            logger.debug(
+                'Tokenizer %s raised an exception while decoding ids',
+                getattr(tokenizer, 'name_or_path', type(tokenizer).__name__),
+                exc_info=True,
+            )
+            return ''
+
+        if isinstance(decoded, (list, tuple)):
+            return ' '.join(str(tok) for tok in decoded)
+        return str(decoded)
+
+    def _convert_ids_to_tokens(
+        self, tokenizer: Any, token_ids: list[int], fallback_text: str
+    ) -> list[str]:
+        try:
+            converter = getattr(tokenizer, 'convert_ids_to_tokens', None)
+            if callable(converter):
+                tokens = converter(token_ids)
+                if isinstance(tokens, np.ndarray):
+                    tokens = tokens.tolist()
+                if isinstance(tokens, (list, tuple)):
+                    return [str(tok) for tok in tokens]
+            id_to_token = getattr(tokenizer, 'id_to_token', None)
+            if callable(id_to_token):
+                return [str(id_to_token(idx)) for idx in token_ids]
+        except Exception:
+            logger.debug(
+                'Tokenizer %s failed to convert ids to tokens',
+                getattr(tokenizer, 'name_or_path', type(tokenizer).__name__),
+                exc_info=True,
+            )
+
+        if fallback_text:
+            return fallback_text.split()
+        return []
+
+    def _normalize_token_output(self, tokens: Any) -> list[str]:
+        if isinstance(tokens, np.ndarray):
+            tokens = tokens.tolist()
+
+        if hasattr(tokens, 'tokens') and callable(getattr(tokens, 'tokens')):
+            try:
+                tokens = tokens.tokens()
+            except Exception:
+                logger.debug('Failed to normalize token output', exc_info=True)
+                return []
+
+        if isinstance(tokens, (list, tuple)):
+            return [str(tok) for tok in tokens]
+
+        if isinstance(tokens, str):
+            return tokens.split()
+
+        if isinstance(tokens, dict):
+            for key in ('tokens', 'input_tokens'):
+                value = tokens.get(key)
+                if isinstance(value, (list, tuple)):
+                    return [str(tok) for tok in value]
+
+        if isinstance(tokens, Iterable):
+            return [str(tok) for tok in tokens]
+
+        return []
+
+    def _is_tokenizer_compatible(self, tokenizer: Any) -> bool:
+        if tokenizer is None or isinstance(tokenizer, bool):
+            return False
+
+        if callable(getattr(tokenizer, 'tokenize', None)):
+            return True
+
+        encode_method = getattr(tokenizer, 'encode', None)
+        decode_method = getattr(tokenizer, 'decode', None)
+        if callable(encode_method) and callable(decode_method):
+            return True
+
+        call_method = getattr(tokenizer, '__call__', None)
+        return callable(call_method)
 
     # -------------------------------------------------------------------------
     def calculate_text_statistics(
@@ -85,59 +234,94 @@ class BenchmarkTokenizers:
     def calculate_vocabulary_statistics(
         self, tokenizers: dict[str, Any], **kwargs
     ) -> tuple[list[Any], pd.DataFrame]:
-        vocabulary_stats = []
-        vocabularies = []
-        # Iterate over each selected tokenizer from the combobox
-        for i, (name, tokenizer) in enumerate(tokenizers.items()):
-            vocab = tokenizer.get_vocab()
-            vocab_words = list(vocab.keys())
-            vocab_indices = list(vocab.values())
-            # Identify subwords (words containing '##', typical for BERT-like tokenizers)
-            subwords = [x for x in vocab_words if "##" in x]
-            # Identify "true words" as elements that are not subwords
-            true_words = [x for x in vocab_words if x not in subwords]
-            # Decode the indices back to words
-            decoded_words = tokenizer.decode(vocab_indices).split()
-            # Identify tokens that are present in both the vocabulary and the decoded output
-            shared = set(vocab_words).intersection(decoded_words)
-            # Identify tokens that are in one but not both (symmetric difference)
-            unshared = set(vocab_words).symmetric_difference(decoded_words)
-            # Calculate percentage of subwords and true words in the vocabulary
-            subwords_perc = len(subwords) / (len(true_words) + len(subwords)) * 100
-            words_perc = len(true_words) / (len(true_words) + len(subwords)) * 100
-            # Collect statistics for the current tokenizer
-            vocabulary_stats.append(
-                {
-                    "tokenizer": name,
-                    "number_tokens_from_vocabulary": len(vocab_words),
-                    "number_tokens_from_decode": len(decoded_words),
-                    "number_shared_tokens": len(shared),
-                    "number_unshared_tokens": len(unshared),
-                    "percentage_subwords": subwords_perc,
-                    "percentage_true_words": words_perc,
-                }
-            )
+        vocabulary_stats: list[dict[str, Any]] = []
+        vocabularies: list[pd.DataFrame] = []
+        for name, tokenizer in tokenizers.items():
+            if not self._is_tokenizer_compatible(tokenizer):
+                logger.warning(
+                    'Skipping tokenizer %s because it does not expose required methods (type=%s)',
+                    name,
+                    type(tokenizer).__name__,
+                )
+                continue
 
-            vocabulary = pd.DataFrame(
-                {
-                    "tokenizer": [name] * len(vocab_words),
-                    "token_id": vocab_indices,
-                    "vocabulary_tokens": vocab_words,
-                    "decoded_tokens": [
-                        tokenizer.decode([idx]) for idx in vocab_indices
-                    ],
-                }
-            )
+            tokenizer_label = getattr(tokenizer, 'name_or_path', name)
+            try:
+                vocab_func = getattr(tokenizer, 'get_vocab', None)
+                if not callable(vocab_func):
+                    logger.warning(
+                        'Tokenizer %s does not expose get_vocab; skipping vocabulary statistics',
+                        tokenizer_label,
+                    )
+                    continue
 
-            # check for worker thread status and update progress callback
-            check_thread_status(kwargs.get("worker", None))
+                raw_vocab = vocab_func()
+                if not isinstance(raw_vocab, dict):
+                    logger.warning(
+                        'Tokenizer %s returned unexpected vocabulary of type %s',
+                        tokenizer_label,
+                        type(raw_vocab).__name__,
+                    )
+                    continue
 
-            vocabularies.append(vocabulary)
+                vocab_words = [str(word) for word in raw_vocab.keys()]
+                try:
+                    vocab_indices = [int(idx) for idx in raw_vocab.values()]
+                except Exception:
+                    logger.debug(
+                        'Tokenizer %s produced non-numeric vocab indices',
+                        tokenizer_label,
+                        exc_info=True,
+                    )
+                    continue
 
-        # save vocabulary statistics into database
-        vocabulary_stats = pd.DataFrame(vocabulary_stats)
+                subwords = [word for word in vocab_words if '##' in word]
+                true_words = [word for word in vocab_words if word not in subwords]
+                decoded_words = self._safe_decode(tokenizer, vocab_indices).split()
+                shared = set(vocab_words).intersection(decoded_words)
+                unshared = set(vocab_words).symmetric_difference(decoded_words)
+                total_tokens = len(true_words) + len(subwords)
+                subwords_perc = (len(subwords) / total_tokens * 100.0) if total_tokens else 0.0
+                words_perc = (len(true_words) / total_tokens * 100.0) if total_tokens else 0.0
 
-        return vocabularies, vocabulary_stats
+                vocabulary_stats.append(
+                    {
+                        'tokenizer': name,
+                        'number_tokens_from_vocabulary': len(vocab_words),
+                        'number_tokens_from_decode': len(decoded_words),
+                        'number_shared_tokens': len(shared),
+                        'number_unshared_tokens': len(unshared),
+                        'percentage_subwords': subwords_perc,
+                        'percentage_true_words': words_perc,
+                    }
+                )
+
+                decoded_per_id = [
+                    self._safe_decode(tokenizer, [idx]) for idx in vocab_indices
+                ]
+                vocabulary = pd.DataFrame(
+                    {
+                        'tokenizer': [name] * len(vocab_words),
+                        'token_id': vocab_indices,
+                        'vocabulary_tokens': vocab_words,
+                        'decoded_tokens': decoded_per_id,
+                    }
+                )
+
+                check_thread_status(kwargs.get('worker', None))
+                vocabularies.append(vocabulary)
+            except Exception:
+                logger.warning(f'Could not process tokenizer {name}')
+                logger.debug(
+                    'Failed to collect vocabulary statistics for tokenizer %s',
+                    name,
+                    exc_info=True,
+                )
+                continue
+
+        vocabulary_stats_df = pd.DataFrame(vocabulary_stats)
+
+        return vocabularies, vocabulary_stats_df
 
     # -------------------------------------------------------------------------
     def run_tokenizer_benchmarks(
@@ -145,108 +329,180 @@ class BenchmarkTokenizers:
     ) -> tuple[
         list[Any], pd.DataFrame, pd.DataFrame, pd.DataFrame | None, pd.DataFrame
     ]:
-        """
-        Run benchmarking for each tokenizer over a set of text documents.
-        Optimized for speed and robustness, using vectorized operations where possible.
-        Maintains original comments and logic.
+        valid_tokenizers: dict[str, Any] = {}
+        if isinstance(tokenizers, dict):
+            for name, tokenizer in tokenizers.items():
+                if self._is_tokenizer_compatible(tokenizer):
+                    valid_tokenizers[name] = tokenizer
+                else:
+                    logger.warning(
+                        'Skipping tokenizer %s because it does not expose required methods (type=%s)',
+                        name,
+                        type(tokenizer).__name__,
+                    )
+        else:
+            logger.warning('Tokenizers input is not a dictionary; skipping benchmarks')
 
-        Args:
-            tokenizers (dict): Dictionary of tokenizer name -> tokenizer instance.
-            **kwargs: Optional arguments such as worker and progress_callback.
-        Returns:
-            pd.DataFrame: Concatenated benchmark results for all tokenizers.
+        if not valid_tokenizers:
+            logger.warning('No valid tokenizers available for benchmarking')
+            empty_df = pd.DataFrame()
+            return [], pd.DataFrame(), empty_df, None, pd.DataFrame()
 
-        """
+        if dataset is None or dataset.empty:
+            logger.warning('No dataset available for benchmarking')
+            empty_df = pd.DataFrame()
+            return [], pd.DataFrame(), empty_df, None, pd.DataFrame()
 
-        # Calculate basic dataset statistics and extract vocabulary for each tokenizer
+        if 'text' not in dataset.columns:
+            logger.warning("Dataset does not contain required 'text' column; skipping benchmarks")
+            empty_df = pd.DataFrame()
+            return [], pd.DataFrame(), empty_df, None, pd.DataFrame()
+
         vocabularies, vocabulary_stats = self.calculate_vocabulary_statistics(
-            tokenizers, worker=kwargs.get("worker", None)
+            valid_tokenizers, worker=kwargs.get('worker', None)
         )
 
-        # Filter only a fraction of documents if requested by the user
-        if 0 < self.max_docs_number <= len(dataset):
-            dataset = dataset.iloc[: self.max_docs_number].reset_index(drop=True)
+        dataset_to_use = dataset
+        if 0 < self.max_docs_number <= len(dataset_to_use):
+            dataset_to_use = dataset_to_use.iloc[: self.max_docs_number].reset_index(
+                drop=True
+            )
 
-        # Prepare texts series only once for efficiency
-        texts = dataset["text"].astype(str)
+        texts = dataset_to_use['text'].astype(str)
         num_docs = len(texts)
-        all_tokenizers = []
+        all_tokenizers: list[pd.DataFrame] = []
         global_metrics_rows: list[dict[str, Any]] = []
         dataset_name = (
-            str(dataset["dataset_name"].iloc[0])
-            if "dataset_name" in dataset.columns and not dataset["dataset_name"].empty
-            else ""
+            str(dataset_to_use['dataset_name'].iloc[0])
+            if 'dataset_name' in dataset_to_use.columns
+            and not dataset_to_use['dataset_name'].empty
+            else ''
         )
 
-        for i, (name, tokenizer) in enumerate(tokenizers.items()):
-            k = name.replace("/", "_")
-            logger.info(f"Decoding documents with {name}")
+        progress_total = len(valid_tokenizers)
+        for i, (name, tokenizer) in enumerate(valid_tokenizers.items()):
+            text_values = texts.tolist()
+            logger.info(f'Decoding documents with {name}')
 
-            # Initialize dataframe with tokenizer's name and dataset documents
-            data = pd.DataFrame({"tokenizer": [name] * num_docs, "text": texts})
+            data = pd.DataFrame(
+                {
+                    'tokenizer': [name] * num_docs,
+                    'text': text_values,
+                }
+            )
 
-            # Calculate basic statistics using vectorized operations
-            data["num_characters"] = texts.str.len()
-            # Split words only once, keep as list for later calculations
-            data["words_split"] = texts.str.split()
-            data["words_count"] = data["words_split"].apply(len)
-            data["AVG_words_length"] = data["words_split"].apply(
+            data['num_characters'] = texts.str.len()
+            data['words_split'] = texts.str.split()
+            data['words_count'] = data['words_split'].apply(len)
+            data['AVG_words_length'] = data['words_split'].apply(
                 lambda ws: np.mean([len(w) for w in ws]) if ws else 0
             )
 
-            # time tokenization to compute speed and throughput
             t0 = time.perf_counter()
-            if "CUSTOM" in name and self.include_custom_tokenizer:
-                decoded_and_toks = data["text"].apply(
-                    lambda text: pd.Series(self.process_tokens(text, tokenizer))
+            try:
+                if 'CUSTOM' in name and self.include_custom_tokenizer:
+                    decoded_tokens: list[str] = []
+                    split_tokens: list[list[str]] = []
+                    for text_value in text_values:
+                        decoded, tokens_list = self.process_tokens(text_value, tokenizer)
+                        decoded_tokens.append(decoded)
+                        split_tokens.append(tokens_list)
+                else:
+                    tokenize_method = getattr(tokenizer, 'tokenize', None)
+                    uses_tokenize = callable(tokenize_method)
+                    decoded_tokens = []
+                    split_tokens = []
+                    for text_value in text_values:
+                        tokens_list: list[str] = []
+                        if uses_tokenize:
+                            try:
+                                raw_tokens = tokenize_method(text_value)  # type: ignore[operator]
+                                tokens_list = self._normalize_token_output(raw_tokens)
+                            except Exception:
+                                logger.debug(
+                                    'Tokenizer %s raised an exception while tokenizing text',
+                                    name,
+                                    exc_info=True,
+                                )
+                                tokens_list = []
+                        if not tokens_list:
+                            decoded, tokens_list = self.process_tokens(
+                                text_value, tokenizer
+                            )
+                        else:
+                            decoded = ' '.join(tokens_list)
+                        decoded_tokens.append(decoded)
+                        split_tokens.append(tokens_list)
+
+                data['tokens'] = decoded_tokens
+                data['tokens_split'] = split_tokens
+            except Exception:
+                logger.warning('Failed to tokenize documents with %s', name)
+                logger.debug(
+                    'Tokenizer %s raised an exception during batch tokenization',
+                    name,
+                    exc_info=True,
                 )
-                data["tokens"] = decoded_and_toks[0]
-                data["tokens_split"] = decoded_and_toks[1]
-            else:
-                data["tokens_split"] = data["text"].apply(tokenizer.tokenize)
-                data["tokens"] = data["tokens_split"].apply(
-                    lambda toks: " ".join(toks)
-                    if isinstance(toks, (list, tuple))
-                    else ""
+                check_thread_status(kwargs.get('worker', None))
+                update_progress_callback(
+                    i + 1, progress_total, kwargs.get('progress_callback', None)
                 )
+                continue
+
             t1 = time.perf_counter()
 
-            # Calculate number of tokens, token characters, average token length, ratios
-            data["tokens_count"] = data["tokens_split"].apply(
-                lambda toks: len(toks) if isinstance(toks, (list, tuple)) else 0
-            )
-            data["tokens_characters"] = data["tokens"].str.len()
-            data["AVG_tokens_length"] = data["tokens_split"].apply(
+            data['tokens_count'] = [
+                len(toks) if isinstance(toks, (list, tuple)) else 0
+                for toks in data['tokens_split']
+            ]
+            data['tokens_characters'] = data['tokens'].str.len()
+            data['AVG_tokens_length'] = data['tokens_split'].apply(
                 lambda toks: np.mean([len(tok) for tok in toks]) if toks else 0
             )
-            # Use np.where for ratio calculations to avoid division by zero
-            data["tokens_to_words_ratio"] = np.where(
-                data["words_count"] > 0, data["tokens_count"] / data["words_count"], 0
+            data['tokens_to_words_ratio'] = np.where(
+                data['words_count'] > 0, data['tokens_count'] / data['words_count'], 0
             )
-            data["bytes_per_token"] = np.where(
-                data["tokens_count"] > 0,
-                data["num_characters"] / data["tokens_count"],
+            data['bytes_per_token'] = np.where(
+                data['tokens_count'] > 0,
+                data['num_characters'] / data['tokens_count'],
                 0,
             )
 
-            # Compute per-tokenizer summary metrics (constants across rows for this tokenizer)
             elapsed = max(t1 - t0, 1e-9)
-            total_tokens = int(data["tokens_count"].sum())
-            total_chars = int(data["num_characters"].sum())
+            total_tokens = int(data['tokens_count'].sum())
+            total_chars = int(data['num_characters'].sum())
             tokenization_speed_tps = total_tokens / elapsed
             throughput_chars_per_sec = total_chars / elapsed
 
-            # vocabulary size
-            try:
-                vocabulary_size = int(len(getattr(tokenizer, "get_vocab")()))
-            except Exception:
+            vocab_method = getattr(tokenizer, 'get_vocab', None)
+            vocab_result: Mapping[Any, Any] | Sequence[Any] | None = None
+            if callable(vocab_method):
+                try:
+                    candidate = vocab_method()
+                except Exception:
+                    logger.debug(
+                        'Tokenizer %s failed to expose its vocabulary during metrics computation',
+                        name,
+                        exc_info=True,
+                    )
+                else:
+                    if isinstance(candidate, Mapping):
+                        vocab_result = candidate
+                    elif isinstance(candidate, Sequence) and not isinstance(
+                        candidate, (str, bytes)
+                    ):
+                        vocab_result = candidate
+
+            if isinstance(vocab_result, Mapping):
+                vocabulary_size = int(len(vocab_result))
+            elif isinstance(vocab_result, Sequence):
+                vocabulary_size = int(len(vocab_result))
+            else:
                 vocabulary_size = 0
 
-            # model size: sum of files in cache dir if available
             model_size_mb = 0.0
             try:
-                # try to infer path used during download (open tokenizers)
-                base_dir = os.path.join(TOKENIZER_PATH, "open", k)
+                base_dir = os.path.join(TOKENIZER_PATH, 'open', name.replace('/', '_'))
                 if os.path.isdir(base_dir):
                     total_bytes = 0
                     for root, _dirs, files in os.walk(base_dir):
@@ -255,50 +511,51 @@ class BenchmarkTokenizers:
                             try:
                                 total_bytes += os.path.getsize(fp)
                             except OSError:
-                                pass
+                                logger.debug('Failed to read file size for %s', fp, exc_info=True)
                     model_size_mb = total_bytes / (1024.0 * 1024.0)
             except Exception:
+                logger.debug(
+                    'Tokenizer %s raised an exception while calculating model size',
+                    name,
+                    exc_info=True,
+                )
                 model_size_mb = 0.0
 
-            # average and median sequence length (tokens per document)
-            seq_lengths = data["tokens_count"].to_numpy(dtype=float)
+            seq_lengths = data['tokens_count'].to_numpy(dtype=float)
             avg_sequence_length = float(np.mean(seq_lengths)) if len(seq_lengths) else 0.0
             median_sequence_length = (
                 float(np.median(seq_lengths)) if len(seq_lengths) else 0.0
             )
 
-            # subword fertility: average tokens per word
-            ww = data["words_count"].replace(0, np.nan)
-            tw = data["tokens_count"]
-            fertility_series = (tw / ww).replace([np.inf, -np.inf], np.nan).fillna(0)
+            words_per_doc = data['words_count'].replace(0, np.nan)
+            tokens_per_doc = data['tokens_count']
+            fertility_series = (tokens_per_doc / words_per_doc).replace(
+                [np.inf, -np.inf], np.nan
+            ).fillna(0)
             subword_fertility = float(fertility_series.mean())
 
-            # OOV rate and word recovery rate
-            # OOV: fraction of unique words not present as standalone tokens in vocab
-            all_words = [w for lst in data["words_split"] for w in lst]
+            all_words = [w for lst in data['words_split'] for w in lst]
             unique_words = set(all_words)
-            vocab_tokens = set()
-            try:
-                vocab_tokens = set(getattr(tokenizer, "get_vocab")().keys())
-            except Exception:
-                vocab_tokens = set()
-            # strip common markers used by tokenizers when building character coverage
-            normalized_vocab_tokens = {t.replace("##", "").lstrip("▁").lstrip("Ġ") for t in vocab_tokens}
+            vocab_tokens: set[str] = set()
+            if isinstance(vocab_result, Mapping):
+                vocab_tokens = {str(tok) for tok in vocab_result.keys()}
+            elif isinstance(vocab_result, Sequence):
+                vocab_tokens = {str(tok) for tok in vocab_result}
+            normalized_vocab_tokens = {
+                str(t).replace('##', '').lstrip('?').lstrip('G') for t in vocab_tokens
+            }
             oov_words = {w for w in unique_words if w not in vocab_tokens}
             oov_rate = (len(oov_words) / len(unique_words) * 100.0) if unique_words else 0.0
 
-            # word recovery: proportion of words where decode(encode(word)) == word
-            # evaluate on a sample to keep it fast
             recovery_count = 0
             sample_words = list(unique_words)
             max_eval = min(5000, len(sample_words))
             sample_words = sample_words[:max_eval]
             for w in sample_words:
                 try:
-                    if hasattr(tokenizer, "encode") and hasattr(tokenizer, "decode"):
+                    if hasattr(tokenizer, 'encode') and hasattr(tokenizer, 'decode'):
                         enc = tokenizer.encode(w)
-                        # support both HF tokenizers and transformers
-                        if hasattr(enc, "ids"):
+                        if hasattr(enc, 'ids'):
                             dec = tokenizer.decode(enc.ids)
                         else:
                             dec = tokenizer.decode(enc)
@@ -308,54 +565,53 @@ class BenchmarkTokenizers:
                     continue
             word_recovery_rate = (recovery_count / max(1, len(sample_words))) * 100.0
 
-            # character coverage: unique chars in dataset covered by vocab tokens
-            dataset_chars = set("".join(texts.tolist()))
+            dataset_chars = set(''.join(text_values))
             vocab_chars = set()
-            for tkn in normalized_vocab_tokens:
-                for ch in tkn:
+            for token_item in normalized_vocab_tokens:
+                for ch in token_item:
                     vocab_chars.add(ch)
             intersection = dataset_chars.intersection(vocab_chars)
             character_coverage = (
                 (len(intersection) / len(dataset_chars) * 100.0) if dataset_chars else 0.0
             )
 
-            # attach per-tokenizer metrics to each row for this tokenizer
-            # accumulate global metrics row (one per tokenizer)
             global_metrics_rows.append(
                 {
-                    "tokenizer": name,
-                    "dataset_name": dataset_name,
-                    "tokenization_speed_tps": float(tokenization_speed_tps),
-                    "throughput_chars_per_sec": float(throughput_chars_per_sec),
-                    "model_size_mb": float(model_size_mb),
-                    "vocabulary_size": int(vocabulary_size),
-                    "avg_sequence_length": float(avg_sequence_length),
-                    "median_sequence_length": float(median_sequence_length),
-                    "subword_fertility": float(subword_fertility),
-                    "oov_rate": float(oov_rate),
-                    "word_recovery_rate": float(word_recovery_rate),
-                    "character_coverage": float(character_coverage),
+                    'tokenizer': name,
+                    'dataset_name': dataset_name,
+                    'tokenization_speed_tps': float(tokenization_speed_tps),
+                    'throughput_chars_per_sec': float(throughput_chars_per_sec),
+                    'model_size_mb': float(model_size_mb),
+                    'vocabulary_size': int(vocabulary_size),
+                    'avg_sequence_length': float(avg_sequence_length),
+                    'median_sequence_length': float(median_sequence_length),
+                    'subword_fertility': float(subword_fertility),
+                    'oov_rate': float(oov_rate),
+                    'word_recovery_rate': float(word_recovery_rate),
+                    'character_coverage': float(character_coverage),
                 }
             )
 
-            # Drop intermediate columns if reduce_data_size is set
-            drop_cols = ["tokens", "tokens_split", "words_split"]
-            data.drop(columns=drop_cols, inplace=True)
+            if self.reduce_data_size:
+                data.drop(columns=['tokens', 'tokens_split', 'words_split'], inplace=True)
             all_tokenizers.append(data)
 
-            # Progress update and thread safety
-            check_thread_status(kwargs.get("worker", None))
+            check_thread_status(kwargs.get('worker', None))
             update_progress_callback(
-                i + 1, len(tokenizers), kwargs.get("progress_callback", None)
+                i + 1, progress_total, kwargs.get('progress_callback', None)
             )
 
-        # Concatenate all tokenizer benchmark results (local per-text stats)
-        benchmark_results = pd.concat(all_tokenizers, ignore_index=True)
+        benchmark_results = (
+            pd.concat(all_tokenizers, ignore_index=True) if all_tokenizers else pd.DataFrame()
+        )
 
-        # Calculate NSL if required
         data_NSL = None
-        if self.include_NSL and self.include_custom_tokenizer:
-            self.calculate_normalized_sequence_length(benchmark_results)
+        if (
+            self.include_NSL
+            and self.include_custom_tokenizer
+            and not benchmark_results.empty
+        ):
+            data_NSL = self.calculate_normalized_sequence_length(benchmark_results)
 
         global_metrics = pd.DataFrame(global_metrics_rows)
 
@@ -365,37 +621,69 @@ class BenchmarkTokenizers:
     def calculate_normalized_sequence_length(
         self, benchmark_results: pd.DataFrame
     ) -> None | pd.DataFrame:
-        data_custom = benchmark_results[
-            benchmark_results["tokenizer"].str.contains(
-                "custom tokenizer", case=False, na=False
-            )
-        ]
-
-        data = []
-        names = list(benchmark_results["tokenizer"].unique())
-        if data_custom.empty:
+        if benchmark_results is None or benchmark_results.empty:
             logger.warning(
-                "NSL value cannot be calculated without a custom tokenizer as reference"
+                'NSL value cannot be calculated without benchmark results'
             )
             return None
-        else:
-            for tok in tqdm(names):
-                logger.info(
-                    f"NSL value is calculated for {tok} versus custom tokenizers"
-                )
-                data_chunk = benchmark_results[benchmark_results["tokenizer"] == tok]
-                data_chunk["NSL"] = [
-                    x / y if y != 0 else 0
-                    for x, y in zip(
-                        data_custom["tokens_count"].to_list(),
-                        data_chunk["tokens_count"].to_list(),
-                    )
-                ]
-                data.append(data_chunk)
 
-            data_NSL = pd.concat(data, ignore_index=True)
+        required_columns = {'tokenizer', 'tokens_count'}
+        if not required_columns.issubset(benchmark_results.columns):
+            logger.warning(
+                'NSL value cannot be calculated because required columns are missing'
+            )
+            return None
+
+        data_custom = benchmark_results[
+            benchmark_results['tokenizer'].str.contains(
+                'custom tokenizer', case=False, na=False
+            )
+        ].copy()
+
+        if data_custom.empty:
+            logger.warning(
+                'NSL value cannot be calculated without a custom tokenizer as reference'
+            )
+            return None
+
+        data = []
+        names = benchmark_results['tokenizer'].dropna().unique().tolist()
+        for tok in tqdm(names):
+            logger.info(
+                f'NSL value is calculated for {tok} versus custom tokenizers'
+            )
+            data_chunk = benchmark_results[
+                benchmark_results['tokenizer'] == tok
+            ].copy()
+            if data_chunk.empty:
+                continue
+
+            min_length = min(len(data_custom), len(data_chunk))
+            if min_length == 0:
+                continue
+
+            ratios = [
+                (x / y) if y else 0
+                for x, y in zip(
+                    data_custom['tokens_count'].to_numpy(dtype=float)[:min_length],
+                    data_chunk['tokens_count'].to_numpy(dtype=float)[:min_length],
+                )
+            ]
+
+            data_chunk = data_chunk.iloc[:min_length].copy()
+            data_chunk['NSL'] = ratios
+            data.append(data_chunk)
+
+        if not data:
+            return None
+
+        data_NSL = pd.concat(data, ignore_index=True)
 
         return data_NSL
+
+
+# [TOKENIZERS EXPLORER]
+
 
 
 # [TOKENIZERS EXPLORER]
