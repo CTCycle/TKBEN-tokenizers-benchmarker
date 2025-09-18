@@ -12,8 +12,12 @@ class DataSerializer:
         pass
 
     # -------------------------------------------------------------------------
-    def load_benchmark_results(self) -> pd.DataFrame:
-        return database.load_from_database("BENCHMARK_RESULTS")
+    def load_local_metrics(self) -> pd.DataFrame:
+        # Local per-text, per-tokenizer stats
+        return database.load_from_database("TOKENIZATION_LOCAL_STATS")
+    # -------------------------------------------------------------------------
+    def load_global_metrics(self) -> pd.DataFrame:
+        return database.load_from_database("TOKENIZATION_GLOBAL_METRICS")
 
     # -------------------------------------------------------------------------
     def load_vocabularies(self) -> pd.DataFrame:
@@ -40,9 +44,15 @@ class DataSerializer:
         database.save_into_database(dataset, "VOCABULARY_STATISTICS")
 
     # -------------------------------------------------------------------------
-    def save_benchmark_results(self, dataset: pd.DataFrame) -> None:
-        database.save_into_database(dataset, "BENCHMARK_RESULTS")
+    def save_local_metrics(self, dataset: pd.DataFrame) -> None:
+        database.save_into_database(dataset, "TOKENIZATION_LOCAL_STATS")
 
     # -------------------------------------------------------------------------
     def save_NSL_benchmark(self, dataset: pd.DataFrame) -> None:
         database.save_into_database(dataset, "NSL_RESULTS")
+
+    # -------------------------------------------------------------------------
+    def save_global_metrics(self, dataset: pd.DataFrame) -> None:
+        database.upsert_into_database(dataset, "TOKENIZATION_GLOBAL_METRICS")
+
+
