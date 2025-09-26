@@ -18,20 +18,9 @@ from TokenBenchy.app.constants import EVALUATION_PATH, TOKENIZER_PATH
 from TokenBenchy.app.logger import logger
 from TokenBenchy.app.utils.data.serializer import DataSerializer
 
-
 # [TOKENIZERS EXPLORER]
 ###############################################################################
-class BenchmarkTokenizers:
-    def __init__(self, configuration: dict[str, Any]) -> None:
-        set_verbosity_error()
-        self.max_docs_number = configuration.get("num_documents", 0)
-        self.reduce_data_size = configuration.get("reduce_output_size", False)
-        self.include_custom_tokenizer = configuration.get(
-            "include_custom_tokenizer", False
-        )
-        self.include_NSL = configuration.get("include_NSL", False)
-        self.configuration = configuration
-
+class BenchmarkTools:
     # -------------------------------------------------------------------------
     def process_tokens(self, text: str, tokenizer: Any) -> tuple[str, list[str]]:
         if not isinstance(text, str):
@@ -64,7 +53,7 @@ class BenchmarkTokenizers:
                         exc_info=True,
                     )
                 else:
-                    tokens_from_encoding = self._normalize_token_output(raw_tokens)
+                    tokens_from_encoding = self.normalize_token_output(raw_tokens)
             elif isinstance(tokens_attr, (list, tuple)):
                 tokens_from_encoding = [str(tok) for tok in tokens_attr]
             elif isinstance(tokens_attr, Iterable) and not isinstance(
@@ -72,23 +61,24 @@ class BenchmarkTokenizers:
             ):
                 tokens_from_encoding = [str(tok) for tok in tokens_attr]
 
-        token_ids = self._extract_token_ids(encoded)
+        token_ids = self.extract_token_ids(encoded)
         if token_ids:
-            decoded = self._safe_decode(tokenizer, token_ids)
+            decoded = self.safe_decode(tokenizer, token_ids)
         else:
             decoded = " ".join(tokens_from_encoding)
 
         if not tokens_from_encoding:
-            tokens_from_encoding = self._convert_ids_to_tokens(
+            tokens_from_encoding = self.convert_ids_to_tokens(
                 tokenizer, token_ids, decoded
             )
 
         return decoded, tokens_from_encoding
 
-    def _extract_token_ids(self, encoded: Any) -> list[int]:
+    # -------------------------------------------------------------------------
+    def extract_token_ids(self, encoded: Any) -> list[int]:
         ids_source: Any | None = None
-        if hasattr(encoded, 'ids'):
-            ids_source = getattr(encoded, 'ids')
+        if hasattr(encoded, "ids"):
+            ids_source = getattr(encoded, "ids")
         elif isinstance(encoded, np.ndarray):
             ids_source = encoded.tolist()
         elif isinstance(encoded, (list, tuple)):
@@ -100,44 +90,46 @@ class BenchmarkTokenizers:
         try:
             return [int(i) for i in ids_source]
         except Exception:
-            logger.debug('Failed to coerce token ids from encoding', exc_info=True)
+            logger.debug("Failed to coerce token ids from encoding", exc_info=True)
             return []
 
-    def _safe_decode(self, tokenizer: Any, token_ids: list[int]) -> str:
+    # -------------------------------------------------------------------------
+    def safe_decode(self, tokenizer: Any, token_ids: list[int]) -> str:
         if not token_ids:
-            return ''
+            return ""
         try:
             decoded = tokenizer.decode(token_ids)
         except Exception:
             logger.debug(
-                'Tokenizer %s raised an exception while decoding ids',
-                getattr(tokenizer, 'name_or_path', type(tokenizer).__name__),
+                "Tokenizer %s raised an exception while decoding ids",
+                getattr(tokenizer, "name_or_path", type(tokenizer).__name__),
                 exc_info=True,
             )
-            return ''
+            return ""
 
         if isinstance(decoded, (list, tuple)):
-            return ' '.join(str(tok) for tok in decoded)
+            return " ".join(str(tok) for tok in decoded)
         return str(decoded)
 
-    def _convert_ids_to_tokens(
+    # -------------------------------------------------------------------------
+    def convert_ids_to_tokens(
         self, tokenizer: Any, token_ids: list[int], fallback_text: str
     ) -> list[str]:
         try:
-            converter = getattr(tokenizer, 'convert_ids_to_tokens', None)
+            converter = getattr(tokenizer, "convert_ids_to_tokens", None)
             if callable(converter):
                 tokens = converter(token_ids)
                 if isinstance(tokens, np.ndarray):
                     tokens = tokens.tolist()
                 if isinstance(tokens, (list, tuple)):
                     return [str(tok) for tok in tokens]
-            id_to_token = getattr(tokenizer, 'id_to_token', None)
+            id_to_token = getattr(tokenizer, "id_to_token", None)
             if callable(id_to_token):
                 return [str(id_to_token(idx)) for idx in token_ids]
         except Exception:
             logger.debug(
-                'Tokenizer %s failed to convert ids to tokens',
-                getattr(tokenizer, 'name_or_path', type(tokenizer).__name__),
+                "Tokenizer %s failed to convert ids to tokens",
+                getattr(tokenizer, "name_or_path", type(tokenizer).__name__),
                 exc_info=True,
             )
 
@@ -145,15 +137,16 @@ class BenchmarkTokenizers:
             return fallback_text.split()
         return []
 
-    def _normalize_token_output(self, tokens: Any) -> list[str]:
+    # -------------------------------------------------------------------------
+    def normalize_token_output(self, tokens: Any) -> list[str]:
         if isinstance(tokens, np.ndarray):
             tokens = tokens.tolist()
 
-        if hasattr(tokens, 'tokens') and callable(getattr(tokens, 'tokens')):
+        if hasattr(tokens, "tokens") and callable(getattr(tokens, "tokens")):
             try:
                 tokens = tokens.tokens()
             except Exception:
-                logger.debug('Failed to normalize token output', exc_info=True)
+                logger.debug("Failed to normalize token output", exc_info=True)
                 return []
 
         if isinstance(tokens, (list, tuple)):
@@ -163,7 +156,7 @@ class BenchmarkTokenizers:
             return tokens.split()
 
         if isinstance(tokens, dict):
-            for key in ('tokens', 'input_tokens'):
+            for key in ("tokens", "input_tokens"):
                 value = tokens.get(key)
                 if isinstance(value, (list, tuple)):
                     return [str(tok) for tok in value]
@@ -173,20 +166,36 @@ class BenchmarkTokenizers:
 
         return []
 
-    def _is_tokenizer_compatible(self, tokenizer: Any) -> bool:
+    # -------------------------------------------------------------------------
+    def is_tokenizer_compatible(self, tokenizer: Any) -> bool:
         if tokenizer is None or isinstance(tokenizer, bool):
             return False
 
-        if callable(getattr(tokenizer, 'tokenize', None)):
+        if callable(getattr(tokenizer, "tokenize", None)):
             return True
 
-        encode_method = getattr(tokenizer, 'encode', None)
-        decode_method = getattr(tokenizer, 'decode', None)
+        encode_method = getattr(tokenizer, "encode", None)
+        decode_method = getattr(tokenizer, "decode", None)
         if callable(encode_method) and callable(decode_method):
             return True
 
-        call_method = getattr(tokenizer, '__call__', None)
+        call_method = getattr(tokenizer, "__call__", None)
         return callable(call_method)
+
+
+# [TOKENIZERS EXPLORER]
+###############################################################################
+class BenchmarkTokenizers:
+    def __init__(self, configuration: dict[str, Any]) -> None:
+        set_verbosity_error()
+        self.max_docs_number = configuration.get("num_documents", 0)
+        self.reduce_data_size = configuration.get("reduce_output_size", False)
+        self.include_custom_tokenizer = configuration.get(
+            "include_custom_tokenizer", False
+        )
+        self.include_NSL = configuration.get("include_NSL", False)
+        self.configuration = configuration
+        self.tools = BenchmarkTools()
 
     # -------------------------------------------------------------------------
     def calculate_text_statistics(
@@ -237,7 +246,7 @@ class BenchmarkTokenizers:
         vocabulary_stats: list[dict[str, Any]] = []
         vocabularies: list[pd.DataFrame] = []
         for name, tokenizer in tokenizers.items():
-            if not self._is_tokenizer_compatible(tokenizer):
+            if not self.tools.is_tokenizer_compatible(tokenizer):
                 logger.warning(
                     'Skipping tokenizer %s because it does not expose required methods (type=%s)',
                     name,
@@ -277,7 +286,7 @@ class BenchmarkTokenizers:
 
                 subwords = [word for word in vocab_words if '##' in word]
                 true_words = [word for word in vocab_words if word not in subwords]
-                decoded_words = self._safe_decode(tokenizer, vocab_indices).split()
+                decoded_words = self.tools.safe_decode(tokenizer, vocab_indices).split()
                 shared = set(vocab_words).intersection(decoded_words)
                 unshared = set(vocab_words).symmetric_difference(decoded_words)
                 total_tokens = len(true_words) + len(subwords)
@@ -297,7 +306,7 @@ class BenchmarkTokenizers:
                 )
 
                 decoded_per_id = [
-                    self._safe_decode(tokenizer, [idx]) for idx in vocab_indices
+                    self.tools.safe_decode(tokenizer, [idx]) for idx in vocab_indices
                 ]
                 vocabulary = pd.DataFrame(
                     {
@@ -332,7 +341,7 @@ class BenchmarkTokenizers:
         valid_tokenizers: dict[str, Any] = {}
         if isinstance(tokenizers, dict):
             for name, tokenizer in tokenizers.items():
-                if self._is_tokenizer_compatible(tokenizer):
+                if self.tools.is_tokenizer_compatible(tokenizer):
                     valid_tokenizers[name] = tokenizer
                 else:
                     logger.warning(
@@ -404,7 +413,9 @@ class BenchmarkTokenizers:
                     decoded_tokens: list[str] = []
                     split_tokens: list[list[str]] = []
                     for text_value in text_values:
-                        decoded, tokens_list = self.process_tokens(text_value, tokenizer)
+                        decoded, tokens_list = self.tools.process_tokens(
+                            text_value, tokenizer
+                        )
                         decoded_tokens.append(decoded)
                         split_tokens.append(tokens_list)
                 else:
@@ -417,7 +428,7 @@ class BenchmarkTokenizers:
                         if uses_tokenize:
                             try:
                                 raw_tokens = tokenize_method(text_value)  # type: ignore[operator]
-                                tokens_list = self._normalize_token_output(raw_tokens)
+                                tokens_list = self.tools.normalize_token_output(raw_tokens)
                             except Exception:
                                 logger.debug(
                                     'Tokenizer %s raised an exception while tokenizing text',
@@ -426,7 +437,7 @@ class BenchmarkTokenizers:
                                 )
                                 tokens_list = []
                         if not tokens_list:
-                            decoded, tokens_list = self.process_tokens(
+                            decoded, tokens_list = self.tools.process_tokens(
                                 text_value, tokenizer
                             )
                         else:
