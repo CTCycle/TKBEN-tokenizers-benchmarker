@@ -39,7 +39,7 @@ from TokenBenchy.app.client.events import (
 from TokenBenchy.app.client.workers import ThreadWorker
 from TokenBenchy.app.configuration import Configuration
 from TokenBenchy.app.logger import logger
-from TokenBenchy.app.utils.data.database import database
+from TokenBenchy.app.utils.repository.database import database
 
 
 ###############################################################################
