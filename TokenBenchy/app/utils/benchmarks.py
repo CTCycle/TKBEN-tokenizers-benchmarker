@@ -516,7 +516,7 @@ class BenchmarkTokenizers:
                 base_dir = os.path.join(TOKENIZER_PATH, 'open', name.replace('/', '_'))
                 if os.path.isdir(base_dir):
                     total_bytes = 0
-                    for root, _dirs, files in os.walk(base_dir):
+                    for root, dirs, files in os.walk(base_dir):
                         for fn in files:
                             fp = os.path.join(root, fn)
                             try:
