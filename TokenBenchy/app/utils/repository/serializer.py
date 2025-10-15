@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from TokenBenchy.app.utils.data.database import database
+from TokenBenchy.app.utils.repository.database import database
 
 
 # [DATA SERIALIZATION]

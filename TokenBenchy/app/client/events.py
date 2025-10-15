@@ -10,13 +10,13 @@ from TokenBenchy.app.client.workers import (
     update_progress_callback,
 )
 from TokenBenchy.app.logger import logger
-from TokenBenchy.app.utils.benchmarks import (
+from TokenBenchy.app.utils.services.benchmarks import (
     BenchmarkTokenizers,
     VisualizeBenchmarkResults,
 )
-from TokenBenchy.app.utils.data.processing import ProcessDataset
-from TokenBenchy.app.utils.data.serializer import DataSerializer
-from TokenBenchy.app.utils.downloads import DatasetManager, TokenizersDownloadManager
+from TokenBenchy.app.utils.services.processing import ProcessDataset
+from TokenBenchy.app.utils.repository.serializer import DataSerializer
+from TokenBenchy.app.utils.services.downloads import DatasetManager, TokenizersDownloadManager
 
 
 ###############################################################################
