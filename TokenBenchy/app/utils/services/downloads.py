@@ -112,7 +112,7 @@ class TokenizersDownloadManager:
             "zero-shot-classification",
         ]
 
-    def _is_tokenizer_compatible(self, tokenizer: Any) -> bool:
+    def is_tokenizer_compatible(self, tokenizer: Any) -> bool:
         if tokenizer is None or isinstance(tokenizer, bool):
             return False
 
@@ -158,7 +158,7 @@ class TokenizersDownloadManager:
                     cache_dir=tokenizer_save_path,
                     token=self.hf_access_token,
                 )
-                if not self._is_tokenizer_compatible(tokenizer):
+                if not self.is_tokenizer_compatible(tokenizer):
                     logger.warning(
                         'Downloaded tokenizer %s is not compatible and will be skipped',
                         tokenizer_id,
@@ -198,7 +198,7 @@ class TokenizersDownloadManager:
                         )
                         continue
 
-                    if not self._is_tokenizer_compatible(tokenizer):
+                    if not self.is_tokenizer_compatible(tokenizer):
                         logger.warning(
                             'Custom tokenizer at %s is not compatible and will be skipped',
                             js,

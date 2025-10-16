@@ -39,7 +39,7 @@ from TokenBenchy.app.client.events import (
 from TokenBenchy.app.client.workers import ThreadWorker
 from TokenBenchy.app.configuration import Configuration
 from TokenBenchy.app.logger import logger
-from TokenBenchy.app.utils.data.database import database
+from TokenBenchy.app.utils.repository.database import database
 
 
 ###############################################################################
@@ -98,9 +98,9 @@ class MainWindow:
         self.viewer_handler = VisualizationEnvents(self.configuration)
 
         # setup UI elements
-        self._set_states()
+        self.set_states()
         self.widgets = {}
-        self._setup_configuration(
+        self.setup_configuration(
             [
                 # actions
                 (QAction, "actionLoadConfig", "load_configuration_action"),
@@ -129,7 +129,7 @@ class MainWindow:
             ]
         )
 
-        self._connect_signals(
+        self.connect_signals(
             [
                 # actions
                 ("save_configuration_action", "triggered", self.save_configuration),
@@ -151,7 +151,7 @@ class MainWindow:
             ]
         )
 
-        self._auto_connect_settings()
+        self.auto_connect_settings()
 
     # -------------------------------------------------------------------------
     def __getattr__(self, name: str) -> Any:
@@ -181,15 +181,15 @@ class MainWindow:
                 getter = widget.currentText
 
         signal = getattr(widget, signal_name)
-        signal.connect(partial(self._update_single_setting, config_key, getter))
+        signal.connect(partial(self.update_single_setting, config_key, getter))
 
     # -------------------------------------------------------------------------
-    def _update_single_setting(self, config_key: str, getter: Any, *args) -> None:
+    def update_single_setting(self, config_key: str, getter: Any, *args) -> None:
         value = getter()
         self.config_manager.update_value(config_key, value)
 
     # -------------------------------------------------------------------------
-    def _auto_connect_settings(self) -> None:
+    def auto_connect_settings(self) -> None:
         connections = [
             ("use_custom_dataset", "toggled", "use_custom_dataset"),
             ("remove_invalid_docs", "toggled", "remove_invalid_documents"),
@@ -203,22 +203,22 @@ class MainWindow:
             self.connect_update_setting(widget, signal_name, config_key)
 
     # -------------------------------------------------------------------------
-    def _set_states(self) -> None:
+    def set_states(self) -> None:
         self.progress_bar = self.main_win.findChild(QProgressBar, "progressBar")
         self.progress_bar.setValue(0) if self.progress_bar else None
 
     # -------------------------------------------------------------------------
-    def _connect_button(self, button_name: str, slot: Any) -> None:
+    def connect_button(self, button_name: str, slot: Any) -> None:
         button = self.main_win.findChild(QPushButton, button_name)
         button.clicked.connect(slot) if button else None
 
     # -------------------------------------------------------------------------
-    def _connect_combo_box(self, combo_name: str, slot: Any) -> None:
+    def connect_combo_box(self, combo_name: str, slot: Any) -> None:
         combo = self.main_win.findChild(QComboBox, combo_name)
         combo.currentTextChanged.connect(slot) if combo else None
 
     # -------------------------------------------------------------------------
-    def _start_thread_worker(
+    def start_thread_worker(
         self,
         worker: ThreadWorker,
         on_finished: Callable,
@@ -235,25 +235,25 @@ class MainWindow:
         self.threadpool.start(worker)
 
     # -------------------------------------------------------------------------
-    def _send_message(self, message: str) -> None:
+    def send_message(self, message: str) -> None:
         self.main_win.statusBar().showMessage(message)
 
     # [SETUP]
     ###########################################################################
-    def _setup_configuration(self, widget_defs: Any) -> None:
+    def setup_configuration(self, widget_defs: Any) -> None:
         for cls, name, attr in widget_defs:
             w = self.main_win.findChild(cls, name)
             setattr(self, attr, w)
             self.widgets[attr] = w
 
     # -------------------------------------------------------------------------
-    def _connect_signals(self, connections: Any) -> None:
+    def connect_signals(self, connections: Any) -> None:
         for attr, signal, slot in connections:
             widget = self.widgets[attr]
             getattr(widget, signal).connect(slot)
 
     # -------------------------------------------------------------------------
-    def _set_widgets_from_configuration(self) -> None:
+    def set_widgets_from_configuration(self) -> None:
         cfg = self.config_manager.get_configuration()
         for attr, widget in self.widgets.items():
             if attr not in cfg:
@@ -288,7 +288,7 @@ class MainWindow:
     def stop_running_worker(self) -> None:
         if self.worker is not None:
             self.worker.stop()
-            self._send_message("Interrupt requested. Waiting for threads to stop...")
+            self.send_message("Interrupt requested. Waiting for threads to stop...")
 
     # -------------------------------------------------------------------------
     # [ACTIONS]
@@ -300,7 +300,7 @@ class MainWindow:
             name = dialog.get_name()
             name = "default_config" if not name else name
             self.config_manager.save_configuration_to_json(name)
-            self._send_message(f"Configuration [{name}] has been saved")
+            self.send_message(f"Configuration [{name}] has been saved")
 
     # -------------------------------------------------------------------------
     @Slot()
@@ -310,8 +310,8 @@ class MainWindow:
             name = dialog.get_selected_config()
             if name:
                 self.config_manager.load_configuration_from_json(name)
-                self._set_widgets_from_configuration()
-                self._send_message(f"Loaded configuration [{name}]")
+                self.set_widgets_from_configuration()
+                self.send_message(f"Loaded configuration [{name}]")
 
     # -------------------------------------------------------------------------
     @Slot()
@@ -322,13 +322,13 @@ class MainWindow:
         if not directory:
             message = "Export cancelled"
             logger.info(message)
-            self._send_message(message)
+            self.send_message(message)
             return
 
         database.export_all_tables_as_csv(directory)
         message = f"All data from database has been exported to {directory}"
         logger.info(message)
-        self._send_message(message)
+        self.send_message(message)
 
     # -------------------------------------------------------------------------
     @Slot()
@@ -336,7 +336,7 @@ class MainWindow:
         database.delete_all_data()
         message = "All data from database has been deleted"
         logger.info(message)
-        self._send_message(message)
+        self.send_message(message)
 
     # -------------------------------------------------------------------------
     # [DATASET]
@@ -371,14 +371,14 @@ class MainWindow:
         self.loading_handler = DatasetEvents(self.configuration, self.hf_access_token)
 
         # send message to status bar
-        self._send_message(
+        self.send_message(
             f"Downloading dataset {corpus_text} (configuration: {config_text})"
         )
         # functions that are passed to the worker will be executed in a separate thread
         self.worker = ThreadWorker(self.loading_handler.load_and_process_dataset)
 
         # start worker and inject signals
-        self._start_thread_worker(
+        self.start_thread_worker(
             self.worker,
             on_finished=self.on_dataset_loaded,
             on_error=self.on_error,
@@ -401,14 +401,14 @@ class MainWindow:
         )
 
         # send message to status bar
-        self._send_message("Computing statistics for the selected dataset")
+        self.send_message("Computing statistics for the selected dataset")
         # functions that are passed to the worker will be executed in a separate thread
         self.worker = ThreadWorker(
             self.benchmark_handler.run_dataset_evaluation_pipeline
         )
 
         # start worker and inject signals
-        self._start_thread_worker(
+        self.start_thread_worker(
             self.worker,
             on_finished=self.on_analysis_success,
             on_error=self.on_error,
@@ -433,14 +433,14 @@ class MainWindow:
         )
 
         # send message to status bar
-        self._send_message("Looking for available tokenizers in Hugging Face")
+        self.send_message("Looking for available tokenizers in Hugging Face")
         # functions that are passed to the worker will be executed in a separate thread
         self.worker = ThreadWorker(
             self.benchmark_handler.get_tokenizer_identifiers, limit=1000
         )
 
         # start worker and inject signals
-        self._start_thread_worker(
+        self.start_thread_worker(
             self.worker,
             on_finished=self.on_tokenizers_fetched,
             on_error=self.on_error,
@@ -485,12 +485,12 @@ class MainWindow:
         )
 
         # send message to status bar
-        self._send_message("Running tokenizers benchmark...")
+        self.send_message("Running tokenizers benchmark...")
         # functions that are passed to the worker will be executed in a separate thread
         self.worker = ThreadWorker(self.benchmark_handler.execute_benchmarks)
 
         # start worker and inject signals
-        self._start_thread_worker(
+        self.start_thread_worker(
             self.worker,
             on_finished=self.on_benchmark_finished,
             on_error=self.on_error,
@@ -510,12 +510,12 @@ class MainWindow:
         self.configuration = self.config_manager.get_configuration()
         self.viewer_handler = VisualizationEnvents(self.configuration)
         # send message to status bar
-        self._send_message("Generating benchmark results figures")
+        self.send_message("Generating benchmark results figures")
         # functions that are passed to the worker will be executed in a separate thread
         self.worker = ThreadWorker(self.viewer_handler.visualize_benchmark_results)
 
         # start worker and inject signals
-        self._start_thread_worker(
+        self.start_thread_worker(
             self.worker,
             on_finished=self.on_plots_generated,
             on_error=self.on_error,
@@ -529,7 +529,7 @@ class MainWindow:
     def on_dataset_loaded(self, name) -> None:
         message = f"Text dataset {name} has been saved into database"
         logger.info(message)
-        self._send_message(message)
+        self.send_message(message)
         self.worker = self.worker.cleanup() if self.worker else None
 
     # -------------------------------------------------------------------------
@@ -539,7 +539,7 @@ class MainWindow:
         corpus = config.get("corpus", None)
         config = config.get("config", None)
         message = f"{corpus} - {config} analysis is finished"
-        self._send_message(message)
+        self.send_message(message)
         logger.info(message)
         self.worker = self.worker.cleanup() if self.worker else None
 
@@ -553,7 +553,7 @@ class MainWindow:
                 if identifier not in existing:
                     combo.addItem(identifier)
 
-        self._send_message(
+        self.send_message(
             f"{len(identifiers)} tokenizer identifiers fetched from HuggingFace"
         )
         self.worker = self.worker.cleanup() if self.worker else None
@@ -563,14 +563,14 @@ class MainWindow:
     def on_benchmark_finished(self, tokenizers: list[str]) -> None:
         self.tokenizers = tokenizers
         message = f"{len(tokenizers)} selected tokenizers have been benchmarked"
-        self._send_message(message)
+        self.send_message(message)
         logger.info(message)
         self.worker = self.worker.cleanup() if self.worker else None
 
     # -------------------------------------------------------------------------
     @Slot(object)
     def on_plots_generated(self, figures: list[Any]) -> None:
-        self._send_message("Benchmark results plots have been generated")
+        self.send_message("Benchmark results plots have been generated")
         self.worker = self.worker.cleanup() if self.worker else None
 
     ###########################################################################
@@ -589,6 +589,6 @@ class MainWindow:
     ###########################################################################
     def on_task_interrupted(self) -> None:
         self.progress_bar.setValue(0) if self.progress_bar else None
-        self._send_message("Current task has been interrupted by user")
+        self.send_message("Current task has been interrupted by user")
         logger.warning("Current task has been interrupted by user")
         self.worker = self.worker.cleanup() if self.worker else None
