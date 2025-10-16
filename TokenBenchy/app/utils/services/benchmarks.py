@@ -16,7 +16,7 @@ from transformers.utils.logging import set_verbosity_error
 from TokenBenchy.app.client.workers import check_thread_status, update_progress_callback
 from TokenBenchy.app.constants import EVALUATION_PATH, TOKENIZER_PATH
 from TokenBenchy.app.logger import logger
-from TokenBenchy.app.utils.data.serializer import DataSerializer
+from TokenBenchy.app.utils.repository.serializer import DataSerializer
 
 # [TOKENIZERS EXPLORER]
 ###############################################################################
@@ -516,7 +516,7 @@ class BenchmarkTokenizers:
                 base_dir = os.path.join(TOKENIZER_PATH, 'open', name.replace('/', '_'))
                 if os.path.isdir(base_dir):
                     total_bytes = 0
-                    for root, _dirs, files in os.walk(base_dir):
+                    for root, dirs, files in os.walk(base_dir):
                         for fn in files:
                             fp = os.path.join(root, fn)
                             try:

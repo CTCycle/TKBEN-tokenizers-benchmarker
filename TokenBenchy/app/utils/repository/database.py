@@ -106,7 +106,7 @@ class TextDatasetStatistics(Base):
 @singleton
 class TokenBenchyDatabase:
     def __init__(self) -> None:
-        self.db_path = os.path.join(DATA_PATH, "TokenBenchy_database.db")
+        self.db_path = os.path.join(DATA_PATH, "database.db")
         self.engine = create_engine(
             f"sqlite:///{self.db_path}", echo=False, future=True
         )
@@ -125,7 +125,7 @@ class TokenBenchyDatabase:
         raise ValueError(f"No table class found for name {table_name}")
 
     # -------------------------------------------------------------------------
-    def _upsert_dataframe(
+    def upsert_dataframe(
         self, df: pd.DataFrame, table_cls: Any, batch_size: int | None = None
     ) -> None:
         batch_size = batch_size if batch_size else self.insert_batch_size
@@ -178,7 +178,7 @@ class TokenBenchyDatabase:
     # -------------------------------------------------------------------------
     def upsert_into_database(self, df: pd.DataFrame, table_name: str) -> None:
         table_cls = self.get_table_class(table_name)
-        self._upsert_dataframe(df, table_cls)
+        self.upsert_dataframe(df, table_cls)
 
     # -------------------------------------------------------------------------
     def export_all_tables_as_csv(
