@@ -106,7 +106,7 @@ class TextDatasetStatistics(Base):
 @singleton
 class TokenBenchyDatabase:
     def __init__(self) -> None:
-        self.db_path = os.path.join(DATA_PATH, "TokenBenchy_database.db")
+        self.db_path = os.path.join(DATA_PATH, "database.db")
         self.engine = create_engine(
             f"sqlite:///{self.db_path}", echo=False, future=True
         )
