@@ -13,10 +13,10 @@ from matplotlib.figure import Figure
 from tqdm import tqdm
 from transformers.utils.logging import set_verbosity_error
 
-from TokenBenchy.app.client.workers import check_thread_status, update_progress_callback
-from TokenBenchy.app.constants import EVALUATION_PATH, TOKENIZER_PATH
-from TokenBenchy.app.logger import logger
-from TokenBenchy.app.utils.repository.serializer import DataSerializer
+from TKBEN.app.client.workers import check_thread_status, update_progress_callback
+from TKBEN.app.constants import EVALUATION_PATH, TOKENIZER_PATH
+from TKBEN.app.logger import logger
+from TKBEN.app.utils.repository.serializer import DataSerializer
 
 # [TOKENIZERS EXPLORER]
 ###############################################################################

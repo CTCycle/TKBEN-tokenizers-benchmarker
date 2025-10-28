@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any, cast
 
-from TokenBenchy.app.variables import EnvironmentVariables
+from TKBEN.app.variables import EnvironmentVariables
 
 EV = EnvironmentVariables()
 
@@ -30,16 +30,16 @@ from PySide6.QtWidgets import (
 )
 from qt_material import apply_stylesheet
 
-from TokenBenchy.app.client.dialogs import LoadConfigDialog, SaveConfigDialog
-from TokenBenchy.app.client.events import (
+from TKBEN.app.client.dialogs import LoadConfigDialog, SaveConfigDialog
+from TKBEN.app.client.events import (
     BenchmarkEvents,
     DatasetEvents,
     VisualizationEnvents,
 )
-from TokenBenchy.app.client.workers import ThreadWorker
-from TokenBenchy.app.configuration import Configuration
-from TokenBenchy.app.logger import logger
-from TokenBenchy.app.utils.repository.database import database
+from TKBEN.app.client.workers import ThreadWorker
+from TKBEN.app.configuration import Configuration
+from TKBEN.app.logger import logger
+from TKBEN.app.utils.repository.database import database
 
 
 ###############################################################################

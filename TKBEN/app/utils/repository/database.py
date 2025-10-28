@@ -10,9 +10,9 @@ from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import declarative_base, sessionmaker
 from tqdm import tqdm
 
-from TokenBenchy.app.constants import DATA_PATH
-from TokenBenchy.app.logger import logger
-from TokenBenchy.app.utils.singleton import singleton
+from TKBEN.app.constants import DATA_PATH
+from TKBEN.app.logger import logger
+from TKBEN.app.utils.singleton import singleton
 
 Base = declarative_base()
 
@@ -104,7 +104,7 @@ class TextDatasetStatistics(Base):
 # [DATABASE]
 ###############################################################################
 @singleton
-class TokenBenchyDatabase:
+class TKBENDatabase:
     def __init__(self) -> None:
         self.db_path = os.path.join(DATA_PATH, "database.db")
         self.engine = create_engine(
@@ -229,4 +229,4 @@ class TokenBenchyDatabase:
 
 
 # -----------------------------------------------------------------------------
-database = TokenBenchyDatabase()
+database = TKBENDatabase()

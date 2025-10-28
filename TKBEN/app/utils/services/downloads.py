@@ -9,9 +9,9 @@ from datasets import load_dataset
 from huggingface_hub import HfApi
 from tokenizers import Tokenizer
 
-from TokenBenchy.app.client.workers import check_thread_status
-from TokenBenchy.app.constants import DATASETS_PATH, TOKENIZER_PATH
-from TokenBenchy.app.logger import logger
+from TKBEN.app.client.workers import check_thread_status
+from TKBEN.app.constants import DATASETS_PATH, TOKENIZER_PATH
+from TKBEN.app.logger import logger
 
 
 # [DOWNLOADS]

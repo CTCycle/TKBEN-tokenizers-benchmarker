@@ -4,19 +4,19 @@ from typing import Any
 
 import pandas as pd
 
-from TokenBenchy.app.client.workers import (
+from TKBEN.app.client.workers import (
     ThreadWorker,
     check_thread_status,
     update_progress_callback,
 )
-from TokenBenchy.app.logger import logger
-from TokenBenchy.app.utils.services.benchmarks import (
+from TKBEN.app.logger import logger
+from TKBEN.app.utils.services.benchmarks import (
     BenchmarkTokenizers,
     VisualizeBenchmarkResults,
 )
-from TokenBenchy.app.utils.services.processing import ProcessDataset
-from TokenBenchy.app.utils.repository.serializer import DataSerializer
-from TokenBenchy.app.utils.services.downloads import DatasetManager, TokenizersDownloadManager
+from TKBEN.app.utils.services.processing import ProcessDataset
+from TKBEN.app.utils.repository.serializer import DataSerializer
+from TKBEN.app.utils.services.downloads import DatasetManager, TokenizersDownloadManager
 
 
 ###############################################################################
