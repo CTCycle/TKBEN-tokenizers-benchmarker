@@ -8,8 +8,8 @@ from PySide6.QtWidgets import QApplication
 warnings.simplefilter(action="ignore", category=Warning)
 
 # [IMPORT CUSTOM MODULES]
-from TokenBenchy.app.client.window import MainWindow, apply_style
-from TokenBenchy.app.constants import UI_PATH
+from TKBEN.app.client.window import MainWindow, apply_style
+from TKBEN.app.constants import UI_PATH
 
 # [RUN MAIN]
 ###############################################################################

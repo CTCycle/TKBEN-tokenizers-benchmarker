@@ -2,8 +2,8 @@ import os
 
 from dotenv import load_dotenv
 
-from TokenBenchy.app.constants import PROJECT_DIR
-from TokenBenchy.app.logger import logger
+from TKBEN.app.constants import PROJECT_DIR
+from TKBEN.app.logger import logger
 
 
 # [IMPORT CUSTOM MODULES]

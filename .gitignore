@@ -1,10 +1,10 @@
-TokenBenchy/resources/database/tokenizers/*
-TokenBenchy/resources/database/datasets/*
-TokenBenchy/resources/database/evaluation/*
+TKBEN/resources/database/tokenizers/*
+TKBEN/resources/database/datasets/*
+TKBEN/resources/database/evaluation/*
 
-TokenBenchy/setup/python/*
-TokenBenchy/setup/uv/*
-TokenBenchy/setup/.env
+TKBEN/setup/python/*
+TKBEN/setup/uv/*
+TKBEN/setup/.env
 
 __pycache__
 *.vscode

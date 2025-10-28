@@ -3,9 +3,9 @@
 ## 1. Introduction
 Tokenizers are essential components in text preprocessing, converting raw text into structured data understandable by NLP models. The choice of tokenizer directly influences model performance, making it a critical decision in building effective language-based applications. However, selecting an appropriate tokenizer can be challenging due to the diverse array of options available, each with distinct approaches and strengths.
 
-TokenBenchy is a comprehensive toolkit designed to simplify tokenizer analysis and comparison. This fully Python-based UI application allows users to effortlessly download HuggingFace's open-source tokenizers and publicly available text datasets to conduct detailed benchmarks. TokenBenchy enables exploration and comparison of tokenizer attributes including tokenization speed, granularity, handling of special characters, language support, and adaptability to domain-specific vocabularies. 
+TKBEN is a comprehensive toolkit designed to simplify tokenizer analysis and comparison. This fully Python-based UI application allows users to effortlessly download HuggingFace's open-source tokenizers and publicly available text datasets to conduct detailed benchmarks. TKBEN enables exploration and comparison of tokenizer attributes including tokenization speed, granularity, handling of special characters, language support, and adaptability to domain-specific vocabularies. 
 
-With TokenBenchy, users can effectively evaluate tokenizer performance in various NLP tasks such as text classification, sentiment analysis, language translation, and semantic search, ensuring informed decisions and optimized model performance.
+With TKBEN, users can effectively evaluate tokenizer performance in various NLP tasks such as text classification, sentiment analysis, language translation, and semantic search, ensuring informed decisions and optimized model performance.
 
 ## 2. Installation 
 The installation process for Windows is fully automated. Simply run the script *start_on_windows.bat* to begin. During its initial execution, the script installs portable Python, necessary dependencies, minimizing user interaction and ensuring all components are ready for local use.  
@@ -48,7 +48,7 @@ You can run *setup_and_maintenance.bat* to start the external tools for maintena
 ### 3.1 Resources
 This folder organizes dataset and tokenizers benchmark results. By default, all data is stored within an SQLite database. To visualize and interact with the SQLite database, we recommend downloading and installing the DB Browser for SQLite, available at: https://sqlitebrowser.org/dl/. The directory structure includes the following folders:
 
-- **database:** tokenizers benchmark results will be stored centrally within the main database *TokenBenchy_database.db*. Graphical evaluation outputs for the performed benchmarks will be saved separately in *database/evaluation*. Moreover, this folder contains the downloaded datasets that are used to test the tokenizers performance (open access datasets are saved in *datasets/open* while the custom dataset is saved into *datasets/custom*). Last but not least, the downloaded tokenizers are saved in *database/tokenizers* following the same organisation of the datasets folder. 
+- **database:** tokenizers benchmark results will be stored centrally within the main database *TKBEN_database.db*. Graphical evaluation outputs for the performed benchmarks will be saved separately in *database/evaluation*. Moreover, this folder contains the downloaded datasets that are used to test the tokenizers performance (open access datasets are saved in *datasets/open* while the custom dataset is saved into *datasets/custom*). Last but not least, the downloaded tokenizers are saved in *database/tokenizers* following the same organisation of the datasets folder. 
 
 - **logs:** log files are saved here
 

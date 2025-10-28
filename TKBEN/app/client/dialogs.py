@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from TokenBenchy.app.constants import CONFIG_PATH
+from TKBEN.app.constants import CONFIG_PATH
 
 
 ###############################################################################

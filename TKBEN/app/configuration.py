@@ -2,7 +2,7 @@ import json
 import os
 from typing import Any
 
-from TokenBenchy.app.constants import CONFIG_PATH
+from TKBEN.app.constants import CONFIG_PATH
 
 
 ###############################################################################
