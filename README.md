@@ -1,4 +1,4 @@
-# TokenBenchy: Exploring and Benchmarking Open Source Tokenizers
+# TKBEN-tokenizers-benchmarker: Exploring and Benchmarking Open Source Tokenizers
 
 ## 1. Introduction
 Tokenizers are essential components in text preprocessing, converting raw text into structured data understandable by NLP models. The choice of tokenizer directly influences model performance, making it a critical decision in building effective language-based applications. However, selecting an appropriate tokenizer can be challenging due to the diverse array of options available, each with distinct approaches and strengths.
