@@ -18,6 +18,16 @@ class ProcessDataset:
 
     # -------------------------------------------------------------------------
     def process_text_dataset(self) -> list[str]:
+        """
+        Prepare the training split for benchmarking by optionally removing empty
+        documents and dropping duplicates while preserving the original order.
+
+        Keyword arguments:
+        None
+
+        Return value:
+        List of cleaned documents taken from the configured dataset split.
+        """
         processed_docs = self.documents
         if self.clean_docs:
             processed_docs = [x for x in processed_docs if len(x) > 0]
