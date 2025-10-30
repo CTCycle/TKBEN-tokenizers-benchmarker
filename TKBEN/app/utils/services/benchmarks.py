@@ -23,6 +23,18 @@ from TKBEN.app.utils.repository.serializer import DataSerializer
 class BenchmarkTools:
     # -------------------------------------------------------------------------
     def process_tokens(self, text: str, tokenizer: Any) -> tuple[str, list[str]]:
+        """
+        Tokenize a single text while gracefully handling the heterogeneous
+        interfaces exposed by different tokenizer implementations.
+
+        Keyword arguments:
+        text -- document to tokenize (converted to string when needed)
+        tokenizer -- tokenizer object exposing encode/decode or tokenize methods
+
+        Return value:
+        Tuple containing the decoded text reconstructed from token ids and the
+        list of token strings obtained for the input document.
+        """
         if not isinstance(text, str):
             text = str(text)
         if not text:
@@ -76,6 +88,17 @@ class BenchmarkTools:
 
     # -------------------------------------------------------------------------
     def extract_token_ids(self, encoded: Any) -> list[int]:
+        """
+        Pull integer token identifiers from an encoding object produced by a
+        tokenizer, covering common return types across libraries.
+
+        Keyword arguments:
+        encoded -- encoding returned by tokenizer.encode or related APIs
+
+        Return value:
+        List of integer token identifiers extracted from the encoding, or an
+        empty list when the ids cannot be recovered.
+        """
         ids_source: Any | None = None
         if hasattr(encoded, "ids"):
             ids_source = getattr(encoded, "ids")
@@ -95,6 +118,18 @@ class BenchmarkTools:
 
     # -------------------------------------------------------------------------
     def safe_decode(self, tokenizer: Any, token_ids: list[int]) -> str:
+        """
+        Decode a list of token identifiers while protecting against tokenizer
+        backends that raise exceptions or return non-string types.
+
+        Keyword arguments:
+        tokenizer -- tokenizer object used for decoding
+        token_ids -- sequence of integer token identifiers to decode
+
+        Return value:
+        Decoded string assembled from the provided ids, or an empty string when
+        decoding is not possible.
+        """
         if not token_ids:
             return ""
         try:
@@ -115,6 +150,19 @@ class BenchmarkTools:
     def convert_ids_to_tokens(
         self, tokenizer: Any, token_ids: list[int], fallback_text: str
     ) -> list[str]:
+        """
+        Convert token identifiers into their corresponding token strings using
+        whichever helper method the tokenizer exposes.
+
+        Keyword arguments:
+        tokenizer -- tokenizer object providing conversion helpers
+        token_ids -- list of token identifiers to translate to strings
+        fallback_text -- text used to approximate tokens if conversion fails
+
+        Return value:
+        List of token strings obtained from the tokenizer or approximated from
+        the fallback text when no conversion helpers are available.
+        """
         try:
             converter = getattr(tokenizer, "convert_ids_to_tokens", None)
             if callable(converter):
@@ -139,6 +187,18 @@ class BenchmarkTools:
 
     # -------------------------------------------------------------------------
     def normalize_token_output(self, tokens: Any) -> list[str]:
+        """
+        Normalize the different token collection shapes into a flat list of
+        strings, supporting numpy arrays, sequences, mappings and custom
+        objects.
+
+        Keyword arguments:
+        tokens -- raw token output returned by a tokenizer
+
+        Return value:
+        List of token strings normalized from the provided structure, or an
+        empty list when normalization is impossible.
+        """
         if isinstance(tokens, np.ndarray):
             tokens = tokens.tolist()
 
@@ -201,6 +261,19 @@ class BenchmarkTokenizers:
     def calculate_text_statistics(
         self, documents: pd.DataFrame, **kwargs
     ) -> pd.DataFrame | None:
+        """
+        Compute word-level statistics for the input dataset, including counts,
+        average word length and standard deviation, while respecting the
+        configured document limit.
+
+        Keyword arguments:
+        documents -- dataframe produced from the loaded dataset
+        kwargs -- optional worker/progress references propagated from the GUI
+
+        Return value:
+        Dataframe enriched with per-document statistics, or None when the
+        computation cannot proceed.
+        """
         # interrupt the operation if no text dataset is available
         if documents.empty:
             logger.info("No text dataset available for statistics calculation")
@@ -243,6 +316,18 @@ class BenchmarkTokenizers:
     def calculate_vocabulary_statistics(
         self, tokenizers: dict[str, Any], **kwargs
     ) -> tuple[list[Any], pd.DataFrame]:
+        """
+        Collect vocabulary-level metrics for each tokenizer, including token
+        counts, subword ratios and decoded tokens.
+
+        Keyword arguments:
+        tokenizers -- dictionary mapping tokenizer names to tokenizer objects
+        kwargs -- optional worker/progress references propagated from the GUI
+
+        Return value:
+        Tuple containing the list of per-tokenizer vocabulary dataframes and a
+        dataframe summarizing aggregate vocabulary statistics.
+        """
         vocabulary_stats: list[dict[str, Any]] = []
         vocabularies: list[pd.DataFrame] = []
         for name, tokenizer in tokenizers.items():
@@ -338,6 +423,19 @@ class BenchmarkTokenizers:
     ) -> tuple[
         list[Any], pd.DataFrame, pd.DataFrame, pd.DataFrame | None, pd.DataFrame
     ]:
+        """
+        Execute the benchmarking pipeline for every valid tokenizer, computing
+        tokenization outputs, throughput metrics and optional NSL comparisons.
+
+        Keyword arguments:
+        dataset -- dataframe containing the text corpus to benchmark
+        tokenizers -- dictionary of tokenizer instances indexed by name
+        kwargs -- optional worker/progress references propagated from the GUI
+
+        Return value:
+        Tuple with vocabulary exports, vocabulary summary statistics, detailed
+        benchmark results, optional NSL dataframe and global metric aggregates.
+        """
         valid_tokenizers: dict[str, Any] = {}
         if isinstance(tokenizers, dict):
             for name, tokenizer in tokenizers.items():
@@ -632,6 +730,17 @@ class BenchmarkTokenizers:
     def calculate_normalized_sequence_length(
         self, benchmark_results: pd.DataFrame
     ) -> None | pd.DataFrame:
+        """
+        Derive the Normalized Sequence Length (NSL) metric by comparing each
+        tokenizer against the custom tokenizer reference when available.
+
+        Keyword arguments:
+        benchmark_results -- dataframe produced by run_tokenizer_benchmarks
+
+        Return value:
+        Dataframe with NSL values per tokenizer and document, or None when the
+        computation cannot be performed.
+        """
         if benchmark_results is None or benchmark_results.empty:
             logger.warning(
                 'NSL value cannot be calculated without benchmark results'
@@ -718,6 +827,16 @@ class VisualizeBenchmarkResults:
 
     # -------------------------------------------------------------------------
     def plot_vocabulary_size(self, data: pd.DataFrame) -> Figure:
+        """
+        Build a horizontal bar chart summarizing the vocabulary size of every
+        tokenizer included in the benchmark run.
+
+        Keyword arguments:
+        data -- dataframe containing vocabulary tokens per tokenizer
+
+        Return value:
+        Matplotlib figure object holding the rendered bar plot.
+        """
         df = data.dropna(subset=["vocabulary_tokens"])
         df["vocabulary_tokens"] = df["vocabulary_tokens"].astype(str)
         df = df[df["vocabulary_tokens"].str.len() > 0]
@@ -761,6 +880,17 @@ class VisualizeBenchmarkResults:
 
     # -------------------------------------------------------------------------
     def plot_subwords_vs_words(self, data: pd.DataFrame) -> Figure | None:
+        """
+        Plot a grouped bar chart comparing subword and word counts in each
+        tokenizer vocabulary, filtering special tokens for clarity.
+
+        Keyword arguments:
+        data -- dataframe containing vocabulary tokens per tokenizer
+
+        Return value:
+        Matplotlib figure with the comparison chart or None when there is no
+        data suitable for plotting.
+        """
         df = data.loc[:, ["tokenizer", "vocabulary_tokens"]].copy()
         df = df.dropna(subset=["tokenizer", "vocabulary_tokens"])
         if df.empty:
@@ -871,6 +1001,17 @@ class VisualizeBenchmarkResults:
 
     # -------------------------------------------------------------------------
     def plot_tokens_length_distribution(self, data: pd.DataFrame) -> list[Any]:
+        """
+        Generate histogram panels describing vocabulary and decoded token
+        lengths for each tokenizer processed in the benchmark.
+
+        Keyword arguments:
+        data -- dataframe produced by calculate_vocabulary_statistics containing
+        vocabulary and decoded tokens per tokenizer
+
+        Return value:
+        List with the Matplotlib figures created for every tokenizer.
+        """
         figures = []
         # Preserve tokenizer order as encountered
         tokenizers = data["tokenizer"].astype(str).dropna().unique().tolist()

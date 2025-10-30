@@ -35,6 +35,17 @@ class DatasetManager:
 
     # -------------------------------------------------------------------------
     def dataset_download(self) -> None | dict[str, Any]:
+        """
+        Load the dataset configured by the user, pulling either local CSV files or
+        downloading an open dataset from Hugging Face.
+
+        Keyword arguments:
+        None
+
+        Return value:
+        Dictionary containing the loaded dataset objects keyed by name, or None
+        when the operation fails or yields no data.
+        """
         datasets = {}
         subfolder = "custom" if self.has_custom_dataset else "open"
         base_path = os.path.join(DATASETS_PATH, subfolder)
@@ -128,6 +139,16 @@ class TokenizersDownloadManager:
 
     # -------------------------------------------------------------------------
     def get_tokenizer_identifiers(self, limit: int = 100, **kwargs) -> list[Any]:
+        """
+        Retrieve the most downloaded tokenizer identifiers from Hugging Face.
+
+        Keyword arguments:
+        limit -- maximum number of identifiers to request (default 100)
+
+        Return value:
+        List with the identifiers of the retrieved tokenizers ordered by
+        popularity.
+        """
         api = HfApi(token=self.hf_access_token) if self.hf_access_token else HfApi()
         try:
             models = api.list_models(
@@ -144,6 +165,17 @@ class TokenizersDownloadManager:
 
     # -------------------------------------------------------------------------
     def tokenizer_download(self, **kwargs) -> dict[str, Any]:
+        """
+        Download the tokenizers requested in the configuration and load any
+        custom tokenizers stored locally.
+
+        Keyword arguments:
+        kwargs -- optional worker/progress references propagated from the GUI
+
+        Return value:
+        Dictionary mapping tokenizer identifiers to instantiated tokenizer
+        objects ready for benchmarking.
+        """
         tokenizers = {}
         for tokenizer_id in self.tokenizers:
             try:
