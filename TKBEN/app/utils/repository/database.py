@@ -119,6 +119,17 @@ class TKBENDatabase:
 
     # -------------------------------------------------------------------------
     def get_table_class(self, table_name: str) -> Any:
+        """
+        Resolve the SQLAlchemy declarative model that matches the provided table
+        name using the metadata registry populated by the ORM models.
+
+        Keyword arguments:
+        table_name -- name of the database table to resolve
+
+        Return value:
+        Declarative class associated with the table name; raises ValueError when
+        no class is registered for the given name.
+        """
         for cls in Base.__subclasses__():
             if hasattr(cls, "__tablename__") and cls.__tablename__ == table_name:
                 return cls
@@ -128,6 +139,18 @@ class TKBENDatabase:
     def upsert_dataframe(
         self, df: pd.DataFrame, table_cls: Any, batch_size: int | None = None
     ) -> None:
+        """
+        Perform batched upsert operations into the provided table, using the
+        table unique constraints to decide which rows need to be updated.
+
+        Keyword arguments:
+        df -- dataframe containing the rows to be persisted
+        table_cls -- declarative model representing the target table
+        batch_size -- optional override for the commit batch size
+
+        Return value:
+        None; the method writes the dataframe contents into the SQLite database.
+        """
         batch_size = batch_size if batch_size else self.insert_batch_size
         table = table_cls.__table__
         session = self.Session()
@@ -184,6 +207,17 @@ class TKBENDatabase:
     def export_all_tables_as_csv(
         self, export_dir: str, chunksize: int | None = None
     ) -> None:
+        """
+        Export every table maintained by the application into CSV files, storing
+        the result in the provided directory.
+
+        Keyword arguments:
+        export_dir -- directory used to store the generated CSV files
+        chunksize -- optional chunk size used when streaming large tables
+
+        Return value:
+        None; CSV files are written to the specified directory.
+        """
         os.makedirs(export_dir, exist_ok=True)
         with self.engine.connect() as conn:
             for table in Base.metadata.sorted_tables:
