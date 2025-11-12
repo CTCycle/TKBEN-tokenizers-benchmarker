@@ -8,10 +8,10 @@ TKBEN is a comprehensive toolkit designed to simplify tokenizer analysis and com
 With TKBEN, users can effectively evaluate tokenizer performance in various NLP tasks such as text classification, sentiment analysis, language translation, and semantic search, ensuring informed decisions and optimized model performance.
 
 ## 2. Installation 
-The installation process for Windows is fully automated. Simply run the script *start_on_windows.bat* to begin. During its initial execution, the script installs portable Python, necessary dependencies, minimizing user interaction and ensuring all components are ready for local use.  
+The installation process for Windows is fully automated. Simply run the script `start_on_windows.bat` to begin. During its initial execution, the script installs portable Python, necessary dependencies, minimizing user interaction and ensuring all components are ready for local use.  
 
 ## 3. How to use
-On Windows, run *start_on_windows.bat* to launch the application. Please note that some antivirus software, such as Avast, may flag or quarantine python.exe when called by the .bat file. If you encounter unusual behavior, consider adding an exception in your antivirus settings.
+On Windows, run `start_on_windows.bat` to launch the application. Please note that some antivirus software, such as Avast, may flag or quarantine python.exe when called by the .bat file. If you encounter unusual behavior, consider adding an exception in your antivirus settings.
 
 The intuitive main interface facilitates easy selection of text datasets and tokenizers, allowing users to run benchmarks across multiple tokenizers simultaneously. Benchmark results are conveniently stored in the application's database.
 
@@ -48,7 +48,7 @@ You can run *setup_and_maintenance.bat* to start the external tools for maintena
 ### 3.1 Resources
 This folder organizes dataset and tokenizers benchmark results. By default, all data is stored within an SQLite database. To visualize and interact with the SQLite database, we recommend downloading and installing the DB Browser for SQLite, available at: https://sqlitebrowser.org/dl/. The directory structure includes the following folders:
 
-- **database:** tokenizers benchmark results will be stored centrally within the embedded SQLite database. Graphical evaluation outputs for the performed benchmarks will be saved separately in *database/evaluation*. Moreover, this folder contains the downloaded datasets that are used to test the tokenizers performance (open access datasets are saved in *datasets/open* while the custom dataset is saved into *datasets/custom*). Last but not least, the downloaded tokenizers are saved in *database/tokenizers* following the same organisation of the datasets folder. 
+- **database:** tokenizers benchmark results will be stored within the embedded SQLite database. Graphical evaluation outputs for the performed benchmarks will be saved separately in *database/evaluation*. Moreover, this folder contains the downloaded datasets that are used to test the tokenizers performance (open access datasets are saved in *datasets/open* while the custom dataset is saved into *datasets/custom*). Last but not least, the downloaded tokenizers are saved in *database/tokenizers* following the same organisation of the datasets folder. 
 
 - **logs:** log files are saved here
 
