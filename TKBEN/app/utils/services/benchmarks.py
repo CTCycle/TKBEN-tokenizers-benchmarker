@@ -14,8 +14,8 @@ from tqdm import tqdm
 from transformers.utils.logging import set_verbosity_error
 
 from TKBEN.app.client.workers import check_thread_status, update_progress_callback
-from TKBEN.app.constants import EVALUATION_PATH, TOKENIZER_PATH
-from TKBEN.app.logger import logger
+from TKBEN.app.utils.constants import EVALUATION_PATH, TOKENIZER_PATH
+from TKBEN.app.utils.logger import logger
 from TKBEN.app.utils.repository.serializer import DataSerializer
 
 # [TOKENIZERS EXPLORER]

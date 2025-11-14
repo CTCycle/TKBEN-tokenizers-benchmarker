@@ -10,8 +10,8 @@ from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import declarative_base, sessionmaker
 from tqdm import tqdm
 
-from TKBEN.app.constants import DATA_PATH
-from TKBEN.app.logger import logger
+from TKBEN.app.utils.constants import DATA_PATH
+from TKBEN.app.utils.logger import logger
 from TKBEN.app.utils.singleton import singleton
 
 Base = declarative_base()

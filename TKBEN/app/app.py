@@ -9,7 +9,7 @@ warnings.simplefilter(action="ignore", category=Warning)
 
 # [IMPORT CUSTOM MODULES]
 from TKBEN.app.client.window import MainWindow, apply_style
-from TKBEN.app.constants import UI_PATH
+from TKBEN.app.utils.constants import UI_PATH
 
 # [RUN MAIN]
 ###############################################################################
