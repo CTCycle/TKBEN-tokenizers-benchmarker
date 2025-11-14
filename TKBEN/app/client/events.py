@@ -9,7 +9,7 @@ from TKBEN.app.client.workers import (
     check_thread_status,
     update_progress_callback,
 )
-from TKBEN.app.logger import logger
+from TKBEN.app.utils.logger import logger
 from TKBEN.app.utils.services.benchmarks import (
     BenchmarkTokenizers,
     VisualizeBenchmarkResults,
