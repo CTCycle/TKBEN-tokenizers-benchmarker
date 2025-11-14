@@ -3,10 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any, cast
 
-from TKBEN.app.variables import EnvironmentVariables
-
-EV = EnvironmentVariables()
-
+from TKBEN.app.utils.variables import env_variables
 from functools import partial
 
 from PySide6.QtCore import QFile, QIODevice, QThreadPool, Slot
@@ -37,8 +34,8 @@ from TKBEN.app.client.events import (
     VisualizationEnvents,
 )
 from TKBEN.app.client.workers import ThreadWorker
-from TKBEN.app.configuration import Configuration
-from TKBEN.app.logger import logger
+from TKBEN.app.utils.configuration import Configuration
+from TKBEN.app.utils.logger import logger
 from TKBEN.app.utils.repository.database import database
 
 
@@ -85,7 +82,7 @@ class MainWindow:
         self.worker: ThreadWorker | None = None
 
         # get Hugging Face access token
-        self.hf_access_token = EV.get_HF_access_token()
+        self.hf_access_token = env_variables.get_HF_access_token()
 
         # initialize database
         database.initialize_database()
