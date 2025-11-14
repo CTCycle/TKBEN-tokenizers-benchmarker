@@ -2,12 +2,14 @@ import os
 
 from dotenv import load_dotenv
 
-from TKBEN.app.constants import PROJECT_DIR
-from TKBEN.app.logger import logger
+from TKBEN.app.utils.constants import PROJECT_DIR
+from TKBEN.app.utils.logger import logger
+from TKBEN.app.utils.singleton import singleton
 
 
-# [IMPORT CUSTOM MODULES]
+# [LOAD ENVIRONMENT VARIABLES]
 ###############################################################################
+@singleton
 class EnvironmentVariables:
     def __init__(self) -> None:
         self.env_path = os.path.join(PROJECT_DIR, "setup", ".env")
@@ -23,3 +25,5 @@ class EnvironmentVariables:
     # -------------------------------------------------------------------------
     def get_HF_access_token(self) -> str:
         return os.getenv("HF_ACCESS_TOKEN", "")
+    
+env_variables = EnvironmentVariables()

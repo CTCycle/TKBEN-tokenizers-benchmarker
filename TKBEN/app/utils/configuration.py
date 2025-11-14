@@ -2,7 +2,7 @@ import json
 import os
 from typing import Any
 
-from TKBEN.app.constants import CONFIG_PATH
+from TKBEN.app.utils.constants import CONFIG_PATH
 
 
 ###############################################################################
