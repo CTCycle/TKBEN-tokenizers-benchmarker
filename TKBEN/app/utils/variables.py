@@ -25,5 +25,6 @@ class EnvironmentVariables:
     # -------------------------------------------------------------------------
     def get_HF_access_token(self) -> str:
         return os.getenv("HF_ACCESS_TOKEN", "")
-    
+
+
 env_variables = EnvironmentVariables()

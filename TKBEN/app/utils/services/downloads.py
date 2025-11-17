@@ -72,27 +72,29 @@ class DatasetManager:
                 try:
                     df = pd.read_csv(file_path)
                 except Exception:
-                    logger.warning('Failed to load custom dataset from %s', file_path)
+                    logger.warning("Failed to load custom dataset from %s", file_path)
                     logger.debug(
-                        'Custom dataset load failed for %s', file_path, exc_info=True
+                        "Custom dataset load failed for %s", file_path, exc_info=True
                     )
                 else:
                     key = os.path.splitext(os.path.basename(file_path))[0]
                     datasets[key] = df
 
         else:
-            corpus = self.dataset.get('corpus', None)
-            config = self.dataset.get('config', None)
-            dataset_path = os.path.join(base_path, f'{corpus}_{config}')
+            corpus = self.dataset.get("corpus", None)
+            config = self.dataset.get("config", None)
+            dataset_path = os.path.join(base_path, f"{corpus}_{config}")
             os.makedirs(dataset_path, exist_ok=True)
             try:
                 dataset = load_dataset(corpus, config, cache_dir=dataset_path)
             except Exception:
                 logger.warning(
-                    'Failed to download dataset %s with configuration %s', corpus, config
+                    "Failed to download dataset %s with configuration %s",
+                    corpus,
+                    config,
                 )
                 logger.debug(
-                    'Dataset download failure for %s/%s', corpus, config, exc_info=True
+                    "Dataset download failure for %s/%s", corpus, config, exc_info=True
                 )
                 return None
             datasets[config] = dataset
@@ -155,8 +157,8 @@ class TokenizersDownloadManager:
                 search="tokenizer", sort="downloads", direction=-1, limit=limit
             )
         except Exception:
-            logger.warning('Failed to retrieve tokenizer identifiers from HuggingFace')
-            logger.debug('Tokenizer identifier fetch failed', exc_info=True)
+            logger.warning("Failed to retrieve tokenizer identifiers from HuggingFace")
+            logger.debug("Tokenizer identifier fetch failed", exc_info=True)
             return []
 
         identifiers = [m.modelId for m in models]  # type: ignore
@@ -179,12 +181,12 @@ class TokenizersDownloadManager:
         tokenizers = {}
         for tokenizer_id in self.tokenizers:
             try:
-                tokenizer_name = tokenizer_id.replace('/', '_')
+                tokenizer_name = tokenizer_id.replace("/", "_")
                 tokenizer_save_path = os.path.join(
-                    TOKENIZER_PATH, 'open', tokenizer_name
+                    TOKENIZER_PATH, "open", tokenizer_name
                 )
                 os.makedirs(tokenizer_save_path, exist_ok=True)
-                logger.info(f'Downloading and saving tokenizer: {tokenizer_id}')
+                logger.info(f"Downloading and saving tokenizer: {tokenizer_id}")
                 tokenizer = transformers.AutoTokenizer.from_pretrained(
                     tokenizer_id,
                     cache_dir=tokenizer_save_path,
@@ -192,54 +194,52 @@ class TokenizersDownloadManager:
                 )
                 if not self.is_tokenizer_compatible(tokenizer):
                     logger.warning(
-                        'Downloaded tokenizer %s is not compatible and will be skipped',
+                        "Downloaded tokenizer %s is not compatible and will be skipped",
                         tokenizer_id,
                     )
                     continue
                 tokenizers[tokenizer_id] = tokenizer
 
             except Exception:
-                logger.warning('Failed to download tokenizer %s', tokenizer_id)
+                logger.warning("Failed to download tokenizer %s", tokenizer_id)
                 logger.debug(
-                    'Tokenizer download error for %s', tokenizer_id, exc_info=True
+                    "Tokenizer download error for %s", tokenizer_id, exc_info=True
                 )
 
             finally:
-                check_thread_status(kwargs.get('worker', None))
+                check_thread_status(kwargs.get("worker", None))
 
         # load custom tokenizer in target subfolder if .json files are found and
         # if the user has selected the option to include custom tokenizers
-        custom_tokenizer_path = os.path.join(TOKENIZER_PATH, 'custom')
+        custom_tokenizer_path = os.path.join(TOKENIZER_PATH, "custom")
         if os.path.exists(custom_tokenizer_path) and self.has_custom_tokenizer:
-            check_thread_status(kwargs.get('worker', None))
+            check_thread_status(kwargs.get("worker", None))
             json_files = [
                 os.path.join(custom_tokenizer_path, fn)
                 for fn in os.listdir(custom_tokenizer_path)
-                if fn.lower().endswith('.json')
+                if fn.lower().endswith(".json")
             ]
 
             if json_files:
-                logger.info(f'Loading custom tokenizers from {custom_tokenizer_path}')
+                logger.info(f"Loading custom tokenizers from {custom_tokenizer_path}")
                 for js in json_files:
                     try:
                         tokenizer = Tokenizer.from_file(js)
                     except Exception:
-                        logger.warning('Failed to load custom tokenizer from %s', js)
+                        logger.warning("Failed to load custom tokenizer from %s", js)
                         logger.debug(
-                            'Custom tokenizer load failed for %s', js, exc_info=True
+                            "Custom tokenizer load failed for %s", js, exc_info=True
                         )
                         continue
 
                     if not self.is_tokenizer_compatible(tokenizer):
                         logger.warning(
-                            'Custom tokenizer at %s is not compatible and will be skipped',
+                            "Custom tokenizer at %s is not compatible and will be skipped",
                             js,
                         )
                         continue
 
-                    tokenizer_name = os.path.basename(js).split('.')[0]
-                    tokenizers[f'CUSTOM {tokenizer_name}'] = tokenizer
-
-
+                    tokenizer_name = os.path.basename(js).split(".")[0]
+                    tokenizers[f"CUSTOM {tokenizer_name}"] = tokenizer
 
         return tokenizers
