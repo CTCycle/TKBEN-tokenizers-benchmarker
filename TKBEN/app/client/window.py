@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, cast
-
-from TKBEN.app.utils.variables import env_variables
 from functools import partial
+from typing import Any, cast
 
 from PySide6.QtCore import QFile, QIODevice, QThreadPool, Slot
 from PySide6.QtGui import QAction
@@ -37,6 +35,7 @@ from TKBEN.app.client.workers import ThreadWorker
 from TKBEN.app.utils.configuration import Configuration
 from TKBEN.app.utils.logger import logger
 from TKBEN.app.utils.repository.database import database
+from TKBEN.app.utils.variables import env_variables
 
 
 ###############################################################################

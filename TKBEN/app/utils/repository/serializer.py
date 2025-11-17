@@ -15,6 +15,7 @@ class DataSerializer:
     def load_local_metrics(self) -> pd.DataFrame:
         # Local per-text, per-tokenizer stats
         return database.load_from_database("TOKENIZATION_LOCAL_STATS")
+
     # -------------------------------------------------------------------------
     def load_global_metrics(self) -> pd.DataFrame:
         return database.load_from_database("TOKENIZATION_GLOBAL_METRICS")
@@ -54,5 +55,3 @@ class DataSerializer:
     # -------------------------------------------------------------------------
     def save_global_metrics(self, dataset: pd.DataFrame) -> None:
         database.upsert_into_database(dataset, "TOKENIZATION_GLOBAL_METRICS")
-
-
