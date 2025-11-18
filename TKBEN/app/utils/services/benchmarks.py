@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import re
 import time
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any
 
 import matplotlib.pyplot as plt
@@ -247,6 +247,65 @@ class BenchmarkTools:
         call_method = getattr(tokenizer, "__call__", None)
         return callable(call_method)
 
+    # -------------------------------------------------------------------------
+    def boundary_preservation_score(
+        self, original_text: str, decoded_text: str
+    ) -> float:
+        if not original_text:
+            return 0.0
+
+        safe_original = str(original_text)
+        safe_decoded = str(decoded_text)
+        limit = min(len(safe_original), len(safe_decoded))
+        if limit == 0:
+            return 0.0
+
+        boundary_matches = 0
+        total_boundaries = 0
+        for idx in range(limit):
+            char_original = safe_original[idx]
+            if char_original.isspace() or re.match(r"[^\w\s]", char_original):
+                total_boundaries += 1
+                if char_original == safe_decoded[idx]:
+                    boundary_matches += 1
+
+        if total_boundaries == 0:
+            return 0.0
+
+        return boundary_matches / total_boundaries
+
+    # -------------------------------------------------------------------------
+    def jaccard_similarity(
+        self, first: Sequence[str], second: Sequence[str]
+    ) -> float:
+        if not first and not second:
+            return 1.0
+        if not first or not second:
+            return 0.0
+
+        first_set = set(first)
+        second_set = set(second)
+        union_size = len(first_set.union(second_set))
+        if union_size == 0:
+            return 0.0
+
+        return len(first_set.intersection(second_set)) / union_size
+
+    # -------------------------------------------------------------------------
+    def token_entropy(self, counts: Mapping[str, int]) -> float:
+        if not counts:
+            return 0.0
+        values = np.fromiter(counts.values(), dtype=float)
+        total = values.sum()
+        if total <= 0:
+            return 0.0
+        probs = values / total
+        probs = probs[probs > 0]
+        if probs.size == 0:
+            return 0.0
+
+        return float(-np.sum(probs * np.log2(probs)))
+
 
 # [TOKENIZERS EXPLORER]
 ###############################################################################
@@ -261,6 +320,98 @@ class BenchmarkTokenizers:
         self.include_NSL = configuration.get("include_NSL", False)
         self.configuration = configuration
         self.tools = BenchmarkTools()
+
+    # -------------------------------------------------------------------------
+    def tokenize_document(
+        self,
+        tokenizer: Any,
+        text_value: str,
+        uses_tokenize: bool,
+        tokenize_method: Callable[[Any], Any] | None,
+    ) -> tuple[str, list[str]]:
+        tokens_list: list[str] = []
+        decoded_text = ""
+
+        if uses_tokenize and tokenize_method is not None:
+            try:
+                raw_tokens = tokenize_method(text_value)  # type: ignore[operator]
+                tokens_list = self.tools.normalize_token_output(raw_tokens)
+            except Exception:
+                logger.debug(
+                    "Tokenizer %s raised an exception while tokenizing text",
+                    getattr(tokenizer, "name_or_path", type(tokenizer).__name__),
+                    exc_info=True,
+                )
+                tokens_list = []
+
+        if not tokens_list:
+            decoded_text, tokens_list = self.tools.process_tokens(text_value, tokenizer)
+        else:
+            decoded_text = " ".join(tokens_list)
+
+        return decoded_text, tokens_list
+
+    # -------------------------------------------------------------------------
+    def calculate_morphological_consistency(
+        self, tokenizer: Any, base_words: set[str]
+    ) -> float:
+        if not base_words or not self.tools.is_tokenizer_compatible(tokenizer):
+            return 0.0
+
+        selected_words = [
+            w for w in sorted(base_words) if re.match(r"^[A-Za-z]+$", w)
+        ][:200]
+        if not selected_words:
+            return 0.0
+
+        scores: list[float] = []
+        for word in selected_words:
+            base_tokens = self.tools.process_tokens(word, tokenizer)[1]
+            if not base_tokens:
+                continue
+
+            for variant in (f"{word}s", f"{word}ed", f"{word}ing"):
+                variant_tokens = self.tools.process_tokens(variant, tokenizer)[1]
+                if not variant_tokens:
+                    continue
+                score = self.tools.jaccard_similarity(base_tokens, variant_tokens)
+                scores.append(score)
+
+        if not scores:
+            return 0.0
+
+        return float(np.mean(scores))
+
+    # -------------------------------------------------------------------------
+    def calculate_token_id_monotonicity(
+        self, vocab_result: Mapping[Any, Any] | Sequence[Any] | None
+    ) -> float:
+        token_id_pairs: list[tuple[int, str]] = []
+        if isinstance(vocab_result, Mapping):
+            for token, idx in vocab_result.items():
+                try:
+                    token_id_pairs.append((int(idx), str(token)))
+                except Exception:
+                    continue
+        elif isinstance(vocab_result, Sequence) and not isinstance(
+            vocab_result, (str, bytes)
+        ):
+            for idx, token in enumerate(vocab_result):
+                token_id_pairs.append((idx, str(token)))
+
+        if not token_id_pairs:
+            return 0.0
+
+        token_id_pairs.sort(key=lambda pair: pair[0])
+        lengths = [len(tok) for _, tok in token_id_pairs]
+        if len(lengths) < 2:
+            return 1.0
+
+        monotonic_steps = sum(
+            1 for i in range(1, len(lengths)) if lengths[i] >= lengths[i - 1]
+        )
+
+        return monotonic_steps / (len(lengths) - 1)
 
     # -------------------------------------------------------------------------
     def calculate_text_statistics(
@@ -278,6 +429,7 @@ class BenchmarkTokenizers:
         Return value:
         Dataframe enriched with per-document statistics, or None when the
         computation cannot proceed.
+        
         """
         # interrupt the operation if no text dataset is available
         if documents.empty:
@@ -518,43 +670,20 @@ class BenchmarkTokenizers:
 
             t0 = time.perf_counter()
             try:
+                tokenize_method = getattr(tokenizer, "tokenize", None)
+                uses_tokenize = callable(tokenize_method)
                 if "CUSTOM" in name and self.include_custom_tokenizer:
-                    decoded_tokens: list[str] = []
-                    split_tokens: list[list[str]] = []
-                    for text_value in text_values:
-                        decoded, tokens_list = self.tools.process_tokens(
-                            text_value, tokenizer
-                        )
-                        decoded_tokens.append(decoded)
-                        split_tokens.append(tokens_list)
-                else:
-                    tokenize_method = getattr(tokenizer, "tokenize", None)
-                    uses_tokenize = callable(tokenize_method)
-                    decoded_tokens = []
-                    split_tokens = []
-                    for text_value in text_values:
-                        tokens_list: list[str] = []
-                        if uses_tokenize:
-                            try:
-                                raw_tokens = tokenize_method(text_value)  # type: ignore[operator]
-                                tokens_list = self.tools.normalize_token_output(
-                                    raw_tokens
-                                )
-                            except Exception:
-                                logger.debug(
-                                    "Tokenizer %s raised an exception while tokenizing text",
-                                    name,
-                                    exc_info=True,
-                                )
-                                tokens_list = []
-                        if not tokens_list:
-                            decoded, tokens_list = self.tools.process_tokens(
-                                text_value, tokenizer
-                            )
-                        else:
-                            decoded = " ".join(tokens_list)
-                        decoded_tokens.append(decoded)
-                        split_tokens.append(tokens_list)
+                    uses_tokenize = False
+                    tokenize_method = None
+
+                decoded_tokens = []
+                split_tokens = []
+                for text_value in text_values:
+                    decoded, tokens_list = self.tokenize_document(
+                        tokenizer, text_value, uses_tokenize, tokenize_method
+                    )
+                    decoded_tokens.append(decoded)
+                    split_tokens.append(tokens_list)
 
                 data["tokens"] = decoded_tokens
                 data["tokens_split"] = split_tokens
@@ -589,6 +718,73 @@ class BenchmarkTokenizers:
                 data["num_characters"] / data["tokens_count"],
                 0,
             )
+
+            token_frequency: dict[str, int] = {}
+            boundary_preservation: list[float] = []
+            round_trip_token_fidelity: list[float] = []
+            round_trip_text_fidelity: list[float] = []
+            determinism_flags: list[float] = []
+            bytes_per_character: list[float] = []
+            characters_per_token_values: list[float] = []
+            token_length_variances: list[float] = []
+            token_length_stds: list[float] = []
+            token_lengths: list[int] = []
+            total_bytes = 0
+
+            for text_value, decoded_text, tokens_list in zip(
+                text_values, decoded_tokens, split_tokens
+            ):
+                total_bytes += len(str(text_value).encode("utf-8"))
+
+                boundary_preservation.append(
+                    self.tools.boundary_preservation_score(text_value, decoded_text)
+                )
+
+                determinism_tokens = self.tokenize_document(
+                    tokenizer, text_value, uses_tokenize, tokenize_method
+                )[1]
+                determinism_flags.append(float(determinism_tokens == tokens_list))
+
+                rt_decoded, rt_tokens = self.tools.process_tokens(
+                    decoded_text, tokenizer
+                )
+                round_trip_token_fidelity.append(float(rt_tokens == tokens_list))
+                round_trip_text_fidelity.append(float(rt_decoded == text_value))
+
+                if tokens_list:
+                    lengths_arr = np.fromiter(
+                        (len(tok) for tok in tokens_list), dtype=float
+                    )
+                    token_lengths.extend(int(len(tok)) for tok in tokens_list)
+                    token_length_variances.append(float(np.var(lengths_arr)))
+                    token_length_stds.append(float(np.std(lengths_arr)))
+                    characters_per_token_values.append(
+                        float(len(text_value) / len(tokens_list))
+                    )
+                else:
+                    token_length_variances.append(0.0)
+                    token_length_stds.append(0.0)
+                    characters_per_token_values.append(0.0)
+
+                text_len = len(text_value)
+                if text_len > 0:
+                    bytes_per_character.append(
+                        float(len(text_value.encode("utf-8")) / text_len)
+                    )
+                else:
+                    bytes_per_character.append(0.0)
+
+                for tok in tokens_list:
+                    token_frequency[tok] = token_frequency.get(tok, 0) + 1
+
+            data["boundary_preservation_rate"] = boundary_preservation
+            data["round_trip_token_fidelity"] = round_trip_token_fidelity
+            data["round_trip_text_fidelity"] = round_trip_text_fidelity
+            data["determinism_stability"] = determinism_flags
+            data["bytes_per_character"] = bytes_per_character
+            data["characters_per_token"] = characters_per_token_values
+            data["token_length_variance"] = token_length_variances
+            data["token_length_std"] = token_length_stds
 
             elapsed = max(t1 - t0, 1e-9)
             total_tokens = int(data["tokens_count"].sum())
@@ -706,6 +902,52 @@ class BenchmarkTokenizers:
                 if dataset_chars
                 else 0.0
             )
+            determinism_rate = (
+                float(np.mean(determinism_flags)) if determinism_flags else 0.0
+            )
+            boundary_preservation_rate = (
+                float(np.mean(boundary_preservation))
+                if boundary_preservation
+                else 0.0
+            )
+            round_trip_fidelity_rate = (
+                float(np.mean(round_trip_token_fidelity))
+                if round_trip_token_fidelity
+                else 0.0
+            )
+            round_trip_text_rate = (
+                float(np.mean(round_trip_text_fidelity))
+                if round_trip_text_fidelity
+                else 0.0
+            )
+            compression_chars_per_token = (
+                total_chars / total_tokens if total_tokens else 0.0
+            )
+            compression_bytes_per_character = (
+                total_bytes / total_chars if total_chars else 0.0
+            )
+            token_entropy = self.tools.token_entropy(token_frequency)
+            rare_token_once = int(
+                sum(1 for count in token_frequency.values() if count == 1)
+            )
+            rare_token_twice = int(
+                sum(1 for count in token_frequency.values() if count == 2)
+            )
+            token_unigram_coverage = (
+                len(token_frequency) / vocabulary_size if vocabulary_size else 0.0
+            )
+            token_length_variance_global = (
+                float(np.var(token_lengths)) if token_lengths else 0.0
+            )
+            token_length_std_global = (
+                float(np.std(token_lengths)) if token_lengths else 0.0
+            )
+            segmentation_consistency = self.calculate_morphological_consistency(
+                tokenizer, unique_words
+            )
+            token_id_monotonicity = self.calculate_token_id_monotonicity(
+                vocab_result
+            )
 
             global_metrics_rows.append(
                 {
@@ -721,6 +963,22 @@ class BenchmarkTokenizers:
                     "oov_rate": float(oov_rate),
                     "word_recovery_rate": float(word_recovery_rate),
                     "character_coverage": float(character_coverage),
+                    "segmentation_consistency": float(segmentation_consistency),
+                    "determinism_rate": float(determinism_rate),
+                    "token_distribution_entropy": float(token_entropy),
+                    "rare_token_tail_1": int(rare_token_once),
+                    "rare_token_tail_2": int(rare_token_twice),
+                    "boundary_preservation_rate": float(boundary_preservation_rate),
+                    "compression_chars_per_token": float(compression_chars_per_token),
+                    "compression_bytes_per_character": float(
+                        compression_bytes_per_character
+                    ),
+                    "round_trip_fidelity_rate": float(round_trip_fidelity_rate),
+                    "round_trip_text_fidelity_rate": float(round_trip_text_rate),
+                    "token_id_ordering_monotonicity": float(token_id_monotonicity),
+                    "token_unigram_coverage": float(token_unigram_coverage),
+                    "token_length_variance": float(token_length_variance_global),
+                    "token_length_std": float(token_length_std_global),
                 }
             )
 
