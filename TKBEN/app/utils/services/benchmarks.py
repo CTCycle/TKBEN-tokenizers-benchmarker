@@ -22,6 +22,10 @@ from TKBEN.app.utils.repository.serializer import DataSerializer
 # [TOKENIZERS EXPLORER]
 ###############################################################################
 class BenchmarkTools:
+
+    def __call__(self) -> None:
+        pass
+    
     # -------------------------------------------------------------------------
     def process_tokens(self, text: str, tokenizer: Any) -> tuple[str, list[str]]:
         """
