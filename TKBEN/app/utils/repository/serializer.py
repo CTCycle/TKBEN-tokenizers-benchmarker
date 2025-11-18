@@ -46,6 +46,11 @@ class DataSerializer:
 
     # -------------------------------------------------------------------------
     def save_local_metrics(self, dataset: pd.DataFrame) -> None:
+        table_cls = database.get_table_class("TOKENIZATION_LOCAL_STATS")
+        allowed_columns = set(table_cls.__table__.columns.keys())
+        extra_columns = [c for c in dataset.columns if c not in allowed_columns]
+        if extra_columns:
+            dataset = dataset.drop(columns=extra_columns)
         database.save_into_database(dataset, "TOKENIZATION_LOCAL_STATS")
 
     # -------------------------------------------------------------------------

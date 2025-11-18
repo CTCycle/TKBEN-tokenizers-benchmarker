@@ -30,6 +30,14 @@ class TokenizationLocalStats(Base):
     AVG_tokens_length = Column(Float)
     tokens_to_words_ratio = Column(Float)
     bytes_per_token = Column(Float)
+    boundary_preservation_rate = Column(Float)
+    round_trip_token_fidelity = Column(Float)
+    round_trip_text_fidelity = Column(Float)
+    determinism_stability = Column(Float)
+    bytes_per_character = Column(Float)
+    characters_per_token = Column(Float)
+    token_length_variance = Column(Float)
+    token_length_std = Column(Float)
     __table_args__ = (UniqueConstraint("tokenizer", "text"),)
 
 
@@ -56,6 +64,20 @@ class TokenizationGlobalMetrics(Base):
     oov_rate = Column(Float)
     word_recovery_rate = Column(Float)
     character_coverage = Column(Float)
+    segmentation_consistency = Column(Float)
+    determinism_rate = Column(Float)
+    token_distribution_entropy = Column(Float)
+    rare_token_tail_1 = Column(Integer)
+    rare_token_tail_2 = Column(Integer)
+    boundary_preservation_rate = Column(Float)
+    compression_chars_per_token = Column(Float)
+    compression_bytes_per_character = Column(Float)
+    round_trip_fidelity_rate = Column(Float)
+    round_trip_text_fidelity_rate = Column(Float)
+    token_id_ordering_monotonicity = Column(Float)
+    token_unigram_coverage = Column(Float)
+    token_length_variance = Column(Float)
+    token_length_std = Column(Float)
     __table_args__ = (UniqueConstraint("tokenizer", "dataset_name"),)
 
 
@@ -115,7 +137,39 @@ class TKBENDatabase:
 
     # -------------------------------------------------------------------------
     def initialize_database(self) -> None:
-        Base.metadata.create_all(self.engine)
+        if not os.path.exists(self.db_path):
+            Base.metadata.create_all(self.engine)
+
+    # -------------------------------------------------------------------------
+    def verify_table_schema(self, table_cls: Any) -> None:
+        table_name = table_cls.__tablename__
+        expected_columns = {col.name for col in table_cls.__table__.columns}
+
+        with self.engine.connect() as conn:
+            existing_columns = {
+                row[1]
+                for row in conn.execute(
+                    sqlalchemy.text(f'PRAGMA table_info("{table_name}")')
+                )
+            }
+
+        if not existing_columns:
+            Base.metadata.create_all(self.engine)
+            with self.engine.connect() as conn:
+                existing_columns = {
+                    row[1]
+                    for row in conn.execute(
+                        sqlalchemy.text(f'PRAGMA table_info("{table_name}")')
+                    )
+                }
+
+        missing_columns = expected_columns - existing_columns
+        if missing_columns:
+            raise RuntimeError(
+                f"Database schema mismatch for {table_name}: missing columns "
+                f"{sorted(missing_columns)}. Reinitialize the database to apply the "
+                "latest schema."
+            )
 
     # -------------------------------------------------------------------------
     def get_table_class(self, table_name: str) -> Any:
@@ -194,6 +248,12 @@ class TKBENDatabase:
 
     # -------------------------------------------------------------------------
     def save_into_database(self, df: pd.DataFrame, table_name: str) -> None:
+        try:
+            table_cls = self.get_table_class(table_name)
+            self.verify_table_schema(table_cls)
+        except ValueError:
+            table_cls = None
+
         with self.engine.begin() as conn:
             conn.execute(sqlalchemy.text(f'DELETE FROM "{table_name}"'))
             df.to_sql(table_name, conn, if_exists="append", index=False)
@@ -201,6 +261,7 @@ class TKBENDatabase:
     # -------------------------------------------------------------------------
     def upsert_into_database(self, df: pd.DataFrame, table_name: str) -> None:
         table_cls = self.get_table_class(table_name)
+        self.verify_table_schema(table_cls)
         self.upsert_dataframe(df, table_cls)
 
     # -------------------------------------------------------------------------
