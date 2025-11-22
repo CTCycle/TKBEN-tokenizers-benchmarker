@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 )
 from qt_material import apply_stylesheet
 
+from TKBEN.app.utils.configuration import Configuration
 from TKBEN.app.client.dialogs import LoadConfigDialog, SaveConfigDialog
 from TKBEN.app.client.events import (
     BenchmarkEvents,
@@ -32,10 +33,9 @@ from TKBEN.app.client.events import (
     VisualizationEnvents,
 )
 from TKBEN.app.client.workers import ThreadWorker
-from TKBEN.app.utils.configuration import Configuration
 from TKBEN.app.utils.logger import logger
 from TKBEN.app.utils.repository.database import database
-from TKBEN.app.utils.variables import env_variables
+from TKBEN.app.utils.variables import EnvironmentVariables
 
 
 ###############################################################################
@@ -61,7 +61,7 @@ def apply_style(app: QApplication) -> QApplication:
 
 ###############################################################################
 class MainWindow:
-    def __init__(self, ui_file_path: str) -> None:
+    def __init__(self, ui_file_path: str, env_variables: EnvironmentVariables) -> None:
         super().__init__()
         loader = QUiLoader()
         ui_file = QFile(ui_file_path)

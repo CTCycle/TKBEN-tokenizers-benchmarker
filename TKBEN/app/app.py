@@ -1,6 +1,5 @@
 import sys
 
-# [SETTING WARNINGS]
 import warnings
 
 from PySide6.QtWidgets import QApplication
@@ -8,6 +7,7 @@ from PySide6.QtWidgets import QApplication
 warnings.simplefilter(action="ignore", category=Warning)
 
 # [IMPORT CUSTOM MODULES]
+from TKBEN.app.utils.variables import env_variables
 from TKBEN.app.client.window import MainWindow, apply_style
 from TKBEN.app.utils.constants import UI_PATH
 
@@ -16,6 +16,6 @@ from TKBEN.app.utils.constants import UI_PATH
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app = apply_style(app)
-    main_window = MainWindow(UI_PATH)
+    main_window = MainWindow(UI_PATH, env_variables)                            
     main_window.show()
     sys.exit(app.exec())
