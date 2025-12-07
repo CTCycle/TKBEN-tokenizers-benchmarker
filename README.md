@@ -39,7 +39,7 @@ The intuitive main interface facilitates easy selection of text datasets and tok
 - Word Recovery Rate: Proportion of words that can be exactly reconstructed from tokens.
 - Character Coverage: Proportion of unique characters in the dataset covered by the vocabulary.
 
-![main tab](TKBEN_desktop/assets/main_UI.png)
+![main tab](TKBEN/assets/main_UI.png)
 
 ## 4.1 Setup and Maintenance
 You can run *setup_and_maintenance.bat* to start the external tools for maintenance with the following options:
