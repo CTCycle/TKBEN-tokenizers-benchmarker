@@ -2,9 +2,9 @@ import os
 
 from dotenv import load_dotenv
 
-from TKBEN_desktop.app.utils.constants import PROJECT_DIR
-from TKBEN_desktop.app.utils.logger import logger
-from TKBEN_desktop.app.utils.singleton import singleton
+from TKBEN.app.utils.constants import PROJECT_DIR
+from TKBEN.app.utils.logger import logger
+from TKBEN.app.utils.singleton import singleton
 
 
 # [LOAD ENVIRONMENT VARIABLES]

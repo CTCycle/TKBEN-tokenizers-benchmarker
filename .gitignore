@@ -1,10 +1,10 @@
-TKBEN_desktop/resources/database/tokenizers/*
-TKBEN_desktop/resources/database/datasets/*
-TKBEN_desktop/resources/database/evaluation/*
+TKBEN/resources/database/tokenizers/*
+TKBEN/resources/database/datasets/*
+TKBEN/resources/database/evaluation/*
 
-TKBEN_desktop/setup/python/*
-TKBEN_desktop/setup/uv/*
-TKBEN_desktop/setup/.env
+TKBEN/setup/python/*
+TKBEN/setup/uv/*
+TKBEN/setup/.env
 
 __pycache__
 *.vscode

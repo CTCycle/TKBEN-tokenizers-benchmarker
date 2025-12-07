@@ -25,17 +25,17 @@ from PySide6.QtWidgets import (
 )
 from qt_material import apply_stylesheet
 
-from TKBEN_desktop.app.utils.configuration import Configuration
-from TKBEN_desktop.app.client.dialogs import LoadConfigDialog, SaveConfigDialog
-from TKBEN_desktop.app.client.events import (
+from TKBEN.app.utils.configuration import Configuration
+from TKBEN.app.client.dialogs import LoadConfigDialog, SaveConfigDialog
+from TKBEN.app.client.events import (
     BenchmarkEvents,
     DatasetEvents,
     VisualizationEnvents,
 )
-from TKBEN_desktop.app.client.workers import ThreadWorker
-from TKBEN_desktop.app.utils.logger import logger
-from TKBEN_desktop.app.utils.repository.database import database
-from TKBEN_desktop.app.utils.variables import EnvironmentVariables
+from TKBEN.app.client.workers import ThreadWorker
+from TKBEN.app.utils.logger import logger
+from TKBEN.app.utils.repository.database import database
+from TKBEN.app.utils.variables import EnvironmentVariables
 
 
 ###############################################################################
