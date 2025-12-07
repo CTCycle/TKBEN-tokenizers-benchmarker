@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from TKBEN_desktop.app.utils.repository.database import database
+from TKBEN.app.utils.repository.database import database
 
 
 # [DATA SERIALIZATION]

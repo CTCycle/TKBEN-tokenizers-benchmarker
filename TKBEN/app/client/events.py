@@ -4,19 +4,19 @@ from typing import Any
 
 import pandas as pd
 
-from TKBEN_desktop.app.client.workers import (
+from TKBEN.app.client.workers import (
     ThreadWorker,
     check_thread_status,
     update_progress_callback,
 )
-from TKBEN_desktop.app.utils.logger import logger
-from TKBEN_desktop.app.utils.repository.serializer import DataSerializer
-from TKBEN_desktop.app.utils.services.benchmarks import (
+from TKBEN.app.utils.logger import logger
+from TKBEN.app.utils.repository.serializer import DataSerializer
+from TKBEN.app.utils.services.benchmarks import (
     BenchmarkTokenizers,
     VisualizeBenchmarkResults,
 )
-from TKBEN_desktop.app.utils.services.downloads import DatasetManager, TokenizersDownloadManager
-from TKBEN_desktop.app.utils.services.processing import ProcessDataset
+from TKBEN.app.utils.services.downloads import DatasetManager, TokenizersDownloadManager
+from TKBEN.app.utils.services.processing import ProcessDataset
 
 
 ###############################################################################
