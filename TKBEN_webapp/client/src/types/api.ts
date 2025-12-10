@@ -56,3 +56,15 @@ export interface DatasetDownloadResponse {
     saved_count: number;
     histogram: HistogramData;
 }
+
+/**
+ * Response from the custom dataset upload endpoint
+ */
+export interface CustomDatasetUploadResponse {
+    status: string;
+    dataset_name: string;
+    text_column: string;
+    document_count: number;
+    saved_count: number;
+    histogram: HistogramData;
+}

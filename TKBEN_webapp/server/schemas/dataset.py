@@ -48,3 +48,16 @@ class DatasetLoadResponse(BaseModel):
     status: str = Field(default="success")
     summary: str = Field(default="")
     dataset: DatasetPayload | dict[str, Any] | None = None
+
+
+###############################################################################
+class CustomDatasetUploadResponse(BaseModel):
+    """Response schema for custom dataset file uploads."""
+
+    status: str = Field(default="success")
+    dataset_name: str = Field(..., description="Name derived from uploaded file")
+    text_column: str = Field(..., description="Column used for text extraction")
+    document_count: int = Field(..., description="Total documents in dataset")
+    saved_count: int = Field(..., description="Documents saved to database")
+    histogram: HistogramData = Field(..., description="Document length distribution")
+

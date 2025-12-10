@@ -6,7 +6,6 @@ from collections.abc import Callable, Generator, Iterator
 from dataclasses import dataclass
 from typing import Any
 
-import numpy as np
 import pandas as pd
 import sqlalchemy
 from datasets import Dataset, DatasetDict, load_dataset
@@ -412,120 +411,130 @@ class DatasetService:
         }
 
     # -------------------------------------------------------------------------
-    # Legacy methods kept for backwards compatibility
-    # -------------------------------------------------------------------------
-    def extract_texts(
+    def upload_and_persist(
         self,
-        dataset: Dataset | DatasetDict,
-        text_column: str,
-        remove_invalid: bool = True,
-    ) -> list[str]:
-        """
-        Extract all texts from a dataset into a list.
-        WARNING: This loads all texts into memory. Use _iterate_texts() for
-        large datasets instead.
-        """
-        return list(self._iterate_texts(dataset, text_column, remove_invalid))
-
-    def compute_histogram(
-        self, texts: list[str], num_bins: int | None = None
-    ) -> dict[str, Any]:
-        """Compute histogram from a list of texts."""
-        if not texts:
-            return {"bins": [], "counts": [], "bin_edges": []}
-
-        bins = num_bins or self.HISTOGRAM_BINS
-        lengths = [len(t) for t in texts]
-        lengths_array = np.array(lengths)
-
-        counts, bin_edges = np.histogram(lengths_array, bins=bins)
-
-        bin_labels = []
-        for i in range(len(bin_edges) - 1):
-            left = int(bin_edges[i])
-            right = int(bin_edges[i + 1])
-            bin_labels.append(f"{left}-{right}")
-
-        return {
-            "bins": bin_labels,
-            "counts": counts.tolist(),
-            "bin_edges": [float(e) for e in bin_edges],
-            "min_length": int(lengths_array.min()),
-            "max_length": int(lengths_array.max()),
-            "mean_length": float(lengths_array.mean()),
-            "median_length": float(np.median(lengths_array)),
-        }
-
-    def download_dataset(
-        self,
-        corpus: str,
-        config: str | None = None,
+        file_content: bytes,
+        filename: str,
         remove_invalid: bool = True,
     ) -> dict[str, Any]:
         """
-        Download a dataset and return all texts in memory.
-        WARNING: This loads all texts into memory. For large datasets,
-        use download_and_persist() which streams directly to the database.
+        Process an uploaded CSV/Excel file and persist to database.
+
+        Args:
+            file_content: Raw bytes of the uploaded file.
+            filename: Original filename (used to detect file type and derive dataset name).
+            remove_invalid: If True, filter out empty or non-string texts.
+
+        Returns:
+            Dictionary with dataset_name, text_column, document_count, saved_count, histogram.
         """
-        dataset_name = self.get_dataset_name(corpus, config)
-        cache_path = self.get_cache_path(corpus, config)
+        import io
 
-        os.makedirs(cache_path, exist_ok=True)
+        # Derive dataset name from filename (without extension)
+        base_name = os.path.splitext(filename)[0]
+        dataset_name = f"custom/{base_name}"
+        extension = os.path.splitext(filename)[1].lower()
 
-        logger.info("Downloading dataset: %s", dataset_name)
+        logger.info("Processing uploaded file: %s (type: %s)", filename, extension)
 
+        # Load into DataFrame based on file extension
         try:
-            dataset = load_dataset(
-                corpus,
-                config,
-                cache_dir=cache_path,
-                token=self.hf_access_token,
-            )
-        except Exception:
-            logger.exception("Failed to download dataset %s", dataset_name)
-            raise
+            file_buffer = io.BytesIO(file_content)
+            if extension == ".csv":
+                df = pd.read_csv(file_buffer)
+            elif extension in (".xlsx", ".xls"):
+                df = pd.read_excel(file_buffer)
+            else:
+                raise ValueError(f"Unsupported file type: {extension}. Use .csv, .xlsx, or .xls")
+        except Exception as exc:
+            logger.exception("Failed to read uploaded file %s", filename)
+            raise ValueError(f"Failed to read file: {exc}") from exc
 
-        text_column = self.find_text_column(dataset)
+        if df.empty:
+            raise ValueError("Uploaded file contains no data")
+
+        # Find text column
+        text_column = self._find_text_column_in_dataframe(df)
         if text_column is None:
-            raise ValueError(f"No text column found in dataset {dataset_name}")
+            raise ValueError(
+                f"No text column found in uploaded file. "
+                f"Expected one of: {self.SUPPORTED_TEXT_FIELDS}"
+            )
 
         logger.info("Using text column: %s", text_column)
 
-        texts = self.extract_texts(dataset, text_column, remove_invalid=remove_invalid)
-        logger.info("Extracted %d text documents from %s", len(texts), dataset_name)
+        # Create a generator for streaming texts from the DataFrame
+        def iterate_df_texts() -> Iterator[str]:
+            for value in df[text_column]:
+                if remove_invalid:
+                    if value is None or not isinstance(value, str) or not value.strip():
+                        continue
+                yield str(value)
 
-        histogram = self.compute_histogram(texts)
+        # Collect length statistics (first pass)
+        def length_stream() -> Iterator[int]:
+            for text in iterate_df_texts():
+                yield len(text)
+
+        stats = self.collect_length_statistics(length_stream)
+        logger.info("Found %d valid documents in uploaded file", stats.document_count)
+
+        if stats.document_count == 0:
+            raise ValueError("No valid text documents found after filtering")
+
+        # Persist to database with histogram computation (second pass)
+        batch_size = self.STREAMING_BATCH_SIZE
+        batch: list[dict[str, str]] = []
+        saved_count = 0
+        histogram_builder = HistogramBuilder(stats, self.HISTOGRAM_BINS)
+
+        # Delete any existing entries with this dataset name
+        database.delete_by_key(
+            TextDataset.__tablename__,
+            "dataset_name",
+            dataset_name,
+        )
+
+        for text in iterate_df_texts():
+            histogram_builder.add(len(text))
+            batch.append({"dataset_name": dataset_name, "text": text})
+
+            if len(batch) >= batch_size:
+                batch_df = pd.DataFrame(batch)
+                database.insert_dataframe(batch_df, TextDataset.__tablename__)
+                saved_count += len(batch)
+                logger.info("Saved %d documents so far...", saved_count)
+                batch.clear()
+
+        if batch:
+            batch_df = pd.DataFrame(batch)
+            database.insert_dataframe(batch_df, TextDataset.__tablename__)
+            saved_count += len(batch)
+
+        logger.info("Completed saving %d documents from uploaded file", saved_count)
 
         return {
             "dataset_name": dataset_name,
             "text_column": text_column,
-            "texts": texts,
-            "document_count": len(texts),
-            "cache_path": cache_path,
-            "histogram": histogram,
+            "document_count": stats.document_count,
+            "saved_count": saved_count,
+            "histogram": histogram_builder.build(),
         }
 
-    def save_to_database(self, dataset_name: str, texts: list[str]) -> int:
-        """
-        Save texts to database from a list.
-        WARNING: This creates a full DataFrame in memory. For large datasets,
-        use persist_dataset() with streaming instead.
-        """
-        if not texts:
-            logger.warning("No texts to save for dataset %s", dataset_name)
-            return 0
+    # -------------------------------------------------------------------------
+    def _find_text_column_in_dataframe(self, df: pd.DataFrame) -> str | None:
+        """Find a suitable text column in a pandas DataFrame."""
+        columns = list(df.columns)
 
-        records = [{"dataset_name": dataset_name, "text": text} for text in texts]
-        df = pd.DataFrame(records)
+        for field in self.SUPPORTED_TEXT_FIELDS:
+            if field in columns:
+                return field
 
-        logger.info("Saving %d texts to database for dataset %s", len(texts), dataset_name)
+        for col in columns:
+            if "text" in col.lower():
+                return col
 
-        try:
-            database.bulk_replace_by_key(
-                df, TextDataset.__tablename__, "dataset_name", dataset_name
-            )
-        except Exception:
-            logger.exception("Failed to save dataset %s to database", dataset_name)
-            raise
+        return columns[0] if columns else None
 
-        return len(texts)
+    # -------------------------------------------------------------------------
+    # Legacy methods kept for backwards compatibility

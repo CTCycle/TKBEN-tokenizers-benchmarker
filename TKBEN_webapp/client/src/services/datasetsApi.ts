@@ -1,4 +1,4 @@
-import type { DatasetDownloadRequest, DatasetDownloadResponse } from '../types/api';
+import type { CustomDatasetUploadResponse, DatasetDownloadRequest, DatasetDownloadResponse } from '../types/api';
 
 const API_BASE_URL = '/api';
 
@@ -38,6 +38,44 @@ export async function downloadDataset(
         clearTimeout(timeoutId);
         if (error instanceof Error && error.name === 'AbortError') {
             throw new Error('Dataset download timed out. The dataset may be too large.');
+        }
+        throw error;
+    }
+}
+
+/**
+ * Upload a custom CSV/Excel dataset file and save it to the database.
+ * @param file - The file to upload (.csv, .xlsx, or .xls)
+ * @returns Promise with the upload response including histogram data
+ */
+export async function uploadCustomDataset(
+    file: File
+): Promise<CustomDatasetUploadResponse> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/datasets/upload`, {
+            method: 'POST',
+            body: formData,
+            signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            throw new Error(errorData.detail || `Failed to upload dataset: ${response.status}`);
+        }
+
+        return response.json();
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error instanceof Error && error.name === 'AbortError') {
+            throw new Error('Dataset upload timed out. The file may be too large.');
         }
         throw error;
     }

@@ -1,6 +1,6 @@
-import { useCallback, useState } from 'react';
-import { downloadDataset } from '../services/datasetsApi';
-import type { DatasetDownloadResponse, HistogramData } from '../types/api';
+import { useCallback, useRef, useState } from 'react';
+import { downloadDataset, uploadCustomDataset } from '../services/datasetsApi';
+import type { HistogramData } from '../types/api';
 
 const datasetOptions = [
   { corpus: 'wikitext', configs: ['wikitext-103-v1', 'wikitext-2-v1'] },
@@ -17,7 +17,8 @@ interface DatasetStats {
 }
 
 const DatasetPage = () => {
-  const [useCustom, setUseCustom] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [datasetName, setDatasetName] = useState<string | null>(null);
   const [selectedCorpus, setSelectedCorpus] = useState(datasetOptions[0].corpus);
   const [selectedConfig, setSelectedConfig] = useState(datasetOptions[0].configs[0]);
   const [loading, setLoading] = useState(false);
@@ -50,7 +51,7 @@ const DatasetPage = () => {
     setError(null);
 
     try {
-      const response: DatasetDownloadResponse = await downloadDataset({
+      const response = await downloadDataset({
         corpus: selectedCorpus,
         config: selectedConfig,
       });
@@ -63,6 +64,7 @@ const DatasetPage = () => {
         maxLength: response.histogram.max_length,
       });
       setHistogram(response.histogram);
+      setDatasetName(response.dataset_name);
       setDatasetLoaded(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load dataset');
@@ -70,6 +72,41 @@ const DatasetPage = () => {
       setLoading(false);
     }
   }, [selectedCorpus, selectedConfig]);
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await uploadCustomDataset(file);
+
+      setStats({
+        documentCount: response.document_count,
+        meanLength: response.histogram.mean_length,
+        medianLength: response.histogram.median_length,
+        minLength: response.histogram.min_length,
+        maxLength: response.histogram.max_length,
+      });
+      setHistogram(response.histogram);
+      setDatasetName(response.dataset_name);
+      setDatasetLoaded(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upload dataset');
+    } finally {
+      setLoading(false);
+      // Reset file input so the same file can be uploaded again if needed
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  }, []);
 
   const formatNumber = (num: number) => {
     return num.toLocaleString();
@@ -134,17 +171,9 @@ const DatasetPage = () => {
             <div>
               <p className="panel-label">Select dataset</p>
               <p className="panel-description">
-                Open access datasets are identified by corpus and configuration.
+                Load from HuggingFace or upload a custom CSV/Excel file.
               </p>
             </div>
-            <label className="checkbox">
-              <input
-                type="checkbox"
-                checked={useCustom}
-                onChange={(event) => setUseCustom(event.target.checked)}
-              />
-              <span>Use custom dataset</span>
-            </label>
           </header>
           <div className="panel-body">
             {error && (
@@ -159,7 +188,7 @@ const DatasetPage = () => {
                 className="text-input"
                 value={selectedCorpus}
                 onChange={(event) => handleCorpusChange(event.target.value)}
-                disabled={useCustom || loading}
+                disabled={loading}
               />
             </div>
             <div className="input-stack">
@@ -168,18 +197,33 @@ const DatasetPage = () => {
                 className="text-input"
                 value={selectedConfig}
                 onChange={(event) => handleConfigChange(event.target.value)}
-                disabled={useCustom || loading}
+                disabled={loading}
               />
             </div>
           </div>
           <footer className="panel-footer">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept=".csv,.xlsx,.xls"
+              style={{ display: 'none' }}
+            />
             <button
               type="button"
               className="primary-button"
               onClick={handleLoadDataset}
-              disabled={loading || useCustom}
+              disabled={loading}
             >
               {loading ? 'Loading...' : 'Load dataset'}
+            </button>
+            <button
+              type="button"
+              className="primary-button ghost"
+              onClick={handleUploadClick}
+              disabled={loading}
+            >
+              Upload custom dataset
             </button>
             <button
               type="button"
@@ -195,8 +239,8 @@ const DatasetPage = () => {
             <div>
               <p className="panel-label">Dataset overview</p>
               <p className="panel-description">
-                {datasetLoaded
-                  ? `Stats for ${selectedCorpus}/${selectedConfig}`
+                {datasetLoaded && datasetName
+                  ? `Stats for ${datasetName}`
                   : `Select and load a dataset to view stats`}
               </p>
             </div>
