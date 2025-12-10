@@ -14,7 +14,7 @@ from TKBEN_webapp.server.database.sqlite import SQLiteRepository
 
 ###############################################################################
 class DatabaseBackend(Protocol):
-    db_path: str | None  
+    db_path: str | None
     engine: Any
 
     # -------------------------------------------------------------------------
@@ -28,6 +28,21 @@ class DatabaseBackend(Protocol):
 
     # -------------------------------------------------------------------------
     def count_rows(self, table_name: str) -> int: ...
+
+    # -------------------------------------------------------------------------
+    def bulk_replace_by_key(
+        self, df: pd.DataFrame, table_name: str, key_column: str, key_value: str
+    ) -> None: ...
+
+    # -------------------------------------------------------------------------
+    def delete_by_key(
+        self, table_name: str, key_column: str, key_value: str
+    ) -> None: ...
+
+    # -------------------------------------------------------------------------
+    def insert_dataframe(
+        self, df: pd.DataFrame, table_name: str, ignore_duplicates: bool = True
+    ) -> None: ...
 
 
 BackendFactory = Callable[[DatabaseSettings], DatabaseBackend]
@@ -85,4 +100,26 @@ class TKBENWebappDatabase:
     def count_rows(self, table_name: str) -> int:
         return self.backend.count_rows(table_name)
 
+    # -------------------------------------------------------------------------
+    def bulk_replace_by_key(
+        self, df: pd.DataFrame, table_name: str, key_column: str, key_value: str
+    ) -> None:
+        self.backend.bulk_replace_by_key(df, table_name, key_column, key_value)
+
+    # -------------------------------------------------------------------------
+    def delete_by_key(
+        self, table_name: str, key_column: str, key_value: str
+    ) -> None:
+        """Delete all rows matching the given key value."""
+        self.backend.delete_by_key(table_name, key_column, key_value)
+
+    # -------------------------------------------------------------------------
+    def insert_dataframe(
+        self, df: pd.DataFrame, table_name: str, ignore_duplicates: bool = True
+    ) -> None:
+        """Insert DataFrame rows in batches (append mode, no delete)."""
+        self.backend.insert_dataframe(df, table_name, ignore_duplicates)
+
+
 database = TKBENWebappDatabase()
+

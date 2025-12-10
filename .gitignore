@@ -1,3 +1,6 @@
+TKBEN_webapp/resources/database/tokenizers/*
+TKBEN_webapp/resources/database/datasets/*
+TKBEN_webapp/resources/database/evaluation/*
 TKBEN/resources/database/tokenizers/*
 TKBEN/resources/database/datasets/*
 TKBEN/resources/database/evaluation/*
@@ -5,6 +8,7 @@ TKBEN/resources/database/evaluation/*
 TKBEN/setup/python/*
 TKBEN/setup/uv/*
 TKBEN/setup/.env
+
 
 __pycache__
 *.vscode
@@ -17,6 +21,7 @@ __pycache__
 *.egg-info
 !.gitkeep
 
+!TKBEN_webapp/settings/server_configurations.json
 
 
 

@@ -820,7 +820,7 @@ class BenchmarkTokenizers:
 
             model_size_mb = 0.0
             try:
-                base_dir = os.path.join(TOKENIZER_PATH, "open", name.replace("/", "_"))
+                base_dir = os.path.join(TOKENIZER_PATH, name.replace("/", "_"))
                 if os.path.isdir(base_dir):
                     total_bytes = 0
                     for root, dirs, files in os.walk(base_dir):

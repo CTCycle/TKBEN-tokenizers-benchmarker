@@ -1,0 +1,26 @@
+{
+  "fastapi": {
+    "title": "TKBEN_webapp Tokenizers Benchmark Backend",
+    "description": "FastAPI backend",
+    "version": "1.2.0",
+    "api_base_url": "http://127.0.0.1:8000"
+  },
+  "database": {
+    "embedded_database": true,
+    "engine": "postgres",
+    "host": "localhost",
+    "port": 5432,
+    "database_name": "TKBEN_webapp",
+    "username": "postgres",
+    "password": "admin",
+    "ssl": false,
+    "ssl_ca": null,
+    "connect_timeout": 30,
+    "insert_batch_size": 50000
+  },
+  "tokenizers": {
+    "default_scan_limit": 100,
+    "max_scan_limit": 1000,
+    "min_scan_limit": 1
+  }
+}
