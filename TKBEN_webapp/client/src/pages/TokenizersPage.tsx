@@ -1,19 +1,12 @@
 import { useMemo, useState } from 'react';
-
-const defaultTokenizers = [
-  'bert-base-uncased',
-  'gpt2',
-  'roberta-base',
-  'google-pegasus-xsum',
-];
+import { scanTokenizers } from '../services/tokenizersApi';
 
 const TokenizersPage = () => {
   const [scanInProgress, setScanInProgress] = useState(false);
-  const [selectedTokenizer, setSelectedTokenizer] = useState(defaultTokenizers[0]);
-  const [tokenizers, setTokenizers] = useState<string[]>([
-    'wikitext-103-tokenizer',
-    'gpt2',
-  ]);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [fetchedTokenizers, setFetchedTokenizers] = useState<string[]>([]);
+  const [selectedTokenizer, setSelectedTokenizer] = useState('');
+  const [tokenizers, setTokenizers] = useState<string[]>([]);
   const [includeCustom, setIncludeCustom] = useState(false);
   const [includeNSL, setIncludeNSL] = useState(false);
 
@@ -37,15 +30,25 @@ const TokenizersPage = () => {
     setTokenizers((list) => list.filter((item) => item !== value));
   };
 
-  const handleScan = () => {
+  const handleScan = async () => {
     setScanInProgress(true);
-    setTimeout(() => {
-      setTokenizers((list) => {
-        const merged = new Set([...list, ...defaultTokenizers]);
-        return Array.from(merged);
-      });
+    setScanError(null);
+
+    try {
+      // Call without limit to use server-configured default
+      const response = await scanTokenizers();
+      setFetchedTokenizers(response.identifiers);
+      // Auto-select first tokenizer if available
+      if (response.identifiers.length > 0 && !selectedTokenizer) {
+        setSelectedTokenizer(response.identifiers[0]);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to scan tokenizers';
+      setScanError(errorMessage);
+      console.error('Scan error:', error);
+    } finally {
       setScanInProgress(false);
-    }, 1200);
+    }
   };
 
   return (
@@ -64,14 +67,24 @@ const TokenizersPage = () => {
                 value={selectedTokenizer}
                 onChange={(event) => setSelectedTokenizer(event.target.value)}
                 className="text-input"
+                disabled={fetchedTokenizers.length === 0}
               >
-                {defaultTokenizers.map((tokenizer) => (
-                  <option key={tokenizer} value={tokenizer}>
-                    {tokenizer}
-                  </option>
-                ))}
+                {fetchedTokenizers.length === 0 ? (
+                  <option value="">Click Scan to fetch tokenizers</option>
+                ) : (
+                  fetchedTokenizers.map((tokenizer) => (
+                    <option key={tokenizer} value={tokenizer}>
+                      {tokenizer}
+                    </option>
+                  ))
+                )}
               </select>
-              <button type="button" className="primary-button ghost" onClick={() => addTokenizer(selectedTokenizer)}>
+              <button
+                type="button"
+                className="primary-button ghost"
+                onClick={() => addTokenizer(selectedTokenizer)}
+                disabled={!selectedTokenizer || fetchedTokenizers.length === 0}
+              >
                 Add
               </button>
               <button
@@ -84,6 +97,14 @@ const TokenizersPage = () => {
               </button>
             </div>
           </header>
+          {scanError && (
+            <div className="error-banner">
+              <span>{scanError}</span>
+              <button type="button" onClick={() => setScanError(null)} aria-label="Dismiss error">
+                ×
+              </button>
+            </div>
+          )}
           <div className="panel-body">
             <div className="chip-container">
               {tokenizers.map((tokenizer) => (

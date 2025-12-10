@@ -1,43 +1,85 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, File, HTTPException, UploadFile, status
+import asyncio
 
-from TKBEN_webapp.server.schemas.benchmarks import DatasetLoadResponse
+from fastapi import APIRouter, HTTPException, Query, status
+
+from TKBEN_webapp.server.schemas.tokenizers import (
+    TokenizerScanResponse,
+    TokenizerSettingsResponse,
+)
+from TKBEN_webapp.server.utils.configurations.server import server_settings
 from TKBEN_webapp.server.utils.logger import logger
-from TKBEN_webapp.server.utils.services.datasets import DatasetService
+from TKBEN_webapp.server.utils.services.tokenizers import TokenizersService
 
-router = APIRouter(prefix="/datasets", tags=["load"])
-dataset_service = DatasetService()
+router = APIRouter(prefix="/tokenizers", tags=["tokenizers"])
 
 
 ###############################################################################
-@router.post(
-    "/load", response_model=DatasetLoadResponse, status_code=status.HTTP_200_OK
+@router.get(
+    "/settings",
+    response_model=TokenizerSettingsResponse,
+    status_code=status.HTTP_200_OK,
 )
-async def load_dataset(file: UploadFile = File(...)) -> DatasetLoadResponse:
-    try:
-        payload = await file.read()
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Failed to read uploaded dataset: %s", exc)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unable to read uploaded dataset.",
-        ) from exc
+async def get_tokenizer_settings() -> TokenizerSettingsResponse:
+    """
+    Get tokenizer configuration settings.
+
+    Returns:
+        TokenizerSettingsResponse with default, min, and max scan limits.
+    """
+    return TokenizerSettingsResponse(
+        default_scan_limit=server_settings.tokenizers.default_scan_limit,
+        max_scan_limit=server_settings.tokenizers.max_scan_limit,
+        min_scan_limit=server_settings.tokenizers.min_scan_limit,
+    )
+
+
+###############################################################################
+@router.get(
+    "/scan", response_model=TokenizerScanResponse, status_code=status.HTTP_200_OK
+)
+async def scan_tokenizers(
+    limit: int = Query(default=None),
+    hf_access_token: str | None = Query(default=None),
+) -> TokenizerScanResponse:
+    """
+    Scan HuggingFace for the most popular tokenizer identifiers.
+
+    Args:
+        limit: Maximum number of tokenizers to fetch. Defaults to configured value.
+        hf_access_token: Optional HuggingFace access token for authenticated requests.
+
+    Returns:
+        TokenizerScanResponse containing the list of tokenizer identifiers.
+    """
+    # Use configured defaults if limit not provided, and clamp to configured bounds
+    min_limit = server_settings.tokenizers.min_scan_limit
+    max_limit = server_settings.tokenizers.max_scan_limit
+    default_limit = server_settings.tokenizers.default_scan_limit
+
+    if limit is None:
+        limit = default_limit
+    else:
+        limit = max(min_limit, min(limit, max_limit))
+
+    logger.info("Scanning HuggingFace for tokenizers (limit=%s)", limit)
+
+    service = TokenizersService(hf_access_token)
 
     try:
-        dataset_payload, summary = dataset_service.load_from_bytes(
-            payload, file.filename
-        )
-    except ValueError as exc:
-        logger.warning("Invalid dataset upload: %s", exc)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-        ) from exc
+        identifiers = await asyncio.to_thread(service.get_tokenizer_identifiers, limit)
     except Exception as exc:  # noqa: BLE001
-        logger.exception("Dataset processing failed")
+        logger.exception("Failed to scan tokenizers from HuggingFace")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to process uploaded dataset.",
+            detail="Failed to retrieve tokenizers from HuggingFace.",
         ) from exc
 
-    return DatasetLoadResponse(summary=summary, dataset=dataset_payload)
+    logger.info("Successfully fetched %s tokenizer identifiers", len(identifiers))
+    return TokenizerScanResponse(
+        status="success",
+        identifiers=identifiers,
+        count=len(identifiers),
+    )
+

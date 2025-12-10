@@ -12,7 +12,7 @@ from TKBEN_webapp.server.utils.constants import LOGS_PATH
 ###############################################################################
 makedirs(LOGS_PATH, exist_ok=True)
 current_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-log_filename = join(LOGS_PATH, f"ADSORFIT_{current_timestamp}.log")
+log_filename = join(LOGS_PATH, f"TKBEN_webapp_{current_timestamp}.log")
 
 LOG_CONFIG = {
     "version": 1,
@@ -48,4 +48,4 @@ LOG_CONFIG = {
 }
 
 logging.config.dictConfig(LOG_CONFIG)
-logger = logging.getLogger("ADSORFIT")
+logger = logging.getLogger("TKBEN_webapp")
