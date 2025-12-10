@@ -53,13 +53,11 @@ def clone_settings_with_database(
         insert_batch_size=settings.insert_batch_size,
     )
 
-
 # -----------------------------------------------------------------------------
 def initialize_sqlite_database(settings: DatabaseSettings) -> None:
     repository = SQLiteRepository(settings)
     Base.metadata.create_all(repository.engine)
     logger.info("Initialized SQLite database at %s", repository.db_path)
-
 
 # -----------------------------------------------------------------------------
 def ensure_postgres_database(settings: DatabaseSettings) -> str:
@@ -102,7 +100,6 @@ def ensure_postgres_database(settings: DatabaseSettings) -> str:
 
     return target_database
 
-
 # -----------------------------------------------------------------------------
 def run_database_initialization() -> None:
     settings = server_settings.database
@@ -115,7 +112,6 @@ def run_database_initialization() -> None:
         raise ValueError(f"Unsupported database engine: {settings.engine}")
 
     ensure_postgres_database(settings)
-
 
 # -----------------------------------------------------------------------------
 def initialize_database() -> None:

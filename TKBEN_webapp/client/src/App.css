@@ -293,32 +293,6 @@ select {
   gap: 6px;
 }
 
-.chip-container {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--color-border-strong);
-  color: var(--color-accent);
-  background: rgba(255, 232, 31, 0.05);
-  font-size: 14px;
-}
-
-.chip button {
-  border: none;
-  background: transparent;
-  color: inherit;
-  font-size: 16px;
-  cursor: pointer;
-}
-
 .checkbox-group {
   display: flex;
   flex-direction: column;

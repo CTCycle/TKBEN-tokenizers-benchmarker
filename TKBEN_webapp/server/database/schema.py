@@ -15,233 +15,106 @@ Base = declarative_base()
 
 
 ###############################################################################
-class AdsorptionData(Base):
-    __tablename__ = "ADSORPTION_DATA"
-    id = Column(Integer, primary_key=True)
-    experiment = Column(String)
-    temperature_K = Column("temperature [K]", BigInteger)
-    pressure_Pa = Column("pressure [Pa]", Float)
-    uptake_mol_g = Column("uptake [mol/g]", Float)
-    __table_args__ = (UniqueConstraint("id"),)
+class TokenizationLocalStats(Base):
+    __tablename__ = "TOKENIZATION_LOCAL_STATS"
+    tokenizer = Column(String, primary_key=True)
+    text = Column(String, primary_key=True)
+    num_characters = Column(Integer)
+    words_count = Column(Integer)
+    AVG_words_length = Column(Float)
+    tokens_count = Column(Integer)
+    tokens_characters = Column(Integer)
+    AVG_tokens_length = Column(Float)
+    tokens_to_words_ratio = Column(Float)
+    bytes_per_token = Column(Float)
+    boundary_preservation_rate = Column(Float)
+    round_trip_token_fidelity = Column(Float)
+    round_trip_text_fidelity = Column(Float)
+    determinism_stability = Column(Float)
+    bytes_per_character = Column(Float)
+    characters_per_token = Column(Float)
+    token_length_variance = Column(Float)
+    token_length_std = Column(Float)
+    __table_args__ = (UniqueConstraint("tokenizer", "text"),)
 
 
 ###############################################################################
-class AdsorptionProcessedData(Base):
-    __tablename__ = "ADSORPTION_PROCESSED_DATA"
-    id = Column(Integer, primary_key=True)
-    experiment = Column(String)
-    temperature_K = Column("temperature [K]", BigInteger)
-    pressure_Pa = Column("pressure [Pa]", String)
-    uptake_mol_g = Column("uptake [mol/g]", String)
-    measurement_count = Column(BigInteger)
-    min_pressure = Column(Float)
-    max_pressure = Column(Float)
-    min_uptake = Column(Float)
-    max_uptake = Column(Float)
-    __table_args__ = (UniqueConstraint("id"),)
+class NSLBenchmark(Base):
+    __tablename__ = "NSL_RESULTS"
+    tokenizer = Column(String, primary_key=True)
+    tokens_count = Column(Integer)
+    __table_args__ = (UniqueConstraint("tokenizer"),)
 
 
 ###############################################################################
-class AdsorptionExperiment(Base):
-    __tablename__ = "ADSORPTION_EXPERIMENT"
-    id = Column(Integer, primary_key=True)
-    experiment = Column(String)
-    temperature_K = Column("temperature [K]", BigInteger)
-    pressure_Pa = Column("pressure [Pa]", String)
-    uptake_mol_g = Column("uptake [mol/g]", String)
-    measurement_count = Column(BigInteger)
-    min_pressure = Column(Float)
-    max_pressure = Column(Float)
-    min_uptake = Column(Float)
-    max_uptake = Column(Float)
-    __table_args__ = (
-        UniqueConstraint("id"),
-        UniqueConstraint("experiment"),
-    )
+class TokenizationGlobalMetrics(Base):
+    __tablename__ = "TOKENIZATION_GLOBAL_METRICS"
+    tokenizer = Column(String, primary_key=True)
+    dataset_name = Column(String, primary_key=True)
+    tokenization_speed_tps = Column(Float)
+    throughput_chars_per_sec = Column(Float)
+    model_size_mb = Column(Float)
+    vocabulary_size = Column(Integer)
+    avg_sequence_length = Column(Float)
+    median_sequence_length = Column(Float)
+    subword_fertility = Column(Float)
+    oov_rate = Column(Float)
+    word_recovery_rate = Column(Float)
+    character_coverage = Column(Float)
+    segmentation_consistency = Column(Float)
+    determinism_rate = Column(Float)
+    token_distribution_entropy = Column(Float)
+    rare_token_tail_1 = Column(Integer)
+    rare_token_tail_2 = Column(Integer)
+    boundary_preservation_rate = Column(Float)
+    compression_chars_per_token = Column(Float)
+    compression_bytes_per_character = Column(Float)
+    round_trip_fidelity_rate = Column(Float)
+    round_trip_text_fidelity_rate = Column(Float)
+    token_id_ordering_monotonicity = Column(Float)
+    token_unigram_coverage = Column(Float)
+    token_length_variance = Column(Float)
+    token_length_std = Column(Float)
+    __table_args__ = (UniqueConstraint("tokenizer", "dataset_name"),)
 
 
 ###############################################################################
-class AdsorptionLangmuirResults(Base):
-    __tablename__ = "ADSORPTION_LANGMUIR"
-    id = Column(Integer, primary_key=True)
-    experiment_id = Column(
-        Integer, ForeignKey("ADSORPTION_EXPERIMENT.id"), nullable=False
-    )
-    lss = Column("LSS", Float)
-    k = Column("k", Float)
-    k_error = Column("k error", Float)
-    qsat = Column("qsat", Float)
-    qsat_error = Column("qsat error", Float)
-    __table_args__ = (
-        UniqueConstraint("id"),
-        UniqueConstraint("experiment_id"),
-    )
+class VocabularyStatistics(Base):
+    __tablename__ = "VOCABULARY_STATISTICS"
+    tokenizer = Column(String, primary_key=True)
+    number_tokens_from_vocabulary = Column(Integer)
+    number_tokens_from_decode = Column(Integer)
+    number_shared_tokens = Column(Integer)
+    number_unshared_tokens = Column(Integer)
+    percentage_subwords = Column(Float)
+    percentage_true_words = Column(Float)
+    __table_args__ = (UniqueConstraint("tokenizer"),)
 
 
 ###############################################################################
-class AdsorptionSipsResults(Base):
-    __tablename__ = "ADSORPTION_SIPS"
-    id = Column(Integer, primary_key=True)
-    experiment_id = Column(
-        Integer, ForeignKey("ADSORPTION_EXPERIMENT.id"), nullable=False
-    )
-    lss = Column("LSS", Float)
-    k = Column("k", Float)
-    k_error = Column("k error", Float)
-    qsat = Column("qsat", Float)
-    qsat_error = Column("qsat error", Float)
-    exponent = Column("exponent", Float)
-    exponent_error = Column("exponent error", Float)
-    __table_args__ = (
-        UniqueConstraint("id"),
-        UniqueConstraint("experiment_id"),
-    )
+class Vocabulary(Base):
+    __tablename__ = "VOCABULARY"
+    tokenizer = Column(String, primary_key=True)
+    token_id = Column(Integer, primary_key=True)
+    vocabulary_tokens = Column(String)
+    decoded_tokens = Column(String)
+    __table_args__ = (UniqueConstraint("tokenizer", "token_id"),)
 
 
 ###############################################################################
-class AdsorptionFreundlichResults(Base):
-    __tablename__ = "ADSORPTION_FREUNDLICH"
-    id = Column(Integer, primary_key=True)
-    experiment_id = Column(
-        Integer, ForeignKey("ADSORPTION_EXPERIMENT.id"), nullable=False
-    )
-    lss = Column("LSS", Float)
-    k = Column("k", Float)
-    k_error = Column("k error", Float)
-    exponent = Column("exponent", Float)
-    exponent_error = Column("exponent error", Float)
-    __table_args__ = (
-        UniqueConstraint("id"),
-        UniqueConstraint("experiment_id"),
-    )
+class TextDataset(Base):
+    __tablename__ = "TEXT_DATASET"
+    dataset_name = Column(String, primary_key=True)
+    text = Column(String, primary_key=True)
+    __table_args__ = (UniqueConstraint("dataset_name", "text"),)
 
 
 ###############################################################################
-class AdsorptionTemkinResults(Base):
-    __tablename__ = "ADSORPTION_TEMKIN"
-    id = Column(Integer, primary_key=True)
-    experiment_id = Column(
-        Integer, ForeignKey("ADSORPTION_EXPERIMENT.id"), nullable=False
-    )
-    lss = Column("LSS", Float)
-    k = Column("k", Float)
-    k_error = Column("k error", Float)
-    beta = Column("beta", Float)
-    beta_error = Column("beta error", Float)
-    __table_args__ = (
-        UniqueConstraint("id"),
-        UniqueConstraint("experiment_id"),
-    )
-
-
-###############################################################################
-class AdsorptionTothResults(Base):
-    __tablename__ = "ADSORPTION_TOTH"
-    id = Column(Integer, primary_key=True)
-    experiment_id = Column(
-        Integer, ForeignKey("ADSORPTION_EXPERIMENT.id"), nullable=False
-    )
-    lss = Column("LSS", Float)
-    k = Column("k", Float)
-    k_error = Column("k error", Float)
-    qsat = Column("qsat", Float)
-    qsat_error = Column("qsat error", Float)
-    exponent = Column("exponent", Float)
-    exponent_error = Column("exponent error", Float)
-    __table_args__ = (
-        UniqueConstraint("id"),
-        UniqueConstraint("experiment_id"),
-    )
-
-
-###############################################################################
-class AdsorptionDubininRadushkevichResults(Base):
-    __tablename__ = "ADSORPTION_DUBININ_RADUSHKEVICH"
-    id = Column(Integer, primary_key=True)
-    experiment_id = Column(
-        Integer, ForeignKey("ADSORPTION_EXPERIMENT.id"), nullable=False
-    )
-    lss = Column("LSS", Float)
-    qsat = Column("qsat", Float)
-    qsat_error = Column("qsat error", Float)
-    beta = Column("beta", Float)
-    beta_error = Column("beta error", Float)
-    __table_args__ = (
-        UniqueConstraint("id"),
-        UniqueConstraint("experiment_id"),
-    )
-
-
-###############################################################################
-class AdsorptionDualSiteLangmuirResults(Base):
-    __tablename__ = "ADSORPTION_DUAL_SITE_LANGMUIR"
-    id = Column(Integer, primary_key=True)
-    experiment_id = Column(
-        Integer, ForeignKey("ADSORPTION_EXPERIMENT.id"), nullable=False
-    )
-    lss = Column("LSS", Float)
-    k1 = Column("k1", Float)
-    k1_error = Column("k1 error", Float)
-    qsat1 = Column("qsat1", Float)
-    qsat1_error = Column("qsat1 error", Float)
-    k2 = Column("k2", Float)
-    k2_error = Column("k2 error", Float)
-    qsat2 = Column("qsat2", Float)
-    qsat2_error = Column("qsat2 error", Float)
-    __table_args__ = (
-        UniqueConstraint("id"),
-        UniqueConstraint("experiment_id"),
-    )
-
-
-###############################################################################
-class AdsorptionRedlichPetersonResults(Base):
-    __tablename__ = "ADSORPTION_REDLICH_PETERSON"
-    id = Column(Integer, primary_key=True)
-    experiment_id = Column(
-        Integer, ForeignKey("ADSORPTION_EXPERIMENT.id"), nullable=False
-    )
-    lss = Column("LSS", Float)
-    k = Column("k", Float)
-    k_error = Column("k error", Float)
-    a = Column("a", Float)
-    a_error = Column("a error", Float)
-    beta = Column("beta", Float)
-    beta_error = Column("beta error", Float)
-    __table_args__ = (
-        UniqueConstraint("id"),
-        UniqueConstraint("experiment_id"),
-    )
-
-
-###############################################################################
-class AdsorptionJovanovicResults(Base):
-    __tablename__ = "ADSORPTION_JOVANOVIC"
-    id = Column(Integer, primary_key=True)
-    experiment_id = Column(
-        Integer, ForeignKey("ADSORPTION_EXPERIMENT.id"), nullable=False
-    )
-    lss = Column("LSS", Float)
-    k = Column("k", Float)
-    k_error = Column("k error", Float)
-    qsat = Column("qsat", Float)
-    qsat_error = Column("qsat error", Float)
-    __table_args__ = (
-        UniqueConstraint("id"),
-        UniqueConstraint("experiment_id"),
-    )
-
-
-###############################################################################
-class AdsorptionBestFit(Base):
-    __tablename__ = "ADSORPTION_BEST_FIT"
-    id = Column(Integer, primary_key=True)
-    experiment_id = Column(
-        Integer, ForeignKey("ADSORPTION_EXPERIMENT.id"), nullable=False
-    )
-    best_model = Column("best model", String)
-    worst_model = Column("worst model", String)
-    __table_args__ = (
-        UniqueConstraint("id"),
-        UniqueConstraint("experiment_id"),
-    )
+class TextDatasetStatistics(Base):
+    __tablename__ = "TEXT_DATASET_STATISTICS"
+    dataset_name = Column(String, primary_key=True)
+    text = Column(String, primary_key=True)
+    words_count = Column(Integer)
+    AVG_words_length = Column(Float)
+    STD_words_length = Column(Float)
+    __table_args__ = (UniqueConstraint("dataset_name", "text"),)
