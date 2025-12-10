@@ -26,10 +26,6 @@ const TokenizersPage = () => {
     setTokenizers((list) => [...list, value]);
   };
 
-  const removeTokenizer = (value: string) => {
-    setTokenizers((list) => list.filter((item) => item !== value));
-  };
-
   const handleScan = async () => {
     setScanInProgress(true);
     setScanError(null);
@@ -59,7 +55,7 @@ const TokenizersPage = () => {
             <div>
               <p className="panel-label">Select tokenizers</p>
               <p className="panel-description">
-                Organize Hugging Face tokenizers using chips and fetch additional IDs via scan.
+                Manage Hugging Face tokenizer IDs in a single text area and fetch additional IDs via scan.
               </p>
             </div>
             <div className="tokenizer-select">
@@ -93,7 +89,7 @@ const TokenizersPage = () => {
                 onClick={handleScan}
                 disabled={scanInProgress}
               >
-                {scanInProgress ? 'Scanning…' : 'Scan'}
+                {scanInProgress ? 'Scanning.' : 'Scan'}
               </button>
             </div>
           </header>
@@ -101,21 +97,11 @@ const TokenizersPage = () => {
             <div className="error-banner">
               <span>{scanError}</span>
               <button type="button" onClick={() => setScanError(null)} aria-label="Dismiss error">
-                ×
+                ž
               </button>
             </div>
           )}
           <div className="panel-body">
-            <div className="chip-container">
-              {tokenizers.map((tokenizer) => (
-                <span key={tokenizer} className="chip">
-                  {tokenizer}
-                  <button type="button" onClick={() => removeTokenizer(tokenizer)} aria-label={`Remove ${tokenizer}`}>
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
             <textarea
               className="tokenizer-textarea"
               value={tokenizers.join('\n')}
@@ -171,7 +157,7 @@ const TokenizersPage = () => {
             ))}
           </div>
           <ul className="insights-list">
-            <li>Tokenizer chips ensure quick toggling without editing long lists.</li>
+            <li>Tokenizer list stays synchronized with the text area for quick edits and bulk paste.</li>
             <li>Scanning keeps identifiers synchronized with Hugging Face.</li>
             <li>Canvas can render throughput plots once backend APIs deliver data.</li>
           </ul>
