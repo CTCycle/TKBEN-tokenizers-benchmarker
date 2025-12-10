@@ -47,6 +47,9 @@ class DatabaseSettings:
 class DatasetSettings:
     allowed_extensions: tuple[str, ...]
     column_detection_cutoff: float
+    histogram_bins: int
+    streaming_batch_size: int
+    log_interval: int
 
 # -----------------------------------------------------------------------------
 @dataclass(frozen=True)
@@ -153,6 +156,15 @@ def build_dataset_settings(payload: dict[str, Any] | Any) -> DatasetSettings:
         ),
         column_detection_cutoff=coerce_float(
             payload.get("column_detection_cutoff"), 0.6, minimum=0.0, maximum=1.0
+        ),
+        histogram_bins=coerce_int(
+            payload.get("histogram_bins"), 20, minimum=5, maximum=100
+        ),
+        streaming_batch_size=coerce_int(
+            payload.get("streaming_batch_size"), 10000, minimum=100
+        ),
+        log_interval=coerce_int(
+            payload.get("log_interval"), 100000, minimum=1000
         ),
     )
 

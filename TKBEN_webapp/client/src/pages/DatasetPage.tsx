@@ -1,112 +1,26 @@
-import { useCallback, useRef, useState } from 'react';
-import { downloadDataset, uploadCustomDataset } from '../services/datasetsApi';
-import type { HistogramData } from '../types/api';
-
-const datasetOptions = [
-  { corpus: 'wikitext', configs: ['wikitext-103-v1', 'wikitext-2-v1'] },
-  { corpus: 'openwebtext', configs: ['default'] },
-  { corpus: 'c4', configs: ['en', 'realnewslike'] },
-];
-
-interface DatasetStats {
-  documentCount: number;
-  meanLength: number;
-  medianLength: number;
-  minLength: number;
-  maxLength: number;
-}
+import { useDataset } from '../contexts/DatasetContext';
 
 const DatasetPage = () => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [datasetName, setDatasetName] = useState<string | null>(null);
-  const [selectedCorpus, setSelectedCorpus] = useState(datasetOptions[0].corpus);
-  const [selectedConfig, setSelectedConfig] = useState(datasetOptions[0].configs[0]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [datasetLoaded, setDatasetLoaded] = useState(false);
-  const [stats, setStats] = useState<DatasetStats | null>(null);
-  const [histogram, setHistogram] = useState<HistogramData | null>(null);
-
-  const handleCorpusChange = (value: string) => {
-    setSelectedCorpus(value);
-    const option = datasetOptions.find((item) => item.corpus === value);
-    if (option) {
-      setSelectedConfig(option.configs[0]);
-    }
-    // Reset loaded state when corpus changes
-    setDatasetLoaded(false);
-    setStats(null);
-    setHistogram(null);
-  };
-
-  const handleConfigChange = (value: string) => {
-    setSelectedConfig(value);
-    setDatasetLoaded(false);
-    setStats(null);
-    setHistogram(null);
-  };
-
-  const handleLoadDataset = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await downloadDataset({
-        corpus: selectedCorpus,
-        config: selectedConfig,
-      });
-
-      setStats({
-        documentCount: response.document_count,
-        meanLength: response.histogram.mean_length,
-        medianLength: response.histogram.median_length,
-        minLength: response.histogram.min_length,
-        maxLength: response.histogram.max_length,
-      });
-      setHistogram(response.histogram);
-      setDatasetName(response.dataset_name);
-      setDatasetLoaded(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load dataset');
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedCorpus, selectedConfig]);
-
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await uploadCustomDataset(file);
-
-      setStats({
-        documentCount: response.document_count,
-        meanLength: response.histogram.mean_length,
-        medianLength: response.histogram.median_length,
-        minLength: response.histogram.min_length,
-        maxLength: response.histogram.max_length,
-      });
-      setHistogram(response.histogram);
-      setDatasetName(response.dataset_name);
-      setDatasetLoaded(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to upload dataset');
-    } finally {
-      setLoading(false);
-      // Reset file input so the same file can be uploaded again if needed
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  }, []);
+  const {
+    datasetName,
+    selectedCorpus,
+    selectedConfig,
+    loading,
+    error,
+    datasetLoaded,
+    stats,
+    histogram,
+    analyzing,
+    analysisStats,
+    fileInputRef,
+    setError,
+    handleCorpusChange,
+    handleConfigChange,
+    handleLoadDataset,
+    handleUploadClick,
+    handleFileChange,
+    handleAnalyzeDataset,
+  } = useDataset();
 
   const formatNumber = (num: number) => {
     return num.toLocaleString();
@@ -228,9 +142,10 @@ const DatasetPage = () => {
             <button
               type="button"
               className="primary-button ghost"
-              disabled={!datasetLoaded || loading}
+              disabled={!datasetLoaded || loading || analyzing}
+              onClick={handleAnalyzeDataset}
             >
-              Analyze dataset
+              {analyzing ? 'Analyzing...' : 'Analyze dataset'}
             </button>
           </footer>
         </section>
@@ -281,6 +196,58 @@ const DatasetPage = () => {
             )}
           </ul>
         </aside>
+        {(analyzing || analysisStats) && (
+          <aside className="panel dashboard-panel analysis-panel">
+            <header className="panel-header">
+              <div>
+                <p className="panel-label">Word Analysis</p>
+                <p className="panel-description">
+                  {analysisStats
+                    ? `Word-level statistics for ${datasetName}`
+                    : 'Computing word-level statistics...'}
+                </p>
+              </div>
+            </header>
+            {analyzing ? (
+              <div className="loading-container">
+                <div className="spinner" />
+                <p>Analyzing dataset...</p>
+                <span>Computing word counts and word length statistics for each document.</span>
+              </div>
+            ) : analysisStats ? (
+              <>
+                <div className="dashboard-grid">
+                  <div className="stat-card">
+                    <p className="stat-label">Analyzed Docs</p>
+                    <p className="stat-value">
+                      {formatNumber(analysisStats.total_documents)}
+                    </p>
+                  </div>
+                  <div className="stat-card">
+                    <p className="stat-label">Mean Words/Doc</p>
+                    <p className="stat-value">
+                      {formatNumber(Math.round(analysisStats.mean_words_count))}
+                    </p>
+                  </div>
+                  <div className="stat-card">
+                    <p className="stat-label">Median Words/Doc</p>
+                    <p className="stat-value">
+                      {formatNumber(Math.round(analysisStats.median_words_count))}
+                    </p>
+                  </div>
+                </div>
+                <ul className="insights-list">
+                  <li>
+                    Average word length: <strong>{analysisStats.mean_avg_word_length.toFixed(2)}</strong> characters
+                  </li>
+                  <li>
+                    Word length variability: <strong>{analysisStats.mean_std_word_length.toFixed(2)}</strong> (std dev)
+                  </li>
+                </ul>
+              </>
+            ) : null}
+          </aside>
+        )}
       </div>
     </div>
   );

@@ -22,5 +22,16 @@
     "default_scan_limit": 100,
     "max_scan_limit": 1000,
     "min_scan_limit": 1
+  },
+  "datasets": {
+    "histogram_bins": 20,
+    "streaming_batch_size": 10000,
+    "log_interval": 100000,
+    "allowed_extensions": [
+      ".csv",
+      ".xls",
+      ".xlsx"
+    ],
+    "column_detection_cutoff": 0.6
   }
 }

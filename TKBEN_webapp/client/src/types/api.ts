@@ -68,3 +68,31 @@ export interface CustomDatasetUploadResponse {
     saved_count: number;
     histogram: HistogramData;
 }
+
+/**
+ * Request for analyzing a dataset
+ */
+export interface DatasetAnalysisRequest {
+    dataset_name: string;
+}
+
+/**
+ * Summary of word-level statistics from dataset analysis
+ */
+export interface DatasetStatisticsSummary {
+    total_documents: number;
+    mean_words_count: number;
+    median_words_count: number;
+    mean_avg_word_length: number;
+    mean_std_word_length: number;
+}
+
+/**
+ * Response from the dataset analysis endpoint
+ */
+export interface DatasetAnalysisResponse {
+    status: string;
+    dataset_name: string;
+    analyzed_count: number;
+    statistics: DatasetStatisticsSummary;
+}
