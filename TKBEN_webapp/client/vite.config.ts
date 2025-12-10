@@ -10,6 +10,8 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
+        // 10 minute timeout for large dataset downloads
+        timeout: 600000,
       },
     },
   },

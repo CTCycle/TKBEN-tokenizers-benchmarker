@@ -22,3 +22,37 @@ export interface TokenizerSettingsResponse {
 export interface ApiError {
     detail: string;
 }
+
+/**
+ * Histogram data for document length distribution
+ */
+export interface HistogramData {
+    bins: string[];
+    counts: number[];
+    bin_edges: number[];
+    min_length: number;
+    max_length: number;
+    mean_length: number;
+    median_length: number;
+}
+
+/**
+ * Request for downloading a dataset from HuggingFace
+ */
+export interface DatasetDownloadRequest {
+    corpus: string;
+    config?: string | null;
+    hf_access_token?: string | null;
+}
+
+/**
+ * Response from the dataset download endpoint
+ */
+export interface DatasetDownloadResponse {
+    status: string;
+    dataset_name: string;
+    text_column: string;
+    document_count: number;
+    saved_count: number;
+    histogram: HistogramData;
+}

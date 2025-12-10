@@ -5,6 +5,7 @@ from fastapi.responses import RedirectResponse
 
 from TKBEN_webapp.server.utils.variables import env_variables
 from TKBEN_webapp.server.utils.configurations import server_settings
+from TKBEN_webapp.server.routes.datasets import router as datasets_router
 from TKBEN_webapp.server.routes.tokenizers import router as tokenizers_router
 from TKBEN_webapp.server.routes.benchmarks import router as fit_router
 
@@ -16,6 +17,7 @@ app = FastAPI(
     description=server_settings.fastapi.description,
 )
 
+app.include_router(datasets_router)
 app.include_router(tokenizers_router)
 app.include_router(fit_router)
 

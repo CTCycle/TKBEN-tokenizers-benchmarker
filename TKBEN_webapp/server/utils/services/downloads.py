@@ -47,8 +47,7 @@ class DatasetManager:
         when the operation fails or yields no data.
         """
         datasets = {}
-        subfolder = "custom" if self.has_custom_dataset else "open"
-        base_path = os.path.join(DATASETS_PATH, subfolder)
+        base_path = DATASETS_PATH
         # load a custom text dataset from .csv file
         if self.has_custom_dataset:
             csv_files = [
@@ -183,7 +182,7 @@ class TokenizersDownloadManager:
             try:
                 tokenizer_name = tokenizer_id.replace("/", "_")
                 tokenizer_save_path = os.path.join(
-                    TOKENIZER_PATH, "open", tokenizer_name
+                    TOKENIZER_PATH, tokenizer_name
                 )
                 os.makedirs(tokenizer_save_path, exist_ok=True)
                 logger.info(f"Downloading and saving tokenizer: {tokenizer_id}")
