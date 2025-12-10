@@ -61,3 +61,31 @@ class CustomDatasetUploadResponse(BaseModel):
     saved_count: int = Field(..., description="Documents saved to database")
     histogram: HistogramData = Field(..., description="Document length distribution")
 
+
+###############################################################################
+class DatasetAnalysisRequest(BaseModel):
+    """Request schema for dataset analysis."""
+
+    dataset_name: str = Field(..., description="Name of dataset to analyze")
+
+
+###############################################################################
+class DatasetStatisticsSummary(BaseModel):
+    """Summary of word-level statistics from dataset analysis."""
+
+    total_documents: int = Field(default=0, description="Number of analyzed documents")
+    mean_words_count: float = Field(default=0.0, description="Mean word count per document")
+    median_words_count: float = Field(default=0.0, description="Median word count per document")
+    mean_avg_word_length: float = Field(default=0.0, description="Mean average word length")
+    mean_std_word_length: float = Field(default=0.0, description="Mean std deviation of word length")
+
+
+###############################################################################
+class DatasetAnalysisResponse(BaseModel):
+    """Response schema for dataset analysis endpoint."""
+
+    status: str = Field(default="success")
+    dataset_name: str = Field(..., description="Name of analyzed dataset")
+    analyzed_count: int = Field(..., description="Number of documents analyzed")
+    statistics: DatasetStatisticsSummary = Field(..., description="Word-level statistics")
+

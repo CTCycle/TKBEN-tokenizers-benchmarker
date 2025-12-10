@@ -6,6 +6,7 @@ from TKBEN_webapp.server.utils.configurations.base import (
 )
 from TKBEN_webapp.server.utils.configurations.server import (
     DatabaseSettings,
+    DatasetSettings,
     FastAPISettings,
     ServerSettings,
     server_settings,
@@ -14,6 +15,7 @@ from TKBEN_webapp.server.utils.configurations.server import (
 
 __all__ = [    
     "DatabaseSettings",
+    "DatasetSettings",
     "FastAPISettings",
     "ServerSettings",
     "server_settings",

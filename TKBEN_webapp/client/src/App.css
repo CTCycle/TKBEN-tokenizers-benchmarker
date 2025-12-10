@@ -108,6 +108,10 @@
   grid-template-columns: 3fr 2fr;
 }
 
+.analysis-panel {
+  grid-column: 1 / -1;
+}
+
 .panel {
   background: var(--color-panel);
   border-radius: var(--radius);

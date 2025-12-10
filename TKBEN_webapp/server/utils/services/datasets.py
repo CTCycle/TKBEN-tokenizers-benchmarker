@@ -12,6 +12,7 @@ from datasets import Dataset, DatasetDict, load_dataset
 
 from TKBEN_webapp.server.database.database import database
 from TKBEN_webapp.server.database.schema import TextDataset
+from TKBEN_webapp.server.utils.configurations import server_settings
 from TKBEN_webapp.server.utils.constants import DATASETS_PATH
 from TKBEN_webapp.server.utils.logger import logger
 
@@ -145,12 +146,15 @@ class HistogramBuilder:
 class DatasetService:
 
     SUPPORTED_TEXT_FIELDS = ("text", "content", "sentence", "document", "tokens")
-    HISTOGRAM_BINS = 20
-    # Batch size for streaming operations (in-memory chunk size)
-    STREAMING_BATCH_SIZE = 10000
 
     def __init__(self, hf_access_token: str | None = None) -> None:
         self.hf_access_token = hf_access_token
+        # Load settings from centralized configuration
+        self._settings = server_settings.datasets
+        self.histogram_bins = self._settings.histogram_bins
+        self.streaming_batch_size = self._settings.streaming_batch_size
+        self.log_interval = self._settings.log_interval
+
 
     # -------------------------------------------------------------------------
     def get_dataset_name(self, corpus: str, config: str | None = None) -> str:
@@ -224,7 +228,7 @@ class DatasetService:
         return True
 
     # -------------------------------------------------------------------------
-    def dataset_in_database(self, dataset_name: str) -> bool:
+    def is_dataset_in_database(self, dataset_name: str) -> bool:
         query = sqlalchemy.text(
             'SELECT 1 FROM "TEXT_DATASET" WHERE "dataset_name" = :dataset LIMIT 1'
         )
@@ -251,7 +255,7 @@ class DatasetService:
             'SELECT LENGTH(text) AS text_length '
             'FROM "TEXT_DATASET" WHERE "dataset_name" = :dataset'
         )
-        fetch_size = self.STREAMING_BATCH_SIZE
+        fetch_size = self.streaming_batch_size
 
         def generator() -> Iterator[int]:
             with database.backend.engine.connect().execution_options(
@@ -288,7 +292,7 @@ class DatasetService:
         stream_factory: Callable[[], Iterator[int]],
         stats: LengthStatistics,
     ) -> dict[str, Any]:
-        builder = HistogramBuilder(stats, self.HISTOGRAM_BINS)
+        builder = HistogramBuilder(stats, self.histogram_bins)
         for length in stream_factory():
             builder.add(length)
         histogram = builder.build()
@@ -304,10 +308,11 @@ class DatasetService:
         stats: LengthStatistics,
         remove_invalid: bool,
     ) -> tuple[dict[str, Any], int]:
-        batch_size = self.STREAMING_BATCH_SIZE
+        batch_size = self.streaming_batch_size
         batch: list[dict[str, str]] = []
         saved_count = 0
-        histogram_builder = HistogramBuilder(stats, self.HISTOGRAM_BINS)
+        last_logged = 0
+        histogram_builder = HistogramBuilder(stats, self.histogram_bins)
 
         database.delete_by_key(
             TextDataset.__tablename__,
@@ -323,7 +328,9 @@ class DatasetService:
                 df = pd.DataFrame(batch)
                 database.insert_dataframe(df, TextDataset.__tablename__)
                 saved_count += len(batch)
-                logger.info("Saved %d documents so far...", saved_count)
+                if saved_count - last_logged >= self.log_interval:
+                    logger.info("Saved %d documents so far...", saved_count)
+                    last_logged = saved_count
                 batch.clear()
 
         if batch:
@@ -346,7 +353,7 @@ class DatasetService:
 
         os.makedirs(cache_path, exist_ok=True)
 
-        if self.dataset_in_database(dataset_name):
+        if self.is_dataset_in_database(dataset_name):
             logger.info(
                 "Dataset %s already present in database. Reusing persisted texts.",
                 dataset_name,
@@ -483,10 +490,11 @@ class DatasetService:
             raise ValueError("No valid text documents found after filtering")
 
         # Persist to database with histogram computation (second pass)
-        batch_size = self.STREAMING_BATCH_SIZE
+        batch_size = self.streaming_batch_size
         batch: list[dict[str, str]] = []
         saved_count = 0
-        histogram_builder = HistogramBuilder(stats, self.HISTOGRAM_BINS)
+        last_logged = 0
+        histogram_builder = HistogramBuilder(stats, self.histogram_bins)
 
         # Delete any existing entries with this dataset name
         database.delete_by_key(
@@ -503,7 +511,9 @@ class DatasetService:
                 batch_df = pd.DataFrame(batch)
                 database.insert_dataframe(batch_df, TextDataset.__tablename__)
                 saved_count += len(batch)
-                logger.info("Saved %d documents so far...", saved_count)
+                if saved_count - last_logged >= self.log_interval:
+                    logger.info("Saved %d documents so far...", saved_count)
+                    last_logged = saved_count
                 batch.clear()
 
         if batch:
@@ -537,4 +547,215 @@ class DatasetService:
         return columns[0] if columns else None
 
     # -------------------------------------------------------------------------
-    # Legacy methods kept for backwards compatibility
+    def analyze_dataset(self, dataset_name: str) -> dict[str, Any]:
+        """
+        Compute word-level statistics for all documents in a dataset.
+        Uses streaming to avoid loading entire dataset into memory.
+
+        Args:
+            dataset_name: Name of the dataset to analyze.
+
+        Returns:
+            Dictionary with analyzed_count and statistics summary.
+        """
+        from TKBEN_webapp.server.database.schema import TextDatasetStatistics
+
+        # Query to stream documents from TEXT_DATASET
+        query = sqlalchemy.text(
+            'SELECT "dataset_name", "text" FROM "TEXT_DATASET" '
+            'WHERE "dataset_name" = :dataset'
+        )
+
+        batch_size = self.streaming_batch_size
+        analyzed_count = 0
+        last_logged = 0
+
+        # Delete any existing statistics for this dataset
+        database.delete_by_key(
+            TextDatasetStatistics.__tablename__,
+            "dataset_name",
+            dataset_name,
+        )
+
+        logger.info("Starting analysis for dataset: %s", dataset_name)
+
+        # Collect batches to insert AFTER closing the read connection
+        # This avoids SQLite "database is locked" errors from concurrent connections
+        pending_batches: list[list[dict[str, Any]]] = []
+        current_batch: list[dict[str, Any]] = []
+
+        with database.backend.engine.connect().execution_options(
+            stream_results=True
+        ) as conn:
+            result = conn.execute(query, {"dataset": dataset_name})
+
+            while True:
+                rows = result.fetchmany(batch_size)
+                if not rows:
+                    break
+
+                for row in rows:
+                    if hasattr(row, "_mapping"):
+                        text = row._mapping.get("text", "")
+                    else:
+                        text = row[1] if len(row) > 1 else ""
+
+                    if not text or not isinstance(text, str):
+                        continue
+
+                    # Compute word-level statistics
+                    words = text.split()
+                    words_count = len(words)
+
+                    if words_count > 0:
+                        word_lengths = [len(w) for w in words]
+                        avg_word_length = sum(word_lengths) / len(word_lengths)
+                        # Standard deviation
+                        variance = sum((l - avg_word_length) ** 2 for l in word_lengths) / len(word_lengths)
+                        std_word_length = variance ** 0.5
+                    else:
+                        avg_word_length = 0.0
+                        std_word_length = 0.0
+
+                    current_batch.append({
+                        "dataset_name": dataset_name,
+                        "text": text,
+                        "words_count": words_count,
+                        "AVG_words_length": avg_word_length,
+                        "STD_words_length": std_word_length,
+                    })
+
+                    if len(current_batch) >= batch_size:
+                        # Queue batch for insertion after connection closes
+                        pending_batches.append(current_batch)
+                        current_batch = []
+
+            # Queue remaining items
+            if current_batch:
+                pending_batches.append(current_batch)
+
+        # Now that the read connection is closed, insert all pending batches
+        for batch in pending_batches:
+            df = pd.DataFrame(batch)
+            database.insert_dataframe(df, TextDatasetStatistics.__tablename__)
+            analyzed_count += len(batch)
+            if analyzed_count - last_logged >= self.log_interval:
+                logger.info("Analyzed %d documents so far...", analyzed_count)
+                last_logged = analyzed_count
+
+        logger.info("Completed analysis: %d documents analyzed", analyzed_count)
+
+        # Get summary statistics
+        statistics = self.get_analysis_summary(dataset_name)
+
+        return {
+            "dataset_name": dataset_name,
+            "analyzed_count": analyzed_count,
+            "statistics": statistics,
+        }
+
+    # -------------------------------------------------------------------------
+    def get_analysis_summary(self, dataset_name: str) -> dict[str, Any]:
+        """
+        Query aggregate word-level statistics from persisted analysis data.
+
+        Args:
+            dataset_name: Name of the dataset.
+
+        Returns:
+            Dictionary with aggregate statistics.
+        """
+        query = sqlalchemy.text(
+            'SELECT COUNT(*) as total, '
+            'AVG("words_count") as mean_words, '
+            'AVG("AVG_words_length") as mean_avg_len, '
+            'AVG("STD_words_length") as mean_std_len '
+            'FROM "TEXT_DATASET_STATISTICS" WHERE "dataset_name" = :dataset'
+        )
+
+        with database.backend.engine.connect() as conn:
+            result = conn.execute(query, {"dataset": dataset_name})
+            row = result.first()
+
+        if row is None:
+            return {
+                "total_documents": 0,
+                "mean_words_count": 0.0,
+                "median_words_count": 0.0,
+                "mean_avg_word_length": 0.0,
+                "mean_std_word_length": 0.0,
+            }
+
+        if hasattr(row, "_mapping"):
+            data = row._mapping
+        else:
+            data = {
+                "total": row[0],
+                "mean_words": row[1],
+                "mean_avg_len": row[2],
+                "mean_std_len": row[3],
+            }
+
+        total = data.get("total", 0) or 0
+        mean_words = data.get("mean_words", 0.0) or 0.0
+        mean_avg_len = data.get("mean_avg_len", 0.0) or 0.0
+        mean_std_len = data.get("mean_std_len", 0.0) or 0.0
+
+        # Compute median using streaming (more memory efficient)
+        median_words = self._compute_median_words_count(dataset_name)
+
+        return {
+            "total_documents": int(total),
+            "mean_words_count": float(mean_words),
+            "median_words_count": float(median_words),
+            "mean_avg_word_length": float(mean_avg_len),
+            "mean_std_word_length": float(mean_std_len),
+        }
+
+    # -------------------------------------------------------------------------
+    def _compute_median_words_count(self, dataset_name: str) -> float:
+        """Compute median word count using SQL for efficiency."""
+        # For SQLite and Postgres, use PERCENTILE_CONT or ORDER BY with LIMIT
+        count_query = sqlalchemy.text(
+            'SELECT COUNT(*) FROM "TEXT_DATASET_STATISTICS" '
+            'WHERE "dataset_name" = :dataset'
+        )
+
+        with database.backend.engine.connect() as conn:
+            result = conn.execute(count_query, {"dataset": dataset_name})
+            count_row = result.first()
+            total = count_row[0] if count_row else 0
+
+        if total == 0:
+            return 0.0
+
+        # Get median using OFFSET/LIMIT
+        offset = total // 2
+        median_query = sqlalchemy.text(
+            'SELECT "words_count" FROM "TEXT_DATASET_STATISTICS" '
+            'WHERE "dataset_name" = :dataset '
+            'ORDER BY "words_count" LIMIT 1 OFFSET :offset'
+        )
+
+        with database.backend.engine.connect() as conn:
+            result = conn.execute(median_query, {"dataset": dataset_name, "offset": offset})
+            median_row = result.first()
+
+        if median_row is None:
+            return 0.0
+
+        median_val = median_row[0] if median_row else 0
+        return float(median_val)
+
+    # -------------------------------------------------------------------------
+    def is_dataset_analyzed(self, dataset_name: str) -> bool:
+        """Check if a dataset has been analyzed."""
+        query = sqlalchemy.text(
+            'SELECT 1 FROM "TEXT_DATASET_STATISTICS" '
+            'WHERE "dataset_name" = :dataset LIMIT 1'
+        )
+
+        with database.backend.engine.connect() as conn:
+            result = conn.execute(query, {"dataset": dataset_name})
+            return result.first() is not None
+

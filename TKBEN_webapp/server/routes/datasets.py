@@ -6,8 +6,11 @@ from fastapi import APIRouter, File, HTTPException, UploadFile, status
 
 from TKBEN_webapp.server.schemas.dataset import (
     CustomDatasetUploadResponse,
+    DatasetAnalysisRequest,
+    DatasetAnalysisResponse,
     DatasetDownloadRequest,
     DatasetDownloadResponse,
+    DatasetStatisticsSummary,
     HistogramData,
 )
 from TKBEN_webapp.server.utils.logger import logger
@@ -177,4 +180,71 @@ async def upload_custom_dataset(
         document_count=result["document_count"],
         saved_count=result["saved_count"],
         histogram=histogram,
+    )
+
+
+###############################################################################
+@router.post(
+    "/analyze",
+    response_model=DatasetAnalysisResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def analyze_dataset(request: DatasetAnalysisRequest) -> DatasetAnalysisResponse:
+    """
+    Analyze a loaded dataset, computing per-document word-level statistics.
+
+    This endpoint calculates word count, average word length, and word length
+    standard deviation for each document. Results are persisted to the database
+    and aggregate statistics are returned.
+
+    Args:
+        request: DatasetAnalysisRequest containing the dataset name.
+
+    Returns:
+        DatasetAnalysisResponse with analysis statistics.
+    """
+    logger.info("Dataset analysis requested: dataset=%s", request.dataset_name)
+
+    service = DatasetService()
+
+    # Check if dataset exists
+    if not service.is_dataset_in_database(request.dataset_name):
+        logger.warning("Dataset not found: %s", request.dataset_name)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Dataset '{request.dataset_name}' not found. Please load it first.",
+        )
+
+    try:
+        result = await asyncio.to_thread(
+            service.analyze_dataset,
+            dataset_name=request.dataset_name,
+        )
+    except Exception as exc:
+        logger.exception("Failed to analyze dataset %s", request.dataset_name)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to analyze dataset.",
+        ) from exc
+
+    logger.info(
+        "Successfully analyzed dataset: %s (%d documents)",
+        result["dataset_name"],
+        result["analyzed_count"],
+    )
+
+    stats_data = result.get("statistics", {})
+    statistics = DatasetStatisticsSummary(
+        total_documents=stats_data.get("total_documents", 0),
+        mean_words_count=stats_data.get("mean_words_count", 0.0),
+        median_words_count=stats_data.get("median_words_count", 0.0),
+        mean_avg_word_length=stats_data.get("mean_avg_word_length", 0.0),
+        mean_std_word_length=stats_data.get("mean_std_word_length", 0.0),
+    )
+
+    return DatasetAnalysisResponse(
+        status="success",
+        dataset_name=result["dataset_name"],
+        analyzed_count=result["analyzed_count"],
+        statistics=statistics,
     )
