@@ -49,7 +49,7 @@ BACKEND_FACTORIES: dict[str, BackendFactory] = {
 
 
 ###############################################################################
-class ADSORFITDatabase:
+class TKBENWebappDatabase:
     def __init__(self) -> None:
         self.settings = server_settings.database
         self.backend = self._build_backend(self.settings.embedded_database)
@@ -84,6 +84,5 @@ class ADSORFITDatabase:
     # -------------------------------------------------------------------------
     def count_rows(self, table_name: str) -> int:
         return self.backend.count_rows(table_name)
-   
 
-database = ADSORFITDatabase()
+database = TKBENWebappDatabase()

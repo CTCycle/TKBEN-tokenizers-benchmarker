@@ -61,11 +61,19 @@ class FittingSettings:
 
 # -----------------------------------------------------------------------------
 @dataclass(frozen=True)
+class TokenizerSettings:
+    default_scan_limit: int
+    max_scan_limit: int
+    min_scan_limit: int
+
+# -----------------------------------------------------------------------------
+@dataclass(frozen=True)
 class ServerSettings:
     fastapi: FastAPISettings
     database: DatabaseSettings
     datasets: DatasetSettings
     fitting: FittingSettings
+    tokenizers: TokenizerSettings
 
 
 # [BUILDER FUNCTIONS]
@@ -76,7 +84,7 @@ def build_fastapi_settings(payload: dict[str, Any] | Any) -> FastAPISettings:
     version_value = env_variables.get("FASTAPI_VERSION") or payload.get("version")
 
     return FastAPISettings(
-        title=coerce_str(title_value, "ADSORFIT Backend"),
+        title=coerce_str(title_value, "TKBEN_webapp Backend"),
         description=coerce_str(desc_value, "FastAPI backend"),
         version=coerce_str(version_value, "0.1.0"),
     )
@@ -176,17 +184,32 @@ def build_fitting_settings(payload: dict[str, Any] | Any) -> FittingSettings:
     )
 
 # -----------------------------------------------------------------------------
+def build_tokenizer_settings(payload: dict[str, Any] | Any) -> TokenizerSettings:
+    min_limit = coerce_int(payload.get("min_scan_limit"), 1, minimum=1)
+    max_limit = coerce_int(payload.get("max_scan_limit"), 1000, minimum=min_limit)
+    default_limit = coerce_int(
+        payload.get("default_scan_limit"), 100, minimum=min_limit, maximum=max_limit
+    )
+    return TokenizerSettings(
+        default_scan_limit=default_limit,
+        max_scan_limit=max_limit,
+        min_scan_limit=min_limit,
+    )
+
+# -----------------------------------------------------------------------------
 def build_server_settings(payload: dict[str, Any] | Any) -> ServerSettings:
     fastapi_payload = ensure_mapping(payload.get("fastapi"))
     database_payload = ensure_mapping(payload.get("database"))
     dataset_payload = ensure_mapping(payload.get("datasets"))
     fitting_payload = ensure_mapping(payload.get("fitting"))
+    tokenizers_payload = ensure_mapping(payload.get("tokenizers"))
 
     return ServerSettings(
         fastapi=build_fastapi_settings(fastapi_payload),
         database=build_database_settings(database_payload),
         datasets=build_dataset_settings(dataset_payload),
         fitting=build_fitting_settings(fitting_payload),
+        tokenizers=build_tokenizer_settings(tokenizers_payload),
     )
 
 
