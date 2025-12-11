@@ -71,12 +71,19 @@ class TokenizerSettings:
 
 # -----------------------------------------------------------------------------
 @dataclass(frozen=True)
+class BenchmarkSettings:
+    streaming_batch_size: int
+    log_interval: int
+
+# -----------------------------------------------------------------------------
+@dataclass(frozen=True)
 class ServerSettings:
     fastapi: FastAPISettings
     database: DatabaseSettings
     datasets: DatasetSettings
     fitting: FittingSettings
     tokenizers: TokenizerSettings
+    benchmarks: BenchmarkSettings
 
 
 # [BUILDER FUNCTIONS]
@@ -209,12 +216,24 @@ def build_tokenizer_settings(payload: dict[str, Any] | Any) -> TokenizerSettings
     )
 
 # -----------------------------------------------------------------------------
+def build_benchmark_settings(payload: dict[str, Any] | Any) -> BenchmarkSettings:
+    return BenchmarkSettings(
+        streaming_batch_size=coerce_int(
+            payload.get("streaming_batch_size"), 1000, minimum=100
+        ),
+        log_interval=coerce_int(
+            payload.get("log_interval"), 10000, minimum=100
+        ),
+    )
+
+# -----------------------------------------------------------------------------
 def build_server_settings(payload: dict[str, Any] | Any) -> ServerSettings:
     fastapi_payload = ensure_mapping(payload.get("fastapi"))
     database_payload = ensure_mapping(payload.get("database"))
     dataset_payload = ensure_mapping(payload.get("datasets"))
     fitting_payload = ensure_mapping(payload.get("fitting"))
     tokenizers_payload = ensure_mapping(payload.get("tokenizers"))
+    benchmarks_payload = ensure_mapping(payload.get("benchmarks"))
 
     return ServerSettings(
         fastapi=build_fastapi_settings(fastapi_payload),
@@ -222,6 +241,7 @@ def build_server_settings(payload: dict[str, Any] | Any) -> ServerSettings:
         datasets=build_dataset_settings(dataset_payload),
         fitting=build_fitting_settings(fitting_payload),
         tokenizers=build_tokenizer_settings(tokenizers_payload),
+        benchmarks=build_benchmark_settings(benchmarks_payload),
     )
 
 

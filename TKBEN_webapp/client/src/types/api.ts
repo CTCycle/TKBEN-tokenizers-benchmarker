@@ -96,3 +96,55 @@ export interface DatasetAnalysisResponse {
     analyzed_count: number;
     statistics: DatasetStatisticsSummary;
 }
+
+/**
+ * Plot data returned as base64 encoded PNG
+ */
+export interface PlotData {
+    name: string;
+    data: string;
+}
+
+/**
+ * Global metrics for a single tokenizer benchmark
+ */
+export interface GlobalMetrics {
+    tokenizer: string;
+    dataset_name: string;
+    tokenization_speed_tps: number;
+    throughput_chars_per_sec: number;
+    vocabulary_size: number;
+    avg_sequence_length: number;
+    median_sequence_length: number;
+    subword_fertility: number;
+    oov_rate: number;
+    word_recovery_rate: number;
+    character_coverage: number;
+    determinism_rate: number;
+    boundary_preservation_rate: number;
+    round_trip_fidelity_rate: number;
+}
+
+/**
+ * Request for running tokenizer benchmarks
+ */
+export interface BenchmarkRunRequest {
+    tokenizers: string[];
+    dataset_name: string;
+    max_documents?: number;
+    include_custom_tokenizer?: boolean;
+    include_nsl?: boolean;
+}
+
+/**
+ * Response from the benchmark run endpoint
+ */
+export interface BenchmarkRunResponse {
+    status: string;
+    dataset_name: string;
+    documents_processed: number;
+    tokenizers_processed: string[];
+    tokenizers_count: number;
+    plots: PlotData[];
+    global_metrics: GlobalMetrics[];
+}
