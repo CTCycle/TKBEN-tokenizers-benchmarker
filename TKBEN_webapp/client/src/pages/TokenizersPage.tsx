@@ -8,8 +8,8 @@ const TokenizersPage = () => {
     fetchedTokenizers,
     selectedTokenizer,
     tokenizers,
-    includeCustom,
-    includeNSL,
+    customTokenizerName,
+    customTokenizerUploading,
     maxDocuments,
     availableDatasets,
     selectedDataset,
@@ -18,10 +18,9 @@ const TokenizersPage = () => {
     benchmarkError,
     benchmarkResult,
     selectedPlot,
+    customTokenizerInputRef,
     setSelectedTokenizer,
     setTokenizers,
-    setIncludeCustom,
-    setIncludeNSL,
     setMaxDocuments,
     setSelectedDataset,
     setSelectedPlot,
@@ -32,20 +31,23 @@ const TokenizersPage = () => {
     handleRunBenchmarks,
     handleDownloadPlot,
     refreshDatasets,
+    handleUploadCustomTokenizer,
+    handleClearCustomTokenizer,
+    triggerCustomTokenizerUpload,
   } = useTokenizers();
 
   const chartStats = useMemo(
     () => [
-      { label: 'Queued runs', value: tokenizers.length },
+      { label: 'Queued runs', value: tokenizers.length + (customTokenizerName ? 1 : 0) },
       {
         label: 'Avg. throughput',
         value: benchmarkResult?.global_metrics?.[0]?.tokenization_speed_tps
           ? `${Math.round(benchmarkResult.global_metrics[0].tokenization_speed_tps).toLocaleString()} tok/s`
           : '0 tok/s'
       },
-      { label: 'Custom tokenizer', value: includeCustom ? 'yes' : 'no' },
+      { label: 'Custom tokenizer', value: customTokenizerName ? 'loaded' : 'none' },
     ],
-    [tokenizers.length, includeCustom, benchmarkResult],
+    [tokenizers.length, customTokenizerName, benchmarkResult],
   );
 
   return (
@@ -160,22 +162,36 @@ const TokenizersPage = () => {
               </div>
             </div>
             <div className="checkbox-group">
-              <label className="checkbox">
+              <div className="custom-tokenizer-row">
                 <input
-                  type="checkbox"
-                  checked={includeCustom}
-                  onChange={(event) => setIncludeCustom(event.target.checked)}
+                  type="file"
+                  ref={customTokenizerInputRef}
+                  onChange={handleUploadCustomTokenizer}
+                  accept=".json"
+                  style={{ display: 'none' }}
                 />
-                <span>Include custom tokenizer</span>
-              </label>
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={includeNSL}
-                  onChange={(event) => setIncludeNSL(event.target.checked)}
-                />
-                <span>Calculate Normalized Sequence Length (NSL)</span>
-              </label>
+                <button
+                  type="button"
+                  className="primary-button ghost"
+                  onClick={triggerCustomTokenizerUpload}
+                  disabled={customTokenizerUploading}
+                >
+                  {customTokenizerUploading ? 'Uploading...' : 'Upload tokenizer.json'}
+                </button>
+                {customTokenizerName && (
+                  <span className="custom-tokenizer-badge">
+                    {customTokenizerName}
+                    <button
+                      type="button"
+                      className="clear-button"
+                      onClick={handleClearCustomTokenizer}
+                      aria-label="Clear custom tokenizer"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <footer className="panel-footer">
@@ -183,7 +199,7 @@ const TokenizersPage = () => {
               type="button"
               className="primary-button"
               onClick={handleRunBenchmarks}
-              disabled={benchmarkInProgress || tokenizers.length === 0 || !selectedDataset}
+              disabled={benchmarkInProgress || (tokenizers.length === 0 && !customTokenizerName) || !selectedDataset}
             >
               {benchmarkInProgress ? 'Running benchmarks...' : 'Run Benchmarks'}
             </button>

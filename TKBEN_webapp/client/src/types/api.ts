@@ -139,8 +139,16 @@ export interface BenchmarkRunRequest {
     tokenizers: string[];
     dataset_name: string;
     max_documents?: number;
-    include_custom_tokenizer?: boolean;
-    include_nsl?: boolean;
+    custom_tokenizer_name?: string;
+}
+
+/**
+ * Response from custom tokenizer upload
+ */
+export interface TokenizerUploadResponse {
+    status: string;
+    tokenizer_name: string;
+    is_compatible: boolean;
 }
 
 /**

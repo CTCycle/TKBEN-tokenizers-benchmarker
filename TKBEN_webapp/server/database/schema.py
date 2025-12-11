@@ -39,14 +39,6 @@ class TokenizationLocalStats(Base):
 
 
 ###############################################################################
-class NSLBenchmark(Base):
-    __tablename__ = "NSL_RESULTS"
-    tokenizer = Column(String, primary_key=True)
-    tokens_count = Column(Integer)
-    __table_args__ = (UniqueConstraint("tokenizer"),)
-
-
-###############################################################################
 class TokenizationGlobalMetrics(Base):
     __tablename__ = "TOKENIZATION_GLOBAL_METRICS"
     tokenizer = Column(String, primary_key=True)

@@ -261,13 +261,9 @@ class BenchmarkService:
     def __init__(
         self,
         max_documents: int = 0,
-        include_custom_tokenizer: bool = False,
-        include_nsl: bool = False,
     ) -> None:
         set_verbosity_error()
         self.max_documents = max_documents
-        self.include_custom_tokenizer = include_custom_tokenizer
-        self.include_nsl = include_nsl
         self.reduce_data_size = True  # Always true for webapp
         self.tools = BenchmarkTools()
         
@@ -505,6 +501,7 @@ class BenchmarkService:
         self,
         dataset_name: str,
         tokenizer_ids: list[str],
+        custom_tokenizers: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         logger.info("Starting benchmark run for dataset: %s", dataset_name)
         logger.info("Tokenizers to benchmark: %s", tokenizer_ids)
@@ -514,8 +511,16 @@ class BenchmarkService:
         if doc_count == 0:
             raise ValueError(f"Dataset '{dataset_name}' not found or empty")
 
-        # Load tokenizers
+        # Load tokenizers from HuggingFace
         tokenizers = self.load_tokenizers(tokenizer_ids)
+        
+        # Merge in custom tokenizers if provided
+        if custom_tokenizers:
+            for name, tok in custom_tokenizers.items():
+                if self.tools.is_tokenizer_compatible(tok):
+                    tokenizers[name] = tok
+                    logger.info("Added custom tokenizer: %s", name)
+        
         if not tokenizers:
             raise ValueError("No valid tokenizers could be loaded")
 
@@ -559,7 +564,8 @@ class BenchmarkService:
             try:
                 tokenize_method = getattr(tokenizer, "tokenize", None)
                 uses_tokenize = callable(tokenize_method)
-                if "CUSTOM" in name and self.include_custom_tokenizer:
+                # Custom tokenizers from file uploads use process_tokens path
+                if "CUSTOM" in name:
                     uses_tokenize = False
                     tokenize_method = None
 

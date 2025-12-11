@@ -29,3 +29,13 @@ class TokenizerSettingsResponse(BaseModel):
     default_scan_limit: int
     max_scan_limit: int
     min_scan_limit: int
+
+
+###############################################################################
+class TokenizerUploadResponse(BaseModel):
+    """Response schema for custom tokenizer upload."""
+
+    status: str = Field(default="success")
+    tokenizer_name: str = Field(..., description="Name assigned to uploaded tokenizer")
+    is_compatible: bool = Field(..., description="Whether tokenizer is compatible")
+

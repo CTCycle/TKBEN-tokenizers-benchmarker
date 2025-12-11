@@ -40,13 +40,9 @@ class BenchmarkRunRequest(BaseModel):
         ge=0,
         description="Maximum documents to process (0 = all)",
     )
-    include_custom_tokenizer: bool = Field(
-        default=False,
-        description="Include custom tokenizer in benchmarks",
-    )
-    include_nsl: bool = Field(
-        default=False,
-        description="Calculate Normalized Sequence Length",
+    custom_tokenizer_name: str | None = Field(
+        default=None,
+        description="Name of uploaded custom tokenizer to include",
     )
 
 
