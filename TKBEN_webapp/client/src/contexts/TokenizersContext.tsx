@@ -1,6 +1,6 @@
-import { createContext, useContext, useCallback, useState } from 'react';
+import { createContext, useContext, useCallback, useState, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { scanTokenizers } from '../services/tokenizersApi';
+import { scanTokenizers, uploadCustomTokenizer, clearCustomTokenizers } from '../services/tokenizersApi';
 import { runBenchmarks } from '../services/benchmarksApi';
 import { fetchAvailableDatasets } from '../services/datasetsApi';
 import type { BenchmarkRunResponse, PlotData } from '../types/api';
@@ -12,8 +12,8 @@ interface TokenizersContextType {
     fetchedTokenizers: string[];
     selectedTokenizer: string;
     tokenizers: string[];
-    includeCustom: boolean;
-    includeNSL: boolean;
+    customTokenizerName: string | null;
+    customTokenizerUploading: boolean;
     maxDocuments: number;
     availableDatasets: string[];
     selectedDataset: string;
@@ -22,12 +22,11 @@ interface TokenizersContextType {
     benchmarkError: string | null;
     benchmarkResult: BenchmarkRunResponse | null;
     selectedPlot: PlotData | null;
+    customTokenizerInputRef: React.RefObject<HTMLInputElement | null>;
 
     // Actions
     setSelectedTokenizer: (tokenizer: string) => void;
     setTokenizers: (tokenizers: string[]) => void;
-    setIncludeCustom: (value: boolean) => void;
-    setIncludeNSL: (value: boolean) => void;
     setMaxDocuments: (value: number) => void;
     setSelectedDataset: (name: string) => void;
     setSelectedPlot: (plot: PlotData | null) => void;
@@ -38,18 +37,22 @@ interface TokenizersContextType {
     handleRunBenchmarks: () => Promise<void>;
     handleDownloadPlot: (plot: PlotData) => void;
     refreshDatasets: () => Promise<void>;
+    handleUploadCustomTokenizer: (event: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
+    handleClearCustomTokenizer: () => Promise<void>;
+    triggerCustomTokenizerUpload: () => void;
 }
 
 const TokenizersContext = createContext<TokenizersContextType | null>(null);
 
 export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
+    const customTokenizerInputRef = useRef<HTMLInputElement | null>(null);
     const [scanInProgress, setScanInProgress] = useState(false);
     const [scanError, setScanError] = useState<string | null>(null);
     const [fetchedTokenizers, setFetchedTokenizers] = useState<string[]>([]);
     const [selectedTokenizer, setSelectedTokenizer] = useState('');
     const [tokenizers, setTokenizers] = useState<string[]>([]);
-    const [includeCustom, setIncludeCustom] = useState(false);
-    const [includeNSL, setIncludeNSL] = useState(false);
+    const [customTokenizerName, setCustomTokenizerName] = useState<string | null>(null);
+    const [customTokenizerUploading, setCustomTokenizerUploading] = useState(false);
     const [maxDocuments, setMaxDocuments] = useState(1000);
     const [availableDatasets, setAvailableDatasets] = useState<string[]>([]);
     const [selectedDataset, setSelectedDataset] = useState('');
@@ -66,7 +69,6 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         try {
             const response = await fetchAvailableDatasets();
             setAvailableDatasets(response.datasets);
-            // Auto-select first dataset if none selected
             if (response.datasets.length > 0 && !selectedDataset) {
                 setSelectedDataset(response.datasets[0]);
             }
@@ -76,8 +78,6 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
             setDatasetsLoading(false);
         }
     }, [selectedDataset]);
-
-
 
     const addTokenizer = useCallback((value: string) => {
         if (!value) return;
@@ -106,8 +106,47 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         }
     }, []);
 
+    const triggerCustomTokenizerUpload = useCallback(() => {
+        customTokenizerInputRef.current?.click();
+    }, []);
+
+    const handleUploadCustomTokenizer = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setCustomTokenizerUploading(true);
+        setBenchmarkError(null);
+
+        try {
+            const response = await uploadCustomTokenizer(file);
+            if (response.is_compatible) {
+                setCustomTokenizerName(response.tokenizer_name);
+            } else {
+                setBenchmarkError(`Tokenizer "${response.tokenizer_name}" is not compatible.`);
+            }
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to upload tokenizer';
+            setBenchmarkError(errorMessage);
+            console.error('Upload error:', error);
+        } finally {
+            setCustomTokenizerUploading(false);
+            if (customTokenizerInputRef.current) {
+                customTokenizerInputRef.current.value = '';
+            }
+        }
+    }, []);
+
+    const handleClearCustomTokenizer = useCallback(async () => {
+        try {
+            await clearCustomTokenizers();
+            setCustomTokenizerName(null);
+        } catch (error) {
+            console.error('Failed to clear custom tokenizer:', error);
+        }
+    }, []);
+
     const handleRunBenchmarks = useCallback(async () => {
-        if (tokenizers.length === 0) {
+        if (tokenizers.length === 0 && !customTokenizerName) {
             setBenchmarkError('Please add at least one tokenizer to benchmark.');
             return;
         }
@@ -127,11 +166,9 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
                 tokenizers,
                 dataset_name: selectedDataset,
                 max_documents: maxDocuments,
-                include_custom_tokenizer: includeCustom,
-                include_nsl: includeNSL,
+                custom_tokenizer_name: customTokenizerName || undefined,
             });
             setBenchmarkResult(response);
-            // Auto-select first plot if available
             if (response.plots && response.plots.length > 0) {
                 setSelectedPlot(response.plots[0]);
             }
@@ -142,7 +179,7 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         } finally {
             setBenchmarkInProgress(false);
         }
-    }, [tokenizers, selectedDataset, maxDocuments, includeCustom, includeNSL]);
+    }, [tokenizers, selectedDataset, maxDocuments, customTokenizerName]);
 
     const handleDownloadPlot = useCallback((plot: PlotData) => {
         const link = document.createElement('a');
@@ -160,8 +197,8 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         fetchedTokenizers,
         selectedTokenizer,
         tokenizers,
-        includeCustom,
-        includeNSL,
+        customTokenizerName,
+        customTokenizerUploading,
         maxDocuments,
         availableDatasets,
         selectedDataset,
@@ -170,12 +207,11 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         benchmarkError,
         benchmarkResult,
         selectedPlot,
+        customTokenizerInputRef,
 
         // Actions
         setSelectedTokenizer,
         setTokenizers,
-        setIncludeCustom,
-        setIncludeNSL,
         setMaxDocuments,
         setSelectedDataset,
         setSelectedPlot,
@@ -186,6 +222,9 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         handleRunBenchmarks,
         handleDownloadPlot,
         refreshDatasets,
+        handleUploadCustomTokenizer,
+        handleClearCustomTokenizer,
+        triggerCustomTokenizerUpload,
     };
 
     return (

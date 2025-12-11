@@ -1,4 +1,4 @@
-import type { TokenizerScanResponse, TokenizerSettingsResponse } from '../types/api';
+import type { TokenizerScanResponse, TokenizerSettingsResponse, TokenizerUploadResponse } from '../types/api';
 
 const API_BASE_URL = '/api';
 
@@ -50,4 +50,40 @@ export async function scanTokenizers(
     }
 
     return response.json();
+}
+
+/**
+ * Upload a custom tokenizer.json file.
+ * @param file - The tokenizer.json file to upload
+ * @returns Promise with the upload response
+ */
+export async function uploadCustomTokenizer(file: File): Promise<TokenizerUploadResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${API_BASE_URL}/tokenizers/upload`, {
+        method: 'POST',
+        body: formData,
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || `Failed to upload tokenizer: ${response.status}`);
+    }
+
+    return response.json();
+}
+
+/**
+ * Clear all uploaded custom tokenizers from the server.
+ */
+export async function clearCustomTokenizers(): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/tokenizers/custom`, {
+        method: 'DELETE',
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || `Failed to clear tokenizers: ${response.status}`);
+    }
 }

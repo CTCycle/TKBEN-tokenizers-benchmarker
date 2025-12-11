@@ -4,6 +4,7 @@ import asyncio
 
 from fastapi import APIRouter, HTTPException, status
 
+from TKBEN_webapp.server.routes.tokenizers import get_custom_tokenizers
 from TKBEN_webapp.server.schemas.benchmarks import (
     BenchmarkRunRequest,
     BenchmarkRunResponse,
@@ -56,10 +57,16 @@ async def run_benchmarks(request: BenchmarkRunRequest) -> BenchmarkRunResponse:
         request.max_documents,
     )
 
+    # Get custom tokenizer if specified
+    custom_tokenizers = {}
+    if request.custom_tokenizer_name:
+        uploaded = get_custom_tokenizers()
+        if request.custom_tokenizer_name in uploaded:
+            custom_tokenizers[request.custom_tokenizer_name] = uploaded[request.custom_tokenizer_name]
+            logger.info("Including custom tokenizer: %s", request.custom_tokenizer_name)
+
     service = BenchmarkService(
         max_documents=request.max_documents,
-        include_custom_tokenizer=request.include_custom_tokenizer,
-        include_nsl=request.include_nsl,
     )
 
     try:
@@ -67,6 +74,7 @@ async def run_benchmarks(request: BenchmarkRunRequest) -> BenchmarkRunResponse:
             service.run_benchmarks,
             dataset_name=request.dataset_name,
             tokenizer_ids=request.tokenizers,
+            custom_tokenizers=custom_tokenizers,
         )
     except ValueError as exc:
         logger.warning("Benchmark run validation error: %s", exc)
