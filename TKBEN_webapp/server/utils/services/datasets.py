@@ -237,6 +237,11 @@ class DatasetService:
             return result.first() is not None
 
     # -------------------------------------------------------------------------
+    def get_available_datasets(self) -> list[str]:
+        """Get list of all unique dataset names in the database."""
+        return database.backend.get_distinct_values("TEXT_DATASET", "dataset_name")
+
+    # -------------------------------------------------------------------------
     def dataset_length_stream(
         self,
         dataset: Dataset | DatasetDict,

@@ -11,7 +11,9 @@ const TokenizersPage = () => {
     includeCustom,
     includeNSL,
     maxDocuments,
-    datasetName,
+    availableDatasets,
+    selectedDataset,
+    datasetsLoading,
     benchmarkInProgress,
     benchmarkError,
     benchmarkResult,
@@ -21,7 +23,7 @@ const TokenizersPage = () => {
     setIncludeCustom,
     setIncludeNSL,
     setMaxDocuments,
-    setDatasetName,
+    setSelectedDataset,
     setSelectedPlot,
     setScanError,
     setBenchmarkError,
@@ -29,6 +31,7 @@ const TokenizersPage = () => {
     handleScan,
     handleRunBenchmarks,
     handleDownloadPlot,
+    refreshDatasets,
   } = useTokenizers();
 
   const chartStats = useMemo(
@@ -112,15 +115,36 @@ const TokenizersPage = () => {
             />
             <div className="benchmark-options">
               <div className="input-group">
-                <label htmlFor="dataset-name">Dataset name:</label>
-                <input
-                  id="dataset-name"
-                  type="text"
-                  className="text-input"
-                  value={datasetName}
-                  onChange={(e) => setDatasetName(e.target.value)}
-                  placeholder="e.g., wikitext/wikitext-2-raw-v1"
-                />
+                <label htmlFor="dataset-select">Dataset:</label>
+                <div className="dataset-select-row">
+                  <select
+                    id="dataset-select"
+                    className="text-input"
+                    value={selectedDataset}
+                    onChange={(e) => setSelectedDataset(e.target.value)}
+                    disabled={datasetsLoading}
+                  >
+                    {availableDatasets.length === 0 ? (
+                      <option value="">
+                        {datasetsLoading ? 'Loading...' : 'Click Refresh to load'}
+                      </option>
+                    ) : (
+                      availableDatasets.map((dataset) => (
+                        <option key={dataset} value={dataset}>
+                          {dataset}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  <button
+                    type="button"
+                    className="primary-button ghost"
+                    onClick={refreshDatasets}
+                    disabled={datasetsLoading}
+                  >
+                    {datasetsLoading ? '...' : 'Refresh'}
+                  </button>
+                </div>
               </div>
               <div className="input-group">
                 <label htmlFor="max-documents">Max documents:</label>
@@ -159,7 +183,7 @@ const TokenizersPage = () => {
               type="button"
               className="primary-button"
               onClick={handleRunBenchmarks}
-              disabled={benchmarkInProgress || tokenizers.length === 0}
+              disabled={benchmarkInProgress || tokenizers.length === 0 || !selectedDataset}
             >
               {benchmarkInProgress ? 'Running benchmarks...' : 'Run Benchmarks'}
             </button>

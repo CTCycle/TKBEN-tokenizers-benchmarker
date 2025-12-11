@@ -2,6 +2,7 @@ import { createContext, useContext, useCallback, useState } from 'react';
 import type { ReactNode } from 'react';
 import { scanTokenizers } from '../services/tokenizersApi';
 import { runBenchmarks } from '../services/benchmarksApi';
+import { fetchAvailableDatasets } from '../services/datasetsApi';
 import type { BenchmarkRunResponse, PlotData } from '../types/api';
 
 interface TokenizersContextType {
@@ -14,7 +15,9 @@ interface TokenizersContextType {
     includeCustom: boolean;
     includeNSL: boolean;
     maxDocuments: number;
-    datasetName: string;
+    availableDatasets: string[];
+    selectedDataset: string;
+    datasetsLoading: boolean;
     benchmarkInProgress: boolean;
     benchmarkError: string | null;
     benchmarkResult: BenchmarkRunResponse | null;
@@ -26,7 +29,7 @@ interface TokenizersContextType {
     setIncludeCustom: (value: boolean) => void;
     setIncludeNSL: (value: boolean) => void;
     setMaxDocuments: (value: number) => void;
-    setDatasetName: (name: string) => void;
+    setSelectedDataset: (name: string) => void;
     setSelectedPlot: (plot: PlotData | null) => void;
     setScanError: (error: string | null) => void;
     setBenchmarkError: (error: string | null) => void;
@@ -34,6 +37,7 @@ interface TokenizersContextType {
     handleScan: () => Promise<void>;
     handleRunBenchmarks: () => Promise<void>;
     handleDownloadPlot: (plot: PlotData) => void;
+    refreshDatasets: () => Promise<void>;
 }
 
 const TokenizersContext = createContext<TokenizersContextType | null>(null);
@@ -47,13 +51,33 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
     const [includeCustom, setIncludeCustom] = useState(false);
     const [includeNSL, setIncludeNSL] = useState(false);
     const [maxDocuments, setMaxDocuments] = useState(1000);
-    const [datasetName, setDatasetName] = useState('');
+    const [availableDatasets, setAvailableDatasets] = useState<string[]>([]);
+    const [selectedDataset, setSelectedDataset] = useState('');
+    const [datasetsLoading, setDatasetsLoading] = useState(false);
 
     // Benchmark state
     const [benchmarkInProgress, setBenchmarkInProgress] = useState(false);
     const [benchmarkError, setBenchmarkError] = useState<string | null>(null);
     const [benchmarkResult, setBenchmarkResult] = useState<BenchmarkRunResponse | null>(null);
     const [selectedPlot, setSelectedPlot] = useState<PlotData | null>(null);
+
+    const refreshDatasets = useCallback(async () => {
+        setDatasetsLoading(true);
+        try {
+            const response = await fetchAvailableDatasets();
+            setAvailableDatasets(response.datasets);
+            // Auto-select first dataset if none selected
+            if (response.datasets.length > 0 && !selectedDataset) {
+                setSelectedDataset(response.datasets[0]);
+            }
+        } catch (error) {
+            console.error('Failed to fetch datasets:', error);
+        } finally {
+            setDatasetsLoading(false);
+        }
+    }, [selectedDataset]);
+
+
 
     const addTokenizer = useCallback((value: string) => {
         if (!value) return;
@@ -88,8 +112,8 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
             return;
         }
 
-        if (!datasetName.trim()) {
-            setBenchmarkError('Please enter a dataset name (e.g., "wikitext/wikitext-2-raw-v1").');
+        if (!selectedDataset) {
+            setBenchmarkError('Please select a dataset for benchmarking.');
             return;
         }
 
@@ -101,7 +125,7 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         try {
             const response = await runBenchmarks({
                 tokenizers,
-                dataset_name: datasetName.trim(),
+                dataset_name: selectedDataset,
                 max_documents: maxDocuments,
                 include_custom_tokenizer: includeCustom,
                 include_nsl: includeNSL,
@@ -118,7 +142,7 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         } finally {
             setBenchmarkInProgress(false);
         }
-    }, [tokenizers, datasetName, maxDocuments, includeCustom, includeNSL]);
+    }, [tokenizers, selectedDataset, maxDocuments, includeCustom, includeNSL]);
 
     const handleDownloadPlot = useCallback((plot: PlotData) => {
         const link = document.createElement('a');
@@ -139,7 +163,9 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         includeCustom,
         includeNSL,
         maxDocuments,
-        datasetName,
+        availableDatasets,
+        selectedDataset,
+        datasetsLoading,
         benchmarkInProgress,
         benchmarkError,
         benchmarkResult,
@@ -151,7 +177,7 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         setIncludeCustom,
         setIncludeNSL,
         setMaxDocuments,
-        setDatasetName,
+        setSelectedDataset,
         setSelectedPlot,
         setScanError,
         setBenchmarkError,
@@ -159,6 +185,7 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         handleScan,
         handleRunBenchmarks,
         handleDownloadPlot,
+        refreshDatasets,
     };
 
     return (

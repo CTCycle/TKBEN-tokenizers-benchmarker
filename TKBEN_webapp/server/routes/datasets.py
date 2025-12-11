@@ -10,6 +10,7 @@ from TKBEN_webapp.server.schemas.dataset import (
     DatasetAnalysisResponse,
     DatasetDownloadRequest,
     DatasetDownloadResponse,
+    DatasetListResponse,
     DatasetStatisticsSummary,
     HistogramData,
 )
@@ -17,6 +18,24 @@ from TKBEN_webapp.server.utils.logger import logger
 from TKBEN_webapp.server.utils.services.datasets import DatasetService
 
 router = APIRouter(prefix="/datasets", tags=["datasets"])
+
+
+###############################################################################
+@router.get(
+    "/list",
+    response_model=DatasetListResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def list_datasets() -> DatasetListResponse:
+    """
+    List all available datasets in the database.
+
+    Returns:
+        DatasetListResponse with list of dataset names.
+    """
+    service = DatasetService()
+    datasets = await asyncio.to_thread(service.get_available_datasets)
+    return DatasetListResponse(datasets=datasets)
 
 
 ###############################################################################
