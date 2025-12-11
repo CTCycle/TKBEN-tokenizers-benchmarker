@@ -1,6 +1,6 @@
 import { createContext, useContext, useCallback, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { analyzeDataset, downloadDataset, uploadCustomDataset } from '../services/datasetsApi';
+import { analyzeDataset, downloadDataset, uploadCustomDataset, fetchAvailableDatasets } from '../services/datasetsApi';
 import type { DatasetStatisticsSummary, HistogramData } from '../types/api';
 
 interface DatasetStats {
@@ -24,6 +24,9 @@ interface DatasetContextType {
     analyzing: boolean;
     analysisStats: DatasetStatisticsSummary | null;
     fileInputRef: React.RefObject<HTMLInputElement | null>;
+    availableDatasets: string[];
+    selectedAnalysisDataset: string;
+    analysisDatasetLoading: boolean;
 
     // Actions
     setSelectedCorpus: (corpus: string) => void;
@@ -35,21 +38,17 @@ interface DatasetContextType {
     handleUploadClick: () => void;
     handleFileChange: (event: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
     handleAnalyzeDataset: () => Promise<void>;
+    setSelectedAnalysisDataset: (name: string) => void;
+    refreshAvailableDatasets: () => Promise<void>;
 }
-
-const datasetOptions = [
-    { corpus: 'wikitext', configs: ['wikitext-103-v1', 'wikitext-2-v1'] },
-    { corpus: 'openwebtext', configs: ['default'] },
-    { corpus: 'c4', configs: ['en', 'realnewslike'] },
-];
 
 const DatasetContext = createContext<DatasetContextType | null>(null);
 
 export const DatasetProvider = ({ children }: { children: ReactNode }) => {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [datasetName, setDatasetName] = useState<string | null>(null);
-    const [selectedCorpus, setSelectedCorpus] = useState(datasetOptions[0].corpus);
-    const [selectedConfig, setSelectedConfig] = useState(datasetOptions[0].configs[0]);
+    const [selectedCorpus, setSelectedCorpus] = useState('wikitext');
+    const [selectedConfig, setSelectedConfig] = useState('wikitext-2-v1');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [datasetLoaded, setDatasetLoaded] = useState(false);
@@ -57,13 +56,29 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
     const [histogram, setHistogram] = useState<HistogramData | null>(null);
     const [analyzing, setAnalyzing] = useState(false);
     const [analysisStats, setAnalysisStats] = useState<DatasetStatisticsSummary | null>(null);
+    const [availableDatasets, setAvailableDatasets] = useState<string[]>([]);
+    const [selectedAnalysisDataset, setSelectedAnalysisDataset] = useState('');
+    const [analysisDatasetLoading, setAnalysisDatasetLoading] = useState(false);
+
+    const refreshAvailableDatasets = useCallback(async () => {
+        setAnalysisDatasetLoading(true);
+        try {
+            const response = await fetchAvailableDatasets();
+            setAvailableDatasets(response.datasets);
+            // Auto-select first dataset if none selected
+            if (response.datasets.length > 0 && !selectedAnalysisDataset) {
+                setSelectedAnalysisDataset(response.datasets[0]);
+            }
+        } catch (err) {
+            console.error('Failed to fetch datasets:', err);
+        } finally {
+            setAnalysisDatasetLoading(false);
+        }
+    }, [selectedAnalysisDataset]);
 
     const handleCorpusChange = (value: string) => {
         setSelectedCorpus(value);
-        const option = datasetOptions.find((item) => item.corpus === value);
-        if (option) {
-            setSelectedConfig(option.configs[0]);
-        }
+        setSelectedConfig('');
         // Reset loaded state when corpus changes
         setDatasetLoaded(false);
         setStats(null);
@@ -99,12 +114,14 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             setHistogram(response.histogram);
             setDatasetName(response.dataset_name);
             setDatasetLoaded(true);
+            // Refresh available datasets after loading new one
+            await refreshAvailableDatasets();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load dataset');
         } finally {
             setLoading(false);
         }
-    }, [selectedCorpus, selectedConfig]);
+    }, [selectedCorpus, selectedConfig, refreshAvailableDatasets]);
 
     const handleUploadClick = () => {
         fileInputRef.current?.click();
@@ -130,6 +147,8 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             setHistogram(response.histogram);
             setDatasetName(response.dataset_name);
             setDatasetLoaded(true);
+            // Refresh available datasets after upload
+            await refreshAvailableDatasets();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to upload dataset');
         } finally {
@@ -139,23 +158,23 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
                 fileInputRef.current.value = '';
             }
         }
-    }, []);
+    }, [refreshAvailableDatasets]);
 
     const handleAnalyzeDataset = useCallback(async () => {
-        if (!datasetName) return;
+        if (!selectedAnalysisDataset) return;
 
         setAnalyzing(true);
         setError(null);
 
         try {
-            const response = await analyzeDataset({ dataset_name: datasetName });
+            const response = await analyzeDataset({ dataset_name: selectedAnalysisDataset });
             setAnalysisStats(response.statistics);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to analyze dataset');
         } finally {
             setAnalyzing(false);
         }
-    }, [datasetName]);
+    }, [selectedAnalysisDataset]);
 
     const value: DatasetContextType = {
         // State
@@ -170,6 +189,9 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
         analyzing,
         analysisStats,
         fileInputRef,
+        availableDatasets,
+        selectedAnalysisDataset,
+        analysisDatasetLoading,
 
         // Actions
         setSelectedCorpus,
@@ -181,6 +203,8 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
         handleUploadClick,
         handleFileChange,
         handleAnalyzeDataset,
+        setSelectedAnalysisDataset,
+        refreshAvailableDatasets,
     };
 
     return (

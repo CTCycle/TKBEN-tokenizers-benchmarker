@@ -89,3 +89,13 @@ class DatasetAnalysisResponse(BaseModel):
     analyzed_count: int = Field(..., description="Number of documents analyzed")
     statistics: DatasetStatisticsSummary = Field(..., description="Word-level statistics")
 
+
+###############################################################################
+class DatasetListResponse(BaseModel):
+    """Response schema for listing available datasets."""
+
+    datasets: list[str] = Field(
+        default_factory=list, description="List of dataset names in the database"
+    )
+
+

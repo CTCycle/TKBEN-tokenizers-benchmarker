@@ -201,5 +201,16 @@ class SQLiteRepository:
                     batch_df = df.iloc[start:end]
                     batch_df.to_sql(table_name, conn, if_exists="append", index=False)
 
+    # -----------------------------------------------------------------------------
+    def get_distinct_values(self, table_name: str, column: str) -> list[str]:
+        """Get distinct values from a column in the specified table."""
+        with self.engine.connect() as conn:
+            inspector = inspect(conn)
+            if not inspector.has_table(table_name):
+                return []
+            result = conn.execute(
+                sqlalchemy.text(f'SELECT DISTINCT "{column}" FROM "{table_name}"')
+            )
+            return [row[0] for row in result.fetchall() if row[0] is not None]
 
 

@@ -13,6 +13,9 @@ const DatasetPage = () => {
     analyzing,
     analysisStats,
     fileInputRef,
+    availableDatasets,
+    selectedAnalysisDataset,
+    analysisDatasetLoading,
     setError,
     handleCorpusChange,
     handleConfigChange,
@@ -20,6 +23,8 @@ const DatasetPage = () => {
     handleUploadClick,
     handleFileChange,
     handleAnalyzeDataset,
+    setSelectedAnalysisDataset,
+    refreshAvailableDatasets,
   } = useDataset();
 
   const formatNumber = (num: number) => {
@@ -79,77 +84,183 @@ const DatasetPage = () => {
 
   return (
     <div className="page-scroll">
-      <div className="page-grid dataset-page">
-        <section className="panel">
-          <header className="panel-header">
-            <div>
-              <p className="panel-label">Select dataset</p>
-              <p className="panel-description">
-                Load from HuggingFace or upload a custom CSV/Excel file.
-              </p>
-            </div>
-          </header>
-          <div className="panel-body">
-            {error && (
-              <div className="error-banner">
-                <span>{error}</span>
-                <button onClick={() => setError(null)}>×</button>
+      <div className="page-grid dataset-page-layout">
+        {/* Left column: Load + Analysis */}
+        <div className="dataset-left-column">
+          <section className="panel">
+            <header className="panel-header">
+              <div>
+                <p className="panel-label">Load dataset</p>
+                <p className="panel-description">
+                  Load from HuggingFace or upload a custom CSV/Excel file.
+                </p>
               </div>
-            )}
-            <div className="input-stack">
-              <label className="field-label">Corpus</label>
-              <input
-                className="text-input"
-                value={selectedCorpus}
-                onChange={(event) => handleCorpusChange(event.target.value)}
-                disabled={loading}
-              />
+            </header>
+            <div className="panel-body">
+              {error && (
+                <div className="error-banner">
+                  <span>{error}</span>
+                  <button onClick={() => setError(null)}>×</button>
+                </div>
+              )}
+              <div className="input-stack">
+                <label className="field-label">Corpus</label>
+                <input
+                  className="text-input"
+                  value={selectedCorpus}
+                  onChange={(event) => handleCorpusChange(event.target.value)}
+                  disabled={loading}
+                />
+              </div>
+              <div className="input-stack">
+                <label className="field-label">Configuration</label>
+                <input
+                  className="text-input"
+                  value={selectedConfig}
+                  onChange={(event) => handleConfigChange(event.target.value)}
+                  disabled={loading}
+                />
+              </div>
             </div>
-            <div className="input-stack">
-              <label className="field-label">Configuration</label>
+            <footer className="panel-footer">
               <input
-                className="text-input"
-                value={selectedConfig}
-                onChange={(event) => handleConfigChange(event.target.value)}
-                disabled={loading}
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept=".csv,.xlsx,.xls"
+                style={{ display: 'none' }}
               />
+              <button
+                type="button"
+                className="primary-button"
+                onClick={handleLoadDataset}
+                disabled={loading}
+              >
+                {loading ? 'Loading...' : 'Load dataset'}
+              </button>
+              <button
+                type="button"
+                className="primary-button ghost"
+                onClick={handleUploadClick}
+                disabled={loading}
+              >
+                Upload custom dataset
+              </button>
+            </footer>
+          </section>
+
+          {/* Analysis Tools Section */}
+          <section className="panel analysis-tools">
+            <header className="panel-header">
+              <div>
+                <p className="panel-label">Analysis Tools</p>
+                <p className="panel-description">
+                  Analyze word-level statistics for any loaded dataset.
+                </p>
+              </div>
+            </header>
+            <div className="panel-body">
+              <div className="input-stack">
+                <label className="field-label">Select Dataset to Analyze</label>
+                <div className="dataset-select-row">
+                  <select
+                    className="text-input"
+                    value={selectedAnalysisDataset}
+                    onChange={(e) => setSelectedAnalysisDataset(e.target.value)}
+                    disabled={analysisDatasetLoading || analyzing}
+                  >
+                    {availableDatasets.length === 0 ? (
+                      <option value="">
+                        {analysisDatasetLoading ? 'Loading...' : 'Click Refresh to load datasets'}
+                      </option>
+                    ) : (
+                      availableDatasets.map((dataset) => (
+                        <option key={dataset} value={dataset}>
+                          {dataset}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  <button
+                    type="button"
+                    className="primary-button ghost"
+                    onClick={refreshAvailableDatasets}
+                    disabled={analysisDatasetLoading}
+                  >
+                    {analysisDatasetLoading ? 'Loading...' : 'Refresh'}
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-          <footer className="panel-footer">
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              accept=".csv,.xlsx,.xls"
-              style={{ display: 'none' }}
-            />
-            <button
-              type="button"
-              className="primary-button"
-              onClick={handleLoadDataset}
-              disabled={loading}
-            >
-              {loading ? 'Loading...' : 'Load dataset'}
-            </button>
-            <button
-              type="button"
-              className="primary-button ghost"
-              onClick={handleUploadClick}
-              disabled={loading}
-            >
-              Upload custom dataset
-            </button>
-            <button
-              type="button"
-              className="primary-button ghost"
-              disabled={!datasetLoaded || loading || analyzing}
-              onClick={handleAnalyzeDataset}
-            >
-              {analyzing ? 'Analyzing...' : 'Analyze dataset'}
-            </button>
-          </footer>
-        </section>
-        <aside className="panel dashboard-panel">
+            <footer className="panel-footer">
+              <button
+                type="button"
+                className="primary-button"
+                disabled={!selectedAnalysisDataset || analyzing}
+                onClick={handleAnalyzeDataset}
+              >
+                {analyzing ? 'Analyzing...' : 'Analyze Dataset'}
+              </button>
+            </footer>
+          </section>
+
+          {/* Analysis Results */}
+          {(analyzing || analysisStats) && (
+            <aside className="panel dashboard-panel">
+              <header className="panel-header">
+                <div>
+                  <p className="panel-label">Word Analysis</p>
+                  <p className="panel-description">
+                    {analysisStats
+                      ? `Word-level statistics for ${selectedAnalysisDataset}`
+                      : 'Computing word-level statistics...'}
+                  </p>
+                </div>
+              </header>
+              {analyzing ? (
+                <div className="loading-container">
+                  <div className="spinner" />
+                  <p>Analyzing dataset...</p>
+                  <span>Computing word counts and word length statistics for each document.</span>
+                </div>
+              ) : analysisStats ? (
+                <>
+                  <div className="dashboard-grid">
+                    <div className="stat-card">
+                      <p className="stat-label">Analyzed Docs</p>
+                      <p className="stat-value">
+                        {formatNumber(analysisStats.total_documents)}
+                      </p>
+                    </div>
+                    <div className="stat-card">
+                      <p className="stat-label">Mean Words/Doc</p>
+                      <p className="stat-value">
+                        {formatNumber(Math.round(analysisStats.mean_words_count))}
+                      </p>
+                    </div>
+                    <div className="stat-card">
+                      <p className="stat-label">Median Words/Doc</p>
+                      <p className="stat-value">
+                        {formatNumber(Math.round(analysisStats.median_words_count))}
+                      </p>
+                    </div>
+                  </div>
+                  <ul className="insights-list">
+                    <li>
+                      Average word length: <strong>{analysisStats.mean_avg_word_length.toFixed(2)}</strong> characters
+                    </li>
+                    <li>
+                      Word length variability: <strong>{analysisStats.mean_std_word_length.toFixed(2)}</strong> (std dev)
+                    </li>
+                  </ul>
+                </>
+              ) : null}
+            </aside>
+          )}
+        </div>
+
+        {/* Right column: Overview */}
+        <aside className="panel dashboard-panel dataset-right-column">
           <header className="panel-header">
             <div>
               <p className="panel-label">Dataset overview</p>
@@ -196,58 +307,6 @@ const DatasetPage = () => {
             )}
           </ul>
         </aside>
-        {(analyzing || analysisStats) && (
-          <aside className="panel dashboard-panel analysis-panel">
-            <header className="panel-header">
-              <div>
-                <p className="panel-label">Word Analysis</p>
-                <p className="panel-description">
-                  {analysisStats
-                    ? `Word-level statistics for ${datasetName}`
-                    : 'Computing word-level statistics...'}
-                </p>
-              </div>
-            </header>
-            {analyzing ? (
-              <div className="loading-container">
-                <div className="spinner" />
-                <p>Analyzing dataset...</p>
-                <span>Computing word counts and word length statistics for each document.</span>
-              </div>
-            ) : analysisStats ? (
-              <>
-                <div className="dashboard-grid">
-                  <div className="stat-card">
-                    <p className="stat-label">Analyzed Docs</p>
-                    <p className="stat-value">
-                      {formatNumber(analysisStats.total_documents)}
-                    </p>
-                  </div>
-                  <div className="stat-card">
-                    <p className="stat-label">Mean Words/Doc</p>
-                    <p className="stat-value">
-                      {formatNumber(Math.round(analysisStats.mean_words_count))}
-                    </p>
-                  </div>
-                  <div className="stat-card">
-                    <p className="stat-label">Median Words/Doc</p>
-                    <p className="stat-value">
-                      {formatNumber(Math.round(analysisStats.median_words_count))}
-                    </p>
-                  </div>
-                </div>
-                <ul className="insights-list">
-                  <li>
-                    Average word length: <strong>{analysisStats.mean_avg_word_length.toFixed(2)}</strong> characters
-                  </li>
-                  <li>
-                    Word length variability: <strong>{analysisStats.mean_std_word_length.toFixed(2)}</strong> (std dev)
-                  </li>
-                </ul>
-              </>
-            ) : null}
-          </aside>
-        )}
       </div>
     </div>
   );

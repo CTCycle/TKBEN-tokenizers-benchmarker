@@ -98,6 +98,13 @@ export interface DatasetAnalysisResponse {
 }
 
 /**
+ * Response from the list datasets endpoint
+ */
+export interface DatasetListResponse {
+    datasets: string[];
+}
+
+/**
  * Plot data returned as base64 encoded PNG
  */
 export interface PlotData {

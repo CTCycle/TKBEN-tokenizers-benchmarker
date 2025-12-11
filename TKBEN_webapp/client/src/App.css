@@ -104,12 +104,44 @@
   grid-template-columns: 3fr 2fr;
 }
 
+.dataset-page-layout {
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+}
+
+.dataset-left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  grid-column: 1;
+}
+
+.dataset-right-column {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  max-height: fit-content;
+}
+
+.dataset-select-row {
+  display: flex;
+  gap: 10px;
+}
+
+.dataset-select-row select {
+  flex: 1;
+}
+
 .tokenizers-page {
   grid-template-columns: 3fr 2fr;
 }
 
 .analysis-panel {
   grid-column: 1 / -1;
+}
+
+.analysis-tools {
+  border-left: 3px solid var(--color-accent);
+  background: linear-gradient(90deg, rgba(255, 232, 31, 0.05) 0%, var(--color-panel) 20%);
 }
 
 .panel {

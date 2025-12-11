@@ -1,9 +1,29 @@
-import type { CustomDatasetUploadResponse, DatasetAnalysisRequest, DatasetAnalysisResponse, DatasetDownloadRequest, DatasetDownloadResponse } from '../types/api';
+import type { CustomDatasetUploadResponse, DatasetAnalysisRequest, DatasetAnalysisResponse, DatasetDownloadRequest, DatasetDownloadResponse, DatasetListResponse } from '../types/api';
 
 const API_BASE_URL = '/api';
 
 // 10 minute timeout for large dataset downloads
 import { DOWNLOAD_TIMEOUT_MS } from '../constants';
+
+/**
+ * Fetch list of available datasets from the database.
+ * @returns Promise with the list of dataset names
+ */
+export async function fetchAvailableDatasets(): Promise<DatasetListResponse> {
+    const response = await fetch(`${API_BASE_URL}/datasets/list`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || `Failed to fetch datasets: ${response.status}`);
+    }
+
+    return response.json();
+}
 
 /**
  * Download a dataset from HuggingFace and save it to the database.
