@@ -3,43 +3,35 @@ from __future__ import annotations
 import os
 import re
 import time
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Generator, Iterable, Iterator, Mapping, Sequence
 from typing import Any
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import sqlalchemy
 from matplotlib.figure import Figure
-from tqdm import tqdm
+from transformers import AutoTokenizer
 from transformers.utils.logging import set_verbosity_error
 
-from TKBEN.app.client.workers import check_thread_status, update_progress_callback
-from TKBEN.app.utils.constants import EVALUATION_PATH, TOKENIZER_PATH
-from TKBEN.app.utils.logger import logger
-from TKBEN.app.utils.repository.serializer import DataSerializer
+from TKBEN_webapp.server.database.database import database
+from TKBEN_webapp.server.database.schema import (
+    TokenizationGlobalMetrics,
+    TokenizationLocalStats,
+    Vocabulary,
+    VocabularyStatistics,
+)
+from TKBEN_webapp.server.utils.configurations import server_settings
+from TKBEN_webapp.server.utils.logger import logger
 
 
-# [TOKENIZERS EXPLORER]
 ###############################################################################
 class BenchmarkTools:
 
     def __call__(self) -> None:
         pass
-    
+
     # -------------------------------------------------------------------------
     def process_tokens(self, text: str, tokenizer: Any) -> tuple[str, list[str]]:
-        """
-        Tokenize a single text while gracefully handling the heterogeneous
-        interfaces exposed by different tokenizer implementations.
-
-        Keyword arguments:
-        text -- document to tokenize (converted to string when needed)
-        tokenizer -- tokenizer object exposing encode/decode or tokenize methods
-
-        Return value:
-        Tuple containing the decoded text reconstructed from token ids and the
-        list of token strings obtained for the input document.
-        """
         if not isinstance(text, str):
             text = str(text)
         if not text:
@@ -93,17 +85,6 @@ class BenchmarkTools:
 
     # -------------------------------------------------------------------------
     def extract_token_ids(self, encoded: Any) -> list[int]:
-        """
-        Pull integer token identifiers from an encoding object produced by a
-        tokenizer, covering common return types across libraries.
-
-        Keyword arguments:
-        encoded -- encoding returned by tokenizer.encode or related APIs
-
-        Return value:
-        List of integer token identifiers extracted from the encoding, or an
-        empty list when the ids cannot be recovered.
-        """
         ids_source: Any | None = None
         if hasattr(encoded, "ids"):
             ids_source = getattr(encoded, "ids")
@@ -123,18 +104,6 @@ class BenchmarkTools:
 
     # -------------------------------------------------------------------------
     def safe_decode(self, tokenizer: Any, token_ids: list[int]) -> str:
-        """
-        Decode a list of token identifiers while protecting against tokenizer
-        backends that raise exceptions or return non-string types.
-
-        Keyword arguments:
-        tokenizer -- tokenizer object used for decoding
-        token_ids -- sequence of integer token identifiers to decode
-
-        Return value:
-        Decoded string assembled from the provided ids, or an empty string when
-        decoding is not possible.
-        """
         if not token_ids:
             return ""
         try:
@@ -155,19 +124,6 @@ class BenchmarkTools:
     def convert_ids_to_tokens(
         self, tokenizer: Any, token_ids: list[int], fallback_text: str
     ) -> list[str]:
-        """
-        Convert token identifiers into their corresponding token strings using
-        whichever helper method the tokenizer exposes.
-
-        Keyword arguments:
-        tokenizer -- tokenizer object providing conversion helpers
-        token_ids -- list of token identifiers to translate to strings
-        fallback_text -- text used to approximate tokens if conversion fails
-
-        Return value:
-        List of token strings obtained from the tokenizer or approximated from
-        the fallback text when no conversion helpers are available.
-        """
         try:
             converter = getattr(tokenizer, "convert_ids_to_tokens", None)
             if callable(converter):
@@ -192,18 +148,6 @@ class BenchmarkTools:
 
     # -------------------------------------------------------------------------
     def normalize_token_output(self, tokens: Any) -> list[str]:
-        """
-        Normalize the different token collection shapes into a flat list of
-        strings, supporting numpy arrays, sequences, mappings and custom
-        objects.
-
-        Keyword arguments:
-        tokens -- raw token output returned by a tokenizer
-
-        Return value:
-        List of token strings normalized from the provided structure, or an
-        empty list when normalization is impossible.
-        """
         if isinstance(tokens, np.ndarray):
             tokens = tokens.tolist()
 
@@ -307,19 +251,76 @@ class BenchmarkTools:
         return float(-np.sum(probs * np.log2(probs)))
 
 
-# [TOKENIZERS EXPLORER]
 ###############################################################################
-class BenchmarkTokenizers:
-    def __init__(self, configuration: dict[str, Any]) -> None:
+class BenchmarkService:
+
+    def __init__(
+        self,
+        max_documents: int = 0,
+    ) -> None:
         set_verbosity_error()
-        self.max_docs_number = configuration.get("num_documents", 0)
-        self.reduce_data_size = configuration.get("reduce_output_size", False)
-        self.include_custom_tokenizer = configuration.get(
-            "include_custom_tokenizer", False
-        )
-        self.include_NSL = configuration.get("include_NSL", False)
-        self.configuration = configuration
+        self.max_documents = max_documents
+        self.reduce_data_size = True  # Always true for webapp
         self.tools = BenchmarkTools()
+        
+        # Load settings from config
+        self.streaming_batch_size = server_settings.benchmarks.streaming_batch_size
+        self.log_interval = server_settings.benchmarks.log_interval
+
+    # -------------------------------------------------------------------------
+    def load_tokenizers(self, tokenizer_ids: list[str]) -> dict[str, Any]:
+        tokenizers: dict[str, Any] = {}
+        for tokenizer_id in tokenizer_ids:
+            try:
+                logger.info("Loading tokenizer: %s", tokenizer_id)
+                tokenizer = AutoTokenizer.from_pretrained(tokenizer_id)
+                if self.tools.is_tokenizer_compatible(tokenizer):
+                    tokenizers[tokenizer_id] = tokenizer
+                else:
+                    logger.warning(
+                        "Tokenizer %s not compatible, skipping", tokenizer_id
+                    )
+            except Exception:
+                logger.warning("Failed to load tokenizer %s", tokenizer_id)
+                logger.debug("Tokenizer load error", exc_info=True)
+        return tokenizers
+
+    # -------------------------------------------------------------------------
+    def stream_texts_from_database(
+        self, dataset_name: str
+    ) -> Generator[str, None, None]:
+        query = sqlalchemy.text(
+            'SELECT "text" FROM "TEXT_DATASET" WHERE "dataset_name" = :dataset'
+        )
+        count = 0
+        with database.backend.engine.connect().execution_options(
+            stream_results=True
+        ) as conn:
+            result = conn.execute(query, {"dataset": dataset_name})
+            while True:
+                rows = result.fetchmany(self.streaming_batch_size)
+                if not rows:
+                    break
+                for row in rows:
+                    if hasattr(row, "_mapping"):
+                        text = row._mapping.get("text", "")
+                    else:
+                        text = row[0] if row else ""
+                    if text and isinstance(text, str):
+                        yield text
+                        count += 1
+                        if self.max_documents > 0 and count >= self.max_documents:
+                            return
+
+    # -------------------------------------------------------------------------
+    def get_dataset_document_count(self, dataset_name: str) -> int:
+        query = sqlalchemy.text(
+            'SELECT COUNT(*) FROM "TEXT_DATASET" WHERE "dataset_name" = :dataset'
+        )
+        with database.backend.engine.connect() as conn:
+            result = conn.execute(query, {"dataset": dataset_name})
+            row = result.first()
+            return row[0] if row else 0
 
     # -------------------------------------------------------------------------
     def tokenize_document(
@@ -334,7 +335,7 @@ class BenchmarkTokenizers:
 
         if uses_tokenize and tokenize_method is not None:
             try:
-                raw_tokens = tokenize_method(text_value)  # type: ignore[operator]
+                raw_tokens = tokenize_method(text_value)
                 tokens_list = self.tools.normalize_token_output(raw_tokens)
             except Exception:
                 logger.debug(
@@ -350,6 +351,84 @@ class BenchmarkTokenizers:
             decoded_text = " ".join(tokens_list)
 
         return decoded_text, tokens_list
+
+    # -------------------------------------------------------------------------
+    def calculate_vocabulary_statistics(
+        self, tokenizers: dict[str, Any]
+    ) -> tuple[list[Any], pd.DataFrame]:
+        vocabulary_stats: list[dict[str, Any]] = []
+        vocabularies: list[pd.DataFrame] = []
+        
+        for name, tokenizer in tokenizers.items():
+            if not self.tools.is_tokenizer_compatible(tokenizer):
+                logger.warning(
+                    "Skipping tokenizer %s for vocab stats", name
+                )
+                continue
+
+            tokenizer_label = getattr(tokenizer, "name_or_path", name)
+            try:
+                vocab_func = getattr(tokenizer, "get_vocab", None)
+                if not callable(vocab_func):
+                    logger.warning(
+                        "Tokenizer %s does not expose get_vocab", tokenizer_label
+                    )
+                    continue
+
+                raw_vocab = vocab_func()
+                if not isinstance(raw_vocab, dict):
+                    continue
+
+                vocab_words = [str(word) for word in raw_vocab.keys()]
+                try:
+                    vocab_indices = [int(idx) for idx in raw_vocab.values()]
+                except Exception:
+                    continue
+
+                subwords = [word for word in vocab_words if "##" in word]
+                true_words = [word for word in vocab_words if word not in subwords]
+                decoded_words = self.tools.safe_decode(tokenizer, vocab_indices).split()
+                shared = set(vocab_words).intersection(decoded_words)
+                unshared = set(vocab_words).symmetric_difference(decoded_words)
+                total_tokens = len(true_words) + len(subwords)
+                subwords_perc = (
+                    (len(subwords) / total_tokens * 100.0) if total_tokens else 0.0
+                )
+                words_perc = (
+                    (len(true_words) / total_tokens * 100.0) if total_tokens else 0.0
+                )
+
+                vocabulary_stats.append(
+                    {
+                        "tokenizer": name,
+                        "number_tokens_from_vocabulary": len(vocab_words),
+                        "number_tokens_from_decode": len(decoded_words),
+                        "number_shared_tokens": len(shared),
+                        "number_unshared_tokens": len(unshared),
+                        "percentage_subwords": subwords_perc,
+                        "percentage_true_words": words_perc,
+                    }
+                )
+
+                decoded_per_id = [
+                    self.tools.safe_decode(tokenizer, [idx]) for idx in vocab_indices
+                ]
+                vocabulary = pd.DataFrame(
+                    {
+                        "tokenizer": [name] * len(vocab_words),
+                        "token_id": vocab_indices,
+                        "vocabulary_tokens": vocab_words,
+                        "decoded_tokens": decoded_per_id,
+                    }
+                )
+                vocabularies.append(vocabulary)
+                
+            except Exception:
+                logger.warning("Could not process tokenizer %s for vocab stats", name)
+                continue
+
+        vocabulary_stats_df = pd.DataFrame(vocabulary_stats)
+        return vocabularies, vocabulary_stats_df
 
     # -------------------------------------------------------------------------
     def calculate_morphological_consistency(
@@ -414,255 +493,64 @@ class BenchmarkTokenizers:
         return monotonic_steps / (len(lengths) - 1)
 
     # -------------------------------------------------------------------------
-    def calculate_text_statistics(
-        self, documents: pd.DataFrame, **kwargs
-    ) -> pd.DataFrame | None:
-        """
-        Compute word-level statistics for the input dataset, including counts,
-        average word length and standard deviation, while respecting the
-        configured document limit.
+    def run_benchmarks(
+        self,
+        dataset_name: str,
+        tokenizer_ids: list[str],
+        custom_tokenizers: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        logger.info("Starting benchmark run for dataset: %s", dataset_name)
+        logger.info("Tokenizers to benchmark: %s", tokenizer_ids)
 
-        Keyword arguments:
-        documents -- dataframe produced from the loaded dataset
-        kwargs -- optional worker/progress references propagated from the GUI
+        # Check dataset exists
+        doc_count = self.get_dataset_document_count(dataset_name)
+        if doc_count == 0:
+            raise ValueError(f"Dataset '{dataset_name}' not found or empty")
 
-        Return value:
-        Dataframe enriched with per-document statistics, or None when the
-        computation cannot proceed.
+        # Load tokenizers from HuggingFace
+        tokenizers = self.load_tokenizers(tokenizer_ids)
         
-        """
-        # interrupt the operation if no text dataset is available
-        if documents.empty:
-            logger.info("No text dataset available for statistics calculation")
-            return
+        # Merge in custom tokenizers if provided
+        if custom_tokenizers:
+            for name, tok in custom_tokenizers.items():
+                if self.tools.is_tokenizer_compatible(tok):
+                    tokenizers[name] = tok
+                    logger.info("Added custom tokenizer: %s", name)
+        
+        if not tokenizers:
+            raise ValueError("No valid tokenizers could be loaded")
 
-        dataset_name = documents["dataset_name"].iloc[0]
-        logger.info(f"Loaded dataset {dataset_name} with {documents.shape[0]} records")
+        logger.info("Loaded %d tokenizers", len(tokenizers))
 
-        max_documents = min(self.max_docs_number, len(documents))
-        documents = documents[:max_documents] if max_documents > 0 else documents
+        # Calculate vocabulary statistics
+        vocabularies, vocabulary_stats = self.calculate_vocabulary_statistics(tokenizers)
 
-        # 1/3 - Word count
-        logger.info("Calculating word count for each document")
-        documents["words_count"] = documents["text"].apply(lambda doc: len(doc.split()))
+        # Collect texts into memory for processing (respecting max_documents)
+        logger.info("Loading texts from database...")
+        texts: list[str] = []
+        for text in self.stream_texts_from_database(dataset_name):
+            texts.append(text)
+            if len(texts) % self.log_interval == 0:
+                logger.info("Loaded %d texts...", len(texts))
 
-        check_thread_status(kwargs.get("worker", None))
-        update_progress_callback(1, 3, kwargs.get("progress_callback", None))
-
-        # 2/3 - Average word length
-        logger.info("Calculating average word length for each document")
-        documents["AVG_words_length"] = documents["text"].apply(
-            lambda doc: np.mean([len(w) for w in doc.split()])
-        )
-
-        check_thread_status(kwargs.get("worker", None))
-        update_progress_callback(2, 3, kwargs.get("progress_callback", None))
-
-        # 3/3 - Standard deviation of word length
-        logger.info("Calculating standard deviation of words length for each document")
-        documents["STD_words_length"] = documents["text"].apply(
-            lambda doc: np.std([len(w) for w in doc.split()])
-        )
-
-        check_thread_status(kwargs.get("worker", None))
-        update_progress_callback(3, 3, kwargs.get("progress_callback", None))
-
-        return documents
-
-    # -------------------------------------------------------------------------
-    def calculate_vocabulary_statistics(
-        self, tokenizers: dict[str, Any], **kwargs
-    ) -> tuple[list[Any], pd.DataFrame]:
-        """
-        Collect vocabulary-level metrics for each tokenizer, including token
-        counts, subword ratios and decoded tokens.
-
-        Keyword arguments:
-        tokenizers -- dictionary mapping tokenizer names to tokenizer objects
-        kwargs -- optional worker/progress references propagated from the GUI
-
-        Return value:
-        Tuple containing the list of per-tokenizer vocabulary dataframes and a
-        dataframe summarizing aggregate vocabulary statistics.
-        """
-        vocabulary_stats: list[dict[str, Any]] = []
-        vocabularies: list[pd.DataFrame] = []
-        for name, tokenizer in tokenizers.items():
-            if not self.tools.is_tokenizer_compatible(tokenizer):
-                logger.warning(
-                    "Skipping tokenizer %s because it does not expose required methods (type=%s)",
-                    name,
-                    type(tokenizer).__name__,
-                )
-                continue
-
-            tokenizer_label = getattr(tokenizer, "name_or_path", name)
-            try:
-                vocab_func = getattr(tokenizer, "get_vocab", None)
-                if not callable(vocab_func):
-                    logger.warning(
-                        "Tokenizer %s does not expose get_vocab; skipping vocabulary statistics",
-                        tokenizer_label,
-                    )
-                    continue
-
-                raw_vocab = vocab_func()
-                if not isinstance(raw_vocab, dict):
-                    logger.warning(
-                        "Tokenizer %s returned unexpected vocabulary of type %s",
-                        tokenizer_label,
-                        type(raw_vocab).__name__,
-                    )
-                    continue
-
-                vocab_words = [str(word) for word in raw_vocab.keys()]
-                try:
-                    vocab_indices = [int(idx) for idx in raw_vocab.values()]
-                except Exception:
-                    logger.debug(
-                        "Tokenizer %s produced non-numeric vocab indices",
-                        tokenizer_label,
-                        exc_info=True,
-                    )
-                    continue
-
-                subwords = [word for word in vocab_words if "##" in word]
-                true_words = [word for word in vocab_words if word not in subwords]
-                decoded_words = self.tools.safe_decode(tokenizer, vocab_indices).split()
-                shared = set(vocab_words).intersection(decoded_words)
-                unshared = set(vocab_words).symmetric_difference(decoded_words)
-                total_tokens = len(true_words) + len(subwords)
-                subwords_perc = (
-                    (len(subwords) / total_tokens * 100.0) if total_tokens else 0.0
-                )
-                words_perc = (
-                    (len(true_words) / total_tokens * 100.0) if total_tokens else 0.0
-                )
-
-                vocabulary_stats.append(
-                    {
-                        "tokenizer": name,
-                        "number_tokens_from_vocabulary": len(vocab_words),
-                        "number_tokens_from_decode": len(decoded_words),
-                        "number_shared_tokens": len(shared),
-                        "number_unshared_tokens": len(unshared),
-                        "percentage_subwords": subwords_perc,
-                        "percentage_true_words": words_perc,
-                    }
-                )
-
-                decoded_per_id = [
-                    self.tools.safe_decode(tokenizer, [idx]) for idx in vocab_indices
-                ]
-                vocabulary = pd.DataFrame(
-                    {
-                        "tokenizer": [name] * len(vocab_words),
-                        "token_id": vocab_indices,
-                        "vocabulary_tokens": vocab_words,
-                        "decoded_tokens": decoded_per_id,
-                    }
-                )
-
-                check_thread_status(kwargs.get("worker", None))
-                vocabularies.append(vocabulary)
-            except Exception:
-                logger.warning(f"Could not process tokenizer {name}")
-                logger.debug(
-                    "Failed to collect vocabulary statistics for tokenizer %s",
-                    name,
-                    exc_info=True,
-                )
-                continue
-
-        vocabulary_stats_df = pd.DataFrame(vocabulary_stats)
-
-        return vocabularies, vocabulary_stats_df
-
-    # -------------------------------------------------------------------------
-    def run_tokenizer_benchmarks(
-        self, dataset: pd.DataFrame, tokenizers: dict, **kwargs
-    ) -> tuple[
-        list[Any], pd.DataFrame, pd.DataFrame, pd.DataFrame | None, pd.DataFrame
-    ]:
-        """
-        Execute the benchmarking pipeline for every valid tokenizer, computing
-        tokenization outputs, throughput metrics and optional NSL comparisons.
-
-        Keyword arguments:
-        dataset -- dataframe containing the text corpus to benchmark
-        tokenizers -- dictionary of tokenizer instances indexed by name
-        kwargs -- optional worker/progress references propagated from the GUI
-
-        Return value:
-        Tuple with vocabulary exports, vocabulary summary statistics, detailed
-        benchmark results, optional NSL dataframe and global metric aggregates.
-        """
-        valid_tokenizers: dict[str, Any] = {}
-        if isinstance(tokenizers, dict):
-            for name, tokenizer in tokenizers.items():
-                if self.tools.is_tokenizer_compatible(tokenizer):
-                    valid_tokenizers[name] = tokenizer
-                else:
-                    logger.warning(
-                        "Skipping tokenizer %s because it does not expose required methods (type=%s)",
-                        name,
-                        type(tokenizer).__name__,
-                    )
-        else:
-            logger.warning("Tokenizers input is not a dictionary; skipping benchmarks")
-
-        if not valid_tokenizers:
-            logger.warning("No valid tokenizers available for benchmarking")
-            empty_df = pd.DataFrame()
-            return [], pd.DataFrame(), empty_df, None, pd.DataFrame()
-
-        if dataset is None or dataset.empty:
-            logger.warning("No dataset available for benchmarking")
-            empty_df = pd.DataFrame()
-            return [], pd.DataFrame(), empty_df, None, pd.DataFrame()
-
-        if "text" not in dataset.columns:
-            logger.warning(
-                "Dataset does not contain required 'text' column; skipping benchmarks"
-            )
-            empty_df = pd.DataFrame()
-            return [], pd.DataFrame(), empty_df, None, pd.DataFrame()
-
-        vocabularies, vocabulary_stats = self.calculate_vocabulary_statistics(
-            valid_tokenizers, worker=kwargs.get("worker", None)
-        )
-
-        dataset_to_use = dataset
-        if 0 < self.max_docs_number <= len(dataset_to_use):
-            dataset_to_use = dataset_to_use.iloc[: self.max_docs_number].reset_index(
-                drop=True
-            )
-
-        texts = dataset_to_use["text"].astype(str)
         num_docs = len(texts)
+        logger.info("Loaded %d documents for benchmarking", num_docs)
+
         all_tokenizers: list[pd.DataFrame] = []
         global_metrics_rows: list[dict[str, Any]] = []
-        dataset_name = (
-            str(dataset_to_use["dataset_name"].iloc[0])
-            if "dataset_name" in dataset_to_use.columns
-            and not dataset_to_use["dataset_name"].empty
-            else ""
-        )
 
-        progress_total = len(valid_tokenizers)
-        for i, (name, tokenizer) in enumerate(valid_tokenizers.items()):
-            text_values = texts.tolist()
-            logger.info(f"Decoding documents with {name}")
+        for name, tokenizer in tokenizers.items():
+            logger.info("Processing tokenizer: %s", name)
 
             data = pd.DataFrame(
                 {
                     "tokenizer": [name] * num_docs,
-                    "text": text_values,
+                    "text": texts,
                 }
             )
 
-            data["num_characters"] = texts.str.len()
-            data["words_split"] = texts.str.split()
+            data["num_characters"] = pd.Series(texts).str.len()
+            data["words_split"] = pd.Series(texts).str.split()
             data["words_count"] = data["words_split"].apply(len)
             data["AVG_words_length"] = data["words_split"].apply(
                 lambda ws: np.mean([len(w) for w in ws]) if ws else 0
@@ -672,13 +560,14 @@ class BenchmarkTokenizers:
             try:
                 tokenize_method = getattr(tokenizer, "tokenize", None)
                 uses_tokenize = callable(tokenize_method)
-                if "CUSTOM" in name and self.include_custom_tokenizer:
+                # Custom tokenizers from file uploads use process_tokens path
+                if "CUSTOM" in name:
                     uses_tokenize = False
                     tokenize_method = None
 
                 decoded_tokens = []
                 split_tokens = []
-                for text_value in text_values:
+                for text_value in texts:
                     decoded, tokens_list = self.tokenize_document(
                         tokenizer, text_value, uses_tokenize, tokenize_method
                     )
@@ -689,15 +578,6 @@ class BenchmarkTokenizers:
                 data["tokens_split"] = split_tokens
             except Exception:
                 logger.warning("Failed to tokenize documents with %s", name)
-                logger.debug(
-                    "Tokenizer %s raised an exception during batch tokenization",
-                    name,
-                    exc_info=True,
-                )
-                check_thread_status(kwargs.get("worker", None))
-                update_progress_callback(
-                    i + 1, progress_total, kwargs.get("progress_callback", None)
-                )
                 continue
 
             t1 = time.perf_counter()
@@ -719,6 +599,7 @@ class BenchmarkTokenizers:
                 0,
             )
 
+            # Compute additional metrics
             token_frequency: dict[str, int] = {}
             boundary_preservation: list[float] = []
             round_trip_token_fidelity: list[float] = []
@@ -732,7 +613,7 @@ class BenchmarkTokenizers:
             total_bytes = 0
 
             for text_value, decoded_text, tokens_list in zip(
-                text_values, decoded_tokens, split_tokens
+                texts, decoded_tokens, split_tokens
             ):
                 total_bytes += len(str(text_value).encode("utf-8"))
 
@@ -797,19 +678,14 @@ class BenchmarkTokenizers:
             if callable(vocab_method):
                 try:
                     candidate = vocab_method()
-                except Exception:
-                    logger.debug(
-                        "Tokenizer %s failed to expose its vocabulary during metrics computation",
-                        name,
-                        exc_info=True,
-                    )
-                else:
                     if isinstance(candidate, Mapping):
                         vocab_result = candidate
                     elif isinstance(candidate, Sequence) and not isinstance(
                         candidate, (str, bytes)
                     ):
                         vocab_result = candidate
+                except Exception:
+                    pass
 
             if isinstance(vocab_result, Mapping):
                 vocabulary_size = int(len(vocab_result))
@@ -817,29 +693,6 @@ class BenchmarkTokenizers:
                 vocabulary_size = int(len(vocab_result))
             else:
                 vocabulary_size = 0
-
-            model_size_mb = 0.0
-            try:
-                base_dir = os.path.join(TOKENIZER_PATH, name.replace("/", "_"))
-                if os.path.isdir(base_dir):
-                    total_bytes = 0
-                    for root, dirs, files in os.walk(base_dir):
-                        for fn in files:
-                            fp = os.path.join(root, fn)
-                            try:
-                                total_bytes += os.path.getsize(fp)
-                            except OSError:
-                                logger.debug(
-                                    "Failed to read file size for %s", fp, exc_info=True
-                                )
-                    model_size_mb = total_bytes / (1024.0 * 1024.0)
-            except Exception:
-                logger.debug(
-                    "Tokenizer %s raised an exception while calculating model size",
-                    name,
-                    exc_info=True,
-                )
-                model_size_mb = 0.0
 
             seq_lengths = data["tokens_count"].to_numpy(dtype=float)
             avg_sequence_length = (
@@ -865,6 +718,7 @@ class BenchmarkTokenizers:
                 vocab_tokens = {str(tok) for tok in vocab_result.keys()}
             elif isinstance(vocab_result, Sequence):
                 vocab_tokens = {str(tok) for tok in vocab_result}
+
             normalized_vocab_tokens = {
                 str(t).replace("##", "").lstrip("?").lstrip("G") for t in vocab_tokens
             }
@@ -891,7 +745,7 @@ class BenchmarkTokenizers:
                     continue
             word_recovery_rate = (recovery_count / max(1, len(sample_words))) * 100.0
 
-            dataset_chars = set("".join(text_values))
+            dataset_chars = set("".join(texts))
             vocab_chars = set()
             for token_item in normalized_vocab_tokens:
                 for ch in token_item:
@@ -902,6 +756,7 @@ class BenchmarkTokenizers:
                 if dataset_chars
                 else 0.0
             )
+            
             determinism_rate = (
                 float(np.mean(determinism_flags)) if determinism_flags else 0.0
             )
@@ -945,9 +800,7 @@ class BenchmarkTokenizers:
             segmentation_consistency = self.calculate_morphological_consistency(
                 tokenizer, unique_words
             )
-            token_id_monotonicity = self.calculate_token_id_monotonicity(
-                vocab_result
-            )
+            token_id_monotonicity = self.calculate_token_id_monotonicity(vocab_result)
 
             global_metrics_rows.append(
                 {
@@ -955,7 +808,7 @@ class BenchmarkTokenizers:
                     "dataset_name": dataset_name,
                     "tokenization_speed_tps": float(tokenization_speed_tps),
                     "throughput_chars_per_sec": float(throughput_chars_per_sec),
-                    "model_size_mb": float(model_size_mb),
+                    "model_size_mb": 0.0,  # Not computed for webapp
                     "vocabulary_size": int(vocabulary_size),
                     "avg_sequence_length": float(avg_sequence_length),
                     "median_sequence_length": float(median_sequence_length),
@@ -982,16 +835,13 @@ class BenchmarkTokenizers:
                 }
             )
 
-            if self.reduce_data_size:
-                data.drop(
-                    columns=["tokens", "tokens_split", "words_split"], inplace=True
-                )
+            # Reduce data size (always enabled)
+            data.drop(
+                columns=["tokens", "tokens_split", "words_split"], inplace=True
+            )
             all_tokenizers.append(data)
 
-            check_thread_status(kwargs.get("worker", None))
-            update_progress_callback(
-                i + 1, progress_total, kwargs.get("progress_callback", None)
-            )
+            logger.info("Completed processing tokenizer: %s", name)
 
         benchmark_results = (
             pd.concat(all_tokenizers, ignore_index=True)
@@ -999,131 +849,214 @@ class BenchmarkTokenizers:
             else pd.DataFrame()
         )
 
-        data_NSL = None
-        if (
-            self.include_NSL
-            and self.include_custom_tokenizer
-            and not benchmark_results.empty
-        ):
-            data_NSL = self.calculate_normalized_sequence_length(benchmark_results)
-
         global_metrics = pd.DataFrame(global_metrics_rows)
 
-        return (
-            vocabularies,
-            vocabulary_stats,
-            benchmark_results,
-            data_NSL,
-            global_metrics,
+        # Persist results to database
+        logger.info("Persisting benchmark results to database...")
+        self.persist_results(
+            vocabularies=vocabularies,
+            vocabulary_stats=vocabulary_stats,
+            benchmark_results=benchmark_results,
+            global_metrics=global_metrics,
+            dataset_name=dataset_name,
         )
 
+        # Generate chart data for frontend visualization
+        logger.info("Generating chart data...")
+        chart_data = self.generate_chart_data(
+            vocabularies=vocabularies,
+            vocabulary_stats_df=vocabulary_stats,
+            global_metrics_df=global_metrics,
+            tokenizers=tokenizers,
+        )
+
+        return {
+            "status": "success",
+            "dataset_name": dataset_name,
+            "documents_processed": num_docs,
+            "tokenizers_processed": list(tokenizers.keys()),
+            "tokenizers_count": len(tokenizers),
+            "global_metrics": global_metrics.to_dict(orient="records"),
+            **chart_data,
+        }
+
     # -------------------------------------------------------------------------
-    def calculate_normalized_sequence_length(
-        self, benchmark_results: pd.DataFrame
-    ) -> None | pd.DataFrame:
-        """
-        Derive the Normalized Sequence Length (NSL) metric by comparing each
-        tokenizer against the custom tokenizer reference when available.
+    def generate_chart_data(
+        self,
+        vocabularies: list[pd.DataFrame],
+        vocabulary_stats_df: pd.DataFrame,
+        global_metrics_df: pd.DataFrame,
+        tokenizers: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Generate structured chart data for frontend visualization."""
+        
+        # Vocabulary stats for bar chart
+        vocabulary_stats = []
+        if not vocabulary_stats_df.empty:
+            for _, row in vocabulary_stats_df.iterrows():
+                vocab_size = int(row.get("number_tokens_from_vocabulary", 0))
+                subwords_pct = float(row.get("percentage_subwords", 0.0))
+                words_pct = float(row.get("percentage_true_words", 0.0))
+                subwords_count = int(vocab_size * subwords_pct / 100.0)
+                true_words_count = int(vocab_size * words_pct / 100.0)
+                vocabulary_stats.append({
+                    "tokenizer": str(row.get("tokenizer", "")),
+                    "vocabulary_size": vocab_size,
+                    "subwords_count": subwords_count,
+                    "true_words_count": true_words_count,
+                    "subwords_percentage": subwords_pct,
+                })
 
-        Keyword arguments:
-        benchmark_results -- dataframe produced by run_tokenizer_benchmarks
+        # Speed metrics from global metrics
+        speed_metrics = []
+        if not global_metrics_df.empty:
+            for _, row in global_metrics_df.iterrows():
+                speed_metrics.append({
+                    "tokenizer": str(row.get("tokenizer", "")),
+                    "tokens_per_second": float(row.get("tokenization_speed_tps", 0.0)),
+                    "chars_per_second": float(row.get("throughput_chars_per_sec", 0.0)),
+                    "processing_time_seconds": 0.0,  # Not tracked currently
+                })
 
-        Return value:
-        Dataframe with NSL values per tokenizer and document, or None when the
-        computation cannot be performed.
-        """
-        if benchmark_results is None or benchmark_results.empty:
-            logger.warning("NSL value cannot be calculated without benchmark results")
-            return None
-
-        required_columns = {"tokenizer", "tokens_count"}
-        if not required_columns.issubset(benchmark_results.columns):
-            logger.warning(
-                "NSL value cannot be calculated because required columns are missing"
-            )
-            return None
-
-        data_custom = benchmark_results[
-            benchmark_results["tokenizer"].str.contains(
-                "custom tokenizer", case=False, na=False
-            )
-        ].copy()
-
-        if data_custom.empty:
-            logger.warning(
-                "NSL value cannot be calculated without a custom tokenizer as reference"
-            )
-            return None
-
-        data = []
-        names = benchmark_results["tokenizer"].dropna().unique().tolist()
-        for tok in tqdm(names):
-            logger.info(f"NSL value is calculated for {tok} versus custom tokenizers")
-            data_chunk = benchmark_results[benchmark_results["tokenizer"] == tok].copy()
-            if data_chunk.empty:
+        # Token length distributions (histogram bins)
+        token_length_distributions = []
+        # Build from vocabularies - count token lengths
+        for vocab_df in vocabularies:
+            if vocab_df.empty:
                 continue
-
-            min_length = min(len(data_custom), len(data_chunk))
-            if min_length == 0:
+            tokenizer_name = vocab_df["tokenizer"].iloc[0]
+            tokens = vocab_df["vocabulary_tokens"].astype(str)
+            lengths = tokens.str.len().dropna().astype(int)
+            
+            if len(lengths) == 0:
                 continue
+            
+            # Create histogram bins
+            max_len = min(int(lengths.max()), 30)  # Cap at 30 chars
+            bins_edges = list(range(0, max_len + 2, 2))  # 0-2, 2-4, etc.
+            if len(bins_edges) < 2:
+                bins_edges = [0, max_len + 1]
+            
+            counts, edges = np.histogram(lengths, bins=bins_edges)
+            bins = []
+            for i in range(len(counts)):
+                bins.append({
+                    "bin_start": int(edges[i]),
+                    "bin_end": int(edges[i + 1]),
+                    "count": int(counts[i]),
+                })
+            
+            token_length_distributions.append({
+                "tokenizer": tokenizer_name,
+                "bins": bins,
+                "mean": float(lengths.mean()) if len(lengths) > 0 else 0.0,
+                "std": float(lengths.std()) if len(lengths) > 1 else 0.0,
+            })
 
-            ratios = [
-                (x / y) if y else 0
-                for x, y in zip(
-                    data_custom["tokens_count"].to_numpy(dtype=float)[:min_length],
-                    data_chunk["tokens_count"].to_numpy(dtype=float)[:min_length],
+        return {
+            "vocabulary_stats": vocabulary_stats,
+            "speed_metrics": speed_metrics,
+            "token_length_distributions": token_length_distributions,
+        }
+
+    # -------------------------------------------------------------------------
+    def persist_results(
+        self,
+        vocabularies: list[pd.DataFrame],
+        vocabulary_stats: pd.DataFrame,
+        benchmark_results: pd.DataFrame,
+        global_metrics: pd.DataFrame,
+        dataset_name: str,
+    ) -> None:
+        # Persist global metrics
+        if not global_metrics.empty:
+            database.delete_by_key(
+                TokenizationGlobalMetrics.__tablename__,
+                "dataset_name",
+                dataset_name,
+            )
+            database.insert_dataframe(
+                global_metrics, TokenizationGlobalMetrics.__tablename__
+            )
+            logger.info("Saved %d global metrics records", len(global_metrics))
+
+        # Persist vocabulary statistics
+        if not vocabulary_stats.empty:
+            for tokenizer_name in vocabulary_stats["tokenizer"].unique():
+                database.delete_by_key(
+                    VocabularyStatistics.__tablename__,
+                    "tokenizer",
+                    tokenizer_name,
                 )
-            ]
+            database.insert_dataframe(
+                vocabulary_stats, VocabularyStatistics.__tablename__
+            )
+            logger.info("Saved %d vocabulary stats records", len(vocabulary_stats))
 
-            data_chunk = data_chunk.iloc[:min_length].copy()
-            data_chunk["NSL"] = ratios
-            data.append(data_chunk)
-
-        if not data:
-            return None
-
-        data_NSL = pd.concat(data, ignore_index=True)
-
-        return data_NSL
-
-
-# [TOKENIZERS EXPLORER]
-
-
-# [TOKENIZERS EXPLORER]
-###############################################################################
-class VisualizeBenchmarkResults:
-    def __init__(self, configuration: dict[str, Any]) -> None:
-        self.img_resolution = 400
-        self.observed_features = [
-            "tokens_to_words_ratio",
-            "AVG_tokens_length",
-            "bytes_per_token",
-        ]
-        self.configuration = configuration
-        self.serializer = DataSerializer()
+        # Persist vocabularies
+        for vocab_df in vocabularies:
+            if vocab_df.empty:
+                continue
+            tokenizer_name = vocab_df["tokenizer"].iloc[0]
+            database.delete_by_key(
+                Vocabulary.__tablename__,
+                "tokenizer",
+                tokenizer_name,
+            )
+            database.insert_dataframe(vocab_df, Vocabulary.__tablename__)
+            logger.info("Saved vocabulary for tokenizer: %s", tokenizer_name)
 
     # -------------------------------------------------------------------------
-    def save_image(self, fig: Figure, name: str) -> None:
-        name = re.sub(r"[^0-9A-Za-z_]", "_", name)
-        out_path = os.path.join(EVALUATION_PATH, name)
-        fig.savefig(out_path, bbox_inches="tight", dpi=self.img_resolution)
+    def generate_plots(
+        self,
+        vocabularies: list[pd.DataFrame],
+        vocabulary_stats: pd.DataFrame,
+    ) -> list[dict[str, str]]:
+        import base64
+        import io
+
+        plots: list[dict[str, str]] = []
+
+        # Plot vocabulary size
+        if vocabularies:
+            combined_vocab = pd.concat(vocabularies, ignore_index=True)
+            if not combined_vocab.empty:
+                fig = self.plot_vocabulary_size(combined_vocab)
+                if fig:
+                    buf = io.BytesIO()
+                    fig.savefig(buf, format="png", bbox_inches="tight", dpi=150)
+                    buf.seek(0)
+                    plots.append({
+                        "name": "vocabulary_size",
+                        "data": base64.b64encode(buf.read()).decode("utf-8"),
+                    })
+                    plt.close(fig)
+
+        # Plot subwords vs words
+        if vocabularies:
+            combined_vocab = pd.concat(vocabularies, ignore_index=True)
+            if not combined_vocab.empty:
+                fig = self.plot_subwords_vs_words(combined_vocab)
+                if fig:
+                    buf = io.BytesIO()
+                    fig.savefig(buf, format="png", bbox_inches="tight", dpi=150)
+                    buf.seek(0)
+                    plots.append({
+                        "name": "subwords_vs_words",
+                        "data": base64.b64encode(buf.read()).decode("utf-8"),
+                    })
+                    plt.close(fig)
+
+        return plots
 
     # -------------------------------------------------------------------------
-    def plot_vocabulary_size(self, data: pd.DataFrame) -> Figure:
-        """
-        Build a horizontal bar chart summarizing the vocabulary size of every
-        tokenizer included in the benchmark run.
-
-        Keyword arguments:
-        data -- dataframe containing vocabulary tokens per tokenizer
-
-        Return value:
-        Matplotlib figure object holding the rendered bar plot.
-        """
+    def plot_vocabulary_size(self, data: pd.DataFrame) -> Figure | None:
         df = data.dropna(subset=["vocabulary_tokens"])
         df["vocabulary_tokens"] = df["vocabulary_tokens"].astype(str)
         df = df[df["vocabulary_tokens"].str.len() > 0]
+
+        if df.empty:
+            return None
 
         counts = (
             df.groupby("tokenizer", sort=False)["vocabulary_tokens"]
@@ -1135,9 +1068,8 @@ class VisualizeBenchmarkResults:
         width_in = 14
         height_in = max(4, 0.7 * n_tok + 2)
 
-        fig, ax = plt.subplots(figsize=(width_in, height_in), dpi=self.img_resolution)
+        fig, ax = plt.subplots(figsize=(width_in, height_in), dpi=400)
 
-        # Use numeric positions + set tick labels; convert widths to NumPy to avoid ExtensionArray typing issues.
         y_pos = np.arange(n_tok, dtype=float)
         widths = counts.to_numpy(dtype=float)
 
@@ -1158,54 +1090,31 @@ class VisualizeBenchmarkResults:
             label.set_fontweight("bold")
 
         fig.tight_layout()
-        self.save_image(fig, "vocabulary_size.jpeg")
-        plt.close(fig)
         return fig
 
     # -------------------------------------------------------------------------
     def plot_subwords_vs_words(self, data: pd.DataFrame) -> Figure | None:
-        """
-        Plot a grouped bar chart comparing subword and word counts in each
-        tokenizer vocabulary, filtering special tokens for clarity.
-
-        Keyword arguments:
-        data -- dataframe containing vocabulary tokens per tokenizer
-
-        Return value:
-        Matplotlib figure with the comparison chart or None when there is no
-        data suitable for plotting.
-        """
         df = data.loc[:, ["tokenizer", "vocabulary_tokens"]].copy()
         df = df.dropna(subset=["tokenizer", "vocabulary_tokens"])
         if df.empty:
-            logger.info("plot_subwords_vs_words: no data to plot")
             return None
 
-        # Normalize types and trim whitespace, sanitize all strings to avoid ambiguity
         df["tokenizer"] = df["tokenizer"].astype(str)
         df["vocabulary_tokens"] = df["vocabulary_tokens"].astype(str).str.strip()
         df = df[df["vocabulary_tokens"].str.len() > 0]
         if df.empty:
             return None
 
-        # Special tokens to exclude from both categories
-        special_pat = r"^(?:\[.*\]|<.*>|{.*}|</?s>|</?pad>|UNK|PAD)$"
+        special_pat = r"^(?:\[.*\]|<.*>|\{.*\}|</?s>|</?pad>|UNK|PAD)$"
         is_special = df["vocabulary_tokens"].str.match(special_pat, case=False)
         df = df[~is_special]
         if df.empty:
-            logger.info("plot_subwords_vs_words: only special tokens present")
             return None
 
-        # identify BERT subwords starting with '##'
         bert_sub = df["vocabulary_tokens"].str.startswith("##")
-
-        # identify SentencePiece rule subwords, where leading '▁' denotes word start
-        # tokens with '▁' in other positions are subwords
         sp_has = df["vocabulary_tokens"].str.contains("▁", regex=False)
         sp_word_start = df["vocabulary_tokens"].str.startswith("▁")
         sp_sub = sp_has & (~sp_word_start)
-
-        # identify GPT-2/BBPE rule subwords, where leading 'Ġ' denotes word start
         bbpe_has = df["vocabulary_tokens"].str.contains("Ġ", regex=False)
         bbpe_word_start = df["vocabulary_tokens"].str.startswith("Ġ")
         bbpe_sub = bbpe_has & (~bbpe_word_start)
@@ -1213,7 +1122,6 @@ class VisualizeBenchmarkResults:
         is_subword = bert_sub | sp_sub | bbpe_sub
         is_word = ~is_subword
 
-        # Aggregate counts per tokenizer
         df["is_subword"] = is_subword.astype(int)
         df["is_word"] = is_word.astype(int)
 
@@ -1223,13 +1131,11 @@ class VisualizeBenchmarkResults:
             .reset_index()
         )
 
-        # Sort by subwords count
         grouped = grouped.sort_values("subwords_count", ascending=False).reset_index(
             drop=True
         )
 
         if grouped.empty:
-            logger.info("plot_subwords_vs_words: nothing to plot after aggregation")
             return None
 
         tokenizers = grouped["tokenizer"].tolist()
@@ -1240,7 +1146,7 @@ class VisualizeBenchmarkResults:
         subwords = grouped["subwords_count"].to_numpy(dtype=float)
         words = grouped["words_count"].to_numpy(dtype=float)
 
-        fig, ax = plt.subplots(figsize=(max(10, n * 0.9), 7), dpi=self.img_resolution)
+        fig, ax = plt.subplots(figsize=(max(10, n * 0.9), 7), dpi=400)
         ax.bar(
             x - width / 2,
             subwords,
@@ -1279,120 +1185,4 @@ class VisualizeBenchmarkResults:
                 pass
 
         fig.tight_layout()
-        self.save_image(fig, "subwords_vs_words.jpeg")
-        plt.close(fig)
         return fig
-
-    # -------------------------------------------------------------------------
-    def plot_tokens_length_distribution(self, data: pd.DataFrame) -> list[Any]:
-        """
-        Generate histogram panels describing vocabulary and decoded token
-        lengths for each tokenizer processed in the benchmark.
-
-        Keyword arguments:
-        data -- dataframe produced by calculate_vocabulary_statistics containing
-        vocabulary and decoded tokens per tokenizer
-
-        Return value:
-        List with the Matplotlib figures created for every tokenizer.
-        """
-        figures = []
-        # Preserve tokenizer order as encountered
-        tokenizers = data["tokenizer"].astype(str).dropna().unique().tolist()
-        for tk in tokenizers:
-            df_tk = data[data["tokenizer"] == tk]
-            # Prepare series and compute lengths (exclude NaNs and empty strings)
-            vocab_series = df_tk["vocabulary_tokens"].dropna().astype(str)
-            decoded_series = df_tk["decoded_tokens"].dropna().astype(str)
-
-            vocab_lengths = (
-                vocab_series[vocab_series.str.len() > 0].str.len().to_numpy(dtype=int)
-            )
-            decoded_lengths = (
-                decoded_series[decoded_series.str.len() > 0]
-                .str.len()
-                .to_numpy(dtype=int)
-            )
-
-            # Determine common integer-aligned bins across both panels for comparability
-            max_len = int(
-                max(
-                    (vocab_lengths.max() if vocab_lengths.size else 0),
-                    (decoded_lengths.max() if decoded_lengths.size else 0),
-                )
-            )
-
-            # Create figure
-            fig, axs = plt.subplots(
-                2, 1, figsize=(16, 10), dpi=self.img_resolution, sharex=True
-            )
-
-            if max_len == 0:
-                titles = (
-                    f"{tk} • Vocabulary token length distribution",
-                    f"{tk} • Decoded token length distribution",
-                )
-                for ax, title in zip(axs, titles):
-                    ax.text(
-                        0.5, 0.5, "No token data", ha="center", va="center", fontsize=14
-                    )
-                    ax.set_title(title, fontsize=16, fontweight="bold", pad=10)
-                    ax.set_xlabel(
-                        "Token length (chars)", fontsize=13, fontweight="bold"
-                    )
-                    ax.set_ylabel("Frequency", fontsize=13, fontweight="bold")
-                    ax.grid(axis="both", linestyle="--", alpha=0.3)
-
-                fig.tight_layout()
-                # Save and collect
-                self.save_image(fig, f"{tk}_token_length_hist.jpeg")
-                figures.append(fig)
-                plt.close(fig)
-                continue
-
-            # Integer-centered bins: [0.5, 1.5, ..., max_len + 0.5]
-            bin_edges = np.arange(0.5, max_len + 1.5, 1.0, dtype=float)
-
-            # Panel 1 — vocabulary token lengths
-            axs[0].hist(vocab_lengths, bins=bin_edges, edgecolor="black")
-            axs[0].set_title(
-                f"{tk} • Vocabulary token length distribution",
-                fontsize=16,
-                fontweight="bold",
-                pad=10,
-            )
-            axs[0].set_ylabel("Frequency", fontsize=13, fontweight="bold")
-            axs[0].grid(axis="both", linestyle="--", alpha=0.3)
-
-            # Panel 2 — decoded token lengths
-            axs[1].hist(decoded_lengths, bins=bin_edges, edgecolor="black")
-            axs[1].set_title(
-                f"{tk} • Decoded token length distribution",
-                fontsize=16,
-                fontweight="bold",
-                pad=10,
-            )
-            axs[1].set_xlabel("Token length (chars)", fontsize=13, fontweight="bold")
-            axs[1].set_ylabel("Frequency", fontsize=13, fontweight="bold")
-            axs[1].grid(axis="both", linestyle="--", alpha=0.3)
-
-            # Ticks & layout
-            axs[1].set_xticks(np.arange(1, max_len + 1, 1))
-            for ax in axs:
-                ax.tick_params(axis="x", labelsize=11)
-                ax.tick_params(axis="y", labelsize=11)
-                # Embolden tick labels for readability
-                for lbl in ax.get_xticklabels() + ax.get_yticklabels():
-                    try:
-                        lbl.set_fontweight("bold")
-                    except Exception:
-                        pass
-
-            fig.tight_layout()
-
-            # Save and collect
-            self.save_image(fig, f"{tk}_token_length_hist.jpeg")
-            figures.append(fig)
-            plt.close(fig)
-
-        return figures

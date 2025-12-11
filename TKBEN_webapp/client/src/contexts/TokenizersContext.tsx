@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { scanTokenizers, uploadCustomTokenizer, clearCustomTokenizers } from '../services/tokenizersApi';
 import { runBenchmarks } from '../services/benchmarksApi';
 import { fetchAvailableDatasets } from '../services/datasetsApi';
-import type { BenchmarkRunResponse, PlotData } from '../types/api';
+import type { BenchmarkRunResponse } from '../types/api';
 
 interface TokenizersContextType {
     // State
@@ -21,7 +21,6 @@ interface TokenizersContextType {
     benchmarkInProgress: boolean;
     benchmarkError: string | null;
     benchmarkResult: BenchmarkRunResponse | null;
-    selectedPlot: PlotData | null;
     customTokenizerInputRef: React.RefObject<HTMLInputElement | null>;
 
     // Actions
@@ -29,13 +28,11 @@ interface TokenizersContextType {
     setTokenizers: (tokenizers: string[]) => void;
     setMaxDocuments: (value: number) => void;
     setSelectedDataset: (name: string) => void;
-    setSelectedPlot: (plot: PlotData | null) => void;
     setScanError: (error: string | null) => void;
     setBenchmarkError: (error: string | null) => void;
     addTokenizer: (tokenizer: string) => void;
     handleScan: () => Promise<void>;
     handleRunBenchmarks: () => Promise<void>;
-    handleDownloadPlot: (plot: PlotData) => void;
     refreshDatasets: () => Promise<void>;
     handleUploadCustomTokenizer: (event: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
     handleClearCustomTokenizer: () => Promise<void>;
@@ -62,7 +59,6 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
     const [benchmarkInProgress, setBenchmarkInProgress] = useState(false);
     const [benchmarkError, setBenchmarkError] = useState<string | null>(null);
     const [benchmarkResult, setBenchmarkResult] = useState<BenchmarkRunResponse | null>(null);
-    const [selectedPlot, setSelectedPlot] = useState<PlotData | null>(null);
 
     const refreshDatasets = useCallback(async () => {
         setDatasetsLoading(true);
@@ -159,7 +155,6 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         setBenchmarkInProgress(true);
         setBenchmarkError(null);
         setBenchmarkResult(null);
-        setSelectedPlot(null);
 
         try {
             const response = await runBenchmarks({
@@ -169,9 +164,6 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
                 custom_tokenizer_name: customTokenizerName || undefined,
             });
             setBenchmarkResult(response);
-            if (response.plots && response.plots.length > 0) {
-                setSelectedPlot(response.plots[0]);
-            }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to run benchmarks';
             setBenchmarkError(errorMessage);
@@ -180,15 +172,6 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
             setBenchmarkInProgress(false);
         }
     }, [tokenizers, selectedDataset, maxDocuments, customTokenizerName]);
-
-    const handleDownloadPlot = useCallback((plot: PlotData) => {
-        const link = document.createElement('a');
-        link.href = `data:image/png;base64,${plot.data}`;
-        link.download = `${plot.name}.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }, []);
 
     const value: TokenizersContextType = {
         // State
@@ -206,7 +189,6 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         benchmarkInProgress,
         benchmarkError,
         benchmarkResult,
-        selectedPlot,
         customTokenizerInputRef,
 
         // Actions
@@ -214,13 +196,11 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         setTokenizers,
         setMaxDocuments,
         setSelectedDataset,
-        setSelectedPlot,
         setScanError,
         setBenchmarkError,
         addTokenizer,
         handleScan,
         handleRunBenchmarks,
-        handleDownloadPlot,
         refreshDatasets,
         handleUploadCustomTokenizer,
         handleClearCustomTokenizer,
