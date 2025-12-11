@@ -105,14 +105,6 @@ export interface DatasetListResponse {
 }
 
 /**
- * Plot data returned as base64 encoded PNG
- */
-export interface PlotData {
-    name: string;
-    data: string;
-}
-
-/**
  * Global metrics for a single tokenizer benchmark
  */
 export interface GlobalMetrics {
@@ -130,6 +122,55 @@ export interface GlobalMetrics {
     determinism_rate: number;
     boundary_preservation_rate: number;
     round_trip_fidelity_rate: number;
+}
+
+/**
+ * Vocabulary statistics for chart
+ */
+export interface VocabularyStats {
+    tokenizer: string;
+    vocabulary_size: number;
+    subwords_count: number;
+    true_words_count: number;
+    subwords_percentage: number;
+}
+
+/**
+ * Token length histogram bin
+ */
+export interface TokenLengthBin {
+    bin_start: number;
+    bin_end: number;
+    count: number;
+}
+
+/**
+ * Token length distribution for a tokenizer
+ */
+export interface TokenLengthDistribution {
+    tokenizer: string;
+    bins: TokenLengthBin[];
+    mean: number;
+    std: number;
+}
+
+/**
+ * Speed metrics for comparison
+ */
+export interface SpeedMetric {
+    tokenizer: string;
+    tokens_per_second: number;
+    chars_per_second: number;
+    processing_time_seconds: number;
+}
+
+/**
+ * Chart data for frontend visualization
+ */
+export interface ChartData {
+    vocabulary_stats: VocabularyStats[];
+    token_length_distributions: TokenLengthDistribution[];
+    speed_metrics: SpeedMetric[];
 }
 
 /**
@@ -160,6 +201,7 @@ export interface BenchmarkRunResponse {
     documents_processed: number;
     tokenizers_processed: string[];
     tokenizers_count: number;
-    plots: PlotData[];
     global_metrics: GlobalMetrics[];
+    chart_data: ChartData;
 }
+

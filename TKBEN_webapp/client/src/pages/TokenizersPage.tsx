@@ -1,5 +1,15 @@
 import { useMemo } from 'react';
 import { useTokenizers } from '../contexts/TokenizersContext';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 
 const TokenizersPage = () => {
   const {
@@ -17,19 +27,16 @@ const TokenizersPage = () => {
     benchmarkInProgress,
     benchmarkError,
     benchmarkResult,
-    selectedPlot,
     customTokenizerInputRef,
     setSelectedTokenizer,
     setTokenizers,
     setMaxDocuments,
     setSelectedDataset,
-    setSelectedPlot,
     setScanError,
     setBenchmarkError,
     addTokenizer,
     handleScan,
     handleRunBenchmarks,
-    handleDownloadPlot,
     refreshDatasets,
     handleUploadCustomTokenizer,
     handleClearCustomTokenizer,
@@ -50,6 +57,27 @@ const TokenizersPage = () => {
     [tokenizers.length, customTokenizerName, benchmarkResult],
   );
 
+  // Prepare vocabulary data for Recharts
+  const vocabularyChartData = useMemo(() => {
+    if (!benchmarkResult?.chart_data?.vocabulary_stats) return [];
+    return benchmarkResult.chart_data.vocabulary_stats.map((stat) => ({
+      name: stat.tokenizer.split('/').pop() || stat.tokenizer,
+      'Vocabulary Size': stat.vocabulary_size,
+      'Subwords': stat.subwords_count,
+      'True Words': stat.true_words_count,
+    }));
+  }, [benchmarkResult]);
+
+  // Prepare speed data for Recharts
+  const speedChartData = useMemo(() => {
+    if (!benchmarkResult?.chart_data?.speed_metrics) return [];
+    return benchmarkResult.chart_data.speed_metrics.map((stat) => ({
+      name: stat.tokenizer.split('/').pop() || stat.tokenizer,
+      'Tokens/sec': Math.round(stat.tokens_per_second),
+      'Chars/sec': Math.round(stat.chars_per_second),
+    }));
+  }, [benchmarkResult]);
+
   return (
     <div className="page-scroll">
       <div className="page-grid tokenizers-page">
@@ -66,7 +94,6 @@ const TokenizersPage = () => {
                 value={selectedTokenizer}
                 onChange={(event) => setSelectedTokenizer(event.target.value)}
                 className="text-input"
-                disabled={fetchedTokenizers.length === 0}
               >
                 {fetchedTokenizers.length === 0 ? (
                   <option value="">Click Scan to fetch tokenizers</option>
@@ -82,7 +109,7 @@ const TokenizersPage = () => {
                 type="button"
                 className="primary-button ghost"
                 onClick={() => addTokenizer(selectedTokenizer)}
-                disabled={!selectedTokenizer || fetchedTokenizers.length === 0}
+                disabled={!selectedTokenizer}
               >
                 Add
               </button>
@@ -92,74 +119,77 @@ const TokenizersPage = () => {
                 onClick={handleScan}
                 disabled={scanInProgress}
               >
-                {scanInProgress ? 'Scanning.' : 'Scan'}
+                {scanInProgress ? 'Scanning...' : 'Scan'}
               </button>
             </div>
           </header>
-          {(scanError || benchmarkError) && (
-            <div className="error-banner">
-              <span>{scanError || benchmarkError}</span>
+          <div className="panel-body">
+            {scanError && (
+              <div className="error-banner" role="alert">
+                <span>{scanError}</span>
+                <button type="button" aria-label="Dismiss" onClick={() => setScanError(null)}>
+                  ×
+                </button>
+              </div>
+            )}
+            {benchmarkError && (
+              <div className="error-banner" role="alert">
+                <span>{benchmarkError}</span>
+                <button type="button" aria-label="Dismiss" onClick={() => setBenchmarkError(null)}>
+                  ×
+                </button>
+              </div>
+            )}
+            <textarea
+              className="text-area"
+              placeholder="Paste tokenizer IDs here, one per line..."
+              value={tokenizers.join('\n')}
+              onChange={(event) =>
+                setTokenizers(event.target.value.split('\n').filter((t) => t.trim()))
+              }
+            />
+            <div className="field-row">
+              <label className="field-label" htmlFor="datasetSelect">
+                Dataset:
+              </label>
+              <select
+                id="datasetSelect"
+                value={selectedDataset}
+                onChange={(event) => setSelectedDataset(event.target.value)}
+                className="text-input"
+                disabled={datasetsLoading}
+              >
+                {availableDatasets.length === 0 ? (
+                  <option value="">Click Refresh to load</option>
+                ) : (
+                  availableDatasets.map((ds) => (
+                    <option key={ds} value={ds}>
+                      {ds}
+                    </option>
+                  ))
+                )}
+              </select>
               <button
                 type="button"
-                onClick={() => { setScanError(null); setBenchmarkError(null); }}
-                aria-label="Dismiss error"
+                className="primary-button ghost"
+                onClick={refreshDatasets}
+                disabled={datasetsLoading}
               >
-                ×
+                {datasetsLoading ? 'Loading...' : 'Refresh'}
               </button>
             </div>
-          )}
-          <div className="panel-body">
-            <textarea
-              className="tokenizer-textarea"
-              value={tokenizers.join('\n')}
-              onChange={(event) => setTokenizers(event.target.value.split('\n').filter(Boolean))}
-              placeholder="Add tokenizer IDs here, one per line..."
-            />
-            <div className="benchmark-options">
-              <div className="input-group">
-                <label htmlFor="dataset-select">Dataset:</label>
-                <div className="dataset-select-row">
-                  <select
-                    id="dataset-select"
-                    className="text-input"
-                    value={selectedDataset}
-                    onChange={(e) => setSelectedDataset(e.target.value)}
-                    disabled={datasetsLoading}
-                  >
-                    {availableDatasets.length === 0 ? (
-                      <option value="">
-                        {datasetsLoading ? 'Loading...' : 'Click Refresh to load'}
-                      </option>
-                    ) : (
-                      availableDatasets.map((dataset) => (
-                        <option key={dataset} value={dataset}>
-                          {dataset}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                  <button
-                    type="button"
-                    className="primary-button ghost"
-                    onClick={refreshDatasets}
-                    disabled={datasetsLoading}
-                  >
-                    {datasetsLoading ? '...' : 'Refresh'}
-                  </button>
-                </div>
-              </div>
-              <div className="input-group">
-                <label htmlFor="max-documents">Max documents:</label>
-                <input
-                  id="max-documents"
-                  type="number"
-                  className="text-input"
-                  value={maxDocuments}
-                  onChange={(e) => setMaxDocuments(parseInt(e.target.value, 10) || 0)}
-                  min={0}
-                  step={100}
-                />
-              </div>
+            <div className="field-row">
+              <label className="field-label" htmlFor="maxDocs">
+                Max documents:
+              </label>
+              <input
+                id="maxDocs"
+                type="number"
+                className="text-input"
+                value={maxDocuments}
+                onChange={(event) => setMaxDocuments(Number(event.target.value))}
+                min={0}
+              />
             </div>
             <div className="checkbox-group">
               <div className="custom-tokenizer-row">
@@ -208,49 +238,57 @@ const TokenizersPage = () => {
         <aside className="panel dashboard-panel">
           <header className="panel-header">
             <div>
-              <p className="panel-label">Benchmark status</p>
+              <p className="panel-label">Benchmark Dashboard</p>
               <p className="panel-description">
                 {benchmarkResult
                   ? `Processed ${benchmarkResult.documents_processed} documents with ${benchmarkResult.tokenizers_count} tokenizers`
-                  : 'Visual placeholders for results and runtime statistics.'}
+                  : 'Charts will appear after running benchmarks.'}
               </p>
             </div>
           </header>
-          <div className="chart-placeholder">
-            {selectedPlot ? (
-              <div className="plot-container">
-                <img
-                  src={`data:image/png;base64,${selectedPlot.data}`}
-                  alt={selectedPlot.name}
-                  style={{ maxWidth: '100%', height: 'auto' }}
-                />
-                <div className="plot-actions">
-                  {benchmarkResult?.plots.map((plot) => (
-                    <button
-                      key={plot.name}
-                      type="button"
-                      className={`plot-tab ${selectedPlot?.name === plot.name ? 'active' : ''}`}
-                      onClick={() => setSelectedPlot(plot)}
-                    >
-                      {plot.name.replace(/_/g, ' ')}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    className="primary-button ghost"
-                    onClick={() => selectedPlot && handleDownloadPlot(selectedPlot)}
-                  >
-                    Download
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <canvas width="320" height="180" />
-                <p>{benchmarkInProgress ? 'Processing benchmarks...' : 'Plot canvas ready for rendering charts.'}</p>
-              </>
-            )}
-          </div>
+
+          {/* Vocabulary Size Chart */}
+          {vocabularyChartData.length > 0 && (
+            <div className="chart-container">
+              <h3 className="chart-title">Vocabulary Size Comparison</h3>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={vocabularyChartData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis type="number" stroke="#888" />
+                  <YAxis dataKey="name" type="category" stroke="#888" width={100} tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #333' }}
+                    labelStyle={{ color: '#fff' }}
+                  />
+                  <Legend />
+                  <Bar dataKey="Vocabulary Size" fill="#4fc3f7" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Speed Comparison Chart */}
+          {speedChartData.length > 0 && (
+            <div className="chart-container">
+              <h3 className="chart-title">Tokenization Speed</h3>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={speedChartData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis type="number" stroke="#888" />
+                  <YAxis dataKey="name" type="category" stroke="#888" width={100} tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #333' }}
+                    labelStyle={{ color: '#fff' }}
+                  />
+                  <Legend />
+                  <Bar dataKey="Tokens/sec" fill="#81c784" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="Chars/sec" fill="#ffb74d" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* KPI Cards */}
           <div className="dashboard-grid">
             {chartStats.map((stat) => (
               <div key={stat.label} className="stat-card">
@@ -259,11 +297,26 @@ const TokenizersPage = () => {
               </div>
             ))}
           </div>
+
+          {/* Empty state with spinner */}
+          {!benchmarkResult && (
+            <div className="chart-empty-state">
+              {benchmarkInProgress ? (
+                <>
+                  <div className="spinner" />
+                  <p>Processing benchmarks...</p>
+                  <span>Analyzing tokenizers and computing metrics. This may take a few minutes.</span>
+                </>
+              ) : (
+                <p>Run benchmarks to see charts.</p>
+              )}
+            </div>
+          )}
+
           <ul className="insights-list">
             <li>Tokenizer list stays synchronized with the text area for quick edits and bulk paste.</li>
-            <li>Scanning keeps identifiers synchronized with Hugging Face.</li>
             {benchmarkResult && (
-              <li>Benchmarks complete! {benchmarkResult.plots.length} plots generated.</li>
+              <li>Benchmarks complete! Charts are now interactive - hover for details.</li>
             )}
           </ul>
         </aside>

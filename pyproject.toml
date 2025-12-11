@@ -12,8 +12,6 @@ dependencies = [
     "datasets==4.0.0",
     "sacremoses==0.1.1",   
     "hf-xet==1.1.10",  
-    "PySide6==6.9.1",
-    "qt-material==2.17",
     "matplotlib==3.10.1",
     "seaborn==0.13.2",
     "numpy==2.3.2",

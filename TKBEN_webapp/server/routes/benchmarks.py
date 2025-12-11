@@ -8,11 +8,15 @@ from TKBEN_webapp.server.routes.tokenizers import get_custom_tokenizers
 from TKBEN_webapp.server.schemas.benchmarks import (
     BenchmarkRunRequest,
     BenchmarkRunResponse,
+    ChartData,
     GlobalMetrics,
-    PlotData,
+    SpeedMetric,
+    TokenLengthBin,
+    TokenLengthDistribution,
+    VocabularyStats,
 )
 from TKBEN_webapp.server.utils.logger import logger
-from TKBEN_webapp.server.utils.services.benchmark_service import BenchmarkService
+from TKBEN_webapp.server.utils.services.benchmarks import BenchmarkService
 
 
 router = APIRouter(prefix="/benchmarks", tags=["benchmarks"])
@@ -29,14 +33,14 @@ async def run_benchmarks(request: BenchmarkRunRequest) -> BenchmarkRunResponse:
     Run tokenizer benchmarks on specified tokenizers using a loaded dataset.
 
     This endpoint processes the selected tokenizers against the specified dataset,
-    computing vocabulary statistics, tokenization metrics, and generating
-    visualization plots. Results are persisted to the database.
+    computing vocabulary statistics, tokenization metrics, and returning
+    structured chart data for frontend visualization.
 
     Args:
         request: BenchmarkRunRequest containing tokenizers, dataset_name, and options.
 
     Returns:
-        BenchmarkRunResponse with benchmark results, metrics, and plots as base64.
+        BenchmarkRunResponse with benchmark results, metrics, and chart data.
     """
     if not request.tokenizers:
         raise HTTPException(
@@ -96,11 +100,6 @@ async def run_benchmarks(request: BenchmarkRunRequest) -> BenchmarkRunResponse:
     )
 
     # Convert raw metrics to schema objects
-    plots = [
-        PlotData(name=p["name"], data=p["data"])
-        for p in result.get("plots_generated", [])
-    ]
-
     global_metrics = []
     for m in result.get("global_metrics", []):
         global_metrics.append(
@@ -122,12 +121,58 @@ async def run_benchmarks(request: BenchmarkRunRequest) -> BenchmarkRunResponse:
             )
         )
 
+    # Build chart data from result
+    vocabulary_stats = []
+    for vs in result.get("vocabulary_stats", []):
+        vocabulary_stats.append(
+            VocabularyStats(
+                tokenizer=vs.get("tokenizer", ""),
+                vocabulary_size=vs.get("vocabulary_size", 0),
+                subwords_count=vs.get("subwords_count", 0),
+                true_words_count=vs.get("true_words_count", 0),
+                subwords_percentage=vs.get("subwords_percentage", 0.0),
+            )
+        )
+
+    token_length_distributions = []
+    for tld in result.get("token_length_distributions", []):
+        bins = [
+            TokenLengthBin(bin_start=b["bin_start"], bin_end=b["bin_end"], count=b["count"])
+            for b in tld.get("bins", [])
+        ]
+        token_length_distributions.append(
+            TokenLengthDistribution(
+                tokenizer=tld.get("tokenizer", ""),
+                bins=bins,
+                mean=tld.get("mean", 0.0),
+                std=tld.get("std", 0.0),
+            )
+        )
+
+    speed_metrics = []
+    for sm in result.get("speed_metrics", []):
+        speed_metrics.append(
+            SpeedMetric(
+                tokenizer=sm.get("tokenizer", ""),
+                tokens_per_second=sm.get("tokens_per_second", 0.0),
+                chars_per_second=sm.get("chars_per_second", 0.0),
+                processing_time_seconds=sm.get("processing_time_seconds", 0.0),
+            )
+        )
+
+    chart_data = ChartData(
+        vocabulary_stats=vocabulary_stats,
+        token_length_distributions=token_length_distributions,
+        speed_metrics=speed_metrics,
+    )
+
     return BenchmarkRunResponse(
         status="success",
         dataset_name=result.get("dataset_name", request.dataset_name),
         documents_processed=result.get("documents_processed", 0),
         tokenizers_processed=result.get("tokenizers_processed", []),
         tokenizers_count=result.get("tokenizers_count", 0),
-        plots=plots,
         global_metrics=global_metrics,
+        chart_data=chart_data,
     )
+

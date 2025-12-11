@@ -1,14 +1,48 @@
 from __future__ import annotations
 
-from typing import Any
-
 from pydantic import BaseModel, Field
 
 
 ###############################################################################
-class PlotData(BaseModel):
-    name: str = Field(..., description="Name of the plot")
-    data: str = Field(..., description="Base64-encoded PNG image data")
+# Chart data models for frontend visualization
+###############################################################################
+class VocabularyStats(BaseModel):
+    """Vocabulary statistics for a single tokenizer."""
+    tokenizer: str
+    vocabulary_size: int = Field(default=0)
+    subwords_count: int = Field(default=0)
+    true_words_count: int = Field(default=0)
+    subwords_percentage: float = Field(default=0.0)
+
+
+class TokenLengthBin(BaseModel):
+    """A single bin in token length histogram."""
+    bin_start: int
+    bin_end: int
+    count: int
+
+
+class TokenLengthDistribution(BaseModel):
+    """Token length distribution for a tokenizer."""
+    tokenizer: str
+    bins: list[TokenLengthBin] = Field(default_factory=list)
+    mean: float = Field(default=0.0)
+    std: float = Field(default=0.0)
+
+
+class SpeedMetric(BaseModel):
+    """Speed and throughput metrics for comparison charts."""
+    tokenizer: str
+    tokens_per_second: float = Field(default=0.0)
+    chars_per_second: float = Field(default=0.0)
+    processing_time_seconds: float = Field(default=0.0)
+
+
+class ChartData(BaseModel):
+    """All chart data for frontend visualization."""
+    vocabulary_stats: list[VocabularyStats] = Field(default_factory=list)
+    token_length_distributions: list[TokenLengthDistribution] = Field(default_factory=list)
+    speed_metrics: list[SpeedMetric] = Field(default_factory=list)
 
 
 ###############################################################################
@@ -55,9 +89,10 @@ class BenchmarkRunResponse(BaseModel):
         default_factory=list, description="List of successfully processed tokenizers"
     )
     tokenizers_count: int = Field(default=0, description="Number of tokenizers benchmarked")
-    plots: list[PlotData] = Field(
-        default_factory=list, description="Generated visualization plots as base64"
-    )
     global_metrics: list[GlobalMetrics] = Field(
         default_factory=list, description="Global benchmark metrics per tokenizer"
     )
+    chart_data: ChartData = Field(
+        default_factory=ChartData, description="Structured data for frontend charts"
+    )
+
