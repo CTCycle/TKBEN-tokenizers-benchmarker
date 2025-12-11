@@ -90,9 +90,9 @@ const DatasetPage = () => {
           <section className="panel">
             <header className="panel-header">
               <div>
-                <p className="panel-label">Load dataset</p>
+                <p className="panel-label">Download dataset</p>
                 <p className="panel-description">
-                  Load from HuggingFace or upload a custom CSV/Excel file.
+                  Download from HuggingFace or upload a custom CSV/Excel file.
                 </p>
               </div>
             </header>
@@ -136,7 +136,7 @@ const DatasetPage = () => {
                 onClick={handleLoadDataset}
                 disabled={loading}
               >
-                {loading ? 'Loading...' : 'Load dataset'}
+                {loading ? 'Downloading...' : 'Download dataset'}
               </button>
               <button
                 type="button"
