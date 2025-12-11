@@ -1,51 +1,49 @@
-import { useMemo, useState } from 'react';
-import { scanTokenizers } from '../services/tokenizersApi';
+import { useMemo } from 'react';
+import { useTokenizers } from '../contexts/TokenizersContext';
 
 const TokenizersPage = () => {
-  const [scanInProgress, setScanInProgress] = useState(false);
-  const [scanError, setScanError] = useState<string | null>(null);
-  const [fetchedTokenizers, setFetchedTokenizers] = useState<string[]>([]);
-  const [selectedTokenizer, setSelectedTokenizer] = useState('');
-  const [tokenizers, setTokenizers] = useState<string[]>([]);
-  const [includeCustom, setIncludeCustom] = useState(false);
-  const [includeNSL, setIncludeNSL] = useState(false);
+  const {
+    scanInProgress,
+    scanError,
+    fetchedTokenizers,
+    selectedTokenizer,
+    tokenizers,
+    includeCustom,
+    includeNSL,
+    maxDocuments,
+    datasetName,
+    benchmarkInProgress,
+    benchmarkError,
+    benchmarkResult,
+    selectedPlot,
+    setSelectedTokenizer,
+    setTokenizers,
+    setIncludeCustom,
+    setIncludeNSL,
+    setMaxDocuments,
+    setDatasetName,
+    setSelectedPlot,
+    setScanError,
+    setBenchmarkError,
+    addTokenizer,
+    handleScan,
+    handleRunBenchmarks,
+    handleDownloadPlot,
+  } = useTokenizers();
 
   const chartStats = useMemo(
     () => [
       { label: 'Queued runs', value: tokenizers.length },
-      { label: 'Avg. throughput', value: `${(tokenizers.length * 320).toLocaleString()} tok/s` },
+      {
+        label: 'Avg. throughput',
+        value: benchmarkResult?.global_metrics?.[0]?.tokenization_speed_tps
+          ? `${Math.round(benchmarkResult.global_metrics[0].tokenization_speed_tps).toLocaleString()} tok/s`
+          : '0 tok/s'
+      },
       { label: 'Custom tokenizer', value: includeCustom ? 'yes' : 'no' },
     ],
-    [tokenizers.length, includeCustom],
+    [tokenizers.length, includeCustom, benchmarkResult],
   );
-
-  const addTokenizer = (value: string) => {
-    if (!value || tokenizers.includes(value)) {
-      return;
-    }
-    setTokenizers((list) => [...list, value]);
-  };
-
-  const handleScan = async () => {
-    setScanInProgress(true);
-    setScanError(null);
-
-    try {
-      // Call without limit to use server-configured default
-      const response = await scanTokenizers();
-      setFetchedTokenizers(response.identifiers);
-      // Auto-select first tokenizer if available
-      if (response.identifiers.length > 0 && !selectedTokenizer) {
-        setSelectedTokenizer(response.identifiers[0]);
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to scan tokenizers';
-      setScanError(errorMessage);
-      console.error('Scan error:', error);
-    } finally {
-      setScanInProgress(false);
-    }
-  };
 
   return (
     <div className="page-scroll">
@@ -93,11 +91,15 @@ const TokenizersPage = () => {
               </button>
             </div>
           </header>
-          {scanError && (
+          {(scanError || benchmarkError) && (
             <div className="error-banner">
-              <span>{scanError}</span>
-              <button type="button" onClick={() => setScanError(null)} aria-label="Dismiss error">
-                ž
+              <span>{scanError || benchmarkError}</span>
+              <button
+                type="button"
+                onClick={() => { setScanError(null); setBenchmarkError(null); }}
+                aria-label="Dismiss error"
+              >
+                ×
               </button>
             </div>
           )}
@@ -106,7 +108,33 @@ const TokenizersPage = () => {
               className="tokenizer-textarea"
               value={tokenizers.join('\n')}
               onChange={(event) => setTokenizers(event.target.value.split('\n').filter(Boolean))}
+              placeholder="Add tokenizer IDs here, one per line..."
             />
+            <div className="benchmark-options">
+              <div className="input-group">
+                <label htmlFor="dataset-name">Dataset name:</label>
+                <input
+                  id="dataset-name"
+                  type="text"
+                  className="text-input"
+                  value={datasetName}
+                  onChange={(e) => setDatasetName(e.target.value)}
+                  placeholder="e.g., wikitext/wikitext-2-raw-v1"
+                />
+              </div>
+              <div className="input-group">
+                <label htmlFor="max-documents">Max documents:</label>
+                <input
+                  id="max-documents"
+                  type="number"
+                  className="text-input"
+                  value={maxDocuments}
+                  onChange={(e) => setMaxDocuments(parseInt(e.target.value, 10) || 0)}
+                  min={0}
+                  step={100}
+                />
+              </div>
+            </div>
             <div className="checkbox-group">
               <label className="checkbox">
                 <input
@@ -127,11 +155,13 @@ const TokenizersPage = () => {
             </div>
           </div>
           <footer className="panel-footer">
-            <button type="button" className="primary-button">
-              Run benchmarks
-            </button>
-            <button type="button" className="primary-button ghost">
-              Generate visual benchmarks
+            <button
+              type="button"
+              className="primary-button"
+              onClick={handleRunBenchmarks}
+              disabled={benchmarkInProgress || tokenizers.length === 0}
+            >
+              {benchmarkInProgress ? 'Running benchmarks...' : 'Run Benchmarks'}
             </button>
           </footer>
         </section>
@@ -140,13 +170,46 @@ const TokenizersPage = () => {
             <div>
               <p className="panel-label">Benchmark status</p>
               <p className="panel-description">
-                Visual placeholders for results and runtime statistics.
+                {benchmarkResult
+                  ? `Processed ${benchmarkResult.documents_processed} documents with ${benchmarkResult.tokenizers_count} tokenizers`
+                  : 'Visual placeholders for results and runtime statistics.'}
               </p>
             </div>
           </header>
           <div className="chart-placeholder">
-            <canvas width="320" height="180" />
-            <p>Plot canvas ready for rendering charts.</p>
+            {selectedPlot ? (
+              <div className="plot-container">
+                <img
+                  src={`data:image/png;base64,${selectedPlot.data}`}
+                  alt={selectedPlot.name}
+                  style={{ maxWidth: '100%', height: 'auto' }}
+                />
+                <div className="plot-actions">
+                  {benchmarkResult?.plots.map((plot) => (
+                    <button
+                      key={plot.name}
+                      type="button"
+                      className={`plot-tab ${selectedPlot?.name === plot.name ? 'active' : ''}`}
+                      onClick={() => setSelectedPlot(plot)}
+                    >
+                      {plot.name.replace(/_/g, ' ')}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="primary-button ghost"
+                    onClick={() => selectedPlot && handleDownloadPlot(selectedPlot)}
+                  >
+                    Download
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <canvas width="320" height="180" />
+                <p>{benchmarkInProgress ? 'Processing benchmarks...' : 'Plot canvas ready for rendering charts.'}</p>
+              </>
+            )}
           </div>
           <div className="dashboard-grid">
             {chartStats.map((stat) => (
@@ -159,7 +222,9 @@ const TokenizersPage = () => {
           <ul className="insights-list">
             <li>Tokenizer list stays synchronized with the text area for quick edits and bulk paste.</li>
             <li>Scanning keeps identifiers synchronized with Hugging Face.</li>
-            <li>Canvas can render throughput plots once backend APIs deliver data.</li>
+            {benchmarkResult && (
+              <li>Benchmarks complete! {benchmarkResult.plots.length} plots generated.</li>
+            )}
           </ul>
         </aside>
       </div>

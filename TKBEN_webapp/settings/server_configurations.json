@@ -33,5 +33,9 @@
       ".xlsx"
     ],
     "column_detection_cutoff": 0.6
+  },
+  "benchmarks": {
+    "streaming_batch_size": 1000,
+    "log_interval": 10000
   }
 }
