@@ -105,8 +105,10 @@
 }
 
 .dataset-page-layout {
+  display: grid;
   grid-template-columns: 1fr 1fr;
-  align-items: start;
+  grid-template-rows: auto auto;
+  align-items: stretch;
 }
 
 .dataset-left-column {
@@ -114,12 +116,14 @@
   flex-direction: column;
   gap: 24px;
   grid-column: 1;
+  grid-row: 1 / -1;
 }
 
 .dataset-right-column {
   grid-column: 2;
-  grid-row: 1 / span 3;
-  max-height: fit-content;
+  grid-row: 1 / -1;
+  display: flex;
+  flex-direction: column;
 }
 
 .dataset-select-row {
