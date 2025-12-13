@@ -253,16 +253,22 @@ if not exist "%FRONTEND_DIST%" (
     goto error
   )
 ) else (
-  echo [INFO] Frontend build already present at "%FRONTEND_DIST%".
+echo [INFO] Frontend build already present at "%FRONTEND_DIST%".
 )
 
-echo [RUN] Launching frontend
+set "ui_port_busy="
+for /f "tokens=5" %%P in ('netstat -ano ^| findstr ":!UI_PORT!"') do set "ui_port_busy=1"
+if defined ui_port_busy (
+  echo [INFO] Preferred UI port !UI_PORT! in use; Vite will pick a free port.
+) else (
+  echo [INFO] Preferred UI port !UI_PORT! free; will try to use it.
+)
+
+echo [RUN] Launching frontend (Vite will open the browser on the active port)
 pushd "%FRONTEND_DIR%" >nul
-call :kill_port %UI_PORT%
-start "" /b "%NPM_CMD%" run preview -- --host %UI_HOST% --port %UI_PORT% --strictPort
+start "" /b "%NPM_CMD%" run preview -- --host %UI_HOST% --port %UI_PORT% --open
 popd >nul
 
-start "" "%UI_URL%"
 echo [SUCCESS] Backend and frontend correctly launched
 goto cleanup
 

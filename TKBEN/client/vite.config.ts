@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
+    strictPort: false,
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
@@ -14,5 +15,8 @@ export default defineConfig({
         timeout: 600000,
       },
     },
+  },
+  preview: {
+    strictPort: false,
   },
 })
