@@ -1,24 +1,62 @@
-TKBEN/resources/database/tokenizers/*
-TKBEN/resources/datasets/*
-TKBEN/resources/database/evaluation/*
+# Project-specific generated/runtime artifacts
+TKBEN/resources/database/**
+TKBEN/resources/datasets/**
+TKBEN/resources/runtimes/**
+TKBEN/resources/runtimes/uv_cache/**
+TKBEN/resources/logs/**
+TKBEN/client/node_modules/
+TKBEN/client/dist/
+TKBEN/client/dist-ssr/
+TKBEN/client/package-lock.json
+TKBEN/client/logs/
 
-TKBEN/resources/runtimes/*
+# Environment files (keep templates)
 TKBEN/settings/.env
+TKBEN/client/.env
+TKBEN/client/*.local
+!.env.example
+!.env.sample
+!TKBEN/resources/templates/.env
 
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+.coverage
+htmlcov/
 
-__pycache__
-*.vscode
-*.json
-*.csv
-*.db
-*.log
+# Node / JS
+**/node_modules/
+**/dist/
+**/dist-ssr/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# IDE / OS
+.vscode/
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Misc
 *.lock
-*.venv
-*.egg-info
+*.log
+*.db
+*.sqlite*
+*.exe
+AGENTS.MD
+
 !.gitkeep
-
-AGENTS.md
 !TKBEN/settings/server_configurations.json
-
-
 
