@@ -2,8 +2,7 @@
   "fastapi": {
     "title": "TKBEN_webapp Tokenizers Benchmark Backend",
     "description": "FastAPI backend",
-    "version": "1.2.0",
-    "api_base_url": "http://127.0.0.1:8000"
+    "version": "1.2.0"   
   },
   "database": {
     "embedded_database": true,
