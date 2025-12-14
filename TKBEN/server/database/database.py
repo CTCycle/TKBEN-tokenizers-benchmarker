@@ -21,6 +21,17 @@ class DatabaseBackend(Protocol):
     def load_from_database(self, table_name: str) -> pd.DataFrame: ...
 
     # -------------------------------------------------------------------------
+    def load_paginated(
+        self, table_name: str, offset: int, limit: int
+    ) -> pd.DataFrame: ...
+
+    # -------------------------------------------------------------------------
+    def get_table_names(self) -> list[str]: ...
+
+    # -------------------------------------------------------------------------
+    def get_column_count(self, table_name: str) -> int: ...
+
+    # -------------------------------------------------------------------------
     def save_into_database(self, df: pd.DataFrame, table_name: str) -> None: ...
 
     # -------------------------------------------------------------------------
@@ -87,6 +98,20 @@ class TKBENWebappDatabase:
     # -------------------------------------------------------------------------
     def load_from_database(self, table_name: str) -> pd.DataFrame:
         return self.backend.load_from_database(table_name)
+
+    # -------------------------------------------------------------------------
+    def load_paginated(
+        self, table_name: str, offset: int = 0, limit: int = 1000
+    ) -> pd.DataFrame:
+        return self.backend.load_paginated(table_name, offset, limit)
+
+    # -------------------------------------------------------------------------
+    def get_table_names(self) -> list[str]:
+        return self.backend.get_table_names()
+
+    # -------------------------------------------------------------------------
+    def get_column_count(self, table_name: str) -> int:
+        return self.backend.get_column_count(table_name)
 
     # -------------------------------------------------------------------------
     def save_into_database(self, df: pd.DataFrame, table_name: str) -> None:

@@ -85,6 +85,41 @@ class SQLiteRepository:
         return data
 
     # -------------------------------------------------------------------------
+    def load_paginated(
+        self, table_name: str, offset: int = 0, limit: int = 1000
+    ) -> pd.DataFrame:
+        """Load a paginated subset of rows from a table."""
+        with self.engine.connect() as conn:
+            inspector = inspect(conn)
+            if not inspector.has_table(table_name):
+                logger.warning("Table %s does not exist", table_name)
+                return pd.DataFrame()
+            query = sqlalchemy.text(
+                f'SELECT * FROM "{table_name}" LIMIT :limit OFFSET :offset'
+            )
+            result = conn.execute(query, {"limit": limit, "offset": offset})
+            columns = result.keys()
+            rows = result.fetchall()
+            return pd.DataFrame(rows, columns=columns)
+
+    # -------------------------------------------------------------------------
+    def get_table_names(self) -> list[str]:
+        """Get list of all table names in the database."""
+        with self.engine.connect() as conn:
+            inspector = inspect(conn)
+            return inspector.get_table_names()
+
+    # -------------------------------------------------------------------------
+    def get_column_count(self, table_name: str) -> int:
+        """Get the number of columns in a table."""
+        with self.engine.connect() as conn:
+            inspector = inspect(conn)
+            if not inspector.has_table(table_name):
+                return 0
+            columns = inspector.get_columns(table_name)
+            return len(columns)
+
+    # -------------------------------------------------------------------------
     def save_into_database(self, df: pd.DataFrame, table_name: str) -> None:
         with self.engine.begin() as conn:
             inspector = inspect(conn)
