@@ -1,6 +1,6 @@
 import type { BenchmarkRunRequest, BenchmarkRunResponse } from '../types/api';
 
-const API_BASE_URL = '/api';
+import { API_ENDPOINTS } from '../constants';
 
 // 30 minute timeout for benchmark runs (can be very long-running)
 const BENCHMARK_TIMEOUT_MS = 30 * 60 * 1000;
@@ -17,7 +17,7 @@ export async function runBenchmarks(
     const timeoutId = setTimeout(() => controller.abort(), BENCHMARK_TIMEOUT_MS);
 
     try {
-        const response = await fetch(`${API_BASE_URL}/benchmarks/run`, {
+        const response = await fetch(API_ENDPOINTS.BENCHMARKS_RUN, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

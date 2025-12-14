@@ -1,16 +1,14 @@
 import type { CustomDatasetUploadResponse, DatasetAnalysisRequest, DatasetAnalysisResponse, DatasetDownloadRequest, DatasetDownloadResponse, DatasetListResponse } from '../types/api';
-
-const API_BASE_URL = '/api';
+import { API_ENDPOINTS, DOWNLOAD_TIMEOUT_MS } from '../constants';
 
 // 10 minute timeout for large dataset downloads
-import { DOWNLOAD_TIMEOUT_MS } from '../constants';
 
 /**
  * Fetch list of available datasets from the database.
  * @returns Promise with the list of dataset names
  */
 export async function fetchAvailableDatasets(): Promise<DatasetListResponse> {
-    const response = await fetch(`${API_BASE_URL}/datasets/list`, {
+    const response = await fetch(API_ENDPOINTS.DATASETS_LIST, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -37,7 +35,7 @@ export async function downloadDataset(
     const timeoutId = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
 
     try {
-        const response = await fetch(`${API_BASE_URL}/datasets/download`, {
+        const response = await fetch(API_ENDPOINTS.DATASETS_DOWNLOAD, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -78,7 +76,7 @@ export async function uploadCustomDataset(
     formData.append('file', file);
 
     try {
-        const response = await fetch(`${API_BASE_URL}/datasets/upload`, {
+        const response = await fetch(API_ENDPOINTS.DATASETS_UPLOAD, {
             method: 'POST',
             body: formData,
             signal: controller.signal,
@@ -113,7 +111,7 @@ export async function analyzeDataset(
     const timeoutId = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
 
     try {
-        const response = await fetch(`${API_BASE_URL}/datasets/analyze`, {
+        const response = await fetch(API_ENDPOINTS.DATASETS_ANALYZE, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
