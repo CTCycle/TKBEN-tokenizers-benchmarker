@@ -1,13 +1,13 @@
 import type { TokenizerScanResponse, TokenizerSettingsResponse, TokenizerUploadResponse } from '../types/api';
 
-const API_BASE_URL = '/api';
+import { API_ENDPOINTS } from '../constants';
 
 /**
  * Get tokenizer configuration settings from the server.
  * @returns Promise with tokenizer settings (scan limits)
  */
 export async function getTokenizerSettings(): Promise<TokenizerSettingsResponse> {
-    const response = await fetch(`${API_BASE_URL}/tokenizers/settings`);
+    const response = await fetch(API_ENDPOINTS.TOKENIZERS_SETTINGS);
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
@@ -39,8 +39,8 @@ export async function scanTokenizers(
 
     const queryString = params.toString();
     const url = queryString
-        ? `${API_BASE_URL}/tokenizers/scan?${queryString}`
-        : `${API_BASE_URL}/tokenizers/scan`;
+        ? `${API_ENDPOINTS.TOKENIZERS_SCAN}?${queryString}`
+        : API_ENDPOINTS.TOKENIZERS_SCAN;
 
     const response = await fetch(url);
 
@@ -61,7 +61,7 @@ export async function uploadCustomTokenizer(file: File): Promise<TokenizerUpload
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_BASE_URL}/tokenizers/upload`, {
+    const response = await fetch(API_ENDPOINTS.TOKENIZERS_UPLOAD, {
         method: 'POST',
         body: formData,
     });
@@ -78,7 +78,7 @@ export async function uploadCustomTokenizer(file: File): Promise<TokenizerUpload
  * Clear all uploaded custom tokenizers from the server.
  */
 export async function clearCustomTokenizers(): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/tokenizers/custom`, {
+    const response = await fetch(API_ENDPOINTS.TOKENIZERS_CUSTOM, {
         method: 'DELETE',
     });
 

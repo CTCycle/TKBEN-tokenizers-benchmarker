@@ -21,6 +21,31 @@ SERVER_CONFIGURATION_FILE = join(SETTING_PATH, "server_configurations.json")
 
 
 ###############################################################################
+API_ROUTE_ROOT = "/"
+API_ROUTE_DOCS = "/docs"
+
+API_ROUTER_PREFIX_DATASETS = "/datasets"
+API_ROUTER_PREFIX_TOKENIZERS = "/tokenizers"
+API_ROUTER_PREFIX_BENCHMARKS = "/benchmarks"
+API_ROUTER_PREFIX_BROWSER = "/browser"
+
+API_ROUTE_DATASETS_LIST = "/list"
+API_ROUTE_DATASETS_DOWNLOAD = "/download"
+API_ROUTE_DATASETS_UPLOAD = "/upload"
+API_ROUTE_DATASETS_ANALYZE = "/analyze"
+
+API_ROUTE_TOKENIZERS_SETTINGS = "/settings"
+API_ROUTE_TOKENIZERS_SCAN = "/scan"
+API_ROUTE_TOKENIZERS_UPLOAD = "/upload"
+API_ROUTE_TOKENIZERS_CUSTOM = "/custom"
+
+API_ROUTE_BENCHMARKS_RUN = "/run"
+
+API_ROUTE_BROWSER_TABLES = "/tables"
+API_ROUTE_BROWSER_DATA = "/data"
+
+
+###############################################################################
 MODELS_LIST = [
     "Langmuir",
     "Sips",

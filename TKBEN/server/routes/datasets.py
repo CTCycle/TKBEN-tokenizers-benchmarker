@@ -15,14 +15,21 @@ from TKBEN.server.schemas.dataset import (
     HistogramData,
 )
 from TKBEN.server.utils.logger import logger
+from TKBEN.server.utils.constants import (
+    API_ROUTE_DATASETS_ANALYZE,
+    API_ROUTE_DATASETS_DOWNLOAD,
+    API_ROUTE_DATASETS_LIST,
+    API_ROUTE_DATASETS_UPLOAD,
+    API_ROUTER_PREFIX_DATASETS,
+)
 from TKBEN.server.utils.services.datasets import DatasetService
 
-router = APIRouter(prefix="/datasets", tags=["datasets"])
+router = APIRouter(prefix=API_ROUTER_PREFIX_DATASETS, tags=["datasets"])
 
 
 ###############################################################################
 @router.get(
-    "/list",
+    API_ROUTE_DATASETS_LIST,
     response_model=DatasetListResponse,
     status_code=status.HTTP_200_OK,
 )
@@ -40,7 +47,7 @@ async def list_datasets() -> DatasetListResponse:
 
 ###############################################################################
 @router.post(
-    "/download",
+    API_ROUTE_DATASETS_DOWNLOAD,
     response_model=DatasetDownloadResponse,
     status_code=status.HTTP_200_OK,
 )
@@ -115,7 +122,7 @@ async def download_dataset(request: DatasetDownloadRequest) -> DatasetDownloadRe
 
 ###############################################################################
 @router.post(
-    "/upload",
+    API_ROUTE_DATASETS_UPLOAD,
     response_model=CustomDatasetUploadResponse,
     status_code=status.HTTP_200_OK,
 )
@@ -204,7 +211,7 @@ async def upload_custom_dataset(
 
 ###############################################################################
 @router.post(
-    "/analyze",
+    API_ROUTE_DATASETS_ANALYZE,
     response_model=DatasetAnalysisResponse,
     status_code=status.HTTP_200_OK,
 )

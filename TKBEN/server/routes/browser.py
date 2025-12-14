@@ -4,9 +4,14 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from TKBEN.server.database.database import database
 from TKBEN.server.utils.configurations.server import server_settings
+from TKBEN.server.utils.constants import (
+    API_ROUTE_BROWSER_DATA,
+    API_ROUTE_BROWSER_TABLES,
+    API_ROUTER_PREFIX_BROWSER,
+)
 from TKBEN.server.utils.logger import logger
 
-router = APIRouter(prefix="/browser", tags=["browser"])
+router = APIRouter(prefix=API_ROUTER_PREFIX_BROWSER, tags=["browser"])
 
 
 # Mapping from table names to friendly display names
@@ -21,7 +26,7 @@ TABLE_DISPLAY_NAMES: dict[str, str] = {
 
 
 ###############################################################################
-@router.get("/tables")
+@router.get(API_ROUTE_BROWSER_TABLES)
 async def list_tables() -> dict:
     """
     List all available tables in the database with friendly names.
@@ -48,7 +53,7 @@ async def list_tables() -> dict:
 
 
 ###############################################################################
-@router.get("/data")
+@router.get(API_ROUTE_BROWSER_DATA)
 async def get_table_data(
     table: str = Query(..., description="Table name to fetch data from"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),

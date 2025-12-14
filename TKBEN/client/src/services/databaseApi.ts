@@ -1,4 +1,4 @@
-const API_BASE_URL = '/api';
+import { API_ENDPOINTS } from '../constants';
 
 export interface TableInfo {
     name: string;
@@ -29,7 +29,7 @@ export interface TableDataResponse {
  * @returns Promise with the list of tables
  */
 export async function fetchTables(): Promise<TableListResponse> {
-    const response = await fetch(`${API_BASE_URL}/browser/tables`, {
+    const response = await fetch(API_ENDPOINTS.BROWSER_TABLES, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -64,7 +64,7 @@ export async function fetchTableData(
         params.append('limit', limit.toString());
     }
 
-    const response = await fetch(`${API_BASE_URL}/browser/data?${params}`, {
+    const response = await fetch(`${API_ENDPOINTS.BROWSER_DATA}?${params}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',

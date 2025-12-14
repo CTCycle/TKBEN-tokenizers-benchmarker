@@ -15,16 +15,20 @@ from TKBEN.server.schemas.benchmarks import (
     TokenLengthDistribution,
     VocabularyStats,
 )
+from TKBEN.server.utils.constants import (
+    API_ROUTE_BENCHMARKS_RUN,
+    API_ROUTER_PREFIX_BENCHMARKS,
+)
 from TKBEN.server.utils.logger import logger
 from TKBEN.server.utils.services.benchmarks import BenchmarkService
 
 
-router = APIRouter(prefix="/benchmarks", tags=["benchmarks"])
+router = APIRouter(prefix=API_ROUTER_PREFIX_BENCHMARKS, tags=["benchmarks"])
 
 
 ###############################################################################
 @router.post(
-    "/run",
+    API_ROUTE_BENCHMARKS_RUN,
     response_model=BenchmarkRunResponse,
     status_code=status.HTTP_200_OK,
 )
@@ -175,4 +179,3 @@ async def run_benchmarks(request: BenchmarkRunRequest) -> BenchmarkRunResponse:
         global_metrics=global_metrics,
         chart_data=chart_data,
     )
-

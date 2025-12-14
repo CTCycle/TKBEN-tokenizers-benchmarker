@@ -13,16 +13,23 @@ from TKBEN.server.schemas.tokenizers import (
     TokenizerUploadResponse,
 )
 from TKBEN.server.utils.configurations.server import server_settings
+from TKBEN.server.utils.constants import (
+    API_ROUTE_TOKENIZERS_CUSTOM,
+    API_ROUTE_TOKENIZERS_SCAN,
+    API_ROUTE_TOKENIZERS_SETTINGS,
+    API_ROUTE_TOKENIZERS_UPLOAD,
+    API_ROUTER_PREFIX_TOKENIZERS,
+)
 from TKBEN.server.utils.logger import logger
 from TKBEN.server.utils.services.benchmarks import BenchmarkTools
 from TKBEN.server.utils.services.tokenizers import TokenizersService
 
-router = APIRouter(prefix="/tokenizers", tags=["tokenizers"])
+router = APIRouter(prefix=API_ROUTER_PREFIX_TOKENIZERS, tags=["tokenizers"])
 
 
 ###############################################################################
 @router.get(
-    "/settings",
+    API_ROUTE_TOKENIZERS_SETTINGS,
     response_model=TokenizerSettingsResponse,
     status_code=status.HTTP_200_OK,
 )
@@ -42,7 +49,9 @@ async def get_tokenizer_settings() -> TokenizerSettingsResponse:
 
 ###############################################################################
 @router.get(
-    "/scan", response_model=TokenizerScanResponse, status_code=status.HTTP_200_OK
+    API_ROUTE_TOKENIZERS_SCAN,
+    response_model=TokenizerScanResponse,
+    status_code=status.HTTP_200_OK,
 )
 async def scan_tokenizers(
     limit: int = Query(default=None),
@@ -91,22 +100,22 @@ async def scan_tokenizers(
 
 ###############################################################################
 # Store uploaded custom tokenizers in memory for the session
-_custom_tokenizers: dict = {}
+custom_tokenizers: dict[str, Tokenizer] = {}
 
 
-def get_custom_tokenizers() -> dict:
+def get_custom_tokenizers() -> dict[str, Tokenizer]:
     """Get the currently loaded custom tokenizers."""
-    return _custom_tokenizers
+    return custom_tokenizers
 
 
 def clear_custom_tokenizers() -> None:
     """Clear all custom tokenizers."""
-    _custom_tokenizers.clear()
+    custom_tokenizers.clear()
 
 
 ###############################################################################
 @router.post(
-    "/upload",
+    API_ROUTE_TOKENIZERS_UPLOAD,
     response_model=TokenizerUploadResponse,
     status_code=status.HTTP_200_OK,
 )
@@ -164,7 +173,7 @@ async def upload_custom_tokenizer(
     tokenizer_name = f"CUSTOM_{base_name}"
 
     if is_compatible:
-        _custom_tokenizers[tokenizer_name] = tokenizer
+        custom_tokenizers[tokenizer_name] = tokenizer
         logger.info("Loaded custom tokenizer: %s", tokenizer_name)
     else:
         logger.warning("Custom tokenizer %s is not compatible", tokenizer_name)
@@ -178,7 +187,7 @@ async def upload_custom_tokenizer(
 
 ###############################################################################
 @router.delete(
-    "/custom",
+    API_ROUTE_TOKENIZERS_CUSTOM,
     status_code=status.HTTP_200_OK,
 )
 async def delete_custom_tokenizers() -> dict:
