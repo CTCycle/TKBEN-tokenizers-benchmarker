@@ -41,6 +41,7 @@ class DatabaseSettings:
     ssl_ca: str | None
     connect_timeout: int
     insert_batch_size: int
+    browse_batch_size: int
 
 # -----------------------------------------------------------------------------
 @dataclass(frozen=True)
@@ -105,6 +106,7 @@ def build_database_settings(payload: dict[str, Any] | Any) -> DatabaseSettings:
     embedded = coerce_bool(embedded_value, True)
 
     insert_batch_value = env_variables.get("DB_INSERT_BATCH_SIZE") or payload.get("insert_batch_size")
+    browse_batch_value = env_variables.get("DB_BROWSE_BATCH_SIZE") or payload.get("browse_batch_size")
 
     if embedded:
         return DatabaseSettings(
@@ -123,6 +125,7 @@ def build_database_settings(payload: dict[str, Any] | Any) -> DatabaseSettings:
                 minimum=1,
             ),
             insert_batch_size=coerce_int(insert_batch_value, 1000, minimum=1),
+            browse_batch_size=coerce_int(browse_batch_value, 1000, minimum=100),
         )
 
     engine_value = (
@@ -153,6 +156,7 @@ def build_database_settings(payload: dict[str, Any] | Any) -> DatabaseSettings:
         ssl_ca=coerce_str_or_none(ssl_ca_value),
         connect_timeout=coerce_int(timeout_value, 10, minimum=1),
         insert_batch_size=coerce_int(insert_batch_value, 1000, minimum=1),
+        browse_batch_size=coerce_int(browse_batch_value, 1000, minimum=100),
     )
 
 # -----------------------------------------------------------------------------

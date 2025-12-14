@@ -8,6 +8,7 @@ from TKBEN.server.utils.configurations import server_settings
 from TKBEN.server.routes.datasets import router as datasets_router
 from TKBEN.server.routes.tokenizers import router as tokenizers_router
 from TKBEN.server.routes.benchmarks import router as fit_router
+from TKBEN.server.routes.browser import router as browser_router
 
 
 ###############################################################################
@@ -20,6 +21,7 @@ app = FastAPI(
 app.include_router(datasets_router)
 app.include_router(tokenizers_router)
 app.include_router(fit_router)
+app.include_router(browser_router)
 
 @app.get("/")
 def redirect_to_docs() -> RedirectResponse:
