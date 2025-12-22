@@ -497,10 +497,10 @@ select {
   justify-content: space-between;
   gap: 12px;
   padding: 12px 16px;
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.4);
+  background: #3b1414;
+  border: 1px solid #7f1d1d;
   border-radius: 8px;
-  color: #fca5a5;
+  color: #fecaca;
   font-size: 14px;
 }
 

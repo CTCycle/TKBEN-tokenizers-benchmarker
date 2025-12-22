@@ -4,6 +4,7 @@ import asyncio
 import os
 import tempfile
 
+import anyio
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from tokenizers import Tokenizer
 
@@ -113,6 +114,19 @@ def clear_custom_tokenizers() -> None:
     custom_tokenizers.clear()
 
 
+def _create_temp_tokenizer_path() -> str:
+    fd, path = tempfile.mkstemp(suffix=".json")
+    os.close(fd)
+    return path
+
+
+def _unlink_temp_tokenizer_path(path: str) -> None:
+    try:
+        os.unlink(path)
+    except FileNotFoundError:
+        pass
+
+
 ###############################################################################
 @router.post(
     API_ROUTE_TOKENIZERS_UPLOAD,
@@ -145,24 +159,22 @@ async def upload_custom_tokenizer(
     content = await file.read()
 
     # Save to temp file and load
+    tmp_path = None
     try:
-        with tempfile.NamedTemporaryFile(
-            mode="wb", suffix=".json", delete=False
-        ) as tmp:
-            tmp.write(content)
-            tmp_path = tmp.name
+        tmp_path = await anyio.to_thread.run_sync(_create_temp_tokenizer_path)
+        async with await anyio.open_file(tmp_path, "wb") as tmp:
+            await tmp.write(content)
 
-        # Load tokenizer from file
-        tokenizer = Tokenizer.from_file(tmp_path)
-
-        # Clean up temp file
-        os.unlink(tmp_path)
+        tokenizer = await anyio.to_thread.run_sync(Tokenizer.from_file, tmp_path)
     except Exception as exc:
         logger.warning("Failed to load tokenizer from uploaded file: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to load tokenizer: {exc}",
         ) from exc
+    finally:
+        if tmp_path:
+            await anyio.to_thread.run_sync(_unlink_temp_tokenizer_path, tmp_path)
 
     # Check compatibility
     tools = BenchmarkTools()

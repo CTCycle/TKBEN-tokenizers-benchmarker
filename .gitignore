@@ -1,4 +1,6 @@
 # Project-specific generated/runtime artifacts
+docs/**
+rules/
 TKBEN/resources/database/**
 TKBEN/resources/datasets/**
 TKBEN/resources/runtimes/**
@@ -50,6 +52,7 @@ lerna-debug.log*
 Thumbs.db
 
 # Misc
+.sonarlint/
 *.lock
 *.log
 *.db
