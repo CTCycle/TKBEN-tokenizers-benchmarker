@@ -27,6 +27,10 @@ const DatasetPage = () => {
     refreshAvailableDatasets,
   } = useDataset();
 
+  const corpusInputId = 'corpus-input';
+  const configInputId = 'config-input';
+  const analysisDatasetSelectId = 'analysis-dataset-select';
+
   const formatNumber = (num: number) => {
     return num.toLocaleString();
   };
@@ -62,7 +66,7 @@ const DatasetPage = () => {
             const heightPercent = maxCount > 0 ? (count / maxCount) * 100 : 0;
             return (
               <div
-                key={index}
+                key={`${histogram.bins[index]}-${count}`}
                 className="histogram-bar-wrapper"
                 title={`${histogram.bins[index]}: ${formatNumber(count)} docs`}
               >
@@ -79,6 +83,55 @@ const DatasetPage = () => {
           <span>{formatNumber(histogram.max_length)} chars</span>
         </div>
       </div>
+    );
+  };
+
+  const renderAnalysisContent = () => {
+    if (analyzing) {
+      return (
+        <div className="loading-container">
+          <div className="spinner" />
+          <p>Analyzing dataset...</p>
+          <span>Computing word counts and word length statistics for each document.</span>
+        </div>
+      );
+    }
+
+    if (!analysisStats) {
+      return null;
+    }
+
+    return (
+      <>
+        <div className="dashboard-grid">
+          <div className="stat-card">
+            <p className="stat-label">Analyzed Docs</p>
+            <p className="stat-value">
+              {formatNumber(analysisStats.total_documents)}
+            </p>
+          </div>
+          <div className="stat-card">
+            <p className="stat-label">Mean Words/Doc</p>
+            <p className="stat-value">
+              {formatNumber(Math.round(analysisStats.mean_words_count))}
+            </p>
+          </div>
+          <div className="stat-card">
+            <p className="stat-label">Median Words/Doc</p>
+            <p className="stat-value">
+              {formatNumber(Math.round(analysisStats.median_words_count))}
+            </p>
+          </div>
+        </div>
+        <ul className="insights-list">
+          <li>
+            Average word length: <strong>{analysisStats.mean_avg_word_length.toFixed(2)}</strong> characters
+          </li>
+          <li>
+            Word length variability: <strong>{analysisStats.mean_std_word_length.toFixed(2)}</strong> (std dev)
+          </li>
+        </ul>
+      </>
     );
   };
 
@@ -104,8 +157,11 @@ const DatasetPage = () => {
                 </div>
               )}
               <div className="input-stack">
-                <label className="field-label">Corpus</label>
+                <label className="field-label" htmlFor={corpusInputId}>
+                  Corpus
+                </label>
                 <input
+                  id={corpusInputId}
                   className="text-input"
                   value={selectedCorpus}
                   onChange={(event) => handleCorpusChange(event.target.value)}
@@ -113,8 +169,11 @@ const DatasetPage = () => {
                 />
               </div>
               <div className="input-stack">
-                <label className="field-label">Configuration</label>
+                <label className="field-label" htmlFor={configInputId}>
+                  Configuration
+                </label>
                 <input
+                  id={configInputId}
                   className="text-input"
                   value={selectedConfig}
                   onChange={(event) => handleConfigChange(event.target.value)}
@@ -161,9 +220,12 @@ const DatasetPage = () => {
             </header>
             <div className="panel-body">
               <div className="input-stack">
-                <label className="field-label">Select Dataset to Analyze</label>
+                <label className="field-label" htmlFor={analysisDatasetSelectId}>
+                  Select Dataset to Analyze
+                </label>
                 <div className="dataset-select-row">
                   <select
+                    id={analysisDatasetSelectId}
                     className="text-input"
                     value={selectedAnalysisDataset}
                     onChange={(e) => setSelectedAnalysisDataset(e.target.value)}
@@ -217,44 +279,7 @@ const DatasetPage = () => {
                   </p>
                 </div>
               </header>
-              {analyzing ? (
-                <div className="loading-container">
-                  <div className="spinner" />
-                  <p>Analyzing dataset...</p>
-                  <span>Computing word counts and word length statistics for each document.</span>
-                </div>
-              ) : analysisStats ? (
-                <>
-                  <div className="dashboard-grid">
-                    <div className="stat-card">
-                      <p className="stat-label">Analyzed Docs</p>
-                      <p className="stat-value">
-                        {formatNumber(analysisStats.total_documents)}
-                      </p>
-                    </div>
-                    <div className="stat-card">
-                      <p className="stat-label">Mean Words/Doc</p>
-                      <p className="stat-value">
-                        {formatNumber(Math.round(analysisStats.mean_words_count))}
-                      </p>
-                    </div>
-                    <div className="stat-card">
-                      <p className="stat-label">Median Words/Doc</p>
-                      <p className="stat-value">
-                        {formatNumber(Math.round(analysisStats.median_words_count))}
-                      </p>
-                    </div>
-                  </div>
-                  <ul className="insights-list">
-                    <li>
-                      Average word length: <strong>{analysisStats.mean_avg_word_length.toFixed(2)}</strong> characters
-                    </li>
-                    <li>
-                      Word length variability: <strong>{analysisStats.mean_std_word_length.toFixed(2)}</strong> (std dev)
-                    </li>
-                  </ul>
-                </>
-              ) : null}
+              {renderAnalysisContent()}
             </aside>
           )}
         </div>
