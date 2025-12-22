@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback, useRef, useState } from 'react';
+import { createContext, useContext, useCallback, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { analyzeDataset, downloadDataset, uploadCustomDataset, fetchAvailableDatasets } from '../services/datasetsApi';
 import type { DatasetStatisticsSummary, HistogramData } from '../types/api';
@@ -176,7 +176,7 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
         }
     }, [selectedAnalysisDataset]);
 
-    const value: DatasetContextType = {
+    const value = useMemo<DatasetContextType>(() => ({
         // State
         datasetName,
         selectedCorpus,
@@ -205,7 +205,33 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
         handleAnalyzeDataset,
         setSelectedAnalysisDataset,
         refreshAvailableDatasets,
-    };
+    }), [
+        datasetName,
+        selectedCorpus,
+        selectedConfig,
+        loading,
+        error,
+        datasetLoaded,
+        stats,
+        histogram,
+        analyzing,
+        analysisStats,
+        fileInputRef,
+        availableDatasets,
+        selectedAnalysisDataset,
+        analysisDatasetLoading,
+        setSelectedCorpus,
+        setSelectedConfig,
+        setError,
+        handleCorpusChange,
+        handleConfigChange,
+        handleLoadDataset,
+        handleUploadClick,
+        handleFileChange,
+        handleAnalyzeDataset,
+        setSelectedAnalysisDataset,
+        refreshAvailableDatasets,
+    ]);
 
     return (
         <DatasetContext.Provider value={value}>

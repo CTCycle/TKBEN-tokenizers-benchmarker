@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback, useState, useRef } from 'react';
+import { createContext, useContext, useCallback, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { scanTokenizers, uploadCustomTokenizer, clearCustomTokenizers } from '../services/tokenizersApi';
 import { runBenchmarks } from '../services/benchmarksApi';
@@ -173,7 +173,7 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         }
     }, [tokenizers, selectedDataset, maxDocuments, customTokenizerName]);
 
-    const value: TokenizersContextType = {
+    const value = useMemo<TokenizersContextType>(() => ({
         // State
         scanInProgress,
         scanError,
@@ -205,7 +205,36 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         handleUploadCustomTokenizer,
         handleClearCustomTokenizer,
         triggerCustomTokenizerUpload,
-    };
+    }), [
+        scanInProgress,
+        scanError,
+        fetchedTokenizers,
+        selectedTokenizer,
+        tokenizers,
+        customTokenizerName,
+        customTokenizerUploading,
+        maxDocuments,
+        availableDatasets,
+        selectedDataset,
+        datasetsLoading,
+        benchmarkInProgress,
+        benchmarkError,
+        benchmarkResult,
+        customTokenizerInputRef,
+        setSelectedTokenizer,
+        setTokenizers,
+        setMaxDocuments,
+        setSelectedDataset,
+        setScanError,
+        setBenchmarkError,
+        addTokenizer,
+        handleScan,
+        handleRunBenchmarks,
+        refreshDatasets,
+        handleUploadCustomTokenizer,
+        handleClearCustomTokenizer,
+        triggerCustomTokenizerUpload,
+    ]);
 
     return (
         <TokenizersContext.Provider value={value}>
