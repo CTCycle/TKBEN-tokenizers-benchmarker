@@ -106,6 +106,73 @@ const DatabaseBrowserPage = () => {
         return table?.display_name || tableName;
     };
 
+    const buildRowKey = (row: Record<string, unknown>) => {
+        const keyFromColumns = tableData?.columns
+            .map((col) => String(row[col] ?? ''))
+            .join('|');
+        return keyFromColumns && keyFromColumns.trim().length > 0
+            ? keyFromColumns
+            : JSON.stringify(row);
+    };
+
+    const renderTableContent = () => {
+        if (loading) {
+            return (
+                <div className="loading-container">
+                    <div className="spinner" />
+                    <p>Loading table data...</p>
+                </div>
+            );
+        }
+
+        if (tableData) {
+            return (
+                <>
+                    <table className="db-table">
+                        <thead>
+                            <tr>
+                                {tableData.columns.map((col) => (
+                                    <th key={col}>{col}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {tableData.data.map((row) => {
+                                const rowKey = buildRowKey(row);
+                                return (
+                                    <tr key={rowKey}>
+                                        {tableData.columns.map((col) => (
+                                            <td key={col}>
+                                                {String(row[col] ?? '')}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                    {loadingMore && (
+                        <div className="db-loading-more">
+                            <div className="spinner" />
+                            <span>Loading more...</span>
+                        </div>
+                    )}
+                    {!tableData.has_more && tableData.data.length > 0 && (
+                        <div className="db-end-message">
+                            All {formatNumber(tableData.statistics.total_rows)} rows loaded
+                        </div>
+                    )}
+                </>
+            );
+        }
+
+        return (
+            <div className="db-empty-state">
+                <p>Select a table to view data</p>
+            </div>
+        );
+    };
+
     return (
         <div className="db-browser-page">
             <section className="panel db-browser-panel">
@@ -121,8 +188,9 @@ const DatabaseBrowserPage = () => {
                 <div className="db-browser-controls">
                     <div className="db-browser-top-row">
                         <div className="db-browser-select-row">
-                            <label className="field-label">Select Table</label>
+                            <label className="field-label" htmlFor="table-select">Select Table</label>
                             <select
+                                id="table-select"
                                 className="text-input"
                                 value={selectedTable}
                                 onChange={(e) => handleTableChange(e.target.value)}
@@ -175,50 +243,7 @@ const DatabaseBrowserPage = () => {
                     ref={tableContainerRef}
                     onScroll={handleScroll}
                 >
-                    {loading ? (
-                        <div className="loading-container">
-                            <div className="spinner" />
-                            <p>Loading table data...</p>
-                        </div>
-                    ) : tableData ? (
-                        <>
-                            <table className="db-table">
-                                <thead>
-                                    <tr>
-                                        {tableData.columns.map((col) => (
-                                            <th key={col}>{col}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {tableData.data.map((row, rowIndex) => (
-                                        <tr key={rowIndex}>
-                                            {tableData.columns.map((col) => (
-                                                <td key={col}>
-                                                    {String(row[col] ?? '')}
-                                                </td>
-                                            ))}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            {loadingMore && (
-                                <div className="db-loading-more">
-                                    <div className="spinner" />
-                                    <span>Loading more...</span>
-                                </div>
-                            )}
-                            {!tableData.has_more && tableData.data.length > 0 && (
-                                <div className="db-end-message">
-                                    All {formatNumber(tableData.statistics.total_rows)} rows loaded
-                                </div>
-                            )}
-                        </>
-                    ) : (
-                        <div className="db-empty-state">
-                            <p>Select a table to view data</p>
-                        </div>
-                    )}
+                    {renderTableContent()}
                 </div>
             </section>
         </div>
