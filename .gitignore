@@ -58,7 +58,6 @@ Thumbs.db
 *.db
 *.sqlite*
 *.exe
-AGENTS.MD
 
 !.gitkeep
 !TKBEN/settings/server_configurations.json
