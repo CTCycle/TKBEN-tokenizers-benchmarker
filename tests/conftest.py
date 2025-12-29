@@ -1,0 +1,85 @@
+"""
+Pytest configuration for TKBEN E2E tests.
+Provides fixtures for Playwright page objects and API client.
+"""
+import os
+
+import pytest
+from playwright.sync_api import APIRequestContext
+
+
+def _build_base_url(host_env: str, port_env: str, default_host: str, default_port: str) -> str:
+    host = os.getenv(host_env, default_host)
+    port = os.getenv(port_env, default_port)
+    return f"http://{host}:{port}"
+
+
+# Base URLs - prefer explicit env vars, then fall back to host/port pairs.
+UI_BASE_URL = (
+    os.getenv("UI_BASE_URL")
+    or os.getenv("UI_URL")
+    or _build_base_url("UI_HOST", "UI_PORT", "127.0.0.1", "7861")
+)
+API_BASE_URL = (
+    os.getenv("API_BASE_URL")
+    or _build_base_url("FASTAPI_HOST", "FASTAPI_PORT", "127.0.0.1", "8000")
+)
+
+
+@pytest.fixture(scope="session")
+def base_url() -> str:
+    """Returns the base URL of the UI."""
+    return UI_BASE_URL
+
+
+@pytest.fixture(scope="session")
+def api_base_url() -> str:
+    """Returns the base URL of the API."""
+    return API_BASE_URL
+
+
+@pytest.fixture(scope="session")
+def api_context(playwright) -> APIRequestContext:
+    """
+    Creates an API request context for making direct HTTP calls.
+    Useful for testing backend endpoints independently of the UI.
+    """
+    context = playwright.request.new_context(base_url=API_BASE_URL)
+    yield context
+    context.dispose()
+
+
+@pytest.fixture(scope="session")
+def sample_dataset_payload() -> tuple[str, str, bytes]:
+    """
+    Returns a small CSV payload used across dataset-related tests.
+    """
+    filename = os.getenv("E2E_SAMPLE_DATASET_FILE", "e2e_sample.csv")
+    dataset_name = f"custom/{os.path.splitext(filename)[0]}"
+    csv_content = "text\nHello world\nThis is a sample document\nAnother sample\n"
+    return filename, dataset_name, csv_content.encode("utf-8")
+
+
+@pytest.fixture(scope="session")
+def uploaded_dataset(
+    api_context: APIRequestContext,
+    sample_dataset_payload: tuple[str, str, bytes],
+) -> dict:
+    """
+    Uploads a small dataset once per test session and returns the API response.
+    """
+    filename, dataset_name, csv_bytes = sample_dataset_payload
+    response = api_context.post(
+        "/datasets/upload",
+        multipart={
+            "file": {
+                "name": filename,
+                "mimeType": "text/csv",
+                "buffer": csv_bytes,
+            }
+        },
+    )
+    assert response.ok, f"Dataset upload failed: {response.status} {response.text()}"
+    data = response.json()
+    assert data.get("dataset_name") == dataset_name
+    return data
