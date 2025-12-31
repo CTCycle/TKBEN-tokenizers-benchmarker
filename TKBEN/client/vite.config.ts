@@ -8,7 +8,7 @@ export default defineConfig({
     strictPort: false,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
         // 10 minute timeout for large dataset downloads
@@ -18,5 +18,14 @@ export default defineConfig({
   },
   preview: {
     strictPort: false,
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+        // 10 minute timeout for large dataset downloads
+        timeout: 600000,
+      },
+    },
   },
 })
