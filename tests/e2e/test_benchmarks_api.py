@@ -15,7 +15,7 @@ def test_run_benchmarks_requires_tokenizers(api_context: APIRequestContext) -> N
     """POST /benchmarks/run should reject empty tokenizer lists."""
     response = api_context.post(
         "/benchmarks/run",
-        json={"tokenizers": [], "dataset_name": "custom/e2e_sample"},
+        data={"tokenizers": [], "dataset_name": "custom/e2e_sample"},
     )
     assert response.status == 400
     data = response.json()
@@ -26,7 +26,7 @@ def test_run_benchmarks_requires_dataset(api_context: APIRequestContext) -> None
     """POST /benchmarks/run should reject missing dataset names."""
     response = api_context.post(
         "/benchmarks/run",
-        json={"tokenizers": ["hf-internal-testing/tiny-random-bert"], "dataset_name": ""},
+        data={"tokenizers": ["hf-internal-testing/tiny-random-bert"], "dataset_name": ""},
     )
     assert response.status == 400
     data = response.json()
@@ -39,7 +39,7 @@ def test_run_benchmarks_missing_dataset_returns_400(
     """POST /benchmarks/run should reject unknown datasets before loading tokenizers."""
     response = api_context.post(
         "/benchmarks/run",
-        json={
+        data={
             "tokenizers": ["hf-internal-testing/tiny-random-bert"],
             "dataset_name": "missing_dataset",
         },
@@ -60,7 +60,7 @@ def test_run_benchmarks_with_sample_dataset(
     """POST /benchmarks/run should return chart data for a small dataset."""
     response = api_context.post(
         "/benchmarks/run",
-        json={
+        data={
             "tokenizers": ["hf-internal-testing/tiny-random-bert"],
             "dataset_name": uploaded_dataset["dataset_name"],
             "max_documents": 2,
