@@ -4,19 +4,20 @@ build-backend = "hatchling.build"
 
 [project]
 name = "TKBEN"
-version = "2.0"
+version = "2.1"
 requires-python = ">=3.14"
 dependencies = [  
     "fastapi==0.128.0",
-    "uvicorn[standard]>=0.30.0",
-    "numpy==2.2.6",
+    "uvicorn[standard]>=0.40.0",
+    "numpy==2.3.3",
     "pandas==2.3.3",
     "tqdm==4.67.1",
     "SQLAlchemy==2.0.43",
     "psycopg[binary]==3.3.1",
-    "python-dotenv==1.2.1",     
-    "transformers==4.56.2",
-    "sentencepiece==0.2.0",
+    "python-dotenv==1.2.1",  
+    "python-multipart>=0.0.21",   
+    "transformers==4.57.3",
+    "sentencepiece==0.2.1",
     "datasets==4.0.0",
     "sacremoses==0.1.1",   
     "hf-xet==1.1.10",  
