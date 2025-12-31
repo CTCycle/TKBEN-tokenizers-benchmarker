@@ -34,7 +34,7 @@ class TestDatasetPage:
     def test_dataset_page_panels_render(self, page: Page, base_url: str):
         """Dataset page should show the main panels and inputs."""
         page.goto(f"{base_url}/dataset")
-        expect(page.get_by_text("Download dataset")).to_be_visible()
+        expect(page.get_by_role("paragraph").filter(has_text="Download dataset")).to_be_visible()
         expect(page.get_by_text("Analysis Tools")).to_be_visible()
         expect(page.get_by_text("Dataset overview")).to_be_visible()
         expect(page.locator("#corpus-input")).to_be_visible()

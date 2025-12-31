@@ -70,7 +70,7 @@ def test_analyze_missing_dataset_returns_404(
     """POST /datasets/analyze should return 404 for missing datasets."""
     response = api_context.post(
         "/datasets/analyze",
-        json={"dataset_name": "missing_dataset"},
+        data={"dataset_name": "missing_dataset"},
     )
     assert response.status == 404
 
@@ -82,7 +82,7 @@ def test_analyze_uploaded_dataset_returns_stats(
     """POST /datasets/analyze should return stats for a known dataset."""
     response = api_context.post(
         "/datasets/analyze",
-        json={"dataset_name": uploaded_dataset["dataset_name"]},
+        data={"dataset_name": uploaded_dataset["dataset_name"]},
     )
     assert response.ok
     data = response.json()
