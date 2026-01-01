@@ -71,11 +71,18 @@ Typical workflow:
 - Run benchmarks and review token counts, throughput, and other metrics.
 - Inspect charts and tables, and keep results for later comparisons.
 
-Dataset management screen:
+**Dataset management screen**:
+
 ![Dataset management and download/upload](TKBEN/assets/figures/dataset_page.png)
 
-Benchmark results screen:
+**Benchmark results screen**:
+
 ![Benchmark charts and metrics](TKBEN/assets/figures/benchmarks_page.png)
+
+**Database browser**:
+
+![Database browser](TKBEN/assets/figures/database_browser.png)
+
 
 ## 5. Setup and Maintenance
 Run `TKBEN/setup_and_maintenance.bat` and choose an action:
@@ -102,20 +109,7 @@ Frontend hosting (host/port) is controlled by the Windows launcher using the sam
 | UI_PORT | Frontend bind port for preview; set in `TKBEN/settings/.env` if overridden, default `7861` in `TKBEN/start_on_windows.bat`. |
 | RELOAD | Enables FastAPI reload; set in `TKBEN/settings/.env`, default `false`. |
 | MPLBACKEND | Matplotlib backend; set in `TKBEN/settings/.env`, default `Agg`. |
-| FASTAPI_TITLE | FastAPI title; set via env vars (load from `TKBEN/settings/.env`), default `TKBEN_webapp Tokenizers Benchmark Backend` from `TKBEN/settings/server_configurations.json`. |
-| FASTAPI_DESCRIPTION | FastAPI description; set via env vars (load from `TKBEN/settings/.env`), default `FastAPI backend` from `TKBEN/settings/server_configurations.json`. |
-| FASTAPI_VERSION | FastAPI version string; set via env vars (load from `TKBEN/settings/.env`), default `1.2.0` from `TKBEN/settings/server_configurations.json`. |
-| DB_ENGINE | Database engine when not using the embedded DB; set via env vars (load from `TKBEN/settings/.env`), default `postgres` from `TKBEN/settings/server_configurations.json`. |
-| DB_HOST | Database host; set via env vars (load from `TKBEN/settings/.env`), default `localhost` from `TKBEN/settings/server_configurations.json`. |
-| DB_PORT | Database port; set via env vars (load from `TKBEN/settings/.env`), default `5432` from `TKBEN/settings/server_configurations.json`. |
-| DB_NAME | Database name; set via env vars (load from `TKBEN/settings/.env`), default `TKBEN_webapp` from `TKBEN/settings/server_configurations.json`. |
-| DB_USER | Database user; set via env vars (load from `TKBEN/settings/.env`), default `postgres` from `TKBEN/settings/server_configurations.json`. |
-| DB_PASSWORD | Database password; set via env vars (load from `TKBEN/settings/.env`), default `admin` from `TKBEN/settings/server_configurations.json`. |
-| DB_SSL | Enable database SSL; set via env vars (load from `TKBEN/settings/.env`), default `false` from `TKBEN/settings/server_configurations.json`. |
-| DB_SSL_CA | SSL CA bundle path; set via env vars (load from `TKBEN/settings/.env`), default `null` from `TKBEN/settings/server_configurations.json`. |
-| DB_CONNECT_TIMEOUT | Database connect timeout (seconds); set via env vars (load from `TKBEN/settings/.env`), default `30` from `TKBEN/settings/server_configurations.json`. |
-| DB_INSERT_BATCH_SIZE | Batch size for DB inserts; set via env vars (load from `TKBEN/settings/.env`), default `50000` from `TKBEN/settings/server_configurations.json`. |
-| DB_BROWSE_BATCH_SIZE | Batch size for DB browsing; set via env vars (load from `TKBEN/settings/.env`), default `1000` from `TKBEN/settings/server_configurations.json`. |
+
 
 ## 8. License
 This project is licensed under the MIT license. See `LICENSE` for details.
