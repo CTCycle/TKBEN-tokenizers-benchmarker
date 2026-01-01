@@ -1,68 +1,122 @@
-# TKBEN-tokenizers-benchmarker: Exploring and Benchmarking Open Source Tokenizers
+# TKBEN Tokenizer Benchmarker
 
-## 1. Introduction
-Tokenizers are essential components in text preprocessing, converting raw text into structured data understandable by NLP models. The choice of tokenizer directly influences model performance, making it a critical decision in building effective language-based applications.
+## 1. Project Overview
+TKBEN is a web application for exploring and benchmarking open-source tokenizers against text datasets. It helps compare tokenizer speed, token counts, and coverage so you can choose a tokenizer for your NLP workload.
 
-**TKBEN** is a comprehensive **Web Application** designed to simplify tokenizer analysis and comparison. Built with a robust Python backend and a modern React-based frontend, it allows users to effortlessly download HuggingFace's open-source tokenizers and public text datasets to conduct detailed benchmarks. TKBEN enables exploration of tokenizer attributes including speed, granularity, special character handling, and language support.
+The system is split into a Python/FastAPI backend and a React frontend. The backend downloads tokenizers and datasets, runs benchmarks, and stores results in a local database. The frontend provides the UI for managing datasets, running benchmarks, and visualizing results.
 
-With TKBEN, users can effectively evaluate tokenizer performance in various NLP tasks, ensuring informed decisions and optimized model performance.
+> **Work in Progress**: This project is still under active development. It will be updated regularly, but you may encounter bugs, issues, or incomplete features.
 
-## 2. Installation
-The installation process for Windows is fully automated. Simply run the script `start_on_windows.bat` to begin.
-This script sets up a portable environment (Python + Node.js), installs all dependencies, and launches both the backend server and the web interface.
+## 2. Model and Dataset (Optional)
+This project does not train or fine-tune machine learning models. It benchmarks existing tokenizers (including Hugging Face tokenizers) using text datasets.
 
-## 3. How to use
-Run `start_on_windows.bat` to launch the application.
-The web interface will automatically open in your default browser at `http://127.0.0.1:7861`.
+Datasets can be downloaded from Hugging Face or uploaded by the user (CSV/XLS/XLSX) and are stored locally for analysis. Results depend on the chosen datasets and tokenizers.
 
-*Note: Some antivirus software may flag the portable python environment. If you encounter issues, consider adding an exception.*
+## 3. Installation
 
-### Main Interface
-The intuitive web interface allows you to:
-- **Manage Datasets**: Load, analyze, and visualize text datasets.
-- **Select Tokenizers**: Search and download tokenizers directly from HuggingFace.
-- **Run Benchmarks**: Compare multiple tokenizers simultaneously across different metrics.
+### 3.1 Windows (One Click Setup)
+Run `TKBEN/start_on_windows.bat`.
 
-![Main Interface](TKBEN/assets/figures/dataset_page.png)
+The launcher performs the following steps in order:
+- Downloads portable Python, uv, and Node.js into `TKBEN/resources/runtimes`.
+- Installs backend dependencies from `pyproject.toml`.
+- Installs frontend dependencies and builds the UI if needed.
+- Starts the backend and frontend servers and opens the UI in your browser.
 
-### Benchmark Results
-Benchmark results are visualized with interactive charts and stored in the application's database.
+First run downloads and builds the required runtimes and frontend assets. Subsequent runs reuse the local runtimes and only rebuild when missing.
+The setup is portable and only writes to the project directory.
 
-**Local per-text statistics include**:
-- **Text characters**: Number of characters in the original text.
-- **Words count**: Number of words in the text.
-- **AVG words length**: Average character length of words.
-- **Tokens count**: Total number of tokens generated.
-- **Avg tokens length**: Average character length of tokens.
-- **Tokens/Words ratio**: Ratio of tokens to words (fertility).
+### 3.2 macOS / Linux (Manual Setup)
+Manual setup is required on macOS and Linux.
 
-**Global per-tokenizer metrics include**:
-- **Tokenization Speed**: Tokens processed per second.
-- **Throughput**: Raw characters processed per second.
-- **Vocabulary Size**: Total unique tokens.
-- **Subword Fertility**: Average tokens per word.
-- **OOV Rate**: Percentage of out-of-vocabulary words.
+Prerequisites:
+- Python 3.14+ (to match the Windows launcher runtime)
+- Node.js 22+
+- `uv`
 
-![Benchmark Results](TKBEN/assets/figures/benchmarks_page.png)
+Steps:
+1. From the repository root, install backend dependencies:
+   ```bash
+   uv sync --all-extras
+   ```
+2. Start the backend:
+   ```bash
+   uv run python -m uvicorn TKBEN.server.app:app --host 127.0.0.1 --port 8000
+   ```
+3. In a separate terminal, install and build the frontend:
+   ```bash
+   cd TKBEN/client
+   npm install
+   npm run build
+   npm run preview -- --host 127.0.0.1 --port 7861 --strictPort
+   ```
 
-## 4. Setup and Configuration
-You can run `setup_and_maintenance.bat` for maintenance tasks:
-- **Update project**: Pull latest changes from GitHub.
-- **Remove logs**: Clean up log files.
+## 4. How to Use
 
-### 4.1 Resources
-- **Database**: Results and datasets are stored in `TKBEN/resources/database/tkben_database.db` (SQLite).
-- **Settings**: Configuration files are in `settings/`.
-- **Environmental Variables**: Create a `.env` file in `settings/.env` if you need to override defaults (e.g., `FASTAPI_PORT`, `UI_PORT`).
+### 4.1 Windows
+Launch `TKBEN/start_on_windows.bat`. The UI opens at `http://127.0.0.1:7861`.
+The backend API is available at `http://127.0.0.1:8000`, with documentation at `http://127.0.0.1:8000/docs`.
 
+### 4.2 macOS / Linux
+Start the backend and frontend with the commands from the manual setup section:
+- Backend: `uv run python -m uvicorn TKBEN.server.app:app --host 127.0.0.1 --port 8000`
+- Frontend: `npm run preview -- --host 127.0.0.1 --port 7861 --strictPort`
 
-| Variable              | Description                                              |
-|-----------------------|----------------------------------------------------------|
-| ACCESS_TOKEN          | HuggingFace access token (required for some tokenizers)  |
-| TF_CPP_MIN_LOG_LEVEL  | TensorFlow logging verbosity                             |
-| MPLBACKEND            | Matplotlib backend, keep default as Agg                  |
+The UI is available at `http://127.0.0.1:7861`, and the backend API at `http://127.0.0.1:8000` (docs at `http://127.0.0.1:8000/docs`).
 
+### 4.3 Using the Application
+Typical workflow:
+- Load a dataset by downloading from Hugging Face or uploading a CSV/XLS/XLSX file.
+- Scan and select tokenizers to benchmark.
+- Run benchmarks and review token counts, throughput, and other metrics.
+- Inspect charts and tables, and keep results for later comparisons.
 
-## 5. License
-This project is licensed under the terms of the MIT license. See the LICENSE file for details.
+Dataset management screen:
+![Dataset management and download/upload](TKBEN/assets/figures/dataset_page.png)
+
+Benchmark results screen:
+![Benchmark charts and metrics](TKBEN/assets/figures/benchmarks_page.png)
+
+## 5. Setup and Maintenance
+Run `TKBEN/setup_and_maintenance.bat` and choose an action:
+- Remove logs: deletes log files from `TKBEN/resources/logs`.
+- Uninstall app: removes local runtimes, caches, virtual environment, frontend dependencies, and built assets.
+- Initialize database: recreates or prepares the local database used by the backend.
+
+## 6. Resources
+- database: local SQLite database file `TKBEN/resources/database/sqlite.db` storing datasets and benchmark results.
+- datasets: downloaded or uploaded datasets used for benchmarking, stored under `TKBEN/resources/datasets`.
+- logs: backend and launcher logs stored in `TKBEN/resources/logs`.
+- runtimes: portable Python/uv/Node.js used by the Windows launcher, stored in `TKBEN/resources/runtimes`.
+- templates: sample files such as a starter `.env` in `TKBEN/resources/templates`.
+
+## 7. Configuration
+Backend configuration is defined in `TKBEN/settings/server_configurations.json` and can be overridden via environment variables in `TKBEN/settings/.env` (loaded on startup).
+Frontend hosting (host/port) is controlled by the Windows launcher using the same `.env` file; there is no separate frontend configuration file.
+
+| Variable | Description |
+|----------|-------------|
+| FASTAPI_HOST | Backend bind host; set in `TKBEN/settings/.env` (read by `TKBEN/start_on_windows.bat`), default `127.0.0.1`. |
+| FASTAPI_PORT | Backend bind port; set in `TKBEN/settings/.env`, default `8000`. |
+| UI_HOST | Frontend bind host for preview; set in `TKBEN/settings/.env` if overridden, default `127.0.0.1` in `TKBEN/start_on_windows.bat`. |
+| UI_PORT | Frontend bind port for preview; set in `TKBEN/settings/.env` if overridden, default `7861` in `TKBEN/start_on_windows.bat`. |
+| RELOAD | Enables FastAPI reload; set in `TKBEN/settings/.env`, default `false`. |
+| MPLBACKEND | Matplotlib backend; set in `TKBEN/settings/.env`, default `Agg`. |
+| FASTAPI_TITLE | FastAPI title; set via env vars (load from `TKBEN/settings/.env`), default `TKBEN_webapp Tokenizers Benchmark Backend` from `TKBEN/settings/server_configurations.json`. |
+| FASTAPI_DESCRIPTION | FastAPI description; set via env vars (load from `TKBEN/settings/.env`), default `FastAPI backend` from `TKBEN/settings/server_configurations.json`. |
+| FASTAPI_VERSION | FastAPI version string; set via env vars (load from `TKBEN/settings/.env`), default `1.2.0` from `TKBEN/settings/server_configurations.json`. |
+| DB_ENGINE | Database engine when not using the embedded DB; set via env vars (load from `TKBEN/settings/.env`), default `postgres` from `TKBEN/settings/server_configurations.json`. |
+| DB_HOST | Database host; set via env vars (load from `TKBEN/settings/.env`), default `localhost` from `TKBEN/settings/server_configurations.json`. |
+| DB_PORT | Database port; set via env vars (load from `TKBEN/settings/.env`), default `5432` from `TKBEN/settings/server_configurations.json`. |
+| DB_NAME | Database name; set via env vars (load from `TKBEN/settings/.env`), default `TKBEN_webapp` from `TKBEN/settings/server_configurations.json`. |
+| DB_USER | Database user; set via env vars (load from `TKBEN/settings/.env`), default `postgres` from `TKBEN/settings/server_configurations.json`. |
+| DB_PASSWORD | Database password; set via env vars (load from `TKBEN/settings/.env`), default `admin` from `TKBEN/settings/server_configurations.json`. |
+| DB_SSL | Enable database SSL; set via env vars (load from `TKBEN/settings/.env`), default `false` from `TKBEN/settings/server_configurations.json`. |
+| DB_SSL_CA | SSL CA bundle path; set via env vars (load from `TKBEN/settings/.env`), default `null` from `TKBEN/settings/server_configurations.json`. |
+| DB_CONNECT_TIMEOUT | Database connect timeout (seconds); set via env vars (load from `TKBEN/settings/.env`), default `30` from `TKBEN/settings/server_configurations.json`. |
+| DB_INSERT_BATCH_SIZE | Batch size for DB inserts; set via env vars (load from `TKBEN/settings/.env`), default `50000` from `TKBEN/settings/server_configurations.json`. |
+| DB_BROWSE_BATCH_SIZE | Batch size for DB browsing; set via env vars (load from `TKBEN/settings/.env`), default `1000` from `TKBEN/settings/server_configurations.json`. |
+
+## 8. License
+This project is licensed under the MIT license. See `LICENSE` for details.
 
