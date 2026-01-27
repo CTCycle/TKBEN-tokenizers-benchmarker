@@ -1,6 +1,5 @@
 # Project-specific generated/runtime artifacts
-docs/**
-rules/
+assets/docs/**
 TKBEN/resources/database/**
 TKBEN/resources/datasets/**
 TKBEN/resources/runtimes/**
@@ -60,5 +59,5 @@ Thumbs.db
 *.exe
 
 !.gitkeep
-!TKBEN/settings/server_configurations.json
+
 

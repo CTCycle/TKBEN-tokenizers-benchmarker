@@ -73,15 +73,15 @@ Typical workflow:
 
 **Dataset management screen**:
 
-![Dataset management and download/upload](TKBEN/assets/figures/dataset_page.png)
+![Dataset management and download/upload](assets/figures/dataset_page.png)
 
 **Benchmark results screen**:
 
-![Benchmark charts and metrics](TKBEN/assets/figures/benchmarks_page.png)
+![Benchmark charts and metrics](assets/figures/benchmarks_page.png)
 
 **Database browser**:
 
-![Database browser](TKBEN/assets/figures/database_browser.png)
+![Database browser](assets/figures/database_browser.png)
 
 
 ## 5. Setup and Maintenance
