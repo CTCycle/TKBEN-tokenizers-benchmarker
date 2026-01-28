@@ -10,14 +10,7 @@ TKBEN/client/dist/
 TKBEN/client/dist-ssr/
 TKBEN/client/package-lock.json
 TKBEN/client/logs/
-
-# Environment files (keep templates)
-TKBEN/settings/.env
-TKBEN/client/.env
 TKBEN/client/*.local
-!.env.example
-!.env.sample
-!TKBEN/resources/templates/.env
 
 # Python
 __pycache__/

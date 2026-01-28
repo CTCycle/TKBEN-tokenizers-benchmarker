@@ -98,7 +98,7 @@ Run `TKBEN/setup_and_maintenance.bat` and choose an action:
 - templates: sample files such as a starter `.env` in `TKBEN/resources/templates`.
 
 ## 7. Configuration
-Backend configuration is defined in `TKBEN/settings/server_configurations.json` and can be overridden via environment variables in `TKBEN/settings/.env` (loaded on startup).
+Backend configuration is defined in `TKBEN/settings/configurations.json` and can be overridden via environment variables in `TKBEN/settings/.env` (loaded on startup).
 Frontend hosting (host/port) is controlled by the Windows launcher using the same `.env` file; there is no separate frontend configuration file.
 
 | Variable | Description |
