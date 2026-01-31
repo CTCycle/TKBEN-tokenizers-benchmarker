@@ -24,6 +24,38 @@ export interface ApiError {
 }
 
 /**
+ * Response from a job start endpoint
+ */
+export interface JobStartResponse {
+    job_id: string;
+    job_type: string;
+    status: string;
+    message: string;
+    poll_interval: number;
+}
+
+/**
+ * Response for job status polling
+ */
+export interface JobStatusResponse {
+    job_id: string;
+    job_type: string;
+    status: string;
+    progress: number;
+    result?: Record<string, unknown> | null;
+    error?: string | null;
+}
+
+/**
+ * Response from a job cancel endpoint
+ */
+export interface JobCancelResponse {
+    job_id: string;
+    success: boolean;
+    message: string;
+}
+
+/**
  * Histogram data for document length distribution
  */
 export interface HistogramData {

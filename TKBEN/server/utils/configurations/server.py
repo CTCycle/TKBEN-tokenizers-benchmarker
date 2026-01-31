@@ -78,6 +78,11 @@ class BenchmarkSettings:
 
 # -----------------------------------------------------------------------------
 @dataclass(frozen=True)
+class JobsSettings:
+    polling_interval: float
+
+# -----------------------------------------------------------------------------
+@dataclass(frozen=True)
 class ServerSettings:
     fastapi: FastAPISettings
     database: DatabaseSettings
@@ -85,6 +90,7 @@ class ServerSettings:
     fitting: FittingSettings
     tokenizers: TokenizerSettings
     benchmarks: BenchmarkSettings
+    jobs: JobsSettings
 
 
 # [BUILDER FUNCTIONS]
@@ -231,6 +237,12 @@ def build_benchmark_settings(payload: dict[str, Any] | Any) -> BenchmarkSettings
     )
 
 # -----------------------------------------------------------------------------
+def build_jobs_settings(payload: dict[str, Any] | Any) -> JobsSettings:
+    return JobsSettings(
+        polling_interval=coerce_float(payload.get("polling_interval"), 1.0),
+    )
+
+# -----------------------------------------------------------------------------
 def build_server_settings(payload: dict[str, Any] | Any) -> ServerSettings:
     fastapi_payload = ensure_mapping(payload.get("fastapi"))
     database_payload = ensure_mapping(payload.get("database"))
@@ -238,6 +250,7 @@ def build_server_settings(payload: dict[str, Any] | Any) -> ServerSettings:
     fitting_payload = ensure_mapping(payload.get("fitting"))
     tokenizers_payload = ensure_mapping(payload.get("tokenizers"))
     benchmarks_payload = ensure_mapping(payload.get("benchmarks"))
+    jobs_payload = ensure_mapping(payload.get("jobs"))
 
     return ServerSettings(
         fastapi=build_fastapi_settings(fastapi_payload),
@@ -246,6 +259,7 @@ def build_server_settings(payload: dict[str, Any] | Any) -> ServerSettings:
         fitting=build_fitting_settings(fitting_payload),
         tokenizers=build_tokenizer_settings(tokenizers_payload),
         benchmarks=build_benchmark_settings(benchmarks_payload),
+        jobs=build_jobs_settings(jobs_payload),
     )
 
 

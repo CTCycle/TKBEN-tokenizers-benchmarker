@@ -1,19 +1,18 @@
 from __future__ import annotations
 
 import asyncio
+import os
+from typing import Any
 
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
 
 from TKBEN.server.schemas.dataset import (
-    CustomDatasetUploadResponse,
     DatasetAnalysisRequest,
-    DatasetAnalysisResponse,
     DatasetDownloadRequest,
-    DatasetDownloadResponse,
     DatasetListResponse,
-    DatasetStatisticsSummary,
-    HistogramData,
 )
+from TKBEN.server.schemas.jobs import JobStartResponse
+from TKBEN.server.utils.configurations import server_settings
 from TKBEN.server.utils.logger import logger
 from TKBEN.server.utils.constants import (
     API_ROUTE_DATASETS_ANALYZE,
@@ -22,9 +21,118 @@ from TKBEN.server.utils.constants import (
     API_ROUTE_DATASETS_UPLOAD,
     API_ROUTER_PREFIX_DATASETS,
 )
+from TKBEN.server.utils.jobs import JobProgressReporter, JobStopChecker, job_manager
 from TKBEN.server.utils.services.datasets import DatasetService
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_DATASETS, tags=["datasets"])
+
+
+def build_histogram_payload(histogram_data: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "bins": histogram_data.get("bins", []),
+        "counts": histogram_data.get("counts", []),
+        "bin_edges": histogram_data.get("bin_edges", []),
+        "min_length": histogram_data.get("min_length", 0),
+        "max_length": histogram_data.get("max_length", 0),
+        "mean_length": histogram_data.get("mean_length", 0.0),
+        "median_length": histogram_data.get("median_length", 0.0),
+    }
+
+
+def build_download_payload(result: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "status": "success",
+        "dataset_name": result.get("dataset_name", ""),
+        "text_column": result.get("text_column", ""),
+        "document_count": result.get("document_count", 0),
+        "saved_count": result.get("saved_count", 0),
+        "histogram": build_histogram_payload(result.get("histogram", {})),
+    }
+
+
+def build_upload_payload(result: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "status": "success",
+        "dataset_name": result.get("dataset_name", ""),
+        "text_column": result.get("text_column", ""),
+        "document_count": result.get("document_count", 0),
+        "saved_count": result.get("saved_count", 0),
+        "histogram": build_histogram_payload(result.get("histogram", {})),
+    }
+
+
+def build_analysis_payload(result: dict[str, Any]) -> dict[str, Any]:
+    stats_data = result.get("statistics", {})
+    return {
+        "status": "success",
+        "dataset_name": result.get("dataset_name", ""),
+        "analyzed_count": result.get("analyzed_count", 0),
+        "statistics": {
+            "total_documents": stats_data.get("total_documents", 0),
+            "mean_words_count": stats_data.get("mean_words_count", 0.0),
+            "median_words_count": stats_data.get("median_words_count", 0.0),
+            "mean_avg_word_length": stats_data.get("mean_avg_word_length", 0.0),
+            "mean_std_word_length": stats_data.get("mean_std_word_length", 0.0),
+        },
+    }
+
+
+
+
+def run_download_job(
+    request_payload: dict[str, Any],
+    job_id: str,
+) -> dict[str, Any]:
+    service = DatasetService(hf_access_token=request_payload.get("hf_access_token"))
+    progress_callback = JobProgressReporter(job_manager, job_id)
+    should_stop = JobStopChecker(job_manager, job_id)
+    result = service.download_and_persist(
+        corpus=request_payload.get("corpus", ""),
+        config=request_payload.get("config"),
+        remove_invalid=True,
+        progress_callback=progress_callback,
+        should_stop=should_stop,
+    )
+    if job_manager.should_stop(job_id):
+        return {}
+    return build_download_payload(result)
+
+
+def run_upload_job(
+    file_content: bytes,
+    filename: str,
+    job_id: str,
+) -> dict[str, Any]:
+    service = DatasetService()
+    progress_callback = JobProgressReporter(job_manager, job_id)
+    should_stop = JobStopChecker(job_manager, job_id)
+    result = service.upload_and_persist(
+        file_content=file_content,
+        filename=filename,
+        remove_invalid=True,
+        progress_callback=progress_callback,
+        should_stop=should_stop,
+    )
+    if job_manager.should_stop(job_id):
+        return {}
+    return build_upload_payload(result)
+
+
+def run_analysis_job(
+    dataset_name: str,
+    job_id: str,
+) -> dict[str, Any]:
+    service = DatasetService()
+    progress_callback = JobProgressReporter(job_manager, job_id)
+    should_stop = JobStopChecker(job_manager, job_id)
+    result = service.analyze_dataset(
+        dataset_name=dataset_name,
+        progress_callback=progress_callback,
+        should_stop=should_stop,
+    )
+    if job_manager.should_stop(job_id):
+        return {}
+    return build_analysis_payload(result)
 
 
 ###############################################################################
@@ -48,10 +156,10 @@ async def list_datasets() -> DatasetListResponse:
 ###############################################################################
 @router.post(
     API_ROUTE_DATASETS_DOWNLOAD,
-    response_model=DatasetDownloadResponse,
-    status_code=status.HTTP_200_OK,
+    response_model=JobStartResponse,
+    status_code=status.HTTP_202_ACCEPTED,
 )
-async def download_dataset(request: DatasetDownloadRequest) -> DatasetDownloadResponse:
+async def download_dataset(request: DatasetDownloadRequest) -> JobStartResponse:
     """
     Download a text dataset from HuggingFace and save it to the database.
 
@@ -71,64 +179,46 @@ async def download_dataset(request: DatasetDownloadRequest) -> DatasetDownloadRe
         request.config,
     )
 
-    service = DatasetService(hf_access_token=request.hf_access_token)
-
-    try:
-        result = await asyncio.to_thread(
-            service.download_and_persist,
-            corpus=request.corpus,
-            config=request.config,
-            remove_invalid=True,
-        )
-    except ValueError as exc:
-        logger.warning("Dataset download validation error: %s", exc)
+    if job_manager.is_job_running("dataset_download"):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
-    except Exception as exc:
-        logger.exception("Failed to download dataset %s/%s", request.corpus, request.config)
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Dataset download is already in progress.",
+        )
+
+    request_payload = request.model_dump()
+    job_id = job_manager.start_job(
+        job_type="dataset_download",
+        runner=run_download_job,
+        kwargs={
+            "request_payload": request_payload,
+        },
+    )
+
+    job_status = job_manager.get_job_status(job_id)
+    if job_status is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to download dataset from HuggingFace.",
-        ) from exc
+            detail="Failed to initialize dataset download job.",
+        )
 
-    logger.info(
-        "Successfully downloaded and saved dataset: %s (%d documents)",
-        result["dataset_name"],
-        result["saved_count"],
-    )
-
-    histogram_data = result.get("histogram", {})
-    histogram = HistogramData(
-        bins=histogram_data.get("bins", []),
-        counts=histogram_data.get("counts", []),
-        bin_edges=histogram_data.get("bin_edges", []),
-        min_length=histogram_data.get("min_length", 0),
-        max_length=histogram_data.get("max_length", 0),
-        mean_length=histogram_data.get("mean_length", 0.0),
-        median_length=histogram_data.get("median_length", 0.0),
-    )
-
-    return DatasetDownloadResponse(
-        status="success",
-        dataset_name=result["dataset_name"],
-        text_column=result["text_column"],
-        document_count=result["document_count"],
-        saved_count=result["saved_count"],
-        histogram=histogram,
+    return JobStartResponse(
+        job_id=job_id,
+        job_type=job_status["job_type"],
+        status=job_status["status"],
+        message="Dataset download job started.",
+        poll_interval=server_settings.jobs.polling_interval,
     )
 
 
 ###############################################################################
 @router.post(
     API_ROUTE_DATASETS_UPLOAD,
-    response_model=CustomDatasetUploadResponse,
-    status_code=status.HTTP_200_OK,
+    response_model=JobStartResponse,
+    status_code=status.HTTP_202_ACCEPTED,
 )
 async def upload_custom_dataset(
     file: UploadFile = File(..., description="CSV or Excel file to upload"),
-) -> CustomDatasetUploadResponse:
+) -> JobStartResponse:
     """
     Upload a CSV or Excel file and save it to the database as a custom dataset.
 
@@ -147,6 +237,13 @@ async def upload_custom_dataset(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No filename provided.",
         )
+    extension = os.path.splitext(file.filename)[1].lower()
+    allowed_extensions = set(server_settings.datasets.allowed_extensions)
+    if extension not in allowed_extensions:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported file type: {extension}. Use .csv, .xlsx, or .xls",
+        )
 
     logger.info("Custom dataset upload requested: filename=%s", file.filename)
 
@@ -160,62 +257,44 @@ async def upload_custom_dataset(
             detail="Failed to read uploaded file.",
         ) from exc
 
-    service = DatasetService()
-
-    try:
-        result = await asyncio.to_thread(
-            service.upload_and_persist,
-            file_content=file_content,
-            filename=file.filename,
-            remove_invalid=True,
-        )
-    except ValueError as exc:
-        logger.warning("Custom dataset upload validation error: %s", exc)
+    if job_manager.is_job_running("dataset_upload"):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
-    except Exception as exc:
-        logger.exception("Failed to process uploaded file %s", file.filename)
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Dataset upload is already in progress.",
+        )
+
+    job_id = job_manager.start_job(
+        job_type="dataset_upload",
+        runner=run_upload_job,
+        kwargs={
+            "file_content": file_content,
+            "filename": file.filename,
+        },
+    )
+
+    job_status = job_manager.get_job_status(job_id)
+    if job_status is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to process uploaded file.",
-        ) from exc
+            detail="Failed to initialize dataset upload job.",
+        )
 
-    logger.info(
-        "Successfully processed uploaded file: %s (%d documents)",
-        result["dataset_name"],
-        result["saved_count"],
-    )
-
-    histogram_data = result.get("histogram", {})
-    histogram = HistogramData(
-        bins=histogram_data.get("bins", []),
-        counts=histogram_data.get("counts", []),
-        bin_edges=histogram_data.get("bin_edges", []),
-        min_length=histogram_data.get("min_length", 0),
-        max_length=histogram_data.get("max_length", 0),
-        mean_length=histogram_data.get("mean_length", 0.0),
-        median_length=histogram_data.get("median_length", 0.0),
-    )
-
-    return CustomDatasetUploadResponse(
-        status="success",
-        dataset_name=result["dataset_name"],
-        text_column=result["text_column"],
-        document_count=result["document_count"],
-        saved_count=result["saved_count"],
-        histogram=histogram,
+    return JobStartResponse(
+        job_id=job_id,
+        job_type=job_status["job_type"],
+        status=job_status["status"],
+        message="Custom dataset upload job started.",
+        poll_interval=server_settings.jobs.polling_interval,
     )
 
 
 ###############################################################################
 @router.post(
     API_ROUTE_DATASETS_ANALYZE,
-    response_model=DatasetAnalysisResponse,
-    status_code=status.HTTP_200_OK,
+    response_model=JobStartResponse,
+    status_code=status.HTTP_202_ACCEPTED,
 )
-async def analyze_dataset(request: DatasetAnalysisRequest) -> DatasetAnalysisResponse:
+async def analyze_dataset(request: DatasetAnalysisRequest) -> JobStartResponse:
     """
     Analyze a loaded dataset, computing per-document word-level statistics.
 
@@ -231,6 +310,12 @@ async def analyze_dataset(request: DatasetAnalysisRequest) -> DatasetAnalysisRes
     """
     logger.info("Dataset analysis requested: dataset=%s", request.dataset_name)
 
+    if job_manager.is_job_running("dataset_analysis"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Dataset analysis is already in progress.",
+        )
+
     service = DatasetService()
 
     # Check if dataset exists
@@ -241,36 +326,25 @@ async def analyze_dataset(request: DatasetAnalysisRequest) -> DatasetAnalysisRes
             detail=f"Dataset '{request.dataset_name}' not found. Please load it first.",
         )
 
-    try:
-        result = await asyncio.to_thread(
-            service.analyze_dataset,
-            dataset_name=request.dataset_name,
-        )
-    except Exception as exc:
-        logger.exception("Failed to analyze dataset %s", request.dataset_name)
+    job_id = job_manager.start_job(
+        job_type="dataset_analysis",
+        runner=run_analysis_job,
+        kwargs={
+            "dataset_name": request.dataset_name,
+        },
+    )
+
+    job_status = job_manager.get_job_status(job_id)
+    if job_status is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to analyze dataset.",
-        ) from exc
+            detail="Failed to initialize dataset analysis job.",
+        )
 
-    logger.info(
-        "Successfully analyzed dataset: %s (%d documents)",
-        result["dataset_name"],
-        result["analyzed_count"],
-    )
-
-    stats_data = result.get("statistics", {})
-    statistics = DatasetStatisticsSummary(
-        total_documents=stats_data.get("total_documents", 0),
-        mean_words_count=stats_data.get("mean_words_count", 0.0),
-        median_words_count=stats_data.get("median_words_count", 0.0),
-        mean_avg_word_length=stats_data.get("mean_avg_word_length", 0.0),
-        mean_std_word_length=stats_data.get("mean_std_word_length", 0.0),
-    )
-
-    return DatasetAnalysisResponse(
-        status="success",
-        dataset_name=result["dataset_name"],
-        analyzed_count=result["analyzed_count"],
-        statistics=statistics,
+    return JobStartResponse(
+        job_id=job_id,
+        job_type=job_status["job_type"],
+        status=job_status["status"],
+        message="Dataset analysis job started.",
+        poll_interval=server_settings.jobs.polling_interval,
     )

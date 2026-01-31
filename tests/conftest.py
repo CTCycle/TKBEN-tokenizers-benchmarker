@@ -3,6 +3,8 @@ Pytest configuration for TKBEN E2E tests.
 Provides fixtures for Playwright page objects and API client.
 """
 import os
+import time
+from typing import Any
 
 import pytest
 from playwright.sync_api import APIRequestContext
@@ -49,6 +51,38 @@ def api_context(playwright) -> APIRequestContext:
     context.dispose()
 
 
+def wait_for_job_completion(
+    api_context: APIRequestContext,
+    job_id: str,
+    poll_interval: float = 1.0,
+    timeout_seconds: float = 300.0,
+) -> dict[str, Any]:
+    deadline = time.time() + timeout_seconds
+    while True:
+        response = api_context.get(f"/jobs/{job_id}")
+        assert response.ok, f"Failed to poll job {job_id}: {response.status}"
+        payload = response.json()
+        status = payload.get("status")
+        if status in {"completed", "failed", "cancelled"}:
+            return payload
+        if time.time() >= deadline:
+            raise AssertionError(f"Job {job_id} timed out after {timeout_seconds} seconds")
+        time.sleep(max(poll_interval, 0.1))
+
+
+@pytest.fixture(scope="session")
+def job_waiter(api_context: APIRequestContext):
+    def _wait(job_id: str, poll_interval: float = 1.0, timeout_seconds: float = 300.0) -> dict[str, Any]:
+        return wait_for_job_completion(
+            api_context=api_context,
+            job_id=job_id,
+            poll_interval=poll_interval,
+            timeout_seconds=timeout_seconds,
+        )
+
+    return _wait
+
+
 @pytest.fixture(scope="session")
 def sample_dataset_payload() -> tuple[str, str, bytes]:
     """
@@ -64,6 +98,7 @@ def sample_dataset_payload() -> tuple[str, str, bytes]:
 def uploaded_dataset(
     api_context: APIRequestContext,
     sample_dataset_payload: tuple[str, str, bytes],
+    job_waiter,
 ) -> dict:
     """
     Uploads a small dataset once per test session and returns the API response.
@@ -80,6 +115,15 @@ def uploaded_dataset(
         },
     )
     assert response.ok, f"Dataset upload failed: {response.status} {response.text()}"
-    data = response.json()
-    assert data.get("dataset_name") == dataset_name
-    return data
+    job = response.json()
+    job_id = job.get("job_id")
+    assert job_id, "Missing job_id in upload response"
+    job_status = job_waiter(
+        job_id,
+        poll_interval=job.get("poll_interval", 1.0),
+        timeout_seconds=300.0,
+    )
+    assert job_status.get("status") == "completed", job_status.get("error")
+    result = job_status.get("result", {})
+    assert result.get("dataset_name") == dataset_name
+    return result

@@ -10,8 +10,10 @@ const DatasetPage = () => {
     datasetLoaded,
     stats,
     histogram,
+    loadProgress,
     analyzing,
     analysisStats,
+    analysisProgress,
     fileInputRef,
     availableDatasets,
     selectedAnalysisDataset,
@@ -38,10 +40,11 @@ const DatasetPage = () => {
   // Compute histogram bar heights relative to max count
   const renderHistogram = () => {
     if (loading) {
+      const progressLabel = loadProgress !== null ? ` (${Math.round(loadProgress)}%)` : '';
       return (
         <div className="loading-container">
           <div className="spinner" />
-          <p>Processing dataset...</p>
+          <p>Processing dataset{progressLabel}...</p>
           <span>Downloading from HuggingFace, then saving to database. This may take several minutes for large datasets.</span>
         </div>
       );
@@ -88,10 +91,11 @@ const DatasetPage = () => {
 
   const renderAnalysisContent = () => {
     if (analyzing) {
+      const progressLabel = analysisProgress !== null ? ` (${Math.round(analysisProgress)}%)` : '';
       return (
         <div className="loading-container">
           <div className="spinner" />
-          <p>Analyzing dataset...</p>
+          <p>Analyzing dataset{progressLabel}...</p>
           <span>Computing word counts and word length statistics for each document.</span>
         </div>
       );

@@ -312,12 +312,17 @@ class DatasetService:
         text_column: str,
         stats: LengthStatistics,
         remove_invalid: bool,
+        progress_callback: Callable[[float], None] | None = None,
+        should_stop: Callable[[], bool] | None = None,
+        progress_base: float = 0.0,
+        progress_span: float = 100.0,
     ) -> tuple[dict[str, Any], int]:
         batch_size = self.streaming_batch_size
         batch: list[dict[str, str]] = []
         saved_count = 0
         last_logged = 0
         histogram_builder = HistogramBuilder(stats, self.histogram_bins)
+        total_documents = stats.document_count if stats.document_count > 0 else 1
 
         database.delete_by_key(
             TextDataset.__tablename__,
@@ -326,6 +331,8 @@ class DatasetService:
         )
 
         for text in self._iterate_texts(dataset, text_column, remove_invalid):
+            if should_stop and should_stop():
+                return histogram_builder.build(), saved_count
             histogram_builder.add(len(text))
             batch.append({"dataset_name": dataset_name, "text": text})
 
@@ -336,14 +343,26 @@ class DatasetService:
                 if saved_count - last_logged >= self.log_interval:
                     logger.info("Saved %d documents so far...", saved_count)
                     last_logged = saved_count
+                if progress_callback:
+                    progress_value = progress_base + (
+                        saved_count / total_documents
+                    ) * progress_span
+                    progress_callback(progress_value)
                 batch.clear()
 
         if batch:
             df = pd.DataFrame(batch)
             database.insert_dataframe(df, TextDataset.__tablename__)
             saved_count += len(batch)
+            if progress_callback:
+                progress_value = progress_base + (
+                    saved_count / total_documents
+                ) * progress_span
+                progress_callback(progress_value)
 
         logger.info("Completed saving %d documents to database", saved_count)
+        if progress_callback and stats.document_count == 0:
+            progress_callback(progress_base + progress_span)
         return histogram_builder.build(), saved_count
 
     # -------------------------------------------------------------------------
@@ -352,6 +371,8 @@ class DatasetService:
         corpus: str,
         config: str | None = None,
         remove_invalid: bool = True,
+        progress_callback: Callable[[float], None] | None = None,
+        should_stop: Callable[[], bool] | None = None,
     ) -> dict[str, Any]:
         dataset_name = self.get_dataset_name(corpus, config)
         cache_path = self.get_cache_path(corpus, config)
@@ -366,6 +387,8 @@ class DatasetService:
             length_stream = self.database_length_stream(dataset_name)
             stats = self.collect_length_statistics(length_stream)
             histogram = self.histogram_from_stream(length_stream, stats)
+            if progress_callback:
+                progress_callback(100.0)
             return {
                 "dataset_name": dataset_name,
                 "text_column": "text",
@@ -381,6 +404,8 @@ class DatasetService:
             logger.info("Dataset cache not found. Downloading %s", dataset_name)
 
         try:
+            if progress_callback:
+                progress_callback(5.0)
             dataset = load_dataset(
                 corpus,
                 config,
@@ -396,6 +421,8 @@ class DatasetService:
             raise ValueError(f"No text column found in dataset {dataset_name}")
 
         logger.info("Using text column: %s", text_column)
+        if progress_callback:
+            progress_callback(15.0)
 
         length_stream = self.dataset_length_stream(
             dataset,
@@ -411,6 +438,10 @@ class DatasetService:
             text_column=text_column,
             stats=stats,
             remove_invalid=remove_invalid,
+            progress_callback=progress_callback,
+            should_stop=should_stop,
+            progress_base=20.0,
+            progress_span=80.0,
         )
 
         return {
@@ -428,6 +459,8 @@ class DatasetService:
         file_content: bytes,
         filename: str,
         remove_invalid: bool = True,
+        progress_callback: Callable[[float], None] | None = None,
+        should_stop: Callable[[], bool] | None = None,
     ) -> dict[str, Any]:
         """
         Process an uploaded CSV/Excel file and persist to database.
@@ -451,6 +484,8 @@ class DatasetService:
 
         # Load into DataFrame based on file extension
         try:
+            if progress_callback:
+                progress_callback(5.0)
             file_buffer = io.BytesIO(file_content)
             if extension == ".csv":
                 df = pd.read_csv(file_buffer)
@@ -493,6 +528,8 @@ class DatasetService:
 
         if stats.document_count == 0:
             raise ValueError("No valid text documents found after filtering")
+        if progress_callback:
+            progress_callback(15.0)
 
         # Persist to database with histogram computation (second pass)
         batch_size = self.streaming_batch_size
@@ -509,6 +546,8 @@ class DatasetService:
         )
 
         for text in iterate_df_texts():
+            if should_stop and should_stop():
+                return {}
             histogram_builder.add(len(text))
             batch.append({"dataset_name": dataset_name, "text": text})
 
@@ -519,12 +558,22 @@ class DatasetService:
                 if saved_count - last_logged >= self.log_interval:
                     logger.info("Saved %d documents so far...", saved_count)
                     last_logged = saved_count
+                if progress_callback:
+                    progress_value = 15.0 + (
+                        saved_count / max(stats.document_count, 1)
+                    ) * 85.0
+                    progress_callback(progress_value)
                 batch.clear()
 
         if batch:
             batch_df = pd.DataFrame(batch)
             database.insert_dataframe(batch_df, TextDataset.__tablename__)
             saved_count += len(batch)
+            if progress_callback:
+                progress_value = 15.0 + (
+                    saved_count / max(stats.document_count, 1)
+                ) * 85.0
+                progress_callback(progress_value)
 
         logger.info("Completed saving %d documents from uploaded file", saved_count)
 
@@ -552,7 +601,12 @@ class DatasetService:
         return columns[0] if columns else None
 
     # -------------------------------------------------------------------------
-    def analyze_dataset(self, dataset_name: str) -> dict[str, Any]:
+    def analyze_dataset(
+        self,
+        dataset_name: str,
+        progress_callback: Callable[[float], None] | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> dict[str, Any]:
         """
         Compute word-level statistics for all documents in a dataset.
         Uses streaming to avoid loading entire dataset into memory.
@@ -570,6 +624,17 @@ class DatasetService:
             'SELECT "dataset_name", "text" FROM "TEXT_DATASET" '
             'WHERE "dataset_name" = :dataset'
         )
+
+        count_query = sqlalchemy.text(
+            'SELECT COUNT(*) FROM "TEXT_DATASET" WHERE "dataset_name" = :dataset'
+        )
+
+        with database.backend.engine.connect() as conn:
+            count_result = conn.execute(count_query, {"dataset": dataset_name})
+            count_row = count_result.first()
+        total_documents = count_row[0] if count_row else 0
+        if progress_callback:
+            progress_callback(5.0)
 
         batch_size = self.streaming_batch_size
         analyzed_count = 0
@@ -600,6 +665,8 @@ class DatasetService:
                     break
 
                 for row in rows:
+                    if should_stop and should_stop():
+                        return {}
                     if hasattr(row, "_mapping"):
                         text = row._mapping.get("text", "")
                     else:
@@ -647,6 +714,9 @@ class DatasetService:
             if analyzed_count - last_logged >= self.log_interval:
                 logger.info("Analyzed %d documents so far...", analyzed_count)
                 last_logged = analyzed_count
+            if progress_callback and total_documents > 0:
+                progress_value = (analyzed_count / total_documents) * 100.0
+                progress_callback(progress_value)
 
         logger.info("Completed analysis: %d documents analyzed", analyzed_count)
 

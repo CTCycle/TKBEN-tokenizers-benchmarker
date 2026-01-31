@@ -1,6 +1,7 @@
-import type { BenchmarkRunRequest, BenchmarkRunResponse } from '../types/api';
+import type { BenchmarkRunRequest, BenchmarkRunResponse, JobStartResponse, JobStatusResponse } from '../types/api';
 
 import { API_ENDPOINTS } from '../constants';
+import { waitForJobResult } from './jobsApi';
 
 // 30 minute timeout for benchmark runs (can be very long-running)
 const BENCHMARK_TIMEOUT_MS = 30 * 60 * 1000;
@@ -11,10 +12,9 @@ const BENCHMARK_TIMEOUT_MS = 30 * 60 * 1000;
  * @returns Promise with the benchmark response including metrics and plots
  */
 export async function runBenchmarks(
-    request: BenchmarkRunRequest
+    request: BenchmarkRunRequest,
+    onUpdate?: (status: JobStatusResponse) => void,
 ): Promise<BenchmarkRunResponse> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), BENCHMARK_TIMEOUT_MS);
 
     try {
         const response = await fetch(API_ENDPOINTS.BENCHMARKS_RUN, {
@@ -23,22 +23,19 @@ export async function runBenchmarks(
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(request),
-            signal: controller.signal,
         });
-
-        clearTimeout(timeoutId);
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
             throw new Error(errorData.detail || `Failed to run benchmarks: ${response.status}`);
         }
 
-        return response.json();
+        const job = await response.json() as JobStartResponse;
+        return waitForJobResult<BenchmarkRunResponse>(job, {
+            onUpdate,
+            timeoutMs: BENCHMARK_TIMEOUT_MS,
+        });
     } catch (error) {
-        clearTimeout(timeoutId);
-        if (error instanceof Error && error.name === 'AbortError') {
-            throw new Error('Benchmark run timed out. Try reducing the number of documents or tokenizers.');
-        }
         throw error;
     }
 }
