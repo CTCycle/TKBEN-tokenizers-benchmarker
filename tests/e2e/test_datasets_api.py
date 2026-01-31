@@ -78,6 +78,7 @@ def test_analyze_missing_dataset_returns_404(
 def test_analyze_uploaded_dataset_returns_stats(
     api_context: APIRequestContext,
     uploaded_dataset: dict,
+    job_waiter,
 ) -> None:
     """POST /datasets/analyze should return stats for a known dataset."""
     response = api_context.post(
@@ -85,7 +86,16 @@ def test_analyze_uploaded_dataset_returns_stats(
         data={"dataset_name": uploaded_dataset["dataset_name"]},
     )
     assert response.ok
-    data = response.json()
+    job = response.json()
+    job_id = job.get("job_id")
+    assert job_id, "Missing job_id in analyze response"
+    job_status = job_waiter(
+        job_id,
+        poll_interval=job.get("poll_interval", 1.0),
+        timeout_seconds=300.0,
+    )
+    assert job_status.get("status") == "completed", job_status.get("error")
+    data = job_status.get("result", {})
     assert data.get("dataset_name") == uploaded_dataset["dataset_name"]
     assert data.get("analyzed_count", 0) > 0
 

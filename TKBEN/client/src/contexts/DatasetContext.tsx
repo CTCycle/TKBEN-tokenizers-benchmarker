@@ -21,8 +21,10 @@ interface DatasetContextType {
     datasetLoaded: boolean;
     stats: DatasetStats | null;
     histogram: HistogramData | null;
+    loadProgress: number | null;
     analyzing: boolean;
     analysisStats: DatasetStatisticsSummary | null;
+    analysisProgress: number | null;
     fileInputRef: React.RefObject<HTMLInputElement | null>;
     availableDatasets: string[];
     selectedAnalysisDataset: string;
@@ -54,8 +56,10 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
     const [datasetLoaded, setDatasetLoaded] = useState(false);
     const [stats, setStats] = useState<DatasetStats | null>(null);
     const [histogram, setHistogram] = useState<HistogramData | null>(null);
+    const [loadProgress, setLoadProgress] = useState<number | null>(null);
     const [analyzing, setAnalyzing] = useState(false);
     const [analysisStats, setAnalysisStats] = useState<DatasetStatisticsSummary | null>(null);
+    const [analysisProgress, setAnalysisProgress] = useState<number | null>(null);
     const [availableDatasets, setAvailableDatasets] = useState<string[]>([]);
     const [selectedAnalysisDataset, setSelectedAnalysisDataset] = useState('');
     const [analysisDatasetLoading, setAnalysisDatasetLoading] = useState(false);
@@ -97,12 +101,13 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
     const handleLoadDataset = useCallback(async () => {
         setLoading(true);
         setError(null);
+        setLoadProgress(0);
 
         try {
             const response = await downloadDataset({
                 corpus: selectedCorpus,
                 config: selectedConfig,
-            });
+            }, (status) => setLoadProgress(status.progress));
 
             setStats({
                 documentCount: response.document_count,
@@ -120,6 +125,7 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             setError(err instanceof Error ? err.message : 'Failed to load dataset');
         } finally {
             setLoading(false);
+            setLoadProgress(null);
         }
     }, [selectedCorpus, selectedConfig, refreshAvailableDatasets]);
 
@@ -133,9 +139,10 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
 
         setLoading(true);
         setError(null);
+        setLoadProgress(0);
 
         try {
-            const response = await uploadCustomDataset(file);
+            const response = await uploadCustomDataset(file, (status) => setLoadProgress(status.progress));
 
             setStats({
                 documentCount: response.document_count,
@@ -153,6 +160,7 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             setError(err instanceof Error ? err.message : 'Failed to upload dataset');
         } finally {
             setLoading(false);
+            setLoadProgress(null);
             // Reset file input so the same file can be uploaded again if needed
             if (fileInputRef.current) {
                 fileInputRef.current.value = '';
@@ -165,14 +173,19 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
 
         setAnalyzing(true);
         setError(null);
+        setAnalysisProgress(0);
 
         try {
-            const response = await analyzeDataset({ dataset_name: selectedAnalysisDataset });
+            const response = await analyzeDataset(
+                { dataset_name: selectedAnalysisDataset },
+                (status) => setAnalysisProgress(status.progress),
+            );
             setAnalysisStats(response.statistics);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to analyze dataset');
         } finally {
             setAnalyzing(false);
+            setAnalysisProgress(null);
         }
     }, [selectedAnalysisDataset]);
 
@@ -186,8 +199,10 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
         datasetLoaded,
         stats,
         histogram,
+        loadProgress,
         analyzing,
         analysisStats,
+        analysisProgress,
         fileInputRef,
         availableDatasets,
         selectedAnalysisDataset,
@@ -214,8 +229,10 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
         datasetLoaded,
         stats,
         histogram,
+        loadProgress,
         analyzing,
         analysisStats,
+        analysisProgress,
         fileInputRef,
         availableDatasets,
         selectedAnalysisDataset,

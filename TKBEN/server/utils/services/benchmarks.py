@@ -498,6 +498,8 @@ class BenchmarkService:
         dataset_name: str,
         tokenizer_ids: list[str],
         custom_tokenizers: dict[str, Any] | None = None,
+        progress_callback: Callable[[float], None] | None = None,
+        should_stop: Callable[[], bool] | None = None,
     ) -> dict[str, Any]:
         logger.info("Starting benchmark run for dataset: %s", dataset_name)
         logger.info("Tokenizers to benchmark: %s", tokenizer_ids)
@@ -506,6 +508,8 @@ class BenchmarkService:
         doc_count = self.get_dataset_document_count(dataset_name)
         if doc_count == 0:
             raise ValueError(f"Dataset '{dataset_name}' not found or empty")
+        if progress_callback:
+            progress_callback(5.0)
 
         # Load tokenizers from HuggingFace
         tokenizers = self.load_tokenizers(tokenizer_ids)
@@ -516,30 +520,46 @@ class BenchmarkService:
                 if self.tools.is_tokenizer_compatible(tok):
                     tokenizers[name] = tok
                     logger.info("Added custom tokenizer: %s", name)
-        
+
         if not tokenizers:
             raise ValueError("No valid tokenizers could be loaded")
 
         logger.info("Loaded %d tokenizers", len(tokenizers))
+        if progress_callback:
+            progress_callback(10.0)
 
         # Calculate vocabulary statistics
         vocabularies, vocabulary_stats = self.calculate_vocabulary_statistics(tokenizers)
+        if progress_callback:
+            progress_callback(15.0)
 
         # Collect texts into memory for processing (respecting max_documents)
         logger.info("Loading texts from database...")
         texts: list[str] = []
         for text in self.stream_texts_from_database(dataset_name):
+            if should_stop and should_stop():
+                return {}
             texts.append(text)
             if len(texts) % self.log_interval == 0:
                 logger.info("Loaded %d texts...", len(texts))
 
         num_docs = len(texts)
         logger.info("Loaded %d documents for benchmarking", num_docs)
+        if progress_callback:
+            progress_callback(20.0)
 
         all_tokenizers: list[pd.DataFrame] = []
         global_metrics_rows: list[dict[str, Any]] = []
+        total_tokenizers = len(tokenizers)
+        progress_base = 20.0
+        progress_span = 80.0
+        per_tokenizer_span = (
+            progress_span / total_tokenizers if total_tokenizers > 0 else progress_span
+        )
 
-        for name, tokenizer in tokenizers.items():
+        for index, (name, tokenizer) in enumerate(tokenizers.items()):
+            if should_stop and should_stop():
+                return {}
             logger.info("Processing tokenizer: %s", name)
 
             data = pd.DataFrame(
@@ -567,12 +587,23 @@ class BenchmarkService:
 
                 decoded_tokens = []
                 split_tokens = []
+                progress_interval = max(1, num_docs // 20)
+                processed_docs = 0
+                tokenizer_progress_base = progress_base + (index * per_tokenizer_span)
                 for text_value in texts:
+                    if should_stop and should_stop():
+                        return {}
                     decoded, tokens_list = self.tokenize_document(
                         tokenizer, text_value, uses_tokenize, tokenize_method
                     )
                     decoded_tokens.append(decoded)
                     split_tokens.append(tokens_list)
+                    processed_docs += 1
+                    if progress_callback and processed_docs % progress_interval == 0:
+                        progress_value = tokenizer_progress_base + (
+                            processed_docs / max(num_docs, 1)
+                        ) * per_tokenizer_span
+                        progress_callback(progress_value)
 
                 data["tokens"] = decoded_tokens
                 data["tokens_split"] = split_tokens
@@ -615,6 +646,8 @@ class BenchmarkService:
             for text_value, decoded_text, tokens_list in zip(
                 texts, decoded_tokens, split_tokens
             ):
+                if should_stop and should_stop():
+                    return {}
                 total_bytes += len(str(text_value).encode("utf-8"))
 
                 boundary_preservation.append(
@@ -842,6 +875,8 @@ class BenchmarkService:
             all_tokenizers.append(data)
 
             logger.info("Completed processing tokenizer: %s", name)
+            if progress_callback:
+                progress_callback(tokenizer_progress_base + per_tokenizer_span)
 
         benchmark_results = (
             pd.concat(all_tokenizers, ignore_index=True)

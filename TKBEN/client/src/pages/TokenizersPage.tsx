@@ -27,6 +27,7 @@ const TokenizersPage = () => {
     benchmarkInProgress,
     benchmarkError,
     benchmarkResult,
+    benchmarkProgress,
     customTokenizerInputRef,
     setSelectedTokenizer,
     setTokenizers,
@@ -304,7 +305,10 @@ const TokenizersPage = () => {
               {benchmarkInProgress ? (
                 <>
                   <div className="spinner" />
-                  <p>Processing benchmarks...</p>
+                  <p>
+                    Processing benchmarks
+                    {benchmarkProgress !== null ? ` (${Math.round(benchmarkProgress)}%)` : ''}...
+                  </p>
                   <span>Analyzing tokenizers and computing metrics. This may take a few minutes.</span>
                 </>
               ) : (

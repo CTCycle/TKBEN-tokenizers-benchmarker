@@ -21,6 +21,7 @@ interface TokenizersContextType {
     benchmarkInProgress: boolean;
     benchmarkError: string | null;
     benchmarkResult: BenchmarkRunResponse | null;
+    benchmarkProgress: number | null;
     customTokenizerInputRef: React.RefObject<HTMLInputElement | null>;
 
     // Actions
@@ -59,6 +60,7 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
     const [benchmarkInProgress, setBenchmarkInProgress] = useState(false);
     const [benchmarkError, setBenchmarkError] = useState<string | null>(null);
     const [benchmarkResult, setBenchmarkResult] = useState<BenchmarkRunResponse | null>(null);
+    const [benchmarkProgress, setBenchmarkProgress] = useState<number | null>(null);
 
     const refreshDatasets = useCallback(async () => {
         setDatasetsLoading(true);
@@ -155,6 +157,7 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         setBenchmarkInProgress(true);
         setBenchmarkError(null);
         setBenchmarkResult(null);
+        setBenchmarkProgress(0);
 
         try {
             const response = await runBenchmarks({
@@ -162,7 +165,7 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
                 dataset_name: selectedDataset,
                 max_documents: maxDocuments,
                 custom_tokenizer_name: customTokenizerName || undefined,
-            });
+            }, (status) => setBenchmarkProgress(status.progress));
             setBenchmarkResult(response);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to run benchmarks';
@@ -170,6 +173,7 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
             console.error('Benchmark error:', error);
         } finally {
             setBenchmarkInProgress(false);
+            setBenchmarkProgress(null);
         }
     }, [tokenizers, selectedDataset, maxDocuments, customTokenizerName]);
 
@@ -189,6 +193,7 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         benchmarkInProgress,
         benchmarkError,
         benchmarkResult,
+        benchmarkProgress,
         customTokenizerInputRef,
 
         // Actions
@@ -220,6 +225,7 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         benchmarkInProgress,
         benchmarkError,
         benchmarkResult,
+        benchmarkProgress,
         customTokenizerInputRef,
         setSelectedTokenizer,
         setTokenizers,

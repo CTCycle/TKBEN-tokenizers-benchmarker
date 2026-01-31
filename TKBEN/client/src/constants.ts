@@ -21,4 +21,6 @@ export const API_ENDPOINTS = {
 
     BROWSER_TABLES: `${API_BASE_URL}/browser/tables`,
     BROWSER_DATA: `${API_BASE_URL}/browser/data`,
+
+    JOBS: `${API_BASE_URL}/jobs`,
 } as const;

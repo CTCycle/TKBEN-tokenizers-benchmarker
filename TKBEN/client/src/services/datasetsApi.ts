@@ -1,5 +1,15 @@
-import type { CustomDatasetUploadResponse, DatasetAnalysisRequest, DatasetAnalysisResponse, DatasetDownloadRequest, DatasetDownloadResponse, DatasetListResponse } from '../types/api';
+import type {
+    CustomDatasetUploadResponse,
+    DatasetAnalysisRequest,
+    DatasetAnalysisResponse,
+    DatasetDownloadRequest,
+    DatasetDownloadResponse,
+    DatasetListResponse,
+    JobStartResponse,
+    JobStatusResponse,
+} from '../types/api';
 import { API_ENDPOINTS, DOWNLOAD_TIMEOUT_MS } from '../constants';
+import { waitForJobResult } from './jobsApi';
 
 // 10 minute timeout for large dataset downloads
 
@@ -29,10 +39,9 @@ export async function fetchAvailableDatasets(): Promise<DatasetListResponse> {
  * @returns Promise with the download response including histogram data
  */
 export async function downloadDataset(
-    request: DatasetDownloadRequest
+    request: DatasetDownloadRequest,
+    onUpdate?: (status: JobStatusResponse) => void,
 ): Promise<DatasetDownloadResponse> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
 
     try {
         const response = await fetch(API_ENDPOINTS.DATASETS_DOWNLOAD, {
@@ -41,22 +50,19 @@ export async function downloadDataset(
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(request),
-            signal: controller.signal,
         });
-
-        clearTimeout(timeoutId);
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
             throw new Error(errorData.detail || `Failed to download dataset: ${response.status}`);
         }
 
-        return response.json();
+        const job = await response.json() as JobStartResponse;
+        return waitForJobResult<DatasetDownloadResponse>(job, {
+            onUpdate,
+            timeoutMs: DOWNLOAD_TIMEOUT_MS,
+        });
     } catch (error) {
-        clearTimeout(timeoutId);
-        if (error instanceof Error && error.name === 'AbortError') {
-            throw new Error('Dataset download timed out. The dataset may be too large.');
-        }
         throw error;
     }
 }
@@ -67,10 +73,9 @@ export async function downloadDataset(
  * @returns Promise with the upload response including histogram data
  */
 export async function uploadCustomDataset(
-    file: File
+    file: File,
+    onUpdate?: (status: JobStatusResponse) => void,
 ): Promise<CustomDatasetUploadResponse> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
 
     const formData = new FormData();
     formData.append('file', file);
@@ -79,22 +84,19 @@ export async function uploadCustomDataset(
         const response = await fetch(API_ENDPOINTS.DATASETS_UPLOAD, {
             method: 'POST',
             body: formData,
-            signal: controller.signal,
         });
-
-        clearTimeout(timeoutId);
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
             throw new Error(errorData.detail || `Failed to upload dataset: ${response.status}`);
         }
 
-        return response.json();
+        const job = await response.json() as JobStartResponse;
+        return waitForJobResult<CustomDatasetUploadResponse>(job, {
+            onUpdate,
+            timeoutMs: DOWNLOAD_TIMEOUT_MS,
+        });
     } catch (error) {
-        clearTimeout(timeoutId);
-        if (error instanceof Error && error.name === 'AbortError') {
-            throw new Error('Dataset upload timed out. The file may be too large.');
-        }
         throw error;
     }
 }
@@ -105,10 +107,9 @@ export async function uploadCustomDataset(
  * @returns Promise with the analysis response including word-level statistics
  */
 export async function analyzeDataset(
-    request: DatasetAnalysisRequest
+    request: DatasetAnalysisRequest,
+    onUpdate?: (status: JobStatusResponse) => void,
 ): Promise<DatasetAnalysisResponse> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
 
     try {
         const response = await fetch(API_ENDPOINTS.DATASETS_ANALYZE, {
@@ -117,22 +118,19 @@ export async function analyzeDataset(
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(request),
-            signal: controller.signal,
         });
-
-        clearTimeout(timeoutId);
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
             throw new Error(errorData.detail || `Failed to analyze dataset: ${response.status}`);
         }
 
-        return response.json();
+        const job = await response.json() as JobStartResponse;
+        return waitForJobResult<DatasetAnalysisResponse>(job, {
+            onUpdate,
+            timeoutMs: DOWNLOAD_TIMEOUT_MS,
+        });
     } catch (error) {
-        clearTimeout(timeoutId);
-        if (error instanceof Error && error.name === 'AbortError') {
-            throw new Error('Dataset analysis timed out. The dataset may be too large.');
-        }
         throw error;
     }
 }

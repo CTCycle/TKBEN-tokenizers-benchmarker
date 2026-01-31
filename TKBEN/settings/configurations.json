@@ -37,5 +37,8 @@
   "benchmarks": {
     "streaming_batch_size": 1000,
     "log_interval": 10000
+  },
+  "jobs": {
+    "polling_interval": 1
   }
 }

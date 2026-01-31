@@ -10,6 +10,7 @@ from TKBEN.server.routes.datasets import router as datasets_router
 from TKBEN.server.routes.tokenizers import router as tokenizers_router
 from TKBEN.server.routes.benchmarks import router as fit_router
 from TKBEN.server.routes.browser import router as browser_router
+from TKBEN.server.routes.jobs import router as jobs_router
 
 
 ###############################################################################
@@ -23,6 +24,7 @@ app.include_router(datasets_router)
 app.include_router(tokenizers_router)
 app.include_router(fit_router)
 app.include_router(browser_router)
+app.include_router(jobs_router)
 
 @app.get(API_ROUTE_ROOT)
 def redirect_to_docs() -> RedirectResponse:

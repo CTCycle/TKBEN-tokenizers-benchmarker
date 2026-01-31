@@ -28,6 +28,7 @@ API_ROUTER_PREFIX_DATASETS = "/datasets"
 API_ROUTER_PREFIX_TOKENIZERS = "/tokenizers"
 API_ROUTER_PREFIX_BENCHMARKS = "/benchmarks"
 API_ROUTER_PREFIX_BROWSER = "/browser"
+API_ROUTER_PREFIX_JOBS = "/jobs"
 
 API_ROUTE_DATASETS_LIST = "/list"
 API_ROUTE_DATASETS_DOWNLOAD = "/download"
@@ -43,6 +44,8 @@ API_ROUTE_BENCHMARKS_RUN = "/run"
 
 API_ROUTE_BROWSER_TABLES = "/tables"
 API_ROUTE_BROWSER_DATA = "/data"
+
+API_ROUTE_JOBS_STATUS = "/{job_id}"
 
 
 ###############################################################################

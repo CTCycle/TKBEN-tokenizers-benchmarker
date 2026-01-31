@@ -56,6 +56,7 @@ def test_run_benchmarks_missing_dataset_returns_400(
 def test_run_benchmarks_with_sample_dataset(
     api_context: APIRequestContext,
     uploaded_dataset: dict,
+    job_waiter,
 ) -> None:
     """POST /benchmarks/run should return chart data for a small dataset."""
     response = api_context.post(
@@ -67,7 +68,16 @@ def test_run_benchmarks_with_sample_dataset(
         },
     )
     assert response.ok, response.text()
-    data = response.json()
+    job = response.json()
+    job_id = job.get("job_id")
+    assert job_id, "Missing job_id in benchmark response"
+    job_status = job_waiter(
+        job_id,
+        poll_interval=job.get("poll_interval", 1.0),
+        timeout_seconds=1800.0,
+    )
+    assert job_status.get("status") == "completed", job_status.get("error")
+    data = job_status.get("result", {})
     assert data.get("status") == "success"
     assert data.get("tokenizers_count", 0) >= 1
     assert data.get("documents_processed", 0) >= 1
