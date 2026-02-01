@@ -10,9 +10,9 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from TKBEN.server.utils.configurations import DatabaseSettings
-from TKBEN.server.database.schema import Base
-from TKBEN.server.database.utils import normalize_postgres_engine
+from TKBEN.server.configurations import DatabaseSettings
+from TKBEN.server.repositories.schema import Base
+from TKBEN.server.repositories.utils import normalize_postgres_engine
 from TKBEN.server.utils.logger import logger
 
 
@@ -49,7 +49,7 @@ class PostgresRepository:
             connect_args=connect_args,
             pool_pre_ping=True,
         )
-        self.Session = sessionmaker(bind=self.engine, future=True)
+        self.session = sessionmaker(bind=self.engine, future=True)
         self.insert_batch_size = settings.insert_batch_size
         Base.metadata.create_all(self.engine, checkfirst=True)
 
@@ -63,7 +63,7 @@ class PostgresRepository:
     # -------------------------------------------------------------------------
     def upsert_dataframe(self, df: pd.DataFrame, table_cls) -> None:
         table = table_cls.__table__
-        session = self.Session()
+        session = self.session()
         try:
             unique_cols = []
             for uc in table.constraints:

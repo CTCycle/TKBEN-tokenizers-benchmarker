@@ -5,11 +5,11 @@ import urllib.parse
 import sqlalchemy
 from sqlalchemy.exc import SQLAlchemyError
 
-from TKBEN.server.utils.configurations import DatabaseSettings, server_settings
-from TKBEN.server.database.postgres import PostgresRepository
-from TKBEN.server.database.schema import Base
-from TKBEN.server.database.sqlite import SQLiteRepository
-from TKBEN.server.database.utils import normalize_postgres_engine
+from TKBEN.server.configurations import DatabaseSettings, server_settings
+from TKBEN.server.repositories.postgres import PostgresRepository
+from TKBEN.server.repositories.schema import Base
+from TKBEN.server.repositories.sqlite import SQLiteRepository
+from TKBEN.server.repositories.utils import normalize_postgres_engine
 from TKBEN.server.utils.logger import logger
 
 

@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from TKBEN.server.schemas.jobs import JobCancelResponse, JobListResponse, JobStatusResponse
 from TKBEN.server.utils.constants import API_ROUTE_JOBS_STATUS, API_ROUTER_PREFIX_JOBS
-from TKBEN.server.utils.jobs import job_manager
+from TKBEN.server.services.jobs import job_manager
 
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_JOBS, tags=["jobs"])

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from TKBEN.server.database.database import database
-from TKBEN.server.utils.configurations.server import server_settings
+from TKBEN.server.repositories.database import database
+from TKBEN.server.configurations.server import server_settings
 from TKBEN.server.utils.constants import (
     API_ROUTE_BROWSER_DATA,
     API_ROUTE_BROWSER_TABLES,
