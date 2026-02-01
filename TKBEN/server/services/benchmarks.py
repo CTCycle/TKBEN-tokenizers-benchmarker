@@ -13,14 +13,14 @@ from matplotlib.figure import Figure
 from transformers import AutoTokenizer
 from transformers.utils.logging import set_verbosity_error
 
-from TKBEN.server.database.database import database
-from TKBEN.server.database.schema import (
+from TKBEN.server.repositories.database import database
+from TKBEN.server.repositories.schema import (
     TokenizationGlobalMetrics,
     TokenizationLocalStats,
     Vocabulary,
     VocabularyStatistics,
 )
-from TKBEN.server.utils.configurations import server_settings
+from TKBEN.server.configurations import server_settings
 from TKBEN.server.utils.logger import logger
 
 

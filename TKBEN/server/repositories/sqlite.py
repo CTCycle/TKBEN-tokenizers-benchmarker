@@ -10,10 +10,10 @@ from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from TKBEN.server.utils.configurations import DatabaseSettings
+from TKBEN.server.configurations import DatabaseSettings
 from TKBEN.server.utils.constants import DATA_PATH, DATABASE_FILENAME
 from TKBEN.server.utils.logger import logger
-from TKBEN.server.database.schema import Base
+from TKBEN.server.repositories.schema import Base
 
 
 ###############################################################################

@@ -13,7 +13,7 @@ from TKBEN.server.schemas.tokenizers import (
     TokenizerSettingsResponse,
     TokenizerUploadResponse,
 )
-from TKBEN.server.utils.configurations.server import server_settings
+from TKBEN.server.configurations.server import server_settings
 from TKBEN.server.utils.constants import (
     API_ROUTE_TOKENIZERS_CUSTOM,
     API_ROUTE_TOKENIZERS_SCAN,
@@ -22,8 +22,8 @@ from TKBEN.server.utils.constants import (
     API_ROUTER_PREFIX_TOKENIZERS,
 )
 from TKBEN.server.utils.logger import logger
-from TKBEN.server.utils.services.benchmarks import BenchmarkTools
-from TKBEN.server.utils.services.tokenizers import TokenizersService
+from TKBEN.server.services.benchmarks import BenchmarkTools
+from TKBEN.server.services.tokenizers import TokenizersService
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_TOKENIZERS, tags=["tokenizers"])
 

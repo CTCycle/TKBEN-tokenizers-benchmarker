@@ -12,7 +12,7 @@ from TKBEN.server.schemas.dataset import (
     DatasetListResponse,
 )
 from TKBEN.server.schemas.jobs import JobStartResponse
-from TKBEN.server.utils.configurations import server_settings
+from TKBEN.server.configurations import server_settings
 from TKBEN.server.utils.logger import logger
 from TKBEN.server.utils.constants import (
     API_ROUTE_DATASETS_ANALYZE,
@@ -21,8 +21,8 @@ from TKBEN.server.utils.constants import (
     API_ROUTE_DATASETS_UPLOAD,
     API_ROUTER_PREFIX_DATASETS,
 )
-from TKBEN.server.utils.jobs import JobProgressReporter, JobStopChecker, job_manager
-from TKBEN.server.utils.services.datasets import DatasetService
+from TKBEN.server.services.jobs import JobProgressReporter, JobStopChecker, job_manager
+from TKBEN.server.services.datasets import DatasetService
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_DATASETS, tags=["datasets"])
 

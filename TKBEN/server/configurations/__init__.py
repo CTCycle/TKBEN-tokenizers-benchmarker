@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from TKBEN.server.utils.configurations.base import (    
+from TKBEN.server.configurations.base import (    
     ensure_mapping,
     load_configurations,
 )
-from TKBEN.server.utils.configurations.server import (
+from TKBEN.server.configurations.server import (
     BenchmarkSettings,
     DatabaseSettings,
     DatasetSettings,

@@ -4,8 +4,9 @@ from typing import Any
 
 import pandas as pd
 
-from TKBEN.server.database.database import database
+from TKBEN.server.repositories.database import database
 
+K_ERROR = "k error"
 
 ###############################################################################
 class DataSerializer:
@@ -29,7 +30,7 @@ class DataSerializer:
             "fields": {
                 "lss": "LSS",
                 "k": "k",
-                "k_error": "k error",
+                "k_error": K_ERROR,
                 "qsat": "qsat",
                 "qsat_error": "qsat error",
             },
@@ -40,7 +41,7 @@ class DataSerializer:
             "fields": {
                 "lss": "LSS",
                 "k": "k",
-                "k_error": "k error",
+                "k_error": K_ERROR,
                 "qsat": "qsat",
                 "qsat_error": "qsat error",
                 "exponent": "exponent",
@@ -53,7 +54,7 @@ class DataSerializer:
             "fields": {
                 "lss": "LSS",
                 "k": "k",
-                "k_error": "k error",
+                "k_error": K_ERROR,
                 "exponent": "exponent",
                 "exponent_error": "exponent error",
             },
@@ -64,7 +65,7 @@ class DataSerializer:
             "fields": {
                 "lss": "LSS",
                 "k": "k",
-                "k_error": "k error",
+                "k_error": K_ERROR,
                 "beta": "beta",
                 "beta_error": "beta error",
             },
@@ -75,7 +76,7 @@ class DataSerializer:
             "fields": {
                 "lss": "LSS",
                 "k": "k",
-                "k_error": "k error",
+                "k_error": K_ERROR,
                 "qsat": "qsat",
                 "qsat_error": "qsat error",
                 "exponent": "exponent",
@@ -114,7 +115,7 @@ class DataSerializer:
             "fields": {
                 "lss": "LSS",
                 "k": "k",
-                "k_error": "k error",
+                "k_error": K_ERROR,
                 "a": "a",
                 "a_error": "a error",
                 "beta": "beta",
@@ -127,7 +128,7 @@ class DataSerializer:
             "fields": {
                 "lss": "LSS",
                 "k": "k",
-                "k_error": "k error",
+                "k_error": K_ERROR,
                 "qsat": "qsat",
                 "qsat_error": "qsat error",
             },

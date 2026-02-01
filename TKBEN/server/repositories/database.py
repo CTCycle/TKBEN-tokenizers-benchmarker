@@ -5,11 +5,11 @@ from typing import Any, Protocol
 
 import pandas as pd
 
-from TKBEN.server.utils.configurations import DatabaseSettings, server_settings
+from TKBEN.server.configurations import DatabaseSettings, server_settings
 from TKBEN.server.utils.logger import logger
-from TKBEN.server.database.postgres import PostgresRepository
-from TKBEN.server.database.schema import Base
-from TKBEN.server.database.sqlite import SQLiteRepository
+from TKBEN.server.repositories.postgres import PostgresRepository
+from TKBEN.server.repositories.schema import Base
+from TKBEN.server.repositories.sqlite import SQLiteRepository
 
 
 ###############################################################################

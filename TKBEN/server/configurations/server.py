@@ -5,7 +5,7 @@ from typing import Any
 
 from TKBEN.server.utils.types import coerce_str_sequence
 
-from TKBEN.server.utils.configurations import (  
+from TKBEN.server.configurations import (  
     ensure_mapping,
     load_configurations,
 )

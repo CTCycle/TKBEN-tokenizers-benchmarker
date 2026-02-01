@@ -10,9 +10,9 @@ import pandas as pd
 import sqlalchemy
 from datasets import Dataset, DatasetDict, load_dataset
 
-from TKBEN.server.database.database import database
-from TKBEN.server.database.schema import TextDataset
-from TKBEN.server.utils.configurations import server_settings
+from TKBEN.server.repositories.database import database
+from TKBEN.server.repositories.schema import TextDataset
+from TKBEN.server.configurations import server_settings
 from TKBEN.server.utils.constants import DATASETS_PATH
 from TKBEN.server.utils.logger import logger
 
@@ -617,7 +617,7 @@ class DatasetService:
         Returns:
             Dictionary with analyzed_count and statistics summary.
         """
-        from TKBEN.server.database.schema import TextDatasetStatistics
+        from TKBEN.server.repositories.schema import TextDatasetStatistics
 
         # Query to stream documents from TEXT_DATASET
         query = sqlalchemy.text(
