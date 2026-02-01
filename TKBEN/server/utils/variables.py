@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-
 from dotenv import load_dotenv
 
 from TKBEN.server.utils.constants import ENV_FILE_PATH

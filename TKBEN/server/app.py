@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 
 from TKBEN.server.utils.variables import env_variables
-from TKBEN.server.utils.configurations import server_settings
+from TKBEN.server.configurations import server_settings
 from TKBEN.server.utils.constants import API_ROUTE_DOCS, API_ROUTE_ROOT
 from TKBEN.server.routes.datasets import router as datasets_router
 from TKBEN.server.routes.tokenizers import router as tokenizers_router
