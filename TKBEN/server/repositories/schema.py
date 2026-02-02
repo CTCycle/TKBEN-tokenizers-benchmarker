@@ -6,12 +6,31 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    JSON,
     String,
     UniqueConstraint,
 )
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.types import TypeDecorator
 
 Base = declarative_base()
+
+
+###############################################################################
+class JSONSequence(TypeDecorator):
+    impl = JSON
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):  # type: ignore[override]
+        return value
+
+    def process_result_value(self, value, dialect):  # type: ignore[override]
+        return value
+
+
+###############################################################################
+class IntSequence(JSONSequence):
+    pass
 
 
 ###############################################################################
@@ -110,3 +129,27 @@ class TextDatasetStatistics(Base):
     AVG_words_length = Column(Float)
     STD_words_length = Column(Float)
     __table_args__ = (UniqueConstraint("dataset_name", "text"),)
+
+
+###############################################################################
+class TextDatasetReports(Base):
+    __tablename__ = "TEXT_DATASET_REPORTS"
+    dataset_name = Column(String, primary_key=True)
+    document_count = Column(Integer)
+    document_bins = Column(JSONSequence)
+    document_counts = Column(IntSequence)
+    document_bin_edges = Column(JSONSequence)
+    document_min_length = Column(Integer)
+    document_max_length = Column(Integer)
+    document_mean_length = Column(Float)
+    document_median_length = Column(Float)
+    word_bins = Column(JSONSequence)
+    word_counts = Column(IntSequence)
+    word_bin_edges = Column(JSONSequence)
+    word_min_length = Column(Integer)
+    word_max_length = Column(Integer)
+    word_mean_length = Column(Float)
+    word_median_length = Column(Float)
+    most_common_words = Column(JSONSequence)
+    least_common_words = Column(JSONSequence)
+    __table_args__ = (UniqueConstraint("dataset_name"),)

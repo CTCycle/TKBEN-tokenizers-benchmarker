@@ -70,6 +70,12 @@ class DatasetAnalysisRequest(BaseModel):
 
 
 ###############################################################################
+class WordFrequency(BaseModel):
+    word: str = Field(..., description="Word token")
+    count: int = Field(..., description="Frequency count")
+
+
+###############################################################################
 class DatasetStatisticsSummary(BaseModel):
     """Summary of word-level statistics from dataset analysis."""
 
@@ -86,15 +92,34 @@ class DatasetAnalysisResponse(BaseModel):
 
     status: str = Field(default="success")
     dataset_name: str = Field(..., description="Name of analyzed dataset")
-    analyzed_count: int = Field(..., description="Number of documents analyzed")
-    statistics: DatasetStatisticsSummary = Field(..., description="Word-level statistics")
+    document_count: int = Field(..., description="Number of documents analyzed")
+    document_length_histogram: HistogramData = Field(
+        ..., description="Document length histogram"
+    )
+    word_length_histogram: HistogramData = Field(
+        ..., description="Word length histogram"
+    )
+    min_document_length: int = Field(default=0, description="Minimum document length")
+    max_document_length: int = Field(default=0, description="Maximum document length")
+    most_common_words: list[WordFrequency] = Field(
+        default_factory=list, description="Top 10 most common words"
+    )
+    least_common_words: list[WordFrequency] = Field(
+        default_factory=list, description="Top 10 least common words"
+    )
+
+
+###############################################################################
+class DatasetPreview(BaseModel):
+    dataset_name: str = Field(..., description="Dataset identifier")
+    document_count: int = Field(..., description="Number of documents")
 
 
 ###############################################################################
 class DatasetListResponse(BaseModel):
     """Response schema for listing available datasets."""
 
-    datasets: list[str] = Field(
+    datasets: list[DatasetPreview] = Field(
         default_factory=list, description="List of dataset names in the database"
     )
 

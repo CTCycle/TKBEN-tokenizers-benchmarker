@@ -120,20 +120,41 @@ export interface DatasetStatisticsSummary {
 }
 
 /**
+ * Word frequency item
+ */
+export interface WordFrequency {
+    word: string;
+    count: number;
+}
+
+/**
  * Response from the dataset analysis endpoint
  */
 export interface DatasetAnalysisResponse {
     status: string;
     dataset_name: string;
-    analyzed_count: number;
-    statistics: DatasetStatisticsSummary;
+    document_count: number;
+    document_length_histogram: HistogramData;
+    word_length_histogram: HistogramData;
+    min_document_length: number;
+    max_document_length: number;
+    most_common_words: WordFrequency[];
+    least_common_words: WordFrequency[];
+}
+
+/**
+ * Dataset preview item
+ */
+export interface DatasetPreviewItem {
+    dataset_name: string;
+    document_count: number;
 }
 
 /**
  * Response from the list datasets endpoint
  */
 export interface DatasetListResponse {
-    datasets: string[];
+    datasets: DatasetPreviewItem[];
 }
 
 /**

@@ -66,9 +66,10 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         setDatasetsLoading(true);
         try {
             const response = await fetchAvailableDatasets();
-            setAvailableDatasets(response.datasets);
-            if (response.datasets.length > 0 && !selectedDataset) {
-                setSelectedDataset(response.datasets[0]);
+            const datasetNames = response.datasets.map((dataset) => dataset.dataset_name);
+            setAvailableDatasets(datasetNames);
+            if (datasetNames.length > 0 && !selectedDataset) {
+                setSelectedDataset(datasetNames[0]);
             }
         } catch (error) {
             console.error('Failed to fetch datasets:', error);

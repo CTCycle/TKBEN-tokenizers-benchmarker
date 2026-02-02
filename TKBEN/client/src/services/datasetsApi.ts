@@ -102,11 +102,11 @@ export async function uploadCustomDataset(
 }
 
 /**
- * Analyze a dataset to compute word-level statistics.
+ * Validate a dataset and compute document/word-level statistics.
  * @param request - Dataset analysis parameters (dataset_name)
- * @returns Promise with the analysis response including word-level statistics
+ * @returns Promise with the validation response including histograms and word frequencies
  */
-export async function analyzeDataset(
+export async function validateDataset(
     request: DatasetAnalysisRequest,
     onUpdate?: (status: JobStatusResponse) => void,
 ): Promise<DatasetAnalysisResponse> {
@@ -133,4 +133,21 @@ export async function analyzeDataset(
     } catch (error) {
         throw error;
     }
+}
+
+/**
+ * Remove a dataset and related reports from the database.
+ * @param datasetName - Dataset identifier
+ */
+export async function deleteDataset(datasetName: string): Promise<{ status: string; dataset_name: string; message: string }> {
+    const response = await fetch(`${API_ENDPOINTS.DATASETS_DELETE}?dataset_name=${encodeURIComponent(datasetName)}`, {
+        method: 'DELETE',
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || `Failed to delete dataset: ${response.status}`);
+    }
+
+    return response.json();
 }

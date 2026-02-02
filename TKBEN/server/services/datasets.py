@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import heapq
 import math
 import os
+from collections import Counter
 from collections.abc import Callable, Generator, Iterator
 from dataclasses import dataclass
 from typing import Any
@@ -12,6 +14,7 @@ from datasets import Dataset, DatasetDict, load_dataset
 
 from TKBEN.server.repositories.database import database
 from TKBEN.server.repositories.schema import TextDataset
+from TKBEN.server.repositories.serializer import DatasetSerializer
 from TKBEN.server.configurations import server_settings
 from TKBEN.server.utils.constants import DATASETS_PATH
 from TKBEN.server.utils.logger import logger
@@ -77,6 +80,16 @@ class HistogramBuilder:
             len(self.counts) - 1,
         )
         self.counts[index] += 1
+
+    def add_batch(self, length: int, count: int) -> None:
+        if not self.counts or count <= 0:
+            return
+        base = self.stats.resolved_min()
+        index = min(
+            (length - base) // self.bin_width,
+            len(self.counts) - 1,
+        )
+        self.counts[index] += count
 
     def _midpoint(self, index: int) -> float:
         start = self.bin_edges[index]
@@ -150,10 +163,11 @@ class DatasetService:
     def __init__(self, hf_access_token: str | None = None) -> None:
         self.hf_access_token = hf_access_token
         # Load settings from centralized configuration
-        self._settings = server_settings.datasets
-        self.histogram_bins = self._settings.histogram_bins
-        self.streaming_batch_size = self._settings.streaming_batch_size
-        self.log_interval = self._settings.log_interval
+        self.settings = server_settings.datasets
+        self.histogram_bins = self.settings.histogram_bins
+        self.streaming_batch_size = self.settings.streaming_batch_size
+        self.log_interval = self.settings.log_interval
+        self.dataset_serializer = DatasetSerializer()
 
 
     # -------------------------------------------------------------------------
@@ -229,17 +243,16 @@ class DatasetService:
 
     # -------------------------------------------------------------------------
     def is_dataset_in_database(self, dataset_name: str) -> bool:
-        query = sqlalchemy.text(
-            'SELECT 1 FROM "TEXT_DATASET" WHERE "dataset_name" = :dataset LIMIT 1'
-        )
-        with database.backend.engine.connect() as conn:
-            result = conn.execute(query, {"dataset": dataset_name})
-            return result.first() is not None
+        return self.dataset_serializer.dataset_exists(dataset_name)
 
     # -------------------------------------------------------------------------
     def get_available_datasets(self) -> list[str]:
         """Get list of all unique dataset names in the database."""
-        return database.backend.get_distinct_values("TEXT_DATASET", "dataset_name")
+        return self.dataset_serializer.list_dataset_names()
+
+    # -------------------------------------------------------------------------
+    def get_dataset_previews(self) -> list[dict[str, Any]]:
+        return self.dataset_serializer.list_dataset_previews()
 
     # -------------------------------------------------------------------------
     def dataset_length_stream(
@@ -256,29 +269,14 @@ class DatasetService:
 
     # -------------------------------------------------------------------------
     def database_length_stream(self, dataset_name: str) -> Callable[[], Iterator[int]]:
-        query = sqlalchemy.text(
-            'SELECT LENGTH(text) AS text_length '
-            'FROM "TEXT_DATASET" WHERE "dataset_name" = :dataset'
-        )
-        fetch_size = self.streaming_batch_size
+        batch_size = self.streaming_batch_size
 
         def generator() -> Iterator[int]:
-            with database.backend.engine.connect().execution_options(
-                stream_results=True
-            ) as conn:
-                result = conn.execute(query, {"dataset": dataset_name})
-                while True:
-                    rows = result.fetchmany(fetch_size)
-                    if not rows:
-                        break
-                    for row in rows:
-                        if hasattr(row, "_mapping"):
-                            length_value = row._mapping.get("text_length")
-                        else:
-                            length_value = row[0]
-                        if length_value is None:
-                            continue
-                        yield int(length_value)
+            for batch in self.dataset_serializer.iterate_dataset_batches(
+                dataset_name, batch_size
+            ):
+                for text in batch:
+                    yield len(text)
 
         return generator
 
@@ -300,6 +298,19 @@ class DatasetService:
         builder = HistogramBuilder(stats, self.histogram_bins)
         for length in stream_factory():
             builder.add(length)
+        histogram = builder.build()
+        histogram["counts"] = list(histogram.get("counts", []))
+        return histogram
+
+    # -------------------------------------------------------------------------
+    def histogram_from_counts(
+        self,
+        stats: LengthStatistics,
+        counts: dict[int, int],
+    ) -> dict[str, Any]:
+        builder = HistogramBuilder(stats, self.histogram_bins)
+        for length, count in counts.items():
+            builder.add_batch(length, count)
         histogram = builder.build()
         histogram["counts"] = list(histogram.get("counts", []))
         return histogram
@@ -607,127 +618,135 @@ class DatasetService:
         progress_callback: Callable[[float], None] | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> dict[str, Any]:
-        """
-        Compute word-level statistics for all documents in a dataset.
-        Uses streaming to avoid loading entire dataset into memory.
-
-        Args:
-            dataset_name: Name of the dataset to analyze.
-
-        Returns:
-            Dictionary with analyzed_count and statistics summary.
-        """
-        from TKBEN.server.repositories.schema import TextDatasetStatistics
-
-        # Query to stream documents from TEXT_DATASET
-        query = sqlalchemy.text(
-            'SELECT "dataset_name", "text" FROM "TEXT_DATASET" '
-            'WHERE "dataset_name" = :dataset'
+        return self.validate_dataset(
+            dataset_name=dataset_name,
+            progress_callback=progress_callback,
+            should_stop=should_stop,
         )
 
-        count_query = sqlalchemy.text(
-            'SELECT COUNT(*) FROM "TEXT_DATASET" WHERE "dataset_name" = :dataset'
-        )
+    # -------------------------------------------------------------------------
+    def validate_dataset(
+        self,
+        dataset_name: str,
+        progress_callback: Callable[[float], None] | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> dict[str, Any]:
+        cached_report = self.dataset_serializer.load_dataset_report(dataset_name)
+        if cached_report is not None:
+            if progress_callback:
+                progress_callback(100.0)
+            return cached_report
 
-        with database.backend.engine.connect() as conn:
-            count_result = conn.execute(count_query, {"dataset": dataset_name})
-            count_row = count_result.first()
-        total_documents = count_row[0] if count_row else 0
+        if not self.dataset_serializer.dataset_exists(dataset_name):
+            raise ValueError(f"Dataset '{dataset_name}' not found.")
+
+        total_documents = self.dataset_serializer.count_dataset_documents(dataset_name)
         if progress_callback:
             progress_callback(5.0)
 
-        batch_size = self.streaming_batch_size
+        self.dataset_serializer.delete_dataset_statistics(dataset_name)
+
+        logger.info("Starting validation for dataset: %s", dataset_name)
+
+        document_stats = LengthStatistics()
+        word_stats = LengthStatistics()
+        document_counts: dict[int, int] = {}
+        word_counts: dict[int, int] = {}
+        word_counter: Counter[str] = Counter()
         analyzed_count = 0
-        last_logged = 0
 
-        # Delete any existing statistics for this dataset
-        database.delete_by_key(
-            TextDatasetStatistics.__tablename__,
-            "dataset_name",
-            dataset_name,
-        )
+        batch_size = self.streaming_batch_size
 
-        logger.info("Starting analysis for dataset: %s", dataset_name)
+        for batch in self.dataset_serializer.iterate_dataset_batches(
+            dataset_name, batch_size
+        ):
+            if should_stop and should_stop():
+                return {}
 
-        # Collect batches to insert AFTER closing the read connection
-        # This avoids SQLite "database is locked" errors from concurrent connections
-        pending_batches: list[list[dict[str, Any]]] = []
-        current_batch: list[dict[str, Any]] = []
+            stats_batch: list[dict[str, Any]] = []
 
-        with database.backend.engine.connect().execution_options(
-            stream_results=True
-        ) as conn:
-            result = conn.execute(query, {"dataset": dataset_name})
+            for text in batch:
+                if not text or not isinstance(text, str):
+                    continue
 
-            while True:
-                rows = result.fetchmany(batch_size)
-                if not rows:
-                    break
+                document_length = len(text)
+                document_stats.update(document_length)
+                document_counts[document_length] = document_counts.get(document_length, 0) + 1
 
-                for row in rows:
-                    if should_stop and should_stop():
-                        return {}
-                    if hasattr(row, "_mapping"):
-                        text = row._mapping.get("text", "")
-                    else:
-                        text = row[1] if len(row) > 1 else ""
+                words = text.split()
+                words_count = len(words)
 
-                    if not text or not isinstance(text, str):
-                        continue
+                if words_count > 0:
+                    word_lengths = [len(word) for word in words]
+                    avg_word_length = sum(word_lengths) / words_count
+                    variance = (
+                        sum((length - avg_word_length) ** 2 for length in word_lengths)
+                        / words_count
+                    )
+                    std_word_length = variance**0.5
+                    for length in word_lengths:
+                        word_stats.update(length)
+                        word_counts[length] = word_counts.get(length, 0) + 1
+                    word_counter.update(words)
+                else:
+                    avg_word_length = 0.0
+                    std_word_length = 0.0
 
-                    # Compute word-level statistics
-                    words = text.split()
-                    words_count = len(words)
-
-                    if words_count > 0:
-                        word_lengths = [len(w) for w in words]
-                        avg_word_length = sum(word_lengths) / len(word_lengths)
-                        # Standard deviation
-                        variance = sum((l - avg_word_length) ** 2 for l in word_lengths) / len(word_lengths)
-                        std_word_length = variance ** 0.5
-                    else:
-                        avg_word_length = 0.0
-                        std_word_length = 0.0
-
-                    current_batch.append({
+                stats_batch.append(
+                    {
                         "dataset_name": dataset_name,
                         "text": text,
                         "words_count": words_count,
                         "AVG_words_length": avg_word_length,
                         "STD_words_length": std_word_length,
-                    })
+                    }
+                )
+                analyzed_count += 1
 
-                    if len(current_batch) >= batch_size:
-                        # Queue batch for insertion after connection closes
-                        pending_batches.append(current_batch)
-                        current_batch = []
+            self.dataset_serializer.save_dataset_statistics_batch(stats_batch)
 
-            # Queue remaining items
-            if current_batch:
-                pending_batches.append(current_batch)
+            if analyzed_count and analyzed_count % self.log_interval == 0:
+                logger.info("Validated %d documents so far...", analyzed_count)
 
-        # Now that the read connection is closed, insert all pending batches
-        for batch in pending_batches:
-            df = pd.DataFrame(batch)
-            database.insert_dataframe(df, TextDatasetStatistics.__tablename__)
-            analyzed_count += len(batch)
-            if analyzed_count - last_logged >= self.log_interval:
-                logger.info("Analyzed %d documents so far...", analyzed_count)
-                last_logged = analyzed_count
             if progress_callback and total_documents > 0:
                 progress_value = (analyzed_count / total_documents) * 100.0
                 progress_callback(progress_value)
 
-        logger.info("Completed analysis: %d documents analyzed", analyzed_count)
+        document_histogram = self.histogram_from_counts(
+            document_stats, document_counts
+        )
+        word_histogram = self.histogram_from_counts(word_stats, word_counts)
 
-        # Get summary statistics
-        statistics = self.get_analysis_summary(dataset_name)
+        most_common_words = [
+            {"word": word, "count": int(count)}
+            for word, count in word_counter.most_common(10)
+        ]
+        least_common_words = [
+            {"word": word, "count": int(count)}
+            for word, count in heapq.nsmallest(
+                10, word_counter.items(), key=lambda item: (item[1], item[0])
+            )
+        ]
 
-        return {
+        report = {
             "dataset_name": dataset_name,
-            "analyzed_count": analyzed_count,
-            "statistics": statistics,
+            "document_count": document_stats.document_count,
+            "document_length_histogram": document_histogram,
+            "word_length_histogram": word_histogram,
+            "min_document_length": document_histogram.get("min_length", 0),
+            "max_document_length": document_histogram.get("max_length", 0),
+            "most_common_words": most_common_words,
+            "least_common_words": least_common_words,
         }
+
+        self.dataset_serializer.save_dataset_report(report)
+
+        logger.info("Completed validation: %d documents analyzed", analyzed_count)
+
+        if progress_callback:
+            progress_callback(100.0)
+
+        return report
 
     # -------------------------------------------------------------------------
     def get_analysis_summary(self, dataset_name: str) -> dict[str, Any]:
@@ -825,12 +844,10 @@ class DatasetService:
     # -------------------------------------------------------------------------
     def is_dataset_analyzed(self, dataset_name: str) -> bool:
         """Check if a dataset has been analyzed."""
-        query = sqlalchemy.text(
-            'SELECT 1 FROM "TEXT_DATASET_STATISTICS" '
-            'WHERE "dataset_name" = :dataset LIMIT 1'
-        )
+        report = self.dataset_serializer.load_dataset_report(dataset_name)
+        return report is not None
 
-        with database.backend.engine.connect() as conn:
-            result = conn.execute(query, {"dataset": dataset_name})
-            return result.first() is not None
+    # -------------------------------------------------------------------------
+    def remove_dataset(self, dataset_name: str) -> None:
+        self.dataset_serializer.delete_dataset(dataset_name)
 
