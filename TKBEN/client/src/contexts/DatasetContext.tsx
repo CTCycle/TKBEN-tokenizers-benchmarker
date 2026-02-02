@@ -1,7 +1,21 @@
-import { createContext, useContext, useCallback, useMemo, useRef, useState } from 'react';
+import {
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import type { ReactNode } from 'react';
-import { analyzeDataset, downloadDataset, uploadCustomDataset, fetchAvailableDatasets } from '../services/datasetsApi';
-import type { DatasetStatisticsSummary, HistogramData } from '../types/api';
+import {
+    deleteDataset,
+    downloadDataset,
+    fetchAvailableDatasets,
+    uploadCustomDataset,
+    validateDataset,
+} from '../services/datasetsApi';
+import type { DatasetAnalysisResponse, DatasetPreviewItem, HistogramData } from '../types/api';
 
 interface DatasetStats {
     documentCount: number;
@@ -12,7 +26,6 @@ interface DatasetStats {
 }
 
 interface DatasetContextType {
-    // State
     datasetName: string | null;
     selectedCorpus: string;
     selectedConfig: string;
@@ -22,15 +35,15 @@ interface DatasetContextType {
     stats: DatasetStats | null;
     histogram: HistogramData | null;
     loadProgress: number | null;
-    analyzing: boolean;
-    analysisStats: DatasetStatisticsSummary | null;
-    analysisProgress: number | null;
+    validating: boolean;
+    validationReport: DatasetAnalysisResponse | null;
+    validationProgress: number | null;
     fileInputRef: React.RefObject<HTMLInputElement | null>;
-    availableDatasets: string[];
-    selectedAnalysisDataset: string;
-    analysisDatasetLoading: boolean;
+    availableDatasets: DatasetPreviewItem[];
+    datasetsLoading: boolean;
+    activeValidationDataset: string | null;
+    removingDataset: string | null;
 
-    // Actions
     setSelectedCorpus: (corpus: string) => void;
     setSelectedConfig: (config: string) => void;
     setError: (error: string | null) => void;
@@ -39,8 +52,8 @@ interface DatasetContextType {
     handleLoadDataset: () => Promise<void>;
     handleUploadClick: () => void;
     handleFileChange: (event: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
-    handleAnalyzeDataset: () => Promise<void>;
-    setSelectedAnalysisDataset: (name: string) => void;
+    handleValidateDataset: (datasetName: string) => Promise<void>;
+    handleDeleteDataset: (datasetName: string) => Promise<void>;
     refreshAvailableDatasets: () => Promise<void>;
 }
 
@@ -57,37 +70,36 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
     const [stats, setStats] = useState<DatasetStats | null>(null);
     const [histogram, setHistogram] = useState<HistogramData | null>(null);
     const [loadProgress, setLoadProgress] = useState<number | null>(null);
-    const [analyzing, setAnalyzing] = useState(false);
-    const [analysisStats, setAnalysisStats] = useState<DatasetStatisticsSummary | null>(null);
-    const [analysisProgress, setAnalysisProgress] = useState<number | null>(null);
-    const [availableDatasets, setAvailableDatasets] = useState<string[]>([]);
-    const [selectedAnalysisDataset, setSelectedAnalysisDataset] = useState('');
-    const [analysisDatasetLoading, setAnalysisDatasetLoading] = useState(false);
+    const [validating, setValidating] = useState(false);
+    const [validationReport, setValidationReport] = useState<DatasetAnalysisResponse | null>(null);
+    const [validationProgress, setValidationProgress] = useState<number | null>(null);
+    const [availableDatasets, setAvailableDatasets] = useState<DatasetPreviewItem[]>([]);
+    const [datasetsLoading, setDatasetsLoading] = useState(false);
+    const [activeValidationDataset, setActiveValidationDataset] = useState<string | null>(null);
+    const [removingDataset, setRemovingDataset] = useState<string | null>(null);
 
     const refreshAvailableDatasets = useCallback(async () => {
-        setAnalysisDatasetLoading(true);
+        setDatasetsLoading(true);
         try {
             const response = await fetchAvailableDatasets();
             setAvailableDatasets(response.datasets);
-            // Auto-select first dataset if none selected
-            if (response.datasets.length > 0 && !selectedAnalysisDataset) {
-                setSelectedAnalysisDataset(response.datasets[0]);
-            }
         } catch (err) {
             console.error('Failed to fetch datasets:', err);
         } finally {
-            setAnalysisDatasetLoading(false);
+            setDatasetsLoading(false);
         }
-    }, [selectedAnalysisDataset]);
+    }, []);
+
+    useEffect(() => {
+        void refreshAvailableDatasets();
+    }, [refreshAvailableDatasets]);
 
     const handleCorpusChange = (value: string) => {
         setSelectedCorpus(value);
         setSelectedConfig('');
-        // Reset loaded state when corpus changes
         setDatasetLoaded(false);
         setStats(null);
         setHistogram(null);
-        setAnalysisStats(null);
     };
 
     const handleConfigChange = (value: string) => {
@@ -95,7 +107,6 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
         setDatasetLoaded(false);
         setStats(null);
         setHistogram(null);
-        setAnalysisStats(null);
     };
 
     const handleLoadDataset = useCallback(async () => {
@@ -104,10 +115,13 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
         setLoadProgress(0);
 
         try {
-            const response = await downloadDataset({
-                corpus: selectedCorpus,
-                config: selectedConfig,
-            }, (status) => setLoadProgress(status.progress));
+            const response = await downloadDataset(
+                {
+                    corpus: selectedCorpus,
+                    config: selectedConfig,
+                },
+                (status) => setLoadProgress(status.progress),
+            );
 
             setStats({
                 documentCount: response.document_count,
@@ -119,7 +133,6 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             setHistogram(response.histogram);
             setDatasetName(response.dataset_name);
             setDatasetLoaded(true);
-            // Refresh available datasets after loading new one
             await refreshAvailableDatasets();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load dataset');
@@ -127,128 +140,160 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             setLoading(false);
             setLoadProgress(null);
         }
-    }, [selectedCorpus, selectedConfig, refreshAvailableDatasets]);
+    }, [refreshAvailableDatasets, selectedCorpus, selectedConfig]);
 
     const handleUploadClick = () => {
         fileInputRef.current?.click();
     };
 
-    const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
+    const handleFileChange = useCallback(
+        async (event: React.ChangeEvent<HTMLInputElement>) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
 
-        setLoading(true);
-        setError(null);
-        setLoadProgress(0);
+            setLoading(true);
+            setError(null);
+            setLoadProgress(0);
 
-        try {
-            const response = await uploadCustomDataset(file, (status) => setLoadProgress(status.progress));
+            try {
+                const response = await uploadCustomDataset(file, (status) =>
+                    setLoadProgress(status.progress),
+                );
 
-            setStats({
-                documentCount: response.document_count,
-                meanLength: response.histogram.mean_length,
-                medianLength: response.histogram.median_length,
-                minLength: response.histogram.min_length,
-                maxLength: response.histogram.max_length,
-            });
-            setHistogram(response.histogram);
-            setDatasetName(response.dataset_name);
-            setDatasetLoaded(true);
-            // Refresh available datasets after upload
-            await refreshAvailableDatasets();
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to upload dataset');
-        } finally {
-            setLoading(false);
-            setLoadProgress(null);
-            // Reset file input so the same file can be uploaded again if needed
-            if (fileInputRef.current) {
-                fileInputRef.current.value = '';
+                setStats({
+                    documentCount: response.document_count,
+                    meanLength: response.histogram.mean_length,
+                    medianLength: response.histogram.median_length,
+                    minLength: response.histogram.min_length,
+                    maxLength: response.histogram.max_length,
+                });
+                setHistogram(response.histogram);
+                setDatasetName(response.dataset_name);
+                setDatasetLoaded(true);
+                await refreshAvailableDatasets();
+            } catch (err) {
+                setError(err instanceof Error ? err.message : 'Failed to upload dataset');
+            } finally {
+                setLoading(false);
+                setLoadProgress(null);
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                }
             }
-        }
-    }, [refreshAvailableDatasets]);
+        },
+        [refreshAvailableDatasets],
+    );
 
-    const handleAnalyzeDataset = useCallback(async () => {
-        if (!selectedAnalysisDataset) return;
+    const handleValidateDataset = useCallback(async (targetDataset: string) => {
+        if (!targetDataset) return;
 
-        setAnalyzing(true);
+        setValidating(true);
         setError(null);
-        setAnalysisProgress(0);
+        setValidationProgress(0);
+        setActiveValidationDataset(targetDataset);
 
         try {
-            const response = await analyzeDataset(
-                { dataset_name: selectedAnalysisDataset },
-                (status) => setAnalysisProgress(status.progress),
+            const response = await validateDataset(
+                { dataset_name: targetDataset },
+                (status) => setValidationProgress(status.progress),
             );
-            setAnalysisStats(response.statistics);
+            setValidationReport(response);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to analyze dataset');
+            setError(err instanceof Error ? err.message : 'Failed to validate dataset');
         } finally {
-            setAnalyzing(false);
-            setAnalysisProgress(null);
+            setValidating(false);
+            setValidationProgress(null);
+            setActiveValidationDataset(null);
         }
-    }, [selectedAnalysisDataset]);
+    }, []);
 
-    const value = useMemo<DatasetContextType>(() => ({
-        // State
-        datasetName,
-        selectedCorpus,
-        selectedConfig,
-        loading,
-        error,
-        datasetLoaded,
-        stats,
-        histogram,
-        loadProgress,
-        analyzing,
-        analysisStats,
-        analysisProgress,
-        fileInputRef,
-        availableDatasets,
-        selectedAnalysisDataset,
-        analysisDatasetLoading,
+    const handleDeleteDataset = useCallback(
+        async (targetDataset: string) => {
+            if (!targetDataset) return;
 
-        // Actions
-        setSelectedCorpus,
-        setSelectedConfig,
-        setError,
-        handleCorpusChange,
-        handleConfigChange,
-        handleLoadDataset,
-        handleUploadClick,
-        handleFileChange,
-        handleAnalyzeDataset,
-        setSelectedAnalysisDataset,
-        refreshAvailableDatasets,
-    }), [
-        datasetName,
-        selectedCorpus,
-        selectedConfig,
-        loading,
-        error,
-        datasetLoaded,
-        stats,
-        histogram,
-        loadProgress,
-        analyzing,
-        analysisStats,
-        analysisProgress,
-        fileInputRef,
-        availableDatasets,
-        selectedAnalysisDataset,
-        analysisDatasetLoading,
-        setSelectedCorpus,
-        setSelectedConfig,
-        setError,
-        handleCorpusChange,
-        handleConfigChange,
-        handleLoadDataset,
-        handleUploadClick,
-        handleFileChange,
-        handleAnalyzeDataset,
-        setSelectedAnalysisDataset,
-        refreshAvailableDatasets,
-    ]);
+            setRemovingDataset(targetDataset);
+            setError(null);
+
+            try {
+                await deleteDataset(targetDataset);
+                if (validationReport?.dataset_name === targetDataset) {
+                    setValidationReport(null);
+                }
+                if (datasetName === targetDataset) {
+                    setDatasetName(null);
+                    setDatasetLoaded(false);
+                    setStats(null);
+                    setHistogram(null);
+                }
+                await refreshAvailableDatasets();
+            } catch (err) {
+                setError(err instanceof Error ? err.message : 'Failed to delete dataset');
+            } finally {
+                setRemovingDataset(null);
+            }
+        },
+        [datasetName, refreshAvailableDatasets, validationReport],
+    );
+
+    const value = useMemo<DatasetContextType>(
+        () => ({
+            datasetName,
+            selectedCorpus,
+            selectedConfig,
+            loading,
+            error,
+            datasetLoaded,
+            stats,
+            histogram,
+            loadProgress,
+            validating,
+            validationReport,
+            validationProgress,
+            fileInputRef,
+            availableDatasets,
+            datasetsLoading,
+            activeValidationDataset,
+            removingDataset,
+            setSelectedCorpus,
+            setSelectedConfig,
+            setError,
+            handleCorpusChange,
+            handleConfigChange,
+            handleLoadDataset,
+            handleUploadClick,
+            handleFileChange,
+            handleValidateDataset,
+            handleDeleteDataset,
+            refreshAvailableDatasets,
+        }),
+        [
+            datasetName,
+            selectedCorpus,
+            selectedConfig,
+            loading,
+            error,
+            datasetLoaded,
+            stats,
+            histogram,
+            loadProgress,
+            validating,
+            validationReport,
+            validationProgress,
+            fileInputRef,
+            availableDatasets,
+            datasetsLoading,
+            activeValidationDataset,
+            removingDataset,
+            handleCorpusChange,
+            handleConfigChange,
+            handleLoadDataset,
+            handleUploadClick,
+            handleFileChange,
+            handleValidateDataset,
+            handleDeleteDataset,
+            refreshAvailableDatasets,
+        ],
+    );
 
     return (
         <DatasetContext.Provider value={value}>

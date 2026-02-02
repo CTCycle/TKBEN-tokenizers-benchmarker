@@ -11,6 +11,7 @@ export const API_ENDPOINTS = {
     DATASETS_DOWNLOAD: `${API_BASE_URL}/datasets/download`,
     DATASETS_UPLOAD: `${API_BASE_URL}/datasets/upload`,
     DATASETS_ANALYZE: `${API_BASE_URL}/datasets/analyze`,
+    DATASETS_DELETE: `${API_BASE_URL}/datasets/delete`,
 
     TOKENIZERS_SETTINGS: `${API_BASE_URL}/tokenizers/settings`,
     TOKENIZERS_SCAN: `${API_BASE_URL}/tokenizers/scan`,

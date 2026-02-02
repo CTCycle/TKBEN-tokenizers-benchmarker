@@ -1,4 +1,182 @@
+import { useMemo, useState } from 'react';
+import type { MouseEvent } from 'react';
 import { useDataset } from '../contexts/DatasetContext';
+
+type DatasetPreset = {
+  id: string;
+  label: string;
+  description: string;
+  defaultConfig?: string;
+};
+
+type DatasetGroup = {
+  group: string;
+  datasets: DatasetPreset[];
+};
+
+const PREDEFINED_DATASETS: DatasetGroup[] = [
+  {
+    group: 'General Corpora',
+    datasets: [
+      {
+        id: 'wikitext',
+        label: 'wikitext',
+        description: 'Clean Wikipedia articles, multiple sizes, common baseline.',
+        defaultConfig: 'wikitext-2-v1',
+      },
+      {
+        id: 'c4',
+        label: 'c4',
+        description: 'Colossal Clean Crawled Corpus, large filtered web crawl.',
+      },
+      {
+        id: 'the_pile',
+        label: 'the_pile',
+        description: 'Diverse mix of academic, code, web, books, and forums.',
+      },
+      {
+        id: 'oscar',
+        label: 'oscar',
+        description: 'Multilingual web corpus filtered by language.',
+      },
+      {
+        id: 'cc_news',
+        label: 'cc_news',
+        description: 'News articles from Common Crawl.',
+      },
+      {
+        id: 'openwebtext',
+        label: 'openwebtext',
+        description: 'Reddit-linked web pages, GPT-style corpus.',
+      },
+      {
+        id: 'bookcorpus',
+        label: 'bookcorpus',
+        description: 'Fiction books, long-form narrative text.',
+      },
+    ],
+  },
+  {
+    group: 'News and Formal Writing',
+    datasets: [
+      {
+        id: 'ag_news',
+        label: 'ag_news',
+        description: 'Short news classification dataset.',
+      },
+      {
+        id: 'cnn_dailymail',
+        label: 'cnn_dailymail',
+        description: 'News articles with summaries, long documents.',
+      },
+      {
+        id: 'gigaword',
+        label: 'gigaword',
+        description: 'Newswire text, headline-style language.',
+      },
+      {
+        id: 'multi_news',
+        label: 'multi_news',
+        description: 'Multi-document news summarization.',
+      },
+    ],
+  },
+  {
+    group: 'Question Answering and Reading Comprehension',
+    datasets: [
+      {
+        id: 'squad',
+        label: 'squad',
+        description: 'Wikipedia-based QA dataset.',
+      },
+      {
+        id: 'natural_questions',
+        label: 'natural_questions',
+        description: 'Real Google search questions with long answers.',
+      },
+      {
+        id: 'hotpot_qa',
+        label: 'hotpot_qa',
+        description: 'Multi-hop reasoning over multiple passages.',
+      },
+    ],
+  },
+  {
+    group: 'Instruction, Dialogue, and Conversational Data',
+    datasets: [
+      {
+        id: 'daily_dialog',
+        label: 'daily_dialog',
+        description: 'Clean, human-written conversations.',
+      },
+      {
+        id: 'empathetic_dialogues',
+        label: 'empathetic_dialogues',
+        description: 'Emotion-focused conversations.',
+      },
+      {
+        id: 'openassistant_oasst1',
+        label: 'openassistant_oasst1',
+        description: 'Instruction-following and assistant responses.',
+      },
+    ],
+  },
+  {
+    group: 'Reviews and Informal Text',
+    datasets: [
+      {
+        id: 'yelp_review_full',
+        label: 'yelp_review_full',
+        description: 'User reviews of varying length.',
+      },
+      {
+        id: 'amazon_reviews_multi',
+        label: 'amazon_reviews_multi',
+        description: 'Multilingual product reviews.',
+      },
+      {
+        id: 'imdb',
+        label: 'imdb',
+        description: 'Long-form movie reviews.',
+      },
+    ],
+  },
+  {
+    group: 'Academic and Long-Form Text',
+    datasets: [
+      {
+        id: 'arxiv',
+        label: 'arxiv',
+        description: 'Scientific papers.',
+      },
+      {
+        id: 'pubmed',
+        label: 'pubmed',
+        description: 'Biomedical abstracts and articles.',
+      },
+    ],
+  },
+  {
+    group: 'Multilingual Benchmarks',
+    datasets: [
+      {
+        id: 'flores',
+        label: 'flores',
+        description: 'High-quality multilingual parallel text.',
+      },
+      {
+        id: 'wiki40b',
+        label: 'wiki40b',
+        description: 'Large multilingual Wikipedia corpus.',
+      },
+      {
+        id: 'opus_books',
+        label: 'opus_books',
+        description: 'Parallel book translations.',
+      },
+    ],
+  },
+];
 
 const DatasetPage = () => {
   const {
@@ -11,67 +189,86 @@ const DatasetPage = () => {
     stats,
     histogram,
     loadProgress,
-    analyzing,
-    analysisStats,
-    analysisProgress,
+    validating,
+    validationReport,
+    validationProgress,
     fileInputRef,
     availableDatasets,
-    selectedAnalysisDataset,
-    analysisDatasetLoading,
+    datasetsLoading,
+    activeValidationDataset,
+    removingDataset,
     setError,
     handleCorpusChange,
     handleConfigChange,
     handleLoadDataset,
     handleUploadClick,
     handleFileChange,
-    handleAnalyzeDataset,
-    setSelectedAnalysisDataset,
-    refreshAvailableDatasets,
+    handleValidateDataset,
+    handleDeleteDataset,
   } = useDataset();
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
 
   const corpusInputId = 'corpus-input';
   const configInputId = 'config-input';
-  const analysisDatasetSelectId = 'analysis-dataset-select';
+  const formatNumber = (num: number) => num.toLocaleString();
 
-  const formatNumber = (num: number) => {
-    return num.toLocaleString();
+  const documentHistogram = validationReport?.document_length_histogram ?? histogram;
+  const wordHistogram = validationReport?.word_length_histogram ?? null;
+  const documentCount = validationReport?.document_count ?? stats?.documentCount ?? null;
+  const minDocumentLength = validationReport?.min_document_length ?? stats?.minLength ?? null;
+  const maxDocumentLength = validationReport?.max_document_length ?? stats?.maxLength ?? null;
+
+  const selectedPresetDefinition = useMemo(() => {
+    for (const group of PREDEFINED_DATASETS) {
+      const match = group.datasets.find((dataset) => dataset.id === selectedPreset);
+      if (match) {
+        return match;
+      }
+    }
+    return null;
+  }, [selectedPreset]);
+
+  const handlePresetSelect = (preset: DatasetPreset) => {
+    setSelectedPreset(preset.id);
+    handleCorpusChange(preset.id);
+    handleConfigChange(preset.defaultConfig ?? '');
   };
 
-  // Compute histogram bar heights relative to max count
-  const renderHistogram = () => {
-    if (loading) {
-      const progressLabel = loadProgress !== null ? ` (${Math.round(loadProgress)}%)` : '';
+  const handlePresetDownload = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    void handleLoadDataset();
+  };
+
+  const renderHistogram = (
+    title: string,
+    histogramData: typeof histogram | null,
+    emptyLabel: string,
+    countLabel: string,
+  ) => {
+    if (!histogramData || histogramData.counts.length === 0) {
       return (
-        <div className="loading-container">
-          <div className="spinner" />
-          <p>Processing dataset{progressLabel}...</p>
-          <span>Downloading from HuggingFace, then saving to database. This may take several minutes for large datasets.</span>
+        <div className="chart-placeholder">
+          <p>{title}</p>
+          <span>{emptyLabel}</span>
         </div>
       );
     }
 
-    if (!histogram || histogram.counts.length === 0) {
-      return (
-        <>
-          <p>Dataset distribution preview</p>
-          <span>Load a dataset to see document length distribution.</span>
-        </>
-      );
-    }
-
-    const maxCount = Math.max(...histogram.counts);
+    const maxCount = Math.max(...histogramData.counts);
 
     return (
       <div className="histogram-container">
-        <p className="histogram-title">Document Length Distribution</p>
+        <p className="histogram-title">{title}</p>
         <div className="histogram-chart">
-          {histogram.counts.map((count, index) => {
+          {histogramData.counts.map((count, index) => {
             const heightPercent = maxCount > 0 ? (count / maxCount) * 100 : 0;
             return (
               <div
-                key={`${histogram.bins[index]}-${count}`}
+                key={`${histogramData.bins[index]}-${count}`}
                 className="histogram-bar-wrapper"
-                title={`${histogram.bins[index]}: ${formatNumber(count)} docs`}
+                title={`${histogramData.bins[index]}: ${formatNumber(count)} ${countLabel}`}
               >
                 <div
                   className="histogram-bar"
@@ -82,261 +279,364 @@ const DatasetPage = () => {
           })}
         </div>
         <div className="histogram-labels">
-          <span>{formatNumber(histogram.min_length)} chars</span>
-          <span>{formatNumber(histogram.max_length)} chars</span>
+          <span>{formatNumber(histogramData.min_length)} chars</span>
+          <span>{formatNumber(histogramData.max_length)} chars</span>
         </div>
       </div>
     );
   };
 
-  const renderAnalysisContent = () => {
-    if (analyzing) {
-      const progressLabel = analysisProgress !== null ? ` (${Math.round(analysisProgress)}%)` : '';
+  const renderValidationStatus = () => {
+    if (validating) {
+      const progressLabel =
+        validationProgress !== null ? ` (${Math.round(validationProgress)}%)` : '';
       return (
         <div className="loading-container">
           <div className="spinner" />
-          <p>Analyzing dataset{progressLabel}...</p>
-          <span>Computing word counts and word length statistics for each document.</span>
+          <p>Validating dataset{progressLabel}...</p>
+          <span>Computing document length and word distribution metrics.</span>
         </div>
       );
     }
 
-    if (!analysisStats) {
+    if (validationReport) {
       return null;
     }
 
     return (
-      <>
-        <div className="dashboard-grid">
-          <div className="stat-card">
-            <p className="stat-label">Analyzed Docs</p>
-            <p className="stat-value">
-              {formatNumber(analysisStats.total_documents)}
-            </p>
-          </div>
-          <div className="stat-card">
-            <p className="stat-label">Mean Words/Doc</p>
-            <p className="stat-value">
-              {formatNumber(Math.round(analysisStats.mean_words_count))}
-            </p>
-          </div>
-          <div className="stat-card">
-            <p className="stat-label">Median Words/Doc</p>
-            <p className="stat-value">
-              {formatNumber(Math.round(analysisStats.median_words_count))}
-            </p>
-          </div>
-        </div>
-        <ul className="insights-list">
-          <li>
-            Average word length: <strong>{analysisStats.mean_avg_word_length.toFixed(2)}</strong> characters
-          </li>
-          <li>
-            Word length variability: <strong>{analysisStats.mean_std_word_length.toFixed(2)}</strong> (std dev)
-          </li>
-        </ul>
-      </>
+      <div className="chart-placeholder">
+        <p>Validation results will appear here.</p>
+        <span>Run evaluation from the dataset preview list.</span>
+      </div>
     );
   };
+
+  let datasetOverviewDescription = 'Run dataset validation to view results';
+  if (validationReport?.dataset_name) {
+    datasetOverviewDescription = `Validation results for ${validationReport.dataset_name}`;
+  } else if (datasetLoaded && datasetName) {
+    datasetOverviewDescription = `Stats for ${datasetName}`;
+  }
+
+  const modalDownloadProgress = loadProgress !== null
+    ? ` (${Math.round(loadProgress)}%)`
+    : '';
 
   return (
     <div className="page-scroll">
       <div className="page-grid dataset-page-layout">
-        {/* Left column: Load + Analysis */}
         <div className="dataset-left-column">
           <section className="panel">
             <header className="panel-header">
               <div>
-                <p className="panel-label">Download dataset</p>
+                <p className="panel-label">Dataset Usage</p>
                 <p className="panel-description">
-                  Download from HuggingFace or upload a custom CSV/Excel file.
+                  Download a predefined dataset or upload a custom file, run validation from the
+                  preview list, and review the results in the dashboard as soon as processing
+                  completes.
                 </p>
               </div>
             </header>
-            <div className="panel-body">
-              {error && (
-                <div className="error-banner">
-                  <span>{error}</span>
-                  <button onClick={() => setError(null)}>×</button>
-                </div>
-              )}
-              <div className="input-stack">
-                <label className="field-label" htmlFor={corpusInputId}>
-                  Corpus
-                </label>
-                <input
-                  id={corpusInputId}
-                  className="text-input"
-                  value={selectedCorpus}
-                  onChange={(event) => handleCorpusChange(event.target.value)}
-                  disabled={loading}
-                />
+            {error && (
+              <div className="error-banner">
+                <span>{error}</span>
+                <button onClick={() => setError(null)}>×</button>
               </div>
-              <div className="input-stack">
-                <label className="field-label" htmlFor={configInputId}>
-                  Configuration
-                </label>
-                <input
-                  id={configInputId}
-                  className="text-input"
-                  value={selectedConfig}
-                  onChange={(event) => handleConfigChange(event.target.value)}
-                  disabled={loading}
-                />
-              </div>
-            </div>
-            <footer className="panel-footer">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept=".csv,.xlsx,.xls"
-                style={{ display: 'none' }}
-              />
-              <button
-                type="button"
-                className="primary-button"
-                onClick={handleLoadDataset}
-                disabled={loading}
-              >
-                {loading ? 'Downloading...' : 'Download dataset'}
-              </button>
-              <button
-                type="button"
-                className="primary-button ghost"
-                onClick={handleUploadClick}
-                disabled={loading}
-              >
-                Upload custom dataset
-              </button>
-            </footer>
+            )}
           </section>
 
-          {/* Analysis Tools Section */}
-          <section className="panel analysis-tools">
+          <section className="panel dataset-preview-panel">
             <header className="panel-header">
               <div>
-                <p className="panel-label">Analysis Tools</p>
+                <p className="panel-label">Dataset Preview</p>
                 <p className="panel-description">
-                  Analyze word-level statistics for any loaded dataset.
+                  Review datasets stored in the database and run validation on demand.
                 </p>
               </div>
-            </header>
-            <div className="panel-body">
-              <div className="input-stack">
-                <label className="field-label" htmlFor={analysisDatasetSelectId}>
-                  Select Dataset to Analyze
-                </label>
-                <div className="dataset-select-row">
-                  <select
-                    id={analysisDatasetSelectId}
-                    className="text-input"
-                    value={selectedAnalysisDataset}
-                    onChange={(e) => setSelectedAnalysisDataset(e.target.value)}
-                    disabled={analysisDatasetLoading || analyzing}
-                  >
-                    {availableDatasets.length === 0 ? (
-                      <option value="">
-                        {analysisDatasetLoading ? 'Loading...' : 'Click Refresh to load datasets'}
-                      </option>
-                    ) : (
-                      availableDatasets.map((dataset) => (
-                        <option key={dataset} value={dataset}>
-                          {dataset}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                  <button
-                    type="button"
-                    className="primary-button ghost"
-                    onClick={refreshAvailableDatasets}
-                    disabled={analysisDatasetLoading}
-                  >
-                    {analysisDatasetLoading ? 'Loading...' : 'Refresh'}
-                  </button>
-                </div>
-              </div>
-            </div>
-            <footer className="panel-footer">
               <button
                 type="button"
-                className="primary-button"
-                disabled={!selectedAnalysisDataset || analyzing}
-                onClick={handleAnalyzeDataset}
+                className="icon-button"
+                onClick={() => setIsModalOpen(true)}
+                aria-label="Add dataset"
               >
-                {analyzing ? 'Analyzing...' : 'Analyze Dataset'}
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 5v14M5 12h14" strokeWidth="2" strokeLinecap="round" />
+                </svg>
               </button>
-            </footer>
-          </section>
-
-          {/* Analysis Results */}
-          {(analyzing || analysisStats) && (
-            <aside className="panel dashboard-panel">
-              <header className="panel-header">
-                <div>
-                  <p className="panel-label">Word Analysis</p>
-                  <p className="panel-description">
-                    {analysisStats
-                      ? `Word-level statistics for ${selectedAnalysisDataset}`
-                      : 'Computing word-level statistics...'}
-                  </p>
+            </header>
+            <div className="dataset-preview-body">
+              {datasetsLoading ? (
+                <div className="dataset-preview-empty">Loading datasets...</div>
+              ) : availableDatasets.length === 0 ? (
+                <div className="dataset-preview-empty">
+                  No datasets available. Please download or upload a dataset.
                 </div>
-              </header>
-              {renderAnalysisContent()}
-            </aside>
-          )}
+              ) : (
+                <div className="dataset-preview-table">
+                  {availableDatasets.map((dataset) => {
+                    const isValidating = activeValidationDataset === dataset.dataset_name;
+                    const isRemoving = removingDataset === dataset.dataset_name;
+                    return (
+                      <div className="dataset-preview-row" key={dataset.dataset_name}>
+                        <span className="dataset-preview-name">{dataset.dataset_name}</span>
+                        <span className="dataset-preview-count">
+                          {formatNumber(dataset.document_count)}
+                        </span>
+                        <div className="dataset-preview-actions">
+                          <button
+                            type="button"
+                            className="icon-button subtle"
+                            aria-label="Run dataset evaluation"
+                            onClick={() => handleValidateDataset(dataset.dataset_name)}
+                            disabled={isValidating || isRemoving}
+                          >
+                            {isValidating ? (
+                              <span className="action-spinner" />
+                            ) : (
+                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M5 4h14v4H5z" />
+                                <path d="M5 12h14v8H5z" />
+                              </svg>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-button danger"
+                            aria-label="Remove dataset"
+                            onClick={() => handleDeleteDataset(dataset.dataset_name)}
+                            disabled={isValidating || isRemoving}
+                          >
+                            {isRemoving ? (
+                              <span className="action-spinner" />
+                            ) : (
+                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M5 7h14" strokeWidth="2" strokeLinecap="round" />
+                                <path d="M9 7V5h6v2" strokeWidth="2" strokeLinecap="round" />
+                                <rect x="7" y="7" width="10" height="12" rx="2" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </section>
         </div>
 
-        {/* Right column: Overview */}
         <aside className="panel dashboard-panel dataset-right-column">
           <header className="panel-header">
             <div>
-              <p className="panel-label">Dataset overview</p>
+              <p className="panel-label">Dataset Overview</p>
               <p className="panel-description">
-                {datasetLoaded && datasetName
-                  ? `Stats for ${datasetName}`
-                  : `Select and load a dataset to view stats`}
+                {datasetOverviewDescription}
               </p>
             </div>
           </header>
+          {renderValidationStatus()}
           <div className="dashboard-grid">
             <div className="stat-card">
               <p className="stat-label">Documents</p>
               <p className="stat-value">
-                {stats ? formatNumber(stats.documentCount) : '—'}
+                {documentCount !== null ? formatNumber(documentCount) : '—'}
               </p>
             </div>
             <div className="stat-card">
-              <p className="stat-label">Mean Length</p>
+              <p className="stat-label">Min Length</p>
               <p className="stat-value">
-                {stats ? formatNumber(Math.round(stats.meanLength)) : '—'}
+                {minDocumentLength !== null ? formatNumber(minDocumentLength) : '—'}
               </p>
             </div>
             <div className="stat-card">
-              <p className="stat-label">Median Length</p>
+              <p className="stat-label">Max Length</p>
               <p className="stat-value">
-                {stats ? formatNumber(Math.round(stats.medianLength)) : '—'}
+                {maxDocumentLength !== null ? formatNumber(maxDocumentLength) : '—'}
               </p>
             </div>
           </div>
-          <div className="chart-placeholder">
-            {renderHistogram()}
-          </div>
-          <ul className="insights-list">
-            <li>
-              Pre-processing removes empty entries automatically before statistics are computed.
-            </li>
-            {stats && (
-              <li>
-                Document lengths range from{' '}
-                <strong>{formatNumber(stats.minLength)}</strong> to{' '}
-                <strong>{formatNumber(stats.maxLength)}</strong> characters.
-              </li>
+          <div className="chart-block">
+            {renderHistogram(
+              'Document Length Distribution',
+              documentHistogram,
+              'Load or validate a dataset to see document lengths.',
+              'docs',
             )}
-          </ul>
+          </div>
+          <div className="chart-block">
+            {renderHistogram(
+              'Word Length Distribution',
+              wordHistogram,
+              'Validate a dataset to see word length distribution.',
+              'words',
+            )}
+          </div>
+          <div className="word-frequency-grid">
+            <div className="word-frequency-panel">
+              <p className="panel-label">Most Common Words</p>
+              {validationReport?.most_common_words?.length ? (
+                <ul className="word-frequency-list">
+                  {validationReport.most_common_words.map((item) => (
+                    <li key={`${item.word}-${item.count}`}>
+                      <span>{item.word}</span>
+                      <span>{formatNumber(item.count)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="word-frequency-empty">No validation results yet.</div>
+              )}
+            </div>
+            <div className="word-frequency-panel">
+              <p className="panel-label">Least Common Words</p>
+              {validationReport?.least_common_words?.length ? (
+                <ul className="word-frequency-list">
+                  {validationReport.least_common_words.map((item) => (
+                    <li key={`${item.word}-${item.count}`}>
+                      <span>{item.word}</span>
+                      <span>{formatNumber(item.count)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="word-frequency-empty">No validation results yet.</div>
+              )}
+            </div>
+          </div>
         </aside>
       </div>
+
+      {isModalOpen && (
+        <div className="modal-overlay" role="dialog" aria-modal="true">
+          <div className="modal-card dataset-modal">
+            <div className="dataset-modal-grid">
+              <div className="dataset-modal-column">
+                <p className="panel-label">Predefined Datasets</p>
+                <div className="dataset-preset-list">
+                  {PREDEFINED_DATASETS.map((group) => (
+                    <div className="dataset-preset-group" key={group.group}>
+                      <p className="dataset-preset-heading">{group.group}</p>
+                      {group.datasets.map((preset) => {
+                        const isSelected = selectedPreset === preset.id;
+                        return (
+                          <div
+                            key={preset.id}
+                            role="button"
+                            tabIndex={0}
+                            className={`dataset-preset-row${isSelected ? ' selected' : ''}`}
+                            onClick={() => handlePresetSelect(preset)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                handlePresetSelect(preset);
+                              }
+                            }}
+                          >
+                            <div className="dataset-preset-info">
+                              <span className="dataset-preset-name">{preset.label}</span>
+                              <span className="dataset-preset-description">{preset.description}</span>
+                            </div>
+                            {isSelected && (
+                              <button
+                                type="button"
+                                className="icon-button subtle"
+                                aria-label={`Download ${preset.label}`}
+                                onClick={handlePresetDownload}
+                                disabled={loading}
+                              >
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                  <path d="M12 3v12" strokeWidth="2" strokeLinecap="round" />
+                                  <path d="M7 10l5 5 5-5" strokeWidth="2" strokeLinecap="round" />
+                                  <path d="M5 19h14" strokeWidth="2" strokeLinecap="round" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="dataset-modal-divider" />
+              <div className="dataset-modal-column">
+                <p className="panel-label">Dataset Configuration</p>
+                <div className="dataset-config-row">
+                  <div className="input-stack">
+                    <label className="field-label" htmlFor={corpusInputId}>
+                      Corpus name
+                    </label>
+                    <input
+                      id={corpusInputId}
+                      className="text-input"
+                      value={selectedCorpus}
+                      onChange={(event) => handleCorpusChange(event.target.value)}
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="input-stack">
+                    <label className="field-label" htmlFor={configInputId}>
+                      Configuration
+                    </label>
+                    <input
+                      id={configInputId}
+                      className="text-input"
+                      value={selectedConfig}
+                      onChange={(event) => handleConfigChange(event.target.value)}
+                      disabled={loading}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="icon-button accent"
+                    onClick={() => void handleLoadDataset()}
+                    aria-label="Download dataset"
+                    disabled={loading || !selectedCorpus}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 3v12" strokeWidth="2" strokeLinecap="round" />
+                      <path d="M7 10l5 5 5-5" strokeWidth="2" strokeLinecap="round" />
+                      <path d="M5 19h14" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="dataset-upload-row">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept=".csv,.xlsx,.xls"
+                    style={{ display: 'none' }}
+                  />
+                  <button
+                    type="button"
+                    className="primary-button ghost"
+                    onClick={handleUploadClick}
+                    disabled={loading}
+                  >
+                    Upload custom dataset
+                  </button>
+                </div>
+                {loading && (
+                  <div className="dataset-modal-progress">
+                    Downloading dataset{modalDownloadProgress}...
+                  </div>
+                )}
+                {selectedPresetDefinition && selectedPresetDefinition.defaultConfig && (
+                  <div className="dataset-modal-hint">
+                    Default config loaded for {selectedPresetDefinition.label}.
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="secondary-button" onClick={() => setIsModalOpen(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
