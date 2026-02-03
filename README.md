@@ -48,21 +48,21 @@ Steps:
    cd TKBEN/client
    npm install
    npm run build
-   npm run preview -- --host 127.0.0.1 --port 7861 --strictPort
+   npm run preview -- --host 127.0.0.1 --port 5173 --strictPort
    ```
 
 ## 4. How to Use
 
 ### 4.1 Windows
-Launch `TKBEN/start_on_windows.bat`. The UI opens at `http://127.0.0.1:7861`.
+Launch `TKBEN/start_on_windows.bat`. The UI opens at `http://127.0.0.1:5173`.
 The backend API is available at `http://127.0.0.1:8000`, with documentation at `http://127.0.0.1:8000/docs`.
 
 ### 4.2 macOS / Linux
 Start the backend and frontend with the commands from the manual setup section:
 - Backend: `uv run python -m uvicorn TKBEN.server.app:app --host 127.0.0.1 --port 8000`
-- Frontend: `npm run preview -- --host 127.0.0.1 --port 7861 --strictPort`
+- Frontend: `npm run preview -- --host 127.0.0.1 --port 5173 --strictPort`
 
-The UI is available at `http://127.0.0.1:7861`, and the backend API at `http://127.0.0.1:8000` (docs at `http://127.0.0.1:8000/docs`).
+The UI is available at `http://127.0.0.1:5173`, and the backend API at `http://127.0.0.1:8000` (docs at `http://127.0.0.1:8000/docs`).
 
 ### 4.3 Using the Application
 Typical workflow:
@@ -99,15 +99,16 @@ Run `TKBEN/setup_and_maintenance.bat` and choose an action:
 
 ## 7. Configuration
 Backend configuration is defined in `TKBEN/settings/configurations.json` and can be overridden via environment variables in `TKBEN/settings/.env` (loaded on startup).
-Frontend hosting (host/port) is controlled by the Windows launcher using the same `.env` file; there is no separate frontend configuration file.
+Frontend hosting (host/port) is controlled by the Windows launcher and Vite using the same `TKBEN/settings/.env` file; there is no separate frontend configuration file.
 
 | Variable | Description |
 |----------|-------------|
 | FASTAPI_HOST | Backend bind host; set in `TKBEN/settings/.env` (read by `TKBEN/start_on_windows.bat`), default `127.0.0.1`. |
 | FASTAPI_PORT | Backend bind port; set in `TKBEN/settings/.env`, default `8000`. |
 | UI_HOST | Frontend bind host for preview; set in `TKBEN/settings/.env` if overridden, default `127.0.0.1` in `TKBEN/start_on_windows.bat`. |
-| UI_PORT | Frontend bind port for preview; set in `TKBEN/settings/.env` if overridden, default `7861` in `TKBEN/start_on_windows.bat`. |
-| RELOAD | Enables FastAPI reload; set in `TKBEN/settings/.env`, default `false`. |
+| UI_PORT | Frontend bind port for preview; set in `TKBEN/settings/.env` if overridden, default `5173` in `TKBEN/start_on_windows.bat`. |
+| RELOAD | Enables FastAPI reload; set in `TKBEN/settings/.env`, default `true`. |
+| VITE_API_BASE_URL | Frontend API base path; set in `TKBEN/settings/.env`, default `/api`. |
 | MPLBACKEND | Matplotlib backend; set in `TKBEN/settings/.env`, default `Agg`. |
 
 
