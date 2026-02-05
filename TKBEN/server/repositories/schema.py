@@ -1,10 +1,9 @@
 from __future__ import annotations
+from typing import Any
 
-from sqlalchemy import (
-    BigInteger,
+from sqlalchemy import (    
     Column,
-    Float,
-    ForeignKey,
+    Float,    
     Integer,
     JSON,
     String,
@@ -21,10 +20,10 @@ class JSONSequence(TypeDecorator):
     impl = JSON
     cache_ok = True
 
-    def process_bind_param(self, value, dialect):  # type: ignore[override]
+    def process_bind_param(self, value, dialect) -> Any | None:  # type: ignore[override]
         return value
 
-    def process_result_value(self, value, dialect):  # type: ignore[override]
+    def process_result_value(self, value, dialect) -> Any | None:  # type: ignore[override]
         return value
 
 
@@ -137,14 +136,14 @@ class TextDatasetReports(Base):
     dataset_name = Column(String, primary_key=True)
     document_count = Column(Integer)
     document_bins = Column(JSONSequence)
-    document_counts = Column(IntSequence)
+    document_counts = Column(JSONSequence)
     document_bin_edges = Column(JSONSequence)
     document_min_length = Column(Integer)
     document_max_length = Column(Integer)
     document_mean_length = Column(Float)
     document_median_length = Column(Float)
     word_bins = Column(JSONSequence)
-    word_counts = Column(IntSequence)
+    word_counts = Column(JSONSequence)
     word_bin_edges = Column(JSONSequence)
     word_min_length = Column(Integer)
     word_max_length = Column(Integer)

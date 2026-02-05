@@ -14,20 +14,12 @@ from TKBEN.server.utils.types import (
     coerce_bool,
     coerce_float,
     coerce_int,
-    coerce_str,
     coerce_str_or_none,
 )
 from TKBEN.server.utils.variables import env_variables
 
 # [SERVER SETTINGS]
 ###############################################################################
-@dataclass(frozen=True)
-class FastAPISettings:
-    title: str
-    description: str
-    version: str
-
-# -----------------------------------------------------------------------------
 @dataclass(frozen=True)
 class DatabaseSettings:
     embedded_database: bool
@@ -84,7 +76,6 @@ class JobsSettings:
 # -----------------------------------------------------------------------------
 @dataclass(frozen=True)
 class ServerSettings:
-    fastapi: FastAPISettings
     database: DatabaseSettings
     datasets: DatasetSettings
     fitting: FittingSettings
@@ -95,18 +86,6 @@ class ServerSettings:
 
 # [BUILDER FUNCTIONS]
 ###############################################################################
-def build_fastapi_settings(payload: dict[str, Any] | Any) -> FastAPISettings:
-    title_value = env_variables.get("FASTAPI_TITLE") or payload.get("title")
-    desc_value = env_variables.get("FASTAPI_DESCRIPTION") or payload.get("description")
-    version_value = env_variables.get("FASTAPI_VERSION") or payload.get("version")
-
-    return FastAPISettings(
-        title=coerce_str(title_value, "TKBEN Backend"),
-        description=coerce_str(desc_value, "FastAPI backend"),
-        version=coerce_str(version_value, "0.1.0"),
-    )
-
-# -----------------------------------------------------------------------------
 def build_database_settings(payload: dict[str, Any] | Any) -> DatabaseSettings:
     embedded_value = payload.get("embedded_database")
     embedded = coerce_bool(embedded_value, True)
@@ -244,7 +223,6 @@ def build_jobs_settings(payload: dict[str, Any] | Any) -> JobsSettings:
 
 # -----------------------------------------------------------------------------
 def build_server_settings(payload: dict[str, Any] | Any) -> ServerSettings:
-    fastapi_payload = ensure_mapping(payload.get("fastapi"))
     database_payload = ensure_mapping(payload.get("database"))
     dataset_payload = ensure_mapping(payload.get("datasets"))
     fitting_payload = ensure_mapping(payload.get("fitting"))
@@ -253,7 +231,6 @@ def build_server_settings(payload: dict[str, Any] | Any) -> ServerSettings:
     jobs_payload = ensure_mapping(payload.get("jobs"))
 
     return ServerSettings(
-        fastapi=build_fastapi_settings(fastapi_payload),
         database=build_database_settings(database_payload),
         datasets=build_dataset_settings(dataset_payload),
         fitting=build_fitting_settings(fitting_payload),
