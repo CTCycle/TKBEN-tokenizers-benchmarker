@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import heapq
+import inspect
 import math
 import os
+import shutil
 from collections import Counter
 from collections.abc import Callable, Generator, Iterator
 from dataclasses import dataclass
@@ -16,7 +18,7 @@ from TKBEN.server.repositories.database import database
 from TKBEN.server.repositories.schema import TextDataset
 from TKBEN.server.repositories.serializer import DatasetSerializer
 from TKBEN.server.configurations import server_settings
-from TKBEN.server.utils.constants import SOURCES_PATH
+from TKBEN.server.utils.constants import DATASETS_PATH
 from TKBEN.server.utils.logger import logger
 
 
@@ -159,6 +161,7 @@ class HistogramBuilder:
 class DatasetService:
 
     SUPPORTED_TEXT_FIELDS = ("text", "content", "sentence", "document", "tokens")
+    _hf_pickler_patch_applied = False
 
     def __init__(self, hf_access_token: str | None = None) -> None:
         self.hf_access_token = hf_access_token
@@ -180,7 +183,57 @@ class DatasetService:
     def get_cache_path(self, corpus: str, config: str | None = None) -> str:
         config_suffix = f"_{config}" if config else ""
         folder_name = f"{corpus}{config_suffix}".replace("/", "_")
-        return os.path.join(SOURCES_PATH, folder_name)
+        return os.path.join(DATASETS_PATH, folder_name)
+
+    # -------------------------------------------------------------------------
+    @classmethod
+    def ensure_datasets_pickler_compatibility(cls) -> None:
+        if cls._hf_pickler_patch_applied:
+            return
+
+        try:
+            from datasets.utils import _dill as datasets_dill
+            import dill
+
+            batch_setitems = datasets_dill.Pickler._batch_setitems
+            signature = inspect.signature(batch_setitems)
+
+            if len(signature.parameters) == 2:
+                def _batch_setitems_compat(self, items, obj=None):  # type: ignore[no-untyped-def]
+                    if self._legacy_no_dict_keys_sorting:
+                        return dill.Pickler._batch_setitems(self, items, obj)
+
+                    try:
+                        items = sorted(items)
+                    except Exception:
+                        from datasets.fingerprint import Hasher
+
+                        items = sorted(items, key=lambda x: Hasher.hash(x[0]))
+                    return dill.Pickler._batch_setitems(self, items, obj)
+
+                datasets_dill.Pickler._batch_setitems = _batch_setitems_compat  # type: ignore[assignment]
+                logger.info("Applied datasets pickler compatibility patch.")
+        except Exception:
+            logger.debug("Failed to apply datasets pickler compatibility patch", exc_info=True)
+        finally:
+            cls._hf_pickler_patch_applied = True
+
+    # -------------------------------------------------------------------------
+    def maybe_cleanup_downloaded_source(self, cache_path: str, dataset_name: str) -> None:
+        if not self.settings.cleanup_downloaded_sources:
+            return
+        if not os.path.isdir(cache_path):
+            return
+        try:
+            shutil.rmtree(cache_path)
+            logger.info("Removed downloaded source folder for %s: %s", dataset_name, cache_path)
+        except Exception:
+            logger.warning(
+                "Failed to remove downloaded source folder for %s: %s",
+                dataset_name,
+                cache_path,
+                exc_info=True,
+            )
 
     # -------------------------------------------------------------------------
     def find_text_column(self, dataset: Dataset | DatasetDict) -> str | None:
@@ -329,9 +382,10 @@ class DatasetService:
         progress_span: float = 100.0,
     ) -> tuple[dict[str, Any], int]:
         batch_size = self.streaming_batch_size
-        batch: list[dict[str, str]] = []
+        batch: list[dict[str, Any]] = []
         saved_count = 0
         last_logged = 0
+        next_id = 1
         histogram_builder = HistogramBuilder(stats, self.histogram_bins)
         total_documents = stats.document_count if stats.document_count > 0 else 1
 
@@ -345,7 +399,8 @@ class DatasetService:
             if should_stop and should_stop():
                 return histogram_builder.build(), saved_count
             histogram_builder.add(len(text))
-            batch.append({"dataset_name": dataset_name, "text": text})
+            batch.append({"id": next_id, "dataset_name": dataset_name, "text": text})
+            next_id += 1
 
             if len(batch) >= batch_size:
                 df = pd.DataFrame(batch)
@@ -385,9 +440,11 @@ class DatasetService:
         progress_callback: Callable[[float], None] | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> dict[str, Any]:
-        dataset_name = self.get_dataset_name(corpus, config)
-        cache_path = self.get_cache_path(corpus, config)
+        normalized_config = config.strip() if isinstance(config, str) and config.strip() else None
+        dataset_name = self.get_dataset_name(corpus, normalized_config)
+        cache_path = self.get_cache_path(corpus, normalized_config)
 
+        os.makedirs(DATASETS_PATH, exist_ok=True)
         os.makedirs(cache_path, exist_ok=True)
 
         if self.is_dataset_in_database(dataset_name):
@@ -400,7 +457,7 @@ class DatasetService:
             histogram = self.histogram_from_stream(length_stream, stats)
             if progress_callback:
                 progress_callback(100.0)
-            return {
+            payload = {
                 "dataset_name": dataset_name,
                 "text_column": "text",
                 "document_count": stats.document_count,
@@ -408,6 +465,8 @@ class DatasetService:
                 "cache_path": cache_path,
                 "histogram": histogram,
             }
+            self.maybe_cleanup_downloaded_source(cache_path, dataset_name)
+            return payload
 
         if self.dataset_cached_on_disk(cache_path):
             logger.info("Dataset cache found on disk: %s", cache_path)
@@ -417,15 +476,22 @@ class DatasetService:
         try:
             if progress_callback:
                 progress_callback(5.0)
+            self.ensure_datasets_pickler_compatibility()
             dataset = load_dataset(
                 corpus,
-                config,
+                normalized_config,
                 cache_dir=cache_path,
                 token=self.hf_access_token,
             )
-        except Exception:
+        except Exception as exc:
             logger.exception("Failed to download dataset %s", dataset_name)
-            raise
+            detail = str(exc).strip() or exc.__class__.__name__
+            if "Pickler._batch_setitems()" in detail:
+                raise RuntimeError(
+                    "Failed to download dataset due to a Python 3.14 serialization "
+                    "incompatibility while loading HuggingFace datasets."
+                ) from exc
+            raise RuntimeError(f"Failed to download dataset '{dataset_name}': {detail}") from exc
 
         text_column = self.find_text_column(dataset)
         if text_column is None:
@@ -455,7 +521,7 @@ class DatasetService:
             progress_span=80.0,
         )
 
-        return {
+        payload = {
             "dataset_name": dataset_name,
             "text_column": text_column,
             "document_count": stats.document_count,
@@ -463,6 +529,9 @@ class DatasetService:
             "cache_path": cache_path,
             "histogram": histogram,
         }
+        if not should_stop or not should_stop():
+            self.maybe_cleanup_downloaded_source(cache_path, dataset_name)
+        return payload
 
     # -------------------------------------------------------------------------
     def upload_and_persist(
@@ -544,9 +613,10 @@ class DatasetService:
 
         # Persist to database with histogram computation (second pass)
         batch_size = self.streaming_batch_size
-        batch: list[dict[str, str]] = []
+        batch: list[dict[str, Any]] = []
         saved_count = 0
         last_logged = 0
+        next_id = 1
         histogram_builder = HistogramBuilder(stats, self.histogram_bins)
 
         # Delete any existing entries with this dataset name
@@ -560,7 +630,8 @@ class DatasetService:
             if should_stop and should_stop():
                 return {}
             histogram_builder.add(len(text))
-            batch.append({"dataset_name": dataset_name, "text": text})
+            batch.append({"id": next_id, "dataset_name": dataset_name, "text": text})
+            next_id += 1
 
             if len(batch) >= batch_size:
                 batch_df = pd.DataFrame(batch)
@@ -656,6 +727,7 @@ class DatasetService:
         analyzed_count = 0
 
         batch_size = self.streaming_batch_size
+        next_stats_id = 1
 
         for batch in self.dataset_serializer.iterate_dataset_batches(
             dataset_name, batch_size
@@ -694,6 +766,7 @@ class DatasetService:
 
                 stats_batch.append(
                     {
+                        "id": next_stats_id,
                         "dataset_name": dataset_name,
                         "text": text,
                         "words_count": words_count,
@@ -701,6 +774,7 @@ class DatasetService:
                         "STD_words_length": std_word_length,
                     }
                 )
+                next_stats_id += 1
                 analyzed_count += 1
 
             self.dataset_serializer.save_dataset_statistics_batch(stats_batch)

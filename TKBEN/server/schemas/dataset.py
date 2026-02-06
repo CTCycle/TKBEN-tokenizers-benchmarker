@@ -23,10 +23,17 @@ class HistogramData(BaseModel):
 
 
 ###############################################################################
+class DatasetDownloadConfigs(BaseModel):
+    configuration: str | None = Field(
+        default=None, description="Optional dataset configuration/subset name"
+    )
+
+
+###############################################################################
 class DatasetDownloadRequest(BaseModel):
     corpus: str = Field(..., description="HuggingFace dataset corpus identifier")
-    config: str | None = Field(
-        default=None, description="Dataset configuration/subset"
+    configs: DatasetDownloadConfigs = Field(
+        ..., description="Dataset download options. Use configs.configuration when needed."
     )
     hf_access_token: str | None = Field(
         default=None, description="Optional HuggingFace access token"

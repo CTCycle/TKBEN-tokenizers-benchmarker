@@ -61,6 +61,26 @@ class PostgresRepository:
         raise ValueError(f"No table class found for name {table_name}")
 
     # -------------------------------------------------------------------------
+    def ensure_table_schema(self, table_name: str) -> None:
+        table_cls = self.get_table_class(table_name)
+        expected_cols = set(table_cls.__table__.columns.keys())
+        with self.engine.begin() as conn:
+            inspector = inspect(conn)
+            if not inspector.has_table(table_name):
+                return
+            existing_cols = {column["name"] for column in inspector.get_columns(table_name)}
+            if existing_cols == expected_cols:
+                return
+            logger.warning(
+                "Schema mismatch for %s. Recreating table. existing=%s expected=%s",
+                table_name,
+                sorted(existing_cols),
+                sorted(expected_cols),
+            )
+            table_cls.__table__.drop(conn, checkfirst=True)
+            table_cls.__table__.create(conn, checkfirst=True)
+
+    # -------------------------------------------------------------------------
     def upsert_dataframe(self, df: pd.DataFrame, table_cls) -> None:
         table = table_cls.__table__
         session = self.session()
@@ -218,6 +238,7 @@ class PostgresRepository:
         if total_rows == 0:
             return
 
+        self.ensure_table_schema(table_name)
         table_cls = self.get_table_class(table_name)
         table = table_cls.__table__
 

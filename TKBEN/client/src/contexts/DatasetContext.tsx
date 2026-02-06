@@ -115,10 +115,13 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
         setLoadProgress(0);
 
         try {
+            const normalizedConfig = selectedConfig.trim();
             const response = await downloadDataset(
                 {
                     corpus: selectedCorpus,
-                    config: selectedConfig,
+                    configs: normalizedConfig
+                        ? { configuration: normalizedConfig }
+                        : {},
                 },
                 (status) => setLoadProgress(status.progress),
             );

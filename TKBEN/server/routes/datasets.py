@@ -42,7 +42,7 @@ class DatasetJobHandler:
         }
 
     # -------------------------------------------------------------------------
-    def build_download_payload(self, result: dict[str, Any]) -> dict[str, Any]:
+    def build_dataset_mutation_payload(self, result: dict[str, Any]) -> dict[str, Any]:
         return {
             "status": "success",
             "dataset_name": result.get("dataset_name", ""),
@@ -53,15 +53,22 @@ class DatasetJobHandler:
         }
 
     # -------------------------------------------------------------------------
+    def build_download_payload(self, result: dict[str, Any]) -> dict[str, Any]:
+        return self.build_dataset_mutation_payload(result)
+
+    # -------------------------------------------------------------------------
     def build_upload_payload(self, result: dict[str, Any]) -> dict[str, Any]:
-        return {
-            "status": "success",
-            "dataset_name": result.get("dataset_name", ""),
-            "text_column": result.get("text_column", ""),
-            "document_count": result.get("document_count", 0),
-            "saved_count": result.get("saved_count", 0),
-            "histogram": self.build_histogram_payload(result.get("histogram", {})),
-        }
+        return self.build_dataset_mutation_payload(result)
+
+    # -------------------------------------------------------------------------
+    def extract_configuration(self, request_payload: dict[str, Any]) -> str | None:
+        configs = request_payload.get("configs")
+        if isinstance(configs, dict):
+            value = configs.get("configuration")
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+            return None
+        return None
 
     # -------------------------------------------------------------------------
     def build_analysis_payload(self, result: dict[str, Any]) -> dict[str, Any]:
@@ -92,7 +99,7 @@ class DatasetJobHandler:
         should_stop = JobStopChecker(job_manager, job_id)
         result = service.download_and_persist(
             corpus=request_payload.get("corpus", ""),
-            config=request_payload.get("config"),
+            config=self.extract_configuration(request_payload),
             remove_invalid=True,
             progress_callback=progress_callback,
             should_stop=should_stop,
@@ -185,7 +192,7 @@ async def download_dataset(request: DatasetDownloadRequest) -> JobStartResponse:
     logger.info(
         "Dataset download requested: corpus=%s, config=%s",
         request.corpus,
-        request.config,
+        request.configs.configuration,
     )
 
     if job_manager.is_job_running("dataset_download"):

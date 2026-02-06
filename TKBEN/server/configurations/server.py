@@ -43,6 +43,7 @@ class DatasetSettings:
     histogram_bins: int
     streaming_batch_size: int
     log_interval: int
+    cleanup_downloaded_sources: bool
 
 # -----------------------------------------------------------------------------
 @dataclass(frozen=True)
@@ -161,6 +162,9 @@ def build_dataset_settings(payload: dict[str, Any] | Any) -> DatasetSettings:
         ),
         log_interval=coerce_int(
             payload.get("log_interval"), 100000, minimum=1000
+        ),
+        cleanup_downloaded_sources=coerce_bool(
+            payload.get("cleanup_downloaded_sources"), False
         ),
     )
 
