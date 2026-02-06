@@ -8,12 +8,13 @@ ROOT_DIR = abspath(join(__file__, "../../../.."))
 PROJECT_DIR = join(ROOT_DIR, "TKBEN")
 SETTING_PATH = join(PROJECT_DIR, "settings")
 RESOURCES_PATH = join(PROJECT_DIR, "resources")
-DATA_PATH = join(RESOURCES_PATH, "database")
-DATASETS_PATH = join(RESOURCES_PATH, "datasets")
+SOURCES_PATH = join(RESOURCES_PATH, "sources")
+DATASETS_PATH = join(SOURCES_PATH, "datasets")
+TOKENIZERS_PATH = join(SOURCES_PATH, "tokenizers"
 LOGS_PATH = join(RESOURCES_PATH, "logs")
 TEMPLATES_PATH = join(RESOURCES_PATH, "templates")
 ENV_FILE_PATH = join(SETTING_PATH, ".env")
-DATABASE_FILENAME = "sqlite.db"
+DATABASE_FILENAME = "database.db"
 
 
 ###############################################################################
@@ -29,29 +30,23 @@ FASTAPI_VERSION = "1.2.0"
 ###############################################################################
 API_ROUTE_ROOT = "/"
 API_ROUTE_DOCS = "/docs"
-
 API_ROUTER_PREFIX_DATASETS = "/datasets"
 API_ROUTER_PREFIX_TOKENIZERS = "/tokenizers"
 API_ROUTER_PREFIX_BENCHMARKS = "/benchmarks"
 API_ROUTER_PREFIX_BROWSER = "/browser"
 API_ROUTER_PREFIX_JOBS = "/jobs"
-
 API_ROUTE_DATASETS_LIST = "/list"
 API_ROUTE_DATASETS_DOWNLOAD = "/download"
 API_ROUTE_DATASETS_UPLOAD = "/upload"
 API_ROUTE_DATASETS_ANALYZE = "/analyze"
 API_ROUTE_DATASETS_DELETE = "/delete"
-
 API_ROUTE_TOKENIZERS_SETTINGS = "/settings"
 API_ROUTE_TOKENIZERS_SCAN = "/scan"
 API_ROUTE_TOKENIZERS_UPLOAD = "/upload"
 API_ROUTE_TOKENIZERS_CUSTOM = "/custom"
-
 API_ROUTE_BENCHMARKS_RUN = "/run"
-
 API_ROUTE_BROWSER_TABLES = "/tables"
 API_ROUTE_BROWSER_DATA = "/data"
-
 API_ROUTE_JOBS_STATUS = "/{job_id}"
 
 

@@ -11,7 +11,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from TKBEN.server.configurations import DatabaseSettings
-from TKBEN.server.utils.constants import DATA_PATH, DATABASE_FILENAME
+from TKBEN.server.utils.constants import RESOURCES_PATH, DATABASE_FILENAME
 from TKBEN.server.utils.logger import logger
 from TKBEN.server.repositories.schema import Base
 
@@ -19,7 +19,7 @@ from TKBEN.server.repositories.schema import Base
 ###############################################################################
 class SQLiteRepository:
     def __init__(self, settings: DatabaseSettings) -> None:  
-        self.db_path: str | None = os.path.join(DATA_PATH, DATABASE_FILENAME)
+        self.db_path: str | None = os.path.join(RESOURCES_PATH, DATABASE_FILENAME)
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         self.engine: Engine = sqlalchemy.create_engine(
             f"sqlite:///{self.db_path}", echo=False, future=True

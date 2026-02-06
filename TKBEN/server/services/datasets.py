@@ -16,7 +16,7 @@ from TKBEN.server.repositories.database import database
 from TKBEN.server.repositories.schema import TextDataset
 from TKBEN.server.repositories.serializer import DatasetSerializer
 from TKBEN.server.configurations import server_settings
-from TKBEN.server.utils.constants import DATASETS_PATH
+from TKBEN.server.utils.constants import SOURCES_PATH
 from TKBEN.server.utils.logger import logger
 
 
@@ -180,7 +180,7 @@ class DatasetService:
     def get_cache_path(self, corpus: str, config: str | None = None) -> str:
         config_suffix = f"_{config}" if config else ""
         folder_name = f"{corpus}{config_suffix}".replace("/", "_")
-        return os.path.join(DATASETS_PATH, folder_name)
+        return os.path.join(SOURCES_PATH, folder_name)
 
     # -------------------------------------------------------------------------
     def find_text_column(self, dataset: Dataset | DatasetDict) -> str | None:
