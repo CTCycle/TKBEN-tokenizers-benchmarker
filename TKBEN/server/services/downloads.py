@@ -9,8 +9,7 @@ from datasets import load_dataset
 from huggingface_hub import HfApi
 from tokenizers import Tokenizer
 
-from TKBEN.client.workers import check_thread_status
-from TKBEN.server.utils.constants import DATASETS_PATH, TOKENIZER_PATH
+from TKBEN.server.utils.constants import SOURCES_PATH, TOKENIZER_PATH
 from TKBEN.server.utils.logger import logger
 
 
@@ -47,7 +46,7 @@ class DatasetManager:
         when the operation fails or yields no data.
         """
         datasets = {}
-        base_path = DATASETS_PATH
+        base_path = SOURCES_PATH
         # load a custom text dataset from .csv file
         if self.has_custom_dataset:
             csv_files = [
@@ -164,6 +163,55 @@ class TokenizersDownloadManager:
 
         return identifiers
 
+    def _download_hf_tokenizer(self, tokenizer_id: str) -> Any | None:
+        tokenizer_name = tokenizer_id.replace("/", "_")
+        tokenizer_save_path = os.path.join(TOKENIZER_PATH, tokenizer_name)
+        os.makedirs(tokenizer_save_path, exist_ok=True)
+        logger.info(f"Downloading and saving tokenizer: {tokenizer_id}")
+        tokenizer = transformers.AutoTokenizer.from_pretrained(
+            tokenizer_id,
+            cache_dir=tokenizer_save_path,
+            token=self.hf_access_token,
+        )
+        if not self.is_tokenizer_compatible(tokenizer):
+            logger.warning(
+                "Downloaded tokenizer %s is not compatible and will be skipped",
+                tokenizer_id,
+            )
+            return None
+        return tokenizer
+
+    def _iter_custom_tokenizers(self, custom_tokenizer_path: str) -> list[tuple[str, Any]]:
+        loaded_custom_tokenizers: list[tuple[str, Any]] = []
+        json_files = [
+            os.path.join(custom_tokenizer_path, fn)
+            for fn in os.listdir(custom_tokenizer_path)
+            if fn.lower().endswith(".json")
+        ]
+        if not json_files:
+            return loaded_custom_tokenizers
+
+        logger.info(f"Loading custom tokenizers from {custom_tokenizer_path}")
+        for js in json_files:
+            try:
+                tokenizer = Tokenizer.from_file(js)
+            except Exception:
+                logger.warning("Failed to load custom tokenizer from %s", js)
+                logger.debug("Custom tokenizer load failed for %s", js, exc_info=True)
+                continue
+
+            if not self.is_tokenizer_compatible(tokenizer):
+                logger.warning(
+                    "Custom tokenizer at %s is not compatible and will be skipped",
+                    js,
+                )
+                continue
+
+            tokenizer_name = os.path.basename(js).split(".")[0]
+            loaded_custom_tokenizers.append((f"CUSTOM {tokenizer_name}", tokenizer))
+
+        return loaded_custom_tokenizers
+
     # -------------------------------------------------------------------------
     def tokenizer_download(self, **kwargs) -> dict[str, Any]:
         """
@@ -180,24 +228,9 @@ class TokenizersDownloadManager:
         tokenizers = {}
         for tokenizer_id in self.tokenizers:
             try:
-                tokenizer_name = tokenizer_id.replace("/", "_")
-                tokenizer_save_path = os.path.join(
-                    TOKENIZER_PATH, tokenizer_name
-                )
-                os.makedirs(tokenizer_save_path, exist_ok=True)
-                logger.info(f"Downloading and saving tokenizer: {tokenizer_id}")
-                tokenizer = transformers.AutoTokenizer.from_pretrained(
-                    tokenizer_id,
-                    cache_dir=tokenizer_save_path,
-                    token=self.hf_access_token,
-                )
-                if not self.is_tokenizer_compatible(tokenizer):
-                    logger.warning(
-                        "Downloaded tokenizer %s is not compatible and will be skipped",
-                        tokenizer_id,
-                    )
-                    continue
-                tokenizers[tokenizer_id] = tokenizer
+                tokenizer = self._download_hf_tokenizer(tokenizer_id)
+                if tokenizer is not None:
+                    tokenizers[tokenizer_id] = tokenizer
 
             except Exception:
                 logger.warning("Failed to download tokenizer %s", tokenizer_id)
@@ -213,32 +246,9 @@ class TokenizersDownloadManager:
         custom_tokenizer_path = os.path.join(TOKENIZER_PATH, "custom")
         if os.path.exists(custom_tokenizer_path) and self.has_custom_tokenizer:
             check_thread_status(kwargs.get("worker", None))
-            json_files = [
-                os.path.join(custom_tokenizer_path, fn)
-                for fn in os.listdir(custom_tokenizer_path)
-                if fn.lower().endswith(".json")
-            ]
-
-            if json_files:
-                logger.info(f"Loading custom tokenizers from {custom_tokenizer_path}")
-                for js in json_files:
-                    try:
-                        tokenizer = Tokenizer.from_file(js)
-                    except Exception:
-                        logger.warning("Failed to load custom tokenizer from %s", js)
-                        logger.debug(
-                            "Custom tokenizer load failed for %s", js, exc_info=True
-                        )
-                        continue
-
-                    if not self.is_tokenizer_compatible(tokenizer):
-                        logger.warning(
-                            "Custom tokenizer at %s is not compatible and will be skipped",
-                            js,
-                        )
-                        continue
-
-                    tokenizer_name = os.path.basename(js).split(".")[0]
-                    tokenizers[f"CUSTOM {tokenizer_name}"] = tokenizer
+            for tokenizer_name, tokenizer in self._iter_custom_tokenizers(
+                custom_tokenizer_path
+            ):
+                tokenizers[tokenizer_name] = tokenizer
 
         return tokenizers
