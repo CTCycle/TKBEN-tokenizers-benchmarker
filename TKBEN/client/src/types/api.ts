@@ -73,7 +73,9 @@ export interface HistogramData {
  */
 export interface DatasetDownloadRequest {
     corpus: string;
-    config?: string | null;
+    configs: {
+        configuration?: string | null;
+    };
     hf_access_token?: string | null;
 }
 

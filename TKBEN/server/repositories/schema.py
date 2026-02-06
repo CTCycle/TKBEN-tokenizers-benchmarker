@@ -1,35 +1,17 @@
 from __future__ import annotations
-from typing import Any
 
 from sqlalchemy import (    
     Column,
     Float,    
     Integer,
-    JSON,
     String,
     UniqueConstraint,
 )
 from sqlalchemy.orm import declarative_base
-from sqlalchemy.types import TypeDecorator
+
+from TKBEN.server.repositories.types import JSONSequence
 
 Base = declarative_base()
-
-
-###############################################################################
-class JSONSequence(TypeDecorator):
-    impl = JSON
-    cache_ok = True
-
-    def process_bind_param(self, value, dialect) -> Any | None:  # type: ignore[override]
-        return value
-
-    def process_result_value(self, value, dialect) -> Any | None:  # type: ignore[override]
-        return value
-
-
-###############################################################################
-class IntSequence(JSONSequence):
-    pass
 
 
 ###############################################################################
@@ -114,20 +96,27 @@ class Vocabulary(Base):
 ###############################################################################
 class TextDataset(Base):
     __tablename__ = "TEXT_DATASET"
-    dataset_name = Column(String, primary_key=True)
-    text = Column(String, primary_key=True)
-    __table_args__ = (UniqueConstraint("dataset_name", "text"),)
+    id = Column(Integer, primary_key=True, nullable=False)
+    dataset_name = Column(String, primary_key=True, nullable=False)
+    text = Column(String, nullable=False)
+    __table_args__ = (
+        UniqueConstraint("id", "dataset_name"),        
+    )
 
 
 ###############################################################################
 class TextDatasetStatistics(Base):
     __tablename__ = "TEXT_DATASET_STATISTICS"
-    dataset_name = Column(String, primary_key=True)
-    text = Column(String, primary_key=True)
+    id = Column(Integer, primary_key=True, nullable=False)
+    dataset_name = Column(String, primary_key=True, nullable=False)
+    text = Column(String, nullable=False)
     words_count = Column(Integer)
     AVG_words_length = Column(Float)
     STD_words_length = Column(Float)
-    __table_args__ = (UniqueConstraint("dataset_name", "text"),)
+    __table_args__ = (
+        UniqueConstraint("id", "dataset_name"),
+        UniqueConstraint("dataset_name", "text"),
+    )
 
 
 ###############################################################################

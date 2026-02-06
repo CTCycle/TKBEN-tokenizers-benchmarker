@@ -325,108 +325,106 @@ const DatasetPage = () => {
   return (
     <div className="page-scroll">
       <div className="page-grid dataset-page-layout">
-        <div className="dataset-left-column">
-          <section className="panel">
-            <header className="panel-header">
-              <div>
-                <p className="panel-label">Dataset Usage</p>
-                <p className="panel-description">
-                  Download a predefined dataset or upload a custom file, run validation from the
-                  preview list, and review the results in the dashboard as soon as processing
-                  completes.
-                </p>
-              </div>
-            </header>
-            {error && (
-              <div className="error-banner">
-                <span>{error}</span>
-                <button onClick={() => setError(null)}>×</button>
-              </div>
-            )}
-          </section>
-
-          <section className="panel dataset-preview-panel">
-            <header className="panel-header">
-              <div>
-                <p className="panel-label">Dataset Preview</p>
-                <p className="panel-description">
-                  Review datasets stored in the database and run validation on demand.
-                </p>
-              </div>
-              <button
-                type="button"
-                className="icon-button"
-                onClick={() => setIsModalOpen(true)}
-                aria-label="Add dataset"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M12 5v14M5 12h14" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </button>
-            </header>
-            <div className="dataset-preview-body">
-              {datasetsLoading ? (
-                <div className="dataset-preview-empty">Loading datasets...</div>
-              ) : availableDatasets.length === 0 ? (
-                <div className="dataset-preview-empty">
-                  No datasets available. Please download or upload a dataset.
-                </div>
-              ) : (
-                <div className="dataset-preview-table">
-                  {availableDatasets.map((dataset) => {
-                    const isValidating = activeValidationDataset === dataset.dataset_name;
-                    const isRemoving = removingDataset === dataset.dataset_name;
-                    return (
-                      <div className="dataset-preview-row" key={dataset.dataset_name}>
-                        <span className="dataset-preview-name">{dataset.dataset_name}</span>
-                        <span className="dataset-preview-count">
-                          {formatNumber(dataset.document_count)}
-                        </span>
-                        <div className="dataset-preview-actions">
-                          <button
-                            type="button"
-                            className="icon-button subtle"
-                            aria-label="Run dataset evaluation"
-                            onClick={() => handleValidateDataset(dataset.dataset_name)}
-                            disabled={isValidating || isRemoving}
-                          >
-                            {isValidating ? (
-                              <span className="action-spinner" />
-                            ) : (
-                              <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M5 4h14v4H5z" />
-                                <path d="M5 12h14v8H5z" />
-                              </svg>
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            className="icon-button danger"
-                            aria-label="Remove dataset"
-                            onClick={() => handleDeleteDataset(dataset.dataset_name)}
-                            disabled={isValidating || isRemoving}
-                          >
-                            {isRemoving ? (
-                              <span className="action-spinner" />
-                            ) : (
-                              <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M5 7h14" strokeWidth="2" strokeLinecap="round" />
-                                <path d="M9 7V5h6v2" strokeWidth="2" strokeLinecap="round" />
-                                <rect x="7" y="7" width="10" height="12" rx="2" />
-                              </svg>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+        <section className="dataset-top-section">
+          <div className="dataset-top-row">
+            <div className="dataset-intro-panel">
+              <p className="panel-label">Dataset Usage</p>
+              <p className="panel-description">
+                This page is dedicated to downloading and analyzing text datasets from Hugging
+                Face. Select a predefined corpus or upload your own file, then validate the
+                dataset and inspect the resulting metrics directly in the dashboard.
+              </p>
             </div>
-          </section>
-        </div>
+            <div className="dataset-top-divider" aria-hidden="true" />
+            <div className="dataset-preview-panel">
+              <header className="panel-header">
+                <div>
+                  <p className="panel-label">Dataset Preview</p>
+                  <p className="panel-description">
+                    Review datasets stored in the database and run validation on demand.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="icon-button"
+                  onClick={() => setIsModalOpen(true)}
+                  aria-label="Add dataset"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 5v14M5 12h14" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </header>
+              <div className="dataset-preview-body">
+                {datasetsLoading ? (
+                  <div className="dataset-preview-empty">Loading datasets...</div>
+                ) : availableDatasets.length === 0 ? (
+                  <div className="dataset-preview-empty">
+                    No datasets available. Please download or upload a dataset.
+                  </div>
+                ) : (
+                  <div className="dataset-preview-table">
+                    {availableDatasets.map((dataset) => {
+                      const isValidating = activeValidationDataset === dataset.dataset_name;
+                      const isRemoving = removingDataset === dataset.dataset_name;
+                      return (
+                        <div className="dataset-preview-row" key={dataset.dataset_name}>
+                          <span className="dataset-preview-name">{dataset.dataset_name}</span>
+                          <span className="dataset-preview-count">
+                            {formatNumber(dataset.document_count)}
+                          </span>
+                          <div className="dataset-preview-actions">
+                            <button
+                              type="button"
+                              className="icon-button subtle"
+                              aria-label="Run dataset evaluation"
+                              onClick={() => handleValidateDataset(dataset.dataset_name)}
+                              disabled={isValidating || isRemoving}
+                            >
+                              {isValidating ? (
+                                <span className="action-spinner" />
+                              ) : (
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                  <path d="M5 4h14v4H5z" />
+                                  <path d="M5 12h14v8H5z" />
+                                </svg>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              className="icon-button danger"
+                              aria-label="Remove dataset"
+                              onClick={() => handleDeleteDataset(dataset.dataset_name)}
+                              disabled={isValidating || isRemoving}
+                            >
+                              {isRemoving ? (
+                                <span className="action-spinner" />
+                              ) : (
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                  <path d="M5 7h14" strokeWidth="2" strokeLinecap="round" />
+                                  <path d="M9 7V5h6v2" strokeWidth="2" strokeLinecap="round" />
+                                  <rect x="7" y="7" width="10" height="12" rx="2" />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          {error && (
+            <div className="error-banner">
+              <span>{error}</span>
+              <button onClick={() => setError(null)}>×</button>
+            </div>
+          )}
+        </section>
 
-        <aside className="panel dashboard-panel dataset-right-column">
+        <aside className="panel dashboard-panel">
           <header className="panel-header">
             <div>
               <p className="panel-label">Dataset Overview</p>
