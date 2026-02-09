@@ -6,12 +6,12 @@ from typing import Any
 
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
 
-from TKBEN.server.schemas.dataset import (
+from TKBEN.server.entities.dataset import (
     DatasetAnalysisRequest,
     DatasetDownloadRequest,
     DatasetListResponse,
 )
-from TKBEN.server.schemas.jobs import JobStartResponse
+from TKBEN.server.entities.jobs import JobStartResponse
 from TKBEN.server.configurations import server_settings
 from TKBEN.server.utils.logger import logger
 from TKBEN.server.utils.constants import (

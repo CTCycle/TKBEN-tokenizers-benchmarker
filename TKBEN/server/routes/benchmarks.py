@@ -5,10 +5,10 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, status
 
 from TKBEN.server.routes.tokenizers import get_custom_tokenizers
-from TKBEN.server.schemas.benchmarks import (
+from TKBEN.server.entities.benchmarks import (
     BenchmarkRunRequest,
 )
-from TKBEN.server.schemas.jobs import JobStartResponse
+from TKBEN.server.entities.jobs import JobStartResponse
 from TKBEN.server.configurations import server_settings
 from TKBEN.server.utils.constants import (
     API_ROUTE_BENCHMARKS_RUN,
