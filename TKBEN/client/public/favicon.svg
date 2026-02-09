@@ -1,9 +1,69 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="12" fill="#10161e" />
-  <rect x="8" y="8" width="48" height="48" rx="8" fill="#17202c" stroke="#2a394d" />
-  <rect x="14" y="16" width="8" height="32" rx="2" fill="#f5c500" />
-  <rect x="24" y="16" width="6" height="32" rx="2" fill="#7ea0bf" />
-  <rect x="32" y="16" width="10" height="32" rx="2" fill="#f5c500" />
-  <rect x="44" y="16" width="6" height="32" rx="2" fill="#7ea0bf" />
-  <path d="M19 32h26" stroke="#10161e" stroke-width="2" stroke-linecap="round" />
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#131820"/>
+      <stop offset="100%" stop-color="#0a0e14"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffd54f"/>
+      <stop offset="100%" stop-color="#f5c500"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#90b8d4"/>
+      <stop offset="100%" stop-color="#6a93b0"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4dd0a8"/>
+      <stop offset="100%" stop-color="#2bb88a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded background -->
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+
+  <!-- Subtle border -->
+  <rect x="1" y="1" width="62" height="62" rx="13" fill="none" stroke="#1e2a38" stroke-width="1.2"/>
+
+  <!-- Token blocks (top row) - representing tokenized text segments -->
+  <rect x="10" y="12" width="12" height="7" rx="2" fill="url(#gold)" opacity="0.95"/>
+  <rect x="24" y="12" width="8"  height="7" rx="2" fill="url(#blue)" opacity="0.85"/>
+  <rect x="34" y="12" width="20" height="7" rx="2" fill="url(#gold)" opacity="0.9"/>
+
+  <!-- Token blocks (second row) - more tokens -->
+  <rect x="10" y="21" width="16" height="6" rx="2" fill="url(#blue)" opacity="0.8"/>
+  <rect x="28" y="21" width="10" height="6" rx="2" fill="url(#teal)" opacity="0.85"/>
+  <rect x="40" y="21" width="14" height="6" rx="2" fill="url(#gold)" opacity="0.85"/>
+
+  <!-- Divider line -->
+  <line x1="10" y1="31" x2="54" y2="31" stroke="#2a394d" stroke-width="1" stroke-dasharray="2 2"/>
+
+  <!-- Benchmark bar chart (bottom section) -->
+  <!-- Bar 1 - tallest -->
+  <rect x="12" y="34" width="6" height="20" rx="1.5" fill="url(#gold)" opacity="0.95"/>
+  <!-- Bar 2 -->
+  <rect x="21" y="38" width="6" height="16" rx="1.5" fill="url(#teal)" opacity="0.9"/>
+  <!-- Bar 3 -->
+  <rect x="30" y="41" width="6" height="13" rx="1.5" fill="url(#blue)" opacity="0.85"/>
+  <!-- Bar 4 -->
+  <rect x="39" y="36" width="6" height="18" rx="1.5" fill="url(#gold)" opacity="0.9"/>
+  <!-- Bar 5 -->
+  <rect x="48" y="39" width="6" height="15" rx="1.5" fill="url(#teal)" opacity="0.85"/>
+
+  <!-- Trend line across bars -->
+  <polyline
+    points="15,36 24,39 33,42 42,37 51,40"
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="1.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    opacity="0.6"
+  />
+
+  <!-- Small dots on trend line -->
+  <circle cx="15" cy="36" r="1.5" fill="#ffffff" opacity="0.8"/>
+  <circle cx="24" cy="39" r="1.5" fill="#ffffff" opacity="0.8"/>
+  <circle cx="33" cy="42" r="1.5" fill="#ffffff" opacity="0.8"/>
+  <circle cx="42" cy="37" r="1.5" fill="#ffffff" opacity="0.8"/>
+  <circle cx="51" cy="40" r="1.5" fill="#ffffff" opacity="0.8"/>
 </svg>
