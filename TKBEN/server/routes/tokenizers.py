@@ -8,7 +8,7 @@ import anyio
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from tokenizers import Tokenizer
 
-from TKBEN.server.schemas.tokenizers import (
+from TKBEN.server.entities.tokenizers import (
     TokenizerScanResponse,
     TokenizerSettingsResponse,
     TokenizerUploadResponse,
