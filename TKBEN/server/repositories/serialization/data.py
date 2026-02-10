@@ -9,6 +9,7 @@ import sqlalchemy
 
 from TKBEN.server.repositories.queries.data import DataRepositoryQueries
 from TKBEN.server.repositories.schemas.models import (
+    TokenizationLocalStats,
     TextDataset,
     TextDatasetReports,
     TextDatasetStatistics,
@@ -357,6 +358,7 @@ class DatasetSerializer:
         self.dataset_table = TextDataset.__tablename__
         self.stats_table = TextDatasetStatistics.__tablename__
         self.reports_table = TextDatasetReports.__tablename__
+        self.local_stats_table = TokenizationLocalStats.__tablename__
 
     # -------------------------------------------------------------------------
     def parse_json(self, value: Any, default: Any | None = None) -> Any:
@@ -399,9 +401,9 @@ class DatasetSerializer:
     # -------------------------------------------------------------------------
     def list_dataset_previews(self) -> list[dict[str, Any]]:
         query = sqlalchemy.text(
-            'SELECT "dataset_name" as dataset_name, '
+            'SELECT "name" as dataset_name, '
             'COUNT(*) as document_count '
-            'FROM "TEXT_DATASET" GROUP BY "dataset_name" ORDER BY "dataset_name"'
+            'FROM "text_dataset" GROUP BY "name" ORDER BY "name"'
         )
         with self.queries.engine.connect() as conn:
             result = conn.execute(query)
@@ -425,12 +427,12 @@ class DatasetSerializer:
 
     # -------------------------------------------------------------------------
     def list_dataset_names(self) -> list[str]:
-        return self.queries.get_distinct_values(self.dataset_table, "dataset_name")
+        return self.queries.get_distinct_values(self.dataset_table, "name")
 
     # -------------------------------------------------------------------------
     def dataset_exists(self, dataset_name: str) -> bool:
         query = sqlalchemy.text(
-            'SELECT 1 FROM "TEXT_DATASET" WHERE "dataset_name" = :dataset LIMIT 1'
+            'SELECT 1 FROM "text_dataset" WHERE "name" = :dataset LIMIT 1'
         )
         with self.queries.engine.connect() as conn:
             result = conn.execute(query, {"dataset": dataset_name})
@@ -439,7 +441,7 @@ class DatasetSerializer:
     # -------------------------------------------------------------------------
     def count_dataset_documents(self, dataset_name: str) -> int:
         query = sqlalchemy.text(
-            'SELECT COUNT(*) FROM "TEXT_DATASET" WHERE "dataset_name" = :dataset'
+            'SELECT COUNT(*) FROM "text_dataset" WHERE "name" = :dataset'
         )
         with self.queries.engine.connect() as conn:
             result = conn.execute(query, {"dataset": dataset_name})
@@ -455,9 +457,9 @@ class DatasetSerializer:
         offset = 0
         while True:
             query = sqlalchemy.text(
-                'SELECT "text" FROM "TEXT_DATASET" '
-                'WHERE "dataset_name" = :dataset '
-                "LIMIT :limit OFFSET :offset"
+                'SELECT "text" FROM "text_dataset" '
+                'WHERE "name" = :dataset '
+                'ORDER BY "id" LIMIT :limit OFFSET :offset'
             )
             with self.queries.engine.connect() as conn:
                 result = conn.execute(
@@ -484,14 +486,56 @@ class DatasetSerializer:
             offset += len(rows)
 
     # -------------------------------------------------------------------------
+    def iterate_dataset_rows(
+        self,
+        dataset_name: str,
+        batch_size: int,
+    ) -> Iterator[list[dict[str, Any]]]:
+        offset = 0
+        while True:
+            query = sqlalchemy.text(
+                'SELECT "id", "text" FROM "text_dataset" '
+                'WHERE "name" = :dataset '
+                'ORDER BY "id" LIMIT :limit OFFSET :offset'
+            )
+            with self.queries.engine.connect() as conn:
+                result = conn.execute(
+                    query,
+                    {"dataset": dataset_name, "limit": batch_size, "offset": offset},
+                )
+                rows = result.fetchall()
+
+            if not rows:
+                break
+
+            batch: list[dict[str, Any]] = []
+            for row in rows:
+                if hasattr(row, "_mapping"):
+                    mapping = row._mapping
+                    row_id = mapping.get("id")
+                    text_value = mapping.get("text")
+                else:
+                    row_id = row[0] if row else None
+                    text_value = row[1] if len(row) > 1 else None
+
+                if row_id is None or text_value is None:
+                    continue
+                batch.append({"id": int(row_id), "text": str(text_value)})
+
+            if batch:
+                yield batch
+            offset += len(rows)
+
+    # -------------------------------------------------------------------------
     def delete_dataset(self, dataset_name: str) -> None:
-        self.queries.delete_by_key(self.dataset_table, "dataset_name", dataset_name)
-        self.queries.delete_by_key(self.stats_table, "dataset_name", dataset_name)
-        self.queries.delete_by_key(self.reports_table, "dataset_name", dataset_name)
+        self.queries.delete_by_key(self.local_stats_table, "name", dataset_name)
+        self.queries.delete_by_key(self.stats_table, "name", dataset_name)
+        self.queries.delete_by_key(self.reports_table, "name", dataset_name)
+        self.queries.delete_by_key(self.dataset_table, "name", dataset_name)
 
     # -------------------------------------------------------------------------
     def delete_dataset_statistics(self, dataset_name: str) -> None:
-        self.queries.delete_by_key(self.stats_table, "dataset_name", dataset_name)
+        self.queries.delete_by_key(self.stats_table, "name", dataset_name)
 
     # -------------------------------------------------------------------------
     def save_dataset_statistics_batch(self, batch: list[dict[str, Any]]) -> None:
@@ -505,22 +549,26 @@ class DatasetSerializer:
         document_histogram = report.get("document_length_histogram", {})
         word_histogram = report.get("word_length_histogram", {})
         return {
-            "dataset_name": report.get("dataset_name", ""),
-            "document_count": report.get("document_count", 0),
-            "document_bins": document_histogram.get("bins", []),
-            "document_counts": document_histogram.get("counts", []),
-            "document_bin_edges": document_histogram.get("bin_edges", []),
-            "document_min_length": document_histogram.get("min_length", 0),
-            "document_max_length": document_histogram.get("max_length", 0),
-            "document_mean_length": document_histogram.get("mean_length", 0.0),
-            "document_median_length": document_histogram.get("median_length", 0.0),
-            "word_bins": word_histogram.get("bins", []),
-            "word_counts": word_histogram.get("counts", []),
-            "word_bin_edges": word_histogram.get("bin_edges", []),
-            "word_min_length": word_histogram.get("min_length", 0),
-            "word_max_length": word_histogram.get("max_length", 0),
-            "word_mean_length": word_histogram.get("mean_length", 0.0),
-            "word_median_length": word_histogram.get("median_length", 0.0),
+            "name": report.get("dataset_name", ""),
+            "document_statistics": {
+                "document_count": report.get("document_count", 0),
+                "document_bins": document_histogram.get("bins", []),
+                "document_counts": document_histogram.get("counts", []),
+                "document_bin_edges": document_histogram.get("bin_edges", []),
+                "document_min_length": document_histogram.get("min_length", 0),
+                "document_max_length": document_histogram.get("max_length", 0),
+                "document_mean_length": document_histogram.get("mean_length", 0.0),
+                "document_median_length": document_histogram.get("median_length", 0.0),
+            },
+            "word_statistics": {
+                "word_bins": word_histogram.get("bins", []),
+                "word_counts": word_histogram.get("counts", []),
+                "word_bin_edges": word_histogram.get("bin_edges", []),
+                "word_min_length": word_histogram.get("min_length", 0),
+                "word_max_length": word_histogram.get("max_length", 0),
+                "word_mean_length": word_histogram.get("mean_length", 0.0),
+                "word_median_length": word_histogram.get("median_length", 0.0),
+            },
             "most_common_words": report.get("most_common_words", []),
             "least_common_words": report.get("least_common_words", []),
         }
@@ -533,33 +581,53 @@ class DatasetSerializer:
         self.queries.bulk_replace_by_key(
             df,
             self.reports_table,
-            "dataset_name",
-            storage["dataset_name"],
+            "name",
+            storage["name"],
         )
 
     # -------------------------------------------------------------------------
     def build_report_response(self, storage: dict[str, Any]) -> dict[str, Any]:
+        document_statistics = self.parse_json(
+            storage.get("document_statistics"), default={}
+        )
+        word_statistics = self.parse_json(storage.get("word_statistics"), default={})
         document_histogram = {
-            "bins": self.parse_json(storage.get("document_bins"), default=[]),
-            "counts": self.parse_json(storage.get("document_counts"), default=[]),
-            "bin_edges": self.parse_json(storage.get("document_bin_edges"), default=[]),
-            "min_length": int(storage.get("document_min_length", 0) or 0),
-            "max_length": int(storage.get("document_max_length", 0) or 0),
-            "mean_length": float(storage.get("document_mean_length", 0.0) or 0.0),
-            "median_length": float(storage.get("document_median_length", 0.0) or 0.0),
+            "bins": self.parse_json(
+                document_statistics.get("document_bins"), default=[]
+            ),
+            "counts": self.parse_json(
+                document_statistics.get("document_counts"), default=[]
+            ),
+            "bin_edges": self.parse_json(
+                document_statistics.get("document_bin_edges"), default=[]
+            ),
+            "min_length": int(document_statistics.get("document_min_length", 0) or 0),
+            "max_length": int(document_statistics.get("document_max_length", 0) or 0),
+            "mean_length": float(
+                document_statistics.get("document_mean_length", 0.0) or 0.0
+            ),
+            "median_length": float(
+                document_statistics.get("document_median_length", 0.0) or 0.0
+            ),
         }
         word_histogram = {
-            "bins": self.parse_json(storage.get("word_bins"), default=[]),
-            "counts": self.parse_json(storage.get("word_counts"), default=[]),
-            "bin_edges": self.parse_json(storage.get("word_bin_edges"), default=[]),
-            "min_length": int(storage.get("word_min_length", 0) or 0),
-            "max_length": int(storage.get("word_max_length", 0) or 0),
-            "mean_length": float(storage.get("word_mean_length", 0.0) or 0.0),
-            "median_length": float(storage.get("word_median_length", 0.0) or 0.0),
+            "bins": self.parse_json(word_statistics.get("word_bins"), default=[]),
+            "counts": self.parse_json(word_statistics.get("word_counts"), default=[]),
+            "bin_edges": self.parse_json(
+                word_statistics.get("word_bin_edges"), default=[]
+            ),
+            "min_length": int(word_statistics.get("word_min_length", 0) or 0),
+            "max_length": int(word_statistics.get("word_max_length", 0) or 0),
+            "mean_length": float(word_statistics.get("word_mean_length", 0.0) or 0.0),
+            "median_length": float(
+                word_statistics.get("word_median_length", 0.0) or 0.0
+            ),
         }
         return {
-            "dataset_name": storage.get("dataset_name", ""),
-            "document_count": int(storage.get("document_count", 0) or 0),
+            "dataset_name": storage.get("name", ""),
+            "document_count": int(
+                document_statistics.get("document_count", 0) or 0
+            ),
             "document_length_histogram": document_histogram,
             "word_length_histogram": word_histogram,
             "min_document_length": document_histogram["min_length"],
@@ -571,8 +639,8 @@ class DatasetSerializer:
     # -------------------------------------------------------------------------
     def load_dataset_report(self, dataset_name: str) -> dict[str, Any] | None:
         query = sqlalchemy.text(
-            'SELECT * FROM "TEXT_DATASET_REPORTS" '
-            'WHERE "dataset_name" = :dataset LIMIT 1'
+            'SELECT * FROM "text_dataset_reports" '
+            'WHERE "name" = :dataset LIMIT 1'
         )
         with self.queries.engine.connect() as conn:
             result = conn.execute(query, {"dataset": dataset_name})

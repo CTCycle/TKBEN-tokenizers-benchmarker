@@ -16,12 +16,13 @@ router = APIRouter(prefix=API_ROUTER_PREFIX_BROWSER, tags=["browser"])
 
 # Mapping from table names to friendly display names
 TABLE_DISPLAY_NAMES: dict[str, str] = {
-    "TOKENIZATION_LOCAL_STATS": "Tokenization Local Statistics",
-    "TOKENIZATION_GLOBAL_METRICS": "Tokenization Global Metrics",
-    "VOCABULARY_STATISTICS": "Vocabulary Statistics",
-    "VOCABULARY": "Vocabulary",
-    "TEXT_DATASET": "Text Datasets",
-    "TEXT_DATASET_STATISTICS": "Text Dataset Statistics",
+    "tokenization_local_stats": "Tokenization Local Statistics",
+    "tokenization_global_stats": "Tokenization Global Stats",
+    "vocabulary_statistics": "Vocabulary Statistics",
+    "vocabulary": "Vocabulary",
+    "text_dataset": "Text Datasets",
+    "text_dataset_statistics": "Text Dataset Statistics",
+    "text_dataset_reports": "Text Dataset Reports",
 }
 
 
