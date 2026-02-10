@@ -14,9 +14,9 @@ import pandas as pd
 import sqlalchemy
 from datasets import Dataset, DatasetDict, load_dataset
 
-from TKBEN.server.repositories.database import database
-from TKBEN.server.repositories.schema import TextDataset
-from TKBEN.server.repositories.serializer import DatasetSerializer
+from TKBEN.server.repositories.database.backend import database
+from TKBEN.server.repositories.schemas.models import TextDataset
+from TKBEN.server.repositories.serialization.data import DatasetSerializer
 from TKBEN.server.configurations import server_settings
 from TKBEN.server.utils.constants import DATASETS_PATH
 from TKBEN.server.utils.logger import logger
