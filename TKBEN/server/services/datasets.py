@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import heapq
-import inspect
 import math
 import os
 import shutil
@@ -161,7 +160,6 @@ class HistogramBuilder:
 class DatasetService:
 
     SUPPORTED_TEXT_FIELDS = ("text", "content", "sentence", "document", "tokens")
-    _hf_pickler_patch_applied = False
 
     def __init__(self, hf_access_token: str | None = None) -> None:
         self.hf_access_token = hf_access_token
@@ -186,37 +184,21 @@ class DatasetService:
         return os.path.join(DATASETS_PATH, folder_name)
 
     # -------------------------------------------------------------------------
-    @classmethod
-    def ensure_datasets_pickler_compatibility(cls) -> None:
-        if cls._hf_pickler_patch_applied:
-            return
-
-        try:
-            from datasets.utils import _dill as datasets_dill
-            import dill
-
-            batch_setitems = datasets_dill.Pickler._batch_setitems
-            signature = inspect.signature(batch_setitems)
-
-            if len(signature.parameters) == 2:
-                def _batch_setitems_compat(self, items, obj=None):  # type: ignore[no-untyped-def]
-                    if self._legacy_no_dict_keys_sorting:
-                        return dill.Pickler._batch_setitems(self, items, obj)
-
-                    try:
-                        items = sorted(items)
-                    except Exception:
-                        from datasets.fingerprint import Hasher
-
-                        items = sorted(items, key=lambda x: Hasher.hash(x[0]))
-                    return dill.Pickler._batch_setitems(self, items, obj)
-
-                datasets_dill.Pickler._batch_setitems = _batch_setitems_compat  # type: ignore[assignment]
-                logger.info("Applied datasets pickler compatibility patch.")
-        except Exception:
-            logger.debug("Failed to apply datasets pickler compatibility patch", exc_info=True)
-        finally:
-            cls._hf_pickler_patch_applied = True
+    def build_persisted_dataset_payload(
+        self,
+        dataset_name: str,
+        text_column: str = "text",
+    ) -> dict[str, Any]:
+        length_stream = self.database_length_stream(dataset_name)
+        stats = self.collect_length_statistics(length_stream)
+        histogram = self.histogram_from_stream(length_stream, stats)
+        return {
+            "dataset_name": dataset_name,
+            "text_column": text_column,
+            "document_count": stats.document_count,
+            "saved_count": stats.document_count,
+            "histogram": histogram,
+        }
 
     # -------------------------------------------------------------------------
     def maybe_cleanup_downloaded_source(self, cache_path: str, dataset_name: str) -> None:
@@ -388,8 +370,6 @@ class DatasetService:
         histogram_builder = HistogramBuilder(stats, self.histogram_bins)
         total_documents = stats.document_count if stats.document_count > 0 else 1
 
-        self.dataset_serializer.delete_dataset(dataset_name)
-
         for text in self._iterate_texts(dataset, text_column, remove_invalid):
             if should_stop and should_stop():
                 return histogram_builder.build(), saved_count
@@ -446,19 +426,10 @@ class DatasetService:
                 "Dataset %s already present in database. Reusing persisted texts.",
                 dataset_name,
             )
-            length_stream = self.database_length_stream(dataset_name)
-            stats = self.collect_length_statistics(length_stream)
-            histogram = self.histogram_from_stream(length_stream, stats)
             if progress_callback:
                 progress_callback(100.0)
-            payload = {
-                "dataset_name": dataset_name,
-                "text_column": "text",
-                "document_count": stats.document_count,
-                "saved_count": stats.document_count,
-                "cache_path": cache_path,
-                "histogram": histogram,
-            }
+            payload = self.build_persisted_dataset_payload(dataset_name)
+            payload["cache_path"] = cache_path
             self.maybe_cleanup_downloaded_source(cache_path, dataset_name)
             return payload
 
@@ -470,7 +441,6 @@ class DatasetService:
         try:
             if progress_callback:
                 progress_callback(5.0)
-            self.ensure_datasets_pickler_compatibility()
             dataset = load_dataset(
                 corpus,
                 normalized_config,
@@ -480,11 +450,6 @@ class DatasetService:
         except Exception as exc:
             logger.exception("Failed to download dataset %s", dataset_name)
             detail = str(exc).strip() or exc.__class__.__name__
-            if "Pickler._batch_setitems()" in detail:
-                raise RuntimeError(
-                    "Failed to download dataset due to a Python 3.14 serialization "
-                    "incompatibility while loading HuggingFace datasets."
-                ) from exc
             raise RuntimeError(f"Failed to download dataset '{dataset_name}': {detail}") from exc
 
         text_column = self.find_text_column(dataset)
@@ -555,6 +520,14 @@ class DatasetService:
         extension = os.path.splitext(filename)[1].lower()
 
         logger.info("Processing uploaded file: %s (type: %s)", filename, extension)
+        if self.is_dataset_in_database(dataset_name):
+            logger.info(
+                "Dataset %s already present in database. Reusing persisted texts.",
+                dataset_name,
+            )
+            if progress_callback:
+                progress_callback(100.0)
+            return self.build_persisted_dataset_payload(dataset_name)
 
         # Load into DataFrame based on file extension
         try:
@@ -611,9 +584,6 @@ class DatasetService:
         saved_count = 0
         last_logged = 0
         histogram_builder = HistogramBuilder(stats, self.histogram_bins)
-
-        # Delete any existing entries with this dataset name (including dependents)
-        self.dataset_serializer.delete_dataset(dataset_name)
 
         for text in iterate_df_texts():
             if should_stop and should_stop():

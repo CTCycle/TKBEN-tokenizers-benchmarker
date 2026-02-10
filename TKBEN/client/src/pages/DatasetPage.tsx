@@ -203,12 +203,14 @@ const DatasetPage = () => {
     handleLoadDataset,
     handleUploadClick,
     handleFileChange,
+    handleSelectDataset,
     handleValidateDataset,
     handleDeleteDataset,
   } = useDataset();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
+  const [useCustomDataset, setUseCustomDataset] = useState(false);
 
   const corpusInputId = 'corpus-input';
   const configInputId = 'config-input';
@@ -231,6 +233,9 @@ const DatasetPage = () => {
   }, [selectedPreset]);
 
   const handlePresetSelect = (preset: DatasetPreset) => {
+    if (useCustomDataset) {
+      return;
+    }
     setSelectedPreset(preset.id);
     handleCorpusChange(preset.id);
     handleConfigChange(preset.defaultConfig ?? '');
@@ -321,6 +326,8 @@ const DatasetPage = () => {
   const modalDownloadProgress = loadProgress !== null
     ? ` (${Math.round(loadProgress)}%)`
     : '';
+  const presetsDisabled = loading || useCustomDataset;
+  const customConfigDisabled = loading || !useCustomDataset;
 
   return (
     <div className="page-scroll">
@@ -367,8 +374,22 @@ const DatasetPage = () => {
                     {availableDatasets.map((dataset) => {
                       const isValidating = activeValidationDataset === dataset.dataset_name;
                       const isRemoving = removingDataset === dataset.dataset_name;
+                      const isSelectedDataset = datasetName === dataset.dataset_name;
                       return (
-                        <div className="dataset-preview-row" key={dataset.dataset_name}>
+                        <div
+                          key={dataset.dataset_name}
+                          role="button"
+                          tabIndex={0}
+                          aria-pressed={isSelectedDataset}
+                          className={`dataset-preview-row${isSelectedDataset ? ' selected' : ''}`}
+                          onClick={() => handleSelectDataset(dataset.dataset_name)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              handleSelectDataset(dataset.dataset_name);
+                            }
+                          }}
+                        >
                           <span className="dataset-preview-name">{dataset.dataset_name}</span>
                           <span className="dataset-preview-count">
                             {formatNumber(dataset.document_count)}
@@ -378,7 +399,11 @@ const DatasetPage = () => {
                               type="button"
                               className="icon-button subtle"
                               aria-label="Run dataset evaluation"
-                              onClick={() => handleValidateDataset(dataset.dataset_name)}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleSelectDataset(dataset.dataset_name);
+                                void handleValidateDataset(dataset.dataset_name);
+                              }}
                               disabled={isValidating || isRemoving}
                             >
                               {isValidating ? (
@@ -394,7 +419,10 @@ const DatasetPage = () => {
                               type="button"
                               className="icon-button danger"
                               aria-label="Remove dataset"
-                              onClick={() => handleDeleteDataset(dataset.dataset_name)}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void handleDeleteDataset(dataset.dataset_name);
+                              }}
                               disabled={isValidating || isRemoving}
                             >
                               {isRemoving ? (
@@ -508,8 +536,20 @@ const DatasetPage = () => {
       {isModalOpen && (
         <div className="modal-overlay" role="dialog" aria-modal="true">
           <div className="modal-card dataset-modal">
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                checked={useCustomDataset}
+                onChange={(event) => setUseCustomDataset(event.target.checked)}
+                disabled={loading}
+              />
+              <span>Use custom dataset</span>
+            </label>
             <div className="dataset-modal-grid">
-              <div className="dataset-modal-column">
+              <div
+                className={`dataset-modal-column${presetsDisabled ? ' is-disabled' : ''}`}
+                aria-disabled={presetsDisabled}
+              >
                 <p className="panel-label">Predefined Datasets</p>
                 <div className="dataset-preset-list">
                   {PREDEFINED_DATASETS.map((group) => (
@@ -521,11 +561,16 @@ const DatasetPage = () => {
                           <div
                             key={preset.id}
                             role="button"
-                            tabIndex={0}
+                            tabIndex={presetsDisabled ? -1 : 0}
+                            aria-disabled={presetsDisabled}
                             className={`dataset-preset-row${isSelected ? ' selected' : ''}`}
-                            onClick={() => handlePresetSelect(preset)}
+                            onClick={() => {
+                              if (!presetsDisabled) {
+                                handlePresetSelect(preset);
+                              }
+                            }}
                             onKeyDown={(event) => {
-                              if (event.key === 'Enter' || event.key === ' ') {
+                              if (!presetsDisabled && (event.key === 'Enter' || event.key === ' ')) {
                                 handlePresetSelect(preset);
                               }
                             }}
@@ -540,7 +585,7 @@ const DatasetPage = () => {
                                 className="icon-button subtle"
                                 aria-label={`Download ${preset.label}`}
                                 onClick={handlePresetDownload}
-                                disabled={loading}
+                                disabled={loading || presetsDisabled}
                               >
                                 <svg viewBox="0 0 24 24" aria-hidden="true">
                                   <path d="M12 3v12" strokeWidth="2" strokeLinecap="round" />
@@ -557,7 +602,10 @@ const DatasetPage = () => {
                 </div>
               </div>
               <div className="dataset-modal-divider" />
-              <div className="dataset-modal-column">
+              <div
+                className={`dataset-modal-column${customConfigDisabled ? ' is-disabled' : ''}`}
+                aria-disabled={customConfigDisabled}
+              >
                 <p className="panel-label">Dataset Configuration</p>
                 <div className="dataset-config-row">
                   <div className="input-stack">
@@ -569,7 +617,7 @@ const DatasetPage = () => {
                       className="text-input"
                       value={selectedCorpus}
                       onChange={(event) => handleCorpusChange(event.target.value)}
-                      disabled={loading}
+                      disabled={customConfigDisabled}
                     />
                   </div>
                   <div className="input-stack">
@@ -581,24 +629,19 @@ const DatasetPage = () => {
                       className="text-input"
                       value={selectedConfig}
                       onChange={(event) => handleConfigChange(event.target.value)}
-                      disabled={loading}
+                      disabled={customConfigDisabled}
                     />
                   </div>
+                </div>
+                <div className="dataset-action-row">
                   <button
                     type="button"
-                    className="icon-button accent"
+                    className="primary-button"
                     onClick={() => void handleLoadDataset()}
-                    aria-label="Download dataset"
-                    disabled={loading || !selectedCorpus}
+                    disabled={customConfigDisabled || !selectedCorpus.trim()}
                   >
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M12 3v12" strokeWidth="2" strokeLinecap="round" />
-                      <path d="M7 10l5 5 5-5" strokeWidth="2" strokeLinecap="round" />
-                      <path d="M5 19h14" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
+                    Download
                   </button>
-                </div>
-                <div className="dataset-upload-row">
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -610,9 +653,9 @@ const DatasetPage = () => {
                     type="button"
                     className="primary-button ghost"
                     onClick={handleUploadClick}
-                    disabled={loading}
+                    disabled={customConfigDisabled}
                   >
-                    Upload custom dataset
+                    Upload
                   </button>
                 </div>
                 {loading && (
