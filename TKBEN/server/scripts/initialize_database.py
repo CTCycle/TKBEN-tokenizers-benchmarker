@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import time
 
-from TKBEN.server.repositories.initializer import initialize_database
+from TKBEN.server.repositories.database.initializer import initialize_database
 from TKBEN.server.utils.constants import CONFIGURATIONS_FILE
 from TKBEN.server.utils.logger import logger
 
