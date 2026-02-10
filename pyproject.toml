@@ -18,7 +18,7 @@ dependencies = [
     "python-multipart>=0.0.21",   
     "transformers==4.57.3",
     "sentencepiece==0.2.1",
-    "datasets==4.0.0",
+    "datasets==4.5.0",
     "sacremoses==0.1.1",   
     "hf-xet==1.1.10",  
     "matplotlib==3.10.8",

@@ -215,11 +215,19 @@ class PostgresRepository:
     ) -> None:
         """Delete all rows matching the specified key value."""
         with self.engine.begin() as conn:
-            conn.execute(
+            result = conn.execute(
                 sqlalchemy.text(f'DELETE FROM "{table_name}" WHERE "{key_column}" = :key'),
                 {"key": key_value},
             )
-        logger.info("Deleted existing rows for %s=%s from %s", key_column, key_value, table_name)
+        deleted_rows = int(result.rowcount or 0)
+        if deleted_rows > 0:
+            logger.info(
+                "Deleted %d rows for %s=%s from %s",
+                deleted_rows,
+                key_column,
+                key_value,
+                table_name,
+            )
 
     # -------------------------------------------------------------------------
     def insert_dataframe(

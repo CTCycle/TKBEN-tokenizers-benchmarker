@@ -211,6 +211,22 @@
   border-radius: 10px;
   border: 1px solid var(--color-border);
   background: var(--color-panel-alt);
+  cursor: pointer;
+  transition: border var(--transition), background var(--transition);
+}
+
+.dataset-preview-row:hover {
+  border-color: rgba(255, 232, 31, 0.6);
+}
+
+.dataset-preview-row.selected {
+  border-color: var(--color-accent);
+  background: rgba(255, 232, 31, 0.08);
+}
+
+.dataset-preview-row:focus-visible {
+  outline: 2px solid var(--color-border-strong);
+  outline-offset: 2px;
 }
 
 .dataset-preview-name {
@@ -343,6 +359,11 @@
   min-width: 0;
 }
 
+.dataset-modal-column.is-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 .dataset-modal-divider {
   width: 1px;
   background: var(--color-border);
@@ -414,7 +435,7 @@
 
 .dataset-config-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
   align-items: end;
 }
@@ -423,6 +444,13 @@
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.dataset-action-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: center;
 }
 
 .dataset-modal-progress {

@@ -52,6 +52,7 @@ interface DatasetContextType {
     handleLoadDataset: () => Promise<void>;
     handleUploadClick: () => void;
     handleFileChange: (event: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
+    handleSelectDataset: (datasetName: string) => void;
     handleValidateDataset: (datasetName: string) => Promise<void>;
     handleDeleteDataset: (datasetName: string) => Promise<void>;
     refreshAvailableDatasets: () => Promise<void>;
@@ -187,6 +188,25 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
         [refreshAvailableDatasets],
     );
 
+    const handleSelectDataset = useCallback(
+        (targetDataset: string) => {
+            if (!targetDataset) return;
+            if (datasetName !== targetDataset) {
+                setStats(null);
+                setHistogram(null);
+            }
+            if (
+                validationReport?.dataset_name &&
+                validationReport.dataset_name !== targetDataset
+            ) {
+                setValidationReport(null);
+            }
+            setDatasetName(targetDataset);
+            setDatasetLoaded(true);
+        },
+        [datasetName, validationReport],
+    );
+
     const handleValidateDataset = useCallback(async (targetDataset: string) => {
         if (!targetDataset) return;
 
@@ -201,6 +221,8 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
                 (status) => setValidationProgress(status.progress),
             );
             setValidationReport(response);
+            setDatasetName(response.dataset_name);
+            setDatasetLoaded(true);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to validate dataset');
         } finally {
@@ -265,6 +287,7 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             handleLoadDataset,
             handleUploadClick,
             handleFileChange,
+            handleSelectDataset,
             handleValidateDataset,
             handleDeleteDataset,
             refreshAvailableDatasets,
@@ -292,6 +315,7 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             handleLoadDataset,
             handleUploadClick,
             handleFileChange,
+            handleSelectDataset,
             handleValidateDataset,
             handleDeleteDataset,
             refreshAvailableDatasets,
