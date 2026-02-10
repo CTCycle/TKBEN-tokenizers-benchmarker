@@ -14,8 +14,8 @@ def test_list_tables_returns_expected_names(api_context: APIRequestContext) -> N
     assert isinstance(data["tables"], list)
 
     names = {table["name"] for table in data["tables"]}
-    assert "TEXT_DATASET" in names
-    assert "TOKENIZATION_GLOBAL_METRICS" in names
+    assert "text_dataset" in names
+    assert "tokenization_global_stats" in names
 
 
 def test_fetch_table_data_requires_table_param(
@@ -30,7 +30,7 @@ def test_fetch_table_data_returns_schema(
     api_context: APIRequestContext,
 ) -> None:
     """GET /browser/data should return columns, data, and statistics."""
-    response = api_context.get("/browser/data?table=TEXT_DATASET&offset=0&limit=5")
+    response = api_context.get("/browser/data?table=text_dataset&offset=0&limit=5")
     assert response.ok
     data = response.json()
     assert "columns" in data
@@ -49,19 +49,19 @@ def test_fetch_table_data_contains_uploaded_rows(
     api_context: APIRequestContext,
     uploaded_dataset: dict,
 ) -> None:
-    """Uploaded datasets should be visible in the TEXT_DATASET table."""
+    """Uploaded datasets should be visible in the text_dataset table."""
     dataset_name = uploaded_dataset["dataset_name"]
     offset = 0
     limit = 1000
 
     while True:
         response = api_context.get(
-            f"/browser/data?table=TEXT_DATASET&offset={offset}&limit={limit}"
+            f"/browser/data?table=text_dataset&offset={offset}&limit={limit}"
         )
         assert response.ok
         data = response.json()
         rows = data.get("data", [])
-        if any(row.get("dataset_name") == dataset_name for row in rows):
+        if any(row.get("name") == dataset_name for row in rows):
             return
 
         rows_returned = data.get("statistics", {}).get("rows_returned", len(rows))
@@ -70,4 +70,4 @@ def test_fetch_table_data_contains_uploaded_rows(
 
         offset += rows_returned
 
-    assert False, f"Dataset {dataset_name} not found in TEXT_DATASET"
+    assert False, f"Dataset {dataset_name} not found in text_dataset"

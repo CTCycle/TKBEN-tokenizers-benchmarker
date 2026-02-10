@@ -19,5 +19,10 @@ class JSONSequence(TypeDecorator):
 
 
 ###############################################################################
+class JSONMapping(JSONSequence):
+    pass
+
+
+###############################################################################
 class IntSequence(JSONSequence):
     pass

@@ -15,7 +15,7 @@ from transformers.utils.logging import set_verbosity_error
 
 from TKBEN.server.repositories.database.backend import database
 from TKBEN.server.repositories.schemas.models import (
-    TokenizationGlobalMetrics,
+    TokenizationGlobalStats,
     TokenizationLocalStats,
     Vocabulary,
     VocabularyStatistics,
@@ -286,11 +286,11 @@ class BenchmarkService:
         return tokenizers
 
     # -------------------------------------------------------------------------
-    def stream_texts_from_database(
+    def stream_dataset_rows_from_database(
         self, dataset_name: str
-    ) -> Generator[str, None, None]:
+    ) -> Generator[tuple[int, str], None, None]:
         query = sqlalchemy.text(
-            'SELECT "text" FROM "TEXT_DATASET" WHERE "dataset_name" = :dataset'
+            'SELECT "id", "text" FROM "text_dataset" WHERE "name" = :dataset ORDER BY "id"'
         )
         count = 0
         with database.backend.engine.connect().execution_options(
@@ -303,11 +303,15 @@ class BenchmarkService:
                     break
                 for row in rows:
                     if hasattr(row, "_mapping"):
+                        row_id = row._mapping.get("id")
                         text = row._mapping.get("text", "")
                     else:
-                        text = row[0] if row else ""
+                        row_id = row[0] if row else None
+                        text = row[1] if len(row) > 1 else ""
+                    if row_id is None:
+                        continue
                     if text and isinstance(text, str):
-                        yield text
+                        yield int(row_id), text
                         count += 1
                         if self.max_documents > 0 and count >= self.max_documents:
                             return
@@ -315,7 +319,7 @@ class BenchmarkService:
     # -------------------------------------------------------------------------
     def get_dataset_document_count(self, dataset_name: str) -> int:
         query = sqlalchemy.text(
-            'SELECT COUNT(*) FROM "TEXT_DATASET" WHERE "dataset_name" = :dataset'
+            'SELECT COUNT(*) FROM "text_dataset" WHERE "name" = :dataset'
         )
         with database.backend.engine.connect() as conn:
             result = conn.execute(query, {"dataset": dataset_name})
@@ -401,8 +405,8 @@ class BenchmarkService:
                 vocabulary_stats.append(
                     {
                         "tokenizer": name,
-                        "number_tokens_from_vocabulary": len(vocab_words),
-                        "number_tokens_from_decode": len(decoded_words),
+                        "vocabulary_size": len(vocab_words),
+                        "decoded_tokens": len(decoded_words),
                         "number_shared_tokens": len(shared),
                         "number_unshared_tokens": len(unshared),
                         "percentage_subwords": subwords_perc,
@@ -535,20 +539,23 @@ class BenchmarkService:
 
         # Collect texts into memory for processing (respecting max_documents)
         logger.info("Loading texts from database...")
-        texts: list[str] = []
-        for text in self.stream_texts_from_database(dataset_name):
+        dataset_rows: list[tuple[int, str]] = []
+        for row_id, text in self.stream_dataset_rows_from_database(dataset_name):
             if should_stop and should_stop():
                 return {}
-            texts.append(text)
-            if len(texts) % self.log_interval == 0:
-                logger.info("Loaded %d texts...", len(texts))
+            dataset_rows.append((row_id, text))
+            if len(dataset_rows) % self.log_interval == 0:
+                logger.info("Loaded %d texts...", len(dataset_rows))
+
+        text_ids = [row[0] for row in dataset_rows]
+        texts = [row[1] for row in dataset_rows]
 
         num_docs = len(texts)
         logger.info("Loaded %d documents for benchmarking", num_docs)
         if progress_callback:
             progress_callback(20.0)
 
-        all_tokenizers: list[pd.DataFrame] = []
+        local_stats_frames: list[pd.DataFrame] = []
         global_metrics_rows: list[dict[str, Any]] = []
         total_tokenizers = len(tokenizers)
         progress_base = 20.0
@@ -565,6 +572,8 @@ class BenchmarkService:
             data = pd.DataFrame(
                 {
                     "tokenizer": [name] * num_docs,
+                    "name": [dataset_name] * num_docs,
+                    "text_id": text_ids,
                     "text": texts,
                 }
             )
@@ -572,9 +581,6 @@ class BenchmarkService:
             data["num_characters"] = pd.Series(texts).str.len()
             data["words_split"] = pd.Series(texts).str.split()
             data["words_count"] = data["words_split"].apply(len)
-            data["AVG_words_length"] = data["words_split"].apply(
-                lambda ws: np.mean([len(w) for w in ws]) if ws else 0
-            )
 
             t0 = time.perf_counter()
             try:
@@ -617,10 +623,6 @@ class BenchmarkService:
                 len(toks) if isinstance(toks, (list, tuple)) else 0
                 for toks in data["tokens_split"]
             ]
-            data["tokens_characters"] = data["tokens"].str.len()
-            data["AVG_tokens_length"] = data["tokens_split"].apply(
-                lambda toks: np.mean([len(tok) for tok in toks]) if toks else 0
-            )
             data["tokens_to_words_ratio"] = np.where(
                 data["words_count"] > 0, data["tokens_count"] / data["words_count"], 0
             )
@@ -637,10 +639,6 @@ class BenchmarkService:
             round_trip_text_fidelity: list[float] = []
             determinism_flags: list[float] = []
             bytes_per_character: list[float] = []
-            characters_per_token_values: list[float] = []
-            token_length_variances: list[float] = []
-            token_length_stds: list[float] = []
-            token_lengths: list[int] = []
             total_bytes = 0
 
             for text_value, decoded_text, tokens_list in zip(
@@ -665,21 +663,6 @@ class BenchmarkService:
                 round_trip_token_fidelity.append(float(rt_tokens == tokens_list))
                 round_trip_text_fidelity.append(float(rt_decoded == text_value))
 
-                if tokens_list:
-                    lengths_arr = np.fromiter(
-                        (len(tok) for tok in tokens_list), dtype=float
-                    )
-                    token_lengths.extend(int(len(tok)) for tok in tokens_list)
-                    token_length_variances.append(float(np.var(lengths_arr)))
-                    token_length_stds.append(float(np.std(lengths_arr)))
-                    characters_per_token_values.append(
-                        float(len(text_value) / len(tokens_list))
-                    )
-                else:
-                    token_length_variances.append(0.0)
-                    token_length_stds.append(0.0)
-                    characters_per_token_values.append(0.0)
-
                 text_len = len(text_value)
                 if text_len > 0:
                     bytes_per_character.append(
@@ -696,9 +679,6 @@ class BenchmarkService:
             data["round_trip_text_fidelity"] = round_trip_text_fidelity
             data["determinism_stability"] = determinism_flags
             data["bytes_per_character"] = bytes_per_character
-            data["characters_per_token"] = characters_per_token_values
-            data["token_length_variance"] = token_length_variances
-            data["token_length_std"] = token_length_stds
 
             elapsed = max(t1 - t0, 1e-9)
             total_tokens = int(data["tokens_count"].sum())
@@ -824,12 +804,6 @@ class BenchmarkService:
             token_unigram_coverage = (
                 len(token_frequency) / vocabulary_size if vocabulary_size else 0.0
             )
-            token_length_variance_global = (
-                float(np.var(token_lengths)) if token_lengths else 0.0
-            )
-            token_length_std_global = (
-                float(np.std(token_lengths)) if token_lengths else 0.0
-            )
             segmentation_consistency = self.calculate_morphological_consistency(
                 tokenizer, unique_words
             )
@@ -863,24 +837,34 @@ class BenchmarkService:
                     "round_trip_text_fidelity_rate": float(round_trip_text_rate),
                     "token_id_ordering_monotonicity": float(token_id_monotonicity),
                     "token_unigram_coverage": float(token_unigram_coverage),
-                    "token_length_variance": float(token_length_variance_global),
-                    "token_length_std": float(token_length_std_global),
                 }
             )
 
-            # Reduce data size (always enabled)
-            data.drop(
-                columns=["tokens", "tokens_split", "words_split"], inplace=True
+            local_stats_frames.append(
+                data[
+                    [
+                        "tokenizer",
+                        "name",
+                        "text_id",
+                        "tokens_count",
+                        "tokens_to_words_ratio",
+                        "bytes_per_token",
+                        "boundary_preservation_rate",
+                        "round_trip_token_fidelity",
+                        "round_trip_text_fidelity",
+                        "determinism_stability",
+                        "bytes_per_character",
+                    ]
+                ].copy()
             )
-            all_tokenizers.append(data)
 
             logger.info("Completed processing tokenizer: %s", name)
             if progress_callback:
                 progress_callback(tokenizer_progress_base + per_tokenizer_span)
 
-        benchmark_results = (
-            pd.concat(all_tokenizers, ignore_index=True)
-            if all_tokenizers
+        local_stats = (
+            pd.concat(local_stats_frames, ignore_index=True)
+            if local_stats_frames
             else pd.DataFrame()
         )
 
@@ -891,9 +875,8 @@ class BenchmarkService:
         self.persist_results(
             vocabularies=vocabularies,
             vocabulary_stats=vocabulary_stats,
-            benchmark_results=benchmark_results,
+            local_stats=local_stats,
             global_metrics=global_metrics,
-            dataset_name=dataset_name,
         )
 
         # Generate chart data for frontend visualization
@@ -929,7 +912,7 @@ class BenchmarkService:
         vocabulary_stats = []
         if not vocabulary_stats_df.empty:
             for _, row in vocabulary_stats_df.iterrows():
-                vocab_size = int(row.get("number_tokens_from_vocabulary", 0))
+                vocab_size = int(row.get("vocabulary_size", 0))
                 subwords_pct = float(row.get("percentage_subwords", 0.0))
                 words_pct = float(row.get("percentage_true_words", 0.0))
                 subwords_count = int(vocab_size * subwords_pct / 100.0)
@@ -999,47 +982,114 @@ class BenchmarkService:
         self,
         vocabularies: list[pd.DataFrame],
         vocabulary_stats: pd.DataFrame,
-        benchmark_results: pd.DataFrame,
+        local_stats: pd.DataFrame,
         global_metrics: pd.DataFrame,
-        dataset_name: str,
     ) -> None:
+        # Persist local tokenizer statistics with (tokenizer, text_id) upsert semantics.
+        if not local_stats.empty:
+            local_columns = [
+                "tokenizer",
+                "name",
+                "text_id",
+                "tokens_count",
+                "tokens_to_words_ratio",
+                "bytes_per_token",
+                "boundary_preservation_rate",
+                "round_trip_token_fidelity",
+                "round_trip_text_fidelity",
+                "determinism_stability",
+                "bytes_per_character",
+            ]
+            local_storage = local_stats[
+                [col for col in local_columns if col in local_stats.columns]
+            ].copy()
+            if not local_storage.empty:
+                database.upsert_into_database(
+                    local_storage, TokenizationLocalStats.__tablename__
+                )
+                logger.info("Saved %d local stats records", len(local_storage))
+
         # Persist global metrics
         if not global_metrics.empty:
-            database.delete_by_key(
-                TokenizationGlobalMetrics.__tablename__,
-                "dataset_name",
-                dataset_name,
-            )
-            database.insert_dataframe(
-                global_metrics, TokenizationGlobalMetrics.__tablename__
-            )
-            logger.info("Saved %d global metrics records", len(global_metrics))
+            global_storage = global_metrics.rename(
+                columns={"dataset_name": "name"}
+            ).copy()
+            global_columns = [
+                "tokenizer",
+                "name",
+                "tokenization_speed_tps",
+                "throughput_chars_per_sec",
+                "model_size_mb",
+                "vocabulary_size",
+                "subword_fertility",
+                "oov_rate",
+                "word_recovery_rate",
+                "character_coverage",
+                "segmentation_consistency",
+                "determinism_rate",
+                "token_distribution_entropy",
+                "rare_token_tail_1",
+                "rare_token_tail_2",
+                "boundary_preservation_rate",
+                "compression_chars_per_token",
+                "compression_bytes_per_character",
+                "round_trip_fidelity_rate",
+                "round_trip_text_fidelity_rate",
+                "token_id_ordering_monotonicity",
+                "token_unigram_coverage",
+            ]
+            global_storage = global_storage[
+                [col for col in global_columns if col in global_storage.columns]
+            ]
+            if not global_storage.empty:
+                database.upsert_into_database(
+                    global_storage, TokenizationGlobalStats.__tablename__
+                )
+                logger.info("Saved %d global metrics records", len(global_storage))
 
         # Persist vocabulary statistics
         if not vocabulary_stats.empty:
-            for tokenizer_name in vocabulary_stats["tokenizer"].unique():
-                database.delete_by_key(
-                    VocabularyStatistics.__tablename__,
-                    "tokenizer",
-                    tokenizer_name,
+            vocab_stats_columns = [
+                "tokenizer",
+                "vocabulary_size",
+                "decoded_tokens",
+                "number_shared_tokens",
+                "number_unshared_tokens",
+                "percentage_subwords",
+                "percentage_true_words",
+            ]
+            vocab_stats_storage = vocabulary_stats[
+                [col for col in vocab_stats_columns if col in vocabulary_stats.columns]
+            ].copy()
+            if not vocab_stats_storage.empty:
+                database.upsert_into_database(
+                    vocab_stats_storage, VocabularyStatistics.__tablename__
                 )
-            database.insert_dataframe(
-                vocabulary_stats, VocabularyStatistics.__tablename__
-            )
-            logger.info("Saved %d vocabulary stats records", len(vocabulary_stats))
+                logger.info(
+                    "Saved %d vocabulary stats records", len(vocab_stats_storage)
+                )
 
         # Persist vocabularies
         for vocab_df in vocabularies:
             if vocab_df.empty:
                 continue
-            tokenizer_name = vocab_df["tokenizer"].iloc[0]
-            database.delete_by_key(
-                Vocabulary.__tablename__,
+            vocab_columns = [
                 "tokenizer",
-                tokenizer_name,
+                "token_id",
+                "vocabulary_tokens",
+                "decoded_tokens",
+            ]
+            vocab_storage = vocab_df[
+                [col for col in vocab_columns if col in vocab_df.columns]
+            ].copy()
+            if vocab_storage.empty:
+                continue
+            database.upsert_into_database(vocab_storage, Vocabulary.__tablename__)
+            logger.info(
+                "Saved %d vocabulary rows for tokenizer: %s",
+                len(vocab_storage),
+                vocab_storage["tokenizer"].iloc[0],
             )
-            database.insert_dataframe(vocab_df, Vocabulary.__tablename__)
-            logger.info("Saved vocabulary for tokenizer: %s", tokenizer_name)
 
     # -------------------------------------------------------------------------
     def generate_plots(

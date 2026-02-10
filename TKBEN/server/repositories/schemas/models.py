@@ -1,30 +1,37 @@
 from __future__ import annotations
 
-from sqlalchemy import (    
+from sqlalchemy import (
     Column,
-    Float,    
+    Float,
+    ForeignKey,
     Integer,
     String,
     UniqueConstraint,
 )
 from sqlalchemy.orm import declarative_base
 
-from TKBEN.server.repositories.schemas.types import JSONSequence
+from TKBEN.server.repositories.schemas.types import JSONMapping, JSONSequence
 
 Base = declarative_base()
 
 
 ###############################################################################
+class TextDataset(Base):
+    __tablename__ = "text_dataset"
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    name = Column(String, nullable=False)
+    text = Column(String, nullable=False)
+    __table_args__ = (UniqueConstraint("id", "name"),)
+
+
+###############################################################################
 class TokenizationLocalStats(Base):
-    __tablename__ = "TOKENIZATION_LOCAL_STATS"
-    tokenizer = Column(String, primary_key=True)
-    text = Column(String, primary_key=True)
-    num_characters = Column(Integer)
-    words_count = Column(Integer)
-    AVG_words_length = Column(Float)
+    __tablename__ = "tokenization_local_stats"
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    tokenizer = Column(String, nullable=False)
+    name = Column(String, nullable=False)
+    text_id = Column(Integer, ForeignKey("text_dataset.id"), nullable=False)
     tokens_count = Column(Integer)
-    tokens_characters = Column(Integer)
-    AVG_tokens_length = Column(Float)
     tokens_to_words_ratio = Column(Float)
     bytes_per_token = Column(Float)
     boundary_preservation_rate = Column(Float)
@@ -32,23 +39,19 @@ class TokenizationLocalStats(Base):
     round_trip_text_fidelity = Column(Float)
     determinism_stability = Column(Float)
     bytes_per_character = Column(Float)
-    characters_per_token = Column(Float)
-    token_length_variance = Column(Float)
-    token_length_std = Column(Float)
-    __table_args__ = (UniqueConstraint("tokenizer", "text"),)
+    __table_args__ = (UniqueConstraint("tokenizer", "text_id"),)
 
 
 ###############################################################################
-class TokenizationGlobalMetrics(Base):
-    __tablename__ = "TOKENIZATION_GLOBAL_METRICS"
-    tokenizer = Column(String, primary_key=True)
-    dataset_name = Column(String, primary_key=True)
+class TokenizationGlobalStats(Base):
+    __tablename__ = "tokenization_global_stats"
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    tokenizer = Column(String, nullable=False)
+    name = Column(String, nullable=False)
     tokenization_speed_tps = Column(Float)
     throughput_chars_per_sec = Column(Float)
     model_size_mb = Column(Float)
     vocabulary_size = Column(Integer)
-    avg_sequence_length = Column(Float)
-    median_sequence_length = Column(Float)
     subword_fertility = Column(Float)
     oov_rate = Column(Float)
     word_recovery_rate = Column(Float)
@@ -65,17 +68,16 @@ class TokenizationGlobalMetrics(Base):
     round_trip_text_fidelity_rate = Column(Float)
     token_id_ordering_monotonicity = Column(Float)
     token_unigram_coverage = Column(Float)
-    token_length_variance = Column(Float)
-    token_length_std = Column(Float)
-    __table_args__ = (UniqueConstraint("tokenizer", "dataset_name"),)
+    __table_args__ = (UniqueConstraint("tokenizer", "name"),)
 
 
 ###############################################################################
 class VocabularyStatistics(Base):
-    __tablename__ = "VOCABULARY_STATISTICS"
-    tokenizer = Column(String, primary_key=True)
-    number_tokens_from_vocabulary = Column(Integer)
-    number_tokens_from_decode = Column(Integer)
+    __tablename__ = "vocabulary_statistics"
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    tokenizer = Column(String, nullable=False)
+    vocabulary_size = Column(Integer)
+    decoded_tokens = Column(Integer)
     number_shared_tokens = Column(Integer)
     number_unshared_tokens = Column(Integer)
     percentage_subwords = Column(Float)
@@ -85,59 +87,34 @@ class VocabularyStatistics(Base):
 
 ###############################################################################
 class Vocabulary(Base):
-    __tablename__ = "VOCABULARY"
-    tokenizer = Column(String, primary_key=True)
-    token_id = Column(Integer, primary_key=True)
+    __tablename__ = "vocabulary"
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    tokenizer = Column(String, nullable=False)
+    token_id = Column(Integer, nullable=False)
     vocabulary_tokens = Column(String)
     decoded_tokens = Column(String)
     __table_args__ = (UniqueConstraint("tokenizer", "token_id"),)
 
 
 ###############################################################################
-class TextDataset(Base):
-    __tablename__ = "TEXT_DATASET"
-    id = Column(Integer, primary_key=True, nullable=False)
-    dataset_name = Column(String, primary_key=True, nullable=False)
-    text = Column(String, nullable=False)
-    __table_args__ = (
-        UniqueConstraint("id", "dataset_name"),        
-    )
-
-
-###############################################################################
 class TextDatasetStatistics(Base):
-    __tablename__ = "TEXT_DATASET_STATISTICS"
-    id = Column(Integer, primary_key=True, nullable=False)
-    dataset_name = Column(String, primary_key=True, nullable=False)
-    text = Column(String, nullable=False)
+    __tablename__ = "text_dataset_statistics"
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    name = Column(String, nullable=False)
+    text_id = Column(Integer, ForeignKey("text_dataset.id"), nullable=False)
     words_count = Column(Integer)
-    AVG_words_length = Column(Float)
-    STD_words_length = Column(Float)
-    __table_args__ = (
-        UniqueConstraint("id", "dataset_name"),
-        UniqueConstraint("dataset_name", "text"),
-    )
+    avg_words_length = Column(Float)
+    std_words_length = Column(Float)
+    __table_args__ = (UniqueConstraint("text_id"),)
 
 
 ###############################################################################
 class TextDatasetReports(Base):
-    __tablename__ = "TEXT_DATASET_REPORTS"
-    dataset_name = Column(String, primary_key=True)
-    document_count = Column(Integer)
-    document_bins = Column(JSONSequence)
-    document_counts = Column(JSONSequence)
-    document_bin_edges = Column(JSONSequence)
-    document_min_length = Column(Integer)
-    document_max_length = Column(Integer)
-    document_mean_length = Column(Float)
-    document_median_length = Column(Float)
-    word_bins = Column(JSONSequence)
-    word_counts = Column(JSONSequence)
-    word_bin_edges = Column(JSONSequence)
-    word_min_length = Column(Integer)
-    word_max_length = Column(Integer)
-    word_mean_length = Column(Float)
-    word_median_length = Column(Float)
+    __tablename__ = "text_dataset_reports"
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    name = Column(String, nullable=False)
+    document_statistics = Column(JSONMapping)
+    word_statistics = Column(JSONMapping)
     most_common_words = Column(JSONSequence)
     least_common_words = Column(JSONSequence)
-    __table_args__ = (UniqueConstraint("dataset_name"),)
+    __table_args__ = (UniqueConstraint("name"),)
