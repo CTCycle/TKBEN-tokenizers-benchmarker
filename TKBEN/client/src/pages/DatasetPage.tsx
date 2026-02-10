@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import type { MouseEvent } from 'react';
 import { useDataset } from '../contexts/DatasetContext';
 
@@ -210,7 +210,7 @@ const DatasetPage = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
-  const [useCustomDataset, setUseCustomDataset] = useState(false);
+  const [isInsertByNameOpen, setIsInsertByNameOpen] = useState(false);
 
   const corpusInputId = 'corpus-input';
   const configInputId = 'config-input';
@@ -222,20 +222,7 @@ const DatasetPage = () => {
   const minDocumentLength = validationReport?.min_document_length ?? stats?.minLength ?? null;
   const maxDocumentLength = validationReport?.max_document_length ?? stats?.maxLength ?? null;
 
-  const selectedPresetDefinition = useMemo(() => {
-    for (const group of PREDEFINED_DATASETS) {
-      const match = group.datasets.find((dataset) => dataset.id === selectedPreset);
-      if (match) {
-        return match;
-      }
-    }
-    return null;
-  }, [selectedPreset]);
-
   const handlePresetSelect = (preset: DatasetPreset) => {
-    if (useCustomDataset) {
-      return;
-    }
     setSelectedPreset(preset.id);
     handleCorpusChange(preset.id);
     handleConfigChange(preset.defaultConfig ?? '');
@@ -326,8 +313,8 @@ const DatasetPage = () => {
   const modalDownloadProgress = loadProgress !== null
     ? ` (${Math.round(loadProgress)}%)`
     : '';
-  const presetsDisabled = loading || useCustomDataset;
-  const customConfigDisabled = loading || !useCustomDataset;
+  const isPresetListInactive = isInsertByNameOpen;
+  const presetsDisabled = loading || isInsertByNameOpen;
 
   return (
     <div className="page-scroll">
@@ -536,21 +523,91 @@ const DatasetPage = () => {
       {isModalOpen && (
         <div className="modal-overlay" role="dialog" aria-modal="true">
           <div className="modal-card dataset-modal">
-            <label className="checkbox">
-              <input
-                type="checkbox"
-                checked={useCustomDataset}
-                onChange={(event) => setUseCustomDataset(event.target.checked)}
-                disabled={loading}
-              />
-              <span>Use custom dataset</span>
-            </label>
-            <div className="dataset-modal-grid">
+            <header className="dataset-modal-header">
+              <p className="panel-label">Predefined Datasets</p>
+              <div className="dataset-modal-actions">
+                <button
+                  type="button"
+                  className={`icon-button subtle${isInsertByNameOpen ? ' accent' : ''}`}
+                  aria-label="Insert dataset by name"
+                  onClick={() => setIsInsertByNameOpen((value) => !value)}
+                  disabled={loading}
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 7h16M4 12h8M4 17h8" strokeWidth="2" strokeLinecap="round" />
+                    <path d="M16 12h4M18 10v4" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  className="icon-button subtle"
+                  aria-label="Upload custom dataset"
+                  onClick={handleUploadClick}
+                  disabled={loading}
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 15V5" strokeWidth="2" strokeLinecap="round" />
+                    <path d="M8 9l4-4 4 4" strokeWidth="2" strokeLinecap="round" />
+                    <path d="M4 19h16" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+            </header>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept=".csv,.xlsx,.xls"
+              style={{ display: 'none' }}
+            />
+            {loading && (
+              <div className="dataset-modal-progress" role="status" aria-live="polite">
+                Downloading dataset{modalDownloadProgress}...
+              </div>
+            )}
+            <div className="dataset-modal-content">
               <div
-                className={`dataset-modal-column${presetsDisabled ? ' is-disabled' : ''}`}
+                className={`dataset-insert-row-shell${isInsertByNameOpen ? ' is-open' : ''}`}
+                aria-hidden={!isInsertByNameOpen}
+              >
+                <div className="dataset-insert-row">
+                  <input
+                    id={corpusInputId}
+                    className="text-input"
+                    value={selectedCorpus}
+                    onChange={(event) => handleCorpusChange(event.target.value)}
+                    disabled={loading}
+                    aria-label="Dataset name"
+                    placeholder="Dataset name"
+                  />
+                  <input
+                    id={configInputId}
+                    className="text-input"
+                    value={selectedConfig}
+                    onChange={(event) => handleConfigChange(event.target.value)}
+                    disabled={loading}
+                    aria-label="Configuration"
+                    placeholder="Configuration"
+                  />
+                  <button
+                    type="button"
+                    className="icon-button accent"
+                    onClick={() => void handleLoadDataset()}
+                    disabled={loading || !selectedCorpus.trim()}
+                    aria-label="Download dataset"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 3v12" strokeWidth="2" strokeLinecap="round" />
+                      <path d="M7 10l5 5 5-5" strokeWidth="2" strokeLinecap="round" />
+                      <path d="M5 19h14" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div
+                className={`dataset-preset-list-shell${isPresetListInactive ? ' is-inactive' : ''}`}
                 aria-disabled={presetsDisabled}
               >
-                <p className="panel-label">Predefined Datasets</p>
                 <div className="dataset-preset-list">
                   {PREDEFINED_DATASETS.map((group) => (
                     <div className="dataset-preset-group" key={group.group}>
@@ -601,77 +658,16 @@ const DatasetPage = () => {
                   ))}
                 </div>
               </div>
-              <div className="dataset-modal-divider" />
-              <div
-                className={`dataset-modal-column${customConfigDisabled ? ' is-disabled' : ''}`}
-                aria-disabled={customConfigDisabled}
-              >
-                <p className="panel-label">Dataset Configuration</p>
-                <div className="dataset-config-row">
-                  <div className="input-stack">
-                    <label className="field-label" htmlFor={corpusInputId}>
-                      Corpus name
-                    </label>
-                    <input
-                      id={corpusInputId}
-                      className="text-input"
-                      value={selectedCorpus}
-                      onChange={(event) => handleCorpusChange(event.target.value)}
-                      disabled={customConfigDisabled}
-                    />
-                  </div>
-                  <div className="input-stack">
-                    <label className="field-label" htmlFor={configInputId}>
-                      Configuration
-                    </label>
-                    <input
-                      id={configInputId}
-                      className="text-input"
-                      value={selectedConfig}
-                      onChange={(event) => handleConfigChange(event.target.value)}
-                      disabled={customConfigDisabled}
-                    />
-                  </div>
-                </div>
-                <div className="dataset-action-row">
-                  <button
-                    type="button"
-                    className="primary-button"
-                    onClick={() => void handleLoadDataset()}
-                    disabled={customConfigDisabled || !selectedCorpus.trim()}
-                  >
-                    Download
-                  </button>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    accept=".csv,.xlsx,.xls"
-                    style={{ display: 'none' }}
-                  />
-                  <button
-                    type="button"
-                    className="primary-button ghost"
-                    onClick={handleUploadClick}
-                    disabled={customConfigDisabled}
-                  >
-                    Upload
-                  </button>
-                </div>
-                {loading && (
-                  <div className="dataset-modal-progress">
-                    Downloading dataset{modalDownloadProgress}...
-                  </div>
-                )}
-                {selectedPresetDefinition && selectedPresetDefinition.defaultConfig && (
-                  <div className="dataset-modal-hint">
-                    Default config loaded for {selectedPresetDefinition.label}.
-                  </div>
-                )}
-              </div>
             </div>
             <div className="modal-footer">
-              <button type="button" className="secondary-button" onClick={() => setIsModalOpen(false)}>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => {
+                  setIsInsertByNameOpen(false);
+                  setIsModalOpen(false);
+                }}
+              >
                 Close
               </button>
             </div>
