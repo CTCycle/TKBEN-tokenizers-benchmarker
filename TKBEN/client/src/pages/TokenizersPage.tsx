@@ -11,7 +11,12 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-const TokenizersPage = () => {
+type TokenizersPageProps = {
+  showDashboard?: boolean;
+  embedded?: boolean;
+};
+
+const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPageProps) => {
   const {
     scanInProgress,
     scanError,
@@ -79,9 +84,8 @@ const TokenizersPage = () => {
     }));
   }, [benchmarkResult]);
 
-  return (
-    <div className="page-scroll">
-      <div className="page-grid tokenizers-page">
+  const pageContent = (
+    <div className={`page-grid tokenizers-page${showDashboard ? '' : ' tokenizers-page--single'}`}>
         <section className="panel large-panel">
           <header className="panel-header">
             <div>
@@ -236,97 +240,104 @@ const TokenizersPage = () => {
             </button>
           </footer>
         </section>
-        <aside className="panel dashboard-panel">
-          <header className="panel-header">
-            <div>
-              <p className="panel-label">Benchmark Dashboard</p>
-              <p className="panel-description">
-                {benchmarkResult
-                  ? `Processed ${benchmarkResult.documents_processed} documents with ${benchmarkResult.tokenizers_count} tokenizers`
-                  : 'Charts will appear after running benchmarks.'}
-              </p>
-            </div>
-          </header>
-
-          {/* Vocabulary Size Chart */}
-          {vocabularyChartData.length > 0 && (
-            <div className="chart-container">
-              <h3 className="chart-title">Vocabulary Size Comparison</h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={vocabularyChartData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                  <XAxis type="number" stroke="#888" />
-                  <YAxis dataKey="name" type="category" stroke="#888" width={100} tick={{ fontSize: 11 }} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #333' }}
-                    labelStyle={{ color: '#fff' }}
-                  />
-                  <Legend />
-                  <Bar dataKey="Vocabulary Size" fill="#4fc3f7" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-
-          {/* Speed Comparison Chart */}
-          {speedChartData.length > 0 && (
-            <div className="chart-container">
-              <h3 className="chart-title">Tokenization Speed</h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={speedChartData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                  <XAxis type="number" stroke="#888" />
-                  <YAxis dataKey="name" type="category" stroke="#888" width={100} tick={{ fontSize: 11 }} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #333' }}
-                    labelStyle={{ color: '#fff' }}
-                  />
-                  <Legend />
-                  <Bar dataKey="Tokens/sec" fill="#81c784" radius={[0, 4, 4, 0]} />
-                  <Bar dataKey="Chars/sec" fill="#ffb74d" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-
-          {/* KPI Cards */}
-          <div className="dashboard-grid">
-            {chartStats.map((stat) => (
-              <div key={stat.label} className="stat-card">
-                <p className="stat-label">{stat.label}</p>
-                <p className="stat-value">{stat.value}</p>
+        {showDashboard && (
+          <aside className="panel dashboard-panel">
+            <header className="panel-header">
+              <div>
+                <p className="panel-label">Benchmark Dashboard</p>
+                <p className="panel-description">
+                  {benchmarkResult
+                    ? `Processed ${benchmarkResult.documents_processed} documents with ${benchmarkResult.tokenizers_count} tokenizers`
+                    : 'Charts will appear after running benchmarks.'}
+                </p>
               </div>
-            ))}
-          </div>
+            </header>
 
-          {/* Empty state with spinner */}
-          {!benchmarkResult && (
-            <div className="chart-empty-state">
-              {benchmarkInProgress ? (
-                <>
-                  <div className="spinner" />
-                  <p>
-                    Processing benchmarks
-                    {benchmarkProgress !== null ? ` (${Math.round(benchmarkProgress)}%)` : ''}...
-                  </p>
-                  <span>Analyzing tokenizers and computing metrics. This may take a few minutes.</span>
-                </>
-              ) : (
-                <p>Run benchmarks to see charts.</p>
-              )}
-            </div>
-          )}
-
-          <ul className="insights-list">
-            <li>Tokenizer list stays synchronized with the text area for quick edits and bulk paste.</li>
-            {benchmarkResult && (
-              <li>Benchmarks complete! Charts are now interactive - hover for details.</li>
+            {/* Vocabulary Size Chart */}
+            {vocabularyChartData.length > 0 && (
+              <div className="chart-container">
+                <h3 className="chart-title">Vocabulary Size Comparison</h3>
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={vocabularyChartData} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                    <XAxis type="number" stroke="#888" />
+                    <YAxis dataKey="name" type="category" stroke="#888" width={100} tick={{ fontSize: 11 }} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #333' }}
+                      labelStyle={{ color: '#fff' }}
+                    />
+                    <Legend />
+                    <Bar dataKey="Vocabulary Size" fill="#4fc3f7" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             )}
-          </ul>
-        </aside>
-      </div>
+
+            {/* Speed Comparison Chart */}
+            {speedChartData.length > 0 && (
+              <div className="chart-container">
+                <h3 className="chart-title">Tokenization Speed</h3>
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={speedChartData} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                    <XAxis type="number" stroke="#888" />
+                    <YAxis dataKey="name" type="category" stroke="#888" width={100} tick={{ fontSize: 11 }} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #333' }}
+                      labelStyle={{ color: '#fff' }}
+                    />
+                    <Legend />
+                    <Bar dataKey="Tokens/sec" fill="#81c784" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="Chars/sec" fill="#ffb74d" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* KPI Cards */}
+            <div className="dashboard-grid">
+              {chartStats.map((stat) => (
+                <div key={stat.label} className="stat-card">
+                  <p className="stat-label">{stat.label}</p>
+                  <p className="stat-value">{stat.value}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Empty state with spinner */}
+            {!benchmarkResult && (
+              <div className="chart-empty-state">
+                {benchmarkInProgress ? (
+                  <>
+                    <div className="spinner" />
+                    <p>
+                      Processing benchmarks
+                      {benchmarkProgress !== null ? ` (${Math.round(benchmarkProgress)}%)` : ''}...
+                    </p>
+                    <span>Analyzing tokenizers and computing metrics. This may take a few minutes.</span>
+                  </>
+                ) : (
+                  <p>Run benchmarks to see charts.</p>
+                )}
+              </div>
+            )}
+
+            <ul className="insights-list">
+              <li>Tokenizer list stays synchronized with the text area for quick edits and bulk paste.</li>
+              {benchmarkResult && (
+                <li>Benchmarks complete! Charts are now interactive - hover for details.</li>
+              )}
+            </ul>
+          </aside>
+        )}
     </div>
   );
+
+  if (embedded) {
+    return pageContent;
+  }
+
+  return <div className="page-scroll">{pageContent}</div>;
 };
 
 export default TokenizersPage;

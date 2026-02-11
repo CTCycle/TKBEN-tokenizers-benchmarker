@@ -107,6 +107,16 @@
   gap: 24px;
 }
 
+.merged-page-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+.merged-page-row {
+  min-width: 0;
+}
+
 .dataset-page {
   grid-template-columns: 3fr 2fr;
 }
@@ -542,6 +552,10 @@
 
 .tokenizers-page {
   grid-template-columns: 3fr 2fr;
+}
+
+.tokenizers-page--single {
+  grid-template-columns: 1fr;
 }
 
 .analysis-panel {
