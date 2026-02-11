@@ -14,6 +14,11 @@ type DatasetGroup = {
   datasets: DatasetPreset[];
 };
 
+type DatasetPageProps = {
+  showDashboard?: boolean;
+  embedded?: boolean;
+};
+
 const PREDEFINED_DATASETS: DatasetGroup[] = [
   {
     group: 'General Corpora',
@@ -178,7 +183,7 @@ const PREDEFINED_DATASETS: DatasetGroup[] = [
   },
 ];
 
-const DatasetPage = () => {
+const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProps) => {
   const {
     datasetName,
     selectedCorpus,
@@ -316,8 +321,8 @@ const DatasetPage = () => {
   const isPresetListInactive = isInsertByNameOpen;
   const presetsDisabled = loading || isInsertByNameOpen;
 
-  return (
-    <div className="page-scroll">
+  const pageContent = (
+    <>
       <div className="page-grid dataset-page-layout">
         <section className="dataset-top-section">
           <div className="dataset-top-row">
@@ -439,85 +444,87 @@ const DatasetPage = () => {
           )}
         </section>
 
-        <aside className="panel dashboard-panel">
-          <header className="panel-header">
-            <div>
-              <p className="panel-label">Dataset Overview</p>
-              <p className="panel-description">
-                {datasetOverviewDescription}
-              </p>
+        {showDashboard && (
+          <aside className="panel dashboard-panel">
+            <header className="panel-header">
+              <div>
+                <p className="panel-label">Dataset Overview</p>
+                <p className="panel-description">
+                  {datasetOverviewDescription}
+                </p>
+              </div>
+            </header>
+            {renderValidationStatus()}
+            <div className="dashboard-grid">
+              <div className="stat-card">
+                <p className="stat-label">Documents</p>
+                <p className="stat-value">
+                  {documentCount !== null ? formatNumber(documentCount) : '—'}
+                </p>
+              </div>
+              <div className="stat-card">
+                <p className="stat-label">Min Length</p>
+                <p className="stat-value">
+                  {minDocumentLength !== null ? formatNumber(minDocumentLength) : '—'}
+                </p>
+              </div>
+              <div className="stat-card">
+                <p className="stat-label">Max Length</p>
+                <p className="stat-value">
+                  {maxDocumentLength !== null ? formatNumber(maxDocumentLength) : '—'}
+                </p>
+              </div>
             </div>
-          </header>
-          {renderValidationStatus()}
-          <div className="dashboard-grid">
-            <div className="stat-card">
-              <p className="stat-label">Documents</p>
-              <p className="stat-value">
-                {documentCount !== null ? formatNumber(documentCount) : '—'}
-              </p>
-            </div>
-            <div className="stat-card">
-              <p className="stat-label">Min Length</p>
-              <p className="stat-value">
-                {minDocumentLength !== null ? formatNumber(minDocumentLength) : '—'}
-              </p>
-            </div>
-            <div className="stat-card">
-              <p className="stat-label">Max Length</p>
-              <p className="stat-value">
-                {maxDocumentLength !== null ? formatNumber(maxDocumentLength) : '—'}
-              </p>
-            </div>
-          </div>
-          <div className="chart-block">
-            {renderHistogram(
-              'Document Length Distribution',
-              documentHistogram,
-              'Load or validate a dataset to see document lengths.',
-              'docs',
-            )}
-          </div>
-          <div className="chart-block">
-            {renderHistogram(
-              'Word Length Distribution',
-              wordHistogram,
-              'Validate a dataset to see word length distribution.',
-              'words',
-            )}
-          </div>
-          <div className="word-frequency-grid">
-            <div className="word-frequency-panel">
-              <p className="panel-label">Most Common Words</p>
-              {validationReport?.most_common_words?.length ? (
-                <ul className="word-frequency-list">
-                  {validationReport.most_common_words.map((item) => (
-                    <li key={`${item.word}-${item.count}`}>
-                      <span>{item.word}</span>
-                      <span>{formatNumber(item.count)}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="word-frequency-empty">No validation results yet.</div>
+            <div className="chart-block">
+              {renderHistogram(
+                'Document Length Distribution',
+                documentHistogram,
+                'Load or validate a dataset to see document lengths.',
+                'docs',
               )}
             </div>
-            <div className="word-frequency-panel">
-              <p className="panel-label">Least Common Words</p>
-              {validationReport?.least_common_words?.length ? (
-                <ul className="word-frequency-list">
-                  {validationReport.least_common_words.map((item) => (
-                    <li key={`${item.word}-${item.count}`}>
-                      <span>{item.word}</span>
-                      <span>{formatNumber(item.count)}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="word-frequency-empty">No validation results yet.</div>
+            <div className="chart-block">
+              {renderHistogram(
+                'Word Length Distribution',
+                wordHistogram,
+                'Validate a dataset to see word length distribution.',
+                'words',
               )}
             </div>
-          </div>
-        </aside>
+            <div className="word-frequency-grid">
+              <div className="word-frequency-panel">
+                <p className="panel-label">Most Common Words</p>
+                {validationReport?.most_common_words?.length ? (
+                  <ul className="word-frequency-list">
+                    {validationReport.most_common_words.map((item) => (
+                      <li key={`${item.word}-${item.count}`}>
+                        <span>{item.word}</span>
+                        <span>{formatNumber(item.count)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="word-frequency-empty">No validation results yet.</div>
+                )}
+              </div>
+              <div className="word-frequency-panel">
+                <p className="panel-label">Least Common Words</p>
+                {validationReport?.least_common_words?.length ? (
+                  <ul className="word-frequency-list">
+                    {validationReport.least_common_words.map((item) => (
+                      <li key={`${item.word}-${item.count}`}>
+                        <span>{item.word}</span>
+                        <span>{formatNumber(item.count)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="word-frequency-empty">No validation results yet.</div>
+                )}
+              </div>
+            </div>
+          </aside>
+        )}
       </div>
 
       {isModalOpen && (
@@ -674,8 +681,14 @@ const DatasetPage = () => {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
+
+  if (embedded) {
+    return pageContent;
+  }
+
+  return <div className="page-scroll">{pageContent}</div>;
 };
 
 export default DatasetPage;
