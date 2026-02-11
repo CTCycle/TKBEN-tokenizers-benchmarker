@@ -20,26 +20,11 @@ class DatabaseBackend(Protocol):
     def load_from_database(self, table_name: str) -> pd.DataFrame: ...
 
     # -------------------------------------------------------------------------
-    def load_paginated(
-        self, table_name: str, offset: int, limit: int
-    ) -> pd.DataFrame: ...
-
-    # -------------------------------------------------------------------------
-    def get_table_names(self) -> list[str]: ...
-
-    # -------------------------------------------------------------------------
-    def get_column_count(self, table_name: str) -> int: ...
-
-    # -------------------------------------------------------------------------
     def save_into_database(self, df: pd.DataFrame, table_name: str) -> None: ...
 
     # -------------------------------------------------------------------------
     def upsert_into_database(self, df: pd.DataFrame, table_name: str) -> None: ...
 
-    # -------------------------------------------------------------------------
-    def count_rows(self, table_name: str) -> int: ...
-
-    # -------------------------------------------------------------------------
     def bulk_replace_by_key(
         self, df: pd.DataFrame, table_name: str, key_column: str, key_value: str
     ) -> None: ...
@@ -99,20 +84,6 @@ class TKBENWebappDatabase:
         return self.backend.load_from_database(table_name)
 
     # -------------------------------------------------------------------------
-    def load_paginated(
-        self, table_name: str, offset: int = 0, limit: int = 1000
-    ) -> pd.DataFrame:
-        return self.backend.load_paginated(table_name, offset, limit)
-
-    # -------------------------------------------------------------------------
-    def get_table_names(self) -> list[str]:
-        return self.backend.get_table_names()
-
-    # -------------------------------------------------------------------------
-    def get_column_count(self, table_name: str) -> int:
-        return self.backend.get_column_count(table_name)
-
-    # -------------------------------------------------------------------------
     def save_into_database(self, df: pd.DataFrame, table_name: str) -> None:
         self.backend.save_into_database(df, table_name)
 
@@ -120,11 +91,6 @@ class TKBENWebappDatabase:
     def upsert_into_database(self, df: pd.DataFrame, table_name: str) -> None:
         self.backend.upsert_into_database(df, table_name)
 
-    # -------------------------------------------------------------------------
-    def count_rows(self, table_name: str) -> int:
-        return self.backend.count_rows(table_name)
-
-    # -------------------------------------------------------------------------
     def bulk_replace_by_key(
         self, df: pd.DataFrame, table_name: str, key_column: str, key_value: str
     ) -> None:

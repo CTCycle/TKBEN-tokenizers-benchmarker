@@ -134,45 +134,6 @@ class SQLiteRepository:
             data = pd.read_sql_query(query, conn)
         return data
 
-    # -------------------------------------------------------------------------
-    def load_paginated(
-        self, table_name: str, offset: int = 0, limit: int = 1000
-    ) -> pd.DataFrame:
-        """Load a paginated subset of rows from a table."""
-        safe_name = self.sanitize_identifier(table_name)
-        with self.engine.connect() as conn:
-            if not self.relation_exists(conn, safe_name):
-                logger.warning("Table %s does not exist", table_name)
-                return pd.DataFrame()
-            query = sqlalchemy.text(
-                f'SELECT * FROM "{safe_name}" LIMIT :limit OFFSET :offset'
-            )
-            result = conn.execute(query, {"limit": limit, "offset": offset})
-            columns = result.keys()
-            rows = result.fetchall()
-            return pd.DataFrame(rows, columns=columns)
-
-    # -------------------------------------------------------------------------
-    def get_table_names(self) -> list[str]:
-        """Get list of all table names in the database."""
-        with self.engine.connect() as conn:
-            inspector = inspect(conn)
-            names = set(inspector.get_table_names())
-            names.update(inspector.get_view_names())
-            return sorted(names)
-
-    # -------------------------------------------------------------------------
-    def get_column_count(self, table_name: str) -> int:
-        """Get the number of columns in a table."""
-        safe_name = self.sanitize_identifier(table_name)
-        with self.engine.connect() as conn:
-            if not self.relation_exists(conn, safe_name):
-                return 0
-            inspector = inspect(conn)
-            columns = inspector.get_columns(safe_name)
-            return len(columns)
-
-    # -------------------------------------------------------------------------
     def save_into_database(self, df: pd.DataFrame, table_name: str) -> None:
         with self.engine.begin() as conn:
             inspector = inspect(conn)
@@ -200,17 +161,6 @@ class SQLiteRepository:
         table_cls = self.get_table_class(table_name)
         self.upsert_dataframe(df, table_cls)
 
-    # -----------------------------------------------------------------------------
-    def count_rows(self, table_name: str) -> int:
-        safe_name = self.sanitize_identifier(table_name)
-        with self.engine.connect() as conn:
-            result = conn.execute(
-                sqlalchemy.text(f'SELECT COUNT(*) FROM "{safe_name}"')
-            )
-            value = result.scalar() or 0
-        return int(value)
-
-    # -----------------------------------------------------------------------------
     def bulk_replace_by_key(
         self, df: pd.DataFrame, table_name: str, key_column: str, key_value: str
     ) -> None:
