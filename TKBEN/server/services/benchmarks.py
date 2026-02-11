@@ -15,10 +15,11 @@ from transformers.utils.logging import set_verbosity_error
 
 from TKBEN.server.repositories.database.backend import database
 from TKBEN.server.repositories.schemas.models import (
-    TokenizationGlobalStats,
-    TokenizationLocalStats,
-    Vocabulary,
-    VocabularyStatistics,
+    TokenizationDatasetStats,
+    TokenizationDatasetStatsDetail,
+    TokenizationDocumentStats,
+    TokenizerVocabulary,
+    TokenizerVocabularyStatistics,
 )
 from TKBEN.server.configurations import server_settings
 from TKBEN.server.utils.logger import logger
@@ -290,7 +291,10 @@ class BenchmarkService:
         self, dataset_name: str
     ) -> Generator[tuple[int, str], None, None]:
         query = sqlalchemy.text(
-            'SELECT "id", "text" FROM "text_dataset" WHERE "name" = :dataset ORDER BY "id"'
+            'SELECT dd."id", dd."text" '
+            'FROM "dataset_document" dd '
+            'JOIN "dataset" d ON d."id" = dd."dataset_id" '
+            'WHERE d."name" = :dataset ORDER BY dd."id"'
         )
         count = 0
         with database.backend.engine.connect().execution_options(
@@ -319,7 +323,10 @@ class BenchmarkService:
     # -------------------------------------------------------------------------
     def get_dataset_document_count(self, dataset_name: str) -> int:
         query = sqlalchemy.text(
-            'SELECT COUNT(*) FROM "text_dataset" WHERE "name" = :dataset'
+            'SELECT COUNT(*) '
+            'FROM "dataset_document" dd '
+            'JOIN "dataset" d ON d."id" = dd."dataset_id" '
+            'WHERE d."name" = :dataset'
         )
         with database.backend.engine.connect() as conn:
             result = conn.execute(query, {"dataset": dataset_name})
@@ -985,11 +992,37 @@ class BenchmarkService:
         local_stats: pd.DataFrame,
         global_metrics: pd.DataFrame,
     ) -> None:
-        # Persist local tokenizer statistics with (tokenizer, text_id) upsert semantics.
+        tokenizer_names: set[str] = set()
+        dataset_names: list[str] = []
+
+        if not local_stats.empty:
+            tokenizer_names.update(local_stats["tokenizer"].dropna().astype(str).tolist())
+            dataset_names.extend(local_stats["name"].dropna().astype(str).tolist())
+        if not global_metrics.empty:
+            tokenizer_names.update(global_metrics["tokenizer"].dropna().astype(str).tolist())
+            dataset_names.extend(
+                global_metrics["dataset_name"].dropna().astype(str).tolist()
+            )
+        if not vocabulary_stats.empty:
+            tokenizer_names.update(
+                vocabulary_stats["tokenizer"].dropna().astype(str).tolist()
+            )
+        for vocab_df in vocabularies:
+            if vocab_df.empty or "tokenizer" not in vocab_df.columns:
+                continue
+            tokenizer_names.update(vocab_df["tokenizer"].dropna().astype(str).tolist())
+
+        tokenizer_ids = self.ensure_tokenizer_ids(sorted(tokenizer_names))
+        dataset_id: int | None = None
+        if dataset_names:
+            dataset_id = self.get_dataset_id(dataset_names[0])
+        if dataset_id is None and (not local_stats.empty or not global_metrics.empty):
+            raise ValueError("Dataset id not found while persisting benchmark results.")
+
+        # Persist local tokenizer statistics with (tokenizer_id, document_id) semantics.
         if not local_stats.empty:
             local_columns = [
                 "tokenizer",
-                "name",
                 "text_id",
                 "tokens_count",
                 "tokens_to_words_ratio",
@@ -1004,19 +1037,44 @@ class BenchmarkService:
                 [col for col in local_columns if col in local_stats.columns]
             ].copy()
             if not local_storage.empty:
+                local_storage["tokenizer_id"] = local_storage["tokenizer"].map(tokenizer_ids)
+                local_storage["document_id"] = pd.to_numeric(
+                    local_storage["text_id"], errors="coerce"
+                )
+                local_storage = local_storage.dropna(subset=["tokenizer_id", "document_id"])
+                local_storage["tokenizer_id"] = local_storage["tokenizer_id"].astype(int)
+                local_storage["document_id"] = local_storage["document_id"].astype(int)
+                local_storage = local_storage[
+                    [
+                        "tokenizer_id",
+                        "document_id",
+                        "tokens_count",
+                        "tokens_to_words_ratio",
+                        "bytes_per_token",
+                        "boundary_preservation_rate",
+                        "round_trip_token_fidelity",
+                        "round_trip_text_fidelity",
+                        "determinism_stability",
+                        "bytes_per_character",
+                    ]
+                ]
                 database.upsert_into_database(
-                    local_storage, TokenizationLocalStats.__tablename__
+                    local_storage, TokenizationDocumentStats.__tablename__
                 )
                 logger.info("Saved %d local stats records", len(local_storage))
 
-        # Persist global metrics
+        # Persist global metrics (core + detail split)
         if not global_metrics.empty:
-            global_storage = global_metrics.rename(
-                columns={"dataset_name": "name"}
-            ).copy()
-            global_columns = [
-                "tokenizer",
-                "name",
+            global_storage = global_metrics.copy()
+            global_storage["tokenizer_id"] = global_storage["tokenizer"].map(tokenizer_ids)
+            global_storage["dataset_id"] = dataset_id
+            global_storage = global_storage.dropna(subset=["tokenizer_id", "dataset_id"])
+            global_storage["tokenizer_id"] = global_storage["tokenizer_id"].astype(int)
+            global_storage["dataset_id"] = global_storage["dataset_id"].astype(int)
+
+            core_columns = [
+                "tokenizer_id",
+                "dataset_id",
                 "tokenization_speed_tps",
                 "throughput_chars_per_sec",
                 "model_size_mb",
@@ -1024,6 +1082,8 @@ class BenchmarkService:
                 "subword_fertility",
                 "oov_rate",
                 "word_recovery_rate",
+            ]
+            detail_columns = [
                 "character_coverage",
                 "segmentation_consistency",
                 "determinism_rate",
@@ -1038,14 +1098,48 @@ class BenchmarkService:
                 "token_id_ordering_monotonicity",
                 "token_unigram_coverage",
             ]
-            global_storage = global_storage[
-                [col for col in global_columns if col in global_storage.columns]
-            ]
-            if not global_storage.empty:
+            core_storage = global_storage[
+                [col for col in core_columns if col in global_storage.columns]
+            ].copy()
+            if not core_storage.empty:
                 database.upsert_into_database(
-                    global_storage, TokenizationGlobalStats.__tablename__
+                    core_storage, TokenizationDatasetStats.__tablename__
                 )
-                logger.info("Saved %d global metrics records", len(global_storage))
+                logger.info("Saved %d global metrics records", len(core_storage))
+
+            detail_storage = global_storage[
+                [col for col in detail_columns if col in global_storage.columns]
+            ].copy()
+            if not detail_storage.empty:
+                id_query = sqlalchemy.text(
+                    'SELECT "id", "tokenizer_id" '
+                    'FROM "tokenization_dataset_stats" '
+                    'WHERE "dataset_id" = :dataset_id'
+                )
+                with database.backend.engine.connect() as conn:
+                    result = conn.execute(id_query, {"dataset_id": int(dataset_id)})
+                    rows = result.fetchall()
+                tokenizer_to_global: dict[int, int] = {}
+                for row in rows:
+                    if hasattr(row, "_mapping"):
+                        tokenizer_to_global[int(row._mapping["tokenizer_id"])] = int(
+                            row._mapping["id"]
+                        )
+                    else:
+                        tokenizer_to_global[int(row[1])] = int(row[0])
+
+                detail_storage["tokenizer_id"] = global_storage["tokenizer_id"]
+                detail_storage["global_stats_id"] = detail_storage["tokenizer_id"].map(
+                    tokenizer_to_global
+                )
+                detail_storage = detail_storage.dropna(subset=["global_stats_id"])
+                detail_storage["global_stats_id"] = detail_storage["global_stats_id"].astype(
+                    int
+                )
+                detail_storage = detail_storage.drop(columns=["tokenizer_id"])
+                database.upsert_into_database(
+                    detail_storage, TokenizationDatasetStatsDetail.__tablename__
+                )
 
         # Persist vocabulary statistics
         if not vocabulary_stats.empty:
@@ -1062,8 +1156,26 @@ class BenchmarkService:
                 [col for col in vocab_stats_columns if col in vocabulary_stats.columns]
             ].copy()
             if not vocab_stats_storage.empty:
+                vocab_stats_storage["tokenizer_id"] = vocab_stats_storage["tokenizer"].map(
+                    tokenizer_ids
+                )
+                vocab_stats_storage = vocab_stats_storage.dropna(subset=["tokenizer_id"])
+                vocab_stats_storage["tokenizer_id"] = vocab_stats_storage["tokenizer_id"].astype(
+                    int
+                )
+                vocab_stats_storage = vocab_stats_storage[
+                    [
+                        "tokenizer_id",
+                        "vocabulary_size",
+                        "decoded_tokens",
+                        "number_shared_tokens",
+                        "number_unshared_tokens",
+                        "percentage_subwords",
+                        "percentage_true_words",
+                    ]
+                ]
                 database.upsert_into_database(
-                    vocab_stats_storage, VocabularyStatistics.__tablename__
+                    vocab_stats_storage, TokenizerVocabularyStatistics.__tablename__
                 )
                 logger.info(
                     "Saved %d vocabulary stats records", len(vocab_stats_storage)
@@ -1084,12 +1196,62 @@ class BenchmarkService:
             ].copy()
             if vocab_storage.empty:
                 continue
-            database.upsert_into_database(vocab_storage, Vocabulary.__tablename__)
+            vocab_storage["tokenizer_id"] = vocab_storage["tokenizer"].map(tokenizer_ids)
+            vocab_storage = vocab_storage.dropna(subset=["tokenizer_id"])
+            vocab_storage["tokenizer_id"] = vocab_storage["tokenizer_id"].astype(int)
+            vocab_storage = vocab_storage[
+                ["tokenizer_id", "token_id", "vocabulary_tokens", "decoded_tokens"]
+            ]
+            database.upsert_into_database(
+                vocab_storage, TokenizerVocabulary.__tablename__
+            )
             logger.info(
                 "Saved %d vocabulary rows for tokenizer: %s",
                 len(vocab_storage),
-                vocab_storage["tokenizer"].iloc[0],
+                vocab_df["tokenizer"].iloc[0],
             )
+
+    # -------------------------------------------------------------------------
+    def get_dataset_id(self, dataset_name: str) -> int | None:
+        query = sqlalchemy.text(
+            'SELECT "id" FROM "dataset" WHERE "name" = :dataset LIMIT 1'
+        )
+        with database.backend.engine.connect() as conn:
+            result = conn.execute(query, {"dataset": dataset_name})
+            row = result.first()
+        if row is None:
+            return None
+        if hasattr(row, "_mapping"):
+            return int(row._mapping["id"])
+        return int(row[0])
+
+    # -------------------------------------------------------------------------
+    def ensure_tokenizer_ids(self, tokenizer_names: list[str]) -> dict[str, int]:
+        if not tokenizer_names:
+            return {}
+        insert_query = sqlalchemy.text(
+            'INSERT INTO "tokenizer" ("name") '
+            'SELECT :name '
+            'WHERE NOT EXISTS (SELECT 1 FROM "tokenizer" WHERE "name" = :name)'
+        )
+        with database.backend.engine.begin() as conn:
+            for name in tokenizer_names:
+                conn.execute(insert_query, {"name": name})
+
+        select_query = sqlalchemy.text(
+            'SELECT "id", "name" FROM "tokenizer" WHERE "name" = :name'
+        )
+        mapping: dict[str, int] = {}
+        with database.backend.engine.connect() as conn:
+            for name in tokenizer_names:
+                row = conn.execute(select_query, {"name": name}).first()
+                if row is None:
+                    continue
+                if hasattr(row, "_mapping"):
+                    mapping[str(row._mapping["name"])] = int(row._mapping["id"])
+                else:
+                    mapping[str(row[1])] = int(row[0])
+        return mapping
 
     # -------------------------------------------------------------------------
     def generate_plots(

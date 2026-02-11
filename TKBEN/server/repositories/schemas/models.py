@@ -4,6 +4,7 @@ from sqlalchemy import (
     Column,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     UniqueConstraint,
@@ -16,21 +17,77 @@ Base = declarative_base()
 
 
 ###############################################################################
-class TextDataset(Base):
-    __tablename__ = "text_dataset"
+class Dataset(Base):
+    __tablename__ = "dataset"
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    name = Column(String, nullable=False)
-    text = Column(String, nullable=False)
-    __table_args__ = (UniqueConstraint("id", "name"),)
+    name = Column(String, nullable=False, unique=True)
 
 
 ###############################################################################
-class TokenizationLocalStats(Base):
-    __tablename__ = "tokenization_local_stats"
+class Tokenizer(Base):
+    __tablename__ = "tokenizer"
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    tokenizer = Column(String, nullable=False)
-    name = Column(String, nullable=False)
-    text_id = Column(Integer, ForeignKey("text_dataset.id"), nullable=False)
+    name = Column(String, nullable=False, unique=True)
+
+
+###############################################################################
+class DatasetDocument(Base):
+    __tablename__ = "dataset_document"
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    dataset_id = Column(
+        Integer,
+        ForeignKey("dataset.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    text = Column(String, nullable=False)
+    __table_args__ = (
+        Index("ix_dataset_document_dataset_id_id", "dataset_id", "id"),
+    )
+
+
+###############################################################################
+class DatasetDocumentStatistics(Base):
+    __tablename__ = "dataset_document_statistics"
+    document_id = Column(
+        Integer,
+        ForeignKey("dataset_document.id", ondelete="CASCADE"),
+        primary_key=True,
+        nullable=False,
+    )
+    words_count = Column(Integer)
+    avg_words_length = Column(Float)
+    std_words_length = Column(Float)
+
+
+###############################################################################
+class DatasetReport(Base):
+    __tablename__ = "dataset_report"
+    dataset_id = Column(
+        Integer,
+        ForeignKey("dataset.id", ondelete="CASCADE"),
+        primary_key=True,
+        nullable=False,
+    )
+    document_statistics = Column(JSONMapping)
+    word_statistics = Column(JSONMapping)
+    most_common_words = Column(JSONSequence)
+    least_common_words = Column(JSONSequence)
+
+
+###############################################################################
+class TokenizationDocumentStats(Base):
+    __tablename__ = "tokenization_document_stats"
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    tokenizer_id = Column(
+        Integer,
+        ForeignKey("tokenizer.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    document_id = Column(
+        Integer,
+        ForeignKey("dataset_document.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     tokens_count = Column(Integer)
     tokens_to_words_ratio = Column(Float)
     bytes_per_token = Column(Float)
@@ -39,15 +96,27 @@ class TokenizationLocalStats(Base):
     round_trip_text_fidelity = Column(Float)
     determinism_stability = Column(Float)
     bytes_per_character = Column(Float)
-    __table_args__ = (UniqueConstraint("tokenizer", "text_id"),)
+    __table_args__ = (
+        UniqueConstraint("tokenizer_id", "document_id"),
+        Index("ix_tokenization_document_stats_tokenizer_id", "tokenizer_id"),
+        Index("ix_tokenization_document_stats_document_id", "document_id"),
+    )
 
 
 ###############################################################################
-class TokenizationGlobalStats(Base):
-    __tablename__ = "tokenization_global_stats"
+class TokenizationDatasetStats(Base):
+    __tablename__ = "tokenization_dataset_stats"
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    tokenizer = Column(String, nullable=False)
-    name = Column(String, nullable=False)
+    tokenizer_id = Column(
+        Integer,
+        ForeignKey("tokenizer.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    dataset_id = Column(
+        Integer,
+        ForeignKey("dataset.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     tokenization_speed_tps = Column(Float)
     throughput_chars_per_sec = Column(Float)
     model_size_mb = Column(Float)
@@ -55,6 +124,22 @@ class TokenizationGlobalStats(Base):
     subword_fertility = Column(Float)
     oov_rate = Column(Float)
     word_recovery_rate = Column(Float)
+    __table_args__ = (
+        UniqueConstraint("tokenizer_id", "dataset_id"),
+        Index("ix_tokenization_dataset_stats_tokenizer_id", "tokenizer_id"),
+        Index("ix_tokenization_dataset_stats_dataset_id", "dataset_id"),
+    )
+
+
+###############################################################################
+class TokenizationDatasetStatsDetail(Base):
+    __tablename__ = "tokenization_dataset_stats_detail"
+    global_stats_id = Column(
+        Integer,
+        ForeignKey("tokenization_dataset_stats.id", ondelete="CASCADE"),
+        primary_key=True,
+        nullable=False,
+    )
     character_coverage = Column(Float)
     segmentation_consistency = Column(Float)
     determinism_rate = Column(Float)
@@ -68,53 +153,38 @@ class TokenizationGlobalStats(Base):
     round_trip_text_fidelity_rate = Column(Float)
     token_id_ordering_monotonicity = Column(Float)
     token_unigram_coverage = Column(Float)
-    __table_args__ = (UniqueConstraint("tokenizer", "name"),)
 
 
 ###############################################################################
-class VocabularyStatistics(Base):
-    __tablename__ = "vocabulary_statistics"
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    tokenizer = Column(String, nullable=False)
+class TokenizerVocabularyStatistics(Base):
+    __tablename__ = "tokenizer_vocabulary_statistics"
+    tokenizer_id = Column(
+        Integer,
+        ForeignKey("tokenizer.id", ondelete="CASCADE"),
+        primary_key=True,
+        nullable=False,
+    )
     vocabulary_size = Column(Integer)
     decoded_tokens = Column(Integer)
     number_shared_tokens = Column(Integer)
     number_unshared_tokens = Column(Integer)
     percentage_subwords = Column(Float)
     percentage_true_words = Column(Float)
-    __table_args__ = (UniqueConstraint("tokenizer"),)
 
 
 ###############################################################################
-class Vocabulary(Base):
-    __tablename__ = "vocabulary"
+class TokenizerVocabulary(Base):
+    __tablename__ = "tokenizer_vocabulary"
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    tokenizer = Column(String, nullable=False)
+    tokenizer_id = Column(
+        Integer,
+        ForeignKey("tokenizer.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     token_id = Column(Integer, nullable=False)
     vocabulary_tokens = Column(String)
     decoded_tokens = Column(String)
-    __table_args__ = (UniqueConstraint("tokenizer", "token_id"),)
-
-
-###############################################################################
-class TextDatasetStatistics(Base):
-    __tablename__ = "text_dataset_statistics"
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    name = Column(String, nullable=False)
-    text_id = Column(Integer, ForeignKey("text_dataset.id"), nullable=False)
-    words_count = Column(Integer)
-    avg_words_length = Column(Float)
-    std_words_length = Column(Float)
-    __table_args__ = (UniqueConstraint("text_id"),)
-
-
-###############################################################################
-class TextDatasetReports(Base):
-    __tablename__ = "text_dataset_reports"
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    name = Column(String, nullable=False)
-    document_statistics = Column(JSONMapping)
-    word_statistics = Column(JSONMapping)
-    most_common_words = Column(JSONSequence)
-    least_common_words = Column(JSONSequence)
-    __table_args__ = (UniqueConstraint("name"),)
+    __table_args__ = (
+        UniqueConstraint("tokenizer_id", "token_id"),
+        Index("ix_tokenizer_vocabulary_tokenizer_id", "tokenizer_id"),
+    )

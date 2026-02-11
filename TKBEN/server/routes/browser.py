@@ -16,6 +16,16 @@ router = APIRouter(prefix=API_ROUTER_PREFIX_BROWSER, tags=["browser"])
 
 # Mapping from table names to friendly display names
 TABLE_DISPLAY_NAMES: dict[str, str] = {
+    "dataset": "Datasets",
+    "dataset_document": "Dataset Documents",
+    "dataset_document_statistics": "Dataset Document Statistics",
+    "dataset_report": "Dataset Reports",
+    "tokenizer": "Tokenizers",
+    "tokenization_document_stats": "Tokenization Document Statistics",
+    "tokenization_dataset_stats": "Tokenization Dataset Stats (Core)",
+    "tokenization_dataset_stats_detail": "Tokenization Dataset Stats (Detail)",
+    "tokenizer_vocabulary": "Tokenizer Vocabulary",
+    "tokenizer_vocabulary_statistics": "Tokenizer Vocabulary Statistics",
     "tokenization_local_stats": "Tokenization Local Statistics",
     "tokenization_global_stats": "Tokenization Global Stats",
     "vocabulary_statistics": "Vocabulary Statistics",
@@ -37,6 +47,7 @@ async def list_tables() -> dict:
     """
     try:
         table_names = database.get_table_names()
+        table_names = [name for name in table_names if not name.endswith("_legacy")]
         tables = []
         for name in table_names:
             display_name = TABLE_DISPLAY_NAMES.get(name, name)

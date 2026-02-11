@@ -14,7 +14,7 @@ import sqlalchemy
 from datasets import Dataset, DatasetDict, load_dataset
 
 from TKBEN.server.repositories.database.backend import database
-from TKBEN.server.repositories.schemas.models import TextDataset
+from TKBEN.server.repositories.schemas.models import DatasetDocument
 from TKBEN.server.repositories.serialization.data import DatasetSerializer
 from TKBEN.server.configurations import server_settings
 from TKBEN.server.utils.constants import DATASETS_PATH
@@ -363,6 +363,7 @@ class DatasetService:
         progress_base: float = 0.0,
         progress_span: float = 100.0,
     ) -> tuple[dict[str, Any], int]:
+        dataset_id = self.dataset_serializer.ensure_dataset_id(dataset_name)
         batch_size = self.streaming_batch_size
         batch: list[dict[str, Any]] = []
         saved_count = 0
@@ -374,11 +375,11 @@ class DatasetService:
             if should_stop and should_stop():
                 return histogram_builder.build(), saved_count
             histogram_builder.add(len(text))
-            batch.append({"name": dataset_name, "text": text})
+            batch.append({"dataset_id": dataset_id, "text": text})
 
             if len(batch) >= batch_size:
                 df = pd.DataFrame(batch)
-                database.insert_dataframe(df, TextDataset.__tablename__)
+                database.insert_dataframe(df, DatasetDocument.__tablename__)
                 saved_count += len(batch)
                 if saved_count - last_logged >= self.log_interval:
                     logger.info("Saved %d documents so far...", saved_count)
@@ -392,7 +393,7 @@ class DatasetService:
 
         if batch:
             df = pd.DataFrame(batch)
-            database.insert_dataframe(df, TextDataset.__tablename__)
+            database.insert_dataframe(df, DatasetDocument.__tablename__)
             saved_count += len(batch)
             if progress_callback:
                 progress_value = progress_base + (
@@ -584,16 +585,17 @@ class DatasetService:
         saved_count = 0
         last_logged = 0
         histogram_builder = HistogramBuilder(stats, self.histogram_bins)
+        dataset_id = self.dataset_serializer.ensure_dataset_id(dataset_name)
 
         for text in iterate_df_texts():
             if should_stop and should_stop():
                 return {}
             histogram_builder.add(len(text))
-            batch.append({"name": dataset_name, "text": text})
+            batch.append({"dataset_id": dataset_id, "text": text})
 
             if len(batch) >= batch_size:
                 batch_df = pd.DataFrame(batch)
-                database.insert_dataframe(batch_df, TextDataset.__tablename__)
+                database.insert_dataframe(batch_df, DatasetDocument.__tablename__)
                 saved_count += len(batch)
                 if saved_count - last_logged >= self.log_interval:
                     logger.info("Saved %d documents so far...", saved_count)
@@ -607,7 +609,7 @@ class DatasetService:
 
         if batch:
             batch_df = pd.DataFrame(batch)
-            database.insert_dataframe(batch_df, TextDataset.__tablename__)
+            database.insert_dataframe(batch_df, DatasetDocument.__tablename__)
             saved_count += len(batch)
             if progress_callback:
                 progress_value = 15.0 + (
@@ -725,8 +727,7 @@ class DatasetService:
 
                 stats_batch.append(
                     {
-                        "name": dataset_name,
-                        "text_id": text_id,
+                        "document_id": text_id,
                         "words_count": words_count,
                         "avg_words_length": avg_word_length,
                         "std_words_length": std_word_length,
@@ -795,7 +796,10 @@ class DatasetService:
             'AVG("words_count") as mean_words, '
             'AVG("avg_words_length") as mean_avg_len, '
             'AVG("std_words_length") as mean_std_len '
-            'FROM "text_dataset_statistics" WHERE "name" = :dataset'
+            'FROM "dataset_document_statistics" dds '
+            'JOIN "dataset_document" dd ON dd."id" = dds."document_id" '
+            'JOIN "dataset" d ON d."id" = dd."dataset_id" '
+            'WHERE d."name" = :dataset'
         )
 
         with database.backend.engine.connect() as conn:
@@ -842,8 +846,11 @@ class DatasetService:
         """Compute median word count using SQL for efficiency."""
         # For SQLite and Postgres, use PERCENTILE_CONT or ORDER BY with LIMIT
         count_query = sqlalchemy.text(
-            'SELECT COUNT(*) FROM "text_dataset_statistics" '
-            'WHERE "name" = :dataset'
+            'SELECT COUNT(*) '
+            'FROM "dataset_document_statistics" dds '
+            'JOIN "dataset_document" dd ON dd."id" = dds."document_id" '
+            'JOIN "dataset" d ON d."id" = dd."dataset_id" '
+            'WHERE d."name" = :dataset'
         )
 
         with database.backend.engine.connect() as conn:
@@ -857,9 +864,12 @@ class DatasetService:
         # Get median using OFFSET/LIMIT
         offset = total // 2
         median_query = sqlalchemy.text(
-            'SELECT "words_count" FROM "text_dataset_statistics" '
-            'WHERE "name" = :dataset '
-            'ORDER BY "words_count" LIMIT 1 OFFSET :offset'
+            'SELECT dds."words_count" '
+            'FROM "dataset_document_statistics" dds '
+            'JOIN "dataset_document" dd ON dd."id" = dds."document_id" '
+            'JOIN "dataset" d ON d."id" = dd."dataset_id" '
+            'WHERE d."name" = :dataset '
+            'ORDER BY dds."words_count" LIMIT 1 OFFSET :offset'
         )
 
         with database.backend.engine.connect() as conn:
