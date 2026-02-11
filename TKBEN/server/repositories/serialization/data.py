@@ -9,10 +9,11 @@ import sqlalchemy
 
 from TKBEN.server.repositories.queries.data import DataRepositoryQueries
 from TKBEN.server.repositories.schemas.models import (
-    TokenizationLocalStats,
-    TextDataset,
-    TextDatasetReports,
-    TextDatasetStatistics,
+    Dataset,
+    DatasetDocument,
+    DatasetDocumentStatistics,
+    DatasetReport,
+    TokenizationDocumentStats,
 )
 
 K_ERROR = "k error"
@@ -355,10 +356,11 @@ class DataSerializer:
 class DatasetSerializer:
     def __init__(self, queries: DataRepositoryQueries | None = None) -> None:
         self.queries = queries or DataRepositoryQueries()
-        self.dataset_table = TextDataset.__tablename__
-        self.stats_table = TextDatasetStatistics.__tablename__
-        self.reports_table = TextDatasetReports.__tablename__
-        self.local_stats_table = TokenizationLocalStats.__tablename__
+        self.dataset_dimension_table = Dataset.__tablename__
+        self.dataset_table = DatasetDocument.__tablename__
+        self.stats_table = DatasetDocumentStatistics.__tablename__
+        self.reports_table = DatasetReport.__tablename__
+        self.local_stats_table = TokenizationDocumentStats.__tablename__
 
     # -------------------------------------------------------------------------
     def parse_json(self, value: Any, default: Any | None = None) -> Any:
@@ -401,9 +403,11 @@ class DatasetSerializer:
     # -------------------------------------------------------------------------
     def list_dataset_previews(self) -> list[dict[str, Any]]:
         query = sqlalchemy.text(
-            'SELECT "name" as dataset_name, '
-            'COUNT(*) as document_count '
-            'FROM "text_dataset" GROUP BY "name" ORDER BY "name"'
+            'SELECT d."name" as dataset_name, '
+            'COUNT(dd."id") as document_count '
+            'FROM "dataset" d '
+            'LEFT JOIN "dataset_document" dd ON dd."dataset_id" = d."id" '
+            'GROUP BY d."name" ORDER BY d."name"'
         )
         with self.queries.engine.connect() as conn:
             result = conn.execute(query)
@@ -427,12 +431,39 @@ class DatasetSerializer:
 
     # -------------------------------------------------------------------------
     def list_dataset_names(self) -> list[str]:
-        return self.queries.get_distinct_values(self.dataset_table, "name")
+        return self.queries.get_distinct_values(self.dataset_dimension_table, "name")
+
+    # -------------------------------------------------------------------------
+    def get_dataset_id(self, dataset_name: str) -> int | None:
+        query = sqlalchemy.text('SELECT "id" FROM "dataset" WHERE "name" = :dataset LIMIT 1')
+        with self.queries.engine.connect() as conn:
+            result = conn.execute(query, {"dataset": dataset_name})
+            row = result.first()
+        if row is None:
+            return None
+        if hasattr(row, "_mapping"):
+            return int(row._mapping.get("id"))
+        return int(row[0])
+
+    # -------------------------------------------------------------------------
+    def ensure_dataset_id(self, dataset_name: str) -> int:
+        query = sqlalchemy.text(
+            'INSERT INTO "dataset" ("name") '
+            'SELECT :dataset '
+            'WHERE NOT EXISTS ('
+            'SELECT 1 FROM "dataset" WHERE "name" = :dataset)'
+        )
+        with self.queries.engine.begin() as conn:
+            conn.execute(query, {"dataset": dataset_name})
+        dataset_id = self.get_dataset_id(dataset_name)
+        if dataset_id is None:
+            raise ValueError(f"Failed to resolve dataset id for '{dataset_name}'")
+        return dataset_id
 
     # -------------------------------------------------------------------------
     def dataset_exists(self, dataset_name: str) -> bool:
         query = sqlalchemy.text(
-            'SELECT 1 FROM "text_dataset" WHERE "name" = :dataset LIMIT 1'
+            'SELECT 1 FROM "dataset" WHERE "name" = :dataset LIMIT 1'
         )
         with self.queries.engine.connect() as conn:
             result = conn.execute(query, {"dataset": dataset_name})
@@ -441,7 +472,10 @@ class DatasetSerializer:
     # -------------------------------------------------------------------------
     def count_dataset_documents(self, dataset_name: str) -> int:
         query = sqlalchemy.text(
-            'SELECT COUNT(*) FROM "text_dataset" WHERE "name" = :dataset'
+            'SELECT COUNT(*) '
+            'FROM "dataset_document" dd '
+            'JOIN "dataset" d ON d."id" = dd."dataset_id" '
+            'WHERE d."name" = :dataset'
         )
         with self.queries.engine.connect() as conn:
             result = conn.execute(query, {"dataset": dataset_name})
@@ -457,9 +491,10 @@ class DatasetSerializer:
         offset = 0
         while True:
             query = sqlalchemy.text(
-                'SELECT "text" FROM "text_dataset" '
-                'WHERE "name" = :dataset '
-                'ORDER BY "id" LIMIT :limit OFFSET :offset'
+                'SELECT dd."text" FROM "dataset_document" dd '
+                'JOIN "dataset" d ON d."id" = dd."dataset_id" '
+                'WHERE d."name" = :dataset '
+                'ORDER BY dd."id" LIMIT :limit OFFSET :offset'
             )
             with self.queries.engine.connect() as conn:
                 result = conn.execute(
@@ -494,9 +529,10 @@ class DatasetSerializer:
         offset = 0
         while True:
             query = sqlalchemy.text(
-                'SELECT "id", "text" FROM "text_dataset" '
-                'WHERE "name" = :dataset '
-                'ORDER BY "id" LIMIT :limit OFFSET :offset'
+                'SELECT dd."id", dd."text" FROM "dataset_document" dd '
+                'JOIN "dataset" d ON d."id" = dd."dataset_id" '
+                'WHERE d."name" = :dataset '
+                'ORDER BY dd."id" LIMIT :limit OFFSET :offset'
             )
             with self.queries.engine.connect() as conn:
                 result = conn.execute(
@@ -528,14 +564,22 @@ class DatasetSerializer:
 
     # -------------------------------------------------------------------------
     def delete_dataset(self, dataset_name: str) -> None:
-        self.queries.delete_by_key(self.local_stats_table, "name", dataset_name)
-        self.queries.delete_by_key(self.stats_table, "name", dataset_name)
-        self.queries.delete_by_key(self.reports_table, "name", dataset_name)
-        self.queries.delete_by_key(self.dataset_table, "name", dataset_name)
+        query = sqlalchemy.text('DELETE FROM "dataset" WHERE "name" = :dataset')
+        with self.queries.engine.begin() as conn:
+            conn.execute(query, {"dataset": dataset_name})
 
     # -------------------------------------------------------------------------
     def delete_dataset_statistics(self, dataset_name: str) -> None:
-        self.queries.delete_by_key(self.stats_table, "name", dataset_name)
+        query = sqlalchemy.text(
+            'DELETE FROM "dataset_document_statistics" '
+            'WHERE "document_id" IN ('
+            'SELECT dd."id" '
+            'FROM "dataset_document" dd '
+            'JOIN "dataset" d ON d."id" = dd."dataset_id" '
+            'WHERE d."name" = :dataset)'
+        )
+        with self.queries.engine.begin() as conn:
+            conn.execute(query, {"dataset": dataset_name})
 
     # -------------------------------------------------------------------------
     def save_dataset_statistics_batch(self, batch: list[dict[str, Any]]) -> None:
@@ -549,7 +593,7 @@ class DatasetSerializer:
         document_histogram = report.get("document_length_histogram", {})
         word_histogram = report.get("word_length_histogram", {})
         return {
-            "name": report.get("dataset_name", ""),
+            "dataset_name": report.get("dataset_name", ""),
             "document_statistics": {
                 "document_count": report.get("document_count", 0),
                 "document_bins": document_histogram.get("bins", []),
@@ -576,14 +620,20 @@ class DatasetSerializer:
     # -------------------------------------------------------------------------
     def save_dataset_report(self, report: dict[str, Any]) -> None:
         storage = self.build_report_storage(report)
-        df = pd.DataFrame([storage])
+        dataset_name = str(storage.get("dataset_name") or "")
+        dataset_id = self.get_dataset_id(dataset_name)
+        if dataset_id is None:
+            raise ValueError(f"Dataset '{dataset_name}' not found while saving report.")
+        row = {
+            "dataset_id": dataset_id,
+            "document_statistics": storage.get("document_statistics"),
+            "word_statistics": storage.get("word_statistics"),
+            "most_common_words": storage.get("most_common_words"),
+            "least_common_words": storage.get("least_common_words"),
+        }
+        df = pd.DataFrame([row])
         df = self.serialize_json_columns(df)
-        self.queries.bulk_replace_by_key(
-            df,
-            self.reports_table,
-            "name",
-            storage["name"],
-        )
+        self.queries.upsert_table(df, self.reports_table)
 
     # -------------------------------------------------------------------------
     def build_report_response(self, storage: dict[str, Any]) -> dict[str, Any]:
@@ -624,7 +674,7 @@ class DatasetSerializer:
             ),
         }
         return {
-            "dataset_name": storage.get("name", ""),
+            "dataset_name": storage.get("dataset_name", ""),
             "document_count": int(
                 document_statistics.get("document_count", 0) or 0
             ),
@@ -639,8 +689,10 @@ class DatasetSerializer:
     # -------------------------------------------------------------------------
     def load_dataset_report(self, dataset_name: str) -> dict[str, Any] | None:
         query = sqlalchemy.text(
-            'SELECT * FROM "text_dataset_reports" '
-            'WHERE "name" = :dataset LIMIT 1'
+            'SELECT dr.*, d."name" AS "dataset_name" '
+            'FROM "dataset_report" dr '
+            'JOIN "dataset" d ON d."id" = dr."dataset_id" '
+            'WHERE d."name" = :dataset LIMIT 1'
         )
         with self.queries.engine.connect() as conn:
             result = conn.execute(query, {"dataset": dataset_name})

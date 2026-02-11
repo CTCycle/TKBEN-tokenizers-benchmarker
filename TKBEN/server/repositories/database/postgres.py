@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import urllib.parse
+import re
 from typing import Any
 
 import pandas as pd
@@ -12,12 +13,15 @@ from sqlalchemy.orm import sessionmaker
 
 from TKBEN.server.configurations import DatabaseSettings
 from TKBEN.server.repositories.database.utils import normalize_postgres_engine
+from TKBEN.server.repositories.database.migration import run_schema_migration
 from TKBEN.server.repositories.schemas.models import Base
 from TKBEN.server.utils.logger import logger
 
 
 ###############################################################################
 class PostgresRepository:
+    IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
     def __init__(self, settings: DatabaseSettings) -> None:
         if not settings.host:
             raise ValueError("Database host must be provided for external database.")
@@ -52,6 +56,20 @@ class PostgresRepository:
         self.session = sessionmaker(bind=self.engine, future=True)
         self.insert_batch_size = settings.insert_batch_size
         Base.metadata.create_all(self.engine, checkfirst=True)
+        run_schema_migration(self.engine)
+
+    # -------------------------------------------------------------------------
+    def sanitize_identifier(self, name: str) -> str:
+        if not self.IDENTIFIER_PATTERN.match(name):
+            raise ValueError(f"Invalid SQL identifier: {name}")
+        return name
+
+    # -------------------------------------------------------------------------
+    def relation_exists(self, conn: Any, relation_name: str) -> bool:
+        inspector = inspect(conn)
+        if inspector.has_table(relation_name):
+            return True
+        return relation_name in inspector.get_view_names()
 
     # -------------------------------------------------------------------------
     def get_table_class(self, table_name: str) -> Any:
@@ -85,11 +103,13 @@ class PostgresRepository:
         table = table_cls.__table__
         session = self.session()
         try:
-            unique_cols = []
+            unique_cols: list[str] = []
             for uc in table.constraints:
                 if isinstance(uc, UniqueConstraint):
-                    unique_cols = uc.columns.keys()
+                    unique_cols = list(uc.columns.keys())
                     break
+            if not unique_cols:
+                unique_cols = [column.name for column in table.primary_key.columns]
             if not unique_cols:
                 raise ValueError(f"No unique constraint found for {table_cls.__name__}")
             records = df.to_dict(orient="records")
@@ -113,12 +133,13 @@ class PostgresRepository:
 
     # -------------------------------------------------------------------------
     def load_from_database(self, table_name: str) -> pd.DataFrame:
+        safe_name = self.sanitize_identifier(table_name)
         with self.engine.connect() as conn:
-            inspector = inspect(conn)
-            if not inspector.has_table(table_name):
+            if not self.relation_exists(conn, safe_name):
                 logger.warning("Table %s does not exist", table_name)
                 return pd.DataFrame()
-            data = pd.read_sql_table(table_name, conn)
+            query = sqlalchemy.text(f'SELECT * FROM "{safe_name}"')
+            data = pd.read_sql_query(query, conn)
         return data
 
     # -------------------------------------------------------------------------
@@ -126,13 +147,13 @@ class PostgresRepository:
         self, table_name: str, offset: int = 0, limit: int = 1000
     ) -> pd.DataFrame:
         """Load a paginated subset of rows from a table."""
+        safe_name = self.sanitize_identifier(table_name)
         with self.engine.connect() as conn:
-            inspector = inspect(conn)
-            if not inspector.has_table(table_name):
+            if not self.relation_exists(conn, safe_name):
                 logger.warning("Table %s does not exist", table_name)
                 return pd.DataFrame()
             query = sqlalchemy.text(
-                f'SELECT * FROM "{table_name}" LIMIT :limit OFFSET :offset'
+                f'SELECT * FROM "{safe_name}" LIMIT :limit OFFSET :offset'
             )
             result = conn.execute(query, {"limit": limit, "offset": offset})
             columns = result.keys()
@@ -144,16 +165,19 @@ class PostgresRepository:
         """Get list of all table names in the database."""
         with self.engine.connect() as conn:
             inspector = inspect(conn)
-            return inspector.get_table_names()
+            names = set(inspector.get_table_names())
+            names.update(inspector.get_view_names())
+            return sorted(names)
 
     # -------------------------------------------------------------------------
     def get_column_count(self, table_name: str) -> int:
         """Get the number of columns in a table."""
+        safe_name = self.sanitize_identifier(table_name)
         with self.engine.connect() as conn:
-            inspector = inspect(conn)
-            if not inspector.has_table(table_name):
+            if not self.relation_exists(conn, safe_name):
                 return 0
-            columns = inspector.get_columns(table_name)
+            inspector = inspect(conn)
+            columns = inspector.get_columns(safe_name)
             return len(columns)
 
     # -------------------------------------------------------------------------
@@ -171,9 +195,10 @@ class PostgresRepository:
 
     # -------------------------------------------------------------------------
     def count_rows(self, table_name: str) -> int:
+        safe_name = self.sanitize_identifier(table_name)
         with self.engine.connect() as conn:
             result = conn.execute(
-                sqlalchemy.text(f'SELECT COUNT(*) FROM "{table_name}"')
+                sqlalchemy.text(f'SELECT COUNT(*) FROM "{safe_name}"')
             )
             value = result.scalar() or 0
         return int(value)
@@ -186,10 +211,12 @@ class PostgresRepository:
         Fast bulk insert: delete all rows matching key_value, then bulk insert new data.
         Uses batched inserts with separate commits to avoid memory issues on large datasets.
         """
+        safe_name = self.sanitize_identifier(table_name)
+        safe_key = self.sanitize_identifier(key_column)
         # Delete existing rows first (separate transaction)
         with self.engine.begin() as conn:
             conn.execute(
-                sqlalchemy.text(f'DELETE FROM "{table_name}" WHERE "{key_column}" = :key'),
+                sqlalchemy.text(f'DELETE FROM "{safe_name}" WHERE "{safe_key}" = :key'),
                 {"key": key_value},
             )
 
@@ -203,7 +230,7 @@ class PostgresRepository:
             end = min(start + batch_size, total_rows)
             batch_df = df.iloc[start:end]
             with self.engine.begin() as conn:
-                batch_df.to_sql(table_name, conn, if_exists="append", index=False)
+                batch_df.to_sql(safe_name, conn, if_exists="append", index=False)
             logger.info(
                 "Inserted batch %d-%d of %d rows into %s",
                 start + 1, end, total_rows, table_name
@@ -214,9 +241,11 @@ class PostgresRepository:
         self, table_name: str, key_column: str, key_value: str
     ) -> None:
         """Delete all rows matching the specified key value."""
+        safe_name = self.sanitize_identifier(table_name)
+        safe_key = self.sanitize_identifier(key_column)
         with self.engine.begin() as conn:
             result = conn.execute(
-                sqlalchemy.text(f'DELETE FROM "{table_name}" WHERE "{key_column}" = :key'),
+                sqlalchemy.text(f'DELETE FROM "{safe_name}" WHERE "{safe_key}" = :key'),
                 {"key": key_value},
             )
         deleted_rows = int(result.rowcount or 0)
@@ -270,12 +299,13 @@ class PostgresRepository:
     # -----------------------------------------------------------------------------
     def get_distinct_values(self, table_name: str, column: str) -> list[str]:
         """Get distinct values from a column in the specified table."""
+        safe_name = self.sanitize_identifier(table_name)
+        safe_column = self.sanitize_identifier(column)
         with self.engine.connect() as conn:
-            inspector = inspect(conn)
-            if not inspector.has_table(table_name):
+            if not self.relation_exists(conn, safe_name):
                 return []
             result = conn.execute(
-                sqlalchemy.text(f'SELECT DISTINCT "{column}" FROM "{table_name}"')
+                sqlalchemy.text(f'SELECT DISTINCT "{safe_column}" FROM "{safe_name}"')
             )
             return [row[0] for row in result.fetchall() if row[0] is not None]
 
