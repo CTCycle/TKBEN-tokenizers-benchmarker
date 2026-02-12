@@ -587,7 +587,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
               </div>
             )}
             <div className="dataset-modal-content">
-              {isInsertByNameOpen ? (
+              {isInsertByNameOpen && (
                 <div
                   id={manualInsertRegionId}
                   className="dataset-manual-panel"
@@ -633,63 +633,62 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                     </button>
                   </div>
                 </div>
-              ) : (
-                <div
-                  className="dataset-preset-list-shell"
-                  aria-disabled={presetsDisabled}
-                >
-                  <div className="dataset-preset-list">
-                    {PREDEFINED_DATASETS.map((group) => (
-                      <div className="dataset-preset-group" key={group.group}>
-                        <p className="dataset-preset-heading">{group.group}</p>
-                        {group.datasets.map((preset) => {
-                          const isSelected = selectedPreset === preset.id;
-                          return (
-                            <div
-                              key={preset.id}
-                              role="button"
-                              tabIndex={presetsDisabled ? -1 : 0}
-                              aria-disabled={presetsDisabled}
-                              className={`dataset-preset-row${isSelected ? ' selected' : ''}`}
-                              onClick={() => {
-                                if (!presetsDisabled) {
-                                  handlePresetSelect(preset);
-                                }
-                              }}
-                              onKeyDown={(event) => {
-                                if (!presetsDisabled && (event.key === 'Enter' || event.key === ' ')) {
-                                  handlePresetSelect(preset);
-                                }
-                              }}
-                            >
-                              <div className="dataset-preset-info">
-                                <span className="dataset-preset-name">{preset.label}</span>
-                                <span className="dataset-preset-description">{preset.description}</span>
-                              </div>
-                              {isSelected && (
-                                <button
-                                  type="button"
-                                  className="icon-button subtle"
-                                  aria-label={`Download ${preset.label}`}
-                                  title={`Download ${preset.label}`}
-                                  onClick={handlePresetDownload}
-                                  disabled={loading || presetsDisabled}
-                                >
-                                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <path d="M12 3v12" strokeWidth="2" strokeLinecap="round" />
-                                    <path d="M7 10l5 5 5-5" strokeWidth="2" strokeLinecap="round" />
-                                    <path d="M5 19h14" strokeWidth="2" strokeLinecap="round" />
-                                  </svg>
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                </div>
               )}
+              <div
+                className="dataset-preset-list-shell"
+                aria-disabled={presetsDisabled}
+              >
+                <div className="dataset-preset-list">
+                  {PREDEFINED_DATASETS.map((group) => (
+                    <div className="dataset-preset-group" key={group.group}>
+                      <p className="dataset-preset-heading">{group.group}</p>
+                      {group.datasets.map((preset) => {
+                        const isSelected = selectedPreset === preset.id;
+                        return (
+                          <div
+                            key={preset.id}
+                            role="button"
+                            tabIndex={presetsDisabled ? -1 : 0}
+                            aria-disabled={presetsDisabled}
+                            className={`dataset-preset-row${isSelected ? ' selected' : ''}`}
+                            onClick={() => {
+                              if (!presetsDisabled) {
+                                handlePresetSelect(preset);
+                              }
+                            }}
+                            onKeyDown={(event) => {
+                              if (!presetsDisabled && (event.key === 'Enter' || event.key === ' ')) {
+                                handlePresetSelect(preset);
+                              }
+                            }}
+                          >
+                            <div className="dataset-preset-info">
+                              <span className="dataset-preset-name">{preset.label}</span>
+                              <span className="dataset-preset-description">{preset.description}</span>
+                            </div>
+                            {isSelected && (
+                              <button
+                                type="button"
+                                className="icon-button subtle"
+                                aria-label={`Download ${preset.label}`}
+                                title={`Download ${preset.label}`}
+                                onClick={handlePresetDownload}
+                                disabled={loading || presetsDisabled}
+                              >
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                  <path d="M12 3v12" strokeWidth="2" strokeLinecap="round" />
+                                  <path d="M7 10l5 5 5-5" strokeWidth="2" strokeLinecap="round" />
+                                  <path d="M5 19h14" strokeWidth="2" strokeLinecap="round" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
             <div className="modal-footer">
               <button

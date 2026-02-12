@@ -473,6 +473,7 @@
 
 .dataset-modal {
   width: min(980px, 92vw);
+  height: min(90vh, 760px);
 }
 
 .dataset-modal-header {
@@ -497,7 +498,9 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 
 .dataset-manual-panel {
@@ -526,6 +529,8 @@
 
 .dataset-preset-list-shell {
   min-width: 0;
+  flex: 1;
+  min-height: 0;
   transition: transform 220ms ease, opacity 220ms ease, filter 220ms ease;
 }
 
@@ -533,7 +538,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: 420px;
+  min-height: 0;
+  height: 100%;
   overflow: auto;
   padding-right: 8px;
 }
