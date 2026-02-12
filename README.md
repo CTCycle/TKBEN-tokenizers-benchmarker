@@ -109,6 +109,7 @@ Frontend hosting (host/port) is controlled by the Windows launcher and Vite usin
 | UI_PORT | Frontend bind port for preview; set in `TKBEN/settings/.env` if overridden, default `5173` in `TKBEN/start_on_windows.bat`. |
 | RELOAD | Enables FastAPI reload; set in `TKBEN/settings/.env`, default `true`. |
 | VITE_API_BASE_URL | Frontend API base path; set in `TKBEN/settings/.env`, default `/api`. |
+| HF_KEYS_ENCRYPTION_KEY | Required Fernet key used to encrypt/decrypt stored Hugging Face keys; must be provided per environment and not committed as a shared secret. |
 | MPLBACKEND | Matplotlib backend; set in `TKBEN/settings/.env`, default `Agg`. |
 
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from cryptography.fernet import Fernet, InvalidToken
 
-from TKBEN.server.common.constants import HF_KEYS_ENCRYPTION_KEY
+from TKBEN.server.common.utils.variables import env_variables
 
 
 ###############################################################################
@@ -29,4 +29,9 @@ class SymmetricCipher:
 
 ###############################################################################
 def get_hf_key_cipher() -> SymmetricCipher:
-    return SymmetricCipher(HF_KEYS_ENCRYPTION_KEY)
+    key_value = env_variables.get("HF_KEYS_ENCRYPTION_KEY")
+    if not key_value:
+        raise RuntimeError(
+            "HF_KEYS_ENCRYPTION_KEY must be configured in the environment."
+        )
+    return SymmetricCipher(key_value)

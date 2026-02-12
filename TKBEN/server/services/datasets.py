@@ -171,6 +171,22 @@ class DatasetService:
         self.log_interval = self.settings.log_interval
         self.dataset_serializer = DatasetSerializer()
 
+    # -------------------------------------------------------------------------
+    def stop_requested(self, should_stop: Callable[[], bool] | None) -> bool:
+        return bool(callable(should_stop) and should_stop())
+
+    # -------------------------------------------------------------------------
+    def cleanup_cancelled_dataset(self, dataset_name: str) -> None:
+        try:
+            self.dataset_serializer.delete_dataset(dataset_name)
+            logger.info("Removed partially persisted dataset after cancellation: %s", dataset_name)
+        except Exception:
+            logger.warning(
+                "Failed to cleanup partially persisted dataset after cancellation: %s",
+                dataset_name,
+                exc_info=True,
+            )
+
 
     # -------------------------------------------------------------------------
     def get_dataset_name(self, corpus: str, config: str | None = None) -> str:
@@ -483,6 +499,9 @@ class DatasetService:
             progress_base=20.0,
             progress_span=80.0,
         )
+        if self.stop_requested(should_stop) and saved_count < stats.document_count:
+            self.cleanup_cancelled_dataset(dataset_name)
+            return {}
 
         payload = {
             "dataset_name": dataset_name,
@@ -589,10 +608,12 @@ class DatasetService:
         last_logged = 0
         histogram_builder = HistogramBuilder(stats, self.histogram_bins)
         dataset_id = self.dataset_serializer.ensure_dataset_id(dataset_name)
+        cancelled = False
 
         for text in iterate_df_texts():
-            if should_stop and should_stop():
-                return {}
+            if self.stop_requested(should_stop):
+                cancelled = True
+                break
             histogram_builder.add(len(text))
             batch.append({"dataset_id": dataset_id, "text": text})
 
@@ -619,6 +640,10 @@ class DatasetService:
                     saved_count / max(stats.document_count, 1)
                 ) * 85.0
                 progress_callback(progress_value)
+
+        if cancelled and saved_count < stats.document_count:
+            self.cleanup_cancelled_dataset(dataset_name)
+            return {}
 
         logger.info("Completed saving %d documents from uploaded file", saved_count)
 

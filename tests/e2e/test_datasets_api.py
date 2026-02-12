@@ -23,7 +23,12 @@ def test_list_datasets_includes_uploaded_dataset(
     response = api_context.get("/datasets/list")
     assert response.ok
     data = response.json()
-    assert uploaded_dataset["dataset_name"] in data.get("datasets", [])
+    previews = data.get("datasets", [])
+    assert any(
+        item.get("dataset_name") == uploaded_dataset["dataset_name"]
+        for item in previews
+        if isinstance(item, dict)
+    )
 
 
 def test_upload_requires_file(api_context: APIRequestContext) -> None:
@@ -97,11 +102,14 @@ def test_analyze_uploaded_dataset_returns_stats(
     assert job_status.get("status") == "completed", job_status.get("error")
     data = job_status.get("result", {})
     assert data.get("dataset_name") == uploaded_dataset["dataset_name"]
-    assert data.get("analyzed_count", 0) > 0
-
-    statistics = data.get("statistics", {})
-    assert "total_documents" in statistics
-    assert "mean_words_count" in statistics
-    assert "median_words_count" in statistics
-    assert "mean_avg_word_length" in statistics
-    assert "mean_std_word_length" in statistics
+    assert data.get("document_count", 0) > 0
+    document_histogram = data.get("document_length_histogram", {})
+    word_histogram = data.get("word_length_histogram", {})
+    assert "bins" in document_histogram
+    assert "counts" in document_histogram
+    assert "min_length" in document_histogram
+    assert "max_length" in document_histogram
+    assert "bins" in word_histogram
+    assert "counts" in word_histogram
+    assert isinstance(data.get("most_common_words", []), list)
+    assert isinstance(data.get("least_common_words", []), list)
