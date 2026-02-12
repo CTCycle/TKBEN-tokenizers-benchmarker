@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from TKBEN.server.entities.dataset import DatasetDownloadRequest
 from TKBEN.server.services.datasets import DatasetService
+from TKBEN.server.services.keys import HFAccessKeyValidationError
 
 
 def test_dataset_download_request_requires_configs() -> None:
@@ -65,3 +66,23 @@ def test_upload_existing_dataset_is_non_destructive(monkeypatch: pytest.MonkeyPa
 
     assert result == expected_payload
     assert delete_calls == []
+
+
+def test_get_hf_access_token_for_download_returns_active_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = DatasetService()
+    monkeypatch.setattr(service.key_service, "get_active_key", lambda: "hf_token")
+    assert service.get_hf_access_token_for_download() == "hf_token"
+
+
+def test_get_hf_access_token_for_download_falls_back_to_none_on_invalid_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = DatasetService()
+
+    def raise_invalid_key() -> str:
+        raise HFAccessKeyValidationError("invalid")
+
+    monkeypatch.setattr(service.key_service, "get_active_key", raise_invalid_key)
+    assert service.get_hf_access_token_for_download() is None

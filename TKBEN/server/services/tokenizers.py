@@ -79,8 +79,8 @@ class TokenizersService:
     def insert_tokenizer_if_missing(self, tokenizer_id: str) -> None:
         query = sqlalchemy.text(
             'INSERT INTO "tokenizer" ("name") '
-            'SELECT :name '
-            'WHERE NOT EXISTS (SELECT 1 FROM "tokenizer" WHERE "name" = :name)'
+            'VALUES (:name) '
+            'ON CONFLICT ("name") DO NOTHING'
         )
         with database.backend.engine.begin() as conn:
             conn.execute(query, {"name": tokenizer_id})
