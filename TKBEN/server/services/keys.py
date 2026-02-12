@@ -6,7 +6,7 @@ from typing import Any
 import sqlalchemy
 from sqlalchemy.exc import IntegrityError
 
-from TKBEN.server.common.utils.encryption import get_hf_key_cipher
+from TKBEN.server.common.utils.encryption import SymmetricCipher, get_hf_key_cipher
 from TKBEN.server.repositories.database.backend import database
 
 
@@ -33,7 +33,14 @@ class HFAccessKeyNotFoundError(HFAccessKeyError):
 ###############################################################################
 class HFAccessKeyService:
     def __init__(self) -> None:
-        self.cipher = get_hf_key_cipher()
+        self._cipher: SymmetricCipher | None = None
+
+    # -------------------------------------------------------------------------
+    @property
+    def cipher(self) -> SymmetricCipher:
+        if self._cipher is None:
+            self._cipher = get_hf_key_cipher()
+        return self._cipher
 
     # -------------------------------------------------------------------------
     def normalize_raw_key(self, raw_key: str) -> str:

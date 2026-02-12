@@ -8,6 +8,7 @@ import pandas as pd
 from TKBEN.server.configurations import DatabaseSettings, server_settings
 from TKBEN.server.repositories.database.postgres import PostgresRepository
 from TKBEN.server.repositories.database.sqlite import SQLiteRepository
+from TKBEN.server.repositories.database.utils import normalize_postgres_engine
 from TKBEN.server.common.utils.logger import logger
 
 
@@ -66,7 +67,11 @@ class TKBENWebappDatabase:
 
     # -------------------------------------------------------------------------
     def _build_backend(self, is_embedded: bool) -> DatabaseBackend:
-        backend_name = "sqlite" if is_embedded else (self.settings.engine or "postgres")
+        if is_embedded:
+            backend_name = "sqlite"
+        else:
+            normalized_engine = normalize_postgres_engine(self.settings.engine).lower()
+            backend_name = "postgres" if normalized_engine.startswith("postgresql") else normalized_engine
         normalized_name = backend_name.lower()
         logger.info("Initializing %s database backend", backend_name)
         if normalized_name not in BACKEND_FACTORIES:

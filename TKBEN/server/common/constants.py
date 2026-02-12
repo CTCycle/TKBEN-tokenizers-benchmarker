@@ -25,7 +25,6 @@ CONFIGURATIONS_FILE = join(SETTING_PATH, "configurations.json")
 FASTAPI_TITLE = "TKBEN_webapp Tokenizers Benchmark Backend"
 FASTAPI_DESCRIPTION = "FastAPI backend"
 FASTAPI_VERSION = "1.2.0"
-HF_KEYS_ENCRYPTION_KEY = "IXCTQh8Y1m7M4KXp-iVHa-NypLjAJaiEwtTvNsosILw="
 
 
 ###############################################################################
