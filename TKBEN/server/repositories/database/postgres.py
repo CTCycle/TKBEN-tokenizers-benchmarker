@@ -15,7 +15,7 @@ from TKBEN.server.configurations import DatabaseSettings
 from TKBEN.server.repositories.database.utils import normalize_postgres_engine
 from TKBEN.server.repositories.database.migration import run_schema_migration
 from TKBEN.server.repositories.schemas.models import Base
-from TKBEN.server.utils.logger import logger
+from TKBEN.server.common.utils.logger import logger
 
 
 ###############################################################################
@@ -258,6 +258,7 @@ class PostgresRepository:
                 sqlalchemy.text(f'SELECT DISTINCT "{safe_column}" FROM "{safe_name}"')
             )
             return [row[0] for row in result.fetchall() if row[0] is not None]
+
 
 
 

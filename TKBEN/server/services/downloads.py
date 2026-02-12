@@ -9,8 +9,8 @@ from datasets import load_dataset
 from huggingface_hub import HfApi
 from tokenizers import Tokenizer
 
-from TKBEN.server.utils.constants import SOURCES_PATH, TOKENIZER_PATH
-from TKBEN.server.utils.logger import logger
+from TKBEN.server.common.constants import SOURCES_PATH, TOKENIZER_PATH
+from TKBEN.server.common.utils.logger import logger
 
 
 # [DOWNLOADS]
@@ -252,3 +252,4 @@ class TokenizersDownloadManager:
                 tokenizers[tokenizer_name] = tokenizer
 
         return tokenizers
+

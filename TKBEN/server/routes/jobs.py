@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, status
 
 from TKBEN.server.entities.jobs import JobCancelResponse, JobListResponse, JobStatusResponse
-from TKBEN.server.utils.constants import API_ROUTE_JOBS_STATUS, API_ROUTER_PREFIX_JOBS
+from TKBEN.server.common.constants import API_ROUTE_JOBS_STATUS, API_ROUTER_PREFIX_JOBS
 from TKBEN.server.services.jobs import job_manager
 
 
@@ -58,3 +58,4 @@ def cancel_job(job_id: str) -> JobCancelResponse:
         success=success,
         message="Cancellation requested" if success else "Job cannot be cancelled",
     )
+

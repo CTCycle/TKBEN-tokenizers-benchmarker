@@ -17,8 +17,8 @@ from TKBEN.server.repositories.database.backend import database
 from TKBEN.server.repositories.schemas.models import DatasetDocument
 from TKBEN.server.repositories.serialization.data import DatasetSerializer
 from TKBEN.server.configurations import server_settings
-from TKBEN.server.utils.constants import DATASETS_PATH
-from TKBEN.server.utils.logger import logger
+from TKBEN.server.common.constants import DATASETS_PATH
+from TKBEN.server.common.utils.logger import logger
 
 
 ###############################################################################
@@ -891,4 +891,5 @@ class DatasetService:
     # -------------------------------------------------------------------------
     def remove_dataset(self, dataset_name: str) -> None:
         self.dataset_serializer.delete_dataset(dataset_name)
+
 

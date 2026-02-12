@@ -8,7 +8,7 @@ import pandas as pd
 from TKBEN.server.configurations import DatabaseSettings, server_settings
 from TKBEN.server.repositories.database.postgres import PostgresRepository
 from TKBEN.server.repositories.database.sqlite import SQLiteRepository
-from TKBEN.server.utils.logger import logger
+from TKBEN.server.common.utils.logger import logger
 
 
 ###############################################################################
@@ -112,4 +112,5 @@ class TKBENWebappDatabase:
 
 
 database = TKBENWebappDatabase()
+
 

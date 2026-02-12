@@ -14,14 +14,14 @@ from TKBEN.server.entities.tokenizers import (
     TokenizerUploadResponse,
 )
 from TKBEN.server.configurations.server import server_settings
-from TKBEN.server.utils.constants import (
+from TKBEN.server.common.constants import (
     API_ROUTE_TOKENIZERS_CUSTOM,
     API_ROUTE_TOKENIZERS_SCAN,
     API_ROUTE_TOKENIZERS_SETTINGS,
     API_ROUTE_TOKENIZERS_UPLOAD,
     API_ROUTER_PREFIX_TOKENIZERS,
 )
-from TKBEN.server.utils.logger import logger
+from TKBEN.server.common.utils.logger import logger
 from TKBEN.server.services.benchmarks import BenchmarkTools
 from TKBEN.server.services.tokenizers import TokenizersService
 
@@ -211,3 +211,4 @@ async def delete_custom_tokenizers() -> dict:
     """
     clear_custom_tokenizers()
     return {"status": "success", "message": "Custom tokenizers cleared"}
+

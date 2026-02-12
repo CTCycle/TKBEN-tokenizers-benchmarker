@@ -7,7 +7,7 @@ warnings.filterwarnings("ignore", category=SyntaxWarning, module=r"multiprocess\
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 
-from TKBEN.server.utils.constants import (
+from TKBEN.server.common.constants import (
     API_ROUTE_DOCS,
     API_ROUTE_ROOT,
     FASTAPI_DESCRIPTION,
@@ -35,3 +35,4 @@ app.include_router(jobs_router)
 @app.get(API_ROUTE_ROOT)
 def redirect_to_docs() -> RedirectResponse:
     return RedirectResponse(url=API_ROUTE_DOCS)
+

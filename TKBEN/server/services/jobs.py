@@ -9,7 +9,7 @@ from typing import Any
 
 from collections.abc import Callable
 
-from TKBEN.server.utils.logger import logger
+from TKBEN.server.common.utils.logger import logger
 
 
 @dataclass
@@ -226,3 +226,4 @@ class JobManager:
 
 ###############################################################################
 job_manager = JobManager()
+

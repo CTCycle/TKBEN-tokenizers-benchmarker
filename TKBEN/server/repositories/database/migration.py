@@ -6,7 +6,7 @@ import sqlalchemy
 from sqlalchemy import inspect
 from sqlalchemy.engine import Connection, Engine
 
-from TKBEN.server.utils.logger import logger
+from TKBEN.server.common.utils.logger import logger
 
 LEGACY_TABLE_NAMES = (
     "text_dataset",
@@ -459,3 +459,4 @@ def run_schema_migration(engine: Engine) -> None:
         _backfill_tokenizer_vocabulary(conn)
         _reset_postgres_sequences(conn)
         _create_legacy_compatibility_views(conn)
+

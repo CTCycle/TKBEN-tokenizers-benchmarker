@@ -3,20 +3,20 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from TKBEN.server.utils.types import coerce_str_sequence
+from TKBEN.server.common.utils.types import coerce_str_sequence
 
 from TKBEN.server.configurations import (  
     ensure_mapping,
     load_configurations,
 )
-from TKBEN.server.utils.constants import CONFIGURATIONS_FILE
-from TKBEN.server.utils.types import (
+from TKBEN.server.common.constants import CONFIGURATIONS_FILE
+from TKBEN.server.common.utils.types import (
     coerce_bool,
     coerce_float,
     coerce_int,
     coerce_str_or_none,
 )
-from TKBEN.server.utils.variables import env_variables
+from TKBEN.server.common.utils.variables import env_variables
 
 # [SERVER SETTINGS]
 ###############################################################################
@@ -249,3 +249,4 @@ def get_server_settings(config_path: str | None = None) -> ServerSettings:
 
 
 server_settings = get_server_settings()
+

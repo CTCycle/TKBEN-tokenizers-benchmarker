@@ -10,7 +10,7 @@ from TKBEN.server.repositories.database.postgres import PostgresRepository
 from TKBEN.server.repositories.database.sqlite import SQLiteRepository
 from TKBEN.server.repositories.database.utils import normalize_postgres_engine
 from TKBEN.server.repositories.schemas.models import Base
-from TKBEN.server.utils.logger import logger
+from TKBEN.server.common.utils.logger import logger
 
 
 ###############################################################################
@@ -122,3 +122,4 @@ def initialize_database() -> None:
     except Exception as exc:
         logger.exception("Unexpected error during database initialization.")
         raise SystemExit(1) from exc
+
