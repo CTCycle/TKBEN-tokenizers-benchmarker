@@ -8,6 +8,43 @@ export interface TokenizerScanResponse {
 }
 
 /**
+ * Download request for tokenizer persistence
+ */
+export interface TokenizerDownloadRequest {
+    tokenizers: string[];
+    hf_access_token?: string | null;
+}
+
+/**
+ * Download response for tokenizer persistence
+ */
+export interface TokenizerDownloadResponse {
+    status: string;
+    downloaded: string[];
+    already_downloaded: string[];
+    failed: string[];
+    requested_count: number;
+    downloaded_count: number;
+    already_downloaded_count: number;
+    failed_count: number;
+}
+
+/**
+ * Persisted tokenizer item
+ */
+export interface TokenizerListItem {
+    tokenizer_name: string;
+}
+
+/**
+ * Persisted tokenizer list response
+ */
+export interface TokenizerListResponse {
+    tokenizers: TokenizerListItem[];
+    count: number;
+}
+
+/**
  * Response from the tokenizer settings endpoint
  */
 export interface TokenizerSettingsResponse {

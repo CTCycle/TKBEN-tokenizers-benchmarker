@@ -1,6 +1,12 @@
-import { createContext, useContext, useCallback, useMemo, useRef, useState } from 'react';
+import { createContext, useContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { scanTokenizers, uploadCustomTokenizer, clearCustomTokenizers } from '../services/tokenizersApi';
+import {
+    clearCustomTokenizers,
+    downloadTokenizers as downloadTokenizersApi,
+    fetchDownloadedTokenizers,
+    scanTokenizers,
+    uploadCustomTokenizer,
+} from '../services/tokenizersApi';
 import { runBenchmarks } from '../services/benchmarksApi';
 import { fetchAvailableDatasets } from '../services/datasetsApi';
 import type { BenchmarkRunResponse } from '../types/api';
@@ -9,6 +15,9 @@ interface TokenizersContextType {
     // State
     scanInProgress: boolean;
     scanError: string | null;
+    downloadInProgress: boolean;
+    downloadProgress: number | null;
+    downloadWarning: string | null;
     fetchedTokenizers: string[];
     selectedTokenizer: string;
     tokenizers: string[];
@@ -30,8 +39,10 @@ interface TokenizersContextType {
     setMaxDocuments: (value: number) => void;
     setSelectedDataset: (name: string) => void;
     setScanError: (error: string | null) => void;
+    setDownloadWarning: (warning: string | null) => void;
     setBenchmarkError: (error: string | null) => void;
     addTokenizer: (tokenizer: string) => void;
+    downloadTokenizers: (tokenizerIds: string[]) => Promise<void>;
     handleScan: () => Promise<void>;
     handleRunBenchmarks: () => Promise<void>;
     refreshDatasets: () => Promise<void>;
@@ -46,6 +57,9 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
     const customTokenizerInputRef = useRef<HTMLInputElement | null>(null);
     const [scanInProgress, setScanInProgress] = useState(false);
     const [scanError, setScanError] = useState<string | null>(null);
+    const [downloadInProgress, setDownloadInProgress] = useState(false);
+    const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
+    const [downloadWarning, setDownloadWarning] = useState<string | null>(null);
     const [fetchedTokenizers, setFetchedTokenizers] = useState<string[]>([]);
     const [selectedTokenizer, setSelectedTokenizer] = useState('');
     const [tokenizers, setTokenizers] = useState<string[]>([]);
@@ -85,6 +99,56 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
             return [...list, value];
         });
     }, []);
+
+    const refreshTokenizers = useCallback(async () => {
+        try {
+            const response = await fetchDownloadedTokenizers();
+            setTokenizers(response.tokenizers.map((item) => item.tokenizer_name));
+        } catch (error) {
+            console.error('Failed to fetch tokenizers:', error);
+        }
+    }, []);
+
+    const downloadTokenizers = useCallback(async (tokenizerIds: string[]) => {
+        if (downloadInProgress) {
+            return;
+        }
+
+        const requested = Array.from(
+            new Set(tokenizerIds.map((tokenizerId) => tokenizerId.trim()).filter(Boolean)),
+        );
+
+        if (requested.length === 0) {
+            return;
+        }
+
+        setDownloadInProgress(true);
+        setDownloadProgress(0);
+        setDownloadWarning(null);
+        setScanError(null);
+
+        try {
+            const response = await downloadTokenizersApi(
+                { tokenizers: requested },
+                (status) => setDownloadProgress(status.progress),
+            );
+            if (response.already_downloaded_count > 0) {
+                setDownloadWarning('Tokenizer already downloaded.');
+            }
+            if (response.failed_count > 0) {
+                setScanError(
+                    `Failed to download ${response.failed_count} tokenizer(s).`,
+                );
+            }
+            await refreshTokenizers();
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to download tokenizers';
+            setScanError(errorMessage);
+            console.error('Tokenizer download error:', error);
+        } finally {
+            setDownloadInProgress(false);
+        }
+    }, [downloadInProgress, refreshTokenizers]);
 
     const handleScan = useCallback(async () => {
         setScanInProgress(true);
@@ -178,10 +242,17 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         }
     }, [tokenizers, selectedDataset, maxDocuments, customTokenizerName]);
 
+    useEffect(() => {
+        void refreshTokenizers();
+    }, [refreshTokenizers]);
+
     const value = useMemo<TokenizersContextType>(() => ({
         // State
         scanInProgress,
         scanError,
+        downloadInProgress,
+        downloadProgress,
+        downloadWarning,
         fetchedTokenizers,
         selectedTokenizer,
         tokenizers,
@@ -203,8 +274,10 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         setMaxDocuments,
         setSelectedDataset,
         setScanError,
+        setDownloadWarning,
         setBenchmarkError,
         addTokenizer,
+        downloadTokenizers,
         handleScan,
         handleRunBenchmarks,
         refreshDatasets,
@@ -214,6 +287,9 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
     }), [
         scanInProgress,
         scanError,
+        downloadInProgress,
+        downloadProgress,
+        downloadWarning,
         fetchedTokenizers,
         selectedTokenizer,
         tokenizers,
@@ -233,8 +309,10 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         setMaxDocuments,
         setSelectedDataset,
         setScanError,
+        setDownloadWarning,
         setBenchmarkError,
         addTokenizer,
+        downloadTokenizers,
         handleScan,
         handleRunBenchmarks,
         refreshDatasets,

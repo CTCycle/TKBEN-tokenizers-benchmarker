@@ -25,6 +25,38 @@ class TokenizerScanResponse(BaseModel):
 
 
 ###############################################################################
+class TokenizerListItem(BaseModel):
+    tokenizer_name: str
+
+
+###############################################################################
+class TokenizerListResponse(BaseModel):
+    tokenizers: list[TokenizerListItem] = Field(default_factory=list)
+    count: int = Field(default=0)
+
+
+###############################################################################
+class TokenizerDownloadRequest(BaseModel):
+    tokenizers: list[str] = Field(
+        default_factory=list,
+        description="Tokenizer IDs to download and persist",
+    )
+    hf_access_token: str | None = Field(default=None)
+
+
+###############################################################################
+class TokenizerDownloadResponse(BaseModel):
+    status: str = Field(default="success")
+    downloaded: list[str] = Field(default_factory=list)
+    already_downloaded: list[str] = Field(default_factory=list)
+    failed: list[str] = Field(default_factory=list)
+    requested_count: int = Field(default=0)
+    downloaded_count: int = Field(default=0)
+    already_downloaded_count: int = Field(default=0)
+    failed_count: int = Field(default=0)
+
+
+###############################################################################
 class TokenizerSettingsResponse(BaseModel):
     default_scan_limit: int
     max_scan_limit: int

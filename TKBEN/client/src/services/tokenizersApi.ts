@@ -1,6 +1,16 @@
-import type { TokenizerScanResponse, TokenizerSettingsResponse, TokenizerUploadResponse } from '../types/api';
+import type {
+    JobStartResponse,
+    JobStatusResponse,
+    TokenizerDownloadRequest,
+    TokenizerDownloadResponse,
+    TokenizerListResponse,
+    TokenizerScanResponse,
+    TokenizerSettingsResponse,
+    TokenizerUploadResponse,
+} from '../types/api';
 
 import { API_ENDPOINTS } from '../constants';
+import { waitForJobResult } from './jobsApi';
 
 /**
  * Get tokenizer configuration settings from the server.
@@ -50,6 +60,44 @@ export async function scanTokenizers(
     }
 
     return response.json();
+}
+
+/**
+ * List persisted tokenizers available for benchmarking.
+ */
+export async function fetchDownloadedTokenizers(): Promise<TokenizerListResponse> {
+    const response = await fetch(API_ENDPOINTS.TOKENIZERS_LIST);
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || `Failed to list tokenizers: ${response.status}`);
+    }
+
+    return response.json();
+}
+
+/**
+ * Download tokenizer IDs and persist them for benchmark usage.
+ */
+export async function downloadTokenizers(
+    request: TokenizerDownloadRequest,
+    onUpdate?: (status: JobStatusResponse) => void,
+): Promise<TokenizerDownloadResponse> {
+    const response = await fetch(API_ENDPOINTS.TOKENIZERS_DOWNLOAD, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || `Failed to download tokenizers: ${response.status}`);
+    }
+
+    const job = await response.json() as JobStartResponse;
+    return waitForJobResult<TokenizerDownloadResponse>(job, { onUpdate });
 }
 
 /**
