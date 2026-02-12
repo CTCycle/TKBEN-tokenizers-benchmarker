@@ -35,9 +35,6 @@ class DatasetDownloadRequest(BaseModel):
     configs: DatasetDownloadConfigs = Field(
         ..., description="Dataset download options. Use configs.configuration when needed."
     )
-    hf_access_token: str | None = Field(
-        default=None, description="Optional HuggingFace access token"
-    )
 
 
 ###############################################################################

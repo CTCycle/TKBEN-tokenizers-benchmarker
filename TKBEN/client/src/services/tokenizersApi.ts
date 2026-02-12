@@ -30,21 +30,13 @@ export async function getTokenizerSettings(): Promise<TokenizerSettingsResponse>
 /**
  * Scan HuggingFace for the most popular tokenizer identifiers.
  * @param limit - Maximum number of tokenizers to fetch. If not provided, uses server default.
- * @param hfAccessToken - Optional HuggingFace access token
  * @returns Promise with the scan response containing tokenizer identifiers
  */
-export async function scanTokenizers(
-    limit?: number,
-    hfAccessToken?: string
-): Promise<TokenizerScanResponse> {
+export async function scanTokenizers(limit?: number): Promise<TokenizerScanResponse> {
     const params = new URLSearchParams();
 
     if (limit !== undefined) {
         params.append('limit', String(limit));
-    }
-
-    if (hfAccessToken) {
-        params.append('hf_access_token', hfAccessToken);
     }
 
     const queryString = params.toString();

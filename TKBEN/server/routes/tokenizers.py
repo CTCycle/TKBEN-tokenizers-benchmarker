@@ -32,6 +32,10 @@ from TKBEN.server.common.utils.logger import logger
 from TKBEN.server.services.jobs import JobProgressReporter, JobStopChecker, job_manager
 from TKBEN.server.services.benchmarks import BenchmarkTools
 from TKBEN.server.services.tokenizers import TokenizersService
+from TKBEN.server.services.keys import (
+    HFAccessKeyService,
+    HFAccessKeyValidationError,
+)
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_TOKENIZERS, tags=["tokenizers"])
 
@@ -64,15 +68,12 @@ async def get_tokenizer_settings() -> TokenizerSettingsResponse:
 )
 async def scan_tokenizers(
     limit: int = Query(default=None),
-    hf_access_token: str | None = Query(default=None),
 ) -> TokenizerScanResponse:
     """
     Scan HuggingFace for the most popular tokenizer identifiers.
 
     Args:
         limit: Maximum number of tokenizers to fetch. Defaults to configured value.
-        hf_access_token: Optional HuggingFace access token for authenticated requests.
-
     Returns:
         TokenizerScanResponse containing the list of tokenizer identifiers.
     """
@@ -88,10 +89,15 @@ async def scan_tokenizers(
 
     logger.info("Scanning HuggingFace for tokenizers (limit=%s)", limit)
 
-    service = TokenizersService(hf_access_token)
+    service = TokenizersService()
 
     try:
         identifiers = await asyncio.to_thread(service.get_tokenizer_identifiers, limit)
+    except HFAccessKeyValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
     except Exception as exc:  # noqa: BLE001
         logger.exception("Failed to scan tokenizers from HuggingFace")
         raise HTTPException(
@@ -127,9 +133,7 @@ def run_tokenizer_download_job(
     request_payload: dict[str, Any],
     job_id: str,
 ) -> dict[str, Any]:
-    raw_token = request_payload.get("hf_access_token")
-    hf_access_token = raw_token if isinstance(raw_token, str) and raw_token else None
-    service = TokenizersService(hf_access_token=hf_access_token)
+    service = TokenizersService()
     progress_callback = JobProgressReporter(job_manager, job_id)
     should_stop = JobStopChecker(job_manager, job_id)
     tokenizers = request_payload.get("tokenizers", [])
@@ -157,6 +161,15 @@ async def download_tokenizers(request: TokenizerDownloadRequest) -> JobStartResp
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="At least one tokenizer must be specified.",
         )
+
+    key_service = HFAccessKeyService()
+    try:
+        key_service.get_active_key()
+    except HFAccessKeyValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
 
     if job_manager.is_job_running("tokenizer_download"):
         raise HTTPException(

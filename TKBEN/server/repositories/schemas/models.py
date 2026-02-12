@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from sqlalchemy import (
+    Boolean,
     Column,
+    DateTime,
     Float,
     ForeignKey,
     Index,
@@ -28,6 +30,18 @@ class Tokenizer(Base):
     __tablename__ = "tokenizer"
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     name = Column(String, nullable=False, unique=True)
+
+
+###############################################################################
+class HFAccessKey(Base):
+    __tablename__ = "hf_access_keys"
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    key_value = Column(String, nullable=False, unique=True)
+    created_at = Column(DateTime, nullable=False)
+    is_active = Column(Boolean, nullable=False, default=False)
+    __table_args__ = (
+        Index("ix_hf_access_keys_is_active", "is_active"),
+    )
 
 
 ###############################################################################

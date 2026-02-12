@@ -11,20 +11,19 @@ from tokenizers import Tokenizer
 
 from TKBEN.server.common.constants import SOURCES_PATH, TOKENIZER_PATH
 from TKBEN.server.common.utils.logger import logger
+from TKBEN.server.services.keys import HFAccessKeyService
 
 
 # [DOWNLOADS]
 ###############################################################################
 class DatasetManager:
-    def __init__(
-        self, configuration: dict[str, Any], hf_access_token: str | None
-    ) -> None:
+    def __init__(self, configuration: dict[str, Any]) -> None:
         self.dataset = configuration.get("DATASET", {})
         self.dataset_corpus = self.dataset.get("corpus", "wikitext")
         self.dataset_config = self.dataset.get("config", "wikitext-103-v1")
         self.has_custom_dataset = configuration.get("use_custom_dataset", False)
         self.configuration = configuration
-        self.hf_access_token = hf_access_token
+        self.key_service = HFAccessKeyService()
 
     # -------------------------------------------------------------------------
     def get_dataset_name(self) -> str | Any:
@@ -84,7 +83,12 @@ class DatasetManager:
             dataset_path = os.path.join(base_path, f"{corpus}_{config}")
             os.makedirs(dataset_path, exist_ok=True)
             try:
-                dataset = load_dataset(corpus, config, cache_dir=dataset_path)
+                dataset = load_dataset(
+                    corpus,
+                    config,
+                    cache_dir=dataset_path,
+                    token=self.key_service.get_active_key(),
+                )
             except Exception:
                 logger.warning(
                     "Failed to download dataset %s with configuration %s",
@@ -103,10 +107,8 @@ class DatasetManager:
 # [DOWNLOADS]
 ###############################################################################
 class TokenizersDownloadManager:
-    def __init__(
-        self, configuration: dict[str, Any], hf_access_token: str | None
-    ) -> None:
-        self.hf_access_token = hf_access_token
+    def __init__(self, configuration: dict[str, Any]) -> None:
+        self.key_service = HFAccessKeyService()
         self.tokenizers = configuration.get("TOKENIZERS", [])
         self.has_custom_tokenizer = configuration.get("include_custom_tokenizer", False)
         self.pipeline_tags = [
@@ -149,7 +151,7 @@ class TokenizersDownloadManager:
         List with the identifiers of the retrieved tokenizers ordered by
         popularity.
         """
-        api = HfApi(token=self.hf_access_token) if self.hf_access_token else HfApi()
+        api = HfApi(token=self.key_service.get_active_key())
         try:
             models = api.list_models(
                 search="tokenizer", sort="downloads", direction=-1, limit=limit
@@ -171,7 +173,7 @@ class TokenizersDownloadManager:
         tokenizer = transformers.AutoTokenizer.from_pretrained(
             tokenizer_id,
             cache_dir=tokenizer_save_path,
-            token=self.hf_access_token,
+            token=self.key_service.get_active_key(),
         )
         if not self.is_tokenizer_compatible(tokenizer):
             logger.warning(

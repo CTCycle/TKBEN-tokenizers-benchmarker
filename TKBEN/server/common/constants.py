@@ -25,6 +25,7 @@ CONFIGURATIONS_FILE = join(SETTING_PATH, "configurations.json")
 FASTAPI_TITLE = "TKBEN_webapp Tokenizers Benchmark Backend"
 FASTAPI_DESCRIPTION = "FastAPI backend"
 FASTAPI_VERSION = "1.2.0"
+HF_KEYS_ENCRYPTION_KEY = "IXCTQh8Y1m7M4KXp-iVHa-NypLjAJaiEwtTvNsosILw="
 
 
 ###############################################################################
@@ -34,6 +35,7 @@ API_ROUTER_PREFIX_DATASETS = "/datasets"
 API_ROUTER_PREFIX_TOKENIZERS = "/tokenizers"
 API_ROUTER_PREFIX_BENCHMARKS = "/benchmarks"
 API_ROUTER_PREFIX_JOBS = "/jobs"
+API_ROUTER_PREFIX_KEYS = "/keys"
 API_ROUTE_DATASETS_LIST = "/list"
 API_ROUTE_DATASETS_DOWNLOAD = "/download"
 API_ROUTE_DATASETS_UPLOAD = "/upload"
@@ -47,6 +49,12 @@ API_ROUTE_TOKENIZERS_UPLOAD = "/upload"
 API_ROUTE_TOKENIZERS_CUSTOM = "/custom"
 API_ROUTE_BENCHMARKS_RUN = "/run"
 API_ROUTE_JOBS_STATUS = "/{job_id}"
+API_ROUTE_KEYS_CREATE = ""
+API_ROUTE_KEYS_LIST = ""
+API_ROUTE_KEYS_DELETE = "/{key_id}"
+API_ROUTE_KEYS_ACTIVATE = "/{key_id}/activate"
+API_ROUTE_KEYS_DEACTIVATE = "/{key_id}/deactivate"
+API_ROUTE_KEYS_REVEAL = "/{key_id}/reveal"
 
 
 ###############################################################################

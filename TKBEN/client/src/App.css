@@ -47,10 +47,15 @@
   height: 55px;
   border-radius: 12px;
   border: 1px solid var(--color-border);
+  padding: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--color-muted);
+  cursor: pointer;
   transition: background var(--transition), color var(--transition), border var(--transition);
 }
 
@@ -65,6 +70,86 @@
   border-color: var(--color-accent);
   color: var(--color-accent);
   background: rgba(255, 232, 31, 0.08);
+}
+
+.key-manager-popover {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(420px, calc(100vw - 48px));
+  max-height: min(560px, calc(100vh - 48px));
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 220;
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.38);
+  overflow: hidden;
+}
+
+.key-manager-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.key-manager-header .panel-label {
+  margin: 0;
+}
+
+.key-manager-add-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.key-manager-add-row .primary-button {
+  padding: 10px 12px;
+}
+
+.key-manager-list {
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+}
+
+.key-manager-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background: var(--color-panel-alt);
+}
+
+.key-manager-preview {
+  font-family: monospace;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.key-manager-actions {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.key-manager-empty {
+  text-align: center;
+  color: var(--color-muted);
+  padding: 12px;
 }
 
 .app-main {

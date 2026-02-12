@@ -19,6 +19,7 @@ from TKBEN.server.repositories.serialization.data import DatasetSerializer
 from TKBEN.server.configurations import server_settings
 from TKBEN.server.common.constants import DATASETS_PATH
 from TKBEN.server.common.utils.logger import logger
+from TKBEN.server.services.keys import HFAccessKeyService
 
 
 ###############################################################################
@@ -161,8 +162,8 @@ class DatasetService:
 
     SUPPORTED_TEXT_FIELDS = ("text", "content", "sentence", "document", "tokens")
 
-    def __init__(self, hf_access_token: str | None = None) -> None:
-        self.hf_access_token = hf_access_token
+    def __init__(self) -> None:
+        self.key_service = HFAccessKeyService()
         # Load settings from centralized configuration
         self.settings = server_settings.datasets
         self.histogram_bins = self.settings.histogram_bins
@@ -439,6 +440,8 @@ class DatasetService:
         else:
             logger.info("Dataset cache not found. Downloading %s", dataset_name)
 
+        hf_access_token = self.key_service.get_active_key()
+
         try:
             if progress_callback:
                 progress_callback(5.0)
@@ -446,7 +449,7 @@ class DatasetService:
                 corpus,
                 normalized_config,
                 cache_dir=cache_path,
-                token=self.hf_access_token,
+                token=hf_access_token,
             )
         except Exception as exc:
             logger.exception("Failed to download dataset %s", dataset_name)
