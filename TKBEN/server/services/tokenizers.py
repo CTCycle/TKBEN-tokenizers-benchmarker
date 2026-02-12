@@ -10,6 +10,7 @@ from transformers import AutoTokenizer
 from TKBEN.server.common.constants import TOKENIZERS_PATH
 from TKBEN.server.common.utils.logger import logger
 from TKBEN.server.repositories.database.backend import database
+from TKBEN.server.services.keys import HFAccessKeyService
 
 
 ###############################################################################
@@ -35,8 +36,8 @@ class TokenizersService:
         "zero-shot-classification",
     ]
 
-    def __init__(self, hf_access_token: str | None = None) -> None:
-        self.hf_access_token = hf_access_token
+    def __init__(self) -> None:
+        self.key_service = HFAccessKeyService()
 
     # -------------------------------------------------------------------------
     def normalize_tokenizer_identifiers(self, tokenizers: list[str]) -> list[str]:
@@ -112,7 +113,8 @@ class TokenizersService:
             List with the identifiers of the retrieved tokenizers ordered by
             popularity (downloads).
         """
-        api = HfApi(token=self.hf_access_token) if self.hf_access_token else HfApi()
+        hf_access_token = self.key_service.get_active_key()
+        api = HfApi(token=hf_access_token)
 
         try:
             models = api.list_models(
@@ -135,6 +137,7 @@ class TokenizersService:
         should_stop: Any | None = None,
     ) -> dict[str, Any]:
         requested = self.normalize_tokenizer_identifiers(tokenizers)
+        hf_access_token = self.key_service.get_active_key()
         downloaded: list[str] = []
         already_downloaded: list[str] = []
         failed: list[str] = []
@@ -167,7 +170,7 @@ class TokenizersService:
                     AutoTokenizer.from_pretrained(
                         tokenizer_id,
                         cache_dir=cache_dir,
-                        token=self.hf_access_token,
+                        token=hf_access_token,
                     )
                     self.insert_tokenizer_if_missing(tokenizer_id)
                     downloaded.append(tokenizer_id)

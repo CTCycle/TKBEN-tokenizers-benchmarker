@@ -14,7 +14,6 @@ class TokenizerSignature(BaseModel):
 ###############################################################################
 class TokenizerScanRequest(BaseModel):
     limit: int = Field(default=100, ge=1, le=1000)
-    hf_access_token: str | None = Field(default=None)
 
 
 ###############################################################################
@@ -41,7 +40,6 @@ class TokenizerDownloadRequest(BaseModel):
         default_factory=list,
         description="Tokenizer IDs to download and persist",
     )
-    hf_access_token: str | None = Field(default=None)
 
 
 ###############################################################################

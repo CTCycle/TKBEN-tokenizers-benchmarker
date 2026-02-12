@@ -12,7 +12,6 @@ export interface TokenizerScanResponse {
  */
 export interface TokenizerDownloadRequest {
     tokenizers: string[];
-    hf_access_token?: string | null;
 }
 
 /**
@@ -51,6 +50,31 @@ export interface TokenizerSettingsResponse {
     default_scan_limit: number;
     max_scan_limit: number;
     min_scan_limit: number;
+}
+
+/**
+ * Hugging Face access key entry.
+ */
+export interface HFAccessKeyListItem {
+    id: number;
+    created_at: string;
+    is_active: boolean;
+    masked_preview: string;
+}
+
+/**
+ * Hugging Face access key list response.
+ */
+export interface HFAccessKeyListResponse {
+    keys: HFAccessKeyListItem[];
+}
+
+/**
+ * Hugging Face access key reveal response.
+ */
+export interface HFAccessKeyRevealResponse {
+    id: number;
+    key_value: string;
 }
 
 /**
@@ -113,7 +137,6 @@ export interface DatasetDownloadRequest {
     configs: {
         configuration?: string | null;
     };
-    hf_access_token?: string | null;
 }
 
 /**

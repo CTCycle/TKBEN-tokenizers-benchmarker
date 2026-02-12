@@ -20,6 +20,8 @@ export const API_ENDPOINTS = {
     TOKENIZERS_UPLOAD: `${API_BASE_URL}/tokenizers/upload`,
     TOKENIZERS_CUSTOM: `${API_BASE_URL}/tokenizers/custom`,
 
+    KEYS: `${API_BASE_URL}/keys`,
+
     BENCHMARKS_RUN: `${API_BASE_URL}/benchmarks/run`,
 
     JOBS: `${API_BASE_URL}/jobs`,

@@ -24,6 +24,10 @@ from TKBEN.server.common.constants import (
 )
 from TKBEN.server.services.jobs import JobProgressReporter, JobStopChecker, job_manager
 from TKBEN.server.services.datasets import DatasetService
+from TKBEN.server.services.keys import (
+    HFAccessKeyService,
+    HFAccessKeyValidationError,
+)
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_DATASETS, tags=["datasets"])
 
@@ -94,7 +98,7 @@ class DatasetJobHandler:
         request_payload: dict[str, Any],
         job_id: str,
     ) -> dict[str, Any]:
-        service = DatasetService(hf_access_token=request_payload.get("hf_access_token"))
+        service = DatasetService()
         progress_callback = JobProgressReporter(job_manager, job_id)
         should_stop = JobStopChecker(job_manager, job_id)
         result = service.download_and_persist(
@@ -194,6 +198,15 @@ async def download_dataset(request: DatasetDownloadRequest) -> JobStartResponse:
         request.corpus,
         request.configs.configuration,
     )
+
+    key_service = HFAccessKeyService()
+    try:
+        key_service.get_active_key()
+    except HFAccessKeyValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
 
     if job_manager.is_job_running("dataset_download"):
         raise HTTPException(

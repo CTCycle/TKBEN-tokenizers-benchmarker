@@ -159,7 +159,7 @@ REM ============================================================================
 set "FASTAPI_HOST=127.0.0.1"
 set "FASTAPI_PORT=8000"
 set "UI_HOST=127.0.0.1"
-set "UI_PORT=7861"
+set "UI_PORT=5173"
 set "RELOAD=false"
 set "OPTIONAL_DEPENDENCIES=false"
 
@@ -194,7 +194,6 @@ REM Ensure the embeddable runtime is used (avoid picking up Conda/other Python D
 set "PYTHONHOME=%python_dir%"
 set "PYTHONPATH="
 set "PYTHONNOUSERSITE=1"
-set "PYTHONWARNINGS=ignore::SyntaxWarning"
 
 REM ============================================================================
 REM == Step 4: Install deps via uv
