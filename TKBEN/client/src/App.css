@@ -15,12 +15,18 @@
 .app-shell {
   display: flex;
   min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   background: var(--color-bg);
   color: var(--color-text);
 }
 
 .sidebar {
   width: 90px;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  flex-shrink: 0;
   background: #0f1114;
   border-right: 1px solid var(--color-border);
   display: flex;
@@ -156,6 +162,9 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  min-height: 0;
+  overflow-y: auto;
   padding: 32px 40px;
   gap: 24px;
   min-width: 0;
@@ -174,6 +183,7 @@
 .app-content {
   flex: 1;
   display: flex;
+  min-height: 0;
   min-width: 0;
 }
 
@@ -261,6 +271,7 @@
   gap: 16px;
   height: 100%;
   min-height: 0;
+  padding-right: 10px;
 }
 
 .dataset-top-section .dataset-preview-body {
@@ -485,29 +496,24 @@
 .dataset-modal-content {
   display: flex;
   flex-direction: column;
+  gap: 12px;
   min-height: 0;
 }
 
-.dataset-insert-row-shell {
-  max-height: 0;
-  opacity: 0;
-  transform: translateY(-10px);
-  overflow: hidden;
-  margin-bottom: 0;
-  pointer-events: none;
-  transition:
-    max-height 220ms ease,
-    opacity 220ms ease,
-    transform 220ms ease,
-    margin-bottom 220ms ease;
+.dataset-manual-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.02);
 }
 
-.dataset-insert-row-shell.is-open {
-  max-height: 88px;
-  opacity: 1;
-  transform: translateY(0);
-  margin-bottom: 12px;
-  pointer-events: auto;
+.dataset-manual-help {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-muted);
 }
 
 .dataset-insert-row {
@@ -515,19 +521,12 @@
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
-  padding-right: 8px;
+  padding: 0;
 }
 
 .dataset-preset-list-shell {
   min-width: 0;
   transition: transform 220ms ease, opacity 220ms ease, filter 220ms ease;
-}
-
-.dataset-preset-list-shell.is-inactive {
-  transform: translateY(12px);
-  opacity: 0.4;
-  filter: saturate(0.2);
-  pointer-events: none;
 }
 
 .dataset-preset-list {
@@ -689,6 +688,7 @@
   flex-direction: column;
   gap: 16px;
   min-height: 0;
+  padding-right: 10px;
 }
 
 .tokenizer-preview-body {
@@ -1360,12 +1360,7 @@ select {
     align-items: stretch;
   }
 
-  .dataset-insert-row-shell.is-open {
-    max-height: 156px;
-  }
-
   .dataset-insert-row {
     grid-template-columns: 1fr;
-    padding-right: 0;
   }
 }
