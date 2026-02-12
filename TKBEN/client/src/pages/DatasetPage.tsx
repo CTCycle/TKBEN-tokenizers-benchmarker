@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
 import { useDataset } from '../contexts/DatasetContext';
 
@@ -216,9 +216,11 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [isInsertByNameOpen, setIsInsertByNameOpen] = useState(false);
+  const manualDatasetInputRef = useRef<HTMLInputElement | null>(null);
 
   const corpusInputId = 'corpus-input';
   const configInputId = 'config-input';
+  const manualInsertRegionId = 'dataset-manual-insert-panel';
   const formatNumber = (num: number) => num.toLocaleString();
 
   const documentHistogram = validationReport?.document_length_histogram ?? histogram;
@@ -318,8 +320,13 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
   const modalDownloadProgress = loadProgress !== null
     ? ` (${Math.round(loadProgress)}%)`
     : '';
-  const isPresetListInactive = isInsertByNameOpen;
-  const presetsDisabled = loading || isInsertByNameOpen;
+  const presetsDisabled = loading;
+
+  useEffect(() => {
+    if (isModalOpen && isInsertByNameOpen) {
+      manualDatasetInputRef.current?.focus();
+    }
+  }, [isInsertByNameOpen, isModalOpen]);
 
   const pageContent = (
     <>
@@ -348,6 +355,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                   className="icon-button"
                   onClick={() => setIsModalOpen(true)}
                   aria-label="Add dataset"
+                  title="Add or import a dataset"
                 >
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M12 5v14M5 12h14" strokeWidth="2" strokeLinecap="round" />
@@ -391,6 +399,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                               type="button"
                               className="icon-button subtle"
                               aria-label="Run dataset evaluation"
+                              title="Run dataset validation"
                               onClick={(event) => {
                                 event.stopPropagation();
                                 handleSelectDataset(dataset.dataset_name);
@@ -411,6 +420,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                               type="button"
                               className="icon-button danger"
                               aria-label="Remove dataset"
+                              title="Delete dataset from database"
                               onClick={(event) => {
                                 event.stopPropagation();
                                 void handleDeleteDataset(dataset.dataset_name);
@@ -537,6 +547,9 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                   type="button"
                   className={`icon-button subtle${isInsertByNameOpen ? ' accent' : ''}`}
                   aria-label="Insert dataset by name"
+                  aria-expanded={isInsertByNameOpen}
+                  aria-controls={manualInsertRegionId}
+                  title={isInsertByNameOpen ? 'Hide manual dataset input' : 'Show manual dataset input'}
                   onClick={() => setIsInsertByNameOpen((value) => !value)}
                   disabled={loading}
                 >
@@ -549,6 +562,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                   type="button"
                   className="icon-button subtle"
                   aria-label="Upload custom dataset"
+                  title="Upload a CSV or Excel dataset file"
                   onClick={handleUploadClick}
                   disabled={loading}
                 >
@@ -573,103 +587,115 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
               </div>
             )}
             <div className="dataset-modal-content">
-              <div
-                className={`dataset-insert-row-shell${isInsertByNameOpen ? ' is-open' : ''}`}
-                aria-hidden={!isInsertByNameOpen}
-              >
-                <div className="dataset-insert-row">
-                  <input
-                    id={corpusInputId}
-                    className="text-input"
-                    value={selectedCorpus}
-                    onChange={(event) => handleCorpusChange(event.target.value)}
-                    disabled={loading}
-                    aria-label="Dataset name"
-                    placeholder="Dataset name"
-                  />
-                  <input
-                    id={configInputId}
-                    className="text-input"
-                    value={selectedConfig}
-                    onChange={(event) => handleConfigChange(event.target.value)}
-                    disabled={loading}
-                    aria-label="Configuration"
-                    placeholder="Configuration"
-                  />
-                  <button
-                    type="button"
-                    className="icon-button accent"
-                    onClick={() => void handleLoadDataset()}
-                    disabled={loading || !selectedCorpus.trim()}
-                    aria-label="Download dataset"
-                  >
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M12 3v12" strokeWidth="2" strokeLinecap="round" />
-                      <path d="M7 10l5 5 5-5" strokeWidth="2" strokeLinecap="round" />
-                      <path d="M5 19h14" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
-                  </button>
+              {isInsertByNameOpen ? (
+                <div
+                  id={manualInsertRegionId}
+                  className="dataset-manual-panel"
+                  role="region"
+                  aria-label="Manual dataset input"
+                >
+                  <p className="dataset-manual-help">
+                    Enter a Hugging Face dataset ID and optional configuration.
+                  </p>
+                  <div className="dataset-insert-row">
+                    <input
+                      ref={manualDatasetInputRef}
+                      id={corpusInputId}
+                      className="text-input"
+                      value={selectedCorpus}
+                      onChange={(event) => handleCorpusChange(event.target.value)}
+                      disabled={loading}
+                      aria-label="Dataset name"
+                      placeholder="Dataset name"
+                    />
+                    <input
+                      id={configInputId}
+                      className="text-input"
+                      value={selectedConfig}
+                      onChange={(event) => handleConfigChange(event.target.value)}
+                      disabled={loading}
+                      aria-label="Configuration"
+                      placeholder="Configuration"
+                    />
+                    <button
+                      type="button"
+                      className="icon-button accent"
+                      onClick={() => void handleLoadDataset()}
+                      disabled={loading || !selectedCorpus.trim()}
+                      aria-label="Download dataset"
+                      title="Download dataset from Hugging Face"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 3v12" strokeWidth="2" strokeLinecap="round" />
+                        <path d="M7 10l5 5 5-5" strokeWidth="2" strokeLinecap="round" />
+                        <path d="M5 19h14" strokeWidth="2" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div
-                className={`dataset-preset-list-shell${isPresetListInactive ? ' is-inactive' : ''}`}
-                aria-disabled={presetsDisabled}
-              >
-                <div className="dataset-preset-list">
-                  {PREDEFINED_DATASETS.map((group) => (
-                    <div className="dataset-preset-group" key={group.group}>
-                      <p className="dataset-preset-heading">{group.group}</p>
-                      {group.datasets.map((preset) => {
-                        const isSelected = selectedPreset === preset.id;
-                        return (
-                          <div
-                            key={preset.id}
-                            role="button"
-                            tabIndex={presetsDisabled ? -1 : 0}
-                            aria-disabled={presetsDisabled}
-                            className={`dataset-preset-row${isSelected ? ' selected' : ''}`}
-                            onClick={() => {
-                              if (!presetsDisabled) {
-                                handlePresetSelect(preset);
-                              }
-                            }}
-                            onKeyDown={(event) => {
-                              if (!presetsDisabled && (event.key === 'Enter' || event.key === ' ')) {
-                                handlePresetSelect(preset);
-                              }
-                            }}
-                          >
-                            <div className="dataset-preset-info">
-                              <span className="dataset-preset-name">{preset.label}</span>
-                              <span className="dataset-preset-description">{preset.description}</span>
+              ) : (
+                <div
+                  className="dataset-preset-list-shell"
+                  aria-disabled={presetsDisabled}
+                >
+                  <div className="dataset-preset-list">
+                    {PREDEFINED_DATASETS.map((group) => (
+                      <div className="dataset-preset-group" key={group.group}>
+                        <p className="dataset-preset-heading">{group.group}</p>
+                        {group.datasets.map((preset) => {
+                          const isSelected = selectedPreset === preset.id;
+                          return (
+                            <div
+                              key={preset.id}
+                              role="button"
+                              tabIndex={presetsDisabled ? -1 : 0}
+                              aria-disabled={presetsDisabled}
+                              className={`dataset-preset-row${isSelected ? ' selected' : ''}`}
+                              onClick={() => {
+                                if (!presetsDisabled) {
+                                  handlePresetSelect(preset);
+                                }
+                              }}
+                              onKeyDown={(event) => {
+                                if (!presetsDisabled && (event.key === 'Enter' || event.key === ' ')) {
+                                  handlePresetSelect(preset);
+                                }
+                              }}
+                            >
+                              <div className="dataset-preset-info">
+                                <span className="dataset-preset-name">{preset.label}</span>
+                                <span className="dataset-preset-description">{preset.description}</span>
+                              </div>
+                              {isSelected && (
+                                <button
+                                  type="button"
+                                  className="icon-button subtle"
+                                  aria-label={`Download ${preset.label}`}
+                                  title={`Download ${preset.label}`}
+                                  onClick={handlePresetDownload}
+                                  disabled={loading || presetsDisabled}
+                                >
+                                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M12 3v12" strokeWidth="2" strokeLinecap="round" />
+                                    <path d="M7 10l5 5 5-5" strokeWidth="2" strokeLinecap="round" />
+                                    <path d="M5 19h14" strokeWidth="2" strokeLinecap="round" />
+                                  </svg>
+                                </button>
+                              )}
                             </div>
-                            {isSelected && (
-                              <button
-                                type="button"
-                                className="icon-button subtle"
-                                aria-label={`Download ${preset.label}`}
-                                onClick={handlePresetDownload}
-                                disabled={loading || presetsDisabled}
-                              >
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                  <path d="M12 3v12" strokeWidth="2" strokeLinecap="round" />
-                                  <path d="M7 10l5 5 5-5" strokeWidth="2" strokeLinecap="round" />
-                                  <path d="M5 19h14" strokeWidth="2" strokeLinecap="round" />
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
             <div className="modal-footer">
               <button
                 type="button"
                 className="secondary-button"
+                title="Close dataset selector"
                 onClick={() => {
                   setIsInsertByNameOpen(false);
                   setIsModalOpen(false);
