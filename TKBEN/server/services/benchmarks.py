@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import os
 import re
 import time
-from collections.abc import Callable, Generator, Iterable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
 from typing import Any
 import matplotlib.pyplot as plt
 import numpy as np
@@ -22,7 +21,7 @@ from TKBEN.server.repositories.schemas.models import (
     TokenizerVocabularyStatistics,
 )
 from TKBEN.server.configurations import server_settings
-from TKBEN.server.utils.logger import logger
+from TKBEN.server.common.utils.logger import logger
 
 
 ###############################################################################
@@ -1433,3 +1432,4 @@ class BenchmarkService:
 
         fig.tight_layout()
         return fig
+

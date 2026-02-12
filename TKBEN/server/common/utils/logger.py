@@ -6,7 +6,7 @@ from datetime import datetime
 from os import makedirs
 from os.path import join
 
-from TKBEN.server.utils.constants import LOGS_PATH
+from TKBEN.server.common.constants import LOGS_PATH
 
 
 ###############################################################################
@@ -49,3 +49,4 @@ LOG_CONFIG = {
 
 logging.config.dictConfig(LOG_CONFIG)
 logger = logging.getLogger("TKBEN")
+

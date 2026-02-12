@@ -4,8 +4,8 @@ import json
 import time
 
 from TKBEN.server.repositories.database.initializer import initialize_database
-from TKBEN.server.utils.constants import CONFIGURATIONS_FILE
-from TKBEN.server.utils.logger import logger
+from TKBEN.server.common.constants import CONFIGURATIONS_FILE
+from TKBEN.server.common.utils.logger import logger
 
 
 # -----------------------------------------------------------------------------
@@ -35,3 +35,4 @@ if __name__ == "__main__":
     initialize_database()
     elapsed = time.perf_counter() - start
     logger.info("Database initialization completed in %.2f seconds", elapsed)
+

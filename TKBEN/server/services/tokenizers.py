@@ -4,7 +4,7 @@ from typing import Any
 
 from huggingface_hub import HfApi
 
-from TKBEN.server.utils.logger import logger
+from TKBEN.server.common.utils.logger import logger
 
 
 ###############################################################################
@@ -58,3 +58,4 @@ class TokenizersService:
         identifiers = [m.modelId for m in models]
 
         return identifiers
+

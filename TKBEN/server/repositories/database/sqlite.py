@@ -14,8 +14,8 @@ from sqlalchemy.orm import sessionmaker
 from TKBEN.server.configurations import DatabaseSettings
 from TKBEN.server.repositories.database.migration import run_schema_migration
 from TKBEN.server.repositories.schemas.models import Base
-from TKBEN.server.utils.constants import RESOURCES_PATH, DATABASE_FILENAME
-from TKBEN.server.utils.logger import logger
+from TKBEN.server.common.constants import RESOURCES_PATH, DATABASE_FILENAME
+from TKBEN.server.common.utils.logger import logger
 
 
 ###############################################################################
@@ -265,5 +265,6 @@ class SQLiteRepository:
                 sqlalchemy.text(f'SELECT DISTINCT "{safe_column}" FROM "{safe_name}"')
             )
             return [row[0] for row in result.fetchall() if row[0] is not None]
+
 
 

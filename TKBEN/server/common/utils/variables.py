@@ -3,8 +3,8 @@ from __future__ import annotations
 import os
 from dotenv import load_dotenv
 
-from TKBEN.server.utils.constants import ENV_FILE_PATH
-from TKBEN.server.utils.logger import logger
+from TKBEN.server.common.constants import ENV_FILE_PATH
+from TKBEN.server.common.utils.logger import logger
 
 
 ###############################################################################
@@ -25,3 +25,4 @@ class EnvironmentVariables:
 
 
 env_variables = EnvironmentVariables()
+
