@@ -3,25 +3,33 @@ from __future__ import annotations
 import asyncio
 import os
 import tempfile
+from typing import Any
 
 import anyio
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from tokenizers import Tokenizer
 
 from TKBEN.server.entities.tokenizers import (
+    TokenizerDownloadRequest,
+    TokenizerListItem,
+    TokenizerListResponse,
     TokenizerScanResponse,
     TokenizerSettingsResponse,
     TokenizerUploadResponse,
 )
+from TKBEN.server.entities.jobs import JobStartResponse
 from TKBEN.server.configurations.server import server_settings
 from TKBEN.server.common.constants import (
     API_ROUTE_TOKENIZERS_CUSTOM,
+    API_ROUTE_TOKENIZERS_DOWNLOAD,
+    API_ROUTE_TOKENIZERS_LIST,
     API_ROUTE_TOKENIZERS_SCAN,
     API_ROUTE_TOKENIZERS_SETTINGS,
     API_ROUTE_TOKENIZERS_UPLOAD,
     API_ROUTER_PREFIX_TOKENIZERS,
 )
 from TKBEN.server.common.utils.logger import logger
+from TKBEN.server.services.jobs import JobProgressReporter, JobStopChecker, job_manager
 from TKBEN.server.services.benchmarks import BenchmarkTools
 from TKBEN.server.services.tokenizers import TokenizersService
 
@@ -96,6 +104,86 @@ async def scan_tokenizers(
         status="success",
         identifiers=identifiers,
         count=len(identifiers),
+    )
+
+
+###############################################################################
+@router.get(
+    API_ROUTE_TOKENIZERS_LIST,
+    response_model=TokenizerListResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def list_tokenizers() -> TokenizerListResponse:
+    service = TokenizersService()
+    tokenizers = await asyncio.to_thread(service.list_downloaded_tokenizers)
+    return TokenizerListResponse(
+        tokenizers=[TokenizerListItem(tokenizer_name=name) for name in tokenizers],
+        count=len(tokenizers),
+    )
+
+
+###############################################################################
+def run_tokenizer_download_job(
+    request_payload: dict[str, Any],
+    job_id: str,
+) -> dict[str, Any]:
+    raw_token = request_payload.get("hf_access_token")
+    hf_access_token = raw_token if isinstance(raw_token, str) and raw_token else None
+    service = TokenizersService(hf_access_token=hf_access_token)
+    progress_callback = JobProgressReporter(job_manager, job_id)
+    should_stop = JobStopChecker(job_manager, job_id)
+    tokenizers = request_payload.get("tokenizers", [])
+    if not isinstance(tokenizers, list):
+        tokenizers = []
+    result = service.download_and_persist(
+        tokenizers=tokenizers,
+        progress_callback=progress_callback,
+        should_stop=should_stop,
+    )
+    if job_manager.should_stop(job_id):
+        return {}
+    return result
+
+
+###############################################################################
+@router.post(
+    API_ROUTE_TOKENIZERS_DOWNLOAD,
+    response_model=JobStartResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def download_tokenizers(request: TokenizerDownloadRequest) -> JobStartResponse:
+    if not request.tokenizers:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one tokenizer must be specified.",
+        )
+
+    if job_manager.is_job_running("tokenizer_download"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Tokenizer download is already in progress.",
+        )
+
+    request_payload = request.model_dump()
+    job_id = job_manager.start_job(
+        job_type="tokenizer_download",
+        runner=run_tokenizer_download_job,
+        kwargs={"request_payload": request_payload},
+    )
+
+    job_status = job_manager.get_job_status(job_id)
+    if job_status is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to initialize tokenizer download job.",
+        )
+
+    return JobStartResponse(
+        job_id=job_id,
+        job_type=job_status["job_type"],
+        status=job_status["status"],
+        message="Tokenizer download job started.",
+        poll_interval=server_settings.jobs.polling_interval,
     )
 
 

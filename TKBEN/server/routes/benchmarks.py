@@ -187,6 +187,19 @@ async def run_benchmarks(request: BenchmarkRunRequest) -> JobStartResponse:
             detail=f"Dataset '{request.dataset_name}' not found or empty",
         )
 
+    missing_tokenizers = service.get_missing_persisted_tokenizers(request.tokenizers)
+    if missing_tokenizers:
+        missing_display = ", ".join(missing_tokenizers[:5])
+        if len(missing_tokenizers) > 5:
+            missing_display = f"{missing_display}, ..."
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Tokenizers must be downloaded before benchmarking. "
+                f"Missing: {missing_display}"
+            ),
+        )
+
     request_payload = request.model_dump()
     request_payload["custom_tokenizers"] = custom_tokenizers
 

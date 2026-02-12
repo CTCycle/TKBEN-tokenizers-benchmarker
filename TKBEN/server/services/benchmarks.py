@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 import time
 from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
@@ -21,6 +22,7 @@ from TKBEN.server.repositories.schemas.models import (
     TokenizerVocabularyStatistics,
 )
 from TKBEN.server.configurations import server_settings
+from TKBEN.server.common.constants import TOKENIZERS_PATH
 from TKBEN.server.common.utils.logger import logger
 
 
@@ -268,12 +270,46 @@ class BenchmarkService:
         self.log_interval = server_settings.benchmarks.log_interval
 
     # -------------------------------------------------------------------------
+    def get_tokenizer_cache_dir(self, tokenizer_id: str) -> str:
+        safe_name = tokenizer_id.replace("/", "__")
+        return os.path.join(TOKENIZERS_PATH, safe_name)
+
+    # -------------------------------------------------------------------------
+    def get_missing_persisted_tokenizers(self, tokenizer_ids: list[str]) -> list[str]:
+        requested = [tokenizer_id.strip() for tokenizer_id in tokenizer_ids if tokenizer_id.strip()]
+        if not requested:
+            return []
+
+        unique_requested = list(dict.fromkeys(requested))
+        query = sqlalchemy.text(
+            'SELECT 1 FROM "tokenizer" WHERE "name" = :name LIMIT 1'
+        )
+        missing: list[str] = []
+        with database.backend.engine.connect() as conn:
+            for tokenizer_name in unique_requested:
+                row = conn.execute(query, {"name": tokenizer_name}).first()
+                cache_dir = self.get_tokenizer_cache_dir(tokenizer_name)
+                has_cached_files = False
+                if os.path.isdir(cache_dir):
+                    for _, _, files in os.walk(cache_dir):
+                        if files:
+                            has_cached_files = True
+                            break
+                if row is None or not has_cached_files:
+                    missing.append(tokenizer_name)
+        return missing
+
+    # -------------------------------------------------------------------------
     def load_tokenizers(self, tokenizer_ids: list[str]) -> dict[str, Any]:
         tokenizers: dict[str, Any] = {}
         for tokenizer_id in tokenizer_ids:
             try:
                 logger.info("Loading tokenizer: %s", tokenizer_id)
-                tokenizer = AutoTokenizer.from_pretrained(tokenizer_id)
+                tokenizer = AutoTokenizer.from_pretrained(
+                    tokenizer_id,
+                    cache_dir=self.get_tokenizer_cache_dir(tokenizer_id),
+                    local_files_only=True,
+                )
                 if self.tools.is_tokenizer_compatible(tokenizer):
                     tokenizers[tokenizer_id] = tokenizer
                 else:
@@ -281,7 +317,10 @@ class BenchmarkService:
                         "Tokenizer %s not compatible, skipping", tokenizer_id
                     )
             except Exception:
-                logger.warning("Failed to load tokenizer %s", tokenizer_id)
+                logger.warning(
+                    "Failed to load tokenizer %s from local storage. Download it first.",
+                    tokenizer_id,
+                )
                 logger.debug("Tokenizer load error", exc_info=True)
         return tokenizers
 
