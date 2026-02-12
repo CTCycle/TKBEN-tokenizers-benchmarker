@@ -1269,8 +1269,8 @@ class BenchmarkService:
             return {}
         insert_query = sqlalchemy.text(
             'INSERT INTO "tokenizer" ("name") '
-            'SELECT :name '
-            'WHERE NOT EXISTS (SELECT 1 FROM "tokenizer" WHERE "name" = :name)'
+            'VALUES (:name) '
+            'ON CONFLICT ("name") DO NOTHING'
         )
         with database.backend.engine.begin() as conn:
             for name in tokenizer_names:

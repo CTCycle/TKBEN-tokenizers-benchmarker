@@ -19,7 +19,7 @@ from TKBEN.server.repositories.serialization.data import DatasetSerializer
 from TKBEN.server.configurations import server_settings
 from TKBEN.server.common.constants import DATASETS_PATH
 from TKBEN.server.common.utils.logger import logger
-from TKBEN.server.services.keys import HFAccessKeyService
+from TKBEN.server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
 
 
 ###############################################################################
@@ -170,6 +170,17 @@ class DatasetService:
         self.streaming_batch_size = self.settings.streaming_batch_size
         self.log_interval = self.settings.log_interval
         self.dataset_serializer = DatasetSerializer()
+
+    # -------------------------------------------------------------------------
+    def get_hf_access_token_for_download(self) -> str | None:
+        try:
+            return self.key_service.get_active_key()
+        except HFAccessKeyValidationError:
+            logger.warning(
+                "No decryptable active Hugging Face key found. "
+                "Proceeding with anonymous dataset download."
+            )
+            return None
 
     # -------------------------------------------------------------------------
     def stop_requested(self, should_stop: Callable[[], bool] | None) -> bool:
@@ -456,7 +467,7 @@ class DatasetService:
         else:
             logger.info("Dataset cache not found. Downloading %s", dataset_name)
 
-        hf_access_token = self.key_service.get_active_key()
+        hf_access_token = self.get_hf_access_token_for_download()
 
         try:
             if progress_callback:

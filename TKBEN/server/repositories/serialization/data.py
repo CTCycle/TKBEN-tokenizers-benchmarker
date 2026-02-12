@@ -449,9 +449,8 @@ class DatasetSerializer:
     def ensure_dataset_id(self, dataset_name: str) -> int:
         query = sqlalchemy.text(
             'INSERT INTO "dataset" ("name") '
-            'SELECT :dataset '
-            'WHERE NOT EXISTS ('
-            'SELECT 1 FROM "dataset" WHERE "name" = :dataset)'
+            'VALUES (:dataset) '
+            'ON CONFLICT ("name") DO NOTHING'
         )
         with self.queries.engine.begin() as conn:
             conn.execute(query, {"dataset": dataset_name})

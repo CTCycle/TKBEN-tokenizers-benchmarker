@@ -7,6 +7,7 @@ import sqlalchemy
 from sqlalchemy.exc import IntegrityError
 
 from TKBEN.server.common.utils.encryption import SymmetricCipher, get_hf_key_cipher
+from TKBEN.server.common.utils.logger import logger
 from TKBEN.server.repositories.database.backend import database
 
 
@@ -66,6 +67,31 @@ class HFAccessKeyService:
         return None
 
     # -------------------------------------------------------------------------
+    def get_decryption_error_message(self) -> str:
+        return (
+            "Stored Hugging Face key cannot be decrypted. "
+            "Set a valid active key again using the current HF_KEYS_ENCRYPTION_KEY."
+        )
+
+    # -------------------------------------------------------------------------
+    def is_legacy_plaintext_key(self, key_value: str) -> bool:
+        normalized = key_value.strip()
+        if not normalized.startswith("hf_"):
+            return False
+        if len(normalized) < 10:
+            return False
+        return " " not in normalized
+
+    # -------------------------------------------------------------------------
+    def migrate_plaintext_key(self, key_id: int, raw_key: str) -> None:
+        encrypted_value = self.cipher.encrypt(raw_key)
+        query = sqlalchemy.text(
+            'UPDATE "hf_access_keys" SET "key_value" = :key_value WHERE "id" = :key_id'
+        )
+        with database.backend.engine.begin() as conn:
+            conn.execute(query, {"key_value": encrypted_value, "key_id": key_id})
+
+    # -------------------------------------------------------------------------
     def list_keys(self) -> list[dict[str, Any]]:
         query = sqlalchemy.text(
             'SELECT "id", "key_value", "created_at", "is_active" '
@@ -112,7 +138,21 @@ class HFAccessKeyService:
                 stored_value = self.read_row_value(row, "key_value", 0)
                 if not stored_value:
                     continue
-                if self.cipher.decrypt(str(stored_value)) == normalized_key:
+                stored_text = str(stored_value)
+                try:
+                    decrypted_value = self.cipher.decrypt(stored_text)
+                except ValueError:
+                    if self.is_legacy_plaintext_key(stored_text):
+                        if stored_text.strip() == normalized_key:
+                            raise HFAccessKeyConflictError(
+                                "This Hugging Face key is already stored."
+                            )
+                        continue
+                    logger.warning(
+                        "Skipping undecryptable Hugging Face key while checking duplicates."
+                    )
+                    continue
+                if decrypted_value == normalized_key:
                     raise HFAccessKeyConflictError(
                         "This Hugging Face key is already stored."
                     )
@@ -232,7 +272,7 @@ class HFAccessKeyService:
     # -------------------------------------------------------------------------
     def get_active_key(self) -> str:
         query = sqlalchemy.text(
-            'SELECT "key_value" FROM "hf_access_keys" '
+            'SELECT "id", "key_value" FROM "hf_access_keys" '
             'WHERE "is_active" = :is_active ORDER BY "id" DESC LIMIT 1'
         )
         with database.backend.engine.connect() as conn:
@@ -241,9 +281,35 @@ class HFAccessKeyService:
             raise HFAccessKeyValidationError(
                 "No active Hugging Face access key is configured."
             )
-        encrypted_value = self.read_row_value(row, "key_value", 0)
+        key_id = self.read_row_value(row, "id", 0)
+        encrypted_value = self.read_row_value(row, "key_value", 1)
         if not encrypted_value:
             raise HFAccessKeyValidationError(
                 "No active Hugging Face access key is configured."
             )
-        return self.cipher.decrypt(str(encrypted_value))
+        encrypted_text = str(encrypted_value)
+        try:
+            return self.cipher.decrypt(encrypted_text)
+        except ValueError as exc:
+            if self.is_legacy_plaintext_key(encrypted_text):
+                logger.warning(
+                    "Active Hugging Face key is stored as plaintext legacy format; "
+                    "migrating to encrypted storage."
+                )
+                try:
+                    normalized_key_id = int(key_id)
+                except (TypeError, ValueError):
+                    normalized_key_id = None
+                if normalized_key_id is not None:
+                    try:
+                        self.migrate_plaintext_key(normalized_key_id, encrypted_text.strip())
+                    except Exception:
+                        logger.warning(
+                            "Failed to migrate plaintext Hugging Face key for id=%s",
+                            key_id,
+                            exc_info=True,
+                        )
+                return encrypted_text.strip()
+            raise HFAccessKeyValidationError(
+                self.get_decryption_error_message()
+            ) from exc
