@@ -103,6 +103,7 @@ class DatasetJobHandler:
             remove_invalid=True,
             progress_callback=progress_callback,
             should_stop=should_stop,
+            job_id=job_id,
         )
         if job_manager.should_stop(job_id):
             return {}

@@ -1,7 +1,6 @@
 # Project-specific generated/runtime artifacts
 assets/docs/**
-TKBEN/resources/database/**
-TKBEN/resources/datasets/**
+TKBEN/resources/sources/datasets/**
 TKBEN/resources/runtimes/**
 TKBEN/resources/runtimes/uv_cache/**
 TKBEN/resources/logs/**

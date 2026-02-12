@@ -35,11 +35,6 @@ const PREDEFINED_DATASETS: DatasetGroup[] = [
         description: 'Colossal Clean Crawled Corpus, large filtered web crawl.',
       },
       {
-        id: 'the_pile',
-        label: 'the_pile',
-        description: 'Diverse mix of academic, code, web, books, and forums.',
-      },
-      {
         id: 'oscar',
         label: 'oscar',
         description: 'Multilingual web corpus filtered by language.',
