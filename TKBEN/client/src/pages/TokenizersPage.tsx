@@ -517,121 +517,158 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
             )}
 
             <div className="tokenizer-modal-columns">
-              <div className="tokenizer-modal-column">
-                <p className="panel-label">Manual Input</p>
-                <p className="panel-description">
+              <div className="tokenizer-modal-column tokenizer-modal-column--manual">
+                <div className="tokenizer-modal-column-header">
+                  <p className="panel-label">Manual Input</p>
+                  <div className="tokenizer-column-actions">
+                    <button
+                      type="button"
+                      className="icon-button subtle tokenizer-column-action"
+                      onClick={runManualDownload}
+                      disabled={manualTokenizerIds.length === 0 || downloadInProgress}
+                      aria-label="Download tokenizers from manual input"
+                      title="Download manual tokenizer names"
+                    >
+                      {downloadInProgress ? (
+                        <span className="action-spinner" aria-hidden="true" />
+                      ) : (
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-button subtle tokenizer-column-action"
+                      onClick={triggerCustomTokenizerUpload}
+                      disabled={customTokenizerUploading}
+                      aria-label="Upload custom tokenizer JSON"
+                      title="Upload custom tokenizer JSON"
+                    >
+                      {customTokenizerUploading ? (
+                        <span className="action-spinner" aria-hidden="true" />
+                      ) : (
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M12 20V9m0 0-4 4m4-4 4 4M5 5h14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+                <p className="panel-description tokenizer-modal-column-description">
                   Add one tokenizer name per line, then download all entries in a single batch or upload a custom tokenizer JSON.
                 </p>
 
-                <div className="tokenizer-manual-entry-row">
+                <div className="tokenizer-modal-column-content">
                   <textarea
                     className="tokenizer-manual-input"
                     value={manualTokenizerInput}
                     onChange={(event) => setManualTokenizerInput(event.target.value)}
                     placeholder="Tokenizer names, one per line"
                   />
-                  <button
-                    type="button"
-                    className="primary-button"
-                    onClick={runManualDownload}
-                    disabled={manualTokenizerIds.length === 0 || downloadInProgress}
-                  >
-                    {downloadInProgress ? 'Downloading...' : 'Download'}
-                  </button>
+                  <input
+                    type="file"
+                    ref={customTokenizerInputRef}
+                    onChange={handleUploadCustomTokenizer}
+                    accept=".json"
+                    style={{ display: 'none' }}
+                  />
+                  {customTokenizerName && (
+                    <span className="custom-tokenizer-badge">
+                      {customTokenizerName}
+                      <button
+                        type="button"
+                        className="clear-button"
+                        onClick={handleClearCustomTokenizer}
+                        aria-label="Clear custom tokenizer"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
                 </div>
-
-                <input
-                  type="file"
-                  ref={customTokenizerInputRef}
-                  onChange={handleUploadCustomTokenizer}
-                  accept=".json"
-                  style={{ display: 'none' }}
-                />
-                <button
-                  type="button"
-                  className="secondary-button tokenizer-upload-custom"
-                  onClick={triggerCustomTokenizerUpload}
-                  disabled={customTokenizerUploading}
-                >
-                  {customTokenizerUploading
-                    ? 'Uploading custom tokenizer JSON...'
-                    : 'Upload Custom tokenizer.json from Your Computer'}
-                </button>
-                {customTokenizerName && (
-                  <span className="custom-tokenizer-badge">
-                    {customTokenizerName}
-                    <button
-                      type="button"
-                      className="clear-button"
-                      onClick={handleClearCustomTokenizer}
-                      aria-label="Clear custom tokenizer"
-                    >
-                      ×
-                    </button>
-                  </span>
-                )}
               </div>
 
-              <div className="tokenizer-modal-column">
-                <p className="panel-label">Hugging Face Selection</p>
-                <p className="panel-description">
+              <div className="tokenizer-modal-column tokenizer-modal-column--scan">
+                <div className="tokenizer-modal-column-header">
+                  <p className="panel-label">Hugging Face Selection</p>
+                  <div className="tokenizer-column-actions">
+                    <button
+                      type="button"
+                      className="icon-button subtle tokenizer-column-action"
+                      onClick={handleScan}
+                      disabled={scanInProgress}
+                      aria-label="Scan Hugging Face tokenizers"
+                      title="Scan Hugging Face tokenizer IDs"
+                    >
+                      {scanInProgress ? (
+                        <span className="action-spinner" aria-hidden="true" />
+                      ) : (
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <circle cx="11" cy="11" r="6" fill="none" strokeWidth="2" />
+                          <path d="M16 16l4 4" strokeWidth="2" strokeLinecap="round" />
+                        </svg>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-button subtle tokenizer-column-action"
+                      onClick={runScannedDownload}
+                      disabled={selectedScannedTokenizers.length === 0 || downloadInProgress}
+                      aria-label="Download selected scanned tokenizers"
+                      title="Download selected scanned tokenizers"
+                    >
+                      {downloadInProgress ? (
+                        <span className="action-spinner" aria-hidden="true" />
+                      ) : (
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+                <p className="panel-description tokenizer-modal-column-description">
                   Fetch tokenizer IDs from the Hugging Face index and select one or more rows to download.
                 </p>
 
-                <div className="tokenizer-modal-action-row">
-                  <button
-                    type="button"
-                    className="primary-button"
-                    onClick={handleScan}
-                    disabled={scanInProgress}
-                  >
-                    {scanInProgress ? 'Scanning...' : 'Scan'}
-                  </button>
-                  <button
-                    type="button"
-                    className="primary-button ghost"
-                    onClick={runScannedDownload}
-                    disabled={selectedScannedTokenizers.length === 0 || downloadInProgress}
-                  >
-                    Download
-                  </button>
-                </div>
+                <div className="tokenizer-modal-column-content">
+                  <div className="tokenizer-scan-list" role="listbox" aria-multiselectable="true">
+                    {sortedFetchedTokenizers.length === 0 ? (
+                      <div className="tokenizer-scan-empty">Run scan to load Hugging Face tokenizer IDs.</div>
+                    ) : (
+                      sortedFetchedTokenizers.map((tokenizerId) => {
+                        const isSelected = selectedScannedTokenizers.includes(tokenizerId);
+                        const isDownloaded = downloadedTokenizerSet.has(tokenizerId);
 
-                <div className="tokenizer-scan-list" role="listbox" aria-multiselectable="true">
-                  {sortedFetchedTokenizers.length === 0 ? (
-                    <div className="tokenizer-scan-empty">Run scan to load Hugging Face tokenizer IDs.</div>
-                  ) : (
-                    sortedFetchedTokenizers.map((tokenizerId) => {
-                      const isSelected = selectedScannedTokenizers.includes(tokenizerId);
-                      const isDownloaded = downloadedTokenizerSet.has(tokenizerId);
-
-                      return (
-                        <div
-                          key={tokenizerId}
-                          role="option"
-                          aria-selected={isSelected}
-                          tabIndex={0}
-                          className={`tokenizer-scan-row${isSelected ? ' selected' : ''}${isDownloaded ? ' downloaded' : ''}`}
-                          onClick={(event) => handleScannedTokenizerSelection(event, tokenizerId)}
-                          onKeyDown={(event) => handleScannedTokenizerSelectionByKeyboard(event, tokenizerId)}
-                        >
-                          <span className="tokenizer-scan-id">{tokenizerId}</span>
-                          {isSelected && (
-                            <button
-                              type="button"
-                              className="icon-button subtle tokenizer-selection-remove"
-                              aria-label={`Remove ${tokenizerId} from selection`}
-                              onClick={(event) => handleRemoveScannedSelection(event, tokenizerId)}
-                            >
-                              <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M5 12h14" strokeWidth="2" strokeLinecap="round" />
-                              </svg>
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })
-                  )}
+                        return (
+                          <div
+                            key={tokenizerId}
+                            role="option"
+                            aria-selected={isSelected}
+                            tabIndex={0}
+                            className={`tokenizer-scan-row${isSelected ? ' selected' : ''}${isDownloaded ? ' downloaded' : ''}`}
+                            onClick={(event) => handleScannedTokenizerSelection(event, tokenizerId)}
+                            onKeyDown={(event) => handleScannedTokenizerSelectionByKeyboard(event, tokenizerId)}
+                          >
+                            <span className="tokenizer-scan-id">{tokenizerId}</span>
+                            {isSelected && (
+                              <button
+                                type="button"
+                                className="icon-button subtle tokenizer-selection-remove"
+                                aria-label={`Remove ${tokenizerId} from selection`}
+                                onClick={(event) => handleRemoveScannedSelection(event, tokenizerId)}
+                              >
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                  <path d="M5 12h14" strokeWidth="2" strokeLinecap="round" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

@@ -239,10 +239,10 @@ class HFAccessKeyService:
         find_query = sqlalchemy.text(
             'SELECT "id", "is_active" FROM "hf_access_keys" WHERE "id" = :key_id LIMIT 1'
         )
-        clear_query = sqlalchemy.text(
-            'UPDATE "hf_access_keys" SET "is_active" = :is_active'
+        clear_other_keys_query = sqlalchemy.text(
+            'UPDATE "hf_access_keys" SET "is_active" = :is_active WHERE "id" != :key_id'
         )
-        activate_query = sqlalchemy.text(
+        activate_selected_query = sqlalchemy.text(
             'UPDATE "hf_access_keys" SET "is_active" = :is_active WHERE "id" = :key_id'
         )
 
@@ -250,10 +250,15 @@ class HFAccessKeyService:
             row = conn.execute(find_query, {"key_id": key_id}).first()
             if row is None:
                 raise HFAccessKeyNotFoundError("Hugging Face key not found.")
-            is_currently_active = bool(self.read_row_value(row, "is_active", 1))
-            conn.execute(clear_query, {"is_active": False})
-            if not is_currently_active:
-                conn.execute(activate_query, {"is_active": True, "key_id": key_id})
+            # Keep activation idempotent: repeated activate calls must leave the key active.
+            conn.execute(
+                clear_other_keys_query,
+                {"is_active": False, "key_id": key_id},
+            )
+            conn.execute(
+                activate_selected_query,
+                {"is_active": True, "key_id": key_id},
+            )
 
     # -------------------------------------------------------------------------
     def clear_active_key(self, key_id: int) -> None:
