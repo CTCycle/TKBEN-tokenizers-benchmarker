@@ -4,12 +4,15 @@ import {
     clearCustomTokenizers,
     downloadTokenizers as downloadTokenizersApi,
     fetchDownloadedTokenizers,
+    fetchLatestTokenizerReport,
+    fetchTokenizerReportVocabularyPage,
+    generateTokenizerReport,
     scanTokenizers,
     uploadCustomTokenizer,
 } from '../services/tokenizersApi';
 import { runBenchmarks } from '../services/benchmarksApi';
 import { fetchAvailableDatasets } from '../services/datasetsApi';
-import type { BenchmarkRunResponse } from '../types/api';
+import type { BenchmarkRunResponse, TokenizerReportResponse, TokenizerVocabularyItem } from '../types/api';
 
 interface TokenizersContextType {
     // State
@@ -31,6 +34,12 @@ interface TokenizersContextType {
     benchmarkError: string | null;
     benchmarkResult: BenchmarkRunResponse | null;
     benchmarkProgress: number | null;
+    activeGeneratingTokenizer: string | null;
+    activeLoadingTokenizerReport: string | null;
+    tokenizerReport: TokenizerReportResponse | null;
+    tokenizerVocabulary: TokenizerVocabularyItem[];
+    tokenizerVocabularyTotal: number;
+    tokenizerVocabularyLoading: boolean;
     customTokenizerInputRef: React.RefObject<HTMLInputElement | null>;
 
     // Actions
@@ -45,6 +54,9 @@ interface TokenizersContextType {
     downloadTokenizers: (tokenizerIds: string[]) => Promise<void>;
     handleScan: () => Promise<void>;
     handleRunBenchmarks: () => Promise<void>;
+    handleGenerateTokenizerReport: (tokenizerName: string) => Promise<void>;
+    handleLoadLatestTokenizerReport: (tokenizerName: string) => Promise<void>;
+    handleLoadMoreTokenizerVocabulary: () => Promise<void>;
     refreshDatasets: () => Promise<void>;
     handleUploadCustomTokenizer: (event: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
     handleClearCustomTokenizer: () => Promise<void>;
@@ -75,6 +87,12 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
     const [benchmarkError, setBenchmarkError] = useState<string | null>(null);
     const [benchmarkResult, setBenchmarkResult] = useState<BenchmarkRunResponse | null>(null);
     const [benchmarkProgress, setBenchmarkProgress] = useState<number | null>(null);
+    const [activeGeneratingTokenizer, setActiveGeneratingTokenizer] = useState<string | null>(null);
+    const [activeLoadingTokenizerReport, setActiveLoadingTokenizerReport] = useState<string | null>(null);
+    const [tokenizerReport, setTokenizerReport] = useState<TokenizerReportResponse | null>(null);
+    const [tokenizerVocabulary, setTokenizerVocabulary] = useState<TokenizerVocabularyItem[]>([]);
+    const [tokenizerVocabularyTotal, setTokenizerVocabularyTotal] = useState(0);
+    const [tokenizerVocabularyLoading, setTokenizerVocabularyLoading] = useState(false);
 
     const refreshDatasets = useCallback(async () => {
         setDatasetsLoading(true);
@@ -242,6 +260,88 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         }
     }, [tokenizers, selectedDataset, maxDocuments, customTokenizerName]);
 
+    const loadVocabularyForReport = useCallback(async (
+        reportId: number,
+        append: boolean,
+    ) => {
+        if (!append) {
+            setTokenizerVocabulary([]);
+            setTokenizerVocabularyTotal(0);
+        }
+
+        setTokenizerVocabularyLoading(true);
+        try {
+            const offset = append ? tokenizerVocabulary.length : 0;
+            const page = await fetchTokenizerReportVocabularyPage(reportId, offset, 500);
+            setTokenizerVocabularyTotal(page.total);
+            if (append) {
+                setTokenizerVocabulary((current) => [...current, ...page.items]);
+            } else {
+                setTokenizerVocabulary(page.items);
+            }
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to load tokenizer vocabulary';
+            setBenchmarkError(errorMessage);
+        } finally {
+            setTokenizerVocabularyLoading(false);
+        }
+    }, [tokenizerVocabulary.length]);
+
+    const handleGenerateTokenizerReport = useCallback(async (tokenizerName: string) => {
+        const normalized = tokenizerName.trim();
+        if (!normalized) return;
+
+        setActiveGeneratingTokenizer(normalized);
+        setBenchmarkError(null);
+        try {
+            const report = await generateTokenizerReport({ tokenizer_name: normalized });
+            setTokenizerReport(report);
+            await loadVocabularyForReport(report.report_id, false);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to generate tokenizer report';
+            setBenchmarkError(errorMessage);
+        } finally {
+            setActiveGeneratingTokenizer(null);
+        }
+    }, [loadVocabularyForReport]);
+
+    const handleLoadLatestTokenizerReport = useCallback(async (tokenizerName: string) => {
+        const normalized = tokenizerName.trim();
+        if (!normalized) return;
+
+        setActiveLoadingTokenizerReport(normalized);
+        setBenchmarkError(null);
+        try {
+            const report = await fetchLatestTokenizerReport(normalized);
+            setTokenizerReport(report);
+            await loadVocabularyForReport(report.report_id, false);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to load latest tokenizer report';
+            setBenchmarkError(errorMessage);
+        } finally {
+            setActiveLoadingTokenizerReport(null);
+        }
+    }, [loadVocabularyForReport]);
+
+    const handleLoadMoreTokenizerVocabulary = useCallback(async () => {
+        if (!tokenizerReport) {
+            return;
+        }
+        if (tokenizerVocabularyLoading) {
+            return;
+        }
+        if (tokenizerVocabulary.length >= tokenizerVocabularyTotal) {
+            return;
+        }
+        await loadVocabularyForReport(tokenizerReport.report_id, true);
+    }, [
+        loadVocabularyForReport,
+        tokenizerReport,
+        tokenizerVocabulary.length,
+        tokenizerVocabularyLoading,
+        tokenizerVocabularyTotal,
+    ]);
+
     useEffect(() => {
         void refreshTokenizers();
     }, [refreshTokenizers]);
@@ -266,6 +366,12 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         benchmarkError,
         benchmarkResult,
         benchmarkProgress,
+        activeGeneratingTokenizer,
+        activeLoadingTokenizerReport,
+        tokenizerReport,
+        tokenizerVocabulary,
+        tokenizerVocabularyTotal,
+        tokenizerVocabularyLoading,
         customTokenizerInputRef,
 
         // Actions
@@ -280,6 +386,9 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         downloadTokenizers,
         handleScan,
         handleRunBenchmarks,
+        handleGenerateTokenizerReport,
+        handleLoadLatestTokenizerReport,
+        handleLoadMoreTokenizerVocabulary,
         refreshDatasets,
         handleUploadCustomTokenizer,
         handleClearCustomTokenizer,
@@ -303,6 +412,12 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         benchmarkError,
         benchmarkResult,
         benchmarkProgress,
+        activeGeneratingTokenizer,
+        activeLoadingTokenizerReport,
+        tokenizerReport,
+        tokenizerVocabulary,
+        tokenizerVocabularyTotal,
+        tokenizerVocabularyLoading,
         customTokenizerInputRef,
         setSelectedTokenizer,
         setTokenizers,
@@ -315,6 +430,9 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         downloadTokenizers,
         handleScan,
         handleRunBenchmarks,
+        handleGenerateTokenizerReport,
+        handleLoadLatestTokenizerReport,
+        handleLoadMoreTokenizerVocabulary,
         refreshDatasets,
         handleUploadCustomTokenizer,
         handleClearCustomTokenizer,

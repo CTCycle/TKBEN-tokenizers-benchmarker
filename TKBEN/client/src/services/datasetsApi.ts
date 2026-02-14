@@ -136,6 +136,51 @@ export async function validateDataset(
 }
 
 /**
+ * Fetch the latest persisted validation report for a dataset.
+ */
+export async function fetchLatestDatasetReport(
+    datasetName: string,
+): Promise<DatasetAnalysisResponse> {
+    const response = await fetch(
+        `${API_ENDPOINTS.DATASETS_REPORT_LATEST}?dataset_name=${encodeURIComponent(datasetName)}`,
+        {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        },
+    );
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || `Failed to load latest dataset report: ${response.status}`);
+    }
+
+    return response.json();
+}
+
+/**
+ * Fetch a dataset validation report by id.
+ */
+export async function fetchDatasetReportById(
+    reportId: number,
+): Promise<DatasetAnalysisResponse> {
+    const response = await fetch(`${API_ENDPOINTS.DATASETS_REPORT_BY_ID}/${reportId}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || `Failed to fetch dataset report: ${response.status}`);
+    }
+
+    return response.json();
+}
+
+/**
  * Remove a dataset and related reports from the database.
  * @param datasetName - Dataset identifier
  */

@@ -5,6 +5,7 @@ import math
 import os
 import shutil
 import threading
+from datetime import datetime, timezone
 from collections import Counter
 from collections.abc import Callable, Generator, Iterator
 from dataclasses import dataclass
@@ -225,6 +226,9 @@ class HistogramBuilder:
 class DatasetService:
 
     SUPPORTED_TEXT_FIELDS = ("text", "content", "sentence", "document", "tokens")
+    REPORT_VERSION = 1
+    WORD_LIST_LIMIT = 15
+    WORD_CLOUD_LIMIT = 60
 
     def __init__(self) -> None:
         self.key_service = HFAccessKeyService()
@@ -743,6 +747,50 @@ class DatasetService:
         return histogram
 
     # -------------------------------------------------------------------------
+    def build_word_length_items(
+        self,
+        word_counter: Counter[str],
+        descending: bool,
+    ) -> list[dict[str, Any]]:
+        # Ties are resolved lexicographically to keep output deterministic.
+        ranked = sorted(
+            (
+                {"word": word, "length": len(word), "count": int(count)}
+                for word, count in word_counter.items()
+                if isinstance(word, str) and word
+            ),
+            key=lambda item: (
+                -item["length"] if descending else item["length"],
+                item["word"],
+            ),
+        )
+        return ranked[: self.WORD_LIST_LIMIT]
+
+    # -------------------------------------------------------------------------
+    def build_word_cloud_terms(self, word_counter: Counter[str]) -> list[dict[str, Any]]:
+        ranked = sorted(
+            (
+                (word, int(count))
+                for word, count in word_counter.items()
+                if isinstance(word, str) and word
+            ),
+            key=lambda item: (-item[1], item[0]),
+        )[: self.WORD_CLOUD_LIMIT]
+        if not ranked:
+            return []
+        max_count = max(count for _, count in ranked)
+        if max_count <= 0:
+            return []
+        return [
+            {
+                "word": word,
+                "count": count,
+                "weight": max(1, int(round((count / max_count) * 100))),
+            }
+            for word, count in ranked
+        ]
+
+    # -------------------------------------------------------------------------
     def persist_dataset(
         self,
         dataset: Dataset | DatasetDict,
@@ -1087,11 +1135,13 @@ class DatasetService:
         dataset_name: str,
         progress_callback: Callable[[float], None] | None = None,
         should_stop: Callable[[], bool] | None = None,
+        use_cached: bool = True,
     ) -> dict[str, Any]:
         return self.validate_dataset(
             dataset_name=dataset_name,
             progress_callback=progress_callback,
             should_stop=should_stop,
+            use_cached=use_cached,
         )
 
     # -------------------------------------------------------------------------
@@ -1100,9 +1150,12 @@ class DatasetService:
         dataset_name: str,
         progress_callback: Callable[[float], None] | None = None,
         should_stop: Callable[[], bool] | None = None,
+        use_cached: bool = True,
     ) -> dict[str, Any]:
-        cached_report = self.dataset_serializer.load_dataset_report(dataset_name)
-        if cached_report is not None:
+        cached_report = self.dataset_serializer.load_latest_dataset_validation_report(
+            dataset_name
+        )
+        if use_cached and cached_report is not None:
             if progress_callback:
                 progress_callback(100.0)
             return cached_report
@@ -1124,6 +1177,11 @@ class DatasetService:
         word_counts: dict[int, int] = {}
         word_counter: Counter[str] = Counter()
         analyzed_count = 0
+        per_document_ids: list[int] = []
+        per_document_lengths: list[int] = []
+        per_document_word_counts: list[int] = []
+        per_document_avg_word_lengths: list[float] = []
+        per_document_std_word_lengths: list[float] = []
 
         batch_size = self.streaming_batch_size
 
@@ -1172,6 +1230,11 @@ class DatasetService:
                         "std_words_length": std_word_length,
                     }
                 )
+                per_document_ids.append(int(text_id))
+                per_document_lengths.append(int(document_length))
+                per_document_word_counts.append(int(words_count))
+                per_document_avg_word_lengths.append(round(float(avg_word_length), 6))
+                per_document_std_word_lengths.append(round(float(std_word_length), 6))
                 analyzed_count += 1
 
             self.dataset_serializer.save_dataset_statistics_batch(stats_batch)
@@ -1198,8 +1261,29 @@ class DatasetService:
                 10, word_counter.items(), key=lambda item: (item[1], item[0])
             )
         ]
+        longest_words = self.build_word_length_items(word_counter, descending=True)
+        shortest_words = self.build_word_length_items(word_counter, descending=False)
+        word_cloud_terms = self.build_word_cloud_terms(word_counter)
+        aggregate_statistics = {
+            "document_count": int(document_stats.document_count),
+            "min_document_length": int(document_histogram.get("min_length", 0) or 0),
+            "max_document_length": int(document_histogram.get("max_length", 0) or 0),
+            "mean_document_length": float(
+                document_histogram.get("mean_length", 0.0) or 0.0
+            ),
+            "median_document_length": float(
+                document_histogram.get("median_length", 0.0) or 0.0
+            ),
+            "word_tie_policy": (
+                "Tie-breaks for longest/shortest words are resolved "
+                "lexicographically for deterministic output."
+            ),
+        }
+        created_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
         report = {
+            "report_version": self.REPORT_VERSION,
+            "created_at": created_at,
             "dataset_name": dataset_name,
             "document_count": document_stats.document_count,
             "document_length_histogram": document_histogram,
@@ -1208,9 +1292,22 @@ class DatasetService:
             "max_document_length": document_histogram.get("max_length", 0),
             "most_common_words": most_common_words,
             "least_common_words": least_common_words,
+            "longest_words": longest_words,
+            "shortest_words": shortest_words,
+            # Deterministic lightweight word-cloud substitute: weighted terms only.
+            "word_cloud_terms": word_cloud_terms,
+            "aggregate_statistics": aggregate_statistics,
+            "per_document_stats": {
+                "document_ids": per_document_ids,
+                "document_lengths": per_document_lengths,
+                "word_counts": per_document_word_counts,
+                "avg_word_lengths": per_document_avg_word_lengths,
+                "std_word_lengths": per_document_std_word_lengths,
+            },
         }
 
-        self.dataset_serializer.save_dataset_report(report)
+        report_id = self.dataset_serializer.save_dataset_report(report)
+        report["report_id"] = int(report_id)
 
         logger.info("Completed validation: %d documents analyzed", analyzed_count)
 
@@ -1218,6 +1315,14 @@ class DatasetService:
             progress_callback(100.0)
 
         return report
+
+    # -------------------------------------------------------------------------
+    def get_latest_validation_report(self, dataset_name: str) -> dict[str, Any] | None:
+        return self.dataset_serializer.load_latest_dataset_validation_report(dataset_name)
+
+    # -------------------------------------------------------------------------
+    def get_validation_report_by_id(self, report_id: int) -> dict[str, Any] | None:
+        return self.dataset_serializer.load_dataset_validation_report_by_id(report_id)
 
     # -------------------------------------------------------------------------
     def get_analysis_summary(self, dataset_name: str) -> dict[str, Any]:

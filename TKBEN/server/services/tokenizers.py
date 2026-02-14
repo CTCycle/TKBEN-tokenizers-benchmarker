@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import json
+import math
 import os
+from collections.abc import Callable
+from datetime import datetime, timezone
 from typing import Any
 
 from huggingface_hub import HfApi
@@ -9,7 +13,9 @@ from transformers import AutoTokenizer
 
 from TKBEN.server.common.constants import TOKENIZERS_PATH
 from TKBEN.server.common.utils.logger import logger
+from TKBEN.server.configurations import server_settings
 from TKBEN.server.repositories.database.backend import database
+from TKBEN.server.repositories.serialization.data import TokenizerReportSerializer
 from TKBEN.server.services.keys import HFAccessKeyService
 
 
@@ -36,8 +42,12 @@ class TokenizersService:
         "zero-shot-classification",
     ]
 
+    REPORT_VERSION = 1
+
     def __init__(self) -> None:
         self.key_service = HFAccessKeyService()
+        self.report_serializer = TokenizerReportSerializer()
+        self.histogram_bins = max(5, int(server_settings.datasets.histogram_bins))
 
     # -------------------------------------------------------------------------
     def normalize_tokenizer_identifiers(self, tokenizers: list[str]) -> list[str]:
@@ -102,6 +112,7 @@ class TokenizersService:
                 names.append(name)
         return names
 
+    # -------------------------------------------------------------------------
     def get_tokenizer_identifiers(self, limit: int = 100) -> list[Any]:
         """
         Retrieve the most downloaded tokenizer identifiers from Hugging Face.
@@ -172,6 +183,8 @@ class TokenizersService:
                         cache_dir=cache_dir,
                         token=hf_access_token,
                     )
+                    # Keep cached tokenizer files because benchmark runs load
+                    # tokenizers locally with local_files_only=True.
                     self.insert_tokenizer_if_missing(tokenizer_id)
                     downloaded.append(tokenizer_id)
             except Exception:
@@ -195,3 +208,323 @@ class TokenizersService:
             "failed_count": len(failed),
         }
 
+    # -------------------------------------------------------------------------
+    def find_cached_file(
+        self,
+        cache_dir: str,
+        candidate_names: tuple[str, ...],
+    ) -> str | None:
+        candidate_set = {name.lower() for name in candidate_names}
+        for root, dirs, files in os.walk(cache_dir):
+            dirs.sort()
+            files_sorted = sorted(files)
+            for filename in files_sorted:
+                if filename.lower() in candidate_set:
+                    return os.path.join(root, filename)
+        return None
+
+    # -------------------------------------------------------------------------
+    def load_json_if_present(self, path: str | None) -> dict[str, Any]:
+        if path is None:
+            return {}
+        try:
+            with open(path, "r", encoding="utf-8") as file_obj:
+                payload = json.load(file_obj)
+            if isinstance(payload, dict):
+                return payload
+            return {}
+        except Exception:
+            logger.debug("Failed to parse tokenizer metadata file: %s", path, exc_info=True)
+            return {}
+
+    # -------------------------------------------------------------------------
+    def detect_algorithm_type(
+        self,
+        tokenizer: Any,
+        tokenizer_json: dict[str, Any],
+        tokenizer_config: dict[str, Any],
+    ) -> str | None:
+        model_block = tokenizer_json.get("model")
+        if isinstance(model_block, dict):
+            model_type = model_block.get("type")
+            if isinstance(model_type, str) and model_type.strip():
+                return model_type.strip()
+
+        backend_tokenizer = getattr(tokenizer, "backend_tokenizer", None)
+        backend_model = getattr(backend_tokenizer, "model", None)
+        backend_class_name = getattr(backend_model, "__class__", type(None)).__name__
+        if isinstance(backend_class_name, str) and backend_class_name not in {"", "NoneType"}:
+            return backend_class_name
+
+        tokenizer_class = tokenizer_config.get("tokenizer_class")
+        if isinstance(tokenizer_class, str):
+            lowered = tokenizer_class.lower()
+            if "wordpiece" in lowered:
+                return "WordPiece"
+            if "bpe" in lowered:
+                return "BPE"
+            if "unigram" in lowered or "sentencepiece" in lowered:
+                return "Unigram"
+            if "wordlevel" in lowered:
+                return "WordLevel"
+
+        return None
+
+    # -------------------------------------------------------------------------
+    def normalize_special_tokens(self, tokenizer: Any) -> list[str]:
+        token_map = getattr(tokenizer, "special_tokens_map", {})
+        normalized: list[str] = []
+        if not isinstance(token_map, dict):
+            return normalized
+        for value in token_map.values():
+            if isinstance(value, str):
+                normalized.append(value)
+            elif isinstance(value, list):
+                normalized.extend(str(item) for item in value if item is not None)
+        return sorted({token for token in normalized if token})
+
+    # -------------------------------------------------------------------------
+    def resolve_casing_hint(
+        self,
+        tokenizer: Any,
+        tokenizer_config: dict[str, Any],
+    ) -> bool | None:
+        do_lower_case = getattr(tokenizer, "do_lower_case", None)
+        if isinstance(do_lower_case, bool):
+            return do_lower_case
+        init_kwargs = getattr(tokenizer, "init_kwargs", {})
+        if isinstance(init_kwargs, dict):
+            value = init_kwargs.get("do_lower_case")
+            if isinstance(value, bool):
+                return value
+        config_value = tokenizer_config.get("do_lower_case")
+        if isinstance(config_value, bool):
+            return config_value
+        return None
+
+    # -------------------------------------------------------------------------
+    def resolve_normalization_hint(
+        self,
+        tokenizer_json: dict[str, Any],
+        tokenizer_config: dict[str, Any],
+    ) -> str | None:
+        normalizer_block = tokenizer_json.get("normalizer")
+        if isinstance(normalizer_block, dict):
+            normalizer_type = normalizer_block.get("type")
+            if isinstance(normalizer_type, str) and normalizer_type.strip():
+                return normalizer_type.strip()
+        normalizer_class = tokenizer_config.get("normalizer_class")
+        if isinstance(normalizer_class, str) and normalizer_class.strip():
+            return normalizer_class.strip()
+        return None
+
+    # -------------------------------------------------------------------------
+    def resolve_description(
+        self,
+        tokenizer_config: dict[str, Any],
+        model_config: dict[str, Any],
+    ) -> str | None:
+        for payload in (tokenizer_config, model_config):
+            if not isinstance(payload, dict):
+                continue
+            description = payload.get("description")
+            if isinstance(description, str):
+                trimmed = description.strip()
+                if trimmed:
+                    return trimmed
+        return None
+
+    # -------------------------------------------------------------------------
+    def compute_histogram(self, lengths: list[int]) -> dict[str, Any]:
+        if not lengths:
+            return {
+                "bins": [],
+                "counts": [],
+                "bin_edges": [],
+                "min_length": 0,
+                "max_length": 0,
+                "mean_length": 0.0,
+                "median_length": 0.0,
+            }
+
+        sorted_lengths = sorted(lengths)
+        min_length = sorted_lengths[0]
+        max_length = sorted_lengths[-1]
+        bin_count = max(1, self.histogram_bins)
+        span = (max_length - min_length) + 1
+        bin_width = max(1, int(math.ceil(span / max(1, bin_count))))
+
+        edges = [min_length]
+        for _ in range(bin_count):
+            edges.append(edges[-1] + bin_width)
+
+        counts = [0] * (len(edges) - 1)
+        for length in sorted_lengths:
+            index = min((length - min_length) // bin_width, len(counts) - 1)
+            counts[index] += 1
+
+        bins: list[str] = []
+        for idx in range(len(counts)):
+            left = int(edges[idx])
+            right = int(edges[idx + 1] - 1)
+            if right < left:
+                right = left
+            bins.append(f"{left}-{right}" if left != right else f"{left}")
+
+        total = len(sorted_lengths)
+        midpoint = total // 2
+        if total % 2 == 0:
+            median_length = (sorted_lengths[midpoint - 1] + sorted_lengths[midpoint]) / 2.0
+        else:
+            median_length = float(sorted_lengths[midpoint])
+
+        return {
+            "bins": bins,
+            "counts": counts,
+            "bin_edges": [float(edge) for edge in edges],
+            "min_length": int(min_length),
+            "max_length": int(max_length),
+            "mean_length": float(sum(sorted_lengths) / total),
+            "median_length": float(median_length),
+        }
+
+    # -------------------------------------------------------------------------
+    def extract_vocabulary(self, tokenizer: Any) -> list[tuple[int, str]]:
+        vocab_func = getattr(tokenizer, "get_vocab", None)
+        if not callable(vocab_func):
+            return []
+        raw_vocab = vocab_func()
+        if not isinstance(raw_vocab, dict):
+            return []
+
+        pairs: list[tuple[int, str]] = []
+        for token, token_id in raw_vocab.items():
+            try:
+                pairs.append((int(token_id), str(token)))
+            except Exception:
+                continue
+
+        pairs.sort(key=lambda item: (item[0], item[1]))
+        return pairs
+
+    # -------------------------------------------------------------------------
+    def generate_and_store_report(
+        self,
+        tokenizer_name: str,
+        progress_callback: Callable[[float], None] | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> dict[str, Any]:
+        name = str(tokenizer_name).strip()
+        if not name:
+            raise ValueError("Tokenizer name must be provided.")
+
+        cache_dir = self.get_tokenizer_cache_dir(name)
+        if not self.has_cached_tokenizer(name):
+            raise ValueError(
+                f"Tokenizer '{name}' is not downloaded. Download it before validation."
+            )
+
+        if progress_callback:
+            progress_callback(5.0)
+
+        tokenizer = AutoTokenizer.from_pretrained(
+            name,
+            cache_dir=cache_dir,
+            local_files_only=True,
+        )
+
+        if callable(should_stop) and should_stop():
+            return {}
+
+        if progress_callback:
+            progress_callback(20.0)
+
+        tokenizer_json_path = self.find_cached_file(cache_dir, ("tokenizer.json",))
+        tokenizer_config_path = self.find_cached_file(cache_dir, ("tokenizer_config.json",))
+        model_config_path = self.find_cached_file(cache_dir, ("config.json",))
+
+        tokenizer_json = self.load_json_if_present(tokenizer_json_path)
+        tokenizer_config = self.load_json_if_present(tokenizer_config_path)
+        model_config = self.load_json_if_present(model_config_path)
+
+        vocab_pairs = self.extract_vocabulary(tokenizer)
+        vocabulary_rows = [
+            {
+                "token_id": token_id,
+                "vocabulary_tokens": token,
+                "decoded_tokens": token,
+            }
+            for token_id, token in vocab_pairs
+        ]
+        lengths = [len(token) for _, token in vocab_pairs]
+
+        if callable(should_stop) and should_stop():
+            return {}
+
+        if progress_callback:
+            progress_callback(55.0)
+
+        self.report_serializer.replace_tokenizer_vocabulary(name, vocabulary_rows)
+
+        special_tokens = self.normalize_special_tokens(tokenizer)
+        algorithm_type = self.detect_algorithm_type(
+            tokenizer=tokenizer,
+            tokenizer_json=tokenizer_json,
+            tokenizer_config=tokenizer_config,
+        )
+        normalization_hint = self.resolve_normalization_hint(tokenizer_json, tokenizer_config)
+        casing_hint = self.resolve_casing_hint(tokenizer, tokenizer_config)
+        description = self.resolve_description(tokenizer_config, model_config)
+        histogram = self.compute_histogram(lengths)
+        created_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+        global_stats = {
+            "vocabulary_size": int(len(vocab_pairs)),
+            "tokenizer_algorithm": algorithm_type,
+            "tokenizer_class": getattr(tokenizer, "__class__", type(None)).__name__,
+            "has_special_tokens": bool(special_tokens),
+            "special_tokens": special_tokens,
+            "special_tokens_count": int(len(special_tokens)),
+            "do_lower_case": casing_hint,
+            "normalization_hint": normalization_hint,
+            "token_length_measure": "character_count",
+        }
+
+        report_payload = {
+            "report_version": self.REPORT_VERSION,
+            "created_at": created_at,
+            "tokenizer_name": name,
+            "description": description,
+            "global_stats": global_stats,
+            "token_length_histogram": histogram,
+            "vocabulary_size": int(len(vocab_pairs)),
+        }
+
+        report_id = self.report_serializer.save_tokenizer_report(report_payload)
+        report_payload["report_id"] = int(report_id)
+
+        if progress_callback:
+            progress_callback(100.0)
+
+        return report_payload
+
+    # -------------------------------------------------------------------------
+    def get_latest_tokenizer_report(self, tokenizer_name: str) -> dict[str, Any] | None:
+        return self.report_serializer.load_latest_tokenizer_report(tokenizer_name)
+
+    # -------------------------------------------------------------------------
+    def get_tokenizer_report_by_id(self, report_id: int) -> dict[str, Any] | None:
+        return self.report_serializer.load_tokenizer_report_by_id(report_id)
+
+    # -------------------------------------------------------------------------
+    def get_tokenizer_report_vocabulary(
+        self,
+        report_id: int,
+        offset: int,
+        limit: int,
+    ) -> dict[str, Any] | None:
+        return self.report_serializer.load_tokenizer_vocabulary_page(
+            report_id=report_id,
+            offset=offset,
+            limit=limit,
+        )

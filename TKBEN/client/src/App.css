@@ -654,6 +654,31 @@
   color: var(--color-muted);
 }
 
+.word-cloud-panel {
+  background: var(--color-panel-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.word-cloud-terms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  line-height: 1.25;
+}
+
+.word-cloud-term {
+  color: var(--color-text);
+  background: rgba(255, 232, 31, 0.08);
+  border: 1px solid rgba(255, 232, 31, 0.22);
+  border-radius: 8px;
+  padding: 4px 8px;
+}
+
 .tokenizers-page {
   grid-template-columns: 3fr 2fr;
 }
@@ -716,6 +741,8 @@
 .tokenizer-preview-row {
   display: flex;
   align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
   min-height: 52px;
   padding: 10px 12px 10px 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
@@ -731,6 +758,18 @@
   overflow-wrap: anywhere;
   word-break: break-word;
   padding-right: 8px;
+}
+
+.tokenizer-preview-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.tokenizer-report-hint {
+  font-size: 12px;
+  color: var(--color-muted);
 }
 
 .tokenizer-controls-stack {
@@ -951,6 +990,111 @@
 
 .analysis-panel {
   grid-column: 1 / -1;
+}
+
+.tokenizer-exam-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+.tokenizer-report-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tokenizer-meta-table-wrap {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  overflow: auto;
+}
+
+.tokenizer-meta-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.tokenizer-meta-table th,
+.tokenizer-meta-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  vertical-align: top;
+}
+
+.tokenizer-meta-table tr:first-child th,
+.tokenizer-meta-table tr:first-child td {
+  border-top: 0;
+}
+
+.tokenizer-meta-table th {
+  width: 220px;
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+.tokenizer-vocabulary-panel {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 12px;
+  background: var(--color-panel-alt);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tokenizer-vocabulary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tokenizer-vocabulary-header .panel-description {
+  margin: 0;
+}
+
+.tokenizer-vocabulary-list {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.tokenizer-vocabulary-row {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) 72px;
+  gap: 10px;
+  padding: 8px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+}
+
+.tokenizer-vocabulary-row:first-child {
+  border-top: 0;
+}
+
+.tokenizer-vocabulary-id,
+.tokenizer-vocabulary-length {
+  color: var(--color-muted);
+  font-family: monospace;
+}
+
+.tokenizer-vocabulary-token {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-family: monospace;
+}
+
+.tokenizer-vocabulary-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.cross-benchmark-placeholder {
+  min-height: 360px;
 }
 
 .analysis-tools {

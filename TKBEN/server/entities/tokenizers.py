@@ -69,3 +69,52 @@ class TokenizerUploadResponse(BaseModel):
     tokenizer_name: str = Field(..., description="Name assigned to uploaded tokenizer")
     is_compatible: bool = Field(..., description="Whether tokenizer is compatible")
 
+
+###############################################################################
+class TokenizerReportGenerateRequest(BaseModel):
+    tokenizer_name: str = Field(..., description="Persisted tokenizer name")
+
+
+###############################################################################
+class TokenizerLengthHistogram(BaseModel):
+    bins: list[str] = Field(default_factory=list)
+    counts: list[int] = Field(default_factory=list)
+    bin_edges: list[float] = Field(default_factory=list)
+    min_length: int = Field(default=0)
+    max_length: int = Field(default=0)
+    mean_length: float = Field(default=0.0)
+    median_length: float = Field(default=0.0)
+
+
+###############################################################################
+class TokenizerReportResponse(BaseModel):
+    status: str = Field(default="success")
+    report_id: int
+    report_version: int = Field(default=1)
+    created_at: str
+    tokenizer_name: str
+    description: str | None = None
+    global_stats: dict[str, Any] = Field(default_factory=dict)
+    token_length_histogram: TokenizerLengthHistogram = Field(
+        default_factory=TokenizerLengthHistogram
+    )
+    vocabulary_size: int = Field(default=0)
+
+
+###############################################################################
+class TokenizerVocabularyItem(BaseModel):
+    token_id: int
+    token: str
+    length: int
+
+
+###############################################################################
+class TokenizerVocabularyPageResponse(BaseModel):
+    status: str = Field(default="success")
+    report_id: int
+    tokenizer_name: str
+    offset: int
+    limit: int
+    total: int
+    items: list[TokenizerVocabularyItem] = Field(default_factory=list)
+

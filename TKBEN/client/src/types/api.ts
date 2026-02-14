@@ -189,11 +189,34 @@ export interface WordFrequency {
     count: number;
 }
 
+export interface WordLengthItem {
+    word: string;
+    length: number;
+    count: number;
+}
+
+export interface WordCloudTerm {
+    word: string;
+    count: number;
+    weight: number;
+}
+
+export interface PerDocumentStats {
+    document_ids: number[];
+    document_lengths: number[];
+    word_counts: number[];
+    avg_word_lengths: number[];
+    std_word_lengths: number[];
+}
+
 /**
  * Response from the dataset analysis endpoint
  */
 export interface DatasetAnalysisResponse {
     status: string;
+    report_id: number | null;
+    report_version: number;
+    created_at: string | null;
     dataset_name: string;
     document_count: number;
     document_length_histogram: HistogramData;
@@ -202,6 +225,11 @@ export interface DatasetAnalysisResponse {
     max_document_length: number;
     most_common_words: WordFrequency[];
     least_common_words: WordFrequency[];
+    longest_words: WordLengthItem[];
+    shortest_words: WordLengthItem[];
+    word_cloud_terms: WordCloudTerm[];
+    aggregate_statistics: Record<string, unknown>;
+    per_document_stats: PerDocumentStats | null;
 }
 
 /**
@@ -305,6 +333,38 @@ export interface TokenizerUploadResponse {
     status: string;
     tokenizer_name: string;
     is_compatible: boolean;
+}
+
+export interface TokenizerValidationGenerateRequest {
+    tokenizer_name: string;
+}
+
+export interface TokenizerReportResponse {
+    status: string;
+    report_id: number;
+    report_version: number;
+    created_at: string;
+    tokenizer_name: string;
+    description: string | null;
+    global_stats: Record<string, unknown>;
+    token_length_histogram: HistogramData;
+    vocabulary_size: number;
+}
+
+export interface TokenizerVocabularyItem {
+    token_id: number;
+    token: string;
+    length: number;
+}
+
+export interface TokenizerVocabularyPageResponse {
+    status: string;
+    report_id: number;
+    tokenizer_name: string;
+    offset: number;
+    limit: number;
+    total: number;
+    items: TokenizerVocabularyItem[];
 }
 
 /**

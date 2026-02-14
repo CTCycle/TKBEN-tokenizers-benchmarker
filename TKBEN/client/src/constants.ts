@@ -12,6 +12,8 @@ export const API_ENDPOINTS = {
     DATASETS_UPLOAD: `${API_BASE_URL}/datasets/upload`,
     DATASETS_ANALYZE: `${API_BASE_URL}/datasets/analyze`,
     DATASETS_DELETE: `${API_BASE_URL}/datasets/delete`,
+    DATASETS_REPORT_LATEST: `${API_BASE_URL}/datasets/reports/latest`,
+    DATASETS_REPORT_BY_ID: `${API_BASE_URL}/datasets/reports`,
 
     TOKENIZERS_SETTINGS: `${API_BASE_URL}/tokenizers/settings`,
     TOKENIZERS_SCAN: `${API_BASE_URL}/tokenizers/scan`,
@@ -19,6 +21,9 @@ export const API_ENDPOINTS = {
     TOKENIZERS_DOWNLOAD: `${API_BASE_URL}/tokenizers/download`,
     TOKENIZERS_UPLOAD: `${API_BASE_URL}/tokenizers/upload`,
     TOKENIZERS_CUSTOM: `${API_BASE_URL}/tokenizers/custom`,
+    TOKENIZERS_REPORT_GENERATE: `${API_BASE_URL}/tokenizers/reports/generate`,
+    TOKENIZERS_REPORT_LATEST: `${API_BASE_URL}/tokenizers/reports/latest`,
+    TOKENIZERS_REPORT_BY_ID: `${API_BASE_URL}/tokenizers/reports`,
 
     KEYS: `${API_BASE_URL}/keys`,
 

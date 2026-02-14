@@ -196,6 +196,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
     availableDatasets,
     datasetsLoading,
     activeValidationDataset,
+    activeReportLoadDataset,
     removingDataset,
     setError,
     handleCorpusChange,
@@ -205,6 +206,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
     handleFileChange,
     handleSelectDataset,
     handleValidateDataset,
+    handleLoadLatestDatasetReport,
     handleDeleteDataset,
   } = useDataset();
 
@@ -223,6 +225,9 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
   const documentCount = validationReport?.document_count ?? stats?.documentCount ?? null;
   const minDocumentLength = validationReport?.min_document_length ?? stats?.minLength ?? null;
   const maxDocumentLength = validationReport?.max_document_length ?? stats?.maxLength ?? null;
+  const longestWords = validationReport?.longest_words ?? [];
+  const shortestWords = validationReport?.shortest_words ?? [];
+  const wordCloudTerms = validationReport?.word_cloud_terms ?? [];
 
   const handlePresetSelect = (preset: DatasetPreset) => {
     setSelectedPreset(preset.id);
@@ -308,6 +313,9 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
   let datasetOverviewDescription = 'Run dataset validation to view results';
   if (validationReport?.dataset_name) {
     datasetOverviewDescription = `Validation results for ${validationReport.dataset_name}`;
+    if (validationReport.created_at) {
+      datasetOverviewDescription += ` (saved ${new Date(validationReport.created_at).toLocaleString()})`;
+    }
   } else if (datasetLoaded && datasetName) {
     datasetOverviewDescription = `Stats for ${datasetName}`;
   }
@@ -368,6 +376,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                   <div className="dataset-preview-table">
                     {availableDatasets.map((dataset) => {
                       const isValidating = activeValidationDataset === dataset.dataset_name;
+                      const isLoadingReport = activeReportLoadDataset === dataset.dataset_name;
                       const isRemoving = removingDataset === dataset.dataset_name;
                       const isSelectedDataset = datasetName === dataset.dataset_name;
                       return (
@@ -400,7 +409,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                                 handleSelectDataset(dataset.dataset_name);
                                 void handleValidateDataset(dataset.dataset_name);
                               }}
-                              disabled={isValidating || isRemoving}
+                              disabled={isValidating || isLoadingReport || isRemoving}
                             >
                               {isValidating ? (
                                 <span className="action-spinner" />
@@ -413,6 +422,26 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                             </button>
                             <button
                               type="button"
+                              className="icon-button subtle"
+                              aria-label="Load latest saved report"
+                              title="Load latest saved report"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleSelectDataset(dataset.dataset_name);
+                                void handleLoadLatestDatasetReport(dataset.dataset_name);
+                              }}
+                              disabled={isValidating || isLoadingReport || isRemoving}
+                            >
+                              {isLoadingReport ? (
+                                <span className="action-spinner" />
+                              ) : (
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                  <path d="M12 4v9m0 0-4-4m4 4 4-4M5 19h14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </button>
+                            <button
+                              type="button"
                               className="icon-button danger"
                               aria-label="Remove dataset"
                               title="Delete dataset from database"
@@ -420,7 +449,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                                 event.stopPropagation();
                                 void handleDeleteDataset(dataset.dataset_name);
                               }}
-                              disabled={isValidating || isRemoving}
+                              disabled={isValidating || isLoadingReport || isRemoving}
                             >
                               {isRemoving ? (
                                 <span className="action-spinner" />
@@ -498,13 +527,13 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
             </div>
             <div className="word-frequency-grid">
               <div className="word-frequency-panel">
-                <p className="panel-label">Most Common Words</p>
-                {validationReport?.most_common_words?.length ? (
+                <p className="panel-label">Longest Words</p>
+                {longestWords.length ? (
                   <ul className="word-frequency-list">
-                    {validationReport.most_common_words.map((item) => (
-                      <li key={`${item.word}-${item.count}`}>
+                    {longestWords.map((item) => (
+                      <li key={`${item.word}-${item.length}-${item.count}`}>
                         <span>{item.word}</span>
-                        <span>{formatNumber(item.count)}</span>
+                        <span>{item.length} chars</span>
                       </li>
                     ))}
                   </ul>
@@ -513,13 +542,13 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                 )}
               </div>
               <div className="word-frequency-panel">
-                <p className="panel-label">Least Common Words</p>
-                {validationReport?.least_common_words?.length ? (
+                <p className="panel-label">Shortest Words</p>
+                {shortestWords.length ? (
                   <ul className="word-frequency-list">
-                    {validationReport.least_common_words.map((item) => (
-                      <li key={`${item.word}-${item.count}`}>
+                    {shortestWords.map((item) => (
+                      <li key={`${item.word}-${item.length}-${item.count}`}>
                         <span>{item.word}</span>
-                        <span>{formatNumber(item.count)}</span>
+                        <span>{item.length} chars</span>
                       </li>
                     ))}
                   </ul>
@@ -527,6 +556,25 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                   <div className="word-frequency-empty">No validation results yet.</div>
                 )}
               </div>
+            </div>
+            <div className="word-cloud-panel">
+              <p className="panel-label">Word Cloud Terms</p>
+              {wordCloudTerms.length ? (
+                <div className="word-cloud-terms">
+                  {wordCloudTerms.map((item) => (
+                    <span
+                      key={`${item.word}-${item.count}`}
+                      className="word-cloud-term"
+                      style={{ fontSize: `${12 + Math.round((item.weight / 100) * 18)}px` }}
+                      title={`${item.word}: ${formatNumber(item.count)}`}
+                    >
+                      {item.word}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div className="word-frequency-empty">No validation results yet.</div>
+              )}
             </div>
           </aside>
         )}
