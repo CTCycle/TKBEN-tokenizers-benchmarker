@@ -80,6 +80,29 @@ class WordFrequency(BaseModel):
 
 
 ###############################################################################
+class WordLengthItem(BaseModel):
+    word: str = Field(..., description="Word token")
+    length: int = Field(..., description="Character length of word")
+    count: int = Field(..., description="Frequency count")
+
+
+###############################################################################
+class WordCloudTerm(BaseModel):
+    word: str = Field(..., description="Word token")
+    count: int = Field(..., description="Frequency count")
+    weight: int = Field(..., description="Relative display weight (1-100)")
+
+
+###############################################################################
+class PerDocumentStats(BaseModel):
+    document_ids: list[int] = Field(default_factory=list)
+    document_lengths: list[int] = Field(default_factory=list)
+    word_counts: list[int] = Field(default_factory=list)
+    avg_word_lengths: list[float] = Field(default_factory=list)
+    std_word_lengths: list[float] = Field(default_factory=list)
+
+
+###############################################################################
 class DatasetStatisticsSummary(BaseModel):
     """Summary of word-level statistics from dataset analysis."""
 
@@ -95,6 +118,11 @@ class DatasetAnalysisResponse(BaseModel):
     """Response schema for dataset analysis endpoint."""
 
     status: str = Field(default="success")
+    report_id: int | None = Field(default=None, description="Persisted report identifier")
+    report_version: int = Field(default=1, description="Report payload version")
+    created_at: str | None = Field(
+        default=None, description="UTC ISO timestamp for report creation"
+    )
     dataset_name: str = Field(..., description="Name of analyzed dataset")
     document_count: int = Field(..., description="Number of documents analyzed")
     document_length_histogram: HistogramData = Field(
@@ -110,6 +138,26 @@ class DatasetAnalysisResponse(BaseModel):
     )
     least_common_words: list[WordFrequency] = Field(
         default_factory=list, description="Top 10 least common words"
+    )
+    longest_words: list[WordLengthItem] = Field(
+        default_factory=list,
+        description="Top longest words sorted by descending length then lexicographically",
+    )
+    shortest_words: list[WordLengthItem] = Field(
+        default_factory=list,
+        description="Top shortest words sorted by ascending length then lexicographically",
+    )
+    word_cloud_terms: list[WordCloudTerm] = Field(
+        default_factory=list,
+        description="Deterministic weighted terms for a word-cloud style visualization",
+    )
+    aggregate_statistics: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Additional aggregate statistics for dashboards",
+    )
+    per_document_stats: PerDocumentStats | None = Field(
+        default=None,
+        description="Compact per-document statistics arrays ordered by document_id",
     )
 
 

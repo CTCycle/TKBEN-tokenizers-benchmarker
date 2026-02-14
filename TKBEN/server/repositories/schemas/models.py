@@ -89,6 +89,36 @@ class DatasetReport(Base):
 
 
 ###############################################################################
+class DatasetValidationReport(Base):
+    __tablename__ = "dataset_validation_report"
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    dataset_id = Column(
+        Integer,
+        ForeignKey("dataset.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    report_version = Column(Integer, nullable=False, default=1)
+    created_at = Column(DateTime, nullable=False)
+    aggregate_statistics = Column(JSONMapping)
+    document_histogram = Column(JSONMapping)
+    word_histogram = Column(JSONMapping)
+    most_common_words = Column(JSONSequence)
+    least_common_words = Column(JSONSequence)
+    longest_words = Column(JSONSequence)
+    shortest_words = Column(JSONSequence)
+    word_cloud_terms = Column(JSONSequence)
+    per_document_stats = Column(JSONMapping)
+    __table_args__ = (
+        Index("ix_dataset_validation_report_dataset_id", "dataset_id"),
+        Index(
+            "ix_dataset_validation_report_dataset_id_created_at",
+            "dataset_id",
+            "created_at",
+        ),
+    )
+
+
+###############################################################################
 class TokenizationDocumentStats(Base):
     __tablename__ = "tokenization_document_stats"
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
@@ -201,4 +231,24 @@ class TokenizerVocabulary(Base):
     __table_args__ = (
         UniqueConstraint("tokenizer_id", "token_id"),
         Index("ix_tokenizer_vocabulary_tokenizer_id", "tokenizer_id"),
+    )
+
+
+###############################################################################
+class TokenizerReport(Base):
+    __tablename__ = "tokenizer_report"
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    tokenizer_id = Column(
+        Integer,
+        ForeignKey("tokenizer.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    report_version = Column(Integer, nullable=False, default=1)
+    created_at = Column(DateTime, nullable=False)
+    metadata_json = Column("metadata", JSONMapping)
+    token_length_histogram = Column(JSONMapping)
+    description = Column(String)
+    __table_args__ = (
+        Index("ix_tokenizer_report_tokenizer_id", "tokenizer_id"),
+        Index("ix_tokenizer_report_tokenizer_id_created_at", "tokenizer_id", "created_at"),
     )

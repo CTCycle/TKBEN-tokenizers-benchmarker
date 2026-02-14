@@ -13,8 +13,11 @@ from TKBEN.server.entities.tokenizers import (
     TokenizerDownloadRequest,
     TokenizerListItem,
     TokenizerListResponse,
+    TokenizerReportGenerateRequest,
+    TokenizerReportResponse,
     TokenizerScanResponse,
     TokenizerSettingsResponse,
+    TokenizerVocabularyPageResponse,
     TokenizerUploadResponse,
 )
 from TKBEN.server.entities.jobs import JobStartResponse
@@ -23,6 +26,10 @@ from TKBEN.server.common.constants import (
     API_ROUTE_TOKENIZERS_CUSTOM,
     API_ROUTE_TOKENIZERS_DOWNLOAD,
     API_ROUTE_TOKENIZERS_LIST,
+    API_ROUTE_TOKENIZERS_REPORT_BY_ID,
+    API_ROUTE_TOKENIZERS_REPORT_GENERATE,
+    API_ROUTE_TOKENIZERS_REPORT_LATEST,
+    API_ROUTE_TOKENIZERS_REPORT_VOCABULARY,
     API_ROUTE_TOKENIZERS_SCAN,
     API_ROUTE_TOKENIZERS_SETTINGS,
     API_ROUTE_TOKENIZERS_UPLOAD,
@@ -198,6 +205,139 @@ async def download_tokenizers(request: TokenizerDownloadRequest) -> JobStartResp
         message="Tokenizer download job started.",
         poll_interval=server_settings.jobs.polling_interval,
     )
+
+
+###############################################################################
+def run_tokenizer_report_job(
+    request_payload: dict[str, Any],
+    job_id: str,
+) -> dict[str, Any]:
+    service = TokenizersService()
+    progress_callback = JobProgressReporter(job_manager, job_id)
+    should_stop = JobStopChecker(job_manager, job_id)
+    tokenizer_name = str(request_payload.get("tokenizer_name", "")).strip()
+    result = service.generate_and_store_report(
+        tokenizer_name=tokenizer_name,
+        progress_callback=progress_callback,
+        should_stop=should_stop,
+    )
+    if job_manager.should_stop(job_id):
+        return {}
+    return {"status": "success", **result}
+
+
+###############################################################################
+@router.post(
+    API_ROUTE_TOKENIZERS_REPORT_GENERATE,
+    response_model=JobStartResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def generate_tokenizer_report(
+    request: TokenizerReportGenerateRequest,
+) -> JobStartResponse:
+    tokenizer_name = request.tokenizer_name.strip()
+    if not tokenizer_name:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Tokenizer name must be specified.",
+        )
+
+    service = TokenizersService()
+    if not service.has_cached_tokenizer(tokenizer_name):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                f"Tokenizer '{tokenizer_name}' is not downloaded. "
+                "Download it before generating a report."
+            ),
+        )
+
+    if job_manager.is_job_running("tokenizer_report"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Tokenizer report generation is already in progress.",
+        )
+
+    request_payload = request.model_dump()
+    job_id = job_manager.start_job(
+        job_type="tokenizer_report",
+        runner=run_tokenizer_report_job,
+        kwargs={"request_payload": request_payload},
+    )
+    job_status = job_manager.get_job_status(job_id)
+    if job_status is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to initialize tokenizer report job.",
+        )
+
+    return JobStartResponse(
+        job_id=job_id,
+        job_type=job_status["job_type"],
+        status=job_status["status"],
+        message="Tokenizer report job started.",
+        poll_interval=server_settings.jobs.polling_interval,
+    )
+
+
+###############################################################################
+@router.get(
+    API_ROUTE_TOKENIZERS_REPORT_LATEST,
+    response_model=TokenizerReportResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_latest_tokenizer_report(tokenizer_name: str) -> TokenizerReportResponse:
+    service = TokenizersService()
+    report = await asyncio.to_thread(service.get_latest_tokenizer_report, tokenizer_name)
+    if report is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No tokenizer report found for '{tokenizer_name}'.",
+        )
+    return TokenizerReportResponse(status="success", **report)
+
+
+###############################################################################
+@router.get(
+    API_ROUTE_TOKENIZERS_REPORT_BY_ID,
+    response_model=TokenizerReportResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_tokenizer_report_by_id(report_id: int) -> TokenizerReportResponse:
+    service = TokenizersService()
+    report = await asyncio.to_thread(service.get_tokenizer_report_by_id, report_id)
+    if report is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tokenizer report '{report_id}' not found.",
+        )
+    return TokenizerReportResponse(status="success", **report)
+
+
+###############################################################################
+@router.get(
+    API_ROUTE_TOKENIZERS_REPORT_VOCABULARY,
+    response_model=TokenizerVocabularyPageResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_tokenizer_report_vocabulary(
+    report_id: int,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=500, ge=1, le=5000),
+) -> TokenizerVocabularyPageResponse:
+    service = TokenizersService()
+    page = await asyncio.to_thread(
+        service.get_tokenizer_report_vocabulary,
+        report_id,
+        offset,
+        limit,
+    )
+    if page is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tokenizer report '{report_id}' not found.",
+        )
+    return TokenizerVocabularyPageResponse(status="success", **page)
 
 
 ###############################################################################

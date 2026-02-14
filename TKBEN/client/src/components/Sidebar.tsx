@@ -14,6 +14,29 @@ const navItems = [
       </svg>
     ),
   },
+  {
+    to: '/tokenizers',
+    label: 'Tokenizers',
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="8" cy="8" r="3" />
+        <circle cx="16" cy="8" r="3" />
+        <rect x="6" y="13" width="12" height="7" rx="2" />
+      </svg>
+    ),
+  },
+  {
+    to: '/cross-benchmark',
+    label: 'Cross Benchmark',
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="4" y="4" width="7" height="7" rx="1.5" />
+        <rect x="13" y="4" width="7" height="7" rx="1.5" />
+        <rect x="4" y="13" width="7" height="7" rx="1.5" />
+        <rect x="13" y="13" width="7" height="7" rx="1.5" />
+      </svg>
+    ),
+  },
 ];
 
 const Sidebar = () => {

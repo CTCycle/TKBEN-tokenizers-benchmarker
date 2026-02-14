@@ -11,6 +11,7 @@ import type { ReactNode } from 'react';
 import {
     deleteDataset,
     downloadDataset,
+    fetchLatestDatasetReport,
     fetchAvailableDatasets,
     uploadCustomDataset,
     validateDataset,
@@ -42,6 +43,7 @@ interface DatasetContextType {
     availableDatasets: DatasetPreviewItem[];
     datasetsLoading: boolean;
     activeValidationDataset: string | null;
+    activeReportLoadDataset: string | null;
     removingDataset: string | null;
 
     setSelectedCorpus: (corpus: string) => void;
@@ -54,6 +56,7 @@ interface DatasetContextType {
     handleFileChange: (event: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
     handleSelectDataset: (datasetName: string) => void;
     handleValidateDataset: (datasetName: string) => Promise<void>;
+    handleLoadLatestDatasetReport: (datasetName: string) => Promise<void>;
     handleDeleteDataset: (datasetName: string) => Promise<void>;
     refreshAvailableDatasets: () => Promise<void>;
 }
@@ -77,6 +80,7 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
     const [availableDatasets, setAvailableDatasets] = useState<DatasetPreviewItem[]>([]);
     const [datasetsLoading, setDatasetsLoading] = useState(false);
     const [activeValidationDataset, setActiveValidationDataset] = useState<string | null>(null);
+    const [activeReportLoadDataset, setActiveReportLoadDataset] = useState<string | null>(null);
     const [removingDataset, setRemovingDataset] = useState<string | null>(null);
 
     const refreshAvailableDatasets = useCallback(async () => {
@@ -232,6 +236,24 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
         }
     }, []);
 
+    const handleLoadLatestDatasetReport = useCallback(async (targetDataset: string) => {
+        if (!targetDataset) return;
+
+        setError(null);
+        setActiveReportLoadDataset(targetDataset);
+
+        try {
+            const response = await fetchLatestDatasetReport(targetDataset);
+            setValidationReport(response);
+            setDatasetName(response.dataset_name);
+            setDatasetLoaded(true);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load latest dataset report');
+        } finally {
+            setActiveReportLoadDataset(null);
+        }
+    }, []);
+
     const handleDeleteDataset = useCallback(
         async (targetDataset: string) => {
             if (!targetDataset) return;
@@ -278,6 +300,7 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             availableDatasets,
             datasetsLoading,
             activeValidationDataset,
+            activeReportLoadDataset,
             removingDataset,
             setSelectedCorpus,
             setSelectedConfig,
@@ -289,6 +312,7 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             handleFileChange,
             handleSelectDataset,
             handleValidateDataset,
+            handleLoadLatestDatasetReport,
             handleDeleteDataset,
             refreshAvailableDatasets,
         }),
@@ -309,6 +333,7 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             availableDatasets,
             datasetsLoading,
             activeValidationDataset,
+            activeReportLoadDataset,
             removingDataset,
             handleCorpusChange,
             handleConfigChange,
@@ -317,6 +342,7 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             handleFileChange,
             handleSelectDataset,
             handleValidateDataset,
+            handleLoadLatestDatasetReport,
             handleDeleteDataset,
             refreshAvailableDatasets,
         ],

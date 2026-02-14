@@ -13,6 +13,10 @@ from TKBEN.server.repositories.schemas.models import (
     DatasetDocument,
     DatasetDocumentStatistics,
     DatasetReport,
+    DatasetValidationReport,
+    Tokenizer,
+    TokenizerReport,
+    TokenizerVocabulary,
     TokenizationDocumentStats,
 )
 
@@ -360,6 +364,7 @@ class DatasetSerializer:
         self.dataset_table = DatasetDocument.__tablename__
         self.stats_table = DatasetDocumentStatistics.__tablename__
         self.reports_table = DatasetReport.__tablename__
+        self.validation_reports_table = DatasetValidationReport.__tablename__
         self.local_stats_table = TokenizationDocumentStats.__tablename__
 
     # -------------------------------------------------------------------------
@@ -588,6 +593,45 @@ class DatasetSerializer:
         self.queries.insert_table(df, self.stats_table)
 
     # -------------------------------------------------------------------------
+    def _coerce_datetime(self, value: Any) -> Any:
+        if value is None:
+            return pd.Timestamp.utcnow().to_pydatetime()
+        parsed = pd.to_datetime(value, utc=True, errors="coerce")
+        if pd.isna(parsed):
+            return pd.Timestamp.utcnow().to_pydatetime()
+        return parsed.to_pydatetime()
+
+    # -------------------------------------------------------------------------
+    def _normalize_histogram(self, storage: Any) -> dict[str, Any]:
+        histogram = self.parse_json(storage, default={})
+        return {
+            "bins": self.parse_json(histogram.get("bins"), default=[]),
+            "counts": self.parse_json(histogram.get("counts"), default=[]),
+            "bin_edges": self.parse_json(histogram.get("bin_edges"), default=[]),
+            "min_length": int(histogram.get("min_length", 0) or 0),
+            "max_length": int(histogram.get("max_length", 0) or 0),
+            "mean_length": float(histogram.get("mean_length", 0.0) or 0.0),
+            "median_length": float(histogram.get("median_length", 0.0) or 0.0),
+        }
+
+    # -------------------------------------------------------------------------
+    def build_validation_report_storage(self, report: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "dataset_name": report.get("dataset_name", ""),
+            "report_version": int(report.get("report_version", 1) or 1),
+            "created_at": report.get("created_at"),
+            "aggregate_statistics": report.get("aggregate_statistics", {}),
+            "document_histogram": report.get("document_length_histogram", {}),
+            "word_histogram": report.get("word_length_histogram", {}),
+            "most_common_words": report.get("most_common_words", []),
+            "least_common_words": report.get("least_common_words", []),
+            "longest_words": report.get("longest_words", []),
+            "shortest_words": report.get("shortest_words", []),
+            "word_cloud_terms": report.get("word_cloud_terms", []),
+            "per_document_stats": report.get("per_document_stats", {}),
+        }
+
+    # -------------------------------------------------------------------------
     def build_report_storage(self, report: dict[str, Any]) -> dict[str, Any]:
         document_histogram = report.get("document_length_histogram", {})
         word_histogram = report.get("word_length_histogram", {})
@@ -617,7 +661,73 @@ class DatasetSerializer:
         }
 
     # -------------------------------------------------------------------------
-    def save_dataset_report(self, report: dict[str, Any]) -> None:
+    def save_dataset_validation_report(self, report: dict[str, Any]) -> int:
+        storage = self.build_validation_report_storage(report)
+        dataset_name = str(storage.get("dataset_name") or "")
+        dataset_id = self.get_dataset_id(dataset_name)
+        if dataset_id is None:
+            raise ValueError(f"Dataset '{dataset_name}' not found while saving report.")
+
+        insert_query = sqlalchemy.text(
+            'INSERT INTO "dataset_validation_report" ('
+            '"dataset_id", "report_version", "created_at", "aggregate_statistics", '
+            '"document_histogram", "word_histogram", "most_common_words", '
+            '"least_common_words", "longest_words", "shortest_words", '
+            '"word_cloud_terms", "per_document_stats") '
+            "VALUES ("
+            ':dataset_id, :report_version, :created_at, :aggregate_statistics, '
+            ':document_histogram, :word_histogram, :most_common_words, '
+            ':least_common_words, :longest_words, :shortest_words, '
+            ':word_cloud_terms, :per_document_stats)'
+        )
+
+        with self.queries.engine.begin() as conn:
+            conn.execute(
+                insert_query,
+                {
+                    "dataset_id": dataset_id,
+                    "report_version": int(storage.get("report_version", 1) or 1),
+                    "created_at": self._coerce_datetime(storage.get("created_at")),
+                    "aggregate_statistics": json.dumps(
+                        storage.get("aggregate_statistics", {})
+                    ),
+                    "document_histogram": json.dumps(
+                        storage.get("document_histogram", {})
+                    ),
+                    "word_histogram": json.dumps(storage.get("word_histogram", {})),
+                    "most_common_words": json.dumps(
+                        storage.get("most_common_words", [])
+                    ),
+                    "least_common_words": json.dumps(
+                        storage.get("least_common_words", [])
+                    ),
+                    "longest_words": json.dumps(storage.get("longest_words", [])),
+                    "shortest_words": json.dumps(storage.get("shortest_words", [])),
+                    "word_cloud_terms": json.dumps(
+                        storage.get("word_cloud_terms", [])
+                    ),
+                    "per_document_stats": json.dumps(
+                        storage.get("per_document_stats", {})
+                    ),
+                },
+            )
+            result = conn.execute(
+                sqlalchemy.text(
+                    'SELECT "id" FROM "dataset_validation_report" '
+                    'WHERE "dataset_id" = :dataset_id ORDER BY "id" DESC LIMIT 1'
+                ),
+                {"dataset_id": dataset_id},
+            )
+            row = result.first()
+
+        if row is None:
+            raise ValueError("Failed to resolve saved dataset validation report id.")
+        if hasattr(row, "_mapping"):
+            return int(row._mapping["id"])
+        return int(row[0])
+
+    # -------------------------------------------------------------------------
+    def save_dataset_report(self, report: dict[str, Any]) -> int:
         storage = self.build_report_storage(report)
         dataset_name = str(storage.get("dataset_name") or "")
         dataset_id = self.get_dataset_id(dataset_name)
@@ -633,6 +743,40 @@ class DatasetSerializer:
         df = pd.DataFrame([row])
         df = self.serialize_json_columns(df)
         self.queries.upsert_table(df, self.reports_table)
+        return self.save_dataset_validation_report(report)
+
+    # -------------------------------------------------------------------------
+    def build_validation_report_response(self, storage: dict[str, Any]) -> dict[str, Any]:
+        aggregate_statistics = self.parse_json(
+            storage.get("aggregate_statistics"), default={}
+        )
+        document_histogram = self._normalize_histogram(storage.get("document_histogram"))
+        word_histogram = self._normalize_histogram(storage.get("word_histogram"))
+        created_at_raw = storage.get("created_at")
+        created_at = pd.to_datetime(created_at_raw, utc=True, errors="coerce")
+        created_at_iso = (
+            created_at.isoformat().replace("+00:00", "Z")
+            if not pd.isna(created_at)
+            else ""
+        )
+        return {
+            "report_id": int(storage.get("id") or 0),
+            "report_version": int(storage.get("report_version", 1) or 1),
+            "created_at": created_at_iso,
+            "dataset_name": storage.get("dataset_name", ""),
+            "document_count": int(aggregate_statistics.get("document_count", 0) or 0),
+            "document_length_histogram": document_histogram,
+            "word_length_histogram": word_histogram,
+            "min_document_length": document_histogram["min_length"],
+            "max_document_length": document_histogram["max_length"],
+            "most_common_words": self.parse_json(storage.get("most_common_words"), default=[]),
+            "least_common_words": self.parse_json(storage.get("least_common_words"), default=[]),
+            "longest_words": self.parse_json(storage.get("longest_words"), default=[]),
+            "shortest_words": self.parse_json(storage.get("shortest_words"), default=[]),
+            "word_cloud_terms": self.parse_json(storage.get("word_cloud_terms"), default=[]),
+            "aggregate_statistics": aggregate_statistics,
+            "per_document_stats": self.parse_json(storage.get("per_document_stats"), default={}),
+        }
 
     # -------------------------------------------------------------------------
     def build_report_response(self, storage: dict[str, Any]) -> dict[str, Any]:
@@ -673,6 +817,9 @@ class DatasetSerializer:
             ),
         }
         return {
+            "report_id": None,
+            "report_version": 1,
+            "created_at": None,
             "dataset_name": storage.get("dataset_name", ""),
             "document_count": int(
                 document_statistics.get("document_count", 0) or 0
@@ -683,10 +830,64 @@ class DatasetSerializer:
             "max_document_length": document_histogram["max_length"],
             "most_common_words": self.parse_json(storage.get("most_common_words"), default=[]),
             "least_common_words": self.parse_json(storage.get("least_common_words"), default=[]),
+            "longest_words": [],
+            "shortest_words": [],
+            "word_cloud_terms": [],
+            "aggregate_statistics": {
+                "document_count": int(document_statistics.get("document_count", 0) or 0),
+            },
+            "per_document_stats": {},
         }
 
     # -------------------------------------------------------------------------
-    def load_dataset_report(self, dataset_name: str) -> dict[str, Any] | None:
+    def load_latest_dataset_validation_report(
+        self,
+        dataset_name: str,
+    ) -> dict[str, Any] | None:
+        query = sqlalchemy.text(
+            'SELECT dvr.*, d."name" AS "dataset_name" '
+            'FROM "dataset_validation_report" dvr '
+            'JOIN "dataset" d ON d."id" = dvr."dataset_id" '
+            'WHERE d."name" = :dataset '
+            'ORDER BY dvr."id" DESC LIMIT 1'
+        )
+        with self.queries.engine.connect() as conn:
+            result = conn.execute(query, {"dataset": dataset_name})
+            row = result.first()
+
+        if row is None:
+            return None
+        if hasattr(row, "_mapping"):
+            storage = dict(row._mapping)
+        else:
+            storage = {key: value for key, value in zip(result.keys(), row, strict=False)}
+        return self.build_validation_report_response(storage)
+
+    # -------------------------------------------------------------------------
+    def load_dataset_validation_report_by_id(
+        self,
+        report_id: int,
+    ) -> dict[str, Any] | None:
+        query = sqlalchemy.text(
+            'SELECT dvr.*, d."name" AS "dataset_name" '
+            'FROM "dataset_validation_report" dvr '
+            'JOIN "dataset" d ON d."id" = dvr."dataset_id" '
+            'WHERE dvr."id" = :report_id LIMIT 1'
+        )
+        with self.queries.engine.connect() as conn:
+            result = conn.execute(query, {"report_id": int(report_id)})
+            row = result.first()
+
+        if row is None:
+            return None
+        if hasattr(row, "_mapping"):
+            storage = dict(row._mapping)
+        else:
+            storage = {key: value for key, value in zip(result.keys(), row, strict=False)}
+        return self.build_validation_report_response(storage)
+
+    # -------------------------------------------------------------------------
+    def load_legacy_dataset_report(self, dataset_name: str) -> dict[str, Any] | None:
         query = sqlalchemy.text(
             'SELECT dr.*, d."name" AS "dataset_name" '
             'FROM "dataset_report" dr '
@@ -699,10 +900,253 @@ class DatasetSerializer:
 
         if row is None:
             return None
-
         if hasattr(row, "_mapping"):
             storage = dict(row._mapping)
         else:
             storage = {key: value for key, value in zip(result.keys(), row, strict=False)}
-
         return self.build_report_response(storage)
+
+    # -------------------------------------------------------------------------
+    def load_dataset_report(self, dataset_name: str) -> dict[str, Any] | None:
+        latest = self.load_latest_dataset_validation_report(dataset_name)
+        if latest is not None:
+            return latest
+        return self.load_legacy_dataset_report(dataset_name)
+
+
+###############################################################################
+class TokenizerReportSerializer:
+    def __init__(self, queries: DataRepositoryQueries | None = None) -> None:
+        self.queries = queries or DataRepositoryQueries()
+        self.tokenizer_table = Tokenizer.__tablename__
+        self.tokenizer_report_table = TokenizerReport.__tablename__
+        self.tokenizer_vocabulary_table = TokenizerVocabulary.__tablename__
+
+    # -------------------------------------------------------------------------
+    def get_tokenizer_id(self, tokenizer_name: str) -> int | None:
+        query = sqlalchemy.text(
+            'SELECT "id" FROM "tokenizer" WHERE "name" = :name LIMIT 1'
+        )
+        with self.queries.engine.connect() as conn:
+            row = conn.execute(query, {"name": tokenizer_name}).first()
+        if row is None:
+            return None
+        if hasattr(row, "_mapping"):
+            return int(row._mapping["id"])
+        return int(row[0])
+
+    # -------------------------------------------------------------------------
+    def ensure_tokenizer_id(self, tokenizer_name: str) -> int:
+        query = sqlalchemy.text(
+            'INSERT INTO "tokenizer" ("name") VALUES (:name) '
+            'ON CONFLICT ("name") DO NOTHING'
+        )
+        with self.queries.engine.begin() as conn:
+            conn.execute(query, {"name": tokenizer_name})
+        tokenizer_id = self.get_tokenizer_id(tokenizer_name)
+        if tokenizer_id is None:
+            raise ValueError(f"Failed to resolve tokenizer id for '{tokenizer_name}'")
+        return tokenizer_id
+
+    # -------------------------------------------------------------------------
+    def save_tokenizer_report(self, report: dict[str, Any]) -> int:
+        tokenizer_name = str(report.get("tokenizer_name") or "")
+        tokenizer_id = self.ensure_tokenizer_id(tokenizer_name)
+        insert_query = sqlalchemy.text(
+            'INSERT INTO "tokenizer_report" ('
+            '"tokenizer_id", "report_version", "created_at", "metadata", '
+            '"token_length_histogram", "description") '
+            "VALUES ("
+            ':tokenizer_id, :report_version, :created_at, :metadata, '
+            ':token_length_histogram, :description)'
+        )
+        created_at = pd.to_datetime(
+            report.get("created_at"), utc=True, errors="coerce"
+        )
+        if pd.isna(created_at):
+            created_at = pd.Timestamp.utcnow()
+
+        with self.queries.engine.begin() as conn:
+            conn.execute(
+                insert_query,
+                {
+                    "tokenizer_id": tokenizer_id,
+                    "report_version": int(report.get("report_version", 1) or 1),
+                    "created_at": created_at.to_pydatetime(),
+                    "metadata": json.dumps(report.get("global_stats", {})),
+                    "token_length_histogram": json.dumps(
+                        report.get("token_length_histogram", {})
+                    ),
+                    "description": report.get("description"),
+                },
+            )
+            row = conn.execute(
+                sqlalchemy.text(
+                    'SELECT "id" FROM "tokenizer_report" '
+                    'WHERE "tokenizer_id" = :tokenizer_id ORDER BY "id" DESC LIMIT 1'
+                ),
+                {"tokenizer_id": tokenizer_id},
+            ).first()
+
+        if row is None:
+            raise ValueError("Failed to resolve saved tokenizer report id.")
+        if hasattr(row, "_mapping"):
+            return int(row._mapping["id"])
+        return int(row[0])
+
+    # -------------------------------------------------------------------------
+    def replace_tokenizer_vocabulary(
+        self,
+        tokenizer_name: str,
+        vocabulary_rows: list[dict[str, Any]],
+    ) -> int:
+        tokenizer_id = self.ensure_tokenizer_id(tokenizer_name)
+        with self.queries.engine.begin() as conn:
+            conn.execute(
+                sqlalchemy.text(
+                    'DELETE FROM "tokenizer_vocabulary" WHERE "tokenizer_id" = :tokenizer_id'
+                ),
+                {"tokenizer_id": tokenizer_id},
+            )
+        if vocabulary_rows:
+            df = pd.DataFrame(vocabulary_rows)
+            df["tokenizer_id"] = tokenizer_id
+            df = df[["tokenizer_id", "token_id", "vocabulary_tokens", "decoded_tokens"]]
+            self.queries.insert_table(
+                df,
+                self.tokenizer_vocabulary_table,
+                ignore_duplicates=False,
+            )
+        return tokenizer_id
+
+    # -------------------------------------------------------------------------
+    def _build_tokenizer_report_response(self, storage: dict[str, Any]) -> dict[str, Any]:
+        created_at = pd.to_datetime(storage.get("created_at"), utc=True, errors="coerce")
+        created_at_iso = (
+            created_at.isoformat().replace("+00:00", "Z")
+            if not pd.isna(created_at)
+            else ""
+        )
+        metadata = storage.get("metadata", {})
+        if isinstance(metadata, str):
+            try:
+                metadata = json.loads(metadata)
+            except json.JSONDecodeError:
+                metadata = {}
+        histogram = storage.get("token_length_histogram", {})
+        if isinstance(histogram, str):
+            try:
+                histogram = json.loads(histogram)
+            except json.JSONDecodeError:
+                histogram = {}
+        histogram_payload = {
+            "bins": list(histogram.get("bins", [])),
+            "counts": list(histogram.get("counts", [])),
+            "bin_edges": list(histogram.get("bin_edges", [])),
+            "min_length": int(histogram.get("min_length", 0) or 0),
+            "max_length": int(histogram.get("max_length", 0) or 0),
+            "mean_length": float(histogram.get("mean_length", 0.0) or 0.0),
+            "median_length": float(histogram.get("median_length", 0.0) or 0.0),
+        }
+        return {
+            "report_id": int(storage.get("id") or 0),
+            "report_version": int(storage.get("report_version", 1) or 1),
+            "created_at": created_at_iso,
+            "tokenizer_name": storage.get("tokenizer_name", ""),
+            "description": storage.get("description"),
+            "global_stats": metadata,
+            "token_length_histogram": histogram_payload,
+            "vocabulary_size": int(metadata.get("vocabulary_size", 0) or 0),
+        }
+
+    # -------------------------------------------------------------------------
+    def load_latest_tokenizer_report(self, tokenizer_name: str) -> dict[str, Any] | None:
+        query = sqlalchemy.text(
+            'SELECT tr.*, t."name" AS "tokenizer_name" '
+            'FROM "tokenizer_report" tr '
+            'JOIN "tokenizer" t ON t."id" = tr."tokenizer_id" '
+            'WHERE t."name" = :tokenizer_name '
+            'ORDER BY tr."id" DESC LIMIT 1'
+        )
+        with self.queries.engine.connect() as conn:
+            row = conn.execute(query, {"tokenizer_name": tokenizer_name}).first()
+        if row is None:
+            return None
+        storage = dict(row._mapping) if hasattr(row, "_mapping") else {}
+        return self._build_tokenizer_report_response(storage)
+
+    # -------------------------------------------------------------------------
+    def load_tokenizer_report_by_id(self, report_id: int) -> dict[str, Any] | None:
+        query = sqlalchemy.text(
+            'SELECT tr.*, t."name" AS "tokenizer_name" '
+            'FROM "tokenizer_report" tr '
+            'JOIN "tokenizer" t ON t."id" = tr."tokenizer_id" '
+            'WHERE tr."id" = :report_id LIMIT 1'
+        )
+        with self.queries.engine.connect() as conn:
+            row = conn.execute(query, {"report_id": int(report_id)}).first()
+        if row is None:
+            return None
+        storage = dict(row._mapping) if hasattr(row, "_mapping") else {}
+        return self._build_tokenizer_report_response(storage)
+
+    # -------------------------------------------------------------------------
+    def load_tokenizer_vocabulary_page(
+        self,
+        report_id: int,
+        offset: int,
+        limit: int,
+    ) -> dict[str, Any] | None:
+        report = self.load_tokenizer_report_by_id(report_id)
+        if report is None:
+            return None
+        tokenizer_name = str(report.get("tokenizer_name", ""))
+        tokenizer_id = self.get_tokenizer_id(tokenizer_name)
+        if tokenizer_id is None:
+            return None
+
+        count_query = sqlalchemy.text(
+            'SELECT COUNT(*) FROM "tokenizer_vocabulary" WHERE "tokenizer_id" = :tokenizer_id'
+        )
+        page_query = sqlalchemy.text(
+            'SELECT "token_id", "vocabulary_tokens" '
+            'FROM "tokenizer_vocabulary" '
+            'WHERE "tokenizer_id" = :tokenizer_id '
+            'ORDER BY "token_id" ASC '
+            'LIMIT :limit OFFSET :offset'
+        )
+        with self.queries.engine.connect() as conn:
+            total = int(conn.execute(count_query, {"tokenizer_id": tokenizer_id}).scalar() or 0)
+            rows = conn.execute(
+                page_query,
+                {
+                    "tokenizer_id": tokenizer_id,
+                    "limit": int(limit),
+                    "offset": int(offset),
+                },
+            ).fetchall()
+
+        items: list[dict[str, Any]] = []
+        for row in rows:
+            if hasattr(row, "_mapping"):
+                token_id = int(row._mapping["token_id"])
+                token = str(row._mapping.get("vocabulary_tokens") or "")
+            else:
+                token_id = int(row[0])
+                token = str(row[1] if len(row) > 1 else "")
+            items.append(
+                {
+                    "token_id": token_id,
+                    "token": token,
+                    "length": len(token),
+                }
+            )
+
+        return {
+            "report_id": int(report_id),
+            "tokenizer_name": tokenizer_name,
+            "offset": int(offset),
+            "limit": int(limit),
+            "total": total,
+            "items": items,
+        }

@@ -8,6 +8,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile, status
 
 from TKBEN.server.entities.dataset import (
     DatasetAnalysisRequest,
+    DatasetAnalysisResponse,
     DatasetDownloadRequest,
     DatasetListResponse,
 )
@@ -19,6 +20,8 @@ from TKBEN.server.common.constants import (
     API_ROUTE_DATASETS_DELETE,
     API_ROUTE_DATASETS_DOWNLOAD,
     API_ROUTE_DATASETS_LIST,
+    API_ROUTE_DATASETS_REPORT_BY_ID,
+    API_ROUTE_DATASETS_REPORT_LATEST,
     API_ROUTE_DATASETS_UPLOAD,
     API_ROUTER_PREFIX_DATASETS,
 )
@@ -74,6 +77,9 @@ class DatasetJobHandler:
     def build_analysis_payload(self, result: dict[str, Any]) -> dict[str, Any]:
         return {
             "status": "success",
+            "report_id": result.get("report_id"),
+            "report_version": result.get("report_version", 1),
+            "created_at": result.get("created_at"),
             "dataset_name": result.get("dataset_name", ""),
             "document_count": result.get("document_count", 0),
             "document_length_histogram": self.build_histogram_payload(
@@ -86,6 +92,11 @@ class DatasetJobHandler:
             "max_document_length": result.get("max_document_length", 0),
             "most_common_words": result.get("most_common_words", []),
             "least_common_words": result.get("least_common_words", []),
+            "longest_words": result.get("longest_words", []),
+            "shortest_words": result.get("shortest_words", []),
+            "word_cloud_terms": result.get("word_cloud_terms", []),
+            "aggregate_statistics": result.get("aggregate_statistics", {}),
+            "per_document_stats": result.get("per_document_stats", {}),
         }
 
     # -------------------------------------------------------------------------
@@ -355,6 +366,40 @@ async def analyze_dataset(request: DatasetAnalysisRequest) -> JobStartResponse:
         message="Dataset validation job started.",
         poll_interval=server_settings.jobs.polling_interval,
     )
+
+
+###############################################################################
+@router.get(
+    API_ROUTE_DATASETS_REPORT_LATEST,
+    response_model=DatasetAnalysisResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_latest_dataset_report(dataset_name: str) -> DatasetAnalysisResponse:
+    service = DatasetService()
+    report = await asyncio.to_thread(service.get_latest_validation_report, dataset_name)
+    if report is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No validation report found for dataset '{dataset_name}'.",
+        )
+    return DatasetAnalysisResponse(status="success", **report)
+
+
+###############################################################################
+@router.get(
+    API_ROUTE_DATASETS_REPORT_BY_ID,
+    response_model=DatasetAnalysisResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_dataset_report_by_id(report_id: int) -> DatasetAnalysisResponse:
+    service = DatasetService()
+    report = await asyncio.to_thread(service.get_validation_report_by_id, report_id)
+    if report is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Dataset validation report '{report_id}' not found.",
+        )
+    return DatasetAnalysisResponse(status="success", **report)
 
 
 ###############################################################################
