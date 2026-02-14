@@ -479,7 +479,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
         </section>
 
         {showDashboard && (
-          <aside className="panel dashboard-panel">
+          <aside className="panel dashboard-panel dashboard-plain">
             <header className="panel-header">
               <div>
                 <p className="panel-label">Dataset Overview</p>
