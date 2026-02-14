@@ -1259,6 +1259,14 @@ select {
   background: #1b1f24;
 }
 
+.dashboard-plain {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
 .custom-tokenizer-row {
   display: flex;
   align-items: center;

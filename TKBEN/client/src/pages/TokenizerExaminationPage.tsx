@@ -45,7 +45,7 @@ const TokenizerExaminationPage = () => {
         <div className="merged-page-row">
           <TokenizersPage showDashboard={false} embedded />
         </div>
-        <aside className="panel dashboard-panel tokenizer-report-dashboard">
+        <aside className="panel dashboard-panel dashboard-plain tokenizer-report-dashboard">
           <header className="panel-header">
             <div>
               <p className="panel-label">Tokenizer Metadata Dashboard</p>
