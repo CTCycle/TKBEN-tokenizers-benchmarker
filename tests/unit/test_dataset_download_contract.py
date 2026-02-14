@@ -259,6 +259,133 @@ def test_download_and_persist_maps_arxiv_to_canonical_hf_repo(
     assert result["dataset_name"] == "arxiv"
 
 
+def test_download_and_persist_success_triggers_source_cleanup(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = DatasetService()
+    configure_download_success_mocks(service, monkeypatch)
+    cleanup_calls: list[tuple[str, str]] = []
+
+    monkeypatch.setattr(
+        service,
+        "maybe_cleanup_downloaded_source",
+        lambda cache_path, dataset_name: cleanup_calls.append((cache_path, dataset_name)),
+    )
+
+    def fake_load_dataset(
+        corpus: str,
+        config: str | None,
+        cache_dir: str | None = None,
+        token: str | None = None,
+        **kwargs,
+    ):
+        return object()
+
+    monkeypatch.setattr("TKBEN.server.services.datasets.load_dataset", fake_load_dataset)
+
+    result = service.download_and_persist(
+        corpus="wikitext",
+        config="wikitext-2-v1",
+        job_id="job-cleanup-success",
+    )
+
+    assert result["dataset_name"] == "wikitext/wikitext-2-v1"
+    assert len(cleanup_calls) == 1
+    assert cleanup_calls[0][1] == "wikitext/wikitext-2-v1"
+
+
+def test_download_and_persist_failed_import_does_not_cleanup_sources(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = DatasetService()
+    cleanup_calls: list[tuple[str, str]] = []
+
+    monkeypatch.setattr(service, "is_dataset_in_database", lambda dataset_name: False)
+    monkeypatch.setattr(service, "get_hf_access_token_for_download", lambda: None)
+    monkeypatch.setattr(service, "find_text_column", lambda dataset: "text")
+    monkeypatch.setattr(
+        service,
+        "collect_length_statistics",
+        lambda stream_factory, **kwargs: LengthStatistics(
+            document_count=2,
+            total_length=11,
+            min_length=5,
+            max_length=6,
+        ),
+    )
+    monkeypatch.setattr(
+        service,
+        "persist_dataset",
+        lambda **kwargs: (_ for _ in ()).throw(RuntimeError("persist failed")),
+    )
+    monkeypatch.setattr(
+        service,
+        "maybe_cleanup_downloaded_source",
+        lambda cache_path, dataset_name: cleanup_calls.append((cache_path, dataset_name)),
+    )
+
+    def fake_load_dataset(
+        corpus: str,
+        config: str | None,
+        cache_dir: str | None = None,
+        token: str | None = None,
+        **kwargs,
+    ):
+        return object()
+
+    monkeypatch.setattr("TKBEN.server.services.datasets.load_dataset", fake_load_dataset)
+
+    with pytest.raises(RuntimeError, match="persist failed"):
+        service.download_and_persist(
+            corpus="wikitext",
+            config="wikitext-2-v1",
+            job_id="job-cleanup-failure",
+        )
+
+    assert cleanup_calls == []
+
+
+def test_download_and_persist_uses_database_for_existence_not_filesystem(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = DatasetService()
+    configure_download_success_mocks(service, monkeypatch)
+    database_checks: list[str] = []
+
+    monkeypatch.setattr(
+        service,
+        "is_dataset_in_database",
+        lambda dataset_name: database_checks.append(dataset_name) or False,
+    )
+    monkeypatch.setattr(
+        service,
+        "dataset_cached_on_disk",
+        lambda cache_path: (_ for _ in ()).throw(
+            AssertionError("filesystem existence checks must not be used")
+        ),
+    )
+
+    def fake_load_dataset(
+        corpus: str,
+        config: str | None,
+        cache_dir: str | None = None,
+        token: str | None = None,
+        **kwargs,
+    ):
+        return object()
+
+    monkeypatch.setattr("TKBEN.server.services.datasets.load_dataset", fake_load_dataset)
+
+    result = service.download_and_persist(
+        corpus="wikitext",
+        config="wikitext-2-v1",
+        job_id="job-db-exists-only",
+    )
+
+    assert result["dataset_name"] == "wikitext/wikitext-2-v1"
+    assert database_checks == ["wikitext/wikitext-2-v1"]
+
+
 def test_download_and_persist_classifies_invalid_dataset_or_config(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

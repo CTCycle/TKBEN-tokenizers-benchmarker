@@ -7,6 +7,7 @@ import pytest
 from TKBEN.server.repositories.database.backend import database
 from TKBEN.server.services.keys import (
     HFAccessKeyConflictError,
+    HFAccessKeyNotFoundError,
     HFAccessKeyService,
     HFAccessKeyValidationError,
 )
@@ -213,3 +214,71 @@ def test_add_key_detects_duplicate_for_legacy_plaintext_row(
         service.add_key("hf_legacy_token_123")
 
     assert "already stored" in str(exc_info.value)
+
+
+###############################################################################
+def test_set_active_key_is_idempotent_for_already_active_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = HFAccessKeyService()
+    execute_calls: list[tuple[str, dict[str, object]]] = []
+
+    class ActivationConnection:
+        def __enter__(self) -> "ActivationConnection":
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback) -> bool:
+            return False
+
+        def execute(self, statement, params=None) -> FakeResult:  # noqa: ANN001
+            sql = str(statement)
+            payload = dict(params or {})
+            execute_calls.append((sql, payload))
+            if 'SELECT "id", "is_active" FROM "hf_access_keys"' in sql:
+                return FakeResult(row=(11, True))
+            return FakeResult()
+
+    class ActivationEngine:
+        def begin(self) -> ActivationConnection:
+            return ActivationConnection()
+
+    monkeypatch.setattr(database.backend, "engine", ActivationEngine())
+
+    service.set_active_key(11)
+
+    assert any(
+        'UPDATE "hf_access_keys" SET "is_active" = :is_active WHERE "id" != :key_id' in sql
+        and payload == {"is_active": False, "key_id": 11}
+        for sql, payload in execute_calls
+    )
+    assert any(
+        'UPDATE "hf_access_keys" SET "is_active" = :is_active WHERE "id" = :key_id' in sql
+        and payload == {"is_active": True, "key_id": 11}
+        for sql, payload in execute_calls
+    )
+
+
+###############################################################################
+def test_set_active_key_raises_not_found_for_unknown_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = HFAccessKeyService()
+
+    class MissingConnection:
+        def __enter__(self) -> "MissingConnection":
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback) -> bool:
+            return False
+
+        def execute(self, statement, params=None) -> FakeResult:  # noqa: ANN001
+            return FakeResult(row=None)
+
+    class MissingEngine:
+        def begin(self) -> MissingConnection:
+            return MissingConnection()
+
+    monkeypatch.setattr(database.backend, "engine", MissingEngine())
+
+    with pytest.raises(HFAccessKeyNotFoundError, match="not found"):
+        service.set_active_key(404)

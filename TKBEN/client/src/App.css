@@ -715,18 +715,22 @@
 
 .tokenizer-preview-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   min-height: 52px;
-  padding: 0 8px;
+  padding: 10px 12px 10px 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .tokenizer-preview-name {
+  flex: 1;
+  min-width: 0;
   font-size: 14px;
   font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  padding-right: 8px;
 }
 
 .tokenizer-controls-stack {
@@ -774,26 +778,65 @@
 
 .tokenizer-modal-columns {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 24px;
   min-height: 0;
 }
 
 .tokenizer-modal-column {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  row-gap: 8px;
   min-height: 0;
+  min-width: 0;
 }
 
-.tokenizer-manual-entry-row {
+.tokenizer-modal-column--scan {
+  border-left: 1px solid var(--color-border);
+  padding-left: 24px;
+}
+
+.tokenizer-modal-column-header {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.tokenizer-column-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.tokenizer-column-action {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+}
+
+.tokenizer-column-action .action-spinner {
+  width: 14px;
+  height: 14px;
+}
+
+.tokenizer-modal-column-description {
+  margin: 0;
+  line-height: 1.35;
+}
+
+.tokenizer-modal-column-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
 }
 
 .tokenizer-manual-input {
   flex: 1;
+  width: 100%;
   background: var(--color-panel-alt);
   border: 1px solid var(--color-border);
   border-radius: 8px;
@@ -802,25 +845,17 @@
   font-size: 14px;
   line-height: 1.45;
   min-height: 12em;
-  max-height: 14em;
+  max-height: 22em;
   resize: vertical;
   overflow: auto;
   font-family: monospace;
-}
-
-.tokenizer-upload-custom {
-  align-self: flex-start;
-}
-
-.tokenizer-modal-action-row {
-  display: flex;
-  gap: 12px;
 }
 
 .tokenizer-scan-list {
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background: var(--color-panel-alt);
+  flex: 1;
   min-height: 12em;
   max-height: 22em;
   overflow-y: auto;
@@ -834,10 +869,10 @@
 
 .tokenizer-scan-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 10px 16px 10px 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   cursor: pointer;
   transition: background var(--transition), border-color var(--transition);
@@ -868,16 +903,19 @@
 .tokenizer-scan-id {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: 13px;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  padding-right: 8px;
 }
 
 .tokenizer-selection-remove {
   width: 24px;
   height: 24px;
   border-radius: 6px;
+  flex-shrink: 0;
 }
 
 .tokenizer-selection-remove svg {
@@ -1361,9 +1399,11 @@ select {
     grid-template-columns: 1fr;
   }
 
-  .tokenizer-manual-entry-row {
-    flex-direction: column;
-    align-items: stretch;
+  .tokenizer-modal-column--scan {
+    border-left: 0;
+    border-top: 1px solid var(--color-border);
+    padding-left: 0;
+    padding-top: 18px;
   }
 
   .dataset-insert-row {

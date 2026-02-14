@@ -542,16 +542,46 @@ class DatasetService:
 
     # -------------------------------------------------------------------------
     def maybe_cleanup_downloaded_source(self, cache_path: str, dataset_name: str) -> None:
-        if not self.settings.cleanup_downloaded_sources:
-            return
-        if not os.path.isdir(cache_path):
-            return
         try:
-            shutil.rmtree(cache_path)
-            logger.info("Removed downloaded source folder for %s: %s", dataset_name, cache_path)
-        except Exception:
+            if os.path.isdir(cache_path):
+                shutil.rmtree(cache_path)
+            elif os.path.exists(cache_path):
+                os.remove(cache_path)
+            else:
+                logger.info(
+                    "Downloaded source already missing for %s, skipping cleanup: %s",
+                    dataset_name,
+                    cache_path,
+                )
+                return
+            logger.info("Removed downloaded source for %s: %s", dataset_name, cache_path)
+        except FileNotFoundError:
+            logger.info(
+                "Downloaded source already removed for %s, skipping cleanup: %s",
+                dataset_name,
+                cache_path,
+            )
+        except PermissionError as exc:
+            if getattr(exc, "winerror", None) == 32:
+                logger.warning(
+                    "Could not remove downloaded source for %s because it is in use: %s. "
+                    "Close processes using this path and retry.",
+                    dataset_name,
+                    cache_path,
+                    exc_info=True,
+                )
+                return
             logger.warning(
-                "Failed to remove downloaded source folder for %s: %s",
+                "Could not remove downloaded source for %s due to permission issues: %s. "
+                "Verify delete permissions and retry.",
+                dataset_name,
+                cache_path,
+                exc_info=True,
+            )
+        except OSError:
+            logger.warning(
+                "Failed to remove downloaded source for %s due to an OS error: %s. "
+                "Check path accessibility and retry.",
                 dataset_name,
                 cache_path,
                 exc_info=True,
@@ -816,10 +846,7 @@ class DatasetService:
             self.maybe_cleanup_downloaded_source(cache_path, dataset_name)
             return payload
 
-        if self.dataset_cached_on_disk(cache_path):
-            logger.info("Dataset cache found on disk: %s", cache_path)
-        else:
-            logger.info("Dataset cache not found. Downloading %s", dataset_name)
+        logger.info("Downloading dataset source for %s", dataset_name)
 
         hf_access_token = self.get_hf_access_token_for_download()
 
