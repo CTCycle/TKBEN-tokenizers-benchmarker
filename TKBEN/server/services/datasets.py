@@ -1,18 +1,15 @@
 from __future__ import annotations
 
-import heapq
 import math
 import os
 import shutil
 import threading
-from datetime import datetime, timezone
 from collections import Counter
 from collections.abc import Callable, Generator, Iterator
 from dataclasses import dataclass
 from typing import Any
 
 import pandas as pd
-import sqlalchemy
 from datasets import Dataset, DatasetDict, load_dataset
 from datasets.exceptions import DataFilesNotFoundError, DatasetNotFoundError
 from huggingface_hub.errors import (
@@ -30,6 +27,11 @@ from TKBEN.server.repositories.serialization.data import DatasetSerializer
 from TKBEN.server.configurations import server_settings
 from TKBEN.server.common.constants import DATASETS_PATH
 from TKBEN.server.common.utils.logger import logger
+from TKBEN.server.services.metrics.catalog import (
+    DATASET_METRIC_CATALOG,
+    default_selected_metric_keys,
+)
+from TKBEN.server.services.metrics.engine import DatasetMetricsEngine
 from TKBEN.server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
 
 
@@ -226,7 +228,7 @@ class HistogramBuilder:
 class DatasetService:
 
     SUPPORTED_TEXT_FIELDS = ("text", "content", "sentence", "document", "tokens")
-    REPORT_VERSION = 1
+    REPORT_VERSION = 2
     WORD_LIST_LIMIT = 15
     WORD_CLOUD_LIMIT = 60
 
@@ -662,6 +664,22 @@ class DatasetService:
     # -------------------------------------------------------------------------
     def get_dataset_previews(self) -> list[dict[str, Any]]:
         return self.dataset_serializer.list_dataset_previews()
+
+    # -------------------------------------------------------------------------
+    def get_metric_catalog(self) -> list[dict[str, Any]]:
+        return DATASET_METRIC_CATALOG
+
+    # -------------------------------------------------------------------------
+    def get_default_analysis_parameters(self) -> dict[str, Any]:
+        return {
+            "mattr_window": 100,
+            "near_empty_threshold_words": 3,
+            "rare_tail_percent": 0.10,
+            "top_k_concentration": 20,
+            "near_duplicate_threshold": 0.90,
+            "simhash_bands": 4,
+            "max_vocab_in_memory": 200_000,
+        }
 
     # -------------------------------------------------------------------------
     def dataset_length_stream(
@@ -1133,12 +1151,22 @@ class DatasetService:
     def analyze_dataset(
         self,
         dataset_name: str,
+        session_name: str | None = None,
+        selected_metric_keys: list[str] | None = None,
+        sampling: dict[str, Any] | None = None,
+        filters: dict[str, Any] | None = None,
+        metric_parameters: dict[str, Any] | None = None,
         progress_callback: Callable[[float], None] | None = None,
         should_stop: Callable[[], bool] | None = None,
         use_cached: bool = True,
     ) -> dict[str, Any]:
         return self.validate_dataset(
             dataset_name=dataset_name,
+            session_name=session_name,
+            selected_metric_keys=selected_metric_keys,
+            sampling=sampling,
+            filters=filters,
+            metric_parameters=metric_parameters,
             progress_callback=progress_callback,
             should_stop=should_stop,
             use_cached=use_cached,
@@ -1148,14 +1176,28 @@ class DatasetService:
     def validate_dataset(
         self,
         dataset_name: str,
+        session_name: str | None = None,
+        selected_metric_keys: list[str] | None = None,
+        sampling: dict[str, Any] | None = None,
+        filters: dict[str, Any] | None = None,
+        metric_parameters: dict[str, Any] | None = None,
         progress_callback: Callable[[float], None] | None = None,
         should_stop: Callable[[], bool] | None = None,
         use_cached: bool = True,
     ) -> dict[str, Any]:
-        cached_report = self.dataset_serializer.load_latest_dataset_validation_report(
-            dataset_name
+        sampling_config = sampling if isinstance(sampling, dict) else {}
+        filter_config = filters if isinstance(filters, dict) else {}
+        parameter_overrides = metric_parameters if isinstance(metric_parameters, dict) else {}
+        has_custom_request = bool(
+            session_name
+            or selected_metric_keys
+            or sampling_config
+            or filter_config
+            or parameter_overrides
         )
-        if use_cached and cached_report is not None:
+
+        cached_report = self.dataset_serializer.load_latest_analysis_report(dataset_name)
+        if use_cached and not has_custom_request and cached_report is not None:
             if progress_callback:
                 progress_callback(100.0)
             return cached_report
@@ -1163,194 +1205,151 @@ class DatasetService:
         if not self.dataset_serializer.dataset_exists(dataset_name):
             raise ValueError(f"Dataset '{dataset_name}' not found.")
 
-        total_documents = self.dataset_serializer.count_dataset_documents(dataset_name)
-        if progress_callback:
-            progress_callback(5.0)
+        selected_keys = (
+            [key for key in selected_metric_keys if isinstance(key, str) and key]
+            if isinstance(selected_metric_keys, list)
+            else default_selected_metric_keys()
+        )
+        selected_key_set = set(selected_keys)
+        if not selected_key_set:
+            selected_key_set = set(default_selected_metric_keys())
 
-        self.dataset_serializer.delete_dataset_statistics(dataset_name)
+        parameters = self.get_default_analysis_parameters()
+        parameters.update(parameter_overrides)
 
-        logger.info("Starting validation for dataset: %s", dataset_name)
+        self.dataset_serializer.ensure_metric_types_seeded(self.get_metric_catalog())
 
-        document_stats = LengthStatistics()
-        word_stats = LengthStatistics()
-        document_counts: dict[int, int] = {}
-        word_counts: dict[int, int] = {}
-        word_counter: Counter[str] = Counter()
-        analyzed_count = 0
-        per_document_ids: list[int] = []
-        per_document_lengths: list[int] = []
-        per_document_word_counts: list[int] = []
-        per_document_avg_word_lengths: list[float] = []
-        per_document_std_word_lengths: list[float] = []
+        session_parameters = {
+            "sampling": sampling_config,
+            "filters": filter_config,
+            "metric_parameters": parameters,
+        }
+        session_id = self.dataset_serializer.create_analysis_session(
+            dataset_name=dataset_name,
+            session_name=session_name,
+            selected_metric_keys=sorted(selected_key_set),
+            parameters=session_parameters,
+            report_version=self.REPORT_VERSION,
+        )
 
-        batch_size = self.streaming_batch_size
+        min_length = filter_config.get("min_length")
+        max_length = filter_config.get("max_length")
+        exclude_empty = bool(filter_config.get("exclude_empty", False))
+        sample_fraction = sampling_config.get("fraction")
+        sample_count = sampling_config.get("count")
+        normalized_fraction = (
+            float(sample_fraction)
+            if isinstance(sample_fraction, (int, float)) and 0 < float(sample_fraction) < 1
+            else None
+        )
+        normalized_count = (
+            int(sample_count)
+            if isinstance(sample_count, (int, float)) and int(sample_count) > 0
+            else None
+        )
 
+        engine = DatasetMetricsEngine(parameters=parameters)
+        per_doc_buffer: list[dict[str, Any]] = []
+        aggregate_total = self.dataset_serializer.count_dataset_documents(dataset_name)
+        expected_total = aggregate_total
+        if normalized_count is not None:
+            expected_total = min(expected_total, normalized_count)
+        if normalized_fraction is not None:
+            expected_total = max(1, int(math.ceil(expected_total * normalized_fraction)))
+
+        analyzed = 0
+        persisted = 0
         for batch in self.dataset_serializer.iterate_dataset_rows(
-            dataset_name, batch_size
+            dataset_name=dataset_name,
+            batch_size=self.streaming_batch_size,
+            min_length=min_length if isinstance(min_length, int) else None,
+            max_length=max_length if isinstance(max_length, int) else None,
+            exclude_empty=exclude_empty,
         ):
-            if should_stop and should_stop():
+            if self.stop_requested(should_stop):
+                self.dataset_serializer.complete_analysis_session(session_id, status="cancelled")
                 return {}
-
-            stats_batch: list[dict[str, Any]] = []
 
             for row in batch:
                 text_id = row.get("id")
                 text = row.get("text")
-                if not text or not isinstance(text, str):
+                if text_id is None or not isinstance(text, str):
                     continue
+                if normalized_fraction is not None:
+                    gate = (int(text_id) % 1_000_000) / 1_000_000.0
+                    if gate > normalized_fraction:
+                        continue
+                per_doc_metrics = engine.process_document(int(text_id), text)
+                for metric_row in per_doc_metrics:
+                    if metric_row.get("metric_key") in selected_key_set:
+                        per_doc_buffer.append(metric_row)
+                analyzed += 1
+                if normalized_count is not None and analyzed >= normalized_count:
+                    break
+                if len(per_doc_buffer) >= self.streaming_batch_size:
+                    self.dataset_serializer.save_metric_values_batch(session_id, per_doc_buffer)
+                    persisted += len(per_doc_buffer)
+                    per_doc_buffer.clear()
 
-                document_length = len(text)
-                document_stats.update(document_length)
-                document_counts[document_length] = document_counts.get(document_length, 0) + 1
+            if per_doc_buffer and len(per_doc_buffer) >= self.streaming_batch_size:
+                self.dataset_serializer.save_metric_values_batch(session_id, per_doc_buffer)
+                persisted += len(per_doc_buffer)
+                per_doc_buffer.clear()
 
-                words = text.split()
-                words_count = len(words)
+            if normalized_count is not None and analyzed >= normalized_count:
+                break
+            if progress_callback and expected_total > 0:
+                progress_callback(min(95.0, (analyzed / float(expected_total)) * 95.0))
 
-                if words_count > 0:
-                    word_lengths = [len(word) for word in words]
-                    avg_word_length = sum(word_lengths) / words_count
-                    variance = (
-                        sum((length - avg_word_length) ** 2 for length in word_lengths)
-                        / words_count
-                    )
-                    std_word_length = variance**0.5
-                    for length in word_lengths:
-                        word_stats.update(length)
-                        word_counts[length] = word_counts.get(length, 0) + 1
-                    word_counter.update(words)
-                else:
-                    avg_word_length = 0.0
-                    std_word_length = 0.0
+        if per_doc_buffer:
+            self.dataset_serializer.save_metric_values_batch(session_id, per_doc_buffer)
+            persisted += len(per_doc_buffer)
 
-                stats_batch.append(
-                    {
-                        "document_id": text_id,
-                        "words_count": words_count,
-                        "avg_words_length": avg_word_length,
-                        "std_words_length": std_word_length,
-                    }
-                )
-                per_document_ids.append(int(text_id))
-                per_document_lengths.append(int(document_length))
-                per_document_word_counts.append(int(words_count))
-                per_document_avg_word_lengths.append(round(float(avg_word_length), 6))
-                per_document_std_word_lengths.append(round(float(std_word_length), 6))
-                analyzed_count += 1
-
-            self.dataset_serializer.save_dataset_statistics_batch(stats_batch)
-
-            if analyzed_count and analyzed_count % self.log_interval == 0:
-                logger.info("Validated %d documents so far...", analyzed_count)
-
-            if progress_callback and total_documents > 0:
-                progress_value = (analyzed_count / total_documents) * 100.0
-                progress_callback(progress_value)
-
-        document_histogram = self.histogram_from_counts(
-            document_stats, document_counts
+        finalized = engine.finalize(histogram_bins=self.histogram_bins)
+        aggregate_rows = [
+            row
+            for row in finalized.get("metric_rows", [])
+            if row.get("metric_key") in selected_key_set
+        ]
+        self.dataset_serializer.save_metric_values_batch(session_id, aggregate_rows)
+        self.dataset_serializer.save_histogram_artifact(
+            session_id=session_id,
+            metric_key="hist.document_length",
+            histogram=finalized.get("document_histogram", {}),
         )
-        word_histogram = self.histogram_from_counts(word_stats, word_counts)
+        self.dataset_serializer.save_histogram_artifact(
+            session_id=session_id,
+            metric_key="hist.word_length",
+            histogram=finalized.get("word_histogram", {}),
+        )
+        self.dataset_serializer.complete_analysis_session(session_id, status="completed")
 
-        most_common_words = [
-            {"word": word, "count": int(count)}
-            for word, count in word_counter.most_common(10)
-        ]
-        least_common_words = [
-            {"word": word, "count": int(count)}
-            for word, count in heapq.nsmallest(
-                10, word_counter.items(), key=lambda item: (item[1], item[0])
-            )
-        ]
-        longest_words = self.build_word_length_items(word_counter, descending=True)
-        shortest_words = self.build_word_length_items(word_counter, descending=False)
-        word_cloud_terms = self.build_word_cloud_terms(word_counter)
-        aggregate_statistics = {
-            "document_count": int(document_stats.document_count),
-            "min_document_length": int(document_histogram.get("min_length", 0) or 0),
-            "max_document_length": int(document_histogram.get("max_length", 0) or 0),
-            "mean_document_length": float(
-                document_histogram.get("mean_length", 0.0) or 0.0
-            ),
-            "median_document_length": float(
-                document_histogram.get("median_length", 0.0) or 0.0
-            ),
-            "word_tie_policy": (
-                "Tie-breaks for longest/shortest words are resolved "
-                "lexicographically for deterministic output."
-            ),
-        }
-        created_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-
-        report = {
-            "report_version": self.REPORT_VERSION,
-            "created_at": created_at,
-            "dataset_name": dataset_name,
-            "document_count": document_stats.document_count,
-            "document_length_histogram": document_histogram,
-            "word_length_histogram": word_histogram,
-            "min_document_length": document_histogram.get("min_length", 0),
-            "max_document_length": document_histogram.get("max_length", 0),
-            "most_common_words": most_common_words,
-            "least_common_words": least_common_words,
-            "longest_words": longest_words,
-            "shortest_words": shortest_words,
-            # Deterministic lightweight word-cloud substitute: weighted terms only.
-            "word_cloud_terms": word_cloud_terms,
-            "aggregate_statistics": aggregate_statistics,
-            "per_document_stats": {
-                "document_ids": per_document_ids,
-                "document_lengths": per_document_lengths,
-                "word_counts": per_document_word_counts,
-                "avg_word_lengths": per_document_avg_word_lengths,
-                "std_word_lengths": per_document_std_word_lengths,
-            },
-        }
-
-        report_id = self.dataset_serializer.save_dataset_report(report)
-        report["report_id"] = int(report_id)
-
-        logger.info("Completed validation: %d documents analyzed", analyzed_count)
-
+        report = self.dataset_serializer.load_analysis_report_by_session_id(session_id)
+        if report is None:
+            raise ValueError("Failed to load persisted analysis report.")
+        logger.info(
+            "Completed analysis session %d for dataset %s (documents=%d, persisted_rows=%d)",
+            session_id,
+            dataset_name,
+            analyzed,
+            persisted + len(aggregate_rows),
+        )
         if progress_callback:
             progress_callback(100.0)
-
         return report
 
     # -------------------------------------------------------------------------
     def get_latest_validation_report(self, dataset_name: str) -> dict[str, Any] | None:
-        return self.dataset_serializer.load_latest_dataset_validation_report(dataset_name)
+        return self.dataset_serializer.load_latest_analysis_report(dataset_name)
 
     # -------------------------------------------------------------------------
     def get_validation_report_by_id(self, report_id: int) -> dict[str, Any] | None:
-        return self.dataset_serializer.load_dataset_validation_report_by_id(report_id)
+        return self.dataset_serializer.load_analysis_report_by_session_id(report_id)
 
     # -------------------------------------------------------------------------
     def get_analysis_summary(self, dataset_name: str) -> dict[str, Any]:
-        """
-        Query aggregate word-level statistics from persisted analysis data.
-
-        Args:
-            dataset_name: Name of the dataset.
-
-        Returns:
-            Dictionary with aggregate statistics.
-        """
-        query = sqlalchemy.text(
-            'SELECT COUNT(*) as total, '
-            'AVG("words_count") as mean_words, '
-            'AVG("avg_words_length") as mean_avg_len, '
-            'AVG("std_words_length") as mean_std_len '
-            'FROM "dataset_document_statistics" dds '
-            'JOIN "dataset_document" dd ON dd."id" = dds."document_id" '
-            'JOIN "dataset" d ON d."id" = dd."dataset_id" '
-            'WHERE d."name" = :dataset'
-        )
-
-        with database.backend.engine.connect() as conn:
-            result = conn.execute(query, {"dataset": dataset_name})
-            row = result.first()
-
-        if row is None:
+        report = self.dataset_serializer.load_latest_analysis_report(dataset_name)
+        if report is None:
             return {
                 "total_documents": 0,
                 "mean_words_count": 0.0,
@@ -1358,78 +1357,19 @@ class DatasetService:
                 "mean_avg_word_length": 0.0,
                 "mean_std_word_length": 0.0,
             }
-
-        if hasattr(row, "_mapping"):
-            data = row._mapping
-        else:
-            data = {
-                "total": row[0],
-                "mean_words": row[1],
-                "mean_avg_len": row[2],
-                "mean_std_len": row[3],
-            }
-
-        total = data.get("total", 0) or 0
-        mean_words = data.get("mean_words", 0.0) or 0.0
-        mean_avg_len = data.get("mean_avg_len", 0.0) or 0.0
-        mean_std_len = data.get("mean_std_len", 0.0) or 0.0
-
-        # Compute median using streaming (more memory efficient)
-        median_words = self._compute_median_words_count(dataset_name)
-
+        aggregate = report.get("aggregate_statistics", {})
         return {
-            "total_documents": int(total),
-            "mean_words_count": float(mean_words),
-            "median_words_count": float(median_words),
-            "mean_avg_word_length": float(mean_avg_len),
-            "mean_std_word_length": float(mean_std_len),
+            "total_documents": int(aggregate.get("corpus.document_count", 0) or 0),
+            "mean_words_count": float(aggregate.get("doc.length_mean", 0.0) or 0.0),
+            "median_words_count": float(aggregate.get("doc.length_p50", 0.0) or 0.0),
+            "mean_avg_word_length": float(aggregate.get("words.length_mean", 0.0) or 0.0),
+            "mean_std_word_length": float(aggregate.get("words.length_std", 0.0) or 0.0),
         }
-
-    # -------------------------------------------------------------------------
-    def _compute_median_words_count(self, dataset_name: str) -> float:
-        """Compute median word count using SQL for efficiency."""
-        # For SQLite and Postgres, use PERCENTILE_CONT or ORDER BY with LIMIT
-        count_query = sqlalchemy.text(
-            'SELECT COUNT(*) '
-            'FROM "dataset_document_statistics" dds '
-            'JOIN "dataset_document" dd ON dd."id" = dds."document_id" '
-            'JOIN "dataset" d ON d."id" = dd."dataset_id" '
-            'WHERE d."name" = :dataset'
-        )
-
-        with database.backend.engine.connect() as conn:
-            result = conn.execute(count_query, {"dataset": dataset_name})
-            count_row = result.first()
-            total = count_row[0] if count_row else 0
-
-        if total == 0:
-            return 0.0
-
-        # Get median using OFFSET/LIMIT
-        offset = total // 2
-        median_query = sqlalchemy.text(
-            'SELECT dds."words_count" '
-            'FROM "dataset_document_statistics" dds '
-            'JOIN "dataset_document" dd ON dd."id" = dds."document_id" '
-            'JOIN "dataset" d ON d."id" = dd."dataset_id" '
-            'WHERE d."name" = :dataset '
-            'ORDER BY dds."words_count" LIMIT 1 OFFSET :offset'
-        )
-
-        with database.backend.engine.connect() as conn:
-            result = conn.execute(median_query, {"dataset": dataset_name, "offset": offset})
-            median_row = result.first()
-
-        if median_row is None:
-            return 0.0
-
-        median_val = median_row[0] if median_row else 0
-        return float(median_val)
 
     # -------------------------------------------------------------------------
     def is_dataset_analyzed(self, dataset_name: str) -> bool:
         """Check if a dataset has been analyzed."""
-        report = self.dataset_serializer.load_dataset_report(dataset_name)
+        report = self.dataset_serializer.load_latest_analysis_report(dataset_name)
         return report is not None
 
     # -------------------------------------------------------------------------

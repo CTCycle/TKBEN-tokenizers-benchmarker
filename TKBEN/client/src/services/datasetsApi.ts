@@ -5,6 +5,7 @@ import type {
     DatasetDownloadRequest,
     DatasetDownloadResponse,
     DatasetListResponse,
+    DatasetMetricCatalogResponse,
     JobStartResponse,
     JobStatusResponse,
 } from '../types/api';
@@ -133,6 +134,25 @@ export async function validateDataset(
     } catch (error) {
         throw error;
     }
+}
+
+/**
+ * Fetch dataset metrics catalog for validation wizard.
+ */
+export async function fetchDatasetMetricsCatalog(): Promise<DatasetMetricCatalogResponse> {
+    const response = await fetch(API_ENDPOINTS.DATASETS_METRICS_CATALOG, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || `Failed to fetch metrics catalog: ${response.status}`);
+    }
+
+    return response.json();
 }
 
 /**

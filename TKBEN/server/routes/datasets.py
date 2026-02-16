@@ -11,6 +11,7 @@ from TKBEN.server.entities.dataset import (
     DatasetAnalysisResponse,
     DatasetDownloadRequest,
     DatasetListResponse,
+    DatasetMetricCatalogResponse,
 )
 from TKBEN.server.entities.jobs import JobStartResponse
 from TKBEN.server.configurations import server_settings
@@ -20,6 +21,7 @@ from TKBEN.server.common.constants import (
     API_ROUTE_DATASETS_DELETE,
     API_ROUTE_DATASETS_DOWNLOAD,
     API_ROUTE_DATASETS_LIST,
+    API_ROUTE_DATASETS_METRICS_CATALOG,
     API_ROUTE_DATASETS_REPORT_BY_ID,
     API_ROUTE_DATASETS_REPORT_LATEST,
     API_ROUTE_DATASETS_UPLOAD,
@@ -78,9 +80,12 @@ class DatasetJobHandler:
         return {
             "status": "success",
             "report_id": result.get("report_id"),
-            "report_version": result.get("report_version", 1),
+            "report_version": result.get("report_version", 2),
             "created_at": result.get("created_at"),
             "dataset_name": result.get("dataset_name", ""),
+            "session_name": result.get("session_name"),
+            "selected_metric_keys": result.get("selected_metric_keys", []),
+            "session_parameters": result.get("session_parameters", {}),
             "document_count": result.get("document_count", 0),
             "document_length_histogram": self.build_histogram_payload(
                 result.get("document_length_histogram", {})
@@ -144,14 +149,19 @@ class DatasetJobHandler:
     # -------------------------------------------------------------------------
     def run_analysis_job(
         self,
-        dataset_name: str,
+        request_payload: dict[str, Any],
         job_id: str,
     ) -> dict[str, Any]:
         service = DatasetService()
         progress_callback = JobProgressReporter(job_manager, job_id)
         should_stop = JobStopChecker(job_manager, job_id)
         result = service.analyze_dataset(
-            dataset_name=dataset_name,
+            dataset_name=str(request_payload.get("dataset_name", "")),
+            session_name=request_payload.get("session_name"),
+            selected_metric_keys=request_payload.get("selected_metric_keys"),
+            sampling=request_payload.get("sampling"),
+            filters=request_payload.get("filters"),
+            metric_parameters=request_payload.get("metric_parameters"),
             progress_callback=progress_callback,
             should_stop=should_stop,
         )
@@ -179,6 +189,18 @@ async def list_datasets() -> DatasetListResponse:
     service = DatasetService()
     datasets = await asyncio.to_thread(service.get_dataset_previews)
     return DatasetListResponse(datasets=datasets)
+
+
+###############################################################################
+@router.get(
+    API_ROUTE_DATASETS_METRICS_CATALOG,
+    response_model=DatasetMetricCatalogResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_dataset_metrics_catalog() -> DatasetMetricCatalogResponse:
+    service = DatasetService()
+    categories = await asyncio.to_thread(service.get_metric_catalog)
+    return DatasetMetricCatalogResponse(categories=categories)
 
 
 ###############################################################################
@@ -344,11 +366,12 @@ async def analyze_dataset(request: DatasetAnalysisRequest) -> JobStartResponse:
             detail=f"Dataset '{request.dataset_name}' not found. Please load it first.",
         )
 
+    request_payload = request.model_dump()
     job_id = job_manager.start_job(
         job_type="dataset_validation",
         runner=dataset_job_handler.run_analysis_job,
         kwargs={
-            "dataset_name": request.dataset_name,
+            "request_payload": request_payload,
         },
     )
 

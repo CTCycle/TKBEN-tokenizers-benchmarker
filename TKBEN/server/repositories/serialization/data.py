@@ -9,11 +9,15 @@ import sqlalchemy
 
 from TKBEN.server.repositories.queries.data import DataRepositoryQueries
 from TKBEN.server.repositories.schemas.models import (
+    AnalysisSession,
     Dataset,
     DatasetDocument,
     DatasetDocumentStatistics,
     DatasetReport,
     DatasetValidationReport,
+    HistogramArtifact,
+    MetricType,
+    MetricValue,
     Tokenizer,
     TokenizerReport,
     TokenizerVocabulary,
@@ -21,340 +25,6 @@ from TKBEN.server.repositories.schemas.models import (
 )
 
 K_ERROR = "k error"
-
-###############################################################################
-class DataSerializer:
-    experiment_table = "ADSORPTION_EXPERIMENT"
-    best_fit_table = "ADSORPTION_BEST_FIT"
-    experiment_columns = [
-        "experiment",
-        "temperature [K]",
-        "pressure [Pa]",
-        "uptake [mol/g]",
-        "measurement_count",
-        "min_pressure",
-        "max_pressure",
-        "min_uptake",
-        "max_uptake",
-    ]
-    model_schemas: dict[str, dict[str, Any]] = {
-        "LANGMUIR": {
-            "prefix": "Langmuir",
-            "table": "ADSORPTION_LANGMUIR",
-            "fields": {
-                "lss": "LSS",
-                "k": "k",
-                "k_error": K_ERROR,
-                "qsat": "qsat",
-                "qsat_error": "qsat error",
-            },
-        },
-        "SIPS": {
-            "prefix": "Sips",
-            "table": "ADSORPTION_SIPS",
-            "fields": {
-                "lss": "LSS",
-                "k": "k",
-                "k_error": K_ERROR,
-                "qsat": "qsat",
-                "qsat_error": "qsat error",
-                "exponent": "exponent",
-                "exponent_error": "exponent error",
-            },
-        },
-        "FREUNDLICH": {
-            "prefix": "Freundlich",
-            "table": "ADSORPTION_FREUNDLICH",
-            "fields": {
-                "lss": "LSS",
-                "k": "k",
-                "k_error": K_ERROR,
-                "exponent": "exponent",
-                "exponent_error": "exponent error",
-            },
-        },
-        "TEMKIN": {
-            "prefix": "Temkin",
-            "table": "ADSORPTION_TEMKIN",
-            "fields": {
-                "lss": "LSS",
-                "k": "k",
-                "k_error": K_ERROR,
-                "beta": "beta",
-                "beta_error": "beta error",
-            },
-        },
-        "TOTH": {
-            "prefix": "Toth",
-            "table": "ADSORPTION_TOTH",
-            "fields": {
-                "lss": "LSS",
-                "k": "k",
-                "k_error": K_ERROR,
-                "qsat": "qsat",
-                "qsat_error": "qsat error",
-                "exponent": "exponent",
-                "exponent_error": "exponent error",
-            },
-        },
-        "DUBININ_RADUSHKEVICH": {
-            "prefix": "Dubinin-Radushkevich",
-            "table": "ADSORPTION_DUBININ_RADUSHKEVICH",
-            "fields": {
-                "lss": "LSS",
-                "qsat": "qsat",
-                "qsat_error": "qsat error",
-                "beta": "beta",
-                "beta_error": "beta error",
-            },
-        },
-        "DUAL_SITE_LANGMUIR": {
-            "prefix": "Dual-Site Langmuir",
-            "table": "ADSORPTION_DUAL_SITE_LANGMUIR",
-            "fields": {
-                "lss": "LSS",
-                "k1": "k1",
-                "k1_error": "k1 error",
-                "qsat1": "qsat1",
-                "qsat1_error": "qsat1 error",
-                "k2": "k2",
-                "k2_error": "k2 error",
-                "qsat2": "qsat2",
-                "qsat2_error": "qsat2 error",
-            },
-        },
-        "REDLICH_PETERSON": {
-            "prefix": "Redlich-Peterson",
-            "table": "ADSORPTION_REDLICH_PETERSON",
-            "fields": {
-                "lss": "LSS",
-                "k": "k",
-                "k_error": K_ERROR,
-                "a": "a",
-                "a_error": "a error",
-                "beta": "beta",
-                "beta_error": "beta error",
-            },
-        },
-        "JOVANOVIC": {
-            "prefix": "Jovanovic",
-            "table": "ADSORPTION_JOVANOVIC",
-            "fields": {
-                "lss": "LSS",
-                "k": "k",
-                "k_error": K_ERROR,
-                "qsat": "qsat",
-                "qsat_error": "qsat error",
-            },
-        },
-    }
-
-    def __init__(self, queries: DataRepositoryQueries | None = None) -> None:
-        self.queries = queries or DataRepositoryQueries()
-    
-    # -------------------------------------------------------------------------
-    def save_raw_dataset(self, dataset: pd.DataFrame) -> None:
-        self.queries.save_table(dataset, "ADSORPTION_DATA")
-
-    # -------------------------------------------------------------------------
-    def load_raw_dataset(self) -> pd.DataFrame:
-        return self.queries.load_table("ADSORPTION_DATA")
-
-    # -------------------------------------------------------------------------
-    def save_processed_dataset(self, dataset: pd.DataFrame) -> None:
-        self.queries.save_table(dataset, "ADSORPTION_PROCESSED_DATA")
-
-    # -------------------------------------------------------------------------
-    def load_processed_dataset(self) -> pd.DataFrame:
-        encoded = self.queries.load_table("ADSORPTION_PROCESSED_DATA")
-        return encoded
-
-    # -------------------------------------------------------------------------
-    def save_fitting_results(self, dataset: pd.DataFrame) -> None:
-        if dataset.empty:
-            empty_experiments = pd.DataFrame(
-                columns=["id", *self.experiment_columns]
-            )
-            self.queries.save_table(empty_experiments, self.experiment_table)
-            for schema in self.model_schemas.values():
-                empty_model = pd.DataFrame(
-                    columns=["id", "experiment_id", *schema["fields"].values()]
-                )
-                self.queries.save_table(empty_model, schema["table"])
-            return
-        encoded = self.convert_lists_to_strings(dataset)
-        experiments = self.build_experiment_frame(encoded)
-        experiment_map = self.build_experiment_map(experiments)
-        self.queries.save_table(experiments, self.experiment_table)
-        for schema in self.model_schemas.values():
-            model_frame = self.build_model_frame(encoded, experiment_map, schema)
-            if model_frame is None:
-                continue
-            self.queries.save_table(model_frame, schema["table"])
-
-    # -------------------------------------------------------------------------
-    def load_fitting_results(self) -> pd.DataFrame:
-        experiments = self.queries.load_table(self.experiment_table)
-        if experiments.empty:
-            return experiments
-        experiments = experiments.rename(columns={"id": "experiment_id"})
-        experiments = self.convert_strings_to_lists(experiments)
-        combined = experiments.copy()
-        for schema in self.model_schemas.values():
-            model_frame = self.queries.load_table(schema["table"])
-            if model_frame.empty:
-                continue
-            renamed = self.rename_model_columns(model_frame, schema)
-            combined = combined.merge(renamed, how="left", on="experiment_id")
-        return combined
-
-    # -------------------------------------------------------------------------
-    def save_best_fit(self, dataset: pd.DataFrame) -> None:
-        if dataset.empty:
-            empty_best = pd.DataFrame(
-                columns=["id", "experiment_id", "best model", "worst model"]
-            )
-            self.queries.save_table(empty_best, self.best_fit_table)
-            return
-        experiments = self.queries.load_table(self.experiment_table)
-        if experiments.empty:
-            raise ValueError("No experiments available to link best fit results.")
-        experiment_map = self.build_experiment_map(experiments)
-        best = pd.DataFrame()
-        best["experiment_id"] = dataset["experiment"].map(experiment_map)
-        if best["experiment_id"].isnull().any():
-            raise ValueError("Unmapped experiments found while saving best fit results.")
-        best["best model"] = dataset.get("best model")
-        best["worst model"] = dataset.get("worst model")
-        best.insert(0, "id", range(1, len(best) + 1))
-        self.queries.save_table(best, self.best_fit_table)
-
-    # -------------------------------------------------------------------------
-    def load_best_fit(self) -> pd.DataFrame:
-        best = self.queries.load_table(self.best_fit_table)
-        if best.empty:
-            return best
-        experiments = self.queries.load_table(self.experiment_table)
-        if experiments.empty:
-            return pd.DataFrame()
-        experiments = experiments.rename(columns={"id": "experiment_id"})
-        experiments = self.convert_strings_to_lists(experiments)
-        merged = experiments.merge(
-            best.drop(columns=["id"]), how="left", on="experiment_id"
-        )
-        return merged
-
-    # -------------------------------------------------------------------------
-    def build_experiment_frame(self, dataset: pd.DataFrame) -> pd.DataFrame:
-        missing = [column for column in self.experiment_columns if column not in dataset]
-        if missing:
-            raise ValueError(f"Missing experiment columns: {missing}")
-        experiments = dataset.loc[:, self.experiment_columns].copy()
-        experiments.insert(0, "id", range(1, len(experiments) + 1))
-        return experiments
-
-    # -------------------------------------------------------------------------
-    def build_experiment_map(self, experiments: pd.DataFrame) -> dict[str, int]:
-        return {
-            name: int(identifier)
-            for name, identifier in zip(
-                experiments["experiment"], experiments["id"], strict=False
-            )
-        }
-
-    # -------------------------------------------------------------------------
-    def resolve_dataset_column(
-        self, prefix: str, suffix: str, columns: list[str] | pd.Index
-    ) -> str | None:
-        target = f"{prefix} {suffix}".lower()
-        for column in columns:
-            if str(column).lower() == target:
-                return column
-        return None
-
-    # -------------------------------------------------------------------------
-    def build_model_frame(
-        self,
-        dataset: pd.DataFrame,
-        experiment_map: dict[str, int],
-        schema: dict[str, Any],
-    ) -> pd.DataFrame | None:
-        resolved = {
-            field: self.resolve_dataset_column(schema["prefix"], suffix, dataset.columns)
-            for field, suffix in schema["fields"].items()
-        }
-        if all(column is None for column in resolved.values()):
-            return None
-        model_frame = pd.DataFrame()
-        model_frame["experiment_id"] = dataset["experiment"].map(experiment_map)
-        if model_frame["experiment_id"].isnull().any():
-            raise ValueError("Unmapped experiments found while building model results.")
-        for field, column in resolved.items():
-            target = schema["fields"][field]
-            if column is None:
-                model_frame[target] = pd.NA
-            else:
-                model_frame[target] = dataset[column]
-        model_frame.insert(0, "id", range(1, len(model_frame) + 1))
-        return model_frame
-
-    # -------------------------------------------------------------------------
-    def rename_model_columns(
-        self, model_frame: pd.DataFrame, schema: dict[str, Any]
-    ) -> pd.DataFrame:
-        rename_map = {
-            column_name: f"{schema['prefix']} {column_name}"
-            for column_name in schema["fields"].values()
-        }
-        trimmed = model_frame.rename(columns=rename_map)
-        return trimmed.drop(columns=["id"])
-
-    # -------------------------------------------------------------------------
-    def convert_list_to_string(self, value: Any) -> Any:
-        if isinstance(value, (list, tuple)):
-            parts: list[str] = []
-            for element in value:
-                if element is None:
-                    continue
-                text = str(element)
-                if text:
-                    parts.append(text)
-            return ",".join(parts)
-        return value
-
-    # -------------------------------------------------------------------------
-    def convert_string_to_list(self, value: Any) -> Any:
-        if isinstance(value, str):
-            stripped = value.strip()
-            if not stripped:
-                return []
-            parts = [segment.strip() for segment in stripped.split(",")]
-            converted: list[float] = []
-            for part in parts:
-                if not part:
-                    continue
-                try:
-                    converted.append(float(part))
-                except ValueError:
-                    return value
-            return converted
-        return value
-
-    # -------------------------------------------------------------------------
-    def convert_lists_to_strings(self, dataset: pd.DataFrame) -> pd.DataFrame:
-        converted = dataset.copy()
-        for column in converted.columns:
-            converted[column] = converted[column].apply(self.convert_list_to_string)
-        return converted
-
-    # -------------------------------------------------------------------------
-    def convert_strings_to_lists(self, dataset: pd.DataFrame) -> pd.DataFrame:
-        converted = dataset.copy()
-        for column in converted.columns:
-            if converted[column].dtype == object:
-                converted[column] = converted[column].apply(self.convert_string_to_list)
-        return converted
-
 
 ###############################################################################
 class DatasetSerializer:
@@ -365,6 +35,10 @@ class DatasetSerializer:
         self.stats_table = DatasetDocumentStatistics.__tablename__
         self.reports_table = DatasetReport.__tablename__
         self.validation_reports_table = DatasetValidationReport.__tablename__
+        self.analysis_session_table = AnalysisSession.__tablename__
+        self.metric_type_table = MetricType.__tablename__
+        self.metric_value_table = MetricValue.__tablename__
+        self.histogram_table = HistogramArtifact.__tablename__
         self.local_stats_table = TokenizationDocumentStats.__tablename__
 
     # -------------------------------------------------------------------------
@@ -529,19 +203,38 @@ class DatasetSerializer:
         self,
         dataset_name: str,
         batch_size: int,
+        min_length: int | None = None,
+        max_length: int | None = None,
+        exclude_empty: bool = False,
     ) -> Iterator[list[dict[str, Any]]]:
         offset = 0
+        conditions = ['d."name" = :dataset']
+        params: dict[str, Any] = {"dataset": dataset_name}
+        if isinstance(min_length, int):
+            conditions.append('LENGTH(dd."text") >= :min_length')
+            params["min_length"] = int(min_length)
+        if isinstance(max_length, int):
+            conditions.append('LENGTH(dd."text") <= :max_length')
+            params["max_length"] = int(max_length)
+        if exclude_empty:
+            conditions.append('LENGTH(TRIM(dd."text")) > 0')
+        where_clause = " AND ".join(conditions)
         while True:
             query = sqlalchemy.text(
                 'SELECT dd."id", dd."text" FROM "dataset_document" dd '
                 'JOIN "dataset" d ON d."id" = dd."dataset_id" '
-                'WHERE d."name" = :dataset '
+                f"WHERE {where_clause} "
                 'ORDER BY dd."id" LIMIT :limit OFFSET :offset'
             )
             with self.queries.engine.connect() as conn:
+                batch_params = {
+                    **params,
+                    "limit": batch_size,
+                    "offset": offset,
+                }
                 result = conn.execute(
                     query,
-                    {"dataset": dataset_name, "limit": batch_size, "offset": offset},
+                    batch_params,
                 )
                 rows = result.fetchall()
 
@@ -844,47 +537,14 @@ class DatasetSerializer:
         self,
         dataset_name: str,
     ) -> dict[str, Any] | None:
-        query = sqlalchemy.text(
-            'SELECT dvr.*, d."name" AS "dataset_name" '
-            'FROM "dataset_validation_report" dvr '
-            'JOIN "dataset" d ON d."id" = dvr."dataset_id" '
-            'WHERE d."name" = :dataset '
-            'ORDER BY dvr."id" DESC LIMIT 1'
-        )
-        with self.queries.engine.connect() as conn:
-            result = conn.execute(query, {"dataset": dataset_name})
-            row = result.first()
-
-        if row is None:
-            return None
-        if hasattr(row, "_mapping"):
-            storage = dict(row._mapping)
-        else:
-            storage = {key: value for key, value in zip(result.keys(), row, strict=False)}
-        return self.build_validation_report_response(storage)
+        return self.load_latest_analysis_report(dataset_name)
 
     # -------------------------------------------------------------------------
     def load_dataset_validation_report_by_id(
         self,
         report_id: int,
     ) -> dict[str, Any] | None:
-        query = sqlalchemy.text(
-            'SELECT dvr.*, d."name" AS "dataset_name" '
-            'FROM "dataset_validation_report" dvr '
-            'JOIN "dataset" d ON d."id" = dvr."dataset_id" '
-            'WHERE dvr."id" = :report_id LIMIT 1'
-        )
-        with self.queries.engine.connect() as conn:
-            result = conn.execute(query, {"report_id": int(report_id)})
-            row = result.first()
-
-        if row is None:
-            return None
-        if hasattr(row, "_mapping"):
-            storage = dict(row._mapping)
-        else:
-            storage = {key: value for key, value in zip(result.keys(), row, strict=False)}
-        return self.build_validation_report_response(storage)
+        return self.load_analysis_report_by_session_id(report_id)
 
     # -------------------------------------------------------------------------
     def load_legacy_dataset_report(self, dataset_name: str) -> dict[str, Any] | None:
@@ -908,10 +568,390 @@ class DatasetSerializer:
 
     # -------------------------------------------------------------------------
     def load_dataset_report(self, dataset_name: str) -> dict[str, Any] | None:
-        latest = self.load_latest_dataset_validation_report(dataset_name)
-        if latest is not None:
-            return latest
-        return self.load_legacy_dataset_report(dataset_name)
+        return self.load_latest_analysis_report(dataset_name)
+
+    # -------------------------------------------------------------------------
+    def ensure_metric_types_seeded(self, metric_catalog: list[dict[str, Any]]) -> None:
+        query = sqlalchemy.text(
+            'INSERT INTO "metric_type" ("key", "category", "label", "description", "scope", "value_kind") '
+            "VALUES (:key, :category, :label, :description, :scope, :value_kind) "
+            'ON CONFLICT ("key") DO UPDATE SET '
+            '"category" = EXCLUDED."category", '
+            '"label" = EXCLUDED."label", '
+            '"description" = EXCLUDED."description", '
+            '"scope" = EXCLUDED."scope", '
+            '"value_kind" = EXCLUDED."value_kind"'
+        )
+        with self.queries.engine.begin() as conn:
+            for category in metric_catalog:
+                category_key = str(category.get("category_key", "uncategorized"))
+                metrics = category.get("metrics")
+                if not isinstance(metrics, list):
+                    continue
+                for metric in metrics:
+                    if not isinstance(metric, dict):
+                        continue
+                    key = metric.get("key")
+                    label = metric.get("label")
+                    if not key or not label:
+                        continue
+                    conn.execute(
+                        query,
+                        {
+                            "key": str(key),
+                            "category": category_key,
+                            "label": str(label),
+                            "description": str(metric.get("description") or ""),
+                            "scope": str(metric.get("scope") or "aggregate"),
+                            "value_kind": str(metric.get("value_kind") or "number"),
+                        },
+                    )
+
+    # -------------------------------------------------------------------------
+    def get_metric_type_map(self) -> dict[str, int]:
+        query = sqlalchemy.text('SELECT "id", "key" FROM "metric_type"')
+        with self.queries.engine.connect() as conn:
+            rows = conn.execute(query).fetchall()
+        result: dict[str, int] = {}
+        for row in rows:
+            if hasattr(row, "_mapping"):
+                result[str(row._mapping["key"])] = int(row._mapping["id"])
+            else:
+                result[str(row[1])] = int(row[0])
+        return result
+
+    # -------------------------------------------------------------------------
+    def create_analysis_session(
+        self,
+        dataset_name: str,
+        session_name: str | None,
+        selected_metric_keys: list[str],
+        parameters: dict[str, Any],
+        report_version: int = 2,
+    ) -> int:
+        dataset_id = self.ensure_dataset_id(dataset_name)
+        created_at = pd.Timestamp.utcnow().to_pydatetime()
+        query = sqlalchemy.text(
+            'INSERT INTO "analysis_session" ('
+            '"dataset_id", "session_name", "status", "report_version", '
+            '"created_at", "completed_at", "parameters", "selected_metric_keys") '
+            "VALUES ("
+            ':dataset_id, :session_name, :status, :report_version, '
+            ':created_at, :completed_at, :parameters, :selected_metric_keys)'
+        )
+        with self.queries.engine.begin() as conn:
+            conn.execute(
+                query,
+                {
+                    "dataset_id": dataset_id,
+                    "session_name": session_name,
+                    "status": "running",
+                    "report_version": int(report_version),
+                    "created_at": created_at,
+                    "completed_at": None,
+                    "parameters": json.dumps(parameters),
+                    "selected_metric_keys": json.dumps(selected_metric_keys),
+                },
+            )
+            row = conn.execute(
+                sqlalchemy.text(
+                    'SELECT "id" FROM "analysis_session" '
+                    'WHERE "dataset_id" = :dataset_id '
+                    'ORDER BY "id" DESC LIMIT 1'
+                ),
+                {"dataset_id": dataset_id},
+            ).first()
+        if row is None:
+            raise ValueError("Failed to create analysis session.")
+        if hasattr(row, "_mapping"):
+            return int(row._mapping["id"])
+        return int(row[0])
+
+    # -------------------------------------------------------------------------
+    def complete_analysis_session(self, session_id: int, status: str = "completed") -> None:
+        query = sqlalchemy.text(
+            'UPDATE "analysis_session" '
+            'SET "status" = :status, "completed_at" = :completed_at '
+            'WHERE "id" = :session_id'
+        )
+        with self.queries.engine.begin() as conn:
+            conn.execute(
+                query,
+                {
+                    "status": str(status),
+                    "completed_at": pd.Timestamp.utcnow().to_pydatetime(),
+                    "session_id": int(session_id),
+                },
+            )
+
+    # -------------------------------------------------------------------------
+    def save_metric_values_batch(self, session_id: int, batch: list[dict[str, Any]]) -> None:
+        if not batch:
+            return
+        metric_type_map = self.get_metric_type_map()
+        rows: list[dict[str, Any]] = []
+        for item in batch:
+            metric_key = str(item.get("metric_key") or "")
+            metric_type_id = metric_type_map.get(metric_key)
+            if metric_type_id is None:
+                continue
+            rows.append(
+                {
+                    "session_id": int(session_id),
+                    "metric_type_id": int(metric_type_id),
+                    "document_id": (
+                        int(item["document_id"])
+                        if item.get("document_id") is not None
+                        else None
+                    ),
+                    "numeric_value": (
+                        float(item["numeric_value"])
+                        if item.get("numeric_value") is not None
+                        else None
+                    ),
+                    "text_value": (
+                        str(item["text_value"])
+                        if item.get("text_value") is not None
+                        else None
+                    ),
+                    "json_value": item.get("json_value"),
+                }
+            )
+        if not rows:
+            return
+        df = pd.DataFrame(rows)
+        self.queries.insert_table(df, self.metric_value_table, ignore_duplicates=False)
+
+    # -------------------------------------------------------------------------
+    def save_histogram_artifact(
+        self,
+        session_id: int,
+        metric_key: str,
+        histogram: dict[str, Any],
+    ) -> None:
+        metric_type_id = self.get_metric_type_map().get(metric_key)
+        if metric_type_id is None:
+            return
+        row = {
+            "session_id": int(session_id),
+            "metric_type_id": int(metric_type_id),
+            "bins": histogram.get("bins", []),
+            "bin_edges": histogram.get("bin_edges", []),
+            "counts": histogram.get("counts", []),
+            "min_value": float(histogram.get("min_length", 0.0) or 0.0),
+            "max_value": float(histogram.get("max_length", 0.0) or 0.0),
+            "mean_value": float(histogram.get("mean_length", 0.0) or 0.0),
+            "median_value": float(histogram.get("median_length", 0.0) or 0.0),
+        }
+        df = pd.DataFrame([row])
+        self.queries.upsert_table(df, self.histogram_table)
+
+    # -------------------------------------------------------------------------
+    def _load_metric_rows_for_session(self, session_id: int) -> list[dict[str, Any]]:
+        query = sqlalchemy.text(
+            'SELECT mv."document_id", mt."key", mv."numeric_value", mv."text_value", mv."json_value" '
+            'FROM "metric_value" mv '
+            'JOIN "metric_type" mt ON mt."id" = mv."metric_type_id" '
+            'WHERE mv."session_id" = :session_id '
+            'ORDER BY mv."id" ASC'
+        )
+        with self.queries.engine.connect() as conn:
+            rows = conn.execute(query, {"session_id": int(session_id)}).fetchall()
+        result: list[dict[str, Any]] = []
+        for row in rows:
+            if hasattr(row, "_mapping"):
+                result.append(
+                    {
+                        "document_id": row._mapping.get("document_id"),
+                        "key": str(row._mapping.get("key") or ""),
+                        "numeric_value": row._mapping.get("numeric_value"),
+                        "text_value": row._mapping.get("text_value"),
+                        "json_value": row._mapping.get("json_value"),
+                    }
+                )
+            else:
+                result.append(
+                    {
+                        "document_id": row[0],
+                        "key": str(row[1] or ""),
+                        "numeric_value": row[2],
+                        "text_value": row[3],
+                        "json_value": row[4],
+                    }
+                )
+        return result
+
+    # -------------------------------------------------------------------------
+    def _load_histogram_rows_for_session(self, session_id: int) -> dict[str, Any]:
+        query = sqlalchemy.text(
+            'SELECT mt."key", ha."bins", ha."counts", ha."bin_edges", '
+            'ha."min_value", ha."max_value", ha."mean_value", ha."median_value" '
+            'FROM "histogram_artifact" ha '
+            'JOIN "metric_type" mt ON mt."id" = ha."metric_type_id" '
+            'WHERE ha."session_id" = :session_id'
+        )
+        with self.queries.engine.connect() as conn:
+            rows = conn.execute(query, {"session_id": int(session_id)}).fetchall()
+        result: dict[str, Any] = {}
+        for row in rows:
+            if hasattr(row, "_mapping"):
+                key = str(row._mapping.get("key") or "")
+                bins = self.parse_json(row._mapping.get("bins"), default=[])
+                counts = self.parse_json(row._mapping.get("counts"), default=[])
+                bin_edges = self.parse_json(row._mapping.get("bin_edges"), default=[])
+                min_value = float(row._mapping.get("min_value", 0.0) or 0.0)
+                max_value = float(row._mapping.get("max_value", 0.0) or 0.0)
+                mean_value = float(row._mapping.get("mean_value", 0.0) or 0.0)
+                median_value = float(row._mapping.get("median_value", 0.0) or 0.0)
+            else:
+                key = str(row[0] or "")
+                bins = self.parse_json(row[1], default=[])
+                counts = self.parse_json(row[2], default=[])
+                bin_edges = self.parse_json(row[3], default=[])
+                min_value = float(row[4] or 0.0)
+                max_value = float(row[5] or 0.0)
+                mean_value = float(row[6] or 0.0)
+                median_value = float(row[7] or 0.0)
+            result[key] = {
+                "bins": bins,
+                "counts": counts,
+                "bin_edges": bin_edges,
+                "min_length": int(min_value),
+                "max_length": int(max_value),
+                "mean_length": mean_value,
+                "median_length": median_value,
+            }
+        return result
+
+    # -------------------------------------------------------------------------
+    def _build_session_report_response(self, session_row: dict[str, Any]) -> dict[str, Any]:
+        session_id = int(session_row.get("id") or 0)
+        metric_rows = self._load_metric_rows_for_session(session_id)
+        histogram_rows = self._load_histogram_rows_for_session(session_id)
+
+        aggregate_statistics: dict[str, Any] = {}
+        per_document: dict[int, dict[str, Any]] = {}
+        for row in metric_rows:
+            key = str(row.get("key") or "")
+            value: Any = row.get("numeric_value")
+            if value is None and row.get("text_value") is not None:
+                value = row.get("text_value")
+            if value is None and row.get("json_value") is not None:
+                value = self.parse_json(row.get("json_value"), default={})
+            document_id = row.get("document_id")
+            if document_id is None:
+                aggregate_statistics[key] = value
+                continue
+            doc_key = int(document_id)
+            if doc_key not in per_document:
+                per_document[doc_key] = {"document_id": doc_key}
+            per_document[doc_key][key] = value
+
+        per_document_stats = {
+            "document_ids": [],
+            "document_lengths": [],
+            "word_counts": [],
+            "avg_word_lengths": [],
+            "std_word_lengths": [],
+        }
+        for doc_id in sorted(per_document.keys()):
+            payload = per_document[doc_id]
+            per_document_stats["document_ids"].append(doc_id)
+            per_document_stats["document_lengths"].append(
+                int(payload.get("doc.length_chars", 0) or 0)
+            )
+            per_document_stats["word_counts"].append(
+                int(payload.get("doc.word_count", 0) or 0)
+            )
+            per_document_stats["avg_word_lengths"].append(
+                float(payload.get("doc.avg_word_length", 0.0) or 0.0)
+            )
+            per_document_stats["std_word_lengths"].append(
+                float(payload.get("doc.std_word_length", 0.0) or 0.0)
+            )
+
+        document_histogram = histogram_rows.get("hist.document_length", {})
+        word_histogram = histogram_rows.get("hist.word_length", {})
+        created_at = pd.to_datetime(session_row.get("created_at"), utc=True, errors="coerce")
+        created_at_iso = (
+            created_at.isoformat().replace("+00:00", "Z")
+            if not pd.isna(created_at)
+            else None
+        )
+
+        return {
+            "report_id": session_id,
+            "report_version": int(session_row.get("report_version", 2) or 2),
+            "created_at": created_at_iso,
+            "dataset_name": str(session_row.get("dataset_name") or ""),
+            "session_name": session_row.get("session_name"),
+            "selected_metric_keys": self.parse_json(session_row.get("selected_metric_keys"), default=[]),
+            "session_parameters": self.parse_json(session_row.get("parameters"), default={}),
+            "document_count": int(aggregate_statistics.get("corpus.document_count", 0) or 0),
+            "document_length_histogram": {
+                "bins": list(document_histogram.get("bins", [])),
+                "counts": list(document_histogram.get("counts", [])),
+                "bin_edges": list(document_histogram.get("bin_edges", [])),
+                "min_length": int(document_histogram.get("min_length", 0) or 0),
+                "max_length": int(document_histogram.get("max_length", 0) or 0),
+                "mean_length": float(document_histogram.get("mean_length", 0.0) or 0.0),
+                "median_length": float(document_histogram.get("median_length", 0.0) or 0.0),
+            },
+            "word_length_histogram": {
+                "bins": list(word_histogram.get("bins", [])),
+                "counts": list(word_histogram.get("counts", [])),
+                "bin_edges": list(word_histogram.get("bin_edges", [])),
+                "min_length": int(word_histogram.get("min_length", 0) or 0),
+                "max_length": int(word_histogram.get("max_length", 0) or 0),
+                "mean_length": float(word_histogram.get("mean_length", 0.0) or 0.0),
+                "median_length": float(word_histogram.get("median_length", 0.0) or 0.0),
+            },
+            "min_document_length": int(document_histogram.get("min_length", 0) or 0),
+            "max_document_length": int(document_histogram.get("max_length", 0) or 0),
+            "most_common_words": self.parse_json(aggregate_statistics.get("words.most_common"), default=[]),
+            "least_common_words": self.parse_json(aggregate_statistics.get("words.least_common"), default=[]),
+            "longest_words": self.parse_json(aggregate_statistics.get("words.longest"), default=[]),
+            "shortest_words": self.parse_json(aggregate_statistics.get("words.shortest"), default=[]),
+            "word_cloud_terms": self.parse_json(aggregate_statistics.get("words.word_cloud"), default=[]),
+            "aggregate_statistics": aggregate_statistics,
+            "per_document_stats": per_document_stats,
+        }
+
+    # -------------------------------------------------------------------------
+    def load_latest_analysis_report(self, dataset_name: str) -> dict[str, Any] | None:
+        query = sqlalchemy.text(
+            'SELECT s.*, d."name" AS "dataset_name" '
+            'FROM "analysis_session" s '
+            'JOIN "dataset" d ON d."id" = s."dataset_id" '
+            'WHERE d."name" = :dataset AND s."status" = :status '
+            'ORDER BY s."id" DESC LIMIT 1'
+        )
+        with self.queries.engine.connect() as conn:
+            row = conn.execute(
+                query,
+                {"dataset": dataset_name, "status": "completed"},
+            ).first()
+        if row is None:
+            return None
+        if hasattr(row, "_mapping"):
+            return self._build_session_report_response(dict(row._mapping))
+        return None
+
+    # -------------------------------------------------------------------------
+    def load_analysis_report_by_session_id(self, session_id: int) -> dict[str, Any] | None:
+        query = sqlalchemy.text(
+            'SELECT s.*, d."name" AS "dataset_name" '
+            'FROM "analysis_session" s '
+            'JOIN "dataset" d ON d."id" = s."dataset_id" '
+            'WHERE s."id" = :session_id LIMIT 1'
+        )
+        with self.queries.engine.connect() as conn:
+            row = conn.execute(query, {"session_id": int(session_id)}).first()
+        if row is None:
+            return None
+        if hasattr(row, "_mapping"):
+            return self._build_session_report_response(dict(row._mapping))
+        return None
 
 
 ###############################################################################

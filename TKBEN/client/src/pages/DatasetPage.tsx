@@ -1,6 +1,27 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import DatasetValidationWizard from '../components/DatasetValidationWizard';
 import { useDataset } from '../contexts/DatasetContext';
+import type {
+  DatasetAnalysisRequest,
+  DatasetMetricCatalogCategory,
+  HistogramData,
+  WordCloudTerm,
+} from '../types/api';
 
 type DatasetPreset = {
   id: string;
@@ -17,6 +38,20 @@ type DatasetGroup = {
 type DatasetPageProps = {
   showDashboard?: boolean;
   embedded?: boolean;
+};
+
+type WordCloudLayoutTerm = {
+  word: string;
+  count: number;
+  weight: number;
+  x: number;
+  y: number;
+  rotate: number;
+  fontSize: number;
+};
+
+type WordCloudWorkerOutput = {
+  terms: WordCloudLayoutTerm[];
 };
 
 const PREDEFINED_DATASETS: DatasetGroup[] = [
@@ -178,6 +213,84 @@ const PREDEFINED_DATASETS: DatasetGroup[] = [
   },
 ];
 
+const DONUT_COLORS = ['#f59e0b', '#fb7185', '#38bdf8', '#34d399', '#a78bfa', '#f97316', '#64748b'];
+
+const toNumber = (value: unknown, fallback = 0): number => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return fallback;
+};
+
+const normalizePercent = (value: number): string => `${(value * 100).toFixed(2)}%`;
+
+const normalizeCount = (value: number): string => Math.round(value).toLocaleString();
+
+const toHistogramSeries = (histogram: HistogramData | null): Array<{ bin: string; count: number }> => {
+  if (!histogram) {
+    return [];
+  }
+  return histogram.counts.map((count, index) => ({
+    bin: histogram.bins[index] ?? String(index),
+    count,
+  }));
+};
+
+const parseWordCloudTerms = (value: unknown): WordCloudTerm[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+      const payload = item as Record<string, unknown>;
+      const word = typeof payload.word === 'string' ? payload.word : '';
+      if (!word) {
+        return null;
+      }
+      return {
+        word,
+        count: toNumber(payload.count, 0),
+        weight: toNumber(payload.weight, 1),
+      };
+    })
+    .filter((item): item is WordCloudTerm => item !== null);
+};
+
+const parseZipfCurve = (value: unknown): Array<{ rank: number; frequency: number }> => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+      const payload = item as Record<string, unknown>;
+      return {
+        rank: toNumber(payload.rank, 0),
+        frequency: toNumber(payload.frequency, 0),
+      };
+    })
+    .filter((item): item is { rank: number; frequency: number } => item !== null && item.rank > 0)
+    .slice(0, 200);
+};
+
+const tooltipPercentFormatter = (value: number | string | undefined): string =>
+  normalizePercent(toNumber(value, 0));
+
+const tooltipCountFormatter = (
+  value: number | string | undefined,
+): [string, 'count'] => [normalizeCount(toNumber(value, 0)), 'count'];
+
 const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProps) => {
   const {
     datasetName,
@@ -185,9 +298,6 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
     selectedConfig,
     loading,
     error,
-    datasetLoaded,
-    stats,
-    histogram,
     loadProgress,
     validating,
     validationReport,
@@ -198,6 +308,8 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
     activeValidationDataset,
     activeReportLoadDataset,
     removingDataset,
+    metricsCatalog,
+    metricsCatalogLoading,
     setError,
     handleCorpusChange,
     handleConfigChange,
@@ -213,21 +325,76 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [isInsertByNameOpen, setIsInsertByNameOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardDatasetName, setWizardDatasetName] = useState<string | null>(null);
+  const [wordCloudLayout, setWordCloudLayout] = useState<WordCloudLayoutTerm[]>([]);
+  const [wordCloudSize, setWordCloudSize] = useState({ width: 0, height: 0 });
   const manualDatasetInputRef = useRef<HTMLInputElement | null>(null);
+  const wordCloudRef = useRef<HTMLDivElement | null>(null);
 
   const corpusInputId = 'corpus-input';
   const configInputId = 'config-input';
   const manualInsertRegionId = 'dataset-manual-insert-panel';
-  const formatNumber = (num: number) => num.toLocaleString();
+  const aggregate = (validationReport?.aggregate_statistics ?? {}) as Record<string, unknown>;
+  const hasPersistedReport = validationReport !== null;
+  const documentHistogram = hasPersistedReport ? validationReport.document_length_histogram : null;
+  const wordHistogram = hasPersistedReport ? validationReport.word_length_histogram : null;
+  const documentHistogramSeries = toHistogramSeries(documentHistogram);
+  const wordHistogramSeries = toHistogramSeries(wordHistogram);
+  const documentCount = hasPersistedReport ? validationReport.document_count : 0;
+  const emptyRate = toNumber(aggregate['quality.empty_rate']);
+  const emptyCount = Math.round(emptyRate * documentCount);
+  const zipfCurve = useMemo(() => parseZipfCurve(aggregate['words.zipf_curve']), [aggregate]);
+  const entropyGauge = toNumber(aggregate['words.normalized_entropy']);
+  const duplicateRate = toNumber(aggregate['quality.duplicate_rate']);
+  const nearDuplicateRate = toNumber(aggregate['quality.near_duplicate_rate']);
+  const topKConcentration = toNumber(aggregate['words.topk_concentration']);
+  const rareTailMass = toNumber(aggregate['words.rare_tail_mass']);
 
-  const documentHistogram = validationReport?.document_length_histogram ?? histogram;
-  const wordHistogram = validationReport?.word_length_histogram ?? null;
-  const documentCount = validationReport?.document_count ?? stats?.documentCount ?? null;
-  const minDocumentLength = validationReport?.min_document_length ?? stats?.minLength ?? null;
-  const maxDocumentLength = validationReport?.max_document_length ?? stats?.maxLength ?? null;
-  const longestWords = validationReport?.longest_words ?? [];
-  const shortestWords = validationReport?.shortest_words ?? [];
-  const wordCloudTerms = validationReport?.word_cloud_terms ?? [];
+  const aggregateRows = [
+    { label: 'Num documents', value: normalizeCount(documentCount) },
+    { label: 'Mean length', value: toNumber(aggregate['doc.length_mean']).toFixed(2) },
+    { label: 'Min length', value: normalizeCount(toNumber(aggregate['doc.length_min'])) },
+    { label: 'Max length', value: normalizeCount(toNumber(aggregate['doc.length_max'])) },
+    { label: 'Empty count', value: normalizeCount(emptyCount) },
+    { label: 'Length CV', value: toNumber(aggregate['doc.length_cv']).toFixed(4) },
+    { label: 'p50', value: normalizeCount(toNumber(aggregate['doc.length_p50'])) },
+    { label: 'p90', value: normalizeCount(toNumber(aggregate['doc.length_p90'])) },
+    { label: 'p99', value: normalizeCount(toNumber(aggregate['doc.length_p99'])) },
+  ];
+
+  const wordMetricRows = [
+    { label: 'Vocabulary size', value: normalizeCount(toNumber(aggregate['corpus.unique_words'])) },
+    { label: 'MATTR', value: toNumber(aggregate['corpus.mattr']).toFixed(4) },
+    { label: 'Entropy', value: toNumber(aggregate['words.shannon_entropy']).toFixed(4) },
+    { label: 'Hapax ratio', value: toNumber(aggregate['words.hapax_ratio']).toFixed(4) },
+    { label: 'Zipf slope', value: toNumber(aggregate['words.zipf_slope']).toFixed(4) },
+    { label: 'Gini', value: toNumber(aggregate['words.frequency_gini']).toFixed(4) },
+    { label: 'HHI', value: toNumber(aggregate['words.hhi']).toFixed(6) },
+  ];
+
+  const characterSlices = useMemo(() => {
+    const rows = [
+      { key: 'Whitespace', value: toNumber(aggregate['chars.whitespace_ratio']) },
+      { key: 'Punctuation', value: toNumber(aggregate['chars.punctuation_ratio']) },
+      { key: 'Digits', value: toNumber(aggregate['chars.digit_ratio']) },
+      { key: 'Uppercase', value: toNumber(aggregate['chars.uppercase_ratio']) },
+      { key: 'Non-ASCII', value: toNumber(aggregate['chars.non_ascii_ratio']) },
+      { key: 'Control', value: toNumber(aggregate['chars.control_ratio']) },
+      { key: 'Other', value: toNumber(aggregate['chars.other_ratio']) },
+    ];
+    return rows.filter((item) => item.value > 0);
+  }, [aggregate]);
+
+  const wordCloudTerms = useMemo(() => {
+    if (!hasPersistedReport) {
+      return [];
+    }
+    if (validationReport.word_cloud_terms?.length) {
+      return validationReport.word_cloud_terms;
+    }
+    return parseWordCloudTerms(aggregate['words.word_cloud']);
+  }, [aggregate, hasPersistedReport, validationReport]);
 
   const handlePresetSelect = (preset: DatasetPreset) => {
     setSelectedPreset(preset.id);
@@ -240,85 +407,43 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
     void handleLoadDataset();
   };
 
-  const renderHistogram = (
-    title: string,
-    histogramData: typeof histogram | null,
-    emptyLabel: string,
-    countLabel: string,
-  ) => {
-    if (!histogramData || histogramData.counts.length === 0) {
-      return (
-        <div className="chart-placeholder">
-          <p>{title}</p>
-          <span>{emptyLabel}</span>
-        </div>
-      );
+  const openValidationWizard = (targetDataset: string) => {
+    handleSelectDataset(targetDataset);
+    setWizardDatasetName(targetDataset);
+    setWizardOpen(true);
+  };
+
+  const runValidationFromWizard = async (requestOverrides: Partial<DatasetAnalysisRequest>) => {
+    const targetDataset = wizardDatasetName ?? datasetName;
+    if (!targetDataset) {
+      return;
     }
-
-    const maxCount = Math.max(...histogramData.counts);
-
-    return (
-      <div className="histogram-container">
-        <p className="histogram-title">{title}</p>
-        <div className="histogram-chart">
-          {histogramData.counts.map((count, index) => {
-            const heightPercent = maxCount > 0 ? (count / maxCount) * 100 : 0;
-            return (
-              <div
-                key={`${histogramData.bins[index]}-${count}`}
-                className="histogram-bar-wrapper"
-                title={`${histogramData.bins[index]}: ${formatNumber(count)} ${countLabel}`}
-              >
-                <div
-                  className="histogram-bar"
-                  style={{ height: `${heightPercent}%` }}
-                />
-              </div>
-            );
-          })}
-        </div>
-        <div className="histogram-labels">
-          <span>{formatNumber(histogramData.min_length)} chars</span>
-          <span>{formatNumber(histogramData.max_length)} chars</span>
-        </div>
-      </div>
-    );
+    await handleValidateDataset(targetDataset, requestOverrides);
   };
 
   const renderValidationStatus = () => {
     if (validating) {
-      const progressLabel =
-        validationProgress !== null ? ` (${Math.round(validationProgress)}%)` : '';
+      const progressLabel = validationProgress !== null ? ` (${Math.round(validationProgress)}%)` : '';
       return (
         <div className="loading-container">
           <div className="spinner" />
-          <p>Validating dataset{progressLabel}...</p>
-          <span>Computing document length and word distribution metrics.</span>
+          <p>Running validation pipeline{progressLabel}...</p>
+          <span>Streaming documents and persisting metrics.</span>
         </div>
       );
     }
 
-    if (validationReport) {
+    if (hasPersistedReport) {
       return null;
     }
 
     return (
       <div className="chart-placeholder">
-        <p>Validation results will appear here.</p>
-        <span>Run evaluation from the dataset preview list.</span>
+        <p>No persisted validation session loaded.</p>
+        <span>Run validation from the dataset preview list.</span>
       </div>
     );
   };
-
-  let datasetOverviewDescription = 'Run dataset validation to view results';
-  if (validationReport?.dataset_name) {
-    datasetOverviewDescription = `Validation results for ${validationReport.dataset_name}`;
-    if (validationReport.created_at) {
-      datasetOverviewDescription += ` (saved ${new Date(validationReport.created_at).toLocaleString()})`;
-    }
-  } else if (datasetLoaded && datasetName) {
-    datasetOverviewDescription = `Stats for ${datasetName}`;
-  }
 
   const modalDownloadProgress = loadProgress !== null
     ? ` (${Math.round(loadProgress)}%)`
@@ -331,6 +456,46 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
     }
   }, [isInsertByNameOpen, isModalOpen]);
 
+  useEffect(() => {
+    const node = wordCloudRef.current;
+    if (!node) {
+      return;
+    }
+    const observer = new ResizeObserver((entries) => {
+      const first = entries[0];
+      if (!first) {
+        return;
+      }
+      setWordCloudSize({
+        width: Math.max(260, Math.round(first.contentRect.width)),
+        height: Math.max(240, Math.round(first.contentRect.height)),
+      });
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!wordCloudTerms.length || wordCloudSize.width <= 0 || wordCloudSize.height <= 0) {
+      setWordCloudLayout([]);
+      return;
+    }
+
+    const worker = new Worker(new URL('../workers/wordCloudWorker.ts', import.meta.url), {
+      type: 'module',
+    });
+    worker.onmessage = (event: MessageEvent<WordCloudWorkerOutput>) => {
+      setWordCloudLayout(event.data?.terms ?? []);
+      worker.terminate();
+    };
+    worker.postMessage({
+      terms: wordCloudTerms,
+      width: wordCloudSize.width,
+      height: wordCloudSize.height,
+    });
+    return () => worker.terminate();
+  }, [wordCloudSize.height, wordCloudSize.width, wordCloudTerms]);
+
   const pageContent = (
     <>
       <div className="page-grid dataset-page-layout">
@@ -339,9 +504,8 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
             <div className="dataset-intro-panel">
               <p className="panel-label">Dataset Usage</p>
               <p className="panel-description">
-                This page is dedicated to downloading and analyzing text datasets from Hugging
-                Face. Select a predefined corpus or upload your own file, then validate the
-                dataset and inspect the resulting metrics directly in the dashboard.
+                Download or upload datasets, then run the validation pipeline to persist advanced
+                quality and lexical metrics for dashboard analysis.
               </p>
             </div>
             <div className="dataset-top-divider" aria-hidden="true" />
@@ -350,7 +514,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                 <div>
                   <p className="panel-label">Dataset Preview</p>
                   <p className="panel-description">
-                    Review datasets stored in the database and run validation on demand.
+                    Select a dataset and run validation sessions with custom metric selections.
                   </p>
                 </div>
                 <button
@@ -370,7 +534,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                   <div className="dataset-preview-empty">Loading datasets...</div>
                 ) : availableDatasets.length === 0 ? (
                   <div className="dataset-preview-empty">
-                    No datasets available. Please download or upload a dataset.
+                    No datasets available.
                   </div>
                 ) : (
                   <div className="dataset-preview-table">
@@ -396,29 +560,19 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                         >
                           <span className="dataset-preview-name">{dataset.dataset_name}</span>
                           <span className="dataset-preview-count">
-                            {formatNumber(dataset.document_count)}
+                            {normalizeCount(dataset.document_count)}
                           </span>
-                          <div className="dataset-preview-actions">
+                          <div className="dataset-preview-actions dataset-preview-actions-wide">
                             <button
                               type="button"
-                              className="icon-button subtle"
-                              aria-label="Run dataset evaluation"
-                              title="Run dataset validation"
+                              className="secondary-button dataset-run-pipeline-button"
                               onClick={(event) => {
                                 event.stopPropagation();
-                                handleSelectDataset(dataset.dataset_name);
-                                void handleValidateDataset(dataset.dataset_name);
+                                openValidationWizard(dataset.dataset_name);
                               }}
                               disabled={isValidating || isLoadingReport || isRemoving}
                             >
-                              {isValidating ? (
-                                <span className="action-spinner" />
-                              ) : (
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                  <path d="M5 4h14v4H5z" />
-                                  <path d="M5 12h14v8H5z" />
-                                </svg>
-                              )}
+                              Run validation pipeline
                             </button>
                             <button
                               type="button"
@@ -479,106 +633,251 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
         </section>
 
         {showDashboard && (
-          <aside className="panel dashboard-panel dashboard-plain">
+          <aside className="panel dashboard-panel dashboard-plain dataset-v2-dashboard">
             <header className="panel-header">
               <div>
-                <p className="panel-label">Dataset Overview</p>
+                <p className="panel-label">Dataset Dashboard</p>
                 <p className="panel-description">
-                  {datasetOverviewDescription}
+                  {validationReport?.dataset_name
+                    ? `Latest persisted session for ${validationReport.dataset_name}${validationReport.created_at ? ` (${new Date(validationReport.created_at).toLocaleString()})` : ''}`
+                    : 'Load a saved report or run validation to populate this dashboard.'}
                 </p>
               </div>
             </header>
             {renderValidationStatus()}
-            <div className="dashboard-grid">
-              <div className="stat-card">
-                <p className="stat-label">Documents</p>
-                <p className="stat-value">
-                  {documentCount !== null ? formatNumber(documentCount) : '—'}
-                </p>
-              </div>
-              <div className="stat-card">
-                <p className="stat-label">Min Length</p>
-                <p className="stat-value">
-                  {minDocumentLength !== null ? formatNumber(minDocumentLength) : '—'}
-                </p>
-              </div>
-              <div className="stat-card">
-                <p className="stat-label">Max Length</p>
-                <p className="stat-value">
-                  {maxDocumentLength !== null ? formatNumber(maxDocumentLength) : '—'}
-                </p>
-              </div>
-            </div>
-            <div className="chart-block">
-              {renderHistogram(
-                'Document Length Distribution',
-                documentHistogram,
-                'Load or validate a dataset to see document lengths.',
-                'docs',
-              )}
-            </div>
-            <div className="chart-block">
-              {renderHistogram(
-                'Word Length Distribution',
-                wordHistogram,
-                'Validate a dataset to see word length distribution.',
-                'words',
-              )}
-            </div>
-            <div className="word-frequency-grid">
-              <div className="word-frequency-panel">
-                <p className="panel-label">Longest Words</p>
-                {longestWords.length ? (
-                  <ul className="word-frequency-list">
-                    {longestWords.map((item) => (
-                      <li key={`${item.word}-${item.length}-${item.count}`}>
-                        <span>{item.word}</span>
-                        <span>{item.length} chars</span>
-                      </li>
+
+            <div className="dataset-v2-row dataset-v2-row-one">
+              <div className="dataset-v2-card">
+                <div className="dataset-v2-card-header">
+                  <p className="panel-label">Aggregate Stats</p>
+                </div>
+                <table className="dataset-v2-table">
+                  <tbody>
+                    {aggregateRows.map((row) => (
+                      <tr key={row.label}>
+                        <th>{row.label}</th>
+                        <td>{hasPersistedReport ? row.value : '—'}</td>
+                      </tr>
                     ))}
-                  </ul>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="dataset-v2-card">
+                <div className="dataset-v2-card-header">
+                  <p className="panel-label">Word Metrics</p>
+                </div>
+                <table className="dataset-v2-table">
+                  <tbody>
+                    {wordMetricRows.map((row) => (
+                      <tr key={row.label}>
+                        <th>{row.label}</th>
+                        <td>{hasPersistedReport ? row.value : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="dataset-v2-card dataset-v2-chart-card">
+                <div className="dataset-v2-card-header">
+                  <p className="panel-label">Character Composition</p>
+                </div>
+                {characterSlices.length === 0 ? (
+                  <div className="chart-placeholder">
+                    <p>No character ratio metrics available.</p>
+                  </div>
                 ) : (
-                  <div className="word-frequency-empty">No validation results yet.</div>
+                  <div className="dataset-v2-chart-body">
+                    <ResponsiveContainer width="100%" height={280}>
+                      <PieChart>
+                        <Pie
+                          data={characterSlices}
+                          dataKey="value"
+                          nameKey="key"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={58}
+                          outerRadius={96}
+                          paddingAngle={2}
+                        >
+                          {characterSlices.map((entry, index) => (
+                            <Cell key={entry.key} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={tooltipPercentFormatter}
+                          contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="dataset-v2-legend">
+                      {characterSlices.map((entry, index) => (
+                        <span key={entry.key}>
+                          <i style={{ backgroundColor: DONUT_COLORS[index % DONUT_COLORS.length] }} />
+                          {entry.key}: {normalizePercent(entry.value)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
-              <div className="word-frequency-panel">
-                <p className="panel-label">Shortest Words</p>
-                {shortestWords.length ? (
-                  <ul className="word-frequency-list">
-                    {shortestWords.map((item) => (
-                      <li key={`${item.word}-${item.length}-${item.count}`}>
-                        <span>{item.word}</span>
-                        <span>{item.length} chars</span>
-                      </li>
-                    ))}
-                  </ul>
+            </div>
+
+            <div className="dataset-v2-row dataset-v2-row-two">
+              <div className="dataset-v2-card dataset-v2-chart-card">
+                <div className="dataset-v2-card-header">
+                  <p className="panel-label">Document Length Histogram</p>
+                </div>
+                {documentHistogramSeries.length === 0 ? (
+                  <div className="chart-placeholder">
+                    <p>No persisted document-length histogram found.</p>
+                  </div>
                 ) : (
-                  <div className="word-frequency-empty">No validation results yet.</div>
+                  <div className="dataset-v2-chart-body">
+                    <ResponsiveContainer width="100%" height={260}>
+                      <BarChart data={documentHistogramSeries}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
+                        <XAxis dataKey="bin" hide />
+                        <YAxis stroke="#9ea7b3" width={48} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }}
+                          formatter={tooltipCountFormatter}
+                        />
+                        <Bar dataKey="count" fill="#facc15" radius={[2, 2, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+
+              <div className="dataset-v2-card dataset-v2-chart-card">
+                <div className="dataset-v2-card-header">
+                  <p className="panel-label">Word Length Histogram</p>
+                </div>
+                {wordHistogramSeries.length === 0 ? (
+                  <div className="chart-placeholder">
+                    <p>No persisted word-length histogram found.</p>
+                  </div>
+                ) : (
+                  <div className="dataset-v2-chart-body">
+                    <ResponsiveContainer width="100%" height={260}>
+                      <BarChart data={wordHistogramSeries}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
+                        <XAxis dataKey="bin" hide />
+                        <YAxis stroke="#9ea7b3" width={48} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }}
+                          formatter={tooltipCountFormatter}
+                        />
+                        <Bar dataKey="count" fill="#38bdf8" radius={[2, 2, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 )}
               </div>
             </div>
-            <div className="word-cloud-panel">
-              <p className="panel-label">Word Cloud Terms</p>
-              {wordCloudTerms.length ? (
-                <div className="word-cloud-terms">
-                  {wordCloudTerms.map((item) => (
+
+            <div className="dataset-v2-row dataset-v2-row-three">
+              <div className="dataset-v2-card dataset-v2-extras">
+                <div className="dataset-v2-card-header">
+                  <p className="panel-label">Additional Visuals</p>
+                </div>
+                <div className="dataset-v2-extras-grid">
+                  <div className="dataset-v2-mini-card">
+                    <p className="panel-description">Zipf Curve</p>
+                    {zipfCurve.length === 0 ? (
+                      <div className="chart-placeholder"><p>No Zipf curve data.</p></div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={220}>
+                        <LineChart data={zipfCurve}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
+                          <XAxis dataKey="rank" stroke="#9ea7b3" />
+                          <YAxis stroke="#9ea7b3" />
+                          <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }} />
+                          <Line type="monotone" dataKey="frequency" stroke="#38bdf8" dot={false} strokeWidth={2} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+
+                  <div className="dataset-v2-mini-card">
+                    <p className="panel-description">Entropy Gauge</p>
+                    <div className="dataset-v2-gauge-track">
+                      <div
+                        className="dataset-v2-gauge-fill"
+                        style={{ width: `${Math.max(0, Math.min(100, entropyGauge * 100))}%` }}
+                      />
+                    </div>
+                    <p className="dataset-v2-gauge-value">{normalizePercent(entropyGauge)}</p>
+                  </div>
+
+                  <div className="dataset-v2-mini-card">
+                    <p className="panel-description">Duplicate Indicators</p>
+                    <div className="dataset-v2-indicator-row">
+                      <span>Exact duplicate rate</span>
+                      <strong>{normalizePercent(duplicateRate)}</strong>
+                    </div>
+                    <div className="dataset-v2-indicator-row">
+                      <span>Near-duplicate rate</span>
+                      <strong>{normalizePercent(nearDuplicateRate)}</strong>
+                    </div>
+                  </div>
+
+                  <div className="dataset-v2-mini-card">
+                    <p className="panel-description">Concentration</p>
+                    <div className="dataset-v2-indicator-row">
+                      <span>Top-k concentration</span>
+                      <strong>{normalizePercent(topKConcentration)}</strong>
+                    </div>
+                    <div className="dataset-v2-indicator-row">
+                      <span>Rare tail mass</span>
+                      <strong>{normalizePercent(rareTailMass)}</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="dataset-v2-card dataset-v2-word-cloud-card">
+                <div className="dataset-v2-card-header">
+                  <p className="panel-label">Word Cloud</p>
+                  <p className="panel-description">Rendered in a worker to keep UI responsive.</p>
+                </div>
+                <div className="dataset-v2-word-cloud-canvas" ref={wordCloudRef}>
+                  {!wordCloudTerms.length && (
+                    <div className="chart-placeholder"><p>No word cloud terms in persisted report.</p></div>
+                  )}
+                  {wordCloudLayout.map((term) => (
                     <span
-                      key={`${item.word}-${item.count}`}
-                      className="word-cloud-term"
-                      style={{ fontSize: `${12 + Math.round((item.weight / 100) * 18)}px` }}
-                      title={`${item.word}: ${formatNumber(item.count)}`}
+                      key={`${term.word}-${term.count}`}
+                      className="dataset-v2-word-cloud-term"
+                      style={{
+                        left: `${term.x}px`,
+                        top: `${term.y}px`,
+                        fontSize: `${term.fontSize}px`,
+                        transform: `translate(-50%, -50%) rotate(${term.rotate}deg)`,
+                      }}
+                      title={`${term.word}: ${normalizeCount(term.count)}`}
                     >
-                      {item.word}
+                      {term.word}
                     </span>
                   ))}
                 </div>
-              ) : (
-                <div className="word-frequency-empty">No validation results yet.</div>
-              )}
+              </div>
             </div>
           </aside>
         )}
       </div>
+
+      <DatasetValidationWizard
+        isOpen={wizardOpen}
+        datasetName={wizardDatasetName ?? datasetName}
+        categories={metricsCatalog as DatasetMetricCatalogCategory[]}
+        loadingCategories={metricsCatalogLoading}
+        validating={validating}
+        onClose={() => setWizardOpen(false)}
+        onRun={runValidationFromWizard}
+      />
 
       {isModalOpen && (
         <div className="modal-overlay" role="dialog" aria-modal="true">

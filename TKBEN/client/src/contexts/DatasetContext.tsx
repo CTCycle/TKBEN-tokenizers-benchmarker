@@ -11,12 +11,19 @@ import type { ReactNode } from 'react';
 import {
     deleteDataset,
     downloadDataset,
+    fetchDatasetMetricsCatalog,
     fetchLatestDatasetReport,
     fetchAvailableDatasets,
     uploadCustomDataset,
     validateDataset,
 } from '../services/datasetsApi';
-import type { DatasetAnalysisResponse, DatasetPreviewItem, HistogramData } from '../types/api';
+import type {
+    DatasetAnalysisRequest,
+    DatasetAnalysisResponse,
+    DatasetMetricCatalogCategory,
+    DatasetPreviewItem,
+    HistogramData,
+} from '../types/api';
 
 interface DatasetStats {
     documentCount: number;
@@ -45,6 +52,8 @@ interface DatasetContextType {
     activeValidationDataset: string | null;
     activeReportLoadDataset: string | null;
     removingDataset: string | null;
+    metricsCatalog: DatasetMetricCatalogCategory[];
+    metricsCatalogLoading: boolean;
 
     setSelectedCorpus: (corpus: string) => void;
     setSelectedConfig: (config: string) => void;
@@ -55,10 +64,14 @@ interface DatasetContextType {
     handleUploadClick: () => void;
     handleFileChange: (event: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
     handleSelectDataset: (datasetName: string) => void;
-    handleValidateDataset: (datasetName: string) => Promise<void>;
+    handleValidateDataset: (
+        datasetName: string,
+        requestOverrides?: Partial<DatasetAnalysisRequest>,
+    ) => Promise<void>;
     handleLoadLatestDatasetReport: (datasetName: string) => Promise<void>;
     handleDeleteDataset: (datasetName: string) => Promise<void>;
     refreshAvailableDatasets: () => Promise<void>;
+    loadMetricsCatalog: () => Promise<void>;
 }
 
 const DatasetContext = createContext<DatasetContextType | null>(null);
@@ -82,6 +95,8 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
     const [activeValidationDataset, setActiveValidationDataset] = useState<string | null>(null);
     const [activeReportLoadDataset, setActiveReportLoadDataset] = useState<string | null>(null);
     const [removingDataset, setRemovingDataset] = useState<string | null>(null);
+    const [metricsCatalog, setMetricsCatalog] = useState<DatasetMetricCatalogCategory[]>([]);
+    const [metricsCatalogLoading, setMetricsCatalogLoading] = useState(false);
 
     const refreshAvailableDatasets = useCallback(async () => {
         setDatasetsLoading(true);
@@ -95,9 +110,22 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
         }
     }, []);
 
+    const loadMetricsCatalog = useCallback(async () => {
+        setMetricsCatalogLoading(true);
+        try {
+            const response = await fetchDatasetMetricsCatalog();
+            setMetricsCatalog(response.categories ?? []);
+        } catch (err) {
+            console.error('Failed to fetch dataset metrics catalog:', err);
+        } finally {
+            setMetricsCatalogLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         void refreshAvailableDatasets();
-    }, [refreshAvailableDatasets]);
+        void loadMetricsCatalog();
+    }, [refreshAvailableDatasets, loadMetricsCatalog]);
 
     const handleCorpusChange = (value: string) => {
         setSelectedCorpus(value);
@@ -211,7 +239,10 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
         [datasetName, validationReport],
     );
 
-    const handleValidateDataset = useCallback(async (targetDataset: string) => {
+    const handleValidateDataset = useCallback(async (
+        targetDataset: string,
+        requestOverrides?: Partial<DatasetAnalysisRequest>,
+    ) => {
         if (!targetDataset) return;
 
         setValidating(true);
@@ -220,8 +251,12 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
         setActiveValidationDataset(targetDataset);
 
         try {
+            const requestPayload: DatasetAnalysisRequest = {
+                dataset_name: targetDataset,
+                ...requestOverrides,
+            };
             const response = await validateDataset(
-                { dataset_name: targetDataset },
+                requestPayload,
                 (status) => setValidationProgress(status.progress),
             );
             setValidationReport(response);
@@ -302,6 +337,8 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             activeValidationDataset,
             activeReportLoadDataset,
             removingDataset,
+            metricsCatalog,
+            metricsCatalogLoading,
             setSelectedCorpus,
             setSelectedConfig,
             setError,
@@ -315,6 +352,7 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             handleLoadLatestDatasetReport,
             handleDeleteDataset,
             refreshAvailableDatasets,
+            loadMetricsCatalog,
         }),
         [
             datasetName,
@@ -335,6 +373,8 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             activeValidationDataset,
             activeReportLoadDataset,
             removingDataset,
+            metricsCatalog,
+            metricsCatalogLoading,
             handleCorpusChange,
             handleConfigChange,
             handleLoadDataset,
@@ -345,6 +385,7 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             handleLoadLatestDatasetReport,
             handleDeleteDataset,
             refreshAvailableDatasets,
+            loadMetricsCatalog,
         ],
     );
 

@@ -13,7 +13,6 @@ from sqlalchemy.orm import sessionmaker
 
 from TKBEN.server.configurations import DatabaseSettings
 from TKBEN.server.repositories.database.utils import normalize_postgres_engine
-from TKBEN.server.repositories.database.migration import run_schema_migration
 from TKBEN.server.repositories.schemas.models import Base
 from TKBEN.server.common.utils.logger import logger
 
@@ -56,7 +55,6 @@ class PostgresRepository:
         self.session = sessionmaker(bind=self.engine, future=True)
         self.insert_batch_size = settings.insert_batch_size
         Base.metadata.create_all(self.engine, checkfirst=True)
-        run_schema_migration(self.engine)
 
     # -------------------------------------------------------------------------
     def sanitize_identifier(self, name: str) -> str:

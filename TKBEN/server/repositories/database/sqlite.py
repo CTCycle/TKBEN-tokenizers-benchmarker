@@ -12,7 +12,6 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from TKBEN.server.configurations import DatabaseSettings
-from TKBEN.server.repositories.database.migration import run_schema_migration
 from TKBEN.server.repositories.schemas.models import Base
 from TKBEN.server.common.constants import RESOURCES_PATH, DATABASE_FILENAME
 from TKBEN.server.common.utils.logger import logger
@@ -32,7 +31,6 @@ class SQLiteRepository:
         self.Session = sessionmaker(bind=self.engine, future=True)
         self.insert_batch_size = settings.insert_batch_size
         Base.metadata.create_all(self.engine, checkfirst=True)
-        run_schema_migration(self.engine)
 
     # -------------------------------------------------------------------------
     def enable_foreign_keys(self, dbapi_connection, connection_record) -> None:

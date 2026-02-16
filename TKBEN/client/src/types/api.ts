@@ -168,6 +168,11 @@ export interface CustomDatasetUploadResponse {
  */
 export interface DatasetAnalysisRequest {
     dataset_name: string;
+    session_name?: string | null;
+    selected_metric_keys?: string[] | null;
+    sampling?: Record<string, unknown> | null;
+    filters?: Record<string, unknown> | null;
+    metric_parameters?: Record<string, unknown> | null;
 }
 
 /**
@@ -218,6 +223,9 @@ export interface DatasetAnalysisResponse {
     report_version: number;
     created_at: string | null;
     dataset_name: string;
+    session_name?: string | null;
+    selected_metric_keys?: string[];
+    session_parameters?: Record<string, unknown>;
     document_count: number;
     document_length_histogram: HistogramData;
     word_length_histogram: HistogramData;
@@ -230,6 +238,25 @@ export interface DatasetAnalysisResponse {
     word_cloud_terms: WordCloudTerm[];
     aggregate_statistics: Record<string, unknown>;
     per_document_stats: PerDocumentStats | null;
+}
+
+export interface DatasetMetricCatalogMetric {
+    key: string;
+    label: string;
+    description: string;
+    scope: string;
+    value_kind: string;
+    core: boolean;
+}
+
+export interface DatasetMetricCatalogCategory {
+    category_key: string;
+    category_label: string;
+    metrics: DatasetMetricCatalogMetric[];
+}
+
+export interface DatasetMetricCatalogResponse {
+    categories: DatasetMetricCatalogCategory[];
 }
 
 /**
