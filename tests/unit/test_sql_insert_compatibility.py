@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import pandas as pd
 import pytest
+import sqlalchemy
 
 from TKBEN.server.repositories.database.backend import database
+from TKBEN.server.repositories.database.postgres import PostgresRepository
+from TKBEN.server.repositories.database.sqlite import SQLiteRepository
 from TKBEN.server.repositories.serialization.data import DatasetSerializer
 from TKBEN.server.services.benchmarks import BenchmarkService
 from TKBEN.server.services.tokenizers import TokenizersService
@@ -67,6 +71,51 @@ class FakeQueries:
 
 
 ###############################################################################
+class InsertCaptureConnection:
+    def __init__(self) -> None:
+        self.statements: list[object] = []
+
+    # -------------------------------------------------------------------------
+    def __enter__(self) -> "InsertCaptureConnection":
+        return self
+
+    # -------------------------------------------------------------------------
+    def __exit__(self, exc_type, exc_value, traceback) -> bool:
+        return False
+
+    # -------------------------------------------------------------------------
+    def execute(self, statement, params=None) -> FakeResult:  # noqa: ANN001
+        del params
+        self.statements.append(statement)
+        return FakeResult()
+
+
+###############################################################################
+class InsertCaptureEngine:
+    def __init__(self, connection: InsertCaptureConnection) -> None:
+        self.connection = connection
+
+    # -------------------------------------------------------------------------
+    def begin(self) -> InsertCaptureConnection:
+        return self.connection
+
+
+###############################################################################
+def build_metric_value_table() -> sqlalchemy.Table:
+    metadata = sqlalchemy.MetaData()
+    return sqlalchemy.Table(
+        "metric_value",
+        metadata,
+        sqlalchemy.Column("session_id", sqlalchemy.Integer, nullable=False),
+        sqlalchemy.Column("metric_type_id", sqlalchemy.Integer, nullable=False),
+        sqlalchemy.Column("document_id", sqlalchemy.Integer, nullable=True),
+        sqlalchemy.Column("numeric_value", sqlalchemy.Float, nullable=True),
+        sqlalchemy.Column("text_value", sqlalchemy.String, nullable=True),
+        sqlalchemy.Column("json_value", sqlalchemy.JSON, nullable=True),
+    )
+
+
+###############################################################################
 def test_dataset_serializer_ensure_dataset_id_uses_conflict_safe_insert() -> None:
     state: dict[str, object] = {"queries": [], "params": []}
     serializer = DatasetSerializer(queries=FakeQueries(SQLCaptureEngine(state)))
@@ -117,3 +166,58 @@ def test_benchmark_service_ensure_tokenizer_ids_uses_conflict_safe_insert(
     )
     assert 'ON CONFLICT ("name") DO NOTHING' in insert_query
     assert "WHERE NOT EXISTS" not in insert_query
+
+
+###############################################################################
+@pytest.mark.parametrize(
+    "repository_class",
+    [PostgresRepository, SQLiteRepository],
+)
+def test_insert_dataframe_without_ignore_duplicates_uses_sqlalchemy_insert(
+    monkeypatch: pytest.MonkeyPatch,
+    repository_class: type[PostgresRepository] | type[SQLiteRepository],
+) -> None:
+    connection = InsertCaptureConnection()
+    repository = repository_class.__new__(repository_class)
+    repository.engine = InsertCaptureEngine(connection)  # type: ignore[attr-defined]
+    repository.insert_batch_size = 100  # type: ignore[attr-defined]
+
+    table = build_metric_value_table()
+    table_class = type("FakeMetricValueTableClass", (), {"__table__": table})
+
+    monkeypatch.setattr(repository, "ensure_table_schema", lambda table_name: None)
+    monkeypatch.setattr(repository, "get_table_class", lambda table_name: table_class)
+
+    def fail_to_sql(self, *args, **kwargs) -> None:  # noqa: ANN001
+        del self, args, kwargs
+        raise AssertionError("DataFrame.to_sql should not be used for inserts.")
+
+    monkeypatch.setattr(pd.DataFrame, "to_sql", fail_to_sql)
+
+    frame = pd.DataFrame(
+        [
+            {
+                "session_id": 1,
+                "metric_type_id": 11,
+                "document_id": 101,
+                "numeric_value": 3.14,
+                "text_value": None,
+                "json_value": None,
+            },
+            {
+                "session_id": 1,
+                "metric_type_id": 12,
+                "document_id": None,
+                "numeric_value": None,
+                "text_value": None,
+                "json_value": [{"word": "alpha", "count": 2}],
+            },
+        ]
+    )
+
+    repository.insert_dataframe(frame, "metric_value", ignore_duplicates=False)  # type: ignore[attr-defined]
+
+    assert len(connection.statements) == 1
+    sql = str(connection.statements[0])
+    assert "INSERT INTO metric_value" in sql
+    assert "json_value" in sql

@@ -28,7 +28,7 @@ class SQLiteRepository:
             f"sqlite:///{self.db_path}", echo=False, future=True
         )
         event.listen(self.engine, "connect", self.enable_foreign_keys)
-        self.Session = sessionmaker(bind=self.engine, future=True)
+        self.session = sessionmaker(bind=self.engine, future=True)
         self.insert_batch_size = settings.insert_batch_size
         Base.metadata.create_all(self.engine, checkfirst=True)
 
@@ -83,7 +83,7 @@ class SQLiteRepository:
     # -------------------------------------------------------------------------
     def upsert_dataframe(self, df: pd.DataFrame, table_cls) -> None:
         table = table_cls.__table__
-        session = self.Session()
+        session = self.session()
         try:
             unique_cols: list[str] = []
             for uc in table.constraints:
@@ -132,6 +132,7 @@ class SQLiteRepository:
             data = pd.read_sql_query(query, conn)
         return data
 
+    # -------------------------------------------------------------------------
     def save_into_database(self, df: pd.DataFrame, table_name: str) -> None:
         with self.engine.begin() as conn:
             inspector = inspect(conn)
@@ -247,9 +248,9 @@ class SQLiteRepository:
                     stmt = insert(table).values(batch).on_conflict_do_nothing()
                     conn.execute(stmt)
                 else:
-                    # Standard insert (will fail on duplicates)
-                    batch_df = df.iloc[start:end]
-                    batch_df.to_sql(table_name, conn, if_exists="append", index=False)
+                    # Keep SQLAlchemy type bind handling for JSON/text/null values.
+                    stmt = insert(table).values(batch)
+                    conn.execute(stmt)
 
     # -----------------------------------------------------------------------------
     def get_distinct_values(self, table_name: str, column: str) -> list[str]:

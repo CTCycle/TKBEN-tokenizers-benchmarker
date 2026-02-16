@@ -240,9 +240,9 @@ class PostgresRepository:
                     stmt = insert(table).values(batch).on_conflict_do_nothing()
                     conn.execute(stmt)
                 else:
-                    # Standard insert (will fail on duplicates)
-                    batch_df = df.iloc[start:end]
-                    batch_df.to_sql(table_name, conn, if_exists="append", index=False)
+                    # Keep SQLAlchemy type bind handling for JSON/text/null values.
+                    stmt = insert(table).values(batch)
+                    conn.execute(stmt)
 
     # -----------------------------------------------------------------------------
     def get_distinct_values(self, table_name: str, column: str) -> list[str]:
