@@ -12,9 +12,6 @@ from TKBEN.server.repositories.schemas.models import (
     AnalysisSession,
     Dataset,
     DatasetDocument,
-    DatasetDocumentStatistics,
-    DatasetReport,
-    DatasetValidationReport,
     HistogramArtifact,
     MetricType,
     MetricValue,
@@ -32,9 +29,9 @@ class DatasetSerializer:
         self.queries = queries or DataRepositoryQueries()
         self.dataset_dimension_table = Dataset.__tablename__
         self.dataset_table = DatasetDocument.__tablename__
-        self.stats_table = DatasetDocumentStatistics.__tablename__
-        self.reports_table = DatasetReport.__tablename__
-        self.validation_reports_table = DatasetValidationReport.__tablename__
+        self.stats_table = "dataset_document_statistics"
+        self.reports_table = "dataset_report"
+        self.validation_reports_table = "dataset_validation_report"
         self.analysis_session_table = AnalysisSession.__tablename__
         self.metric_type_table = MetricType.__tablename__
         self.metric_value_table = MetricValue.__tablename__
@@ -719,7 +716,8 @@ class DatasetSerializer:
             )
         if not rows:
             return
-        df = pd.DataFrame(rows)
+        df = pd.DataFrame(rows, dtype=object)
+        df = df.where(pd.notna(df), None)
         self.queries.insert_table(df, self.metric_value_table, ignore_duplicates=False)
 
     # -------------------------------------------------------------------------
@@ -833,11 +831,23 @@ class DatasetSerializer:
         per_document: dict[int, dict[str, Any]] = {}
         for row in metric_rows:
             key = str(row.get("key") or "")
-            value: Any = row.get("numeric_value")
-            if value is None and row.get("text_value") is not None:
-                value = row.get("text_value")
-            if value is None and row.get("json_value") is not None:
-                value = self.parse_json(row.get("json_value"), default={})
+            numeric_value = row.get("numeric_value")
+            if isinstance(numeric_value, float) and pd.isna(numeric_value):
+                numeric_value = None
+
+            text_value = row.get("text_value")
+            if isinstance(text_value, float) and pd.isna(text_value):
+                text_value = None
+
+            json_value = row.get("json_value")
+            if isinstance(json_value, float) and pd.isna(json_value):
+                json_value = None
+
+            value: Any = numeric_value
+            if value is None and text_value is not None:
+                value = text_value
+            if value is None and json_value is not None:
+                value = self.parse_json(json_value, default={})
             document_id = row.get("document_id")
             if document_id is None:
                 aggregate_statistics[key] = value
