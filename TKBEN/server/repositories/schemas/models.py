@@ -60,65 +60,6 @@ class DatasetDocument(Base):
 
 
 ###############################################################################
-class DatasetDocumentStatistics(Base):
-    __tablename__ = "dataset_document_statistics"
-    document_id = Column(
-        Integer,
-        ForeignKey("dataset_document.id", ondelete="CASCADE"),
-        primary_key=True,
-        nullable=False,
-    )
-    words_count = Column(Integer)
-    avg_words_length = Column(Float)
-    std_words_length = Column(Float)
-
-
-###############################################################################
-class DatasetReport(Base):
-    __tablename__ = "dataset_report"
-    dataset_id = Column(
-        Integer,
-        ForeignKey("dataset.id", ondelete="CASCADE"),
-        primary_key=True,
-        nullable=False,
-    )
-    document_statistics = Column(JSONMapping)
-    word_statistics = Column(JSONMapping)
-    most_common_words = Column(JSONSequence)
-    least_common_words = Column(JSONSequence)
-
-
-###############################################################################
-class DatasetValidationReport(Base):
-    __tablename__ = "dataset_validation_report"
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    dataset_id = Column(
-        Integer,
-        ForeignKey("dataset.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    report_version = Column(Integer, nullable=False, default=1)
-    created_at = Column(DateTime, nullable=False)
-    aggregate_statistics = Column(JSONMapping)
-    document_histogram = Column(JSONMapping)
-    word_histogram = Column(JSONMapping)
-    most_common_words = Column(JSONSequence)
-    least_common_words = Column(JSONSequence)
-    longest_words = Column(JSONSequence)
-    shortest_words = Column(JSONSequence)
-    word_cloud_terms = Column(JSONSequence)
-    per_document_stats = Column(JSONMapping)
-    __table_args__ = (
-        Index("ix_dataset_validation_report_dataset_id", "dataset_id"),
-        Index(
-            "ix_dataset_validation_report_dataset_id_created_at",
-            "dataset_id",
-            "created_at",
-        ),
-    )
-
-
-###############################################################################
 class AnalysisSession(Base):
     __tablename__ = "analysis_session"
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)

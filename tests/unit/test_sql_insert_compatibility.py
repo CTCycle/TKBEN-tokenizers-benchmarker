@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import pandas as pd
 import pytest
 import sqlalchemy
@@ -221,3 +223,65 @@ def test_insert_dataframe_without_ignore_duplicates_uses_sqlalchemy_insert(
     sql = str(connection.statements[0])
     assert "INSERT INTO metric_value" in sql
     assert "json_value" in sql
+
+
+###############################################################################
+def test_session_report_rehydrates_json_metrics_when_numeric_is_nan(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    serializer = DatasetSerializer.__new__(DatasetSerializer)
+
+    monkeypatch.setattr(
+        serializer,
+        "_load_metric_rows_for_session",
+        lambda session_id: [
+            {
+                "document_id": None,
+                "key": "words.zipf_curve",
+                "numeric_value": math.nan,
+                "text_value": None,
+                "json_value": [{"rank": 1, "frequency": 9}],
+            },
+            {
+                "document_id": None,
+                "key": "words.word_cloud",
+                "numeric_value": math.nan,
+                "text_value": None,
+                "json_value": [{"word": "hello", "count": 9, "weight": 100}],
+            },
+            {
+                "document_id": None,
+                "key": "words.most_common",
+                "numeric_value": math.nan,
+                "text_value": None,
+                "json_value": [{"word": "hello", "count": 9}],
+            },
+            {
+                "document_id": None,
+                "key": "corpus.document_count",
+                "numeric_value": 3.0,
+                "text_value": None,
+                "json_value": None,
+            },
+        ],
+    )
+    monkeypatch.setattr(serializer, "_load_histogram_rows_for_session", lambda session_id: {})
+
+    session_row = {
+        "id": 123,
+        "report_version": 2,
+        "created_at": "2026-02-16T00:00:00Z",
+        "dataset_name": "custom/tmp_zipf_cloud",
+        "session_name": None,
+        "selected_metric_keys": "[]",
+        "parameters": "{}",
+    }
+
+    report = serializer._build_session_report_response(session_row)
+
+    assert report["aggregate_statistics"]["words.zipf_curve"] == [{"rank": 1, "frequency": 9}]
+    assert report["aggregate_statistics"]["words.word_cloud"] == [
+        {"word": "hello", "count": 9, "weight": 100}
+    ]
+    assert report["aggregate_statistics"]["words.most_common"] == [{"word": "hello", "count": 9}]
+    assert report["word_cloud_terms"] == [{"word": "hello", "count": 9, "weight": 100}]

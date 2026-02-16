@@ -1,6 +1,6 @@
 {
   "database": {
-    "embedded_database": false,
+    "embedded_database": true,
     "engine": "postgres",
     "host": "localhost",
     "port": 5432,
@@ -10,7 +10,7 @@
     "ssl": false,
     "ssl_ca": null,
     "connect_timeout": 30,
-    "insert_batch_size": 10000
+    "insert_batch_size": 1000
   },
   "tokenizers": {
     "default_scan_limit": 100,
