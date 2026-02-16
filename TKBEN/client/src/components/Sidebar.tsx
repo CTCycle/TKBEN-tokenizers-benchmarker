@@ -60,7 +60,7 @@ const Sidebar = () => {
         ))}
         <button
           type="button"
-          className={`sidebar-link${isKeyManagerOpen ? ' sidebar-link--active' : ''}`}
+          className={`sidebar-link sidebar-link--utility${isKeyManagerOpen ? ' sidebar-link--active' : ''}`}
           aria-label="Manage Hugging Face keys"
           onClick={() => setIsKeyManagerOpen((value) => !value)}
         >
