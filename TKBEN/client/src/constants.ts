@@ -14,6 +14,7 @@ export const API_ENDPOINTS = {
     DATASETS_DELETE: `${API_BASE_URL}/datasets/delete`,
     DATASETS_REPORT_LATEST: `${API_BASE_URL}/datasets/reports/latest`,
     DATASETS_REPORT_BY_ID: `${API_BASE_URL}/datasets/reports`,
+    DATASETS_METRICS_CATALOG: `${API_BASE_URL}/datasets/metrics/catalog`,
 
     TOKENIZERS_SETTINGS: `${API_BASE_URL}/tokenizers/settings`,
     TOKENIZERS_SCAN: `${API_BASE_URL}/tokenizers/scan`,

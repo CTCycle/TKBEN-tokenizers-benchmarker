@@ -119,6 +119,103 @@ class DatasetValidationReport(Base):
 
 
 ###############################################################################
+class AnalysisSession(Base):
+    __tablename__ = "analysis_session"
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    dataset_id = Column(
+        Integer,
+        ForeignKey("dataset.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    session_name = Column(String, nullable=True)
+    status = Column(String, nullable=False, default="completed")
+    report_version = Column(Integer, nullable=False, default=2)
+    created_at = Column(DateTime, nullable=False)
+    completed_at = Column(DateTime, nullable=True)
+    parameters = Column(JSONMapping)
+    selected_metric_keys = Column(JSONSequence)
+    __table_args__ = (
+        Index("ix_analysis_session_dataset_id", "dataset_id"),
+        Index(
+            "ix_analysis_session_dataset_id_created_at",
+            "dataset_id",
+            "created_at",
+        ),
+    )
+
+
+###############################################################################
+class MetricType(Base):
+    __tablename__ = "metric_type"
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    key = Column(String, nullable=False, unique=True)
+    category = Column(String, nullable=False)
+    label = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    scope = Column(String, nullable=False, default="aggregate")
+    value_kind = Column(String, nullable=False, default="number")
+    __table_args__ = (
+        Index("ix_metric_type_category", "category"),
+    )
+
+
+###############################################################################
+class MetricValue(Base):
+    __tablename__ = "metric_value"
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    session_id = Column(
+        Integer,
+        ForeignKey("analysis_session.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    metric_type_id = Column(
+        Integer,
+        ForeignKey("metric_type.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    document_id = Column(
+        Integer,
+        ForeignKey("dataset_document.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+    numeric_value = Column(Float, nullable=True)
+    text_value = Column(String, nullable=True)
+    json_value = Column(JSONMapping, nullable=True)
+    __table_args__ = (
+        UniqueConstraint("session_id", "metric_type_id", "document_id"),
+        Index("ix_metric_value_session_metric", "session_id", "metric_type_id"),
+        Index("ix_metric_value_document", "document_id"),
+    )
+
+
+###############################################################################
+class HistogramArtifact(Base):
+    __tablename__ = "histogram_artifact"
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    session_id = Column(
+        Integer,
+        ForeignKey("analysis_session.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    metric_type_id = Column(
+        Integer,
+        ForeignKey("metric_type.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    bins = Column(JSONSequence)
+    bin_edges = Column(JSONSequence)
+    counts = Column(JSONSequence)
+    min_value = Column(Float, nullable=False, default=0.0)
+    max_value = Column(Float, nullable=False, default=0.0)
+    mean_value = Column(Float, nullable=False, default=0.0)
+    median_value = Column(Float, nullable=False, default=0.0)
+    __table_args__ = (
+        UniqueConstraint("session_id", "metric_type_id"),
+        Index("ix_histogram_artifact_session", "session_id"),
+    )
+
+
+###############################################################################
 class TokenizationDocumentStats(Base):
     __tablename__ = "tokenization_document_stats"
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)

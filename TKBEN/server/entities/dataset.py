@@ -71,6 +71,23 @@ class DatasetAnalysisRequest(BaseModel):
     """Request schema for dataset analysis."""
 
     dataset_name: str = Field(..., description="Name of dataset to analyze")
+    session_name: str | None = Field(default=None, description="Optional analysis session label")
+    selected_metric_keys: list[str] | None = Field(
+        default=None,
+        description="Optional explicit metric keys selected in the validation wizard",
+    )
+    sampling: dict[str, Any] | None = Field(
+        default=None,
+        description="Sampling configuration (fraction and/or count).",
+    )
+    filters: dict[str, Any] | None = Field(
+        default=None,
+        description="Filter configuration (min_length, max_length, exclude_empty).",
+    )
+    metric_parameters: dict[str, Any] | None = Field(
+        default=None,
+        description="Metric parameter overrides.",
+    )
 
 
 ###############################################################################
@@ -124,6 +141,15 @@ class DatasetAnalysisResponse(BaseModel):
         default=None, description="UTC ISO timestamp for report creation"
     )
     dataset_name: str = Field(..., description="Name of analyzed dataset")
+    session_name: str | None = Field(default=None, description="Optional analysis session name")
+    selected_metric_keys: list[str] = Field(
+        default_factory=list,
+        description="Metric keys enabled for this session.",
+    )
+    session_parameters: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Persisted sampling/filter/parameter settings for this analysis session.",
+    )
     document_count: int = Field(..., description="Number of documents analyzed")
     document_length_histogram: HistogramData = Field(
         ..., description="Document length histogram"
@@ -159,6 +185,28 @@ class DatasetAnalysisResponse(BaseModel):
         default=None,
         description="Compact per-document statistics arrays ordered by document_id",
     )
+
+
+###############################################################################
+class DatasetMetricCatalogMetric(BaseModel):
+    key: str = Field(..., description="Stable metric key")
+    label: str = Field(..., description="UI label")
+    description: str = Field(default="", description="Metric description")
+    scope: str = Field(default="aggregate", description="aggregate or per_document")
+    value_kind: str = Field(default="number", description="number, text, json, histogram")
+    core: bool = Field(default=False, description="High-signal core metric")
+
+
+###############################################################################
+class DatasetMetricCatalogCategory(BaseModel):
+    category_key: str = Field(..., description="Category key")
+    category_label: str = Field(..., description="Category label")
+    metrics: list[DatasetMetricCatalogMetric] = Field(default_factory=list)
+
+
+###############################################################################
+class DatasetMetricCatalogResponse(BaseModel):
+    categories: list[DatasetMetricCatalogCategory] = Field(default_factory=list)
 
 
 ###############################################################################
