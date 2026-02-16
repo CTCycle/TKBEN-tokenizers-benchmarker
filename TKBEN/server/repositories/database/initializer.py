@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import urllib.parse
-
 import sqlalchemy
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.sql.elements import TextClause
 
 from TKBEN.server.configurations import DatabaseSettings, server_settings
 from TKBEN.server.repositories.database.postgres import PostgresRepository
@@ -54,8 +54,17 @@ def clone_settings_with_database(
     )
 
 # -----------------------------------------------------------------------------
+def build_postgres_create_database_sql(
+    database_name: str,
+) -> TextClause:
+    safe_database = database_name.replace('"', '""')
+    return sqlalchemy.text(
+        f'CREATE DATABASE "{safe_database}" WITH ENCODING \'UTF8\' TEMPLATE template0'
+    )
+
+# -----------------------------------------------------------------------------
 def initialize_sqlite_database(settings: DatabaseSettings) -> None:
-    repository = SQLiteRepository(settings)    
+    repository = SQLiteRepository(settings)
     logger.info("Initialized SQLite database at %s", repository.db_path)
 
 # -----------------------------------------------------------------------------
@@ -68,7 +77,6 @@ def ensure_postgres_database(settings: DatabaseSettings) -> str:
         raise ValueError("Database name is required for PostgreSQL initialization.")
 
     target_database = settings.database_name
-    safe_database = target_database.replace('"', '""')
     connect_args = build_postgres_connect_args(settings)
 
     admin_url = build_postgres_url(settings, "postgres")
@@ -89,7 +97,7 @@ def ensure_postgres_database(settings: DatabaseSettings) -> str:
         if exists:
             logger.info("PostgreSQL database %s already exists", target_database)
         else:
-            conn.execute(sqlalchemy.text(f'CREATE DATABASE "{safe_database}"'))
+            conn.execute(build_postgres_create_database_sql(target_database))
             logger.info("Created PostgreSQL database %s", target_database)
 
     normalized_settings = clone_settings_with_database(settings, target_database)
@@ -107,7 +115,12 @@ def run_database_initialization() -> None:
         return
 
     engine_name = normalize_postgres_engine(settings.engine).lower()
-    if engine_name not in {"postgres", "postgresql", "postgresql+psycopg", "postgresql+psycopg2"}:
+    if engine_name not in {
+        "postgres",
+        "postgresql",
+        "postgresql+psycopg",
+        "postgresql+psycopg2",
+    }:
         raise ValueError(f"Unsupported database engine: {settings.engine}")
 
     ensure_postgres_database(settings)
