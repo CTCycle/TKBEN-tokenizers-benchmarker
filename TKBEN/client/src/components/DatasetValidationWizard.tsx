@@ -85,7 +85,7 @@ const DatasetValidationWizard = ({
       },
       metric_parameters: {},
     };
-    await onRun(request);
+    void onRun(request);
     onClose();
     setStep(0);
   };
