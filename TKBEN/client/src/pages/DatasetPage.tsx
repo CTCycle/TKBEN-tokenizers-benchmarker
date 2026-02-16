@@ -21,6 +21,7 @@ import type {
   DatasetMetricCatalogCategory,
   HistogramData,
   WordCloudTerm,
+  WordFrequency,
 } from '../types/api';
 
 type DatasetPreset = {
@@ -242,46 +243,192 @@ const toHistogramSeries = (histogram: HistogramData | null): Array<{ bin: string
   }));
 };
 
+const parseJsonLike = (value: unknown): unknown => {
+  if (typeof value !== 'string') {
+    return value;
+  }
+  const candidate = value.trim();
+  if (!candidate) {
+    return null;
+  }
+  try {
+    return JSON.parse(candidate);
+  } catch {
+    return value;
+  }
+};
+
+const parseWordFrequencyItems = (value: unknown): WordFrequency[] => {
+  const parsed = parseJsonLike(value);
+  if (Array.isArray(parsed)) {
+    return parsed
+      .map((item) => {
+        if (!item || typeof item !== 'object') {
+          return null;
+        }
+        const payload = item as Record<string, unknown>;
+        const word = typeof payload.word === 'string'
+          ? payload.word
+          : typeof payload.token === 'string'
+            ? payload.token
+            : typeof payload.text === 'string'
+              ? payload.text
+              : '';
+        if (!word) {
+          return null;
+        }
+        const count = Math.max(
+          0,
+          Math.round(
+            toNumber(payload.count ?? payload.frequency ?? payload.value, 0),
+          ),
+        );
+        return { word, count };
+      })
+      .filter((item): item is WordFrequency => item !== null && item.count > 0);
+  }
+  if (parsed && typeof parsed === 'object') {
+    const payload = parsed as Record<string, unknown>;
+    if (
+      typeof payload.word === 'string'
+      || typeof payload.token === 'string'
+      || typeof payload.text === 'string'
+    ) {
+      return parseWordFrequencyItems([payload]);
+    }
+    return Object.entries(parsed as Record<string, unknown>)
+      .map(([word, countValue]) => ({
+        word,
+        count: Math.max(0, Math.round(toNumber(countValue, 0))),
+      }))
+      .filter((item) => item.word && item.count > 0);
+  }
+  return [];
+};
+
 const parseWordCloudTerms = (value: unknown): WordCloudTerm[] => {
-  if (!Array.isArray(value)) {
+  const parsed = parseJsonLike(value);
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    const payload = parsed as Record<string, unknown>;
+    if (
+      typeof payload.word === 'string'
+      || typeof payload.token === 'string'
+      || typeof payload.text === 'string'
+    ) {
+      return parseWordCloudTerms([payload]);
+    }
+    if (Array.isArray(payload.terms)) {
+      return parseWordCloudTerms(payload.terms);
+    }
+    if (Array.isArray(payload.items)) {
+      return parseWordCloudTerms(payload.items);
+    }
+    return parseWordCloudTerms(
+      Object.entries(payload).map(([word, count]) => ({ word, count })),
+    );
+  }
+  if (!Array.isArray(parsed)) {
     return [];
   }
-  return value
+
+  const terms = parsed
     .map((item) => {
       if (!item || typeof item !== 'object') {
         return null;
       }
       const payload = item as Record<string, unknown>;
-      const word = typeof payload.word === 'string' ? payload.word : '';
+      const word = typeof payload.word === 'string'
+        ? payload.word
+        : typeof payload.token === 'string'
+          ? payload.token
+          : typeof payload.text === 'string'
+            ? payload.text
+            : '';
       if (!word) {
         return null;
       }
       return {
         word,
-        count: toNumber(payload.count, 0),
-        weight: toNumber(payload.weight, 1),
+        count: Math.max(0, Math.round(toNumber(payload.count ?? payload.frequency ?? payload.value, 0))),
+        weight: toNumber(payload.weight, 0),
       };
     })
-    .filter((item): item is WordCloudTerm => item !== null);
+    .filter((item): item is WordCloudTerm => item !== null && item.count > 0);
+
+  if (!terms.length) {
+    return [];
+  }
+
+  const maxCount = Math.max(...terms.map((item) => item.count));
+  return terms.map((item) => ({
+    ...item,
+    weight: item.weight > 0
+      ? item.weight
+      : Math.max(1, Math.round((item.count / Math.max(1, maxCount)) * 100)),
+  }));
 };
 
 const parseZipfCurve = (value: unknown): Array<{ rank: number; frequency: number }> => {
-  if (!Array.isArray(value)) {
-    return [];
+  const parsed = parseJsonLike(value);
+  if (Array.isArray(parsed)) {
+    return parsed
+      .map((item, index) => {
+        if (Array.isArray(item)) {
+          return {
+            rank: toNumber(item[0], index + 1),
+            frequency: toNumber(item[1], 0),
+          };
+        }
+        if (!item || typeof item !== 'object') {
+          return null;
+        }
+        const payload = item as Record<string, unknown>;
+        return {
+          rank: toNumber(payload.rank ?? payload.x, index + 1),
+          frequency: toNumber(payload.frequency ?? payload.count ?? payload.y ?? payload.value, 0),
+        };
+      })
+      .filter((item): item is { rank: number; frequency: number } => item !== null && item.rank > 0 && item.frequency > 0)
+      .sort((a, b) => a.rank - b.rank)
+      .slice(0, 200);
   }
-  return value
-    .map((item) => {
-      if (!item || typeof item !== 'object') {
-        return null;
-      }
-      const payload = item as Record<string, unknown>;
-      return {
-        rank: toNumber(payload.rank, 0),
-        frequency: toNumber(payload.frequency, 0),
-      };
-    })
-    .filter((item): item is { rank: number; frequency: number } => item !== null && item.rank > 0)
-    .slice(0, 200);
+
+  if (parsed && typeof parsed === 'object') {
+    const payload = parsed as Record<string, unknown>;
+    if (
+      typeof payload.rank === 'number'
+      || typeof payload.rank === 'string'
+      || typeof payload.frequency === 'number'
+      || typeof payload.frequency === 'string'
+    ) {
+      return parseZipfCurve([payload]);
+    }
+    if (Array.isArray(payload.curve)) {
+      return parseZipfCurve(payload.curve);
+    }
+    if (Array.isArray(payload.ranks) && Array.isArray(payload.frequencies)) {
+      const ranks = payload.ranks as unknown[];
+      const frequencies = payload.frequencies as unknown[];
+      const points = ranks.map((rank, index) => ({
+        rank: toNumber(rank, index + 1),
+        frequency: toNumber(frequencies[index], 0),
+      }));
+      return points
+        .filter((item) => item.rank > 0 && item.frequency > 0)
+        .slice(0, 200);
+    }
+    const entries = Object.entries(payload)
+      .map(([rank, frequency]) => ({
+        rank: toNumber(rank, 0),
+        frequency: toNumber(frequency, 0),
+      }))
+      .filter((item) => item.rank > 0 && item.frequency > 0)
+      .sort((a, b) => a.rank - b.rank);
+    if (entries.length > 0) {
+      return entries.slice(0, 200);
+    }
+  }
+  return [];
 };
 
 const tooltipPercentFormatter = (value: number | string | undefined): string =>
@@ -290,6 +437,34 @@ const tooltipPercentFormatter = (value: number | string | undefined): string =>
 const tooltipCountFormatter = (
   value: number | string | undefined,
 ): [string, 'count'] => [normalizeCount(toNumber(value, 0)), 'count'];
+
+const buildZipfCurveFromWordFrequencies = (
+  items: WordFrequency[],
+): Array<{ rank: number; frequency: number }> =>
+  items
+    .filter((item) => item.count > 0)
+    .sort((a, b) => b.count - a.count || a.word.localeCompare(b.word))
+    .map((item, index) => ({
+      rank: index + 1,
+      frequency: item.count,
+    }))
+    .slice(0, 200);
+
+const buildWordCloudFromWordFrequencies = (items: WordFrequency[]): WordCloudTerm[] => {
+  const ranked = items
+    .filter((item) => item.count > 0)
+    .sort((a, b) => b.count - a.count || a.word.localeCompare(b.word))
+    .slice(0, 120);
+  if (!ranked.length) {
+    return [];
+  }
+  const maxCount = Math.max(...ranked.map((item) => item.count));
+  return ranked.map((item) => ({
+    word: item.word,
+    count: item.count,
+    weight: Math.max(1, Math.round((item.count / Math.max(1, maxCount)) * 100)),
+  }));
+};
 
 const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProps) => {
   const {
@@ -344,7 +519,28 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
   const documentCount = hasPersistedReport ? validationReport.document_count : 0;
   const emptyRate = toNumber(aggregate['quality.empty_rate']);
   const emptyCount = Math.round(emptyRate * documentCount);
-  const zipfCurve = useMemo(() => parseZipfCurve(aggregate['words.zipf_curve']), [aggregate]);
+  const mostCommonWords = useMemo(() => {
+    if (!hasPersistedReport) {
+      return [];
+    }
+    if (validationReport.most_common_words?.length) {
+      return parseWordFrequencyItems(validationReport.most_common_words);
+    }
+    return parseWordFrequencyItems(aggregate['words.most_common']);
+  }, [aggregate, hasPersistedReport, validationReport]);
+
+  const zipfCurve = useMemo(() => {
+    const parsed = parseZipfCurve(
+      aggregate['words.zipf_curve']
+      ?? aggregate['words.zipf']
+      ?? aggregate.zipf_curve
+      ?? aggregate.zipfCurve,
+    );
+    if (parsed.length > 0) {
+      return parsed;
+    }
+    return buildZipfCurveFromWordFrequencies(mostCommonWords);
+  }, [aggregate, mostCommonWords]);
   const entropyGauge = toNumber(aggregate['words.normalized_entropy']);
   const duplicateRate = toNumber(aggregate['quality.duplicate_rate']);
   const nearDuplicateRate = toNumber(aggregate['quality.near_duplicate_rate']);
@@ -390,11 +586,18 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
     if (!hasPersistedReport) {
       return [];
     }
-    if (validationReport.word_cloud_terms?.length) {
-      return validationReport.word_cloud_terms;
+    const parsed = validationReport.word_cloud_terms?.length
+      ? parseWordCloudTerms(validationReport.word_cloud_terms)
+      : parseWordCloudTerms(
+        aggregate['words.word_cloud']
+        ?? aggregate.word_cloud_terms
+        ?? aggregate.wordCloudTerms,
+      );
+    if (parsed.length > 0) {
+      return parsed;
     }
-    return parseWordCloudTerms(aggregate['words.word_cloud']);
-  }, [aggregate, hasPersistedReport, validationReport]);
+    return buildWordCloudFromWordFrequencies(mostCommonWords);
+  }, [aggregate, hasPersistedReport, mostCommonWords, validationReport]);
 
   const handlePresetSelect = (preset: DatasetPreset) => {
     setSelectedPreset(preset.id);
@@ -707,7 +910,10 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                         </Pie>
                         <Tooltip
                           formatter={tooltipPercentFormatter}
-                          contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }}
+                          contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', color: '#f8fafc' }}
+                          itemStyle={{ color: '#f8fafc' }}
+                          labelStyle={{ color: '#f8fafc' }}
+                          wrapperStyle={{ color: '#f8fafc' }}
                         />
                       </PieChart>
                     </ResponsiveContainer>
@@ -841,7 +1047,6 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
               <div className="dataset-v2-card dataset-v2-word-cloud-card">
                 <div className="dataset-v2-card-header">
                   <p className="panel-label">Word Cloud</p>
-                  <p className="panel-description">Rendered in a worker to keep UI responsive.</p>
                 </div>
                 <div className="dataset-v2-word-cloud-canvas" ref={wordCloudRef}>
                   {!wordCloudTerms.length && (
