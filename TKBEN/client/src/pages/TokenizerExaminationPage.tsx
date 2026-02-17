@@ -1,10 +1,12 @@
 import TokenizersPage from './TokenizersPage';
 import { useTokenizers } from '../contexts/TokenizersContext';
-import type { TokenizerSubwordWordStats } from '../types/api';
+import type { TokenizerVocabularyStats } from '../types/api';
+
+const NOT_AVAILABLE = 'N/A';
 
 const formatNumber = (value: number | null | undefined, digits = 2) => {
   if (value === null || value === undefined || Number.isNaN(value)) {
-    return '0';
+    return NOT_AVAILABLE;
   }
   if (Number.isInteger(value)) {
     return value.toLocaleString();
@@ -12,27 +14,46 @@ const formatNumber = (value: number | null | undefined, digits = 2) => {
   return value.toFixed(digits);
 };
 
-const formatPercent = (value: number | null | undefined) => `${formatNumber(value, 2)}%`;
+const formatOptionalPercent = (value: number | null | undefined) => {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return NOT_AVAILABLE;
+  }
+  return `${formatNumber(value, 2)}%`;
+};
 
-const toSubwordStats = (value: unknown): TokenizerSubwordWordStats | null => {
+const toVocabularyStats = (value: unknown): TokenizerVocabularyStats | null => {
   if (!value || typeof value !== 'object') {
     return null;
   }
-  const payload = value as Partial<TokenizerSubwordWordStats>;
-  if (typeof payload.subword_count !== 'number' || typeof payload.word_count !== 'number') {
-    return null;
-  }
+  const payload = value as Partial<TokenizerVocabularyStats>;
+
+  const parseNumber = (candidate: unknown): number | null => {
+    if (typeof candidate !== 'number' || Number.isNaN(candidate)) {
+      return null;
+    }
+    return candidate;
+  };
+
+  const parseString = (candidate: unknown): string | null => {
+    if (typeof candidate !== 'string' || !candidate.trim()) {
+      return null;
+    }
+    return candidate.trim();
+  };
+
   return {
-    heuristic: String(payload.heuristic ?? ''),
-    subword_count: payload.subword_count,
-    word_count: payload.word_count,
-    considered_count: Number(payload.considered_count ?? 0),
-    subword_percentage: Number(payload.subword_percentage ?? 0),
-    word_percentage: Number(payload.word_percentage ?? 0),
-    subword_to_word_ratio:
-      payload.subword_to_word_ratio === null || payload.subword_to_word_ratio === undefined
-        ? null
-        : Number(payload.subword_to_word_ratio),
+    heuristic: parseString(payload.heuristic),
+    min_token_length: parseNumber(payload.min_token_length),
+    mean_token_length: parseNumber(payload.mean_token_length),
+    median_token_length: parseNumber(payload.median_token_length),
+    max_token_length: parseNumber(payload.max_token_length),
+    subword_like_count: parseNumber(payload.subword_like_count),
+    subword_like_percentage: parseNumber(payload.subword_like_percentage),
+    special_tokens_in_vocab_count: parseNumber(payload.special_tokens_in_vocab_count),
+    special_tokens_in_vocab_percentage: parseNumber(payload.special_tokens_in_vocab_percentage),
+    unique_token_lengths: parseNumber(payload.unique_token_lengths),
+    empty_token_count: parseNumber(payload.empty_token_count),
+    considered_non_special_count: parseNumber(payload.considered_non_special_count),
   };
 };
 
@@ -53,14 +74,7 @@ const TokenizerExaminationPage = () => {
   const maxCount = histogram?.counts.length ? Math.max(...histogram.counts) : 0;
 
   const globalStats = tokenizerReport?.global_stats ?? {};
-  const specialTokens = Array.isArray(globalStats.special_tokens)
-    ? globalStats.special_tokens.map((item) => String(item))
-    : [];
-  const subwordStats = toSubwordStats(globalStats.subword_word_stats);
-
-  const createdAtLabel = tokenizerReport?.created_at
-    ? new Date(tokenizerReport.created_at).toLocaleString()
-    : 'Not available';
+  const vocabularyStats = toVocabularyStats(globalStats.vocabulary_stats);
 
   const vocabularyStart = tokenizerVocabularyTotal > 0 ? tokenizerVocabularyOffset + 1 : 0;
   const vocabularyEnd = tokenizerVocabularyTotal > 0
@@ -99,13 +113,17 @@ const TokenizerExaminationPage = () => {
             {tokenizerReport && (
               <div className="tokenizer-report-grid">
                 <article className="tokenizer-report-card">
-                  <p className="panel-label">Report Overview</p>
+                  <p className="panel-label">Basics</p>
                   <table className="tokenizer-meta-table">
                     <tbody>
                       <tr><th>Tokenizer</th><td>{tokenizerReport.tokenizer_name}</td></tr>
-                      <tr><th>Created</th><td>{createdAtLabel}</td></tr>
-                      <tr><th>Report ID</th><td>{tokenizerReport.report_id}</td></tr>
-                      <tr><th>Report Version</th><td>{tokenizerReport.report_version}</td></tr>
+                      <tr><th>Tokenizer class</th><td>{String(globalStats.tokenizer_class ?? NOT_AVAILABLE)}</td></tr>
+                      <tr><th>Vocabulary size</th><td>{formatNumber(tokenizerReport.vocabulary_size, 0)}</td></tr>
+                      <tr><th>Base vocabulary size</th><td>{formatNumber(globalStats.base_vocabulary_size as number | null | undefined, 0)}</td></tr>
+                      <tr><th>Model max length</th><td>{formatNumber(globalStats.model_max_length as number | null | undefined, 0)}</td></tr>
+                      <tr><th>Padding side</th><td>{String(globalStats.padding_side ?? NOT_AVAILABLE)}</td></tr>
+                      <tr><th>Special tokens count</th><td>{formatNumber(globalStats.special_tokens_count as number | null | undefined, 0)}</td></tr>
+                      <tr><th>Added tokens count</th><td>{formatNumber(globalStats.added_tokens_count as number | null | undefined, 0)}</td></tr>
                       <tr>
                         <th>Hugging Face</th>
                         <td>
@@ -113,27 +131,9 @@ const TokenizerExaminationPage = () => {
                             <a href={tokenizerReport.huggingface_url} target="_blank" rel="noreferrer">
                               {tokenizerReport.huggingface_url}
                             </a>
-                          ) : 'Not available'}
+                          ) : NOT_AVAILABLE}
                         </td>
                       </tr>
-                      <tr>
-                        <th>Description</th>
-                        <td>{tokenizerReport.description ?? 'Not available'}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </article>
-
-                <article className="tokenizer-report-card">
-                  <p className="panel-label">Tokenizer Metadata</p>
-                  <table className="tokenizer-meta-table">
-                    <tbody>
-                      <tr><th>Vocabulary size</th><td>{formatNumber(tokenizerReport.vocabulary_size, 0)}</td></tr>
-                      <tr><th>Algorithm</th><td>{String(globalStats.tokenizer_algorithm ?? 'Not available')}</td></tr>
-                      <tr><th>Tokenizer class</th><td>{String(globalStats.tokenizer_class ?? 'Not available')}</td></tr>
-                      <tr><th>do_lower_case</th><td>{String(globalStats.do_lower_case ?? 'Not available')}</td></tr>
-                      <tr><th>Normalization</th><td>{String(globalStats.normalization_hint ?? 'Not available')}</td></tr>
-                      <tr><th>Persistence mode</th><td>{String(globalStats.persistence_mode ?? 'Not available')}</td></tr>
                     </tbody>
                   </table>
                 </article>
@@ -175,27 +175,20 @@ const TokenizerExaminationPage = () => {
                 </article>
 
                 <article className="tokenizer-report-card">
-                  <p className="panel-label">Vocabulary Composition</p>
+                  <p className="panel-label">Vocabulary Stats</p>
                   <table className="tokenizer-meta-table tokenizer-meta-table-compact">
                     <tbody>
-                      <tr><th>Special tokens count</th><td>{formatNumber(Number(globalStats.special_tokens_count ?? 0), 0)}</td></tr>
-                      <tr><th>Has special tokens</th><td>{String(globalStats.has_special_tokens ?? false)}</td></tr>
-                      <tr>
-                        <th>Special tokens</th>
-                        <td>{specialTokens.length > 0 ? specialTokens.join(', ') : 'None'}</td>
-                      </tr>
-                      <tr><th>Subword count</th><td>{formatNumber(subwordStats?.subword_count ?? 0, 0)}</td></tr>
-                      <tr><th>Word count</th><td>{formatNumber(subwordStats?.word_count ?? 0, 0)}</td></tr>
-                      <tr><th>Subword %</th><td>{formatPercent(subwordStats?.subword_percentage ?? 0)}</td></tr>
-                      <tr><th>Word %</th><td>{formatPercent(subwordStats?.word_percentage ?? 0)}</td></tr>
-                      <tr>
-                        <th>Subword/word ratio</th>
-                        <td>
-                          {subwordStats?.subword_to_word_ratio === null
-                            ? 'Not available'
-                            : formatNumber(subwordStats?.subword_to_word_ratio ?? 0)}
-                        </td>
-                      </tr>
+                      <tr><th>Min token length</th><td>{formatNumber(vocabularyStats?.min_token_length, 0)}</td></tr>
+                      <tr><th>Mean token length</th><td>{formatNumber(vocabularyStats?.mean_token_length, 2)}</td></tr>
+                      <tr><th>Median token length</th><td>{formatNumber(vocabularyStats?.median_token_length, 2)}</td></tr>
+                      <tr><th>Max token length</th><td>{formatNumber(vocabularyStats?.max_token_length, 0)}</td></tr>
+                      <tr><th>Subword-like count</th><td>{formatNumber(vocabularyStats?.subword_like_count, 0)}</td></tr>
+                      <tr><th>Subword-like %</th><td>{formatOptionalPercent(vocabularyStats?.subword_like_percentage)}</td></tr>
+                      <tr><th>Special tokens in vocab</th><td>{formatNumber(vocabularyStats?.special_tokens_in_vocab_count, 0)}</td></tr>
+                      <tr><th>Special in vocab %</th><td>{formatOptionalPercent(vocabularyStats?.special_tokens_in_vocab_percentage)}</td></tr>
+                      <tr><th>Unique token lengths</th><td>{formatNumber(vocabularyStats?.unique_token_lengths, 0)}</td></tr>
+                      <tr><th>Empty tokens</th><td>{formatNumber(vocabularyStats?.empty_token_count, 0)}</td></tr>
+                      <tr><th>Heuristic</th><td>{vocabularyStats?.heuristic ?? NOT_AVAILABLE}</td></tr>
                     </tbody>
                   </table>
                 </article>

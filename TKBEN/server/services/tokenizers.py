@@ -402,14 +402,171 @@ class TokenizersService:
     def normalize_special_tokens(self, tokenizer: Any) -> list[str]:
         token_map = getattr(tokenizer, "special_tokens_map", {})
         normalized: list[str] = []
-        if not isinstance(token_map, dict):
-            return normalized
-        for value in token_map.values():
-            if isinstance(value, str):
-                normalized.append(value)
-            elif isinstance(value, list):
-                normalized.extend(str(item) for item in value if item is not None)
+        if isinstance(token_map, dict):
+            for value in token_map.values():
+                if isinstance(value, str):
+                    normalized.append(value)
+                elif isinstance(value, list):
+                    normalized.extend(str(item) for item in value if item is not None)
+
+        all_special_tokens = getattr(tokenizer, "all_special_tokens", [])
+        if isinstance(all_special_tokens, (list, tuple, set)):
+            normalized.extend(str(item) for item in all_special_tokens if item is not None)
+
         return sorted({token for token in normalized if token})
+
+    # -------------------------------------------------------------------------
+    def normalize_special_token_ids(self, tokenizer: Any) -> list[int]:
+        special_ids = getattr(tokenizer, "all_special_ids", [])
+        if not isinstance(special_ids, (list, tuple, set)):
+            return []
+        normalized: list[int] = []
+        for value in special_ids:
+            if isinstance(value, bool):
+                continue
+            try:
+                normalized.append(int(value))
+            except Exception:
+                continue
+        return sorted(set(normalized))
+
+    # -------------------------------------------------------------------------
+    def resolve_base_vocabulary_size(self, tokenizer: Any) -> int | None:
+        value = getattr(tokenizer, "vocab_size", None)
+        if isinstance(value, bool):
+            return None
+        try:
+            parsed = int(value)
+        except Exception:
+            return None
+        return parsed if parsed >= 0 else None
+
+    # -------------------------------------------------------------------------
+    def resolve_added_tokens_count(self, tokenizer: Any) -> int:
+        added_tokens = getattr(tokenizer, "added_tokens_encoder", {})
+        if isinstance(added_tokens, dict):
+            return int(len(added_tokens))
+        return 0
+
+    # -------------------------------------------------------------------------
+    def normalize_model_max_length(self, value: Any) -> int | None:
+        if isinstance(value, bool):
+            return None
+        try:
+            parsed = int(value)
+        except Exception:
+            return None
+        # Some HF tokenizers expose an effectively-unbounded sentinel value.
+        if parsed <= 0 or parsed >= 1_000_000_000:
+            return None
+        return parsed
+
+    # -------------------------------------------------------------------------
+    def resolve_model_max_length(
+        self,
+        tokenizer: Any,
+        init_kwargs: dict[str, Any],
+    ) -> int | None:
+        value = self.normalize_model_max_length(getattr(tokenizer, "model_max_length", None))
+        if value is not None:
+            return value
+        return self.normalize_model_max_length(init_kwargs.get("model_max_length"))
+
+    # -------------------------------------------------------------------------
+    def resolve_padding_side(
+        self,
+        tokenizer: Any,
+        init_kwargs: dict[str, Any],
+    ) -> str | None:
+        padding_side = getattr(tokenizer, "padding_side", None)
+        if isinstance(padding_side, str) and padding_side.strip():
+            return padding_side.strip()
+        from_kwargs = init_kwargs.get("padding_side")
+        if isinstance(from_kwargs, str) and from_kwargs.strip():
+            return from_kwargs.strip()
+        return None
+
+    # -------------------------------------------------------------------------
+    def is_subword_like_token(self, token: str) -> bool:
+        normalized = str(token).strip()
+        if not normalized:
+            return False
+
+        return bool(
+            normalized.startswith("##")
+            or normalized.endswith("@@")
+            or ("▁" in normalized and not normalized.startswith("▁"))
+            or ("Ġ" in normalized and not normalized.startswith("Ġ"))
+            or ("Ċ" in normalized and not normalized.startswith("Ċ"))
+        )
+
+    # -------------------------------------------------------------------------
+    def compute_vocabulary_stats(
+        self,
+        vocab_tokens: list[str],
+        special_tokens: set[str],
+    ) -> dict[str, Any]:
+        lengths = [len(token) for token in vocab_tokens]
+        if not lengths:
+            return {
+                "heuristic": "hash_prefix_atat_suffix_sentencepiece_markers",
+                "min_token_length": 0,
+                "mean_token_length": 0.0,
+                "median_token_length": 0.0,
+                "max_token_length": 0,
+                "subword_like_count": 0,
+                "subword_like_percentage": 0.0,
+                "special_tokens_in_vocab_count": 0,
+                "special_tokens_in_vocab_percentage": 0.0,
+                "unique_token_lengths": 0,
+                "empty_token_count": 0,
+                "considered_non_special_count": 0,
+            }
+
+        sorted_lengths = sorted(lengths)
+        total = len(sorted_lengths)
+        midpoint = total // 2
+        if total % 2 == 0:
+            median_length = (sorted_lengths[midpoint - 1] + sorted_lengths[midpoint]) / 2.0
+        else:
+            median_length = float(sorted_lengths[midpoint])
+
+        special_lookup = {token for token in special_tokens if token}
+        special_in_vocab_count = sum(1 for token in vocab_tokens if token in special_lookup)
+        special_in_vocab_percentage = (float(special_in_vocab_count) / float(total)) * 100.0
+
+        considered_non_special_count = 0
+        subword_like_count = 0
+        for token in vocab_tokens:
+            normalized = str(token).strip()
+            if not normalized:
+                continue
+            if normalized in special_lookup or self.special_token_pattern.match(normalized):
+                continue
+            considered_non_special_count += 1
+            if self.is_subword_like_token(normalized):
+                subword_like_count += 1
+
+        subword_like_percentage = (
+            (float(subword_like_count) / float(considered_non_special_count)) * 100.0
+            if considered_non_special_count > 0
+            else 0.0
+        )
+
+        return {
+            "heuristic": "hash_prefix_atat_suffix_sentencepiece_markers",
+            "min_token_length": int(sorted_lengths[0]),
+            "mean_token_length": float(sum(sorted_lengths) / total),
+            "median_token_length": float(median_length),
+            "max_token_length": int(sorted_lengths[-1]),
+            "subword_like_count": int(subword_like_count),
+            "subword_like_percentage": float(subword_like_percentage),
+            "special_tokens_in_vocab_count": int(special_in_vocab_count),
+            "special_tokens_in_vocab_percentage": float(special_in_vocab_percentage),
+            "unique_token_lengths": int(len(set(sorted_lengths))),
+            "empty_token_count": int(sum(1 for token in vocab_tokens if len(token) == 0)),
+            "considered_non_special_count": int(considered_non_special_count),
+        }
 
     # -------------------------------------------------------------------------
     def resolve_casing_hint(
@@ -479,16 +636,7 @@ class TokenizersService:
             if token in special_lookup or self.special_token_pattern.match(token):
                 continue
 
-            # Deterministic heuristic:
-            # - "##" prefix indicates WordPiece continuation pieces.
-            # - "▁" marks SentencePiece word starts; non-leading usage is treated as continuation.
-            # - "Ġ" marks byte-level BPE word starts; non-leading usage is treated as continuation.
-            is_subword = (
-                token.startswith("##")
-                or ("▁" in token and not token.startswith("▁"))
-                or ("Ġ" in token and not token.startswith("Ġ"))
-            )
-            if is_subword:
+            if self.is_subword_like_token(token):
                 subword_count += 1
             else:
                 word_count += 1
@@ -511,7 +659,7 @@ class TokenizersService:
         )
 
         return {
-            "heuristic": "wordpiece_hashes_sentencepiece_underscore_bytebpe_G",
+            "heuristic": "hash_prefix_atat_suffix_sentencepiece_markers",
             "subword_count": int(subword_count),
             "word_count": int(word_count),
             "considered_count": int(considered_count),
@@ -651,6 +799,9 @@ class TokenizersService:
         tokenizer_json = self.load_json_if_present(tokenizer_json_path)
         tokenizer_config = self.load_json_if_present(tokenizer_config_path)
         model_config = self.load_json_if_present(model_config_path)
+        init_kwargs = getattr(tokenizer, "init_kwargs", {})
+        if not isinstance(init_kwargs, dict):
+            init_kwargs = {}
 
         vocab_pairs = self.extract_vocabulary(tokenizer)
         vocabulary_tokens = [token for _, token in vocab_pairs]
@@ -673,8 +824,13 @@ class TokenizersService:
         self.report_serializer.replace_tokenizer_vocabulary(name, vocabulary_rows)
 
         special_tokens = self.normalize_special_tokens(tokenizer)
+        special_token_ids = self.normalize_special_token_ids(tokenizer)
         special_token_set = set(special_tokens)
         subword_word_stats = self.compute_subword_word_stats(
+            vocab_tokens=vocabulary_tokens,
+            special_tokens=special_token_set,
+        )
+        vocabulary_stats = self.compute_vocabulary_stats(
             vocab_tokens=vocabulary_tokens,
             special_tokens=special_token_set,
         )
@@ -685,6 +841,14 @@ class TokenizersService:
         )
         normalization_hint = self.resolve_normalization_hint(tokenizer_json, tokenizer_config)
         casing_hint = self.resolve_casing_hint(tokenizer, tokenizer_config)
+        model_max_length = self.resolve_model_max_length(tokenizer, init_kwargs)
+        padding_side = self.resolve_padding_side(tokenizer, init_kwargs)
+        base_vocabulary_size = self.resolve_base_vocabulary_size(tokenizer)
+        added_tokens_count = self.resolve_added_tokens_count(tokenizer)
+        backend_tokenizer = getattr(tokenizer, "backend_tokenizer", None)
+        backend_tokenizer_class = getattr(backend_tokenizer, "__class__", type(None)).__name__
+        if not isinstance(backend_tokenizer_class, str) or backend_tokenizer_class in {"", "NoneType"}:
+            backend_tokenizer_class = None
         config_description = self.resolve_description(tokenizer_config, model_config)
         hf_description, huggingface_url = self.resolve_hf_repo_metadata(name)
         description = config_description or hf_description
@@ -696,13 +860,20 @@ class TokenizersService:
             "vocabulary_size": int(len(vocab_pairs)),
             "tokenizer_algorithm": algorithm_type,
             "tokenizer_class": getattr(tokenizer, "__class__", type(None)).__name__,
+            "backend_tokenizer_class": backend_tokenizer_class,
             "has_special_tokens": bool(special_tokens),
             "special_tokens": special_tokens,
             "special_tokens_count": int(len(special_tokens)),
+            "special_tokens_ids_count": int(len(special_token_ids)),
+            "base_vocabulary_size": base_vocabulary_size,
+            "model_max_length": model_max_length,
+            "padding_side": padding_side,
+            "added_tokens_count": int(added_tokens_count),
             "do_lower_case": casing_hint,
             "normalization_hint": normalization_hint,
             "token_length_measure": "character_count",
             "subword_word_stats": subword_word_stats,
+            "vocabulary_stats": vocabulary_stats,
             "persistence_mode": persistence_info["persistence_mode"],
             "persistence_reason": persistence_info["persistence_reason"],
         }

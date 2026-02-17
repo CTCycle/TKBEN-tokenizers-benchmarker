@@ -151,6 +151,10 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
     void downloadTokenizers(selectedScannedTokenizers);
   };
 
+  const handleRemoveTokenizerFromPreview = (tokenizerId: string) => {
+    setTokenizers(tokenizers.filter((item) => item !== tokenizerId));
+  };
+
   const pageContent = (
     <div className={`page-grid tokenizers-page${showDashboard ? '' : ' tokenizers-page--single'}`}>
       <section className="panel large-panel">
@@ -449,8 +453,8 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
                           <button
                             type="button"
                             className="icon-button subtle"
-                            aria-label={`Open tokenizer report for ${tokenizerId}`}
-                            title="Open tokenizer report (loads latest or generates if missing)"
+                            aria-label={`Generate or open tokenizer report for ${tokenizerId}`}
+                            title="Generate report if missing, otherwise open latest report"
                             onClick={() => void handleOpenTokenizerReport(tokenizerId)}
                             disabled={
                               activeOpeningTokenizer === tokenizerId
@@ -464,6 +468,20 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
                                 <path d="M5 12h14v8H5z" />
                               </svg>
                             )}
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-button danger"
+                            aria-label={`Remove ${tokenizerId} from preview`}
+                            title="Remove tokenizer from preview list"
+                            onClick={() => handleRemoveTokenizerFromPreview(tokenizerId)}
+                          >
+                            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
+                              <path d="M4 7h16" strokeWidth="2" strokeLinecap="round" />
+                              <path d="M9 7V5h6v2" strokeWidth="2" strokeLinecap="round" />
+                              <path d="M8 10v8m4-8v8m4-8v8" strokeWidth="2" strokeLinecap="round" />
+                              <path d="M6 7l1 13h10l1-13" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
                           </button>
                         </div>
                       </div>
