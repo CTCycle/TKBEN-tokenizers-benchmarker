@@ -376,19 +376,41 @@ export interface TokenizerSubwordWordStats {
     subword_to_word_ratio: number | null;
 }
 
+export interface TokenizerVocabularyStats {
+    heuristic?: string | null;
+    min_token_length?: number | null;
+    mean_token_length?: number | null;
+    median_token_length?: number | null;
+    max_token_length?: number | null;
+    subword_like_count?: number | null;
+    subword_like_percentage?: number | null;
+    special_tokens_in_vocab_count?: number | null;
+    special_tokens_in_vocab_percentage?: number | null;
+    unique_token_lengths?: number | null;
+    empty_token_count?: number | null;
+    considered_non_special_count?: number | null;
+}
+
 export interface TokenizerGlobalStats extends Record<string, unknown> {
     vocabulary_size?: number;
+    base_vocabulary_size?: number | null;
     tokenizer_algorithm?: string | null;
     tokenizer_class?: string | null;
+    backend_tokenizer_class?: string | null;
     has_special_tokens?: boolean;
     special_tokens?: string[];
     special_tokens_count?: number;
+    special_tokens_ids_count?: number;
+    model_max_length?: number | null;
+    padding_side?: string | null;
+    added_tokens_count?: number;
     do_lower_case?: boolean | null;
     normalization_hint?: string | null;
     token_length_measure?: string | null;
     persistence_mode?: string;
     persistence_reason?: string;
     subword_word_stats?: TokenizerSubwordWordStats;
+    vocabulary_stats?: TokenizerVocabularyStats;
 }
 
 export interface TokenizerReportResponse {
