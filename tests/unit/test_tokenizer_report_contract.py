@@ -1,0 +1,155 @@
+from __future__ import annotations
+
+from typing import Any
+
+import pytest
+
+from TKBEN.server.repositories.serialization.data import TokenizerReportSerializer
+from TKBEN.server.services.tokenizers import TokenizersService
+
+
+def test_compute_subword_word_stats_excludes_special_tokens_and_classifies_markers() -> None:
+    service = TokenizersService()
+    stats = service.compute_subword_word_stats(
+        vocab_tokens=[
+            "##ing",
+            "token",
+            "▁hello",
+            "he▁llo",
+            "Ġword",
+            "wordĠpiece",
+            "[CLS]",
+            "<pad>",
+        ],
+        special_tokens={"[CLS]", "<pad>"},
+    )
+
+    assert stats["subword_count"] == 3
+    assert stats["word_count"] == 3
+    assert stats["considered_count"] == 6
+    assert stats["subword_to_word_ratio"] == pytest.approx(1.0)
+    assert stats["subword_percentage"] == pytest.approx(50.0)
+    assert stats["word_percentage"] == pytest.approx(50.0)
+
+
+def test_resolve_hf_repo_metadata_returns_link_when_description_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = TokenizersService()
+
+    def raise_model_info(*args: Any, **kwargs: Any) -> Any:
+        raise RuntimeError("model info unavailable")
+
+    def raise_model_card(*args: Any, **kwargs: Any) -> Any:
+        raise RuntimeError("model card unavailable")
+
+    monkeypatch.setattr(
+        "TKBEN.server.services.tokenizers.HfApi.model_info",
+        raise_model_info,
+    )
+    monkeypatch.setattr(
+        "TKBEN.server.services.tokenizers.ModelCard.load",
+        raise_model_card,
+    )
+
+    description, huggingface_url = service.resolve_hf_repo_metadata("bert-base-uncased")
+
+    assert description is None
+    assert huggingface_url == "https://huggingface.co/bert-base-uncased"
+
+
+class DummyTokenizer:
+    special_tokens_map = {"cls_token": "[CLS]"}
+
+    def get_vocab(self) -> dict[str, int]:
+        return {
+            "hello": 0,
+            "##ing": 1,
+            "[CLS]": 2,
+            "▁world": 3,
+            "he▁llo": 4,
+            "Ġtoken": 5,
+            "wordĠpiece": 6,
+        }
+
+
+def test_generate_report_payload_includes_hf_url_and_subword_stats(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = TokenizersService()
+    captured_report: dict[str, Any] = {}
+
+    monkeypatch.setattr(service, "has_cached_tokenizer", lambda tokenizer_name: True)
+    monkeypatch.setattr(
+        "TKBEN.server.services.tokenizers.AutoTokenizer.from_pretrained",
+        lambda *args, **kwargs: DummyTokenizer(),
+    )
+    monkeypatch.setattr(service, "find_cached_file", lambda *args, **kwargs: None)
+    monkeypatch.setattr(service, "load_json_if_present", lambda *args, **kwargs: {})
+    monkeypatch.setattr(
+        service.report_serializer,
+        "replace_tokenizer_vocabulary",
+        lambda *args, **kwargs: 1,
+    )
+    monkeypatch.setattr(
+        service,
+        "resolve_hf_repo_metadata",
+        lambda tokenizer_name: (None, f"https://huggingface.co/{tokenizer_name}"),
+    )
+
+    def capture_report(report: dict[str, Any]) -> int:
+        captured_report.update(report)
+        return 123
+
+    monkeypatch.setattr(service.report_serializer, "save_tokenizer_report", capture_report)
+
+    report = service.generate_and_store_report("bert-base-uncased")
+
+    assert report["report_id"] == 123
+    assert report["huggingface_url"] == "https://huggingface.co/bert-base-uncased"
+    assert report["global_stats"]["persistence_mode"] == "filesystem_required"
+    assert "subword_word_stats" in report["global_stats"]
+    assert captured_report["huggingface_url"] == "https://huggingface.co/bert-base-uncased"
+
+
+def test_tokenizer_report_serializer_roundtrip_preserves_huggingface_url() -> None:
+    serializer = TokenizerReportSerializer()
+    report_id = serializer.save_tokenizer_report(
+        {
+            "report_version": 1,
+            "created_at": "2026-02-17T00:00:00Z",
+            "tokenizer_name": "test/tokenizer-report-roundtrip",
+            "description": None,
+            "huggingface_url": "https://huggingface.co/test/tokenizer-report-roundtrip",
+            "global_stats": {
+                "vocabulary_size": 2,
+                "subword_word_stats": {
+                    "heuristic": "wordpiece_hashes_sentencepiece_underscore_bytebpe_G",
+                    "subword_count": 1,
+                    "word_count": 1,
+                    "considered_count": 2,
+                    "subword_percentage": 50.0,
+                    "word_percentage": 50.0,
+                    "subword_to_word_ratio": 1.0,
+                },
+                "persistence_mode": "filesystem_required",
+                "persistence_reason": "test",
+            },
+            "token_length_histogram": {
+                "bins": ["1-1"],
+                "counts": [2],
+                "bin_edges": [1.0, 2.0],
+                "min_length": 1,
+                "max_length": 1,
+                "mean_length": 1.0,
+                "median_length": 1.0,
+            },
+            "vocabulary_size": 2,
+        }
+    )
+
+    loaded = serializer.load_tokenizer_report_by_id(report_id)
+
+    assert loaded is not None
+    assert loaded["huggingface_url"] == "https://huggingface.co/test/tokenizer-report-roundtrip"
+    assert loaded["global_stats"]["subword_word_stats"]["subword_count"] == 1
