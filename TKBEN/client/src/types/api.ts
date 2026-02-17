@@ -282,6 +282,7 @@ export interface GlobalMetrics {
     dataset_name: string;
     tokenization_speed_tps: number;
     throughput_chars_per_sec: number;
+    processing_time_seconds: number;
     vocabulary_size: number;
     avg_sequence_length: number;
     median_sequence_length: number;
@@ -292,6 +293,16 @@ export interface GlobalMetrics {
     determinism_rate: number;
     boundary_preservation_rate: number;
     round_trip_fidelity_rate: number;
+    model_size_mb?: number;
+    segmentation_consistency?: number;
+    token_distribution_entropy?: number;
+    rare_token_tail_1?: number;
+    rare_token_tail_2?: number;
+    compression_chars_per_token?: number;
+    compression_bytes_per_character?: number;
+    round_trip_text_fidelity_rate?: number;
+    token_id_ordering_monotonicity?: number;
+    token_unigram_coverage?: number;
 }
 
 /**
@@ -351,6 +362,55 @@ export interface BenchmarkRunRequest {
     dataset_name: string;
     max_documents?: number;
     custom_tokenizer_name?: string;
+    run_name?: string | null;
+    selected_metric_keys?: string[] | null;
+}
+
+export interface BenchmarkPerDocumentTokenizerStats {
+    tokenizer: string;
+    tokens_count: number[];
+    tokens_to_words_ratio: number[];
+    bytes_per_token: number[];
+    boundary_preservation_rate: number[];
+    round_trip_token_fidelity: number[];
+    round_trip_text_fidelity: number[];
+    determinism_stability: number[];
+    bytes_per_character: number[];
+}
+
+export interface BenchmarkMetricCatalogMetric {
+    key: string;
+    label: string;
+    description: string;
+    scope: string;
+    value_kind: string;
+    core: boolean;
+}
+
+export interface BenchmarkMetricCatalogCategory {
+    category_key: string;
+    category_label: string;
+    metrics: BenchmarkMetricCatalogMetric[];
+}
+
+export interface BenchmarkMetricCatalogResponse {
+    categories: BenchmarkMetricCatalogCategory[];
+}
+
+export interface BenchmarkReportSummary {
+    report_id: number;
+    report_version: number;
+    created_at: string | null;
+    run_name: string | null;
+    dataset_name: string;
+    documents_processed: number;
+    tokenizers_count: number;
+    tokenizers_processed: string[];
+    selected_metric_keys: string[];
+}
+
+export interface BenchmarkReportListResponse {
+    reports: BenchmarkReportSummary[];
 }
 
 /**
@@ -447,11 +507,17 @@ export interface TokenizerVocabularyPageResponse {
  */
 export interface BenchmarkRunResponse {
     status: string;
+    report_id: number | null;
+    report_version: number;
+    created_at: string | null;
+    run_name: string | null;
+    selected_metric_keys: string[];
     dataset_name: string;
     documents_processed: number;
     tokenizers_processed: string[];
     tokenizers_count: number;
     global_metrics: GlobalMetrics[];
     chart_data: ChartData;
+    per_document_stats: BenchmarkPerDocumentTokenizerStats[];
 }
 

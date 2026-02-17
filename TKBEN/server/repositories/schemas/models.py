@@ -290,3 +290,23 @@ class TokenizerReport(Base):
         Index("ix_tokenizer_report_tokenizer_id", "tokenizer_id"),
         Index("ix_tokenizer_report_tokenizer_id_created_at", "tokenizer_id", "created_at"),
     )
+
+
+###############################################################################
+class BenchmarkReport(Base):
+    __tablename__ = "benchmark_report"
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    dataset_id = Column(
+        Integer,
+        ForeignKey("dataset.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    report_version = Column(Integer, nullable=False, default=1)
+    created_at = Column(DateTime, nullable=False)
+    run_name = Column(String, nullable=True)
+    selected_metric_keys = Column(JSONSequence)
+    payload = Column(JSONMapping)
+    __table_args__ = (
+        Index("ix_benchmark_report_dataset_id", "dataset_id"),
+        Index("ix_benchmark_report_created_at", "created_at"),
+    )

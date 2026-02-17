@@ -29,6 +29,9 @@ export const API_ENDPOINTS = {
     KEYS: `${API_BASE_URL}/keys`,
 
     BENCHMARKS_RUN: `${API_BASE_URL}/benchmarks/run`,
+    BENCHMARKS_REPORTS: `${API_BASE_URL}/benchmarks/reports`,
+    BENCHMARKS_REPORT_BY_ID: `${API_BASE_URL}/benchmarks/reports`,
+    BENCHMARKS_METRICS_CATALOG: `${API_BASE_URL}/benchmarks/metrics/catalog`,
 
     JOBS: `${API_BASE_URL}/jobs`,
 } as const;

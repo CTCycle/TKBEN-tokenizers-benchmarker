@@ -27,6 +27,383 @@ from TKBEN.server.common.utils.logger import logger
 
 
 ###############################################################################
+BENCHMARK_METRIC_CATALOG: list[dict[str, Any]] = [
+    {
+        "category_key": "run_summary",
+        "category_label": "Run Summary",
+        "metrics": [
+            {
+                "key": "run.dataset_name",
+                "label": "Dataset Name",
+                "description": "Dataset used by the benchmark run.",
+                "scope": "run",
+                "value_kind": "text",
+                "core": True,
+            },
+            {
+                "key": "run.documents_processed",
+                "label": "Documents Processed",
+                "description": "Number of documents processed in the benchmark run.",
+                "scope": "run",
+                "value_kind": "number",
+                "core": True,
+            },
+            {
+                "key": "run.tokenizers_count",
+                "label": "Tokenizers Count",
+                "description": "Number of tokenizers processed in the benchmark run.",
+                "scope": "run",
+                "value_kind": "number",
+                "core": True,
+            },
+            {
+                "key": "run.tokenizers_processed",
+                "label": "Tokenizers Processed",
+                "description": "Tokenizer identifiers processed in the run.",
+                "scope": "run",
+                "value_kind": "json",
+                "core": False,
+            },
+        ],
+    },
+    {
+        "category_key": "global_metrics",
+        "category_label": "Global Metrics",
+        "metrics": [
+            {
+                "key": "global.tokenization_speed_tps",
+                "label": "Tokenization Speed (tok/s)",
+                "description": "Tokenizer speed measured in tokens per second.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": True,
+            },
+            {
+                "key": "global.throughput_chars_per_sec",
+                "label": "Throughput (chars/s)",
+                "description": "Tokenizer throughput measured in characters per second.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": True,
+            },
+            {
+                "key": "global.vocabulary_size",
+                "label": "Vocabulary Size",
+                "description": "Vocabulary size exposed by the tokenizer.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": True,
+            },
+            {
+                "key": "global.avg_sequence_length",
+                "label": "Average Sequence Length",
+                "description": "Average number of tokens produced per document.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": True,
+            },
+            {
+                "key": "global.median_sequence_length",
+                "label": "Median Sequence Length",
+                "description": "Median number of tokens produced per document.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": True,
+            },
+            {
+                "key": "global.subword_fertility",
+                "label": "Subword Fertility",
+                "description": "Average token-to-word ratio across documents.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": True,
+            },
+            {
+                "key": "global.oov_rate",
+                "label": "OOV Rate",
+                "description": "Out-of-vocabulary percentage on dataset words.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": True,
+            },
+            {
+                "key": "global.word_recovery_rate",
+                "label": "Word Recovery Rate",
+                "description": "Single-word encode/decode recovery rate.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": True,
+            },
+            {
+                "key": "global.character_coverage",
+                "label": "Character Coverage",
+                "description": "Character coverage between dataset and vocabulary.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": True,
+            },
+            {
+                "key": "global.determinism_rate",
+                "label": "Determinism Rate",
+                "description": "Rate of stable tokenization across repeated runs.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": True,
+            },
+            {
+                "key": "global.boundary_preservation_rate",
+                "label": "Boundary Preservation Rate",
+                "description": "Preservation rate of whitespace/punctuation boundaries.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": True,
+            },
+            {
+                "key": "global.round_trip_fidelity_rate",
+                "label": "Round Trip Fidelity Rate",
+                "description": "Token round-trip fidelity rate.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": True,
+            },
+        ],
+    },
+    {
+        "category_key": "vocabulary_stats",
+        "category_label": "Vocabulary Stats",
+        "metrics": [
+            {
+                "key": "vocabulary.vocabulary_size",
+                "label": "Vocabulary Size",
+                "description": "Vocabulary size used for comparative charts.",
+                "scope": "tokenizer_chart",
+                "value_kind": "number",
+                "core": True,
+            },
+            {
+                "key": "vocabulary.subwords_count",
+                "label": "Subwords Count",
+                "description": "Estimated number of subword tokens in vocabulary.",
+                "scope": "tokenizer_chart",
+                "value_kind": "number",
+                "core": True,
+            },
+            {
+                "key": "vocabulary.true_words_count",
+                "label": "True Words Count",
+                "description": "Estimated number of full-word tokens in vocabulary.",
+                "scope": "tokenizer_chart",
+                "value_kind": "number",
+                "core": True,
+            },
+            {
+                "key": "vocabulary.subwords_percentage",
+                "label": "Subwords Percentage",
+                "description": "Subword percentage over vocabulary size.",
+                "scope": "tokenizer_chart",
+                "value_kind": "number",
+                "core": True,
+            },
+            {
+                "key": "vocabulary.token_length_distribution",
+                "label": "Token Length Distribution",
+                "description": "Histogram bins for token lengths.",
+                "scope": "tokenizer_chart",
+                "value_kind": "histogram",
+                "core": True,
+            },
+        ],
+    },
+    {
+        "category_key": "speed_metrics",
+        "category_label": "Speed Metrics",
+        "metrics": [
+            {
+                "key": "speed.tokens_per_second",
+                "label": "Tokens per Second",
+                "description": "Tokens processed per second per tokenizer.",
+                "scope": "tokenizer_chart",
+                "value_kind": "number",
+                "core": True,
+            },
+            {
+                "key": "speed.chars_per_second",
+                "label": "Chars per Second",
+                "description": "Characters processed per second per tokenizer.",
+                "scope": "tokenizer_chart",
+                "value_kind": "number",
+                "core": True,
+            },
+            {
+                "key": "speed.processing_time_seconds",
+                "label": "Processing Time (s)",
+                "description": "End-to-end processing time per tokenizer.",
+                "scope": "tokenizer_chart",
+                "value_kind": "number",
+                "core": True,
+            },
+        ],
+    },
+    {
+        "category_key": "internal_metrics",
+        "category_label": "Internal Metrics",
+        "metrics": [
+            {
+                "key": "internal.model_size_mb",
+                "label": "Model Size (MB)",
+                "description": "Tokenizer model size in MB when available.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": False,
+            },
+            {
+                "key": "internal.segmentation_consistency",
+                "label": "Segmentation Consistency",
+                "description": "Morphological segmentation consistency score.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": False,
+            },
+            {
+                "key": "internal.token_distribution_entropy",
+                "label": "Token Distribution Entropy",
+                "description": "Entropy of token unigram distribution.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": False,
+            },
+            {
+                "key": "internal.rare_token_tail_1",
+                "label": "Rare Token Tail (count=1)",
+                "description": "Count of unique tokens observed once.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": False,
+            },
+            {
+                "key": "internal.rare_token_tail_2",
+                "label": "Rare Token Tail (count=2)",
+                "description": "Count of unique tokens observed twice.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": False,
+            },
+            {
+                "key": "internal.compression_chars_per_token",
+                "label": "Compression Chars/Token",
+                "description": "Average characters represented by each token.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": False,
+            },
+            {
+                "key": "internal.compression_bytes_per_character",
+                "label": "Compression Bytes/Character",
+                "description": "Average UTF-8 bytes per character in processed texts.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": False,
+            },
+            {
+                "key": "internal.round_trip_text_fidelity_rate",
+                "label": "Round Trip Text Fidelity Rate",
+                "description": "Exact text round-trip fidelity rate.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": False,
+            },
+            {
+                "key": "internal.token_id_ordering_monotonicity",
+                "label": "Token ID Ordering Monotonicity",
+                "description": "Monotonicity score of token ID ordering by token length.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": False,
+            },
+            {
+                "key": "internal.token_unigram_coverage",
+                "label": "Token Unigram Coverage",
+                "description": "Observed token unigram coverage over vocabulary.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": False,
+            },
+        ],
+    },
+    {
+        "category_key": "per_document_stats",
+        "category_label": "Per-Document Stats",
+        "metrics": [
+            {
+                "key": "document.tokens_count",
+                "label": "Tokens Count",
+                "description": "Tokens per document.",
+                "scope": "per_document",
+                "value_kind": "array",
+                "core": True,
+            },
+            {
+                "key": "document.tokens_to_words_ratio",
+                "label": "Tokens to Words Ratio",
+                "description": "Tokens-to-words ratio per document.",
+                "scope": "per_document",
+                "value_kind": "array",
+                "core": True,
+            },
+            {
+                "key": "document.bytes_per_token",
+                "label": "Bytes per Token",
+                "description": "Average bytes per token per document.",
+                "scope": "per_document",
+                "value_kind": "array",
+                "core": True,
+            },
+            {
+                "key": "document.boundary_preservation_rate",
+                "label": "Boundary Preservation Rate",
+                "description": "Boundary preservation per document.",
+                "scope": "per_document",
+                "value_kind": "array",
+                "core": True,
+            },
+            {
+                "key": "document.round_trip_token_fidelity",
+                "label": "Round Trip Token Fidelity",
+                "description": "Token round-trip fidelity per document.",
+                "scope": "per_document",
+                "value_kind": "array",
+                "core": True,
+            },
+            {
+                "key": "document.round_trip_text_fidelity",
+                "label": "Round Trip Text Fidelity",
+                "description": "Text round-trip fidelity per document.",
+                "scope": "per_document",
+                "value_kind": "array",
+                "core": True,
+            },
+            {
+                "key": "document.determinism_stability",
+                "label": "Determinism Stability",
+                "description": "Determinism status per document.",
+                "scope": "per_document",
+                "value_kind": "array",
+                "core": True,
+            },
+            {
+                "key": "document.bytes_per_character",
+                "label": "Bytes per Character",
+                "description": "Bytes per character per document.",
+                "scope": "per_document",
+                "value_kind": "array",
+                "core": True,
+            },
+        ],
+    },
+]
+
+
+###############################################################################
 class BenchmarkTools:
 
     def __call__(self) -> None:
@@ -372,6 +749,84 @@ class BenchmarkService:
             return row[0] if row else 0
 
     # -------------------------------------------------------------------------
+    def get_metric_catalog(self) -> list[dict[str, Any]]:
+        return BENCHMARK_METRIC_CATALOG
+
+    # -------------------------------------------------------------------------
+    def default_selected_metric_keys(self) -> list[str]:
+        metric_keys: list[str] = []
+        for category in BENCHMARK_METRIC_CATALOG:
+            metrics = category.get("metrics", [])
+            if not isinstance(metrics, list):
+                continue
+            for metric in metrics:
+                if not isinstance(metric, dict):
+                    continue
+                key = metric.get("key")
+                if isinstance(key, str) and key:
+                    metric_keys.append(key)
+        return metric_keys
+
+    # -------------------------------------------------------------------------
+    def resolve_selected_metric_keys(
+        self,
+        selected_metric_keys: list[str] | None,
+    ) -> list[str]:
+        default_keys = self.default_selected_metric_keys()
+        default_key_set = set(default_keys)
+        if not isinstance(selected_metric_keys, list):
+            return default_keys
+
+        requested = [
+            str(key) for key in selected_metric_keys if isinstance(key, str) and key
+        ]
+        deduplicated = list(dict.fromkeys(requested))
+        filtered = [key for key in deduplicated if key in default_key_set]
+        return filtered or default_keys
+
+    # -------------------------------------------------------------------------
+    def build_per_document_stats(
+        self,
+        local_stats: pd.DataFrame,
+    ) -> list[dict[str, Any]]:
+        if local_stats.empty or "tokenizer" not in local_stats.columns:
+            return []
+
+        stats: list[dict[str, Any]] = []
+        metric_columns = [
+            "tokens_count",
+            "tokens_to_words_ratio",
+            "bytes_per_token",
+            "boundary_preservation_rate",
+            "round_trip_token_fidelity",
+            "round_trip_text_fidelity",
+            "determinism_stability",
+            "bytes_per_character",
+        ]
+
+        grouped = local_stats.groupby("tokenizer", sort=False)
+        for tokenizer_name, group_df in grouped:
+            group = group_df.copy()
+            if "text_id" in group.columns:
+                group["text_id"] = pd.to_numeric(group["text_id"], errors="coerce")
+                group = group.sort_values("text_id")
+
+            tokenizer_stats: dict[str, Any] = {"tokenizer": str(tokenizer_name)}
+            for column in metric_columns:
+                if column not in group.columns:
+                    tokenizer_stats[column] = []
+                    continue
+                series = pd.to_numeric(group[column], errors="coerce").fillna(0)
+                if column == "tokens_count":
+                    tokenizer_stats[column] = [int(value) for value in series.tolist()]
+                else:
+                    tokenizer_stats[column] = [float(value) for value in series.tolist()]
+
+            stats.append(tokenizer_stats)
+
+        return stats
+
+    # -------------------------------------------------------------------------
     def tokenize_document(
         self,
         tokenizer: Any,
@@ -547,11 +1002,15 @@ class BenchmarkService:
         dataset_name: str,
         tokenizer_ids: list[str],
         custom_tokenizers: dict[str, Any] | None = None,
+        run_name: str | None = None,
+        selected_metric_keys: list[str] | None = None,
         progress_callback: Callable[[float], None] | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> dict[str, Any]:
         logger.info("Starting benchmark run for dataset: %s", dataset_name)
         logger.info("Tokenizers to benchmark: %s", tokenizer_ids)
+        resolved_metric_keys = self.resolve_selected_metric_keys(selected_metric_keys)
+        normalized_run_name = run_name.strip() if isinstance(run_name, str) else ""
 
         # Check dataset exists
         doc_count = self.get_dataset_document_count(dataset_name)
@@ -860,6 +1319,7 @@ class BenchmarkService:
                     "dataset_name": dataset_name,
                     "tokenization_speed_tps": float(tokenization_speed_tps),
                     "throughput_chars_per_sec": float(throughput_chars_per_sec),
+                    "processing_time_seconds": float(elapsed),
                     "model_size_mb": 0.0,  # Not computed for webapp
                     "vocabulary_size": int(vocabulary_size),
                     "avg_sequence_length": float(avg_sequence_length),
@@ -914,6 +1374,7 @@ class BenchmarkService:
         )
 
         global_metrics = pd.DataFrame(global_metrics_rows)
+        per_document_stats = self.build_per_document_stats(local_stats)
 
         # Persist results to database
         logger.info("Persisting benchmark results to database...")
@@ -935,11 +1396,14 @@ class BenchmarkService:
 
         return {
             "status": "success",
+            "run_name": normalized_run_name or None,
+            "selected_metric_keys": resolved_metric_keys,
             "dataset_name": dataset_name,
             "documents_processed": num_docs,
             "tokenizers_processed": list(tokenizers.keys()),
             "tokenizers_count": len(tokenizers),
             "global_metrics": global_metrics.to_dict(orient="records"),
+            "per_document_stats": per_document_stats,
             **chart_data,
         }
 
@@ -978,7 +1442,9 @@ class BenchmarkService:
                     "tokenizer": str(row.get("tokenizer", "")),
                     "tokens_per_second": float(row.get("tokenization_speed_tps", 0.0)),
                     "chars_per_second": float(row.get("throughput_chars_per_sec", 0.0)),
-                    "processing_time_seconds": 0.0,  # Not tracked currently
+                    "processing_time_seconds": float(
+                        row.get("processing_time_seconds", 0.0)
+                    ),
                 })
 
         # Token length distributions (histogram bins)
