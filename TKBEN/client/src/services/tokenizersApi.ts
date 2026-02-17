@@ -174,6 +174,27 @@ export async function fetchLatestTokenizerReport(
 }
 
 /**
+ * Load latest persisted tokenizer report, returning null if not found.
+ */
+export async function fetchLatestTokenizerReportOrNull(
+    tokenizerName: string,
+): Promise<TokenizerReportResponse | null> {
+    const response = await fetch(
+        `${API_ENDPOINTS.TOKENIZERS_REPORT_LATEST}?tokenizer_name=${encodeURIComponent(tokenizerName)}`,
+    );
+
+    if (response.status === 404) {
+        return null;
+    }
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || `Failed to load latest tokenizer report: ${response.status}`);
+    }
+
+    return response.json();
+}
+
+/**
  * Load tokenizer report by id.
  */
 export async function fetchTokenizerReportById(

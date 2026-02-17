@@ -366,6 +366,31 @@ export interface TokenizerValidationGenerateRequest {
     tokenizer_name: string;
 }
 
+export interface TokenizerSubwordWordStats {
+    heuristic: string;
+    subword_count: number;
+    word_count: number;
+    considered_count: number;
+    subword_percentage: number;
+    word_percentage: number;
+    subword_to_word_ratio: number | null;
+}
+
+export interface TokenizerGlobalStats extends Record<string, unknown> {
+    vocabulary_size?: number;
+    tokenizer_algorithm?: string | null;
+    tokenizer_class?: string | null;
+    has_special_tokens?: boolean;
+    special_tokens?: string[];
+    special_tokens_count?: number;
+    do_lower_case?: boolean | null;
+    normalization_hint?: string | null;
+    token_length_measure?: string | null;
+    persistence_mode?: string;
+    persistence_reason?: string;
+    subword_word_stats?: TokenizerSubwordWordStats;
+}
+
 export interface TokenizerReportResponse {
     status: string;
     report_id: number;
@@ -373,7 +398,8 @@ export interface TokenizerReportResponse {
     created_at: string;
     tokenizer_name: string;
     description: string | null;
-    global_stats: Record<string, unknown>;
+    huggingface_url?: string | null;
+    global_stats: TokenizerGlobalStats;
     token_length_histogram: HistogramData;
     vocabulary_size: number;
 }

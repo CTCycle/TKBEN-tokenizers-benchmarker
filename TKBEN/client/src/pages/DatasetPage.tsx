@@ -680,7 +680,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
 
   useEffect(() => {
     if (!wordCloudTerms.length || wordCloudSize.width <= 0 || wordCloudSize.height <= 0) {
-      setWordCloudLayout([]);
+      setWordCloudLayout((current) => (current.length > 0 ? [] : current));
       return;
     }
 
