@@ -3,11 +3,12 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
 
-from huggingface_hub import HfApi
+from huggingface_hub import HfApi, ModelCard
 import sqlalchemy
 from transformers import AutoTokenizer
 
@@ -16,7 +17,7 @@ from TKBEN.server.common.utils.logger import logger
 from TKBEN.server.configurations import server_settings
 from TKBEN.server.repositories.database.backend import database
 from TKBEN.server.repositories.serialization.data import TokenizerReportSerializer
-from TKBEN.server.services.keys import HFAccessKeyService
+from TKBEN.server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
 
 
 ###############################################################################
@@ -48,6 +49,10 @@ class TokenizersService:
         self.key_service = HFAccessKeyService()
         self.report_serializer = TokenizerReportSerializer()
         self.histogram_bins = max(5, int(server_settings.datasets.histogram_bins))
+        self.special_token_pattern = re.compile(
+            r"^(?:\[.*\]|<.*>|\{.*\}|</?s>|</?pad>|UNK|PAD)$",
+            re.IGNORECASE,
+        )
 
     # -------------------------------------------------------------------------
     def normalize_tokenizer_identifiers(self, tokenizers: list[str]) -> list[str]:
@@ -141,6 +146,17 @@ class TokenizersService:
         return identifiers
 
     # -------------------------------------------------------------------------
+    def get_hf_access_token_for_metadata(self) -> str | None:
+        try:
+            return self.key_service.get_active_key()
+        except HFAccessKeyValidationError:
+            logger.warning(
+                "No decryptable active Hugging Face key found. "
+                "Proceeding with anonymous tokenizer metadata lookup."
+            )
+            return None
+
+    # -------------------------------------------------------------------------
     def download_and_persist(
         self,
         tokenizers: list[str],
@@ -207,6 +223,118 @@ class TokenizersService:
             "already_downloaded_count": len(already_downloaded),
             "failed_count": len(failed),
         }
+
+    # -------------------------------------------------------------------------
+    def build_huggingface_url(self, tokenizer_name: str) -> str | None:
+        normalized = str(tokenizer_name).strip()
+        if not normalized:
+            return None
+        if normalized.upper().startswith("CUSTOM_"):
+            return None
+        if " " in normalized:
+            return None
+        return f"https://huggingface.co/{normalized}"
+
+    # -------------------------------------------------------------------------
+    def extract_model_card_summary(
+        self,
+        card_data: Any,
+        card_content: str | None = None,
+    ) -> str | None:
+        candidate_keys = (
+            "description",
+            "model_description",
+            "summary",
+            "model_summary",
+        )
+        payload = card_data
+        if payload is not None and hasattr(payload, "to_dict") and callable(payload.to_dict):
+            try:
+                payload = payload.to_dict()
+            except Exception:
+                payload = card_data
+        if isinstance(payload, dict):
+            for key in candidate_keys:
+                value = payload.get(key)
+                if isinstance(value, str):
+                    trimmed = value.strip()
+                    if trimmed:
+                        return trimmed
+
+        content = str(card_content or "").strip()
+        if not content:
+            return None
+
+        if content.startswith("---"):
+            parts = content.split("---", 2)
+            if len(parts) == 3:
+                content = parts[2].strip()
+
+        lines = [line.strip() for line in content.splitlines()]
+        paragraph_lines: list[str] = []
+        started = False
+        for line in lines:
+            if not line:
+                if started:
+                    break
+                continue
+            if line.startswith("#"):
+                continue
+            paragraph_lines.append(line)
+            started = True
+        if not paragraph_lines:
+            return None
+        summary = " ".join(paragraph_lines).strip()
+        return summary or None
+
+    # -------------------------------------------------------------------------
+    def resolve_hf_repo_metadata(
+        self,
+        tokenizer_name: str,
+    ) -> tuple[str | None, str | None]:
+        normalized = str(tokenizer_name).strip()
+        canonical_url = self.build_huggingface_url(normalized)
+        if canonical_url is None:
+            return None, None
+
+        hf_access_token = self.get_hf_access_token_for_metadata()
+        api = HfApi(token=hf_access_token)
+        description: str | None = None
+
+        try:
+            model_info = api.model_info(
+                normalized,
+                expand=["cardData"],
+                token=hf_access_token,
+            )
+            model_id = getattr(model_info, "id", None)
+            if isinstance(model_id, str) and model_id.strip():
+                canonical_url = self.build_huggingface_url(model_id) or canonical_url
+            card_data = getattr(model_info, "card_data", None)
+            description = self.extract_model_card_summary(card_data=card_data)
+        except Exception:
+            logger.debug(
+                "Failed to retrieve model info for tokenizer %s",
+                normalized,
+                exc_info=True,
+            )
+
+        if description is None:
+            try:
+                model_card = ModelCard.load(normalized, token=hf_access_token)
+                card_content = getattr(model_card, "content", "")
+                description = self.extract_model_card_summary(
+                    card_data=None,
+                    card_content=card_content,
+                )
+            except Exception:
+                logger.debug(
+                    "Failed to load model card for tokenizer %s",
+                    normalized,
+                    exc_info=True,
+                )
+
+        return description, canonical_url
 
     # -------------------------------------------------------------------------
     def find_cached_file(
@@ -335,6 +463,83 @@ class TokenizersService:
         return None
 
     # -------------------------------------------------------------------------
+    def compute_subword_word_stats(
+        self,
+        vocab_tokens: list[str],
+        special_tokens: set[str],
+    ) -> dict[str, Any]:
+        special_lookup = {token for token in special_tokens if token}
+        subword_count = 0
+        word_count = 0
+
+        for raw_token in vocab_tokens:
+            token = str(raw_token).strip()
+            if not token:
+                continue
+            if token in special_lookup or self.special_token_pattern.match(token):
+                continue
+
+            # Deterministic heuristic:
+            # - "##" prefix indicates WordPiece continuation pieces.
+            # - "▁" marks SentencePiece word starts; non-leading usage is treated as continuation.
+            # - "Ġ" marks byte-level BPE word starts; non-leading usage is treated as continuation.
+            is_subword = (
+                token.startswith("##")
+                or ("▁" in token and not token.startswith("▁"))
+                or ("Ġ" in token and not token.startswith("Ġ"))
+            )
+            if is_subword:
+                subword_count += 1
+            else:
+                word_count += 1
+
+        considered_count = subword_count + word_count
+        subword_percentage = (
+            (float(subword_count) / float(considered_count)) * 100.0
+            if considered_count > 0
+            else 0.0
+        )
+        word_percentage = (
+            (float(word_count) / float(considered_count)) * 100.0
+            if considered_count > 0
+            else 0.0
+        )
+        ratio = (
+            float(subword_count) / float(word_count)
+            if word_count > 0
+            else None
+        )
+
+        return {
+            "heuristic": "wordpiece_hashes_sentencepiece_underscore_bytebpe_G",
+            "subword_count": int(subword_count),
+            "word_count": int(word_count),
+            "considered_count": int(considered_count),
+            "subword_percentage": float(subword_percentage),
+            "word_percentage": float(word_percentage),
+            "subword_to_word_ratio": ratio,
+        }
+
+    # -------------------------------------------------------------------------
+    def resolve_tokenizer_persistence_mode(
+        self,
+        tokenizer_name: str,
+        cache_dir: str,
+    ) -> dict[str, str]:
+        _ = tokenizer_name
+        _ = cache_dir
+        # Downloaded tokenizer loading relies on AutoTokenizer.from_pretrained(..., local_files_only=True)
+        # in benchmark/report paths, so filesystem artifacts are required today.
+        # DB-only mode is intentionally not selected because there is no DB reconstruction path.
+        return {
+            "persistence_mode": "filesystem_required",
+            "persistence_reason": (
+                "Runtime tokenizer loading uses local_files_only=True with cached files; "
+                "no DB-only reconstruction path exists."
+            ),
+        }
+
+    # -------------------------------------------------------------------------
     def compute_histogram(self, lengths: list[int]) -> dict[str, Any]:
         if not lengths:
             return {
@@ -448,6 +653,7 @@ class TokenizersService:
         model_config = self.load_json_if_present(model_config_path)
 
         vocab_pairs = self.extract_vocabulary(tokenizer)
+        vocabulary_tokens = [token for _, token in vocab_pairs]
         vocabulary_rows = [
             {
                 "token_id": token_id,
@@ -467,6 +673,11 @@ class TokenizersService:
         self.report_serializer.replace_tokenizer_vocabulary(name, vocabulary_rows)
 
         special_tokens = self.normalize_special_tokens(tokenizer)
+        special_token_set = set(special_tokens)
+        subword_word_stats = self.compute_subword_word_stats(
+            vocab_tokens=vocabulary_tokens,
+            special_tokens=special_token_set,
+        )
         algorithm_type = self.detect_algorithm_type(
             tokenizer=tokenizer,
             tokenizer_json=tokenizer_json,
@@ -474,7 +685,10 @@ class TokenizersService:
         )
         normalization_hint = self.resolve_normalization_hint(tokenizer_json, tokenizer_config)
         casing_hint = self.resolve_casing_hint(tokenizer, tokenizer_config)
-        description = self.resolve_description(tokenizer_config, model_config)
+        config_description = self.resolve_description(tokenizer_config, model_config)
+        hf_description, huggingface_url = self.resolve_hf_repo_metadata(name)
+        description = config_description or hf_description
+        persistence_info = self.resolve_tokenizer_persistence_mode(name, cache_dir)
         histogram = self.compute_histogram(lengths)
         created_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
@@ -488,6 +702,9 @@ class TokenizersService:
             "do_lower_case": casing_hint,
             "normalization_hint": normalization_hint,
             "token_length_measure": "character_count",
+            "subword_word_stats": subword_word_stats,
+            "persistence_mode": persistence_info["persistence_mode"],
+            "persistence_reason": persistence_info["persistence_reason"],
         }
 
         report_payload = {
@@ -495,6 +712,7 @@ class TokenizersService:
             "created_at": created_at,
             "tokenizer_name": name,
             "description": description,
+            "huggingface_url": huggingface_url,
             "global_stats": global_stats,
             "token_length_histogram": histogram,
             "vocabulary_size": int(len(vocab_pairs)),

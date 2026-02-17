@@ -10,6 +10,7 @@ from playwright.sync_api import APIRequestContext
 
 
 RUN_HF_SCAN = os.getenv("E2E_RUN_HF_SCAN", "").lower() in ("1", "true", "yes")
+RUN_TOKENIZER_REPORT_FLOW = os.getenv("E2E_RUN_TOKENIZER_REPORT_FLOW", "").lower() in ("1", "true", "yes")
 
 
 def _build_wordlevel_tokenizer_json() -> bytes:
@@ -118,3 +119,74 @@ def test_clear_custom_tokenizers(api_context: APIRequestContext) -> None:
     assert response.ok
     data = response.json()
     assert data.get("status") == "success"
+
+
+@pytest.mark.skipif(
+    not RUN_TOKENIZER_REPORT_FLOW,
+    reason="Set E2E_RUN_TOKENIZER_REPORT_FLOW=1 to enable.",
+)
+def test_tokenizer_report_flow_supports_paged_vocabulary(
+    api_context: APIRequestContext,
+    job_waiter,
+) -> None:
+    list_response = api_context.get("/tokenizers/list")
+    assert list_response.ok
+    list_payload = list_response.json()
+    tokenizers = list_payload.get("tokenizers", [])
+    if not tokenizers:
+        pytest.skip("No downloaded tokenizers available for report flow test.")
+
+    tokenizer_name = str(tokenizers[0].get("tokenizer_name", "")).strip()
+    if not tokenizer_name:
+        pytest.skip("No valid tokenizer_name found in /tokenizers/list response.")
+
+    latest_response = api_context.get(
+        f"/tokenizers/reports/latest?tokenizer_name={tokenizer_name}"
+    )
+    if latest_response.status == 404:
+        generate_response = api_context.post(
+            "/tokenizers/reports/generate",
+            data={"tokenizer_name": tokenizer_name},
+        )
+        assert generate_response.ok, generate_response.text()
+        generate_job = generate_response.json()
+        job_id = generate_job.get("job_id")
+        assert job_id
+        job_status = job_waiter(
+            job_id,
+            poll_interval=generate_job.get("poll_interval", 1.0),
+            timeout_seconds=300.0,
+        )
+        assert job_status.get("status") == "completed", job_status.get("error")
+        report_payload = job_status.get("result", {})
+    else:
+        assert latest_response.ok, latest_response.text()
+        report_payload = latest_response.json()
+
+    report_id = int(report_payload.get("report_id"))
+
+    page_one_response = api_context.get(
+        f"/tokenizers/reports/{report_id}/vocabulary?offset=0&limit=200"
+    )
+    assert page_one_response.ok, page_one_response.text()
+    page_one = page_one_response.json()
+
+    assert page_one.get("report_id") == report_id
+    assert page_one.get("offset") == 0
+    assert page_one.get("limit") == 200
+    assert isinstance(page_one.get("total"), int)
+    assert isinstance(page_one.get("items"), list)
+    assert len(page_one.get("items", [])) <= 200
+
+    second_offset = int(page_one.get("limit", 200))
+    page_two_response = api_context.get(
+        f"/tokenizers/reports/{report_id}/vocabulary?offset={second_offset}&limit=200"
+    )
+    assert page_two_response.ok, page_two_response.text()
+    page_two = page_two_response.json()
+
+    assert page_two.get("report_id") == report_id
+    assert page_two.get("offset") == second_offset
+    assert page_two.get("limit") == 200
+    assert page_two.get("total") == page_one.get("total")
+    assert len(page_two.get("items", [])) <= 200

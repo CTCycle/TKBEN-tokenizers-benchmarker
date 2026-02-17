@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import HFAccessKeyManager from './HFAccessKeyManager';
 
@@ -41,22 +41,31 @@ const navItems = [
 
 const Sidebar = () => {
   const [isKeyManagerOpen, setIsKeyManagerOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const isNavItemActive = (targetPath: string): boolean =>
+    location.pathname === targetPath || location.pathname.startsWith(`${targetPath}/`);
 
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">TK</div>
       <nav className="sidebar-nav">
         {navItems.map((item) => (
-          <NavLink
+          <button
             key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              `sidebar-link${isActive ? ' sidebar-link--active' : ''}`
-            }
+            type="button"
+            className={`sidebar-link${isNavItemActive(item.to) ? ' sidebar-link--active' : ''}`}
             aria-label={item.label}
+            aria-current={isNavItemActive(item.to) ? 'page' : undefined}
+            onClick={() => {
+              if (!isNavItemActive(item.to)) {
+                navigate(item.to);
+              }
+            }}
           >
             {item.icon}
-          </NavLink>
+          </button>
         ))}
         <button
           type="button"

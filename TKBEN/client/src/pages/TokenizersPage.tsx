@@ -37,8 +37,7 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
     benchmarkError,
     benchmarkResult,
     benchmarkProgress,
-    activeGeneratingTokenizer,
-    activeLoadingTokenizerReport,
+    activeOpeningTokenizer,
     tokenizerReport,
     customTokenizerInputRef,
     setSelectedTokenizer,
@@ -52,8 +51,7 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
     downloadTokenizers,
     handleScan,
     handleRunBenchmarks,
-    handleGenerateTokenizerReport,
-    handleLoadLatestTokenizerReport,
+    handleOpenTokenizerReport,
     refreshDatasets,
     handleUploadCustomTokenizer,
     handleClearCustomTokenizer,
@@ -423,7 +421,7 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
                 <div>
                   <p className="panel-label">Tokenizer Preview</p>
                   <p className="panel-description">
-                    Review selected tokenizers, run metadata validation, or load saved reports.
+                    Review selected tokenizers and open persisted reports (auto-generates if missing).
                   </p>
                 </div>
                 <button
@@ -451,39 +449,19 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
                           <button
                             type="button"
                             className="icon-button subtle"
-                            aria-label={`Generate report for ${tokenizerId}`}
-                            title="Run tokenizer metadata validation"
-                            onClick={() => void handleGenerateTokenizerReport(tokenizerId)}
+                            aria-label={`Open tokenizer report for ${tokenizerId}`}
+                            title="Open tokenizer report (loads latest or generates if missing)"
+                            onClick={() => void handleOpenTokenizerReport(tokenizerId)}
                             disabled={
-                              activeGeneratingTokenizer === tokenizerId
-                              || activeLoadingTokenizerReport === tokenizerId
+                              activeOpeningTokenizer === tokenizerId
                             }
                           >
-                            {activeGeneratingTokenizer === tokenizerId ? (
+                            {activeOpeningTokenizer === tokenizerId ? (
                               <span className="action-spinner" />
                             ) : (
                               <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M5 4h14v4H5z" />
                                 <path d="M5 12h14v8H5z" />
-                              </svg>
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            className="icon-button subtle"
-                            aria-label={`Load latest report for ${tokenizerId}`}
-                            title="Load latest saved report"
-                            onClick={() => void handleLoadLatestTokenizerReport(tokenizerId)}
-                            disabled={
-                              activeGeneratingTokenizer === tokenizerId
-                              || activeLoadingTokenizerReport === tokenizerId
-                            }
-                          >
-                            {activeLoadingTokenizerReport === tokenizerId ? (
-                              <span className="action-spinner" />
-                            ) : (
-                              <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 4v9m0 0-4-4m4 4 4-4M5 19h14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
                             )}
                           </button>

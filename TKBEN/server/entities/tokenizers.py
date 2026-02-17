@@ -94,6 +94,7 @@ class TokenizerReportResponse(BaseModel):
     created_at: str
     tokenizer_name: str
     description: str | None = None
+    huggingface_url: str | None = None
     global_stats: dict[str, Any] = Field(default_factory=dict)
     token_length_histogram: TokenizerLengthHistogram = Field(
         default_factory=TokenizerLengthHistogram

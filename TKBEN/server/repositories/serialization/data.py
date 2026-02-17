@@ -1002,6 +1002,10 @@ class TokenizerReportSerializer:
     def save_tokenizer_report(self, report: dict[str, Any]) -> int:
         tokenizer_name = str(report.get("tokenizer_name") or "")
         tokenizer_id = self.ensure_tokenizer_id(tokenizer_name)
+        global_stats = report.get("global_stats", {})
+        metadata_payload = dict(global_stats) if isinstance(global_stats, dict) else {}
+        if "huggingface_url" not in metadata_payload:
+            metadata_payload["huggingface_url"] = report.get("huggingface_url")
         insert_query = sqlalchemy.text(
             'INSERT INTO "tokenizer_report" ('
             '"tokenizer_id", "report_version", "created_at", "metadata", '
@@ -1023,7 +1027,7 @@ class TokenizerReportSerializer:
                     "tokenizer_id": tokenizer_id,
                     "report_version": int(report.get("report_version", 1) or 1),
                     "created_at": created_at.to_pydatetime(),
-                    "metadata": json.dumps(report.get("global_stats", {})),
+                    "metadata": json.dumps(metadata_payload),
                     "token_length_histogram": json.dumps(
                         report.get("token_length_histogram", {})
                     ),
@@ -1083,6 +1087,7 @@ class TokenizerReportSerializer:
                 metadata = json.loads(metadata)
             except json.JSONDecodeError:
                 metadata = {}
+        metadata_payload = dict(metadata) if isinstance(metadata, dict) else {}
         histogram = storage.get("token_length_histogram", {})
         if isinstance(histogram, str):
             try:
@@ -1098,15 +1103,19 @@ class TokenizerReportSerializer:
             "mean_length": float(histogram.get("mean_length", 0.0) or 0.0),
             "median_length": float(histogram.get("median_length", 0.0) or 0.0),
         }
+        huggingface_url = metadata_payload.pop("huggingface_url", None)
+        if not isinstance(huggingface_url, str) or not huggingface_url.strip():
+            huggingface_url = None
         return {
             "report_id": int(storage.get("id") or 0),
             "report_version": int(storage.get("report_version", 1) or 1),
             "created_at": created_at_iso,
             "tokenizer_name": storage.get("tokenizer_name", ""),
             "description": storage.get("description"),
-            "global_stats": metadata,
+            "huggingface_url": huggingface_url,
+            "global_stats": metadata_payload,
             "token_length_histogram": histogram_payload,
-            "vocabulary_size": int(metadata.get("vocabulary_size", 0) or 0),
+            "vocabulary_size": int(metadata_payload.get("vocabulary_size", 0) or 0),
         }
 
     # -------------------------------------------------------------------------
