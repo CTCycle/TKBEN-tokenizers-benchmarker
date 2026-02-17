@@ -1,25 +1,35 @@
 from __future__ import annotations
 
+import asyncio
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
 
 from TKBEN.server.routes.tokenizers import get_custom_tokenizers
 from TKBEN.server.entities.benchmarks import (
+    BenchmarkMetricCatalogResponse,
+    BenchmarkReportListResponse,
+    BenchmarkRunResponse,
     BenchmarkRunRequest,
 )
 from TKBEN.server.entities.jobs import JobStartResponse
 from TKBEN.server.configurations import server_settings
 from TKBEN.server.common.constants import (
+    API_ROUTE_BENCHMARKS_METRICS_CATALOG,
+    API_ROUTE_BENCHMARKS_REPORT_BY_ID,
+    API_ROUTE_BENCHMARKS_REPORTS,
     API_ROUTE_BENCHMARKS_RUN,
     API_ROUTER_PREFIX_BENCHMARKS,
 )
+from TKBEN.server.repositories.serialization.data import BenchmarkReportSerializer
 from TKBEN.server.services.jobs import JobProgressReporter, JobStopChecker, job_manager
 from TKBEN.server.common.utils.logger import logger
 from TKBEN.server.services.benchmarks import BenchmarkService
 
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_BENCHMARKS, tags=["benchmarks"])
+benchmark_report_serializer = BenchmarkReportSerializer()
 
 ###############################################################################
 def build_benchmark_payload(
@@ -34,6 +44,7 @@ def build_benchmark_payload(
                 "dataset_name": metric.get("dataset_name", ""),
                 "tokenization_speed_tps": metric.get("tokenization_speed_tps", 0.0),
                 "throughput_chars_per_sec": metric.get("throughput_chars_per_sec", 0.0),
+                "processing_time_seconds": metric.get("processing_time_seconds", 0.0),
                 "vocabulary_size": metric.get("vocabulary_size", 0),
                 "avg_sequence_length": metric.get("avg_sequence_length", 0.0),
                 "median_sequence_length": metric.get("median_sequence_length", 0.0),
@@ -46,6 +57,28 @@ def build_benchmark_payload(
                     "boundary_preservation_rate", 0.0
                 ),
                 "round_trip_fidelity_rate": metric.get("round_trip_fidelity_rate", 0.0),
+                "model_size_mb": metric.get("model_size_mb", 0.0),
+                "segmentation_consistency": metric.get(
+                    "segmentation_consistency", 0.0
+                ),
+                "token_distribution_entropy": metric.get(
+                    "token_distribution_entropy", 0.0
+                ),
+                "rare_token_tail_1": metric.get("rare_token_tail_1", 0),
+                "rare_token_tail_2": metric.get("rare_token_tail_2", 0),
+                "compression_chars_per_token": metric.get(
+                    "compression_chars_per_token", 0.0
+                ),
+                "compression_bytes_per_character": metric.get(
+                    "compression_bytes_per_character", 0.0
+                ),
+                "round_trip_text_fidelity_rate": metric.get(
+                    "round_trip_text_fidelity_rate", 0.0
+                ),
+                "token_id_ordering_monotonicity": metric.get(
+                    "token_id_ordering_monotonicity", 0.0
+                ),
+                "token_unigram_coverage": metric.get("token_unigram_coverage", 0.0),
             }
         )
 
@@ -92,8 +125,47 @@ def build_benchmark_payload(
             }
         )
 
+    per_document_stats = []
+    for tokenizer_stats in result.get("per_document_stats", []):
+        if not isinstance(tokenizer_stats, dict):
+            continue
+        payload = {
+            "tokenizer": str(tokenizer_stats.get("tokenizer", "")),
+            "tokens_count": tokenizer_stats.get("tokens_count", []),
+            "tokens_to_words_ratio": tokenizer_stats.get("tokens_to_words_ratio", []),
+            "bytes_per_token": tokenizer_stats.get("bytes_per_token", []),
+            "boundary_preservation_rate": tokenizer_stats.get(
+                "boundary_preservation_rate", []
+            ),
+            "round_trip_token_fidelity": tokenizer_stats.get(
+                "round_trip_token_fidelity", []
+            ),
+            "round_trip_text_fidelity": tokenizer_stats.get(
+                "round_trip_text_fidelity", []
+            ),
+            "determinism_stability": tokenizer_stats.get("determinism_stability", []),
+            "bytes_per_character": tokenizer_stats.get("bytes_per_character", []),
+        }
+        per_document_stats.append(payload)
+
+    selected_metric_keys = result.get("selected_metric_keys", [])
+    if not isinstance(selected_metric_keys, list):
+        selected_metric_keys = []
+    selected_metric_keys = [
+        str(key) for key in selected_metric_keys if isinstance(key, str) and key
+    ]
+
+    run_name = result.get("run_name")
+    if not isinstance(run_name, str) or not run_name.strip():
+        run_name = None
+
     return {
         "status": "success",
+        "report_id": result.get("report_id"),
+        "report_version": int(result.get("report_version", 1) or 1),
+        "created_at": result.get("created_at"),
+        "run_name": run_name,
+        "selected_metric_keys": selected_metric_keys,
         "dataset_name": result.get("dataset_name", fallback_dataset_name),
         "documents_processed": result.get("documents_processed", 0),
         "tokenizers_processed": result.get("tokenizers_processed", []),
@@ -104,6 +176,7 @@ def build_benchmark_payload(
             "token_length_distributions": token_length_distributions,
             "speed_metrics": speed_metrics,
         },
+        "per_document_stats": per_document_stats,
     }
 
 
@@ -118,12 +191,19 @@ def run_benchmark_job(
         dataset_name=request_payload.get("dataset_name", ""),
         tokenizer_ids=request_payload.get("tokenizers", []),
         custom_tokenizers=request_payload.get("custom_tokenizers", {}),
+        run_name=request_payload.get("run_name"),
+        selected_metric_keys=request_payload.get("selected_metric_keys"),
         progress_callback=progress_callback,
         should_stop=should_stop,
     )
     if job_manager.should_stop(job_id):
         return {}
-    return build_benchmark_payload(result, request_payload.get("dataset_name", ""))
+    payload = build_benchmark_payload(result, request_payload.get("dataset_name", ""))
+    payload["created_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    payload["report_version"] = 1
+    report_id = benchmark_report_serializer.save_benchmark_report(payload)
+    payload["report_id"] = int(report_id)
+    return payload
 
 
 ###############################################################################
@@ -225,4 +305,49 @@ async def run_benchmarks(request: BenchmarkRunRequest) -> JobStartResponse:
         message="Benchmark job started.",
         poll_interval=server_settings.jobs.polling_interval,
     )
+
+
+###############################################################################
+@router.get(
+    API_ROUTE_BENCHMARKS_REPORTS,
+    response_model=BenchmarkReportListResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def list_benchmark_reports(limit: int = 200) -> BenchmarkReportListResponse:
+    reports = await asyncio.to_thread(
+        benchmark_report_serializer.list_benchmark_reports,
+        limit,
+    )
+    return BenchmarkReportListResponse(reports=reports)
+
+
+###############################################################################
+@router.get(
+    API_ROUTE_BENCHMARKS_REPORT_BY_ID,
+    response_model=BenchmarkRunResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_benchmark_report_by_id(report_id: int) -> BenchmarkRunResponse:
+    report = await asyncio.to_thread(
+        benchmark_report_serializer.load_benchmark_report_by_id,
+        report_id,
+    )
+    if report is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Benchmark report '{report_id}' not found.",
+        )
+    return BenchmarkRunResponse(**report)
+
+
+###############################################################################
+@router.get(
+    API_ROUTE_BENCHMARKS_METRICS_CATALOG,
+    response_model=BenchmarkMetricCatalogResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_benchmark_metrics_catalog() -> BenchmarkMetricCatalogResponse:
+    service = BenchmarkService()
+    categories = await asyncio.to_thread(service.get_metric_catalog)
+    return BenchmarkMetricCatalogResponse(categories=categories)
 

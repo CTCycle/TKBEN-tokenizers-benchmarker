@@ -1211,8 +1211,290 @@
   justify-content: flex-end;
 }
 
-.cross-benchmark-placeholder {
-  min-height: 360px;
+.cross-benchmark-page {
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.cross-benchmark-control-panel {
+  gap: 12px;
+  padding: 16px 20px;
+}
+
+.cross-benchmark-control-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cross-benchmark-control-actions {
+  display: grid;
+  grid-template-columns: auto auto minmax(220px, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.cross-benchmark-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cross-benchmark-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cross-benchmark-kpi-card {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 10px;
+}
+
+.cross-benchmark-kpi-label {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.cross-benchmark-kpi-value {
+  margin: 6px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.cross-benchmark-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.cross-benchmark-chart-grid-secondary {
+  grid-template-columns: 1fr 1fr;
+}
+
+.cross-benchmark-chart-card {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 12px;
+  min-height: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cross-benchmark-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.cross-benchmark-inline-select {
+  max-width: 280px;
+}
+
+.cross-benchmark-boxplot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.cross-benchmark-boxplot-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(260px, 3fr) minmax(120px, auto);
+  align-items: center;
+  gap: 10px;
+}
+
+.cross-benchmark-boxplot-label {
+  font-size: 12px;
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+}
+
+.cross-benchmark-boxplot-track {
+  position: relative;
+  height: 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.cross-benchmark-boxplot-whisker {
+  position: absolute;
+  top: 7px;
+  height: 2px;
+  background: #9ea7b3;
+}
+
+.cross-benchmark-boxplot-box {
+  position: absolute;
+  top: 2px;
+  height: 12px;
+  border-radius: 4px;
+  background: rgba(79, 195, 247, 0.7);
+  border: 1px solid #4fc3f7;
+}
+
+.cross-benchmark-boxplot-median {
+  position: absolute;
+  top: 1px;
+  width: 2px;
+  height: 14px;
+  background: #facc15;
+}
+
+.cross-benchmark-boxplot-values {
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.cross-benchmark-drilldown-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.cross-benchmark-drilldown-card {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cross-benchmark-table-wrap {
+  overflow: auto;
+}
+
+.benchmark-wizard-modal {
+  width: min(900px, 96vw);
+  max-height: min(92vh, 820px);
+  overflow: hidden;
+}
+
+.benchmark-wizard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.benchmark-wizard-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.benchmark-wizard-steps span {
+  font-size: 12px;
+  color: var(--color-muted);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 10px;
+  text-align: center;
+}
+
+.benchmark-wizard-steps span.active {
+  color: #111;
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  font-weight: 600;
+}
+
+.benchmark-wizard-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.benchmark-wizard-tree {
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.benchmark-wizard-tree-category {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.benchmark-wizard-tree-children {
+  margin-top: 8px;
+  padding-left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.benchmark-wizard-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.benchmark-wizard-tokenizer-list {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.benchmark-wizard-tokenizer-pill {
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-panel-alt);
+  color: var(--color-text);
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.benchmark-wizard-tokenizer-pill.selected {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: rgba(255, 232, 31, 0.1);
+}
+
+.benchmark-wizard-input-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.benchmark-wizard-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.benchmark-wizard-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 12px;
 }
 
 .analysis-tools {
@@ -1965,6 +2247,23 @@ select {
   .dataset-v2-extras {
     grid-column: span 2;
   }
+
+  .cross-benchmark-overview-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .cross-benchmark-chart-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cross-benchmark-drilldown-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cross-benchmark-control-actions {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
 }
 
 @media (max-width: 900px) {
@@ -2006,5 +2305,22 @@ select {
   .dataset-v2-extras-grid,
   .validation-form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .benchmark-wizard-input-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .benchmark-wizard-tokenizer-list {
+    max-height: 180px;
+  }
+
+  .cross-benchmark-overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cross-benchmark-boxplot-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
 }
