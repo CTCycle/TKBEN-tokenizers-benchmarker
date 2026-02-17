@@ -84,7 +84,7 @@ const TokenizerExaminationPage = () => {
   const canGoNext = tokenizerVocabularyOffset + tokenizerVocabularyLimit < tokenizerVocabularyTotal;
 
   return (
-    <div className="page-scroll">
+    <div className="page-scroll tokenizer-exam-scroll">
       <div className="tokenizer-exam-layout">
         <div className="merged-page-row">
           <TokenizersPage showDashboard={false} embedded />
@@ -112,7 +112,7 @@ const TokenizerExaminationPage = () => {
 
             {tokenizerReport && (
               <div className="tokenizer-report-grid">
-                <article className="tokenizer-report-card">
+                <article className="tokenizer-report-card tokenizer-report-card--basics">
                   <p className="panel-label">Basics</p>
                   <table className="tokenizer-meta-table">
                     <tbody>
@@ -138,7 +138,7 @@ const TokenizerExaminationPage = () => {
                   </table>
                 </article>
 
-                <article className="tokenizer-report-card">
+                <article className="tokenizer-report-card tokenizer-report-card--histogram">
                   <p className="panel-label">Token Length Histogram</p>
                   {!histogram || histogram.counts.length === 0 ? (
                     <div className="chart-placeholder">
@@ -174,7 +174,7 @@ const TokenizerExaminationPage = () => {
                   )}
                 </article>
 
-                <article className="tokenizer-report-card">
+                <article className="tokenizer-report-card tokenizer-report-card--vocabulary">
                   <p className="panel-label">Vocabulary Stats</p>
                   <table className="tokenizer-meta-table tokenizer-meta-table-compact">
                     <tbody>

@@ -8,12 +8,6 @@ const AppShell = () => {
     <div className="app-shell">
       <Sidebar />
       <div className="app-main">
-        <header className="app-header">
-          <div>
-            <h1>TKBEN Dashboard</h1>
-            <p>Benchmark datasets and tokenizers directly from the browser.</p>
-          </div>
-        </header>
         <section className="app-content" key={location.pathname}>
           <Outlet />
         </section>
