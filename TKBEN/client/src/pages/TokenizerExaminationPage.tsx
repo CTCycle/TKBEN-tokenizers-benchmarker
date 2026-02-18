@@ -104,7 +104,7 @@ const TokenizerExaminationPage = () => {
             </header>
 
             {!tokenizerReport && (
-              <div className="chart-placeholder">
+              <div className="chart-placeholder tokenizer-dashboard-empty">
                 <p>No tokenizer report loaded.</p>
                 <span>Use the report icon in tokenizer preview.</span>
               </div>
@@ -188,7 +188,7 @@ const TokenizerExaminationPage = () => {
                       <tr><th>Special in vocab %</th><td>{formatOptionalPercent(vocabularyStats?.special_tokens_in_vocab_percentage)}</td></tr>
                       <tr><th>Unique token lengths</th><td>{formatNumber(vocabularyStats?.unique_token_lengths, 0)}</td></tr>
                       <tr><th>Empty tokens</th><td>{formatNumber(vocabularyStats?.empty_token_count, 0)}</td></tr>
-                      <tr><th>Heuristic</th><td>{vocabularyStats?.heuristic ?? NOT_AVAILABLE}</td></tr>
+                      <tr><th>Heuristic</th><td className="tokenizer-heuristic-value">{vocabularyStats?.heuristic ?? NOT_AVAILABLE}</td></tr>
                     </tbody>
                   </table>
                 </article>
@@ -221,7 +221,7 @@ const TokenizerExaminationPage = () => {
             </header>
 
             {!tokenizerReport && (
-              <div className="chart-placeholder">
+              <div className="chart-placeholder tokenizer-vocabulary-empty">
                 <p>No vocabulary to display.</p>
               </div>
             )}

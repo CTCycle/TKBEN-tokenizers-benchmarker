@@ -5,6 +5,7 @@ import {
   CartesianGrid,
   Cell,
   ComposedChart,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -50,6 +51,65 @@ const normalizeRate = (value: number): number => {
 };
 
 const formatRate = (value: number): string => `${normalizeRate(value).toFixed(2)}%`;
+const formatTokenizerLabel = (tokenizer: string): string => {
+  const trimmed = tokenizer.trim();
+  if (!trimmed) {
+    return 'N/A';
+  }
+  const segments = trimmed.split('/');
+  return segments[segments.length - 1] || trimmed;
+};
+const metricLabelOverrides: Record<string, string> = {
+  tokenization_speed_tps: 'Speed (tok/s)',
+  throughput_chars_per_sec: 'Chars/sec',
+  processing_time_seconds: 'Processing time (s)',
+  avg_sequence_length: 'Avg seq length',
+  median_sequence_length: 'Median seq length',
+  subword_fertility: 'Subword fertility',
+  word_recovery_rate: 'Word recovery',
+  character_coverage: 'Character coverage',
+  model_size_mb: 'Model size (MB)',
+  segmentation_consistency: 'Segmentation consistency',
+  token_distribution_entropy: 'Token distribution entropy',
+  rare_token_tail_1: 'Rare token tail 1',
+  rare_token_tail_2: 'Rare token tail 2',
+  compression_chars_per_token: 'Chars/token',
+  compression_bytes_per_character: 'Bytes/char',
+  round_trip_text_fidelity_rate: 'Round-trip text fidelity',
+  token_id_ordering_monotonicity: 'Token ID monotonicity',
+  token_unigram_coverage: 'Unigram coverage',
+};
+const toMetricLabel = (key: string): string =>
+  metricLabelOverrides[key] ?? key.replace(/_/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase());
+const isLikelyRatioMetric = (key: string): boolean =>
+  key.includes('rate') || key.includes('coverage') || key.endsWith('_percentage');
+const formatMetricValue = (key: string, rawValue: unknown): string => {
+  let numeric: number | null = null;
+  if (typeof rawValue === 'number' && Number.isFinite(rawValue)) {
+    numeric = rawValue;
+  } else if (typeof rawValue === 'string') {
+    const parsed = Number(rawValue);
+    if (Number.isFinite(parsed)) {
+      numeric = parsed;
+    }
+  }
+  if (numeric === null) {
+    return 'N/A';
+  }
+  if (!Number.isFinite(numeric)) {
+    return 'N/A';
+  }
+  if (isLikelyRatioMetric(key)) {
+    return formatRate(numeric);
+  }
+  if (Number.isInteger(numeric)) {
+    return numeric.toLocaleString();
+  }
+  if (Math.abs(numeric) >= 1000) {
+    return numeric.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }
+  return numeric.toFixed(4);
+};
 
 const quantile = (values: number[], q: number): number => {
   if (values.length === 0) {
@@ -177,16 +237,6 @@ const CrossBenchmarkPage = () => {
     }
   };
 
-  const selectedMetricKeySet = useMemo(() => {
-    if (!activeReport?.selected_metric_keys?.length) {
-      return null;
-    }
-    return new Set(activeReport.selected_metric_keys);
-  }, [activeReport?.selected_metric_keys]);
-
-  const isMetricEnabled = (keys: string[]) =>
-    selectedMetricKeySet === null || keys.some((key) => selectedMetricKeySet.has(key));
-
   const speedChartData = useMemo(() => {
     if (!activeReport?.chart_data?.speed_metrics) {
       return [];
@@ -244,7 +294,7 @@ const CrossBenchmarkPage = () => {
     }));
   }, [activeReport, selectedDistributionTokenizer]);
 
-  const violinEquivalentData = useMemo(() => {
+  const bytesPerTokenBoxData = useMemo(() => {
     if (!activeReport?.per_document_stats?.length) {
       return [];
     }
@@ -261,34 +311,111 @@ const CrossBenchmarkPage = () => {
     });
   }, [activeReport]);
 
+  const bytesPerTokenGlobalRange = useMemo(() => {
+    if (bytesPerTokenBoxData.length === 0) {
+      return { min: 0, max: 1 };
+    }
+    const min = Math.min(...bytesPerTokenBoxData.map((row) => row.min));
+    const max = Math.max(...bytesPerTokenBoxData.map((row) => row.max));
+    if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) {
+      return { min: 0, max: 1 };
+    }
+    return { min, max };
+  }, [bytesPerTokenBoxData]);
+
   const overviewMetrics = useMemo(() => {
     if (!activeReport) {
       return [];
     }
     const global = activeReport.global_metrics ?? [];
-    const avgTokensPerSecond = global.length > 0
-      ? global.reduce((acc, item) => acc + toNumber(item.tokenization_speed_tps), 0) / global.length
-      : 0;
-    const avgOov = global.length > 0
-      ? global.reduce((acc, item) => acc + normalizeRate(toNumber(item.oov_rate)), 0) / global.length
-      : 0;
+    const bestSpeed = global.reduce<GlobalMetrics | null>((best, item) => {
+      if (!best) return item;
+      return toNumber(item.tokenization_speed_tps) > toNumber(best.tokenization_speed_tps) ? item : best;
+    }, null);
+    const bestOov = global.reduce<GlobalMetrics | null>((best, item) => {
+      if (!best) return item;
+      return toNumber(item.oov_rate) < toNumber(best.oov_rate) ? item : best;
+    }, null);
+    const bestRoundTrip = global.reduce<GlobalMetrics | null>((best, item) => {
+      if (!best) return item;
+      return toNumber(item.round_trip_fidelity_rate) > toNumber(best.round_trip_fidelity_rate) ? item : best;
+    }, null);
     return [
       { label: 'Dataset', value: activeReport.dataset_name || 'N/A' },
+      { label: 'Run Name', value: activeReport.run_name || 'N/A' },
       { label: 'Documents', value: activeReport.documents_processed.toLocaleString() },
       { label: 'Tokenizers', value: activeReport.tokenizers_count.toLocaleString() },
-      { label: 'Avg Speed', value: `${Math.round(avgTokensPerSecond).toLocaleString()} tok/s` },
-      { label: 'Avg OOV', value: `${avgOov.toFixed(2)}%` },
-      { label: 'Run Name', value: activeReport.run_name || 'N/A' },
+      {
+        label: 'Best Speed',
+        value: bestSpeed ? `${Math.round(toNumber(bestSpeed.tokenization_speed_tps)).toLocaleString()} tok/s` : 'N/A',
+        detail: bestSpeed ? formatTokenizerLabel(bestSpeed.tokenizer) : 'N/A',
+      },
+      {
+        label: 'Best OOV',
+        value: bestOov ? formatRate(toNumber(bestOov.oov_rate)) : 'N/A',
+        detail: bestOov ? formatTokenizerLabel(bestOov.tokenizer) : 'N/A',
+      },
+      {
+        label: 'Best Round Trip',
+        value: bestRoundTrip ? formatRate(toNumber(bestRoundTrip.round_trip_fidelity_rate)) : 'N/A',
+        detail: bestRoundTrip ? formatTokenizerLabel(bestRoundTrip.tokenizer) : 'N/A',
+      },
     ];
   }, [activeReport]);
 
-  const internalMetricColumns = [
-    { key: 'segmentation_consistency', label: 'Segmentation Consistency' },
-    { key: 'token_distribution_entropy', label: 'Token Entropy' },
-    { key: 'compression_chars_per_token', label: 'Chars/Token' },
-    { key: 'compression_bytes_per_character', label: 'Bytes/Char' },
-    { key: 'token_unigram_coverage', label: 'Unigram Coverage' },
-  ] as const;
+  const additionalMetricColumns = useMemo(() => {
+    if (!activeReport?.global_metrics?.length) {
+      return [] as string[];
+    }
+    const excluded = new Set([
+      'tokenizer',
+      'dataset_name',
+      'tokenization_speed_tps',
+      'throughput_chars_per_sec',
+      'processing_time_seconds',
+      'oov_rate',
+      'determinism_rate',
+      'boundary_preservation_rate',
+      'round_trip_fidelity_rate',
+      'vocabulary_size',
+    ]);
+    const preferredOrder = [
+      'word_recovery_rate',
+      'character_coverage',
+      'subword_fertility',
+      'avg_sequence_length',
+      'median_sequence_length',
+      'model_size_mb',
+      'segmentation_consistency',
+      'token_distribution_entropy',
+      'rare_token_tail_1',
+      'rare_token_tail_2',
+      'compression_chars_per_token',
+      'compression_bytes_per_character',
+      'round_trip_text_fidelity_rate',
+      'token_id_ordering_monotonicity',
+      'token_unigram_coverage',
+    ];
+    const discovered = new Set<string>();
+    activeReport.global_metrics.forEach((metric) => {
+      Object.entries(metric).forEach(([key, value]) => {
+        if (excluded.has(key)) {
+          return;
+        }
+        if (typeof value === 'number' && Number.isFinite(value)) {
+          discovered.add(key);
+        }
+      });
+    });
+    const ordered: string[] = [];
+    preferredOrder.forEach((key) => {
+      if (discovered.has(key)) {
+        ordered.push(key);
+        discovered.delete(key);
+      }
+    });
+    return [...ordered, ...Array.from(discovered).sort()];
+  }, [activeReport]);
 
   const renderUnavailable = (label: string) => (
     <div className="chart-placeholder">
@@ -300,7 +427,7 @@ const CrossBenchmarkPage = () => {
   return (
     <div className="page-scroll">
       <div className="page-grid cross-benchmark-page">
-        <section className="panel cross-benchmark-control-panel">
+        <section className="cross-benchmark-control-panel">
           <div className="cross-benchmark-control-header">
             <div>
               <p className="panel-label">Tokenizer Benchmark</p>
@@ -383,6 +510,9 @@ const CrossBenchmarkPage = () => {
                   <article key={item.label} className="cross-benchmark-kpi-card">
                     <p className="cross-benchmark-kpi-label">{item.label}</p>
                     <p className="cross-benchmark-kpi-value">{item.value}</p>
+                    {'detail' in item && typeof item.detail === 'string' && (
+                      <p className="cross-benchmark-kpi-detail">{item.detail}</p>
+                    )}
                   </article>
                 ))}
               </div>
@@ -392,19 +522,28 @@ const CrossBenchmarkPage = () => {
                   <div className="cross-benchmark-chart-header">
                     <p className="panel-label">Speed Comparison</p>
                   </div>
-                  {!isMetricEnabled([
-                    'speed.tokens_per_second',
-                    'speed.chars_per_second',
-                    'speed.processing_time_seconds',
-                  ]) || speedChartData.length === 0 ? (
+                  {speedChartData.length === 0 ? (
                     renderUnavailable('Speed metrics unavailable')
                   ) : (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={speedChartData}>
+                    <ResponsiveContainer width="100%" height={330}>
+                      <BarChart
+                        data={speedChartData}
+                        margin={{ top: 10, right: 16, left: 4, bottom: 56 }}
+                      >
                         <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
-                        <XAxis dataKey="tokenizer" stroke="#9ea7b3" hide />
-                        <YAxis stroke="#9ea7b3" width={60} />
+                        <XAxis
+                          dataKey="tokenizer"
+                          stroke="#9ea7b3"
+                          interval={0}
+                          tick={{ fontSize: 11 }}
+                          tickFormatter={formatTokenizerLabel}
+                          angle={-20}
+                          textAnchor="end"
+                          height={72}
+                        />
+                        <YAxis stroke="#9ea7b3" width={78} tick={{ fontSize: 11 }} />
                         <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }} />
+                        <Legend wrapperStyle={{ fontSize: 12 }} />
                         <Bar dataKey="tokens_per_second" fill="#4fc3f7" name="tokens/sec" />
                         <Bar dataKey="chars_per_second" fill="#81c784" name="chars/sec" />
                         <Bar dataKey="processing_time_seconds" fill="#ffb74d" name="processing time (s)" />
@@ -417,23 +556,31 @@ const CrossBenchmarkPage = () => {
                   <div className="cross-benchmark-chart-header">
                     <p className="panel-label">Global Rates</p>
                   </div>
-                  {!isMetricEnabled([
-                    'global.oov_rate',
-                    'global.determinism_rate',
-                    'global.boundary_preservation_rate',
-                    'global.round_trip_fidelity_rate',
-                  ]) || qualityChartData.length === 0 ? (
+                  {qualityChartData.length === 0 ? (
                     renderUnavailable('Global rate metrics unavailable')
                   ) : (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={qualityChartData}>
+                    <ResponsiveContainer width="100%" height={330}>
+                      <BarChart
+                        data={qualityChartData}
+                        margin={{ top: 10, right: 16, left: 4, bottom: 56 }}
+                      >
                         <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
-                        <XAxis dataKey="tokenizer" stroke="#9ea7b3" hide />
-                        <YAxis stroke="#9ea7b3" width={60} />
+                        <XAxis
+                          dataKey="tokenizer"
+                          stroke="#9ea7b3"
+                          interval={0}
+                          tick={{ fontSize: 11 }}
+                          tickFormatter={formatTokenizerLabel}
+                          angle={-20}
+                          textAnchor="end"
+                          height={72}
+                        />
+                        <YAxis stroke="#9ea7b3" width={78} tick={{ fontSize: 11 }} />
                         <Tooltip
                           formatter={(value: number | string | undefined) => `${toNumber(value).toFixed(2)}%`}
                           contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }}
                         />
+                        <Legend wrapperStyle={{ fontSize: 12 }} />
                         <Bar dataKey="oov_rate" fill="#f87171" name="oov_rate (%)" />
                         <Bar dataKey="determinism_rate" fill="#22c55e" name="determinism_rate (%)" />
                         <Bar dataKey="boundary_preservation_rate" fill="#38bdf8" name="boundary_preservation_rate (%)" />
@@ -447,20 +594,28 @@ const CrossBenchmarkPage = () => {
                   <div className="cross-benchmark-chart-header">
                     <p className="panel-label">Vocabulary Comparison</p>
                   </div>
-                  {!isMetricEnabled([
-                    'vocabulary.vocabulary_size',
-                    'vocabulary.subwords_count',
-                    'vocabulary.true_words_count',
-                    'vocabulary.subwords_percentage',
-                  ]) || vocabularyChartData.length === 0 ? (
+                  {vocabularyChartData.length === 0 ? (
                     renderUnavailable('Vocabulary metrics unavailable')
                   ) : (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <ComposedChart data={vocabularyChartData}>
+                    <ResponsiveContainer width="100%" height={330}>
+                      <ComposedChart
+                        data={vocabularyChartData}
+                        margin={{ top: 10, right: 16, left: 4, bottom: 56 }}
+                      >
                         <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
-                        <XAxis dataKey="tokenizer" stroke="#9ea7b3" hide />
-                        <YAxis stroke="#9ea7b3" width={60} />
+                        <XAxis
+                          dataKey="tokenizer"
+                          stroke="#9ea7b3"
+                          interval={0}
+                          tick={{ fontSize: 11 }}
+                          tickFormatter={formatTokenizerLabel}
+                          angle={-20}
+                          textAnchor="end"
+                          height={72}
+                        />
+                        <YAxis stroke="#9ea7b3" width={78} tick={{ fontSize: 11 }} />
                         <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }} />
+                        <Legend wrapperStyle={{ fontSize: 12 }} />
                         <Bar dataKey="vocabulary_size" fill="#4fc3f7" name="vocabulary_size" />
                         <Bar dataKey="subwords_count" fill="#ffb74d" name="subwords_count" />
                         <Bar dataKey="true_words_count" fill="#81c784" name="true_words_count" />
@@ -484,14 +639,17 @@ const CrossBenchmarkPage = () => {
                       ))}
                     </select>
                   </div>
-                  {!isMetricEnabled(['vocabulary.token_length_distribution']) || distributionSeries.length === 0 ? (
+                  {distributionSeries.length === 0 ? (
                     renderUnavailable('Token length distribution unavailable')
                   ) : (
-                    <ResponsiveContainer width="100%" height={280}>
-                      <BarChart data={distributionSeries}>
+                    <ResponsiveContainer width="100%" height={310}>
+                      <BarChart
+                        data={distributionSeries}
+                        margin={{ top: 10, right: 16, left: 4, bottom: 30 }}
+                      >
                         <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
                         <XAxis dataKey="label" stroke="#9ea7b3" hide />
-                        <YAxis stroke="#9ea7b3" width={60} />
+                        <YAxis stroke="#9ea7b3" width={78} tick={{ fontSize: 11 }} />
                         <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }} />
                         <Bar dataKey="count" fill="#ba68c8">
                           {distributionSeries.map((entry, index) => (
@@ -505,37 +663,53 @@ const CrossBenchmarkPage = () => {
 
                 <article className="cross-benchmark-chart-card">
                   <div className="cross-benchmark-chart-header">
-                    <p className="panel-label">Bytes per Token Distribution (Violin Equivalent)</p>
+                    <p className="panel-label">Bytes per Token Distribution (Box Plot)</p>
                   </div>
-                  {!isMetricEnabled(['document.bytes_per_token']) || violinEquivalentData.length === 0 ? (
+                  {bytesPerTokenBoxData.length === 0 ? (
                     renderUnavailable('Per-document bytes per token unavailable')
                   ) : (
-                    <div className="cross-benchmark-boxplot-list">
-                      {violinEquivalentData.map((entry) => {
-                        const range = Math.max(1e-9, entry.max - entry.min);
-                        const minPct = 0;
-                        const maxPct = 100;
-                        const q1Pct = ((entry.q1 - entry.min) / range) * 100;
-                        const q3Pct = ((entry.q3 - entry.min) / range) * 100;
-                        const medianPct = ((entry.median - entry.min) / range) * 100;
-                        return (
-                          <div key={entry.tokenizer} className="cross-benchmark-boxplot-row">
-                            <span className="cross-benchmark-boxplot-label">{entry.tokenizer}</span>
-                            <div className="cross-benchmark-boxplot-track">
-                              <div className="cross-benchmark-boxplot-whisker" style={{ left: `${minPct}%`, right: `${100 - maxPct}%` }} />
-                              <div
-                                className="cross-benchmark-boxplot-box"
-                                style={{ left: `${q1Pct}%`, width: `${Math.max(2, q3Pct - q1Pct)}%` }}
-                              />
-                              <div className="cross-benchmark-boxplot-median" style={{ left: `${medianPct}%` }} />
+                    <>
+                      <div className="cross-benchmark-boxplot-scale">
+                        <span>{bytesPerTokenGlobalRange.min.toFixed(3)}</span>
+                        <span>{bytesPerTokenGlobalRange.max.toFixed(3)}</span>
+                      </div>
+                      <div className="cross-benchmark-boxplot-list">
+                        {bytesPerTokenBoxData.map((entry) => {
+                          const globalRange = Math.max(1e-9, bytesPerTokenGlobalRange.max - bytesPerTokenGlobalRange.min);
+                          const toPct = (value: number) =>
+                            ((value - bytesPerTokenGlobalRange.min) / globalRange) * 100;
+                          const minPct = Math.max(0, Math.min(100, toPct(entry.min)));
+                          const maxPct = Math.max(0, Math.min(100, toPct(entry.max)));
+                          const q1Pct = Math.max(0, Math.min(100, toPct(entry.q1)));
+                          const q3Pct = Math.max(0, Math.min(100, toPct(entry.q3)));
+                          const medianPct = Math.max(0, Math.min(100, toPct(entry.median)));
+                          const whiskerLeft = `${Math.min(minPct, maxPct)}%`;
+                          const whiskerRight = `${100 - Math.max(minPct, maxPct)}%`;
+                          const boxLeft = `${Math.min(q1Pct, q3Pct)}%`;
+                          const boxWidth = `${Math.max(2, Math.abs(q3Pct - q1Pct))}%`;
+                          const medianLeft = `${medianPct}%`;
+                          return (
+                            <div key={entry.tokenizer} className="cross-benchmark-boxplot-row">
+                              <span className="cross-benchmark-boxplot-label">{entry.tokenizer}</span>
+                              <div className="cross-benchmark-boxplot-track">
+                                <div
+                                  className="cross-benchmark-boxplot-whisker"
+                                  style={{ left: whiskerLeft, right: whiskerRight }}
+                                />
+                                <div
+                                  className="cross-benchmark-boxplot-box"
+                                  style={{ left: boxLeft, width: boxWidth }}
+                                />
+                                <div className="cross-benchmark-boxplot-median" style={{ left: medianLeft }} />
+                              </div>
+                              <span className="cross-benchmark-boxplot-values">
+                                {entry.min.toFixed(3)} / {entry.median.toFixed(3)} / {entry.max.toFixed(3)}
+                              </span>
                             </div>
-                            <span className="cross-benchmark-boxplot-values">
-                              {entry.min.toFixed(3)} / {entry.median.toFixed(3)} / {entry.max.toFixed(3)}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
+                    </>
                   )}
                 </article>
               </div>
@@ -543,64 +717,28 @@ const CrossBenchmarkPage = () => {
               <div className="cross-benchmark-drilldown-grid">
                 <article className="cross-benchmark-drilldown-card">
                   <div className="cross-benchmark-chart-header">
-                    <p className="panel-label">Per Tokenizer Core Metrics</p>
+                    <p className="panel-label">Per Tokenizer Additional Metrics</p>
                   </div>
-                  {activeReport.global_metrics.length === 0 ? (
-                    renderUnavailable('Core metrics unavailable')
-                  ) : (
-                    <div className="cross-benchmark-table-wrap">
-                      <table className="tokenizer-meta-table">
-                        <thead>
-                          <tr>
-                            <th>Tokenizer</th>
-                            <th>Speed (tok/s)</th>
-                            <th>OOV</th>
-                            <th>Determinism</th>
-                            <th>Boundary</th>
-                            <th>Round Trip</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {activeReport.global_metrics.map((metric: GlobalMetrics) => (
-                            <tr key={`core-${metric.tokenizer}`}>
-                              <td>{metric.tokenizer}</td>
-                              <td>{Math.round(toNumber(metric.tokenization_speed_tps)).toLocaleString()}</td>
-                              <td>{formatRate(toNumber(metric.oov_rate))}</td>
-                              <td>{formatRate(toNumber(metric.determinism_rate))}</td>
-                              <td>{formatRate(toNumber(metric.boundary_preservation_rate))}</td>
-                              <td>{formatRate(toNumber(metric.round_trip_fidelity_rate))}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </article>
-
-                <article className="cross-benchmark-drilldown-card">
-                  <div className="cross-benchmark-chart-header">
-                    <p className="panel-label">Internal Metrics Drill Down</p>
-                  </div>
-                  {!isMetricEnabled(['internal.segmentation_consistency']) ? (
-                    renderUnavailable('Internal metrics unavailable')
+                  {activeReport.global_metrics.length === 0 || additionalMetricColumns.length === 0 ? (
+                    renderUnavailable('No non-plotted additional metrics available')
                   ) : (
                     <div className="cross-benchmark-table-wrap">
                       <table className="tokenizer-meta-table tokenizer-meta-table-compact">
                         <thead>
                           <tr>
                             <th>Tokenizer</th>
-                            {internalMetricColumns.map((col) => (
-                              <th key={col.key}>{col.label}</th>
+                            {additionalMetricColumns.map((metricKey) => (
+                              <th key={metricKey}>{toMetricLabel(metricKey)}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
                           {activeReport.global_metrics.map((metric) => (
-                            <tr key={`internal-${metric.tokenizer}`}>
+                            <tr key={`additional-${metric.tokenizer}`}>
                               <td>{metric.tokenizer}</td>
-                              {internalMetricColumns.map((col) => (
-                                <td key={`${metric.tokenizer}-${col.key}`}>
-                                  {toNumber(metric[col.key]).toFixed(4)}
+                              {additionalMetricColumns.map((metricKey) => (
+                                <td key={`${metric.tokenizer}-${metricKey}`}>
+                                  {formatMetricValue(metricKey, (metric as unknown as Record<string, unknown>)[metricKey])}
                                 </td>
                               ))}
                             </tr>
@@ -609,6 +747,22 @@ const CrossBenchmarkPage = () => {
                       </table>
                     </div>
                   )}
+                </article>
+
+                <article className="cross-benchmark-drilldown-card">
+                  <div className="cross-benchmark-chart-header">
+                    <p className="panel-label">Report Scope</p>
+                  </div>
+                  <div className="cross-benchmark-report-scope">
+                    <p className="panel-description">
+                      Selected metrics: <strong>{activeReport.selected_metric_keys.length.toLocaleString()}</strong>
+                    </p>
+                    <ul className="cross-benchmark-scope-list">
+                      {activeReport.selected_metric_keys.map((metricKey) => (
+                        <li key={metricKey}>{metricKey}</li>
+                      ))}
+                    </ul>
+                  </div>
                 </article>
               </div>
             </>

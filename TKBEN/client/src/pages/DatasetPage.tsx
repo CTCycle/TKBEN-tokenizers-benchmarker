@@ -232,6 +232,19 @@ const toNumber = (value: unknown, fallback = 0): number => {
 const normalizePercent = (value: number): string => `${(value * 100).toFixed(2)}%`;
 
 const normalizeCount = (value: number): string => Math.round(value).toLocaleString();
+const hasMetricValue = (value: unknown): boolean => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value);
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return false;
+    }
+    return Number.isFinite(Number(trimmed));
+  }
+  return false;
+};
 
 const toHistogramSeries = (histogram: HistogramData | null): Array<{ bin: string; count: number }> => {
   if (!histogram) {
@@ -485,6 +498,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
     removingDataset,
     metricsCatalog,
     metricsCatalogLoading,
+    loadMetricsCatalog,
     setError,
     handleCorpusChange,
     handleConfigChange,
@@ -542,6 +556,9 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
     return buildZipfCurveFromWordFrequencies(mostCommonWords);
   }, [aggregate, mostCommonWords]);
   const entropyGauge = toNumber(aggregate['words.normalized_entropy']);
+  const shannonEntropy = toNumber(aggregate['words.shannon_entropy']);
+  const hasEntropyGauge = hasMetricValue(aggregate['words.normalized_entropy']);
+  const hasShannonEntropy = hasMetricValue(aggregate['words.shannon_entropy']);
   const duplicateRate = toNumber(aggregate['quality.duplicate_rate']);
   const nearDuplicateRate = toNumber(aggregate['quality.near_duplicate_rate']);
   const topKConcentration = toNumber(aggregate['words.topk_concentration']);
@@ -1016,6 +1033,28 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                       />
                     </div>
                     <p className="dataset-v2-gauge-value">{normalizePercent(entropyGauge)}</p>
+                    {hasShannonEntropy ? (
+                      <div className="dataset-v2-indicator-row">
+                        <span>Shannon entropy</span>
+                        <strong>{shannonEntropy.toFixed(4)}</strong>
+                      </div>
+                    ) : (
+                      <p className="panel-description dataset-v2-entropy-help">
+                        Entropy summarizes how evenly words are distributed across the corpus.
+                      </p>
+                    )}
+                    {hasEntropyGauge && (
+                      <div className="dataset-v2-indicator-row">
+                        <span>Interpretation</span>
+                        <strong>
+                          {entropyGauge >= 0.75
+                            ? 'High lexical variety'
+                            : entropyGauge >= 0.45
+                              ? 'Moderate lexical variety'
+                              : 'Concentrated vocabulary'}
+                        </strong>
+                      </div>
+                    )}
                   </div>
 
                   <div className="dataset-v2-mini-card">
@@ -1080,6 +1119,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
         categories={metricsCatalog as DatasetMetricCatalogCategory[]}
         loadingCategories={metricsCatalogLoading}
         validating={validating}
+        onRetryCatalogLoad={() => { void loadMetricsCatalog(); }}
         onClose={() => setWizardOpen(false)}
         onRun={runValidationFromWizard}
       />

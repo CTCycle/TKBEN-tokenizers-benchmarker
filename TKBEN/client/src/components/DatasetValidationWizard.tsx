@@ -7,6 +7,7 @@ type DatasetValidationWizardProps = {
   categories: DatasetMetricCatalogCategory[];
   loadingCategories: boolean;
   validating: boolean;
+  onRetryCatalogLoad?: () => void;
   onClose: () => void;
   onRun: (request: Partial<DatasetAnalysisRequest>) => Promise<void>;
 };
@@ -21,6 +22,7 @@ const DatasetValidationWizard = ({
   categories,
   loadingCategories,
   validating,
+  onRetryCatalogLoad,
   onClose,
   onRun,
 }: DatasetValidationWizardProps) => {
@@ -37,6 +39,7 @@ const DatasetValidationWizard = ({
   const [maxLength, setMaxLength] = useState('');
   const [excludeEmpty, setExcludeEmpty] = useState(true);
   const [sessionName, setSessionName] = useState('');
+  const catalogUnavailable = !loadingCategories && categories.length === 0;
 
   useEffect(() => {
     if (!isOpen) {
@@ -74,7 +77,6 @@ const DatasetValidationWizard = ({
     if (!datasetName) return;
     const request: Partial<DatasetAnalysisRequest> = {
       session_name: sessionName.trim() ? sessionName.trim() : null,
-      selected_metric_keys: selectedMetricKeys,
       sampling: samplingMode === 'fraction'
         ? { fraction: clamp(samplingFraction, 0.01, 1) }
         : { count: Math.max(1, Math.floor(samplingCount)) },
@@ -85,6 +87,9 @@ const DatasetValidationWizard = ({
       },
       metric_parameters: {},
     };
+    if (selectedMetricKeys.length > 0) {
+      request.selected_metric_keys = selectedMetricKeys;
+    }
     void onRun(request);
     onClose();
     setStep(0);
@@ -126,6 +131,21 @@ const DatasetValidationWizard = ({
               {loadingCategories ? (
                 <div className="chart-placeholder">
                   <p>Loading metrics catalog...</p>
+                </div>
+              ) : categories.length === 0 ? (
+                <div className="chart-placeholder">
+                  <p>Metrics catalog is unavailable.</p>
+                  <span>Continue to run with backend default metrics or retry loading the catalog.</span>
+                  {onRetryCatalogLoad && (
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={onRetryCatalogLoad}
+                      disabled={loadingCategories || validating}
+                    >
+                      Retry catalog load
+                    </button>
+                  )}
                 </div>
               ) : (
                 categories.map((category) => {
@@ -292,7 +312,7 @@ const DatasetValidationWizard = ({
               type="button"
               className="primary-button"
               onClick={() => setStep((current) => Math.min(2, current + 1))}
-              disabled={(step === 0 && selectedMetricKeys.length === 0) || validating}
+              disabled={(step === 0 && !catalogUnavailable && selectedMetricKeys.length === 0) || validating}
             >
               Next
             </button>
