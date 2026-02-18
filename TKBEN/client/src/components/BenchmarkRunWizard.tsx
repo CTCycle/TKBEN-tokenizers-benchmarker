@@ -38,6 +38,7 @@ const BenchmarkRunWizard = ({
   const [datasetName, setDatasetName] = useState('');
   const [maxDocuments, setMaxDocuments] = useState(1000);
   const [runName, setRunName] = useState('');
+  const [tokenizerQuery, setTokenizerQuery] = useState('');
 
   const allMetricKeys = useMemo(
     () => categories.flatMap((category) => category.metrics.map((metric) => metric.key)),
@@ -57,6 +58,7 @@ const BenchmarkRunWizard = ({
     setDatasetName(preferredDataset);
     setMaxDocuments(clamp(Math.floor(defaultMaxDocuments || 1000), 1, 100000));
     setRunName('');
+    setTokenizerQuery('');
   }, [allMetricKeys, availableDatasets, defaultDatasetName, defaultMaxDocuments, isOpen]);
 
   const toggleMetric = (metricKey: string, enabled: boolean) => {
@@ -110,6 +112,13 @@ const BenchmarkRunWizard = ({
   const canProceedFromStepOne = selectedMetricKeys.length > 0;
   const canProceedFromStepTwo = selectedTokenizers.length > 0 && Boolean(datasetName);
   const canRun = canProceedFromStepOne && canProceedFromStepTwo && Boolean(runName.trim());
+  const filteredTokenizers = useMemo(() => {
+    const query = tokenizerQuery.trim().toLowerCase();
+    if (!query) {
+      return availableTokenizers;
+    }
+    return availableTokenizers.filter((tokenizerName) => tokenizerName.toLowerCase().includes(query));
+  }, [availableTokenizers, tokenizerQuery]);
 
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true">
@@ -181,25 +190,42 @@ const BenchmarkRunWizard = ({
 
           {step === 1 && (
             <div className="benchmark-wizard-inputs">
-              <div className="input-stack">
+              <div className="input-stack benchmark-wizard-input-stack">
                 <label className="field-label">Tokenizers</label>
+                <input
+                  className="text-input"
+                  value={tokenizerQuery}
+                  onChange={(event) => setTokenizerQuery(event.target.value)}
+                  placeholder="Search tokenizers"
+                  aria-label="Search tokenizers"
+                />
+                <p className="panel-description">
+                  Selected {selectedTokenizers.length} of {availableTokenizers.length}
+                </p>
                 <div className="benchmark-wizard-tokenizer-list" role="listbox" aria-multiselectable="true">
                   {availableTokenizers.length === 0 ? (
                     <div className="chart-placeholder">
                       <p>No tokenizers available. Download tokenizers first.</p>
                     </div>
+                  ) : filteredTokenizers.length === 0 ? (
+                    <div className="chart-placeholder">
+                      <p>No tokenizers match your search.</p>
+                    </div>
                   ) : (
-                    availableTokenizers.map((tokenizerName) => {
+                    filteredTokenizers.map((tokenizerName) => {
                       const selected = selectedTokenizers.includes(tokenizerName);
                       return (
-                        <button
+                        <label
                           key={tokenizerName}
-                          type="button"
-                          className={`benchmark-wizard-tokenizer-pill${selected ? ' selected' : ''}`}
-                          onClick={() => toggleTokenizer(tokenizerName)}
+                          className={`benchmark-wizard-tokenizer-option${selected ? ' selected' : ''}`}
                         >
-                          {tokenizerName}
-                        </button>
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={() => toggleTokenizer(tokenizerName)}
+                          />
+                          <span>{tokenizerName}</span>
+                        </label>
                       );
                     })
                   )}
@@ -207,7 +233,7 @@ const BenchmarkRunWizard = ({
               </div>
 
               <div className="benchmark-wizard-input-grid">
-                <div className="input-stack">
+                <div className="input-stack benchmark-wizard-input-stack">
                   <label className="field-label" htmlFor="benchmark-wizard-dataset">
                     Dataset
                   </label>
@@ -227,12 +253,13 @@ const BenchmarkRunWizard = ({
                   </select>
                 </div>
 
-                <div className="input-stack">
+                <div className="input-stack benchmark-wizard-input-stack">
                   <label className="field-label" htmlFor="benchmark-wizard-documents">
                     Documents processed ({clamp(Math.floor(maxDocuments), 1, 100000).toLocaleString()})
                   </label>
                   <input
                     id="benchmark-wizard-documents"
+                    className="benchmark-wizard-range"
                     type="range"
                     min={1}
                     max={100000}
@@ -263,9 +290,18 @@ const BenchmarkRunWizard = ({
               <p className="panel-description">dataset_name: <strong>{datasetName || 'N/A'}</strong></p>
               <p className="panel-description">documents_processed: <strong>{clamp(Math.floor(maxDocuments), 1, 100000).toLocaleString()}</strong></p>
               <p className="panel-description">tokenizers_count: <strong>{selectedTokenizers.length}</strong></p>
-              <p className="panel-description">
-                tokenizers_processed: <strong>{selectedTokenizers.length > 0 ? selectedTokenizers.join(', ') : 'N/A'}</strong>
-              </p>
+              <div className="benchmark-wizard-tokenizer-summary-wrap">
+                <p className="panel-description">tokenizers_processed:</p>
+                <ul className="benchmark-wizard-tokenizer-summary">
+                  {selectedTokenizers.length > 0 ? (
+                    selectedTokenizers.map((tokenizerName) => (
+                      <li key={tokenizerName}>{tokenizerName}</li>
+                    ))
+                  ) : (
+                    <li>N/A</li>
+                  )}
+                </ul>
+              </div>
               <p className="panel-description">
                 selected metrics: <strong>{selectedMetricKeys.length.toLocaleString()}</strong>
               </p>
