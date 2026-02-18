@@ -51,6 +51,12 @@ const normalizeRate = (value: number): number => {
 };
 
 const formatRate = (value: number): string => `${normalizeRate(value).toFixed(2)}%`;
+const truncateText = (value: string, maxLength: number): string => {
+  if (value.length <= maxLength) {
+    return value;
+  }
+  return `${value.slice(0, Math.max(0, maxLength - 3))}...`;
+};
 const formatTokenizerLabel = (tokenizer: string): string => {
   const trimmed = tokenizer.trim();
   if (!trimmed) {
@@ -59,6 +65,17 @@ const formatTokenizerLabel = (tokenizer: string): string => {
   const segments = trimmed.split('/');
   return segments[segments.length - 1] || trimmed;
 };
+const formatChartTokenizerLabel = (tokenizer: string): string =>
+  truncateText(formatTokenizerLabel(tokenizer), 22);
+const chartLegendProps = {
+  layout: 'vertical' as const,
+  align: 'center' as const,
+  verticalAlign: 'bottom' as const,
+  wrapperStyle: { fontSize: 12, paddingTop: 6, width: '100%' },
+  height: 72,
+};
+const PRIMARY_CHART_HEIGHT = 300;
+const SECONDARY_CHART_HEIGHT = 300;
 const metricLabelOverrides: Record<string, string> = {
   tokenization_speed_tps: 'Tokenization Speed (tokens per second)',
   throughput_chars_per_sec: 'Character Throughput (characters per second)',
@@ -101,6 +118,9 @@ const formatMetricValue = (key: string, rawValue: unknown): string => {
   }
   if (isLikelyRatioMetric(key)) {
     return formatRate(numeric);
+  }
+  if (key === 'avg_sequence_length') {
+    return numeric.toFixed(2);
   }
   if (Number.isInteger(numeric)) {
     return numeric.toLocaleString();
@@ -378,6 +398,7 @@ const CrossBenchmarkPage = () => {
       'boundary_preservation_rate',
       'round_trip_fidelity_rate',
       'vocabulary_size',
+      'model_size_mb',
     ]);
     const preferredOrder = [
       'word_recovery_rate',
@@ -385,7 +406,6 @@ const CrossBenchmarkPage = () => {
       'subword_fertility',
       'avg_sequence_length',
       'median_sequence_length',
-      'model_size_mb',
       'segmentation_consistency',
       'token_distribution_entropy',
       'rare_token_tail_1',
@@ -439,35 +459,37 @@ const CrossBenchmarkPage = () => {
           <div className="cross-benchmark-control-actions">
             <button
               type="button"
-              className="primary-button"
+              className="primary-button cross-benchmark-start-button"
               onClick={() => setWizardOpen(true)}
               disabled={runningBenchmark || loadingPage}
             >
               {runningBenchmark ? 'Running...' : 'Start benchmark'}
             </button>
-            <label className="field-label" htmlFor="benchmark-report-selector">Report</label>
-            <select
-              id="benchmark-report-selector"
-              className="text-input cross-benchmark-report-select"
-              value={selectedReportId ?? ''}
-              onChange={(event) => {
-                const nextReportId = Number(event.target.value);
-                if (Number.isFinite(nextReportId) && nextReportId > 0) {
-                  void loadReportById(nextReportId);
-                }
-              }}
-              disabled={reports.length === 0 || loadingReport}
-            >
-              {reports.length === 0 ? (
-                <option value="">No reports available</option>
-              ) : (
-                reports.map((report) => (
-                  <option key={report.report_id} value={report.report_id}>
-                    #{report.report_id} - {report.run_name || 'unnamed run'} - {report.dataset_name}
-                  </option>
-                ))
-              )}
-            </select>
+            <div className="cross-benchmark-report-picker">
+              <label className="field-label" htmlFor="benchmark-report-selector">Report</label>
+              <select
+                id="benchmark-report-selector"
+                className="text-input cross-benchmark-report-select"
+                value={selectedReportId ?? ''}
+                onChange={(event) => {
+                  const nextReportId = Number(event.target.value);
+                  if (Number.isFinite(nextReportId) && nextReportId > 0) {
+                    void loadReportById(nextReportId);
+                  }
+                }}
+                disabled={reports.length === 0 || loadingReport}
+              >
+                {reports.length === 0 ? (
+                  <option value="">No reports available</option>
+                ) : (
+                  reports.map((report) => (
+                    <option key={report.report_id} value={report.report_id}>
+                      #{report.report_id} - {report.run_name || 'unnamed run'} - {report.dataset_name}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
           </div>
           {error && (
             <div className="error-banner" role="alert">
@@ -525,25 +547,25 @@ const CrossBenchmarkPage = () => {
                   {speedChartData.length === 0 ? (
                     renderUnavailable('Speed metrics unavailable')
                   ) : (
-                    <ResponsiveContainer width="100%" height={340}>
+                    <ResponsiveContainer width="100%" height={PRIMARY_CHART_HEIGHT}>
                       <BarChart
                         data={speedChartData}
-                        margin={{ top: 10, right: 16, left: 4, bottom: 56 }}
+                        margin={{ top: 10, right: 16, left: 4, bottom: 44 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
                         <XAxis
                           dataKey="tokenizer"
                           stroke="#9ea7b3"
-                          interval={0}
+                          interval="preserveStartEnd"
                           tick={{ fontSize: 11 }}
-                          tickFormatter={formatTokenizerLabel}
-                          angle={-20}
-                          textAnchor="end"
-                          height={72}
+                          tickFormatter={formatChartTokenizerLabel}
+                          tickMargin={12}
+                          minTickGap={22}
+                          height={78}
                         />
                         <YAxis stroke="#9ea7b3" width={78} tick={{ fontSize: 11 }} />
                         <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }} />
-                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                        <Legend {...chartLegendProps} />
                         <Bar dataKey="tokens_per_second" fill="#4fc3f7" name="Tokenization Speed (tokens/sec)" />
                         <Bar dataKey="chars_per_second" fill="#81c784" name="Character Throughput (chars/sec)" />
                         <Bar dataKey="processing_time_seconds" fill="#ffb74d" name="Processing Time (seconds)" />
@@ -559,28 +581,28 @@ const CrossBenchmarkPage = () => {
                   {qualityChartData.length === 0 ? (
                     renderUnavailable('Global rate metrics unavailable')
                   ) : (
-                    <ResponsiveContainer width="100%" height={340}>
+                    <ResponsiveContainer width="100%" height={PRIMARY_CHART_HEIGHT}>
                       <BarChart
                         data={qualityChartData}
-                        margin={{ top: 10, right: 16, left: 4, bottom: 56 }}
+                        margin={{ top: 10, right: 16, left: 4, bottom: 44 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
                         <XAxis
                           dataKey="tokenizer"
                           stroke="#9ea7b3"
-                          interval={0}
+                          interval="preserveStartEnd"
                           tick={{ fontSize: 11 }}
-                          tickFormatter={formatTokenizerLabel}
-                          angle={-20}
-                          textAnchor="end"
-                          height={72}
+                          tickFormatter={formatChartTokenizerLabel}
+                          tickMargin={12}
+                          minTickGap={22}
+                          height={78}
                         />
                         <YAxis stroke="#9ea7b3" width={78} tick={{ fontSize: 11 }} />
                         <Tooltip
                           formatter={(value: number | string | undefined) => `${toNumber(value).toFixed(2)}%`}
                           contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }}
                         />
-                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                        <Legend {...chartLegendProps} />
                         <Bar dataKey="oov_rate" fill="#f87171" name="Out-of-Vocabulary Rate (%)" />
                         <Bar dataKey="determinism_rate" fill="#22c55e" name="Tokenization Determinism Rate (%)" />
                         <Bar dataKey="boundary_preservation_rate" fill="#38bdf8" name="Word Boundary Preservation Rate (%)" />
@@ -597,25 +619,25 @@ const CrossBenchmarkPage = () => {
                   {vocabularyChartData.length === 0 ? (
                     renderUnavailable('Vocabulary metrics unavailable')
                   ) : (
-                    <ResponsiveContainer width="100%" height={340}>
+                    <ResponsiveContainer width="100%" height={PRIMARY_CHART_HEIGHT}>
                       <ComposedChart
                         data={vocabularyChartData}
-                        margin={{ top: 10, right: 16, left: 4, bottom: 56 }}
+                        margin={{ top: 10, right: 16, left: 4, bottom: 44 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
                         <XAxis
                           dataKey="tokenizer"
                           stroke="#9ea7b3"
-                          interval={0}
+                          interval="preserveStartEnd"
                           tick={{ fontSize: 11 }}
-                          tickFormatter={formatTokenizerLabel}
-                          angle={-20}
-                          textAnchor="end"
-                          height={72}
+                          tickFormatter={formatChartTokenizerLabel}
+                          tickMargin={12}
+                          minTickGap={22}
+                          height={78}
                         />
                         <YAxis stroke="#9ea7b3" width={78} tick={{ fontSize: 11 }} />
                         <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }} />
-                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                        <Legend {...chartLegendProps} />
                         <Bar dataKey="vocabulary_size" fill="#4fc3f7" name="Vocabulary Size (tokens)" />
                         <Bar dataKey="subwords_count" fill="#ffb74d" name="Subword Token Count" />
                         <Bar dataKey="true_words_count" fill="#81c784" name="Whole Word Token Count" />
@@ -642,10 +664,10 @@ const CrossBenchmarkPage = () => {
                   {distributionSeries.length === 0 ? (
                     renderUnavailable('Token length distribution unavailable')
                   ) : (
-                    <ResponsiveContainer width="100%" height={320}>
+                    <ResponsiveContainer width="100%" height={SECONDARY_CHART_HEIGHT}>
                       <BarChart
                         data={distributionSeries}
-                        margin={{ top: 10, right: 16, left: 4, bottom: 30 }}
+                        margin={{ top: 10, right: 16, left: 4, bottom: 22 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
                         <XAxis dataKey="label" stroke="#9ea7b3" hide />
@@ -728,14 +750,16 @@ const CrossBenchmarkPage = () => {
                           <tr>
                             <th>Tokenizer</th>
                             {additionalMetricColumns.map((metricKey) => (
-                              <th key={metricKey}>{toMetricLabel(metricKey)}</th>
+                              <th key={metricKey} title={toMetricLabel(metricKey)}>{toMetricLabel(metricKey)}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
                           {activeReport.global_metrics.map((metric) => (
                             <tr key={`additional-${metric.tokenizer}`}>
-                              <td>{metric.tokenizer}</td>
+                              <td className="cross-benchmark-title-cell" title={metric.tokenizer}>
+                                {truncateText(metric.tokenizer, 34)}
+                              </td>
                               {additionalMetricColumns.map((metricKey) => (
                                 <td key={`${metric.tokenizer}-${metricKey}`}>
                                   {formatMetricValue(metricKey, (metric as unknown as Record<string, unknown>)[metricKey])}

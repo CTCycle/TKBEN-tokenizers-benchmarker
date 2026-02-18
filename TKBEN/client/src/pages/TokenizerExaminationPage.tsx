@@ -74,14 +74,14 @@ const TokenizerExaminationPage = () => {
   const [vocabularyPanelHeight, setVocabularyPanelHeight] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!tokenizerReport) {
-      setVocabularyPanelHeight(null);
-      return;
-    }
-
     const syncVocabularyPanelHeight = () => {
       const leftPanel = leftPanelRef.current;
       if (!leftPanel) {
+        setVocabularyPanelHeight(null);
+        return;
+      }
+      if (window.innerWidth <= 960) {
+        setVocabularyPanelHeight(null);
         return;
       }
       setVocabularyPanelHeight(Math.max(0, Math.floor(leftPanel.getBoundingClientRect().height)));
@@ -234,7 +234,7 @@ const TokenizerExaminationPage = () => {
 
           <aside
             className="panel dashboard-panel dashboard-plain tokenizer-report-right"
-            style={tokenizerReport && vocabularyPanelHeight
+            style={vocabularyPanelHeight
               ? { height: `${vocabularyPanelHeight}px` }
               : undefined}
           >
