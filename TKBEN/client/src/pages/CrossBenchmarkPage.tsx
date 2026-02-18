@@ -71,8 +71,8 @@ const chartLegendProps = {
   layout: 'vertical' as const,
   align: 'center' as const,
   verticalAlign: 'bottom' as const,
-  wrapperStyle: { fontSize: 12, paddingTop: 6, width: '100%' },
-  height: 72,
+  wrapperStyle: { fontSize: 12, paddingTop: 2, width: '100%' },
+  height: 56,
 };
 const PRIMARY_CHART_HEIGHT = 300;
 const SECONDARY_CHART_HEIGHT = 300;
@@ -342,6 +342,17 @@ const CrossBenchmarkPage = () => {
     }
     return { min, max };
   }, [bytesPerTokenBoxData]);
+  const boxplotTicks = useMemo(() => {
+    const tickCount = 4;
+    const range = Math.max(1e-9, bytesPerTokenGlobalRange.max - bytesPerTokenGlobalRange.min);
+    return Array.from({ length: tickCount + 1 }, (_, index) => {
+      const ratio = index / tickCount;
+      return {
+        position: ratio * 100,
+        label: (bytesPerTokenGlobalRange.min + range * ratio).toFixed(3),
+      };
+    });
+  }, [bytesPerTokenGlobalRange]);
 
   const overviewMetrics = useMemo(() => {
     if (!activeReport) {
@@ -550,7 +561,7 @@ const CrossBenchmarkPage = () => {
                     <ResponsiveContainer width="100%" height={PRIMARY_CHART_HEIGHT}>
                       <BarChart
                         data={speedChartData}
-                        margin={{ top: 10, right: 16, left: 4, bottom: 44 }}
+                        margin={{ top: 6, right: 12, left: 2, bottom: 16 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
                         <XAxis
@@ -559,9 +570,9 @@ const CrossBenchmarkPage = () => {
                           interval="preserveStartEnd"
                           tick={{ fontSize: 11 }}
                           tickFormatter={formatChartTokenizerLabel}
-                          tickMargin={12}
-                          minTickGap={22}
-                          height={78}
+                          tickMargin={8}
+                          minTickGap={16}
+                          height={54}
                         />
                         <YAxis stroke="#9ea7b3" width={78} tick={{ fontSize: 11 }} />
                         <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }} />
@@ -584,7 +595,7 @@ const CrossBenchmarkPage = () => {
                     <ResponsiveContainer width="100%" height={PRIMARY_CHART_HEIGHT}>
                       <BarChart
                         data={qualityChartData}
-                        margin={{ top: 10, right: 16, left: 4, bottom: 44 }}
+                        margin={{ top: 6, right: 12, left: 2, bottom: 16 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
                         <XAxis
@@ -593,9 +604,9 @@ const CrossBenchmarkPage = () => {
                           interval="preserveStartEnd"
                           tick={{ fontSize: 11 }}
                           tickFormatter={formatChartTokenizerLabel}
-                          tickMargin={12}
-                          minTickGap={22}
-                          height={78}
+                          tickMargin={8}
+                          minTickGap={16}
+                          height={54}
                         />
                         <YAxis stroke="#9ea7b3" width={78} tick={{ fontSize: 11 }} />
                         <Tooltip
@@ -622,7 +633,7 @@ const CrossBenchmarkPage = () => {
                     <ResponsiveContainer width="100%" height={PRIMARY_CHART_HEIGHT}>
                       <ComposedChart
                         data={vocabularyChartData}
-                        margin={{ top: 10, right: 16, left: 4, bottom: 44 }}
+                        margin={{ top: 6, right: 12, left: 2, bottom: 16 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
                         <XAxis
@@ -631,9 +642,9 @@ const CrossBenchmarkPage = () => {
                           interval="preserveStartEnd"
                           tick={{ fontSize: 11 }}
                           tickFormatter={formatChartTokenizerLabel}
-                          tickMargin={12}
-                          minTickGap={22}
-                          height={78}
+                          tickMargin={8}
+                          minTickGap={16}
+                          height={54}
                         />
                         <YAxis stroke="#9ea7b3" width={78} tick={{ fontSize: 11 }} />
                         <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }} />
@@ -650,7 +661,12 @@ const CrossBenchmarkPage = () => {
               <div className="cross-benchmark-chart-grid cross-benchmark-chart-grid-secondary">
                 <article className="cross-benchmark-chart-card">
                   <div className="cross-benchmark-chart-header">
-                    <p className="panel-label">Token Length Distribution</p>
+                    <div className="cross-benchmark-chart-title">
+                      <p className="panel-label">Token Length Distribution</p>
+                      <p className="cross-benchmark-chart-note">
+                        Empty regions are expected when few token lengths are present.
+                      </p>
+                    </div>
                     <select
                       className="text-input cross-benchmark-inline-select"
                       value={selectedDistributionTokenizer}
@@ -683,7 +699,7 @@ const CrossBenchmarkPage = () => {
                   )}
                 </article>
 
-                <article className="cross-benchmark-chart-card">
+                <article className="cross-benchmark-chart-card cross-benchmark-chart-card--boxplot">
                   <div className="cross-benchmark-chart-header">
                     <p className="panel-label">Bytes per Token Distribution (Box Plot)</p>
                   </div>
@@ -691,9 +707,13 @@ const CrossBenchmarkPage = () => {
                     renderUnavailable('Per-document bytes per token unavailable')
                   ) : (
                     <>
-                      <div className="cross-benchmark-boxplot-scale">
-                        <span>{bytesPerTokenGlobalRange.min.toFixed(3)}</span>
-                        <span>{bytesPerTokenGlobalRange.max.toFixed(3)}</span>
+                      <div className="cross-benchmark-boxplot-scale" aria-hidden="true">
+                        <div className="cross-benchmark-boxplot-scale-track" />
+                        {boxplotTicks.map((tick) => (
+                          <span key={`boxplot-tick-${tick.position}`} style={{ left: `${tick.position}%` }}>
+                            {tick.label}
+                          </span>
+                        ))}
                       </div>
                       <div className="cross-benchmark-boxplot-list">
                         {bytesPerTokenBoxData.map((entry) => {
@@ -710,6 +730,8 @@ const CrossBenchmarkPage = () => {
                           const boxLeft = `${Math.min(q1Pct, q3Pct)}%`;
                           const boxWidth = `${Math.max(2, Math.abs(q3Pct - q1Pct))}%`;
                           const medianLeft = `${medianPct}%`;
+                          const minLeft = `${minPct}%`;
+                          const maxLeft = `${maxPct}%`;
                           return (
                             <div key={entry.tokenizer} className="cross-benchmark-boxplot-row">
                               <span className="cross-benchmark-boxplot-label">{entry.tokenizer}</span>
@@ -718,6 +740,8 @@ const CrossBenchmarkPage = () => {
                                   className="cross-benchmark-boxplot-whisker"
                                   style={{ left: whiskerLeft, right: whiskerRight }}
                                 />
+                                <div className="cross-benchmark-boxplot-cap" style={{ left: minLeft }} />
+                                <div className="cross-benchmark-boxplot-cap" style={{ left: maxLeft }} />
                                 <div
                                   className="cross-benchmark-boxplot-box"
                                   style={{ left: boxLeft, width: boxWidth }}
@@ -725,7 +749,7 @@ const CrossBenchmarkPage = () => {
                                 <div className="cross-benchmark-boxplot-median" style={{ left: medianLeft }} />
                               </div>
                               <span className="cross-benchmark-boxplot-values">
-                                {entry.min.toFixed(3)} / {entry.median.toFixed(3)} / {entry.max.toFixed(3)}
+                                {entry.min.toFixed(3)} / {entry.q1.toFixed(3)} / {entry.median.toFixed(3)} / {entry.q3.toFixed(3)} / {entry.max.toFixed(3)}
                               </span>
                             </div>
                           );
