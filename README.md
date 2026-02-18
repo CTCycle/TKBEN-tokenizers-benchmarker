@@ -1,7 +1,7 @@
 # TKBEN Tokenizer Benchmarker
 
 ## 1. Project Overview
-TKBEN is a web application for exploring and benchmarking open-source tokenizers against text datasets. It helps compare tokenizer speed, token counts, and coverage so you can choose a tokenizer for your NLP workload.
+TKBEN is a local web application for downloading/uploading text datasets, managing tokenizer assets, and benchmarking tokenizer behavior on real corpora.
 
 The system is split into a Python/FastAPI backend and a React frontend. The backend downloads tokenizers and datasets, runs benchmarks, and stores results in a local database. The frontend provides the UI for managing datasets, running benchmarks, and visualizing results.
 
@@ -9,96 +9,107 @@ The system is split into a Python/FastAPI backend and a React frontend. The back
 
 ## 2. Installation
 
-### 2.1 Windows (One Click Setup)
-Run `TKBEN/start_on_windows.bat`.
+### 2.1 Windows (One-Click Setup)
+Run:
 
-The launcher performs the following steps in order:
-- Downloads portable Python, uv, and Node.js into `TKBEN/resources/runtimes`.
-- Installs backend dependencies from `pyproject.toml`.
-- Installs frontend dependencies and builds the UI if needed.
-- Starts the backend and frontend servers and opens the UI in your browser.
+```bat
+TKBEN\start_on_windows.bat
+```
 
-First run downloads and builds the required runtimes and frontend assets. Subsequent runs reuse the local runtimes and only rebuild when missing.
-The setup is portable and only writes to the project directory.
+The launcher:
+1. Downloads portable Python, uv, and Node.js into `TKBEN/resources/runtimes`.
+2. Installs backend dependencies from `pyproject.toml` using `uv`.
+3. Installs/builds frontend dependencies when needed.
+4. Starts backend and frontend servers and opens the UI in your browser.
+
+First run performs runtime/bootstrap downloads. Subsequent runs reuse local artifacts when available.
 
 ### 2.2 macOS / Linux (Manual Setup)
-Manual setup is required on macOS and Linux.
-
 Prerequisites:
-- Python 3.14+ (to match the Windows launcher runtime)
+- Python 3.14+
 - Node.js 22+
 - `uv`
 
-Steps:
-1. From the repository root, install backend dependencies:
-   ```bash
-   uv sync --all-extras
-   ```
-2. Start the backend:
-   ```bash
-   uv run python -m uvicorn TKBEN.server.app:app --host 127.0.0.1 --port 8000
-   ```
-3. In a separate terminal, install and build the frontend:
-   ```bash
-   cd TKBEN/client
-   npm install
-   npm run build
-   npm run preview -- --host 127.0.0.1 --port 5173 --strictPort
-   ```
+Backend:
 
-## 4. How to Use
+```bash
+uv sync
+uv run python -m uvicorn TKBEN.server.app:app --host 127.0.0.1 --port 8000
+```
 
-### 4.1 Windows
-Launch `TKBEN/start_on_windows.bat`. The UI opens at `http://127.0.0.1:5173`.
-The backend API is available at `http://127.0.0.1:8000`, with documentation at `http://127.0.0.1:8000/docs`.
+Frontend (new terminal):
 
-### 4.2 macOS / Linux
-Start the backend and frontend with the commands from the manual setup section:
-- Backend: `uv run python -m uvicorn TKBEN.server.app:app --host 127.0.0.1 --port 8000`
-- Frontend: `npm run preview -- --host 127.0.0.1 --port 5173 --strictPort`
+```bash
+cd TKBEN/client
+npm install
+npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
+```
 
-The UI is available at `http://127.0.0.1:5173`, and the backend API at `http://127.0.0.1:8000` (docs at `http://127.0.0.1:8000/docs`).
+## 3. How to Use
 
-### 4.3 Using the Application
-Typical workflow:
-- Load a dataset by downloading from Hugging Face or uploading a CSV/XLS/XLSX file.
-- Scan and select tokenizers to benchmark.
-- Run benchmarks and review token counts, throughput, and other metrics.
-- Inspect charts and tables, and keep results for later comparisons.
+### 3.1 Windows
+Run `TKBEN/start_on_windows.bat`.
+- UI: `http://127.0.0.1:5173`
+- API: `http://127.0.0.1:8000`
+- API docs: `http://127.0.0.1:8000/docs`
 
-**Dataset management screen**:
+### 3.2 macOS / Linux
+After starting backend/frontend manually:
+- UI: `http://127.0.0.1:5173`
+- API: `http://127.0.0.1:8000`
+- API docs: `http://127.0.0.1:8000/docs`
 
-![Dataset management and download/upload](assets/figures/dataset_page.png)
+### 3.3 Typical Workflow
+Use the app left-to-right as a pipeline: prepare data, inspect tokenizer behavior, then run cross-tokenizer benchmarks.
 
-**Tokenizers management screen**:
+1. Open **Datasets** (`/dataset`)
+- Add data from Hugging Face (preset or manual dataset/config) or upload local CSV/XLS/XLSX files.
+- Select a persisted dataset from the preview list to make it the active working dataset.
+- Run the validation/analysis workflow with metric categories, sampling, and optional filters.
+- Reopen the latest persisted dataset report to inspect corpus statistics and charts.
 
-![Database browser](assets/figures/database_browser.png)
+![Dataset workspace](./assets/figures/dataset_page.png)
 
+2. Open **Tokenizers** (`/tokenizers`)
+- Scan Hugging Face tokenizer IDs (HF access key required), then download selected tokenizers locally.
+- Optionally upload a custom `tokenizer.json` for compatibility checks.
+- Open or generate tokenizer reports and inspect vocabulary statistics, histograms, and paged token tables.
+- Use this page to decide which tokenizers should move to benchmark runs.
 
-**Benchmark results screen**:
+![Tokenizer workspace](./assets/figures/tokenizer_page.png)
 
-![Benchmark charts and metrics](assets/figures/benchmarks_page.png)
+3. Open **Cross Benchmark** (`/cross-benchmark`)
+- Start the benchmark wizard and choose run name, dataset, tokenizers, and metric set.
+- Run benchmark jobs and reopen persisted reports from the report selector.
+- Compare tokenizer performance across throughput, vocabulary behavior, quality rates, and distribution metrics.
+- Use the per-tokenizer drilldowns to identify tradeoffs before final selection.
 
+![Cross benchmark workspace](./assets/figures/benchmarks_page.png)
 
+## 4. Setup and Maintenance
+Run:
 
-## 5. Setup and Maintenance
-Run `TKBEN/setup_and_maintenance.bat` and choose an action:
-- Remove logs: deletes log files from `TKBEN/resources/logs`.
-- Uninstall app: removes local runtimes, caches, virtual environment, frontend dependencies, and built assets.
-- Initialize database: recreates or prepares the local database used by the backend.
+```bat
+TKBEN\setup_and_maintenance.bat
+```
 
-## 6. Resources
-- database: local SQLite database file `TKBEN/resources/database/sqlite.db` storing datasets and benchmark results.
-- datasets: downloaded or uploaded datasets used for benchmarking, stored under `TKBEN/resources/datasets`.
-- logs: backend and launcher logs stored in `TKBEN/resources/logs`.
-- runtimes: portable Python/uv/Node.js used by the Windows launcher, stored in `TKBEN/resources/runtimes`.
-- templates: sample files such as a starter `.env` in `TKBEN/resources/templates`.
+Menu actions:
+- Remove logs: deletes `*.log` files under `TKBEN/resources/logs`.
+- Uninstall app: removes local runtime/dependency/build artifacts (portable runtimes, `.venv`, frontend `node_modules`, `dist`, lock artifacts).
+- Initialize database: executes `TKBEN/scripts/initialize_database.py`.
 
-## 7. Configuration
+## 5. Resources
+- `TKBEN/resources/database.db`: default embedded SQLite database file.
+- `TKBEN/resources/sources/datasets`: Hugging Face/download cache and dataset source artifacts.
+- `TKBEN/resources/sources/tokenizers`: cached tokenizer files used for local loading.
+- `TKBEN/resources/logs`: launcher/backend logs.
+- `TKBEN/resources/runtimes`: portable Windows runtimes (Python, uv, Node.js).
+- `TKBEN/resources/templates`: reserved template assets.
+
+## 6. Configuration
 Backend configuration is defined in `TKBEN/settings/configurations.json` and can be overridden via environment variables in `TKBEN/settings/.env` (loaded on startup).
 Frontend hosting (host/port) is controlled by the Windows launcher and Vite using the same `TKBEN/settings/.env` file; there is no separate frontend configuration file.
 
 
 ## 8. License
-This project is licensed under the MIT license. See `LICENSE` for details.
-
+This project is licensed under the MIT License. See `LICENSE` for details.

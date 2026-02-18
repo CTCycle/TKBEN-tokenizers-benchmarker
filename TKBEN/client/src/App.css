@@ -15,17 +15,14 @@
 .app-shell {
   display: flex;
   min-height: 100vh;
-  height: 100vh;
-  overflow: hidden;
+  overflow: visible;
   background: var(--color-bg);
   color: var(--color-text);
 }
 
 .sidebar {
   width: 90px;
-  height: 100vh;
-  position: sticky;
-  top: 0;
+  min-height: 100vh;
   flex-shrink: 0;
   background: #0f1114;
   border-right: 1px solid var(--color-border);
@@ -179,9 +176,8 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  min-height: 0;
-  overflow-y: auto;
+  min-height: 100vh;
+  overflow: visible;
   padding: 32px 40px;
   gap: 24px;
   min-width: 0;
@@ -210,7 +206,7 @@
 
 .page-scroll {
   width: 100%;
-  overflow: auto;
+  overflow: visible;
   min-width: 0;
 }
 
