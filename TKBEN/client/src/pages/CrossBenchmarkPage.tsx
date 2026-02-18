@@ -60,24 +60,24 @@ const formatTokenizerLabel = (tokenizer: string): string => {
   return segments[segments.length - 1] || trimmed;
 };
 const metricLabelOverrides: Record<string, string> = {
-  tokenization_speed_tps: 'Speed (tok/s)',
-  throughput_chars_per_sec: 'Chars/sec',
-  processing_time_seconds: 'Processing time (s)',
-  avg_sequence_length: 'Avg seq length',
-  median_sequence_length: 'Median seq length',
+  tokenization_speed_tps: 'Tokenization Speed (tokens per second)',
+  throughput_chars_per_sec: 'Character Throughput (characters per second)',
+  processing_time_seconds: 'Processing Time (seconds)',
+  avg_sequence_length: 'Average Sequence Length',
+  median_sequence_length: 'Median Sequence Length',
   subword_fertility: 'Subword fertility',
-  word_recovery_rate: 'Word recovery',
-  character_coverage: 'Character coverage',
+  word_recovery_rate: 'Word Recovery Rate',
+  character_coverage: 'Character Coverage Rate',
   model_size_mb: 'Model size (MB)',
-  segmentation_consistency: 'Segmentation consistency',
-  token_distribution_entropy: 'Token distribution entropy',
-  rare_token_tail_1: 'Rare token tail 1',
-  rare_token_tail_2: 'Rare token tail 2',
-  compression_chars_per_token: 'Chars/token',
-  compression_bytes_per_character: 'Bytes/char',
-  round_trip_text_fidelity_rate: 'Round-trip text fidelity',
-  token_id_ordering_monotonicity: 'Token ID monotonicity',
-  token_unigram_coverage: 'Unigram coverage',
+  segmentation_consistency: 'Segmentation Consistency',
+  token_distribution_entropy: 'Token Distribution Entropy',
+  rare_token_tail_1: 'Rare Token Tail 1 Count',
+  rare_token_tail_2: 'Rare Token Tail 2 Count',
+  compression_chars_per_token: 'Compression (characters per token)',
+  compression_bytes_per_character: 'Compression (bytes per character)',
+  round_trip_text_fidelity_rate: 'Round-Trip Text Fidelity Rate',
+  token_id_ordering_monotonicity: 'Token ID Ordering Monotonicity',
+  token_unigram_coverage: 'Token Unigram Coverage Rate',
 };
 const toMetricLabel = (key: string): string =>
   metricLabelOverrides[key] ?? key.replace(/_/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase());
@@ -425,7 +425,7 @@ const CrossBenchmarkPage = () => {
   );
 
   return (
-    <div className="page-scroll">
+    <div className="page-scroll cross-benchmark-scroll">
       <div className="page-grid cross-benchmark-page">
         <section className="cross-benchmark-control-panel">
           <div className="cross-benchmark-control-header">
@@ -448,7 +448,7 @@ const CrossBenchmarkPage = () => {
             <label className="field-label" htmlFor="benchmark-report-selector">Report</label>
             <select
               id="benchmark-report-selector"
-              className="text-input"
+              className="text-input cross-benchmark-report-select"
               value={selectedReportId ?? ''}
               onChange={(event) => {
                 const nextReportId = Number(event.target.value);
@@ -525,7 +525,7 @@ const CrossBenchmarkPage = () => {
                   {speedChartData.length === 0 ? (
                     renderUnavailable('Speed metrics unavailable')
                   ) : (
-                    <ResponsiveContainer width="100%" height={330}>
+                    <ResponsiveContainer width="100%" height={340}>
                       <BarChart
                         data={speedChartData}
                         margin={{ top: 10, right: 16, left: 4, bottom: 56 }}
@@ -544,9 +544,9 @@ const CrossBenchmarkPage = () => {
                         <YAxis stroke="#9ea7b3" width={78} tick={{ fontSize: 11 }} />
                         <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }} />
                         <Legend wrapperStyle={{ fontSize: 12 }} />
-                        <Bar dataKey="tokens_per_second" fill="#4fc3f7" name="tokens/sec" />
-                        <Bar dataKey="chars_per_second" fill="#81c784" name="chars/sec" />
-                        <Bar dataKey="processing_time_seconds" fill="#ffb74d" name="processing time (s)" />
+                        <Bar dataKey="tokens_per_second" fill="#4fc3f7" name="Tokenization Speed (tokens/sec)" />
+                        <Bar dataKey="chars_per_second" fill="#81c784" name="Character Throughput (chars/sec)" />
+                        <Bar dataKey="processing_time_seconds" fill="#ffb74d" name="Processing Time (seconds)" />
                       </BarChart>
                     </ResponsiveContainer>
                   )}
@@ -559,7 +559,7 @@ const CrossBenchmarkPage = () => {
                   {qualityChartData.length === 0 ? (
                     renderUnavailable('Global rate metrics unavailable')
                   ) : (
-                    <ResponsiveContainer width="100%" height={330}>
+                    <ResponsiveContainer width="100%" height={340}>
                       <BarChart
                         data={qualityChartData}
                         margin={{ top: 10, right: 16, left: 4, bottom: 56 }}
@@ -581,10 +581,10 @@ const CrossBenchmarkPage = () => {
                           contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }}
                         />
                         <Legend wrapperStyle={{ fontSize: 12 }} />
-                        <Bar dataKey="oov_rate" fill="#f87171" name="oov_rate (%)" />
-                        <Bar dataKey="determinism_rate" fill="#22c55e" name="determinism_rate (%)" />
-                        <Bar dataKey="boundary_preservation_rate" fill="#38bdf8" name="boundary_preservation_rate (%)" />
-                        <Bar dataKey="round_trip_fidelity_rate" fill="#facc15" name="round_trip_fidelity_rate (%)" />
+                        <Bar dataKey="oov_rate" fill="#f87171" name="Out-of-Vocabulary Rate (%)" />
+                        <Bar dataKey="determinism_rate" fill="#22c55e" name="Tokenization Determinism Rate (%)" />
+                        <Bar dataKey="boundary_preservation_rate" fill="#38bdf8" name="Word Boundary Preservation Rate (%)" />
+                        <Bar dataKey="round_trip_fidelity_rate" fill="#facc15" name="Round-Trip Fidelity Rate (%)" />
                       </BarChart>
                     </ResponsiveContainer>
                   )}
@@ -597,7 +597,7 @@ const CrossBenchmarkPage = () => {
                   {vocabularyChartData.length === 0 ? (
                     renderUnavailable('Vocabulary metrics unavailable')
                   ) : (
-                    <ResponsiveContainer width="100%" height={330}>
+                    <ResponsiveContainer width="100%" height={340}>
                       <ComposedChart
                         data={vocabularyChartData}
                         margin={{ top: 10, right: 16, left: 4, bottom: 56 }}
@@ -616,9 +616,9 @@ const CrossBenchmarkPage = () => {
                         <YAxis stroke="#9ea7b3" width={78} tick={{ fontSize: 11 }} />
                         <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }} />
                         <Legend wrapperStyle={{ fontSize: 12 }} />
-                        <Bar dataKey="vocabulary_size" fill="#4fc3f7" name="vocabulary_size" />
-                        <Bar dataKey="subwords_count" fill="#ffb74d" name="subwords_count" />
-                        <Bar dataKey="true_words_count" fill="#81c784" name="true_words_count" />
+                        <Bar dataKey="vocabulary_size" fill="#4fc3f7" name="Vocabulary Size (tokens)" />
+                        <Bar dataKey="subwords_count" fill="#ffb74d" name="Subword Token Count" />
+                        <Bar dataKey="true_words_count" fill="#81c784" name="Whole Word Token Count" />
                       </ComposedChart>
                     </ResponsiveContainer>
                   )}
@@ -642,7 +642,7 @@ const CrossBenchmarkPage = () => {
                   {distributionSeries.length === 0 ? (
                     renderUnavailable('Token length distribution unavailable')
                   ) : (
-                    <ResponsiveContainer width="100%" height={310}>
+                    <ResponsiveContainer width="100%" height={320}>
                       <BarChart
                         data={distributionSeries}
                         margin={{ top: 10, right: 16, left: 4, bottom: 30 }}
@@ -747,22 +747,6 @@ const CrossBenchmarkPage = () => {
                       </table>
                     </div>
                   )}
-                </article>
-
-                <article className="cross-benchmark-drilldown-card">
-                  <div className="cross-benchmark-chart-header">
-                    <p className="panel-label">Report Scope</p>
-                  </div>
-                  <div className="cross-benchmark-report-scope">
-                    <p className="panel-description">
-                      Selected metrics: <strong>{activeReport.selected_metric_keys.length.toLocaleString()}</strong>
-                    </p>
-                    <ul className="cross-benchmark-scope-list">
-                      {activeReport.selected_metric_keys.map((metricKey) => (
-                        <li key={metricKey}>{metricKey}</li>
-                      ))}
-                    </ul>
-                  </div>
                 </article>
               </div>
             </>
