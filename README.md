@@ -7,14 +7,9 @@ The system is split into a Python/FastAPI backend and a React frontend. The back
 
 > **Work in Progress**: This project is still under active development. It will be updated regularly, but you may encounter bugs, issues, or incomplete features.
 
-## 2. Model and Dataset (Optional)
-This project does not train or fine-tune machine learning models. It benchmarks existing tokenizers (including Hugging Face tokenizers) using text datasets.
+## 2. Installation
 
-Datasets can be downloaded from Hugging Face or uploaded by the user (CSV/XLS/XLSX) and are stored locally for analysis. Results depend on the chosen datasets and tokenizers.
-
-## 3. Installation
-
-### 3.1 Windows (One Click Setup)
+### 2.1 Windows (One Click Setup)
 Run `TKBEN/start_on_windows.bat`.
 
 The launcher performs the following steps in order:
@@ -26,7 +21,7 @@ The launcher performs the following steps in order:
 First run downloads and builds the required runtimes and frontend assets. Subsequent runs reuse the local runtimes and only rebuild when missing.
 The setup is portable and only writes to the project directory.
 
-### 3.2 macOS / Linux (Manual Setup)
+### 2.2 macOS / Linux (Manual Setup)
 Manual setup is required on macOS and Linux.
 
 Prerequisites:
@@ -75,13 +70,15 @@ Typical workflow:
 
 ![Dataset management and download/upload](assets/figures/dataset_page.png)
 
+**Tokenizers management screen**:
+
+![Database browser](assets/figures/database_browser.png)
+
+
 **Benchmark results screen**:
 
 ![Benchmark charts and metrics](assets/figures/benchmarks_page.png)
 
-**Database browser**:
-
-![Database browser](assets/figures/database_browser.png)
 
 
 ## 5. Setup and Maintenance
@@ -100,17 +97,6 @@ Run `TKBEN/setup_and_maintenance.bat` and choose an action:
 ## 7. Configuration
 Backend configuration is defined in `TKBEN/settings/configurations.json` and can be overridden via environment variables in `TKBEN/settings/.env` (loaded on startup).
 Frontend hosting (host/port) is controlled by the Windows launcher and Vite using the same `TKBEN/settings/.env` file; there is no separate frontend configuration file.
-
-| Variable | Description |
-|----------|-------------|
-| FASTAPI_HOST | Backend bind host; set in `TKBEN/settings/.env` (read by `TKBEN/start_on_windows.bat`), default `127.0.0.1`. |
-| FASTAPI_PORT | Backend bind port; set in `TKBEN/settings/.env`, default `8000`. |
-| UI_HOST | Frontend bind host for preview; set in `TKBEN/settings/.env` if overridden, default `127.0.0.1` in `TKBEN/start_on_windows.bat`. |
-| UI_PORT | Frontend bind port for preview; set in `TKBEN/settings/.env` if overridden, default `5173` in `TKBEN/start_on_windows.bat`. |
-| RELOAD | Enables FastAPI reload; set in `TKBEN/settings/.env`, default `true`. |
-| VITE_API_BASE_URL | Frontend API base path; set in `TKBEN/settings/.env`, default `/api`. |
-| HF_KEYS_ENCRYPTION_KEY | Required Fernet key used to encrypt/decrypt stored Hugging Face keys; must be provided per environment and not committed as a shared secret. |
-| MPLBACKEND | Matplotlib backend; set in `TKBEN/settings/.env`, default `Agg`. |
 
 
 ## 8. License
