@@ -20,6 +20,7 @@ type BenchmarkRunWizardProps = {
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const MAX_SELECTED_TOKENIZERS = 5;
 
 const BenchmarkRunWizard = ({
   isOpen,
@@ -88,6 +89,9 @@ const BenchmarkRunWizard = ({
       if (current.includes(tokenizerName)) {
         return current.filter((item) => item !== tokenizerName);
       }
+      if (current.length >= MAX_SELECTED_TOKENIZERS) {
+        return current;
+      }
       return [...current, tokenizerName];
     });
   };
@@ -105,13 +109,6 @@ const BenchmarkRunWizard = ({
     });
   };
 
-  if (!isOpen) {
-    return null;
-  }
-
-  const canProceedFromStepOne = selectedMetricKeys.length > 0;
-  const canProceedFromStepTwo = selectedTokenizers.length > 0 && Boolean(datasetName);
-  const canRun = canProceedFromStepOne && canProceedFromStepTwo && Boolean(runName.trim());
   const filteredTokenizers = useMemo(() => {
     const query = tokenizerQuery.trim().toLowerCase();
     if (!query) {
@@ -119,6 +116,14 @@ const BenchmarkRunWizard = ({
     }
     return availableTokenizers.filter((tokenizerName) => tokenizerName.toLowerCase().includes(query));
   }, [availableTokenizers, tokenizerQuery]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  const canProceedFromStepOne = selectedMetricKeys.length > 0;
+  const canProceedFromStepTwo = selectedTokenizers.length > 0 && Boolean(datasetName);
+  const canRun = canProceedFromStepOne && canProceedFromStepTwo && Boolean(runName.trim());
 
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true">
@@ -200,7 +205,7 @@ const BenchmarkRunWizard = ({
                   aria-label="Search tokenizers"
                 />
                 <p className="panel-description">
-                  Selected {selectedTokenizers.length} of {availableTokenizers.length}
+                  Selected {selectedTokenizers.length} of {MAX_SELECTED_TOKENIZERS}
                 </p>
                 <div className="benchmark-wizard-tokenizer-list" role="listbox" aria-multiselectable="true">
                   {availableTokenizers.length === 0 ? (
@@ -214,14 +219,16 @@ const BenchmarkRunWizard = ({
                   ) : (
                     filteredTokenizers.map((tokenizerName) => {
                       const selected = selectedTokenizers.includes(tokenizerName);
+                      const limitReached = !selected && selectedTokenizers.length >= MAX_SELECTED_TOKENIZERS;
                       return (
                         <label
                           key={tokenizerName}
-                          className={`benchmark-wizard-tokenizer-option${selected ? ' selected' : ''}`}
+                          className={`benchmark-wizard-tokenizer-option${selected ? ' selected' : ''}${limitReached ? ' benchmark-wizard-tokenizer-option--disabled' : ''}`}
                         >
                           <input
                             type="checkbox"
                             checked={selected}
+                            disabled={limitReached}
                             onChange={() => toggleTokenizer(tokenizerName)}
                           />
                           <span>{tokenizerName}</span>
@@ -233,7 +240,7 @@ const BenchmarkRunWizard = ({
               </div>
 
               <div className="benchmark-wizard-input-grid">
-                <div className="input-stack benchmark-wizard-input-stack">
+                <div className="input-stack benchmark-wizard-input-stack benchmark-wizard-input-stack--dataset">
                   <label className="field-label" htmlFor="benchmark-wizard-dataset">
                     Dataset
                   </label>
@@ -253,7 +260,7 @@ const BenchmarkRunWizard = ({
                   </select>
                 </div>
 
-                <div className="input-stack benchmark-wizard-input-stack">
+                <div className="input-stack benchmark-wizard-input-stack benchmark-wizard-input-stack--range">
                   <label className="field-label" htmlFor="benchmark-wizard-documents">
                     Documents processed ({clamp(Math.floor(maxDocuments), 1, 100000).toLocaleString()})
                   </label>

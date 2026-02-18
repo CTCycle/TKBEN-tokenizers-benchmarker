@@ -203,8 +203,8 @@
 }
 
 .tokenizer-exam-scroll {
-  padding-inline-end: 12px;
-  scrollbar-gutter: stable;
+  padding-inline-end: 20px;
+  scrollbar-gutter: stable both-edges;
 }
 
 .page-grid {
@@ -1285,14 +1285,34 @@
 }
 
 .cross-benchmark-control-actions {
-  display: grid;
-  grid-template-columns: auto auto minmax(240px, 380px);
+  display: flex;
   align-items: center;
   gap: 10px;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.cross-benchmark-start-button {
+  min-width: 240px;
+  width: 240px;
+  justify-content: center;
+}
+
+.cross-benchmark-report-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cross-benchmark-report-picker .field-label {
+  margin: 0;
+  white-space: nowrap;
 }
 
 .cross-benchmark-report-select {
-  width: 100%;
+  width: min(380px, 40vw);
+  min-width: 240px;
   max-width: 380px;
 }
 
@@ -1343,6 +1363,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 12px;
+  align-items: start;
 }
 
 .cross-benchmark-chart-grid-secondary {
@@ -1354,7 +1375,7 @@
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.02);
   padding: 12px;
-  min-height: 400px;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1391,6 +1412,10 @@
   flex-direction: column;
   gap: 10px;
   margin-top: 6px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .cross-benchmark-boxplot-row {
@@ -1470,35 +1495,55 @@
 }
 
 .cross-benchmark-table-wrap .tokenizer-meta-table {
-  table-layout: fixed;
+  table-layout: auto;
+  width: 100%;
+  min-width: 0;
 }
 
 .cross-benchmark-table-wrap .tokenizer-meta-table th,
 .cross-benchmark-table-wrap .tokenizer-meta-table td {
   white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: break-word;
+  word-break: normal;
   width: auto;
-  max-width: none;
+  max-width: 100%;
 }
 
 .cross-benchmark-table-wrap .tokenizer-meta-table th {
   width: auto;
-  max-width: none;
+  max-width: 100%;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.cross-benchmark-table-wrap .tokenizer-meta-table th > * {
+  white-space: normal;
 }
 
 .cross-benchmark-table-wrap .tokenizer-meta-table td {
   width: auto;
-  max-width: 0;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.cross-benchmark-title-cell {
+  width: clamp(180px, 22vw, 240px);
+  max-width: clamp(180px, 22vw, 240px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cross-benchmark-scroll {
   overflow-x: hidden;
+  padding-inline-end: 20px;
+  scrollbar-gutter: stable both-edges;
 }
 
 .benchmark-wizard-modal {
   width: min(900px, 96vw);
-  max-height: min(92vh, 820px);
+  max-height: min(calc(100vh - 72px), 760px);
   overflow: hidden;
 }
 
@@ -1537,6 +1582,8 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  overflow-y: auto;
+  padding-inline-end: 4px;
 }
 
 .benchmark-wizard-tree {
@@ -1581,8 +1628,10 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  height: 240px;
   max-height: 240px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .benchmark-wizard-tokenizer-option {
@@ -1599,8 +1648,9 @@
 }
 
 .benchmark-wizard-tokenizer-option span {
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .benchmark-wizard-tokenizer-option input {
@@ -1610,6 +1660,10 @@
 .benchmark-wizard-tokenizer-option.selected {
   border-color: var(--color-accent);
   background: rgba(255, 232, 31, 0.1);
+}
+
+.benchmark-wizard-tokenizer-option--disabled {
+  opacity: 0.55;
 }
 
 .benchmark-wizard-tokenizer-pill {
@@ -1632,7 +1686,16 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  align-items: start;
+  align-items: center;
+}
+
+.benchmark-wizard-input-stack--dataset,
+.benchmark-wizard-input-stack--range {
+  justify-content: center;
+}
+
+.benchmark-wizard-input-stack--range .benchmark-wizard-range {
+  margin-top: 10px;
 }
 
 .benchmark-wizard-summary {
@@ -2415,7 +2478,11 @@ select {
   }
 
   .tokenizer-exam-scroll {
-    padding-inline-end: 8px;
+    padding-inline-end: 10px;
+  }
+
+  .cross-benchmark-scroll {
+    padding-inline-end: 10px;
   }
 
   .dataset-v2-row-one {
@@ -2443,11 +2510,25 @@ select {
   }
 
   .cross-benchmark-control-actions {
+    display: grid;
     grid-template-columns: 1fr;
     align-items: stretch;
   }
 
+  .cross-benchmark-start-button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .cross-benchmark-report-picker {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
   .cross-benchmark-report-select {
+    width: 100%;
+    min-width: 0;
     max-width: none;
   }
 }
@@ -2498,6 +2579,7 @@ select {
   }
 
   .benchmark-wizard-tokenizer-list {
+    height: 180px;
     max-height: 180px;
   }
 
