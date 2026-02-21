@@ -1,5 +1,4 @@
 # Project-specific generated/runtime artifacts
-assets/docs/**
 TKBEN/resources/sources/datasets/**
 TKBEN/resources/sources/tokenizers/**
 TKBEN/resources/runtimes/**
@@ -8,7 +7,6 @@ TKBEN/resources/logs/**
 TKBEN/client/node_modules/
 TKBEN/client/dist/
 TKBEN/client/dist-ssr/
-TKBEN/client/package-lock.json
 TKBEN/client/logs/
 TKBEN/client/*.local
 
