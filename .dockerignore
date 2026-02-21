@@ -1,0 +1,16 @@
+.git
+.gitignore
+.venv
+.pytest_cache
+
+TKBEN/client/node_modules
+TKBEN/client/dist
+TKBEN/client/dist-ssr
+
+TKBEN/resources/runtimes
+TKBEN/resources/sources
+TKBEN/resources/logs
+TKBEN/resources/database.db
+
+tests
+assets

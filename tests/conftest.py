@@ -10,21 +10,37 @@ import pytest
 from playwright.sync_api import APIRequestContext
 
 
+def _read_env(name: str, default: str | None = None) -> str | None:
+    value = os.getenv(name, default)
+    if value is None:
+        return None
+    normalized = value.strip().strip('"').strip("'")
+    return normalized or default
+
+
+def _normalize_host(host: str) -> str:
+    if host in {"0.0.0.0", "::"}:
+        return "127.0.0.1"
+    return host
+
+
 def _build_base_url(host_env: str, port_env: str, default_host: str, default_port: str) -> str:
-    host = os.getenv(host_env, default_host)
-    port = os.getenv(port_env, default_port)
+    host = _normalize_host(_read_env(host_env, default_host) or default_host)
+    port = _read_env(port_env, default_port) or default_port
     return f"http://{host}:{port}"
 
 
-# Base URLs - prefer explicit env vars, then fall back to host/port pairs.
+# Base URLs - prefer explicit test/runtime URLs, then fall back to host/port pairs.
 UI_BASE_URL = (
-    os.getenv("UI_BASE_URL")
-    or os.getenv("UI_URL")
-    or _build_base_url("UI_HOST", "UI_PORT", "127.0.0.1", "7861")
+    _read_env("APP_TEST_FRONTEND_URL")
+    or _read_env("UI_BASE_URL")
+    or _read_env("UI_URL")
+    or _build_base_url("UI_HOST", "UI_PORT", "127.0.0.1", "8000")
 )
 API_BASE_URL = (
-    os.getenv("API_BASE_URL")
-    or _build_base_url("FASTAPI_HOST", "FASTAPI_PORT", "127.0.0.1", "8000")
+    _read_env("APP_TEST_BACKEND_URL")
+    or _read_env("API_BASE_URL")
+    or _build_base_url("FASTAPI_HOST", "FASTAPI_PORT", "127.0.0.1", "5000")
 )
 
 
