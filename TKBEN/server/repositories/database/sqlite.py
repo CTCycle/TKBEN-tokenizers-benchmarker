@@ -21,7 +21,9 @@ from TKBEN.server.common.utils.logger import logger
 class SQLiteRepository:
     IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
-    def __init__(self, settings: DatabaseSettings) -> None:  
+    def __init__(
+        self, settings: DatabaseSettings, initialize_schema: bool = False
+    ) -> None:
         self.db_path: str | None = os.path.join(RESOURCES_PATH, DATABASE_FILENAME)
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         self.engine: Engine = sqlalchemy.create_engine(
@@ -30,7 +32,8 @@ class SQLiteRepository:
         event.listen(self.engine, "connect", self.enable_foreign_keys)
         self.session = sessionmaker(bind=self.engine, future=True)
         self.insert_batch_size = settings.insert_batch_size
-        Base.metadata.create_all(self.engine, checkfirst=True)
+        if initialize_schema:
+            Base.metadata.create_all(self.engine, checkfirst=True)
 
     # -------------------------------------------------------------------------
     def enable_foreign_keys(self, dbapi_connection, connection_record) -> None:
