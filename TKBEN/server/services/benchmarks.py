@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import io
 import os
 import re
 import time
@@ -21,6 +23,7 @@ from TKBEN.server.repositories.schemas.models import (
     TokenizerVocabulary,
     TokenizerVocabularyStatistics,
 )
+from TKBEN.server.repositories.serialization.data import BenchmarkReportSerializer
 from TKBEN.server.configurations import server_settings
 from TKBEN.server.common.constants import TOKENIZERS_PATH
 from TKBEN.server.common.utils.logger import logger
@@ -641,6 +644,7 @@ class BenchmarkService:
         self.max_documents = max_documents
         self.reduce_data_size = True  # Always true for webapp
         self.tools = BenchmarkTools()
+        self.report_serializer = BenchmarkReportSerializer()
         
         # Load settings from config
         self.streaming_batch_size = server_settings.benchmarks.streaming_batch_size
@@ -751,6 +755,20 @@ class BenchmarkService:
     # -------------------------------------------------------------------------
     def get_metric_catalog(self) -> list[dict[str, Any]]:
         return BENCHMARK_METRIC_CATALOG
+
+    # -------------------------------------------------------------------------
+    def list_benchmark_reports(self, limit: int = 200) -> list[dict[str, Any]]:
+        safe_limit = max(1, int(limit))
+        return self.report_serializer.list_benchmark_reports(safe_limit)
+
+    # -------------------------------------------------------------------------
+    def load_benchmark_report_by_id(self, report_id: int) -> dict[str, Any] | None:
+        return self.report_serializer.load_benchmark_report_by_id(report_id)
+
+    # -------------------------------------------------------------------------
+    def save_benchmark_report(self, payload: dict[str, Any]) -> int:
+        report_id = self.report_serializer.save_benchmark_report(payload)
+        return int(report_id)
 
     # -------------------------------------------------------------------------
     def default_selected_metric_keys(self) -> list[str]:
@@ -1763,9 +1781,6 @@ class BenchmarkService:
         vocabularies: list[pd.DataFrame],
         vocabulary_stats: pd.DataFrame,
     ) -> list[dict[str, str]]:
-        import base64
-        import io
-
         plots: list[dict[str, str]] = []
 
         # Plot vocabulary size

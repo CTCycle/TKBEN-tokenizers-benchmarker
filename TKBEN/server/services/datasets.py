@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import math
 import os
 import shutil
@@ -7,6 +8,7 @@ import threading
 from collections import Counter
 from collections.abc import Callable, Generator, Iterator
 from dataclasses import dataclass
+from functools import partial
 from typing import Any
 
 import pandas as pd
@@ -457,6 +459,17 @@ class DatasetService:
         return None
 
     # -------------------------------------------------------------------------
+    @staticmethod
+    def _heartbeat_progress(
+        stop_event: threading.Event,
+        progress_callback: Callable[[float], None],
+    ) -> None:
+        progress_value = 5.0
+        while not stop_event.wait(2.0):
+            progress_value = min(12.0, progress_value + 1.0)
+            progress_callback(progress_value)
+
+    # -------------------------------------------------------------------------
     def load_dataset_with_progress(
         self,
         hf_dataset_id: str,
@@ -471,14 +484,11 @@ class DatasetService:
 
         if progress_callback:
             progress_callback(5.0)
-
-            def heartbeat() -> None:
-                progress_value = 5.0
-                while not heartbeat_stop.wait(2.0):
-                    progress_value = min(12.0, progress_value + 1.0)
-                    progress_callback(progress_value)
-
-            heartbeat_thread = threading.Thread(target=heartbeat, daemon=True)
+            heartbeat_thread = threading.Thread(
+                target=self._heartbeat_progress,
+                args=(heartbeat_stop, progress_callback),
+                daemon=True,
+            )
             heartbeat_thread.start()
 
         try:
@@ -682,30 +692,68 @@ class DatasetService:
         }
 
     # -------------------------------------------------------------------------
+    def _iterate_dataset_lengths(
+        self,
+        dataset: Dataset | DatasetDict,
+        text_column: str,
+        remove_invalid: bool,
+    ) -> Iterator[int]:
+        for text in self._iterate_texts(dataset, text_column, remove_invalid):
+            yield len(text)
+
+    # -------------------------------------------------------------------------
+    def _iterate_database_lengths(
+        self,
+        dataset_name: str,
+        batch_size: int,
+    ) -> Iterator[int]:
+        for batch in self.dataset_serializer.iterate_dataset_batches(dataset_name, batch_size):
+            for text in batch:
+                yield len(text)
+
+    # -------------------------------------------------------------------------
+    @staticmethod
+    def _iterate_dataframe_texts(
+        dataframe: pd.DataFrame,
+        text_column: str,
+        remove_invalid: bool,
+    ) -> Iterator[str]:
+        for value in dataframe[text_column]:
+            if remove_invalid and (value is None or not isinstance(value, str) or not value.strip()):
+                continue
+            yield str(value)
+
+    # -------------------------------------------------------------------------
+    def _dataframe_length_stream(
+        self,
+        dataframe: pd.DataFrame,
+        text_column: str,
+        remove_invalid: bool,
+    ) -> Iterator[int]:
+        for text in self._iterate_dataframe_texts(dataframe, text_column, remove_invalid):
+            yield len(text)
+
+    # -------------------------------------------------------------------------
     def dataset_length_stream(
         self,
         dataset: Dataset | DatasetDict,
         text_column: str,
         remove_invalid: bool,
     ) -> Callable[[], Iterator[int]]:
-        def generator() -> Iterator[int]:
-            for text in self._iterate_texts(dataset, text_column, remove_invalid):
-                yield len(text)
-
-        return generator
+        return partial(
+            self._iterate_dataset_lengths,
+            dataset,
+            text_column,
+            remove_invalid,
+        )
 
     # -------------------------------------------------------------------------
     def database_length_stream(self, dataset_name: str) -> Callable[[], Iterator[int]]:
-        batch_size = self.streaming_batch_size
-
-        def generator() -> Iterator[int]:
-            for batch in self.dataset_serializer.iterate_dataset_batches(
-                dataset_name, batch_size
-            ):
-                for text in batch:
-                    yield len(text)
-
-        return generator
+        return partial(
+            self._iterate_database_lengths,
+            dataset_name,
+            self.streaming_batch_size,
+        )
 
     # -------------------------------------------------------------------------
     def collect_length_statistics(
@@ -1012,8 +1060,6 @@ class DatasetService:
         Returns:
             Dictionary with dataset_name, text_column, document_count, saved_count, histogram.
         """
-        import io
-
         # Derive dataset name from filename (without extension)
         base_name = os.path.splitext(filename)[0]
         dataset_name = f"custom/{base_name}"
@@ -1057,20 +1103,9 @@ class DatasetService:
 
         logger.info("Using text column: %s", text_column)
 
-        # Create a generator for streaming texts from the DataFrame
-        def iterate_df_texts() -> Iterator[str]:
-            for value in df[text_column]:
-                if remove_invalid:
-                    if value is None or not isinstance(value, str) or not value.strip():
-                        continue
-                yield str(value)
-
-        # Collect length statistics (first pass)
-        def length_stream() -> Iterator[int]:
-            for text in iterate_df_texts():
-                yield len(text)
-
-        stats = self.collect_length_statistics(length_stream)
+        stats = self.collect_length_statistics(
+            partial(self._dataframe_length_stream, df, text_column, remove_invalid)
+        )
         logger.info("Found %d valid documents in uploaded file", stats.document_count)
 
         if stats.document_count == 0:
@@ -1087,7 +1122,7 @@ class DatasetService:
         dataset_id = self.dataset_serializer.ensure_dataset_id(dataset_name)
         cancelled = False
 
-        for text in iterate_df_texts():
+        for text in self._iterate_dataframe_texts(df, text_column, remove_invalid):
             if self.stop_requested(should_stop):
                 cancelled = True
                 break
