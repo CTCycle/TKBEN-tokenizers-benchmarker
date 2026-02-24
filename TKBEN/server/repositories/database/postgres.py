@@ -21,7 +21,9 @@ from TKBEN.server.common.utils.logger import logger
 class PostgresRepository:
     IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
-    def __init__(self, settings: DatabaseSettings) -> None:
+    def __init__(
+        self, settings: DatabaseSettings, initialize_schema: bool = False
+    ) -> None:
         if not settings.host:
             raise ValueError("Database host must be provided for external database.")
         if not settings.database_name:
@@ -54,7 +56,8 @@ class PostgresRepository:
         )
         self.session = sessionmaker(bind=self.engine, future=True)
         self.insert_batch_size = settings.insert_batch_size
-        Base.metadata.create_all(self.engine, checkfirst=True)
+        if initialize_schema:
+            Base.metadata.create_all(self.engine, checkfirst=True)
 
     # -------------------------------------------------------------------------
     def sanitize_identifier(self, name: str) -> str:

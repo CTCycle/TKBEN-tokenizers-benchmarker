@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
 from typing import Any, Protocol
 
 import pandas as pd
 
+from TKBEN.server.common.constants import DATABASE_FILENAME, RESOURCES_PATH
 from TKBEN.server.configurations import DatabaseSettings, server_settings
 from TKBEN.server.repositories.database.postgres import PostgresRepository
 from TKBEN.server.repositories.database.sqlite import SQLiteRepository
@@ -46,7 +48,9 @@ BackendFactory = Callable[[DatabaseSettings], DatabaseBackend]
 
 # -----------------------------------------------------------------------------
 def build_sqlite_backend(settings: DatabaseSettings) -> DatabaseBackend:
-    return SQLiteRepository(settings)
+    db_path = os.path.join(RESOURCES_PATH, DATABASE_FILENAME)
+    should_initialize_schema = not os.path.exists(db_path)
+    return SQLiteRepository(settings, initialize_schema=should_initialize_schema)
 
 # -----------------------------------------------------------------------------
 def build_postgres_backend(settings: DatabaseSettings) -> DatabaseBackend:
