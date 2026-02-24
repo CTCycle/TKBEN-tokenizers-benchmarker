@@ -22,14 +22,12 @@ from TKBEN.server.common.constants import (
     API_ROUTE_BENCHMARKS_RUN,
     API_ROUTER_PREFIX_BENCHMARKS,
 )
-from TKBEN.server.repositories.serialization.data import BenchmarkReportSerializer
 from TKBEN.server.services.jobs import JobProgressReporter, JobStopChecker, job_manager
 from TKBEN.server.common.utils.logger import logger
 from TKBEN.server.services.benchmarks import BenchmarkService
 
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_BENCHMARKS, tags=["benchmarks"])
-benchmark_report_serializer = BenchmarkReportSerializer()
 
 ###############################################################################
 def build_benchmark_payload(
@@ -201,7 +199,7 @@ def run_benchmark_job(
     payload = build_benchmark_payload(result, request_payload.get("dataset_name", ""))
     payload["created_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     payload["report_version"] = 1
-    report_id = benchmark_report_serializer.save_benchmark_report(payload)
+    report_id = service.save_benchmark_report(payload)
     payload["report_id"] = int(report_id)
     return payload
 
@@ -314,8 +312,9 @@ async def run_benchmarks(request: BenchmarkRunRequest) -> JobStartResponse:
     status_code=status.HTTP_200_OK,
 )
 async def list_benchmark_reports(limit: int = 200) -> BenchmarkReportListResponse:
+    service = BenchmarkService()
     reports = await asyncio.to_thread(
-        benchmark_report_serializer.list_benchmark_reports,
+        service.list_benchmark_reports,
         limit,
     )
     return BenchmarkReportListResponse(reports=reports)
@@ -328,8 +327,9 @@ async def list_benchmark_reports(limit: int = 200) -> BenchmarkReportListRespons
     status_code=status.HTTP_200_OK,
 )
 async def get_benchmark_report_by_id(report_id: int) -> BenchmarkRunResponse:
+    service = BenchmarkService()
     report = await asyncio.to_thread(
-        benchmark_report_serializer.load_benchmark_report_by_id,
+        service.load_benchmark_report_by_id,
         report_id,
     )
     if report is None:
