@@ -1,6 +1,6 @@
 # Project-specific generated/runtime artifacts
-TKBEN/resources/sources/datasets/**
-TKBEN/resources/sources/tokenizers/**
+TKBEN/resources/datasets/**
+TKBEN/resources/tokenizers/**
 TKBEN/resources/runtimes/**
 TKBEN/resources/runtimes/uv_cache/**
 TKBEN/resources/logs/**
@@ -42,7 +42,7 @@ lerna-debug.log*
 Thumbs.db
 
 # Agents
-.agent/**
+.agent/skills/**
 
 # Misc
 .sonarlint/
