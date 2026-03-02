@@ -16,6 +16,7 @@ from TKBEN.server.entities.dataset import (
 from TKBEN.server.entities.jobs import JobStartResponse
 from TKBEN.server.configurations import server_settings
 from TKBEN.server.common.utils.logger import logger
+from TKBEN.server.common.utils.security import normalize_identifier, normalize_upload_stem
 from TKBEN.server.common.constants import (
     API_ROUTE_DATASETS_ANALYZE,
     API_ROUTE_DATASETS_DELETE,
@@ -287,7 +288,22 @@ async def upload_custom_dataset(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No filename provided.",
         )
-    extension = os.path.splitext(file.filename)[1].lower()
+
+    normalized_filename = os.path.basename(file.filename.strip().replace("\\", "/"))
+    if not normalized_filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid filename.",
+        )
+    try:
+        normalize_upload_stem(normalized_filename)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    extension = os.path.splitext(normalized_filename)[1].lower()
     allowed_extensions = set(server_settings.datasets.allowed_extensions)
     if extension not in allowed_extensions:
         raise HTTPException(
@@ -295,7 +311,7 @@ async def upload_custom_dataset(
             detail=f"Unsupported file type: {extension}. Use .csv, .xlsx, or .xls",
         )
 
-    logger.info("Custom dataset upload requested: filename=%s", file.filename)
+    logger.info("Custom dataset upload requested: filename=%s", normalized_filename)
 
     # Read file content
     try:
@@ -306,6 +322,19 @@ async def upload_custom_dataset(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Failed to read uploaded file.",
         ) from exc
+    if not file_content:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file is empty.",
+        )
+    max_upload_bytes = int(server_settings.datasets.max_upload_bytes)
+    if len(file_content) > max_upload_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=(
+                f"Uploaded file exceeds max allowed size ({max_upload_bytes} bytes)."
+            ),
+        )
 
     if job_manager.is_job_running("dataset_upload"):
         raise HTTPException(
@@ -318,7 +347,7 @@ async def upload_custom_dataset(
         runner=dataset_job_handler.run_upload_job,
         kwargs={
             "file_content": file_content,
-            "filename": file.filename,
+            "filename": normalized_filename,
         },
     )
 
@@ -398,6 +427,13 @@ async def analyze_dataset(request: DatasetAnalysisRequest) -> JobStartResponse:
     status_code=status.HTTP_200_OK,
 )
 async def get_latest_dataset_report(dataset_name: str) -> DatasetAnalysisResponse:
+    try:
+        dataset_name = normalize_identifier(dataset_name, "Dataset name", max_length=200)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
     service = DatasetService()
     report = await asyncio.to_thread(service.get_latest_validation_report, dataset_name)
     if report is None:
@@ -431,6 +467,13 @@ async def get_dataset_report_by_id(report_id: int) -> DatasetAnalysisResponse:
     status_code=status.HTTP_200_OK,
 )
 async def delete_dataset(dataset_name: str) -> dict[str, Any]:
+    try:
+        dataset_name = normalize_identifier(dataset_name, "Dataset name", max_length=200)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
     service = DatasetService()
     if not service.is_dataset_in_database(dataset_name):
         raise HTTPException(

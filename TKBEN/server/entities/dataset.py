@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from TKBEN.server.common.utils.security import (
+    contains_control_chars,
+    normalize_identifier,
+    normalize_optional_identifier,
+)
 
 
 ###############################################################################
@@ -28,6 +34,16 @@ class DatasetDownloadConfigs(BaseModel):
         default=None, description="Optional dataset configuration/subset name"
     )
 
+    # -------------------------------------------------------------------------
+    @field_validator("configuration")
+    @classmethod
+    def validate_configuration(cls, value: str | None) -> str | None:
+        return normalize_optional_identifier(
+            value,
+            "Dataset configuration",
+            max_length=120,
+        )
+
 
 ###############################################################################
 class DatasetDownloadRequest(BaseModel):
@@ -35,6 +51,12 @@ class DatasetDownloadRequest(BaseModel):
     configs: DatasetDownloadConfigs = Field(
         ..., description="Dataset download options. Use configs.configuration when needed."
     )
+
+    # -------------------------------------------------------------------------
+    @field_validator("corpus")
+    @classmethod
+    def validate_corpus(cls, value: str) -> str:
+        return normalize_identifier(value, "Dataset id", max_length=160)
 
 
 ###############################################################################
@@ -88,6 +110,49 @@ class DatasetAnalysisRequest(BaseModel):
         default=None,
         description="Metric parameter overrides.",
     )
+
+    # -------------------------------------------------------------------------
+    @field_validator("dataset_name")
+    @classmethod
+    def validate_dataset_name(cls, value: str) -> str:
+        return normalize_identifier(value, "Dataset name", max_length=200)
+
+    # -------------------------------------------------------------------------
+    @field_validator("session_name")
+    @classmethod
+    def validate_session_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized:
+            return None
+        if len(normalized) > 120:
+            raise ValueError("Session name is too long (max 120 characters).")
+        if contains_control_chars(normalized):
+            raise ValueError("Session name contains unsupported control characters.")
+        return normalized
+
+    # -------------------------------------------------------------------------
+    @field_validator("selected_metric_keys")
+    @classmethod
+    def validate_selected_metric_keys(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        normalized: list[str] = []
+        for key in value:
+            if not isinstance(key, str):
+                raise ValueError("Metric keys must be strings.")
+            cleaned = key.strip()
+            if not cleaned:
+                raise ValueError("Metric keys must not be blank.")
+            if len(cleaned) > 80:
+                raise ValueError("Metric keys are too long (max 80 characters).")
+            if contains_control_chars(cleaned):
+                raise ValueError("Metric keys contain unsupported control characters.")
+            normalized.append(cleaned)
+        if len(normalized) > 256:
+            raise ValueError("Too many metric keys requested (max 256).")
+        return normalized
 
 
 ###############################################################################

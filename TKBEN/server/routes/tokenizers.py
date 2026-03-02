@@ -36,6 +36,7 @@ from TKBEN.server.common.constants import (
     API_ROUTER_PREFIX_TOKENIZERS,
 )
 from TKBEN.server.common.utils.logger import logger
+from TKBEN.server.common.utils.security import normalize_identifier, normalize_upload_stem
 from TKBEN.server.services.jobs import JobProgressReporter, JobStopChecker, job_manager
 from TKBEN.server.services.benchmarks import BenchmarkTools
 from TKBEN.server.services.tokenizers import TokenizersService
@@ -287,6 +288,17 @@ async def generate_tokenizer_report(
     status_code=status.HTTP_200_OK,
 )
 async def get_latest_tokenizer_report(tokenizer_name: str) -> TokenizerReportResponse:
+    try:
+        tokenizer_name = normalize_identifier(
+            tokenizer_name,
+            "Tokenizer name",
+            max_length=160,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
     service = TokenizersService()
     report = await asyncio.to_thread(service.get_latest_tokenizer_report, tokenizer_name)
     if report is None:
@@ -389,15 +401,43 @@ async def upload_custom_tokenizer(
     Returns:
         TokenizerUploadResponse with the assigned tokenizer name.
     """
-    # Validate file extension
-    if not file.filename or not file.filename.lower().endswith(".json"):
+    if not file.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No filename provided.",
+        )
+    normalized_filename = os.path.basename(file.filename.strip().replace("\\", "/"))
+    if not normalized_filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid filename.",
+        )
+    if not normalized_filename.lower().endswith(".json"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="File must be a .json file (tokenizer.json)",
         )
+    try:
+        safe_stem = normalize_upload_stem(normalized_filename)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
 
     # Read file content
     content = await file.read()
+    if not content:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file is empty.",
+        )
+    max_upload_bytes = int(server_settings.tokenizers.max_upload_bytes)
+    if len(content) > max_upload_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Uploaded file exceeds max allowed size ({max_upload_bytes} bytes).",
+        )
 
     # Save to temp file and load
     tmp_path = None
@@ -422,8 +462,7 @@ async def upload_custom_tokenizer(
     is_compatible = tools.is_tokenizer_compatible(tokenizer)
 
     # Generate name from filename
-    base_name = os.path.splitext(file.filename)[0]
-    tokenizer_name = f"CUSTOM_{base_name}"
+    tokenizer_name = f"CUSTOM_{safe_stem}"
 
     if is_compatible:
         custom_tokenizers[tokenizer_name] = tokenizer

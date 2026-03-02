@@ -4,7 +4,7 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 from TKBEN.server.routes.tokenizers import get_custom_tokenizers
 from TKBEN.server.entities.benchmarks import (
@@ -265,7 +265,13 @@ async def run_benchmarks(request: BenchmarkRunRequest) -> JobStartResponse:
             detail=f"Dataset '{request.dataset_name}' not found or empty",
         )
 
-    missing_tokenizers = service.get_missing_persisted_tokenizers(request.tokenizers)
+    try:
+        missing_tokenizers = service.get_missing_persisted_tokenizers(request.tokenizers)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
     if missing_tokenizers:
         missing_display = ", ".join(missing_tokenizers[:5])
         if len(missing_tokenizers) > 5:
@@ -311,7 +317,9 @@ async def run_benchmarks(request: BenchmarkRunRequest) -> JobStartResponse:
     response_model=BenchmarkReportListResponse,
     status_code=status.HTTP_200_OK,
 )
-async def list_benchmark_reports(limit: int = 200) -> BenchmarkReportListResponse:
+async def list_benchmark_reports(
+    limit: int = Query(default=200, ge=1, le=1000),
+) -> BenchmarkReportListResponse:
     service = BenchmarkService()
     reports = await asyncio.to_thread(
         service.list_benchmark_reports,

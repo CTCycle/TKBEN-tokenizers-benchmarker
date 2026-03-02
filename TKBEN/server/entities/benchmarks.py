@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from TKBEN.server.common.utils.security import contains_control_chars, normalize_identifier
 
 
 ###############################################################################
@@ -97,6 +99,77 @@ class BenchmarkRunRequest(BaseModel):
         default=None,
         description="Optional metric keys selected by the benchmark wizard",
     )
+
+    # -------------------------------------------------------------------------
+    @field_validator("tokenizers")
+    @classmethod
+    def validate_tokenizers(cls, value: list[str]) -> list[str]:
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for tokenizer in value:
+            cleaned = normalize_identifier(
+                tokenizer,
+                "Tokenizer identifier",
+                max_length=160,
+            )
+            if cleaned in seen:
+                continue
+            seen.add(cleaned)
+            normalized.append(cleaned)
+        if len(normalized) > 200:
+            raise ValueError("Too many tokenizers requested (max 200).")
+        return normalized
+
+    # -------------------------------------------------------------------------
+    @field_validator("dataset_name")
+    @classmethod
+    def validate_dataset_name(cls, value: str) -> str:
+        return normalize_identifier(value, "Dataset name", max_length=200)
+
+    # -------------------------------------------------------------------------
+    @field_validator("custom_tokenizer_name")
+    @classmethod
+    def validate_custom_tokenizer_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return normalize_identifier(value, "Custom tokenizer name", max_length=160)
+
+    # -------------------------------------------------------------------------
+    @field_validator("run_name")
+    @classmethod
+    def validate_run_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized:
+            return None
+        if len(normalized) > 120:
+            raise ValueError("Run name is too long (max 120 characters).")
+        if contains_control_chars(normalized):
+            raise ValueError("Run name contains unsupported control characters.")
+        return normalized
+
+    # -------------------------------------------------------------------------
+    @field_validator("selected_metric_keys")
+    @classmethod
+    def validate_selected_metric_keys(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        normalized: list[str] = []
+        for key in value:
+            if not isinstance(key, str):
+                raise ValueError("Metric keys must be strings.")
+            cleaned = key.strip()
+            if not cleaned:
+                raise ValueError("Metric keys must not be blank.")
+            if len(cleaned) > 80:
+                raise ValueError("Metric keys are too long (max 80 characters).")
+            if contains_control_chars(cleaned):
+                raise ValueError("Metric keys contain unsupported control characters.")
+            normalized.append(cleaned)
+        if len(normalized) > 256:
+            raise ValueError("Too many metric keys requested (max 256).")
+        return normalized
 
 
 ###############################################################################

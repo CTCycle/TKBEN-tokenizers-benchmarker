@@ -39,6 +39,7 @@ class DatabaseSettings:
 class DatasetSettings:
     allowed_extensions: tuple[str, ...]
     column_detection_cutoff: float
+    max_upload_bytes: int
     histogram_bins: int
     streaming_batch_size: int
     log_interval: int
@@ -61,6 +62,7 @@ class TokenizerSettings:
     default_scan_limit: int
     max_scan_limit: int
     min_scan_limit: int
+    max_upload_bytes: int
 
 # -----------------------------------------------------------------------------
 @dataclass(frozen=True)
@@ -151,6 +153,9 @@ def build_dataset_settings(payload: dict[str, Any] | Any) -> DatasetSettings:
         column_detection_cutoff=coerce_float(
             payload.get("column_detection_cutoff"), 0.6, minimum=0.0, maximum=1.0
         ),
+        max_upload_bytes=coerce_int(
+            payload.get("max_upload_bytes"), 25 * 1024 * 1024, minimum=1
+        ),
         histogram_bins=coerce_int(
             payload.get("histogram_bins"), 20, minimum=5, maximum=100
         ),
@@ -203,6 +208,9 @@ def build_tokenizer_settings(payload: dict[str, Any] | Any) -> TokenizerSettings
         default_scan_limit=default_limit,
         max_scan_limit=max_limit,
         min_scan_limit=min_limit,
+        max_upload_bytes=coerce_int(
+            payload.get("max_upload_bytes"), 10 * 1024 * 1024, minimum=1
+        ),
     )
 
 # -----------------------------------------------------------------------------
