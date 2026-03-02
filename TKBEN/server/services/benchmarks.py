@@ -27,6 +27,7 @@ from TKBEN.server.repositories.serialization.data import BenchmarkReportSerializ
 from TKBEN.server.configurations import server_settings
 from TKBEN.server.common.constants import TOKENIZERS_PATH
 from TKBEN.server.common.utils.logger import logger
+from TKBEN.server.common.utils.security import ensure_path_is_within, normalize_identifier
 
 
 ###############################################################################
@@ -635,6 +636,7 @@ class BenchmarkTools:
 
 ###############################################################################
 class BenchmarkService:
+    TOKENIZER_ID_MAX_LENGTH = 160
 
     def __init__(
         self,
@@ -652,12 +654,38 @@ class BenchmarkService:
 
     # -------------------------------------------------------------------------
     def get_tokenizer_cache_dir(self, tokenizer_id: str) -> str:
-        safe_name = tokenizer_id.replace("/", "__")
-        return os.path.join(TOKENIZERS_PATH, safe_name)
+        safe_id = normalize_identifier(
+            tokenizer_id,
+            "Tokenizer identifier",
+            max_length=self.TOKENIZER_ID_MAX_LENGTH,
+        )
+        safe_name = safe_id.replace("/", "__")
+        candidate = os.path.join(TOKENIZERS_PATH, safe_name)
+        return ensure_path_is_within(TOKENIZERS_PATH, candidate)
 
     # -------------------------------------------------------------------------
     def get_missing_persisted_tokenizers(self, tokenizer_ids: list[str]) -> list[str]:
-        requested = [tokenizer_id.strip() for tokenizer_id in tokenizer_ids if tokenizer_id.strip()]
+        requested: list[str] = []
+        invalid: list[str] = []
+        for tokenizer_id in tokenizer_ids:
+            raw_name = str(tokenizer_id).strip()
+            if not raw_name:
+                continue
+            try:
+                requested.append(
+                    normalize_identifier(
+                        raw_name,
+                        "Tokenizer identifier",
+                        max_length=self.TOKENIZER_ID_MAX_LENGTH,
+                    )
+                )
+            except ValueError:
+                invalid.append(raw_name)
+        if invalid:
+            preview = ", ".join(invalid[:3])
+            if len(invalid) > 3:
+                preview = f"{preview}, ..."
+            raise ValueError(f"Invalid tokenizer identifier(s): {preview}")
         if not requested:
             return []
 

@@ -11,6 +11,8 @@ from TKBEN.server.common.constants import (
     API_ROUTE_KEYS_REVEAL,
     API_ROUTER_PREFIX_KEYS,
 )
+from TKBEN.server.common.utils.types import coerce_bool
+from TKBEN.server.common.utils.variables import env_variables
 from TKBEN.server.entities.keys import (
     HFAccessKeyActivateResponse,
     HFAccessKeyCreateRequest,
@@ -28,6 +30,16 @@ from TKBEN.server.services.keys import (
 
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_KEYS, tags=["keys"])
+
+ALLOW_KEY_REVEAL_DEFAULT = False
+
+
+###############################################################################
+def is_key_reveal_enabled() -> bool:
+    return coerce_bool(
+        env_variables.get("ALLOW_KEY_REVEAL"),
+        ALLOW_KEY_REVEAL_DEFAULT,
+    )
 
 
 ###############################################################################
@@ -115,6 +127,11 @@ async def deactivate_key(key_id: int) -> HFAccessKeyActivateResponse:
     status_code=status.HTTP_200_OK,
 )
 async def reveal_key(key_id: int) -> HFAccessKeyRevealResponse:
+    if not is_key_reveal_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Key reveal is disabled by server policy.",
+        )
     service = HFAccessKeyService()
     try:
         revealed_key = service.get_revealed_key(key_id)

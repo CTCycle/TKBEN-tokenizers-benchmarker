@@ -2,13 +2,21 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from TKBEN.server.common.utils.security import normalize_identifier
 
 
 ###############################################################################
 class TokenizerSignature(BaseModel):
     identifier: str
     records: list[dict[str, Any]] = Field(default_factory=list)
+
+    # -------------------------------------------------------------------------
+    @field_validator("identifier")
+    @classmethod
+    def validate_identifier(cls, value: str) -> str:
+        return normalize_identifier(value, "Tokenizer identifier", max_length=160)
 
 
 ###############################################################################
@@ -40,6 +48,26 @@ class TokenizerDownloadRequest(BaseModel):
         default_factory=list,
         description="Tokenizer IDs to download and persist",
     )
+
+    # -------------------------------------------------------------------------
+    @field_validator("tokenizers")
+    @classmethod
+    def validate_tokenizers(cls, value: list[str]) -> list[str]:
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for tokenizer in value:
+            cleaned = normalize_identifier(
+                tokenizer,
+                "Tokenizer identifier",
+                max_length=160,
+            )
+            if cleaned in seen:
+                continue
+            seen.add(cleaned)
+            normalized.append(cleaned)
+        if len(normalized) > 200:
+            raise ValueError("Too many tokenizers requested (max 200).")
+        return normalized
 
 
 ###############################################################################
@@ -73,6 +101,12 @@ class TokenizerUploadResponse(BaseModel):
 ###############################################################################
 class TokenizerReportGenerateRequest(BaseModel):
     tokenizer_name: str = Field(..., description="Persisted tokenizer name")
+
+    # -------------------------------------------------------------------------
+    @field_validator("tokenizer_name")
+    @classmethod
+    def validate_tokenizer_name(cls, value: str) -> str:
+        return normalize_identifier(value, "Tokenizer name", max_length=160)
 
 
 ###############################################################################

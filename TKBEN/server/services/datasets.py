@@ -29,6 +29,12 @@ from TKBEN.server.repositories.serialization.data import DatasetSerializer
 from TKBEN.server.configurations import server_settings
 from TKBEN.server.common.constants import DATASETS_PATH
 from TKBEN.server.common.utils.logger import logger
+from TKBEN.server.common.utils.security import (
+    ensure_path_is_within,
+    normalize_identifier,
+    normalize_optional_identifier,
+    normalize_upload_stem,
+)
 from TKBEN.server.services.metrics.catalog import (
     DATASET_METRIC_CATALOG,
     default_selected_metric_keys,
@@ -256,17 +262,18 @@ class DatasetService:
 
     # -------------------------------------------------------------------------
     def normalize_optional_text(self, value: str | None) -> str | None:
-        if value is None:
-            return None
-        stripped = value.strip()
-        return stripped if stripped else None
+        return normalize_optional_identifier(
+            value,
+            "Dataset configuration",
+            max_length=120,
+        )
 
     # -------------------------------------------------------------------------
     def validate_non_empty_text(self, value: str, field_name: str) -> str:
-        stripped = value.strip()
-        if not stripped:
-            raise ValueError(f"{field_name} must be a non-empty string.")
-        return stripped
+        max_length = 160
+        if field_name == "Dataset split":
+            max_length = 120
+        return normalize_identifier(value, field_name, max_length=max_length)
 
     # -------------------------------------------------------------------------
     def resolve_dataset_download(
@@ -529,15 +536,29 @@ class DatasetService:
 
     # -------------------------------------------------------------------------
     def get_dataset_name(self, corpus: str, config: str | None = None) -> str:
+        safe_corpus = normalize_identifier(corpus, "Dataset id", max_length=160)
         if config:
-            return f"{corpus}/{config}"
-        return corpus
+            safe_config = normalize_identifier(
+                config,
+                "Dataset configuration",
+                max_length=120,
+            )
+            return f"{safe_corpus}/{safe_config}"
+        return safe_corpus
 
     # -------------------------------------------------------------------------
     def get_cache_path(self, corpus: str, config: str | None = None) -> str:
-        config_suffix = f"_{config}" if config else ""
-        folder_name = f"{corpus}{config_suffix}".replace("/", "_")
-        return os.path.join(DATASETS_PATH, folder_name)
+        safe_corpus = normalize_identifier(corpus, "Dataset id", max_length=160)
+        safe_config = normalize_optional_identifier(
+            config,
+            "Dataset configuration",
+            max_length=120,
+        )
+        folder_name = safe_corpus.replace("/", "__")
+        if safe_config:
+            folder_name = f"{folder_name}__{safe_config.replace('/', '__')}"
+        candidate = os.path.join(DATASETS_PATH, folder_name)
+        return ensure_path_is_within(DATASETS_PATH, candidate)
 
     # -------------------------------------------------------------------------
     def build_persisted_dataset_payload(
@@ -1060,12 +1081,12 @@ class DatasetService:
         Returns:
             Dictionary with dataset_name, text_column, document_count, saved_count, histogram.
         """
-        # Derive dataset name from filename (without extension)
-        base_name = os.path.splitext(filename)[0]
-        dataset_name = f"custom/{base_name}"
-        extension = os.path.splitext(filename)[1].lower()
+        normalized_name = os.path.basename(filename.strip().replace("\\", "/"))
+        safe_stem = normalize_upload_stem(normalized_name)
+        dataset_name = f"custom/{safe_stem}"
+        extension = os.path.splitext(normalized_name)[1].lower()
 
-        logger.info("Processing uploaded file: %s (type: %s)", filename, extension)
+        logger.info("Processing uploaded file: %s (type: %s)", normalized_name, extension)
         if self.is_dataset_in_database(dataset_name):
             logger.info(
                 "Dataset %s already present in database. Reusing persisted texts.",
