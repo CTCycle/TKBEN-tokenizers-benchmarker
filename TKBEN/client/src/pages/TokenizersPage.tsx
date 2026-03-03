@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { KeyboardEvent, MouseEvent } from 'react';
+import DismissibleBanner from '../components/DismissibleBanner';
 import { useTokenizers } from '../contexts/TokenizersContext';
 import {
   BarChart,
@@ -201,20 +202,10 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
         </header>
         <div className="panel-body">
           {scanError && (
-            <div className="error-banner" role="alert">
-              <span>{scanError}</span>
-              <button type="button" aria-label="Dismiss" onClick={() => setScanError(null)}>
-                ×
-              </button>
-            </div>
+            <DismissibleBanner message={scanError} onDismiss={() => setScanError(null)} />
           )}
           {benchmarkError && (
-            <div className="error-banner" role="alert">
-              <span>{benchmarkError}</span>
-              <button type="button" aria-label="Dismiss" onClick={() => setBenchmarkError(null)}>
-                ×
-              </button>
-            </div>
+            <DismissibleBanner message={benchmarkError} onDismiss={() => setBenchmarkError(null)} />
           )}
           <textarea
             className="text-area"
@@ -493,20 +484,10 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
           </div>
 
           {scanError && (
-            <div className="error-banner" role="alert">
-              <span>{scanError}</span>
-              <button type="button" aria-label="Dismiss" onClick={() => setScanError(null)}>
-                ×
-              </button>
-            </div>
+            <DismissibleBanner message={scanError} onDismiss={() => setScanError(null)} />
           )}
           {benchmarkError && (
-            <div className="error-banner" role="alert">
-              <span>{benchmarkError}</span>
-              <button type="button" aria-label="Dismiss" onClick={() => setBenchmarkError(null)}>
-                ×
-              </button>
-            </div>
+            <DismissibleBanner message={benchmarkError} onDismiss={() => setBenchmarkError(null)} />
           )}
           {tokenizerReport && (
             <div className="tokenizer-report-hint">
@@ -537,28 +518,18 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
             {(downloadWarning || scanError || benchmarkError) && (
               <div className="tokenizer-modal-messages">
                 {downloadWarning && (
-                  <div className="error-banner tokenizer-warning-banner" role="status">
-                    <span>{downloadWarning}</span>
-                    <button type="button" aria-label="Dismiss" onClick={() => setDownloadWarning(null)}>
-                      ×
-                    </button>
-                  </div>
+                  <DismissibleBanner
+                    message={downloadWarning}
+                    onDismiss={() => setDownloadWarning(null)}
+                    role="status"
+                    className="tokenizer-warning-banner"
+                  />
                 )}
                 {scanError && (
-                  <div className="error-banner" role="alert">
-                    <span>{scanError}</span>
-                    <button type="button" aria-label="Dismiss" onClick={() => setScanError(null)}>
-                      ×
-                    </button>
-                  </div>
+                  <DismissibleBanner message={scanError} onDismiss={() => setScanError(null)} />
                 )}
                 {benchmarkError && (
-                  <div className="error-banner" role="alert">
-                    <span>{benchmarkError}</span>
-                    <button type="button" aria-label="Dismiss" onClick={() => setBenchmarkError(null)}>
-                      ×
-                    </button>
-                  </div>
+                  <DismissibleBanner message={benchmarkError} onDismiss={() => setBenchmarkError(null)} />
                 )}
               </div>
             )}

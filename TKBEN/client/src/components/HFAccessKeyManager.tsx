@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import DismissibleBanner from './DismissibleBanner';
 import type { HFAccessKeyListItem } from '../types/api';
 import {
   activateHFAccessKey,
@@ -182,12 +183,7 @@ const HFAccessKeyManager = ({ isOpen, onClose }: HFAccessKeyManagerProps) => {
         </div>
 
         {error && (
-          <div className="error-banner" role="alert">
-            <span>{error}</span>
-            <button type="button" aria-label="Dismiss" onClick={() => setError(null)}>
-              ×
-            </button>
-          </div>
+          <DismissibleBanner message={error} onDismiss={() => setError(null)} />
         )}
 
         <div className="key-manager-list">

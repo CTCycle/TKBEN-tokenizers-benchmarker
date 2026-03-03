@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -12,18 +12,10 @@ import {
   YAxis,
 } from 'recharts';
 import BenchmarkRunWizard from '../components/BenchmarkRunWizard';
-import { fetchAvailableDatasets } from '../services/datasetsApi';
-import { fetchDownloadedTokenizers } from '../services/tokenizersApi';
-import {
-  fetchBenchmarkMetricsCatalog,
-  fetchBenchmarkReportById,
-  fetchBenchmarkReports,
-  runBenchmarks,
-} from '../services/benchmarksApi';
+import DismissibleBanner from '../components/DismissibleBanner';
+import { useBenchmarkWorkspace } from '../hooks/useBenchmarkWorkspace';
+import type { BenchmarkRunPayload } from '../hooks/useBenchmarkWorkspace';
 import type {
-  BenchmarkMetricCatalogCategory,
-  BenchmarkReportSummary,
-  BenchmarkRunResponse,
   BenchmarkPerDocumentTokenizerStats,
   GlobalMetrics,
 } from '../types/api';
@@ -76,7 +68,23 @@ const chartLegendProps = {
 };
 const PRIMARY_CHART_HEIGHT = 300;
 const SECONDARY_CHART_HEIGHT = 300;
-const metricLabelOverrides: Record<string, string> = {
+
+type AdditionalMetricExcludedKey =
+  | 'tokenizer'
+  | 'dataset_name'
+  | 'tokenization_speed_tps'
+  | 'throughput_chars_per_sec'
+  | 'processing_time_seconds'
+  | 'oov_rate'
+  | 'determinism_rate'
+  | 'boundary_preservation_rate'
+  | 'round_trip_fidelity_rate'
+  | 'vocabulary_size'
+  | 'model_size_mb';
+
+type AdditionalMetricKey = Exclude<keyof GlobalMetrics, AdditionalMetricExcludedKey>;
+
+const metricLabelOverrides: Partial<Record<keyof GlobalMetrics, string>> = {
   tokenization_speed_tps: 'Tokenization Speed (tokens per second)',
   throughput_chars_per_sec: 'Character Throughput (characters per second)',
   processing_time_seconds: 'Processing Time (seconds)',
@@ -96,11 +104,11 @@ const metricLabelOverrides: Record<string, string> = {
   token_id_ordering_monotonicity: 'Token ID Ordering Monotonicity',
   token_unigram_coverage: 'Token Unigram Coverage Rate',
 };
-const toMetricLabel = (key: string): string =>
+const toMetricLabel = (key: keyof GlobalMetrics): string =>
   metricLabelOverrides[key] ?? key.replace(/_/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase());
-const isLikelyRatioMetric = (key: string): boolean =>
+const isLikelyRatioMetric = (key: keyof GlobalMetrics): boolean =>
   key.includes('rate') || key.includes('coverage') || key.endsWith('_percentage');
-const formatMetricValue = (key: string, rawValue: unknown): string => {
+const formatMetricValue = (key: keyof GlobalMetrics, rawValue: unknown): string => {
   let numeric: number | null = null;
   if (typeof rawValue === 'number' && Number.isFinite(rawValue)) {
     numeric = rawValue;
@@ -130,6 +138,37 @@ const formatMetricValue = (key: string, rawValue: unknown): string => {
   }
   return numeric.toFixed(4);
 };
+const excludedAdditionalMetricKeys: ReadonlySet<keyof GlobalMetrics> = new Set([
+  'tokenizer',
+  'dataset_name',
+  'tokenization_speed_tps',
+  'throughput_chars_per_sec',
+  'processing_time_seconds',
+  'oov_rate',
+  'determinism_rate',
+  'boundary_preservation_rate',
+  'round_trip_fidelity_rate',
+  'vocabulary_size',
+  'model_size_mb',
+]);
+const preferredAdditionalMetricOrder: AdditionalMetricKey[] = [
+  'word_recovery_rate',
+  'character_coverage',
+  'subword_fertility',
+  'avg_sequence_length',
+  'median_sequence_length',
+  'segmentation_consistency',
+  'token_distribution_entropy',
+  'rare_token_tail_1',
+  'rare_token_tail_2',
+  'compression_chars_per_token',
+  'compression_bytes_per_character',
+  'round_trip_text_fidelity_rate',
+  'token_id_ordering_monotonicity',
+  'token_unigram_coverage',
+];
+const hasFiniteMetricValue = (value: GlobalMetrics[keyof GlobalMetrics]): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
 
 const quantile = (values: number[], q: number): number => {
   if (values.length === 0) {
@@ -167,93 +206,32 @@ const calcDistribution = (values: number[]) => {
 };
 
 const CrossBenchmarkPage = () => {
-  const [tokenizers, setTokenizers] = useState<string[]>([]);
-  const [datasets, setDatasets] = useState<string[]>([]);
-  const [metricCategories, setMetricCategories] = useState<BenchmarkMetricCatalogCategory[]>([]);
-  const [reports, setReports] = useState<BenchmarkReportSummary[]>([]);
-  const [selectedReportId, setSelectedReportId] = useState<number | null>(null);
-  const [activeReport, setActiveReport] = useState<BenchmarkRunResponse | null>(null);
-  const [loadingPage, setLoadingPage] = useState(true);
-  const [loadingReport, setLoadingReport] = useState(false);
-  const [runningBenchmark, setRunningBenchmark] = useState(false);
+  const {
+    tokenizers,
+    datasets,
+    metricCategories,
+    reports,
+    selectedReportId,
+    activeReport,
+    loadingPage,
+    loadingReport,
+    runningBenchmark,
+    error,
+    clearError,
+    loadReportById,
+    runFromWizard,
+  } = useBenchmarkWorkspace();
   const [wizardOpen, setWizardOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedDistributionTokenizer, setSelectedDistributionTokenizer] = useState<string>('');
+  const [selectedDistributionTokenizers, setSelectedDistributionTokenizers] = useState<Record<number, string>>({});
+  const distributionSelectionKey = activeReport?.report_id ?? -1;
+  const selectedDistributionTokenizer = selectedDistributionTokenizers[distributionSelectionKey]
+    ?? activeReport?.chart_data.token_length_distributions?.[0]?.tokenizer
+    ?? '';
 
-  const loadReportById = async (reportId: number) => {
-    setLoadingReport(true);
-    try {
-      const report = await fetchBenchmarkReportById(reportId);
-      setError(null);
-      setActiveReport(report);
-      setSelectedReportId(reportId);
-      const firstDistributionTokenizer = report.chart_data.token_length_distributions?.[0]?.tokenizer ?? '';
-      setSelectedDistributionTokenizer(firstDistributionTokenizer);
-    } catch (loadError) {
-      const message = loadError instanceof Error ? loadError.message : 'Failed to load report';
-      setError(message);
-    } finally {
-      setLoadingReport(false);
-    }
-  };
-
-  const refreshReportSummaries = async (preferredReportId?: number | null) => {
-    const listResponse = await fetchBenchmarkReports(200);
-    const list = listResponse.reports ?? [];
-    setReports(list);
-    const targetReportId = preferredReportId ?? selectedReportId ?? list[0]?.report_id ?? null;
-    if (targetReportId) {
-      await loadReportById(targetReportId);
-    } else {
-      setActiveReport(null);
-      setSelectedReportId(null);
-    }
-  };
-
-  useEffect(() => {
-    const loadInitial = async () => {
-      setLoadingPage(true);
-      setError(null);
-      try {
-        const [tokenizerResponse, datasetResponse, categoryResponse] = await Promise.all([
-          fetchDownloadedTokenizers(),
-          fetchAvailableDatasets(),
-          fetchBenchmarkMetricsCatalog(),
-        ]);
-        setTokenizers(tokenizerResponse.tokenizers.map((item) => item.tokenizer_name));
-        setDatasets(datasetResponse.datasets.map((item) => item.dataset_name));
-        setMetricCategories(categoryResponse.categories ?? []);
-        await refreshReportSummaries();
-      } catch (loadError) {
-        const message = loadError instanceof Error ? loadError.message : 'Failed to load benchmark workspace';
-        setError(message);
-      } finally {
-        setLoadingPage(false);
-      }
-    };
-    void loadInitial();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleRunFromWizard = async (payload: {
-    tokenizers: string[];
-    dataset_name: string;
-    max_documents: number;
-    run_name: string;
-    selected_metric_keys: string[];
-  }) => {
-    setRunningBenchmark(true);
-    setError(null);
-    try {
-      const report = await runBenchmarks(payload);
-      setActiveReport(report);
+  const handleRunFromWizard = async (payload: BenchmarkRunPayload) => {
+    const completed = await runFromWizard(payload);
+    if (completed) {
       setWizardOpen(false);
-      await refreshReportSummaries(report.report_id);
-    } catch (runError) {
-      const message = runError instanceof Error ? runError.message : 'Failed to run benchmark';
-      setError(message);
-    } finally {
-      setRunningBenchmark(false);
     }
   };
 
@@ -396,56 +374,27 @@ const CrossBenchmarkPage = () => {
 
   const additionalMetricColumns = useMemo(() => {
     if (!activeReport?.global_metrics?.length) {
-      return [] as string[];
+      return [] as AdditionalMetricKey[];
     }
-    const excluded = new Set([
-      'tokenizer',
-      'dataset_name',
-      'tokenization_speed_tps',
-      'throughput_chars_per_sec',
-      'processing_time_seconds',
-      'oov_rate',
-      'determinism_rate',
-      'boundary_preservation_rate',
-      'round_trip_fidelity_rate',
-      'vocabulary_size',
-      'model_size_mb',
-    ]);
-    const preferredOrder = [
-      'word_recovery_rate',
-      'character_coverage',
-      'subword_fertility',
-      'avg_sequence_length',
-      'median_sequence_length',
-      'segmentation_consistency',
-      'token_distribution_entropy',
-      'rare_token_tail_1',
-      'rare_token_tail_2',
-      'compression_chars_per_token',
-      'compression_bytes_per_character',
-      'round_trip_text_fidelity_rate',
-      'token_id_ordering_monotonicity',
-      'token_unigram_coverage',
-    ];
-    const discovered = new Set<string>();
+    const discovered = new Set<AdditionalMetricKey>();
     activeReport.global_metrics.forEach((metric) => {
-      Object.entries(metric).forEach(([key, value]) => {
-        if (excluded.has(key)) {
+      (Object.keys(metric) as Array<keyof GlobalMetrics>).forEach((key) => {
+        if (excludedAdditionalMetricKeys.has(key)) {
           return;
         }
-        if (typeof value === 'number' && Number.isFinite(value)) {
-          discovered.add(key);
+        if (hasFiniteMetricValue(metric[key])) {
+          discovered.add(key as AdditionalMetricKey);
         }
       });
     });
-    const ordered: string[] = [];
-    preferredOrder.forEach((key) => {
+    const ordered: AdditionalMetricKey[] = [];
+    preferredAdditionalMetricOrder.forEach((key) => {
       if (discovered.has(key)) {
         ordered.push(key);
         discovered.delete(key);
       }
     });
-    return [...ordered, ...Array.from(discovered).sort()];
+    return [...ordered, ...Array.from(discovered).sort((a, b) => a.localeCompare(b))];
   }, [activeReport]);
 
   const renderUnavailable = (label: string) => (
@@ -503,10 +452,11 @@ const CrossBenchmarkPage = () => {
             </div>
           </div>
           {error && (
-            <div className="error-banner" role="alert">
-              <span>{error}</span>
-              <button type="button" onClick={() => setError(null)} aria-label="Dismiss error">×</button>
-            </div>
+            <DismissibleBanner
+              message={error}
+              onDismiss={clearError}
+              dismissLabel="Dismiss error"
+            />
           )}
         </section>
 
@@ -670,7 +620,13 @@ const CrossBenchmarkPage = () => {
                     <select
                       className="text-input cross-benchmark-inline-select"
                       value={selectedDistributionTokenizer}
-                      onChange={(event) => setSelectedDistributionTokenizer(event.target.value)}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setSelectedDistributionTokenizers((current) => ({
+                          ...current,
+                          [distributionSelectionKey]: value,
+                        }));
+                      }}
                     >
                       {(activeReport.chart_data.token_length_distributions ?? []).map((entry) => (
                         <option key={entry.tokenizer} value={entry.tokenizer}>{entry.tokenizer}</option>
@@ -786,7 +742,7 @@ const CrossBenchmarkPage = () => {
                               </td>
                               {additionalMetricColumns.map((metricKey) => (
                                 <td key={`${metric.tokenizer}-${metricKey}`}>
-                                  {formatMetricValue(metricKey, (metric as unknown as Record<string, unknown>)[metricKey])}
+                                  {formatMetricValue(metricKey, metric[metricKey])}
                                 </td>
                               ))}
                             </tr>
