@@ -1,45 +1,36 @@
-# WEB SEARCH
+## WEB SEARCH
+Use web search to verify facts and stay current on tools, frameworks, and industry standards when it improves accuracy.
 
-Use web search capabilities to stay informed about the latest tools, frameworks, and industry standards, verifying or enhancing your solutions when needed.
+## REQUIRED DOCUMENTATION REVIEW
+Before any task, review the relevant files in `.agent/rules`:
 
-# SUPPORT FILES
-In docs/ you will find a series of markdown files. You must check ALL OF THEM before proceeding:
+- `GENERAL_RULES.md`, mandatory for every task
+- `GUIDELINES_PYTHON.md`, when using Python
+- `GUIDELINES_TYPESCRIPT.md`, when using TypeScript
+- `GUIDELINES_TESTS.md`, when writing tests
+- `ARCHITECTURE.md`, system structure and APIs
+- `BACKGROUND_JOBS.md`, background job management
+- `README_WRITING.md`, required README structure and standards
 
-- **GENERAL_RULES.md**  
-  General rules for coding and behavior. This file must be reviewed for every task.
-- **GUIDELINES_PYTHON.md**  
-  Rules specific to Python development. Follow these whenever Python is used.
-- **GUIDELINES_TYPESCRIPT.md**  
-  Rules specific to TypeScript development. Follow these whenever TypeScript is used.
-- **GUIDELINES_TESTS.md**  
-  Requirements for end-to-end testing of the application. Use this when writing tests.
-- **ARCHITECTURE.md**  
-  Overview of the application architecture, including data structures, components, their relationships, and API definitions.
-- **README_WRITING.md**  
-  Defines the mandatory structure and writing standards for the project README.  
-  Explains how to document the project purpose, architecture, installation, usage, configuration, and license at a high level, without exposing internal code details.
+## SKILLS REFERENCE
+When task-specific reusable workflows or capabilities are needed, check `.agent/skills/` and use the relevant skill guidance.
 
-## FILES UPDATES
-Update the files in /docs if any significant change has been made and inform the user about these changes.
+## DOCUMENTATION UPDATES
+If changes materially affect behavior, architecture, or usage, update the relevant `.agent/rules` files and notify the user.
 
-# CROSS-LANGUAGE PRINCIPLES
+## CROSS-LANGUAGE PRINCIPLES
 
-### Readability and maintainability
-- Prefer consistent style, predictable structure, and clear naming to reduce cognitive load during reviews and maintenance. (Google Style Guides repository: https://github.com/google/styleguide) (Google Java Style Guide: https://google.github.io/styleguide/javaguide.html)
-- Keep modules, classes, and functions small, cohesive, and single-purpose, to improve testability and reduce coupling. (OWASP Secure Coding Practices, general engineering discipline: https://owasp.org/www-project-secure-coding-practices-quick-reference-guide/)
+### Code quality
+- Prefer consistent style, clear naming, and small single-purpose components.
+- Optimize for readability, testability, and low coupling.
 
 ### Testing and automation
-- Automate checks in CI: formatting, linting, type checking, unit tests, and security checks, to prevent regressions and enforce minimum quality gates. (pytest docs: https://docs.pytest.org/en/stable/getting-started.html) (JUnit 5 User Guide: https://docs.junit.org/5.10.2/user-guide/) (Jest docs: https://jestjs.io/docs/getting-started)
+- Enforce CI checks: formatting, linting, type checks, tests, and security scans.
 
-### Security fundamentals
-- Apply technology-agnostic secure coding practices: validate inputs, handle authn/authz correctly, protect secrets, and minimize attack surface. (OWASP Secure Coding Practices Quick Reference Guide: https://owasp.org/www-project-secure-coding-practices-quick-reference-guide/)
+### Security
+- Apply standard secure coding practices: input validation, correct auth handling, secret protection, minimal attack surface.
 
-# COMMANDS
-- on Windows use cmd /c when running terminal commands  
-
-# LOGS AND FILES
-- Update files in /docs if any significant change has been made and inform the user about these changes.
-
-
-
+## EXECUTION RULES
+- Use PowerShell by default for terminal commands in this repository.
+- Use `cmd /c` only when invoking `.bat` scripts or CMD-specific syntax.
 
