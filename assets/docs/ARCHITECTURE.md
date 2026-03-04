@@ -74,6 +74,9 @@ Benchmarks:
 - `GET /benchmarks/reports/{report_id}`
 - `GET /benchmarks/metrics/catalog`
 
+Exports:
+- `POST /exports/dashboard/pdf`
+
 Jobs:
 - `GET /jobs`
 - `GET /jobs/{job_id}`

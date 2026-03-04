@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import DashboardExportButton from '../components/DashboardExportButton';
 import TokenizersPage from './TokenizersPage';
 import { useTokenizers } from '../contexts/TokenizersContext';
 import type { TokenizerVocabularyStats } from '../types/api';
@@ -115,6 +116,9 @@ const TokenizerExaminationPage = () => {
     : 0;
   const canGoPrevious = tokenizerVocabularyOffset > 0;
   const canGoNext = tokenizerVocabularyOffset + tokenizerVocabularyLimit < tokenizerVocabularyTotal;
+  const tokenizerExportReportName = tokenizerReport
+    ? `tokenizer-${tokenizerReport.tokenizer_name}-report-${tokenizerReport.report_id}`
+    : 'tokenizer-dashboard-report';
 
   return (
     <div className="page-scroll tokenizer-exam-scroll">
@@ -136,6 +140,13 @@ const TokenizerExaminationPage = () => {
                     ? `Report ${tokenizerReport.report_id} for ${tokenizerReport.tokenizer_name}`
                     : 'Open a tokenizer report from the preview list to populate this dashboard.'}
                 </p>
+              </div>
+              <div className="dashboard-export-header-actions">
+                <DashboardExportButton
+                  dashboardType="tokenizer"
+                  reportName={tokenizerExportReportName}
+                  targetRef={leftPanelRef}
+                />
               </div>
             </header>
 
