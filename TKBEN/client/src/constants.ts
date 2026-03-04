@@ -33,5 +33,7 @@ export const API_ENDPOINTS = {
     BENCHMARKS_REPORT_BY_ID: `${API_BASE_URL}/benchmarks/reports`,
     BENCHMARKS_METRICS_CATALOG: `${API_BASE_URL}/benchmarks/metrics/catalog`,
 
+    EXPORTS_DASHBOARD_PDF: `${API_BASE_URL}/exports/dashboard/pdf`,
+
     JOBS: `${API_BASE_URL}/jobs`,
 } as const;

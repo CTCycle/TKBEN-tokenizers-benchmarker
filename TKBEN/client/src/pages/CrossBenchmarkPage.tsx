@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -12,6 +12,7 @@ import {
   YAxis,
 } from 'recharts';
 import BenchmarkRunWizard from '../components/BenchmarkRunWizard';
+import DashboardExportButton from '../components/DashboardExportButton';
 import DismissibleBanner from '../components/DismissibleBanner';
 import { useBenchmarkWorkspace } from '../hooks/useBenchmarkWorkspace';
 import type { BenchmarkRunPayload } from '../hooks/useBenchmarkWorkspace';
@@ -222,6 +223,7 @@ const CrossBenchmarkPage = () => {
     runFromWizard,
   } = useBenchmarkWorkspace();
   const [wizardOpen, setWizardOpen] = useState(false);
+  const benchmarkDashboardRef = useRef<HTMLElement | null>(null);
   const [selectedDistributionTokenizers, setSelectedDistributionTokenizers] = useState<Record<number, string>>({});
   const distributionSelectionKey = activeReport?.report_id ?? -1;
   const selectedDistributionTokenizer = selectedDistributionTokenizers[distributionSelectionKey]
@@ -396,6 +398,13 @@ const CrossBenchmarkPage = () => {
     });
     return [...ordered, ...Array.from(discovered).sort((a, b) => a.localeCompare(b))];
   }, [activeReport]);
+  const benchmarkExportReportName = useMemo(() => {
+    if (!activeReport) {
+      return 'benchmark-dashboard-report';
+    }
+    const runName = activeReport.run_name?.trim() || `${activeReport.dataset_name}-benchmark`;
+    return `${runName}-report-${activeReport.report_id ?? 'latest'}`;
+  }, [activeReport]);
 
   const renderUnavailable = (label: string) => (
     <div className="chart-placeholder">
@@ -460,7 +469,7 @@ const CrossBenchmarkPage = () => {
           )}
         </section>
 
-        <section className="panel dashboard-panel dashboard-plain cross-benchmark-dashboard">
+        <section ref={benchmarkDashboardRef} className="panel dashboard-panel dashboard-plain cross-benchmark-dashboard">
           <header className="panel-header">
             <div>
               <p className="panel-label">Benchmark Dashboard</p>
@@ -469,6 +478,13 @@ const CrossBenchmarkPage = () => {
                   ? `Report #${activeReport.report_id ?? 'N/A'}${activeReport.created_at ? ` • ${new Date(activeReport.created_at).toLocaleString()}` : ''}`
                   : 'Select a report or run a benchmark to populate this dashboard.'}
               </p>
+            </div>
+            <div className="dashboard-export-header-actions">
+              <DashboardExportButton
+                dashboardType="benchmark"
+                reportName={benchmarkExportReportName}
+                targetRef={benchmarkDashboardRef}
+              />
             </div>
           </header>
 

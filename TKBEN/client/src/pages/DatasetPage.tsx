@@ -15,6 +15,7 @@ import {
   YAxis,
 } from 'recharts';
 import DatasetValidationWizard from '../components/DatasetValidationWizard';
+import DashboardExportButton from '../components/DashboardExportButton';
 import { useDataset } from '../contexts/DatasetContext';
 import type {
   DatasetAnalysisRequest,
@@ -520,6 +521,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
   const [wordCloudSize, setWordCloudSize] = useState({ width: 0, height: 0 });
   const manualDatasetInputRef = useRef<HTMLInputElement | null>(null);
   const wordCloudRef = useRef<HTMLDivElement | null>(null);
+  const datasetDashboardRef = useRef<HTMLElement | null>(null);
 
   const corpusInputId = 'corpus-input';
   const configInputId = 'config-input';
@@ -615,6 +617,12 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
     }
     return buildWordCloudFromWordFrequencies(mostCommonWords);
   }, [aggregate, hasPersistedReport, mostCommonWords, validationReport]);
+  const datasetExportReportName = useMemo(() => {
+    if (!validationReport?.dataset_name) {
+      return 'dataset-dashboard-report';
+    }
+    return `dataset-${validationReport.dataset_name}-report-${validationReport.report_id ?? 'latest'}`;
+  }, [validationReport]);
 
   const handlePresetSelect = (preset: DatasetPreset) => {
     setSelectedPreset(preset.id);
@@ -853,7 +861,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
         </section>
 
         {showDashboard && (
-          <aside className="panel dashboard-panel dashboard-plain dataset-v2-dashboard">
+          <aside ref={datasetDashboardRef} className="panel dashboard-panel dashboard-plain dataset-v2-dashboard">
             <header className="panel-header">
               <div>
                 <p className="panel-label">Dataset Dashboard</p>
@@ -862,6 +870,13 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                     ? `Latest persisted session for ${validationReport.dataset_name}${validationReport.created_at ? ` (${new Date(validationReport.created_at).toLocaleString()})` : ''}`
                     : 'Load a saved report or run validation to populate this dashboard.'}
                 </p>
+              </div>
+              <div className="dashboard-export-header-actions">
+                <DashboardExportButton
+                  dashboardType="dataset"
+                  reportName={datasetExportReportName}
+                  targetRef={datasetDashboardRef}
+                />
               </div>
             </header>
             {renderValidationStatus()}
