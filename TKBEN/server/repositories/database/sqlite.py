@@ -14,6 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from TKBEN.server.configurations import DatabaseSettings
 from TKBEN.server.repositories.schemas.models import Base
 from TKBEN.server.common.constants import RESOURCES_PATH, DATABASE_FILENAME
+from TKBEN.server.repositories.database.utils import normalize_sqlite_path
 from TKBEN.server.common.utils.logger import logger
 
 
@@ -24,7 +25,9 @@ class SQLiteRepository:
     def __init__(
         self, settings: DatabaseSettings, initialize_schema: bool = False
     ) -> None:
-        self.db_path: str | None = os.path.join(RESOURCES_PATH, DATABASE_FILENAME)
+        self.db_path: str | None = normalize_sqlite_path(
+            os.path.join(RESOURCES_PATH, DATABASE_FILENAME)
+        )
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         self.engine: Engine = sqlalchemy.create_engine(
             f"sqlite:///{self.db_path}", echo=False, future=True
@@ -74,14 +77,12 @@ class SQLiteRepository:
             existing_cols = {column["name"] for column in inspector.get_columns(table_name)}
             if existing_cols == expected_cols:
                 return
-            logger.warning(
-                "Schema mismatch for %s. Recreating table. existing=%s expected=%s",
-                table_name,
-                sorted(existing_cols),
-                sorted(expected_cols),
+            raise RuntimeError(
+                "Schema mismatch for table '"
+                f"{table_name}"
+                "'. Runtime auto-recreate is disabled; run schema initialization/migration before startup. "
+                f"Existing columns: {sorted(existing_cols)}; expected columns: {sorted(expected_cols)}"
             )
-            table_cls.__table__.drop(conn, checkfirst=True)
-            table_cls.__table__.create(conn, checkfirst=True)
 
     # -------------------------------------------------------------------------
     def upsert_dataframe(self, df: pd.DataFrame, table_cls) -> None:
@@ -134,89 +135,10 @@ class SQLiteRepository:
             query = sqlalchemy.text(f'SELECT * FROM "{safe_name}"')
             data = pd.read_sql_query(query, conn)
         return data
-
-    # -------------------------------------------------------------------------
-    def save_into_database(self, df: pd.DataFrame, table_name: str) -> None:
-        safe_name = self.sanitize_identifier(table_name)
-        with self.engine.begin() as conn:
-            inspector = inspect(conn)
-            table_cls = None
-            try:
-                table_cls = self.get_table_class(safe_name)
-            except ValueError:
-                table_cls = None
-
-            if inspector.has_table(safe_name):
-                if table_cls is not None:
-                    existing_cols = {
-                        column["name"] for column in inspector.get_columns(safe_name)
-                    }
-                    expected_cols = set(table_cls.__table__.columns.keys())
-                    if existing_cols != expected_cols:
-                        table_cls.__table__.drop(conn, checkfirst=True)
-                        table_cls.__table__.create(conn, checkfirst=True)
-                    else:
-                        conn.execute(sqlalchemy.text(f'DELETE FROM "{safe_name}"'))
-            df.to_sql(safe_name, conn, if_exists="append", index=False)
-
     # -------------------------------------------------------------------------
     def upsert_into_database(self, df: pd.DataFrame, table_name: str) -> None:
         table_cls = self.get_table_class(table_name)
         self.upsert_dataframe(df, table_cls)
-
-    def bulk_replace_by_key(
-        self, df: pd.DataFrame, table_name: str, key_column: str, key_value: str
-    ) -> None:
-        """
-        Fast bulk insert: delete all rows matching key_value, then bulk insert new data.
-        Uses batched inserts with separate commits to avoid disk I/O errors on large datasets.
-        """
-        safe_name = self.sanitize_identifier(table_name)
-        safe_key = self.sanitize_identifier(key_column)
-        # Delete existing rows first (separate transaction)
-        with self.engine.begin() as conn:
-            conn.execute(
-                sqlalchemy.text(f'DELETE FROM "{safe_name}" WHERE "{safe_key}" = :key'),
-                {"key": key_value},
-            )
-
-        # Insert in batches with separate commits for each batch
-        total_rows = len(df)
-        if total_rows == 0:
-            return
-
-        batch_size = self.insert_batch_size
-        for start in range(0, total_rows, batch_size):
-            end = min(start + batch_size, total_rows)
-            batch_df = df.iloc[start:end]
-            with self.engine.begin() as conn:
-                batch_df.to_sql(safe_name, conn, if_exists="append", index=False)
-            logger.info(
-                "Inserted batch %d-%d of %d rows into %s",
-                start + 1, end, total_rows, table_name
-            )
-
-    # -----------------------------------------------------------------------------
-    def delete_by_key(
-        self, table_name: str, key_column: str, key_value: str
-    ) -> None:
-        """Delete all rows matching the specified key value."""
-        safe_name = self.sanitize_identifier(table_name)
-        safe_key = self.sanitize_identifier(key_column)
-        with self.engine.begin() as conn:
-            result = conn.execute(
-                sqlalchemy.text(f'DELETE FROM "{safe_name}" WHERE "{safe_key}" = :key'),
-                {"key": key_value},
-            )
-        deleted_rows = int(result.rowcount or 0)
-        if deleted_rows > 0:
-            logger.info(
-                "Deleted %d rows for %s=%s from %s",
-                deleted_rows,
-                key_column,
-                key_value,
-                table_name,
-            )
 
     # -----------------------------------------------------------------------------
     def insert_dataframe(

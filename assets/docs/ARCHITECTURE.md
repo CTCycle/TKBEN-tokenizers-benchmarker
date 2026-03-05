@@ -75,7 +75,7 @@ Benchmarks:
 - `GET /benchmarks/metrics/catalog`
 
 Exports:
-- `POST /exports/dashboard/pdf`
+- `POST /exports/dashboard/pdf` (returns generated PDF bytes)
 
 Jobs:
 - `GET /jobs`

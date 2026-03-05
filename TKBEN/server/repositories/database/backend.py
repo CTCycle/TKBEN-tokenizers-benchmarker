@@ -10,7 +10,10 @@ from TKBEN.server.common.constants import DATABASE_FILENAME, RESOURCES_PATH
 from TKBEN.server.configurations import DatabaseSettings, server_settings
 from TKBEN.server.repositories.database.postgres import PostgresRepository
 from TKBEN.server.repositories.database.sqlite import SQLiteRepository
-from TKBEN.server.repositories.database.utils import normalize_postgres_engine
+from TKBEN.server.repositories.database.utils import (
+    normalize_postgres_engine,
+    normalize_sqlite_path,
+)
 from TKBEN.server.common.utils.logger import logger
 
 
@@ -23,19 +26,7 @@ class DatabaseBackend(Protocol):
     def load_from_database(self, table_name: str) -> pd.DataFrame: ...
 
     # -------------------------------------------------------------------------
-    def save_into_database(self, df: pd.DataFrame, table_name: str) -> None: ...
-
-    # -------------------------------------------------------------------------
     def upsert_into_database(self, df: pd.DataFrame, table_name: str) -> None: ...
-
-    def bulk_replace_by_key(
-        self, df: pd.DataFrame, table_name: str, key_column: str, key_value: str
-    ) -> None: ...
-
-    # -------------------------------------------------------------------------
-    def delete_by_key(
-        self, table_name: str, key_column: str, key_value: str
-    ) -> None: ...
 
     # -------------------------------------------------------------------------
     def insert_dataframe(
@@ -48,7 +39,7 @@ BackendFactory = Callable[[DatabaseSettings], DatabaseBackend]
 
 # -----------------------------------------------------------------------------
 def build_sqlite_backend(settings: DatabaseSettings) -> DatabaseBackend:
-    db_path = os.path.join(RESOURCES_PATH, DATABASE_FILENAME)
+    db_path = normalize_sqlite_path(os.path.join(RESOURCES_PATH, DATABASE_FILENAME))
     should_initialize_schema = not os.path.exists(db_path)
     return SQLiteRepository(settings, initialize_schema=should_initialize_schema)
 
@@ -93,24 +84,8 @@ class TKBENWebappDatabase:
         return self.backend.load_from_database(table_name)
 
     # -------------------------------------------------------------------------
-    def save_into_database(self, df: pd.DataFrame, table_name: str) -> None:
-        self.backend.save_into_database(df, table_name)
-
-    # -------------------------------------------------------------------------
     def upsert_into_database(self, df: pd.DataFrame, table_name: str) -> None:
         self.backend.upsert_into_database(df, table_name)
-
-    def bulk_replace_by_key(
-        self, df: pd.DataFrame, table_name: str, key_column: str, key_value: str
-    ) -> None:
-        self.backend.bulk_replace_by_key(df, table_name, key_column, key_value)
-
-    # -------------------------------------------------------------------------
-    def delete_by_key(
-        self, table_name: str, key_column: str, key_value: str
-    ) -> None:
-        """Delete all rows matching the given key value."""
-        self.backend.delete_by_key(table_name, key_column, key_value)
 
     # -------------------------------------------------------------------------
     def insert_dataframe(

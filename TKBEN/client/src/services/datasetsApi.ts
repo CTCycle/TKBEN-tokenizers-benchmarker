@@ -43,29 +43,24 @@ export async function downloadDataset(
     request: DatasetDownloadRequest,
     onUpdate?: (status: JobStatusResponse) => void,
 ): Promise<DatasetDownloadResponse> {
+    const response = await fetch(API_ENDPOINTS.DATASETS_DOWNLOAD, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+    });
 
-    try {
-        const response = await fetch(API_ENDPOINTS.DATASETS_DOWNLOAD, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(request),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-            throw new Error(errorData.detail || `Failed to download dataset: ${response.status}`);
-        }
-
-        const job = await response.json() as JobStartResponse;
-        return waitForJobResult<DatasetDownloadResponse>(job, {
-            onUpdate,
-            timeoutMs: DOWNLOAD_TIMEOUT_MS,
-        });
-    } catch (error) {
-        throw error;
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || `Failed to download dataset: ${response.status}`);
     }
+
+    const job = await response.json() as JobStartResponse;
+    return waitForJobResult<DatasetDownloadResponse>(job, {
+        onUpdate,
+        timeoutMs: DOWNLOAD_TIMEOUT_MS,
+    });
 }
 
 /**
@@ -81,25 +76,21 @@ export async function uploadCustomDataset(
     const formData = new FormData();
     formData.append('file', file);
 
-    try {
-        const response = await fetch(API_ENDPOINTS.DATASETS_UPLOAD, {
-            method: 'POST',
-            body: formData,
-        });
+    const response = await fetch(API_ENDPOINTS.DATASETS_UPLOAD, {
+        method: 'POST',
+        body: formData,
+    });
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-            throw new Error(errorData.detail || `Failed to upload dataset: ${response.status}`);
-        }
-
-        const job = await response.json() as JobStartResponse;
-        return waitForJobResult<CustomDatasetUploadResponse>(job, {
-            onUpdate,
-            timeoutMs: DOWNLOAD_TIMEOUT_MS,
-        });
-    } catch (error) {
-        throw error;
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || `Failed to upload dataset: ${response.status}`);
     }
+
+    const job = await response.json() as JobStartResponse;
+    return waitForJobResult<CustomDatasetUploadResponse>(job, {
+        onUpdate,
+        timeoutMs: DOWNLOAD_TIMEOUT_MS,
+    });
 }
 
 /**
@@ -111,29 +102,24 @@ export async function validateDataset(
     request: DatasetAnalysisRequest,
     onUpdate?: (status: JobStatusResponse) => void,
 ): Promise<DatasetAnalysisResponse> {
+    const response = await fetch(API_ENDPOINTS.DATASETS_ANALYZE, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+    });
 
-    try {
-        const response = await fetch(API_ENDPOINTS.DATASETS_ANALYZE, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(request),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-            throw new Error(errorData.detail || `Failed to analyze dataset: ${response.status}`);
-        }
-
-        const job = await response.json() as JobStartResponse;
-        return waitForJobResult<DatasetAnalysisResponse>(job, {
-            onUpdate,
-            timeoutMs: DOWNLOAD_TIMEOUT_MS,
-        });
-    } catch (error) {
-        throw error;
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || `Failed to analyze dataset: ${response.status}`);
     }
+
+    const job = await response.json() as JobStartResponse;
+    return waitForJobResult<DatasetAnalysisResponse>(job, {
+        onUpdate,
+        timeoutMs: DOWNLOAD_TIMEOUT_MS,
+    });
 }
 
 /**

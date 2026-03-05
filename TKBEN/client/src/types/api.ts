@@ -522,13 +522,3 @@ export interface BenchmarkRunResponse {
 }
 
 export type DashboardType = 'dataset' | 'tokenizer' | 'benchmark';
-
-export interface DashboardExportResponse {
-    status: string;
-    dashboard_type: DashboardType;
-    output_path: string;
-    file_name: string;
-    page_count: number;
-    image_width: number;
-    image_height: number;
-}

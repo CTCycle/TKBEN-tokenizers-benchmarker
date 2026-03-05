@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -9,12 +9,8 @@ DashboardType = Literal["dataset", "tokenizer", "benchmark"]
 
 
 ###############################################################################
-class DashboardExportResponse(BaseModel):
-    status: str = Field(default="success")
+class DashboardExportRequest(BaseModel):
     dashboard_type: DashboardType
-    output_path: str
-    file_name: str
-    page_count: int = Field(default=1, ge=1)
-    image_width: int = Field(default=0, ge=1)
-    image_height: int = Field(default=0, ge=1)
-
+    report_name: str = Field(default="")
+    file_name: str = Field(default="")
+    dashboard_payload: dict[str, Any] = Field(default_factory=dict)

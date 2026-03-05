@@ -50,6 +50,7 @@ const BenchmarkRunWizard = ({
     if (!isOpen) {
       return;
     }
+    /* eslint-disable react-hooks/set-state-in-effect */
     setStep(0);
     setSelectedMetricKeys(allMetricKeys);
     setSelectedTokenizers([]);
@@ -60,6 +61,7 @@ const BenchmarkRunWizard = ({
     setMaxDocuments(clamp(Math.floor(defaultMaxDocuments || 1000), 1, 100000));
     setRunName('');
     setTokenizerQuery('');
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [allMetricKeys, availableDatasets, defaultDatasetName, defaultMaxDocuments, isOpen]);
 
   const toggleMetric = (metricKey: string, enabled: boolean) => {

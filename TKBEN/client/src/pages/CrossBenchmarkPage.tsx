@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -12,6 +12,7 @@ import {
   YAxis,
 } from 'recharts';
 import BenchmarkRunWizard from '../components/BenchmarkRunWizard';
+import ChartPlaceholder from '../components/ChartPlaceholder';
 import DashboardExportButton from '../components/DashboardExportButton';
 import DismissibleBanner from '../components/DismissibleBanner';
 import { useBenchmarkWorkspace } from '../hooks/useBenchmarkWorkspace';
@@ -223,7 +224,6 @@ const CrossBenchmarkPage = () => {
     runFromWizard,
   } = useBenchmarkWorkspace();
   const [wizardOpen, setWizardOpen] = useState(false);
-  const benchmarkDashboardRef = useRef<HTMLElement | null>(null);
   const [selectedDistributionTokenizers, setSelectedDistributionTokenizers] = useState<Record<number, string>>({});
   const distributionSelectionKey = activeReport?.report_id ?? -1;
   const selectedDistributionTokenizer = selectedDistributionTokenizers[distributionSelectionKey]
@@ -407,10 +407,10 @@ const CrossBenchmarkPage = () => {
   }, [activeReport]);
 
   const renderUnavailable = (label: string) => (
-    <div className="chart-placeholder">
-      <p>{label}</p>
-      <span>Not available in this report.</span>
-    </div>
+    <ChartPlaceholder
+      message={label}
+      detail="Not available in this report."
+    />
   );
 
   return (
@@ -469,7 +469,7 @@ const CrossBenchmarkPage = () => {
           )}
         </section>
 
-        <section ref={benchmarkDashboardRef} className="panel dashboard-panel dashboard-plain cross-benchmark-dashboard">
+        <section className="panel dashboard-panel dashboard-plain cross-benchmark-dashboard">
           <header className="panel-header">
             <div>
               <p className="panel-label">Benchmark Dashboard</p>
@@ -483,7 +483,12 @@ const CrossBenchmarkPage = () => {
               <DashboardExportButton
                 dashboardType="benchmark"
                 reportName={benchmarkExportReportName}
-                targetRef={benchmarkDashboardRef}
+                dashboardPayload={activeReport
+                  ? {
+                    report: activeReport,
+                    selected_distribution_tokenizer: selectedDistributionTokenizer,
+                  }
+                  : null}
               />
             </div>
           </header>
@@ -496,10 +501,10 @@ const CrossBenchmarkPage = () => {
           )}
 
           {!loadingPage && !activeReport && (
-            <div className="chart-placeholder">
-              <p>No benchmark report loaded.</p>
-              <span>Use Start benchmark or select an existing report.</span>
-            </div>
+            <ChartPlaceholder
+              message="No benchmark report loaded."
+              detail="Use Start benchmark or select an existing report."
+            />
           )}
 
           {!loadingPage && activeReport && (

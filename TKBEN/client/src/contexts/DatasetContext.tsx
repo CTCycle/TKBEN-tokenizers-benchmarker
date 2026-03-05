@@ -13,7 +13,6 @@ import {
     downloadDataset,
     fetchDatasetMetricsCatalog,
     fetchLatestDatasetReport,
-    fetchAvailableDatasets,
     uploadCustomDataset,
     validateDataset,
 } from '../services/datasetsApi';
@@ -24,6 +23,7 @@ import type {
     DatasetPreviewItem,
     HistogramData,
 } from '../types/api';
+import { useAvailableDatasets } from '../hooks/useAvailableDatasets';
 
 interface DatasetStats {
     documentCount: number;
@@ -90,8 +90,11 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
     const [validating, setValidating] = useState(false);
     const [validationReport, setValidationReport] = useState<DatasetAnalysisResponse | null>(null);
     const [validationProgress, setValidationProgress] = useState<number | null>(null);
-    const [availableDatasets, setAvailableDatasets] = useState<DatasetPreviewItem[]>([]);
-    const [datasetsLoading, setDatasetsLoading] = useState(false);
+    const {
+        availableDatasets,
+        datasetsLoading,
+        refreshAvailableDatasets: refreshAvailableDatasetsInternal,
+    } = useAvailableDatasets();
     const [activeValidationDataset, setActiveValidationDataset] = useState<string | null>(null);
     const [activeReportLoadDataset, setActiveReportLoadDataset] = useState<string | null>(null);
     const [removingDataset, setRemovingDataset] = useState<string | null>(null);
@@ -99,16 +102,12 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
     const [metricsCatalogLoading, setMetricsCatalogLoading] = useState(false);
 
     const refreshAvailableDatasets = useCallback(async () => {
-        setDatasetsLoading(true);
         try {
-            const response = await fetchAvailableDatasets();
-            setAvailableDatasets(response.datasets);
+            await refreshAvailableDatasetsInternal();
         } catch (err) {
             console.error('Failed to fetch datasets:', err);
-        } finally {
-            setDatasetsLoading(false);
         }
-    }, []);
+    }, [refreshAvailableDatasetsInternal]);
 
     const loadMetricsCatalog = useCallback(async () => {
         setMetricsCatalogLoading(true);
@@ -127,20 +126,20 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
         void loadMetricsCatalog();
     }, [refreshAvailableDatasets, loadMetricsCatalog]);
 
-    const handleCorpusChange = (value: string) => {
+    const handleCorpusChange = useCallback((value: string) => {
         setSelectedCorpus(value);
         setSelectedConfig('');
         setDatasetLoaded(false);
         setStats(null);
         setHistogram(null);
-    };
+    }, []);
 
-    const handleConfigChange = (value: string) => {
+    const handleConfigChange = useCallback((value: string) => {
         setSelectedConfig(value);
         setDatasetLoaded(false);
         setStats(null);
         setHistogram(null);
-    };
+    }, []);
 
     const handleLoadDataset = useCallback(async () => {
         setLoading(true);
@@ -178,9 +177,9 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
         }
     }, [refreshAvailableDatasets, selectedCorpus, selectedConfig]);
 
-    const handleUploadClick = () => {
+    const handleUploadClick = useCallback(() => {
         fileInputRef.current?.click();
-    };
+    }, []);
 
     const handleFileChange = useCallback(
         async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -396,6 +395,7 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
     );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useDataset = (): DatasetContextType => {
     const context = useContext(DatasetContext);
     if (!context) {
