@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import ChartPlaceholder from '../components/ChartPlaceholder';
 import DashboardExportButton from '../components/DashboardExportButton';
 import TokenizersPage from './TokenizersPage';
 import { useTokenizers } from '../contexts/TokenizersContext';
@@ -21,6 +22,13 @@ const formatOptionalPercent = (value: number | null | undefined) => {
     return NOT_AVAILABLE;
   }
   return `${formatNumber(value, 2)}%`;
+};
+
+const toOptionalNumber = (value: unknown): number | null => {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return null;
+  }
+  return value;
 };
 
 const toVocabularyStats = (value: unknown): TokenizerVocabularyStats | null => {
@@ -145,16 +153,22 @@ const TokenizerExaminationPage = () => {
                 <DashboardExportButton
                   dashboardType="tokenizer"
                   reportName={tokenizerExportReportName}
-                  targetRef={leftPanelRef}
+                  dashboardPayload={tokenizerReport
+                    ? {
+                      report: tokenizerReport,
+                      vocabulary_items: tokenizerVocabulary,
+                    }
+                    : null}
                 />
               </div>
             </header>
 
             {!tokenizerReport && (
-              <div className="chart-placeholder tokenizer-dashboard-empty">
-                <p>No tokenizer report loaded.</p>
-                <span>Use the report icon in tokenizer preview.</span>
-              </div>
+              <ChartPlaceholder
+                className="tokenizer-dashboard-empty"
+                message="No tokenizer report loaded."
+                detail="Use the report icon in tokenizer preview."
+              />
             )}
 
             {tokenizerReport && (
@@ -166,11 +180,11 @@ const TokenizerExaminationPage = () => {
                       <tr><th>Tokenizer</th><td>{tokenizerReport.tokenizer_name}</td></tr>
                       <tr><th>Tokenizer class</th><td>{String(globalStats.tokenizer_class ?? NOT_AVAILABLE)}</td></tr>
                       <tr><th>Vocabulary size</th><td>{formatNumber(tokenizerReport.vocabulary_size, 0)}</td></tr>
-                      <tr><th>Base vocabulary size</th><td>{formatNumber(globalStats.base_vocabulary_size as number | null | undefined, 0)}</td></tr>
-                      <tr><th>Model max length</th><td>{formatNumber(globalStats.model_max_length as number | null | undefined, 0)}</td></tr>
+                      <tr><th>Base vocabulary size</th><td>{formatNumber(toOptionalNumber(globalStats.base_vocabulary_size), 0)}</td></tr>
+                      <tr><th>Model max length</th><td>{formatNumber(toOptionalNumber(globalStats.model_max_length), 0)}</td></tr>
                       <tr><th>Padding side</th><td>{String(globalStats.padding_side ?? NOT_AVAILABLE)}</td></tr>
-                      <tr><th>Special tokens count</th><td>{formatNumber(globalStats.special_tokens_count as number | null | undefined, 0)}</td></tr>
-                      <tr><th>Added tokens count</th><td>{formatNumber(globalStats.added_tokens_count as number | null | undefined, 0)}</td></tr>
+                      <tr><th>Special tokens count</th><td>{formatNumber(toOptionalNumber(globalStats.special_tokens_count), 0)}</td></tr>
+                      <tr><th>Added tokens count</th><td>{formatNumber(toOptionalNumber(globalStats.added_tokens_count), 0)}</td></tr>
                       <tr>
                         <th>Hugging Face</th>
                         <td>
@@ -188,9 +202,7 @@ const TokenizerExaminationPage = () => {
                 <article className="tokenizer-report-card tokenizer-report-card--histogram">
                   <p className="panel-label">Token Length Histogram</p>
                   {!histogram || histogram.counts.length === 0 ? (
-                    <div className="chart-placeholder">
-                      <p>No histogram data in this report.</p>
-                    </div>
+                    <ChartPlaceholder message="No histogram data in this report." />
                   ) : (
                     <>
                       <div className="histogram-container">
@@ -273,9 +285,10 @@ const TokenizerExaminationPage = () => {
             </header>
 
             {!tokenizerReport && (
-              <div className="chart-placeholder tokenizer-vocabulary-empty">
-                <p>No vocabulary to display.</p>
-              </div>
+              <ChartPlaceholder
+                className="tokenizer-vocabulary-empty"
+                message="No vocabulary to display."
+              />
             )}
 
             {tokenizerReport && (

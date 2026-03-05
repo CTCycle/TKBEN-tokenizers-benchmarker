@@ -687,6 +687,23 @@
   gap: 12px;
 }
 
+.dashboard-export-folder-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.dashboard-export-folder-input {
+  min-width: 0;
+}
+
+.dashboard-export-folder-button {
+  min-width: 110px;
+  height: 40px;
+  white-space: nowrap;
+}
+
 .dashboard-export-feedback {
   margin: 0;
 }

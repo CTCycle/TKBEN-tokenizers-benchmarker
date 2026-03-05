@@ -23,10 +23,6 @@ class DataRepositoryQueries:
         return self.database.load_from_database(table_name)
 
     # -------------------------------------------------------------------------
-    def save_table(self, dataset: pd.DataFrame, table_name: str) -> None:
-        self.database.save_into_database(dataset, table_name)
-
-    # -------------------------------------------------------------------------
     def upsert_table(self, dataset: pd.DataFrame, table_name: str) -> None:
         self.database.upsert_into_database(dataset, table_name)
 
@@ -39,15 +35,6 @@ class DataRepositoryQueries:
             table_name,
             ignore_duplicates=ignore_duplicates,
         )
-
-    def delete_by_key(self, table_name: str, key_column: str, key_value: str) -> None:
-        self.database.delete_by_key(table_name, key_column, key_value)
-
-    # -------------------------------------------------------------------------
-    def bulk_replace_by_key(
-        self, dataset: pd.DataFrame, table_name: str, key_column: str, key_value: str
-    ) -> None:
-        self.database.bulk_replace_by_key(dataset, table_name, key_column, key_value)
 
     # -------------------------------------------------------------------------
     def get_distinct_values(self, table_name: str, column: str) -> list[Any]:

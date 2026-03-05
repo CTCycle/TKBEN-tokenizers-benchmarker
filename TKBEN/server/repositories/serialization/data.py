@@ -1056,22 +1056,13 @@ class TokenizerReportSerializer:
         vocabulary_rows: list[dict[str, Any]],
     ) -> int:
         tokenizer_id = self.ensure_tokenizer_id(tokenizer_name)
-        with self.queries.engine.begin() as conn:
-            conn.execute(
-                sqlalchemy.text(
-                    'DELETE FROM "tokenizer_vocabulary" WHERE "tokenizer_id" = :tokenizer_id'
-                ),
-                {"tokenizer_id": tokenizer_id},
-            )
-        if vocabulary_rows:
-            df = pd.DataFrame(vocabulary_rows)
-            df["tokenizer_id"] = tokenizer_id
-            df = df[["tokenizer_id", "token_id", "vocabulary_tokens", "decoded_tokens"]]
-            self.queries.insert_table(
-                df,
-                self.tokenizer_vocabulary_table,
-                ignore_duplicates=False,
-            )
+        if not vocabulary_rows:
+            return tokenizer_id
+
+        df = pd.DataFrame(vocabulary_rows)
+        df["tokenizer_id"] = tokenizer_id
+        df = df[["tokenizer_id", "token_id", "vocabulary_tokens", "decoded_tokens"]]
+        self.queries.upsert_table(df, self.tokenizer_vocabulary_table)
         return tokenizer_id
 
     # -------------------------------------------------------------------------

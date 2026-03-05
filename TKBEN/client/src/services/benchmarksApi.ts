@@ -22,29 +22,24 @@ export async function runBenchmarks(
     request: BenchmarkRunRequest,
     onUpdate?: (status: JobStatusResponse) => void,
 ): Promise<BenchmarkRunResponse> {
+    const response = await fetch(API_ENDPOINTS.BENCHMARKS_RUN, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+    });
 
-    try {
-        const response = await fetch(API_ENDPOINTS.BENCHMARKS_RUN, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(request),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-            throw new Error(errorData.detail || `Failed to run benchmarks: ${response.status}`);
-        }
-
-        const job = await response.json() as JobStartResponse;
-        return waitForJobResult<BenchmarkRunResponse>(job, {
-            onUpdate,
-            timeoutMs: BENCHMARK_TIMEOUT_MS,
-        });
-    } catch (error) {
-        throw error;
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || `Failed to run benchmarks: ${response.status}`);
     }
+
+    const job = await response.json() as JobStartResponse;
+    return waitForJobResult<BenchmarkRunResponse>(job, {
+        onUpdate,
+        timeoutMs: BENCHMARK_TIMEOUT_MS,
+    });
 }
 
 /**

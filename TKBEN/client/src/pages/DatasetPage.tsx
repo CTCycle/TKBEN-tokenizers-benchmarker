@@ -521,12 +521,14 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
   const [wordCloudSize, setWordCloudSize] = useState({ width: 0, height: 0 });
   const manualDatasetInputRef = useRef<HTMLInputElement | null>(null);
   const wordCloudRef = useRef<HTMLDivElement | null>(null);
-  const datasetDashboardRef = useRef<HTMLElement | null>(null);
 
   const corpusInputId = 'corpus-input';
   const configInputId = 'config-input';
   const manualInsertRegionId = 'dataset-manual-insert-panel';
-  const aggregate = (validationReport?.aggregate_statistics ?? {}) as Record<string, unknown>;
+  const aggregate = useMemo(
+    () => (validationReport?.aggregate_statistics ?? {}) as Record<string, unknown>,
+    [validationReport?.aggregate_statistics],
+  );
   const hasPersistedReport = validationReport !== null;
   const documentHistogram = hasPersistedReport ? validationReport.document_length_histogram : null;
   const wordHistogram = hasPersistedReport ? validationReport.word_length_histogram : null;
@@ -705,6 +707,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
 
   useEffect(() => {
     if (!wordCloudTerms.length || wordCloudSize.width <= 0 || wordCloudSize.height <= 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setWordCloudLayout((current) => (current.length > 0 ? [] : current));
       return;
     }
@@ -861,7 +864,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
         </section>
 
         {showDashboard && (
-          <aside ref={datasetDashboardRef} className="panel dashboard-panel dashboard-plain dataset-v2-dashboard">
+          <aside className="panel dashboard-panel dashboard-plain dataset-v2-dashboard">
             <header className="panel-header">
               <div>
                 <p className="panel-label">Dataset Dashboard</p>
@@ -875,7 +878,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                 <DashboardExportButton
                   dashboardType="dataset"
                   reportName={datasetExportReportName}
-                  targetRef={datasetDashboardRef}
+                  dashboardPayload={validationReport ? { report: validationReport } : null}
                 />
               </div>
             </header>

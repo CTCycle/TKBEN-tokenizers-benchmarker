@@ -1,18 +1,38 @@
 import { useMemo, useState } from 'react';
-import type { RefObject } from 'react';
-import html2canvas from 'html2canvas';
 import { createPortal } from 'react-dom';
 
 import { exportDashboardPdf } from '../services/exportApi';
 import type { DashboardType } from '../types/api';
 
+type FileSystemPermissionMode = 'read' | 'readwrite';
+type FileSystemPermissionState = 'granted' | 'denied' | 'prompt';
+
+interface FileSystemWritableFileStreamLike {
+    write(data: Blob | BufferSource | string): Promise<void>;
+    close(): Promise<void>;
+}
+
+interface FileSystemFileHandleLike {
+    createWritable(): Promise<FileSystemWritableFileStreamLike>;
+}
+
+interface FileSystemDirectoryHandleLike {
+    name: string;
+    getFileHandle(name: string, options?: { create?: boolean }): Promise<FileSystemFileHandleLike>;
+    queryPermission?: (options?: { mode?: FileSystemPermissionMode }) => Promise<FileSystemPermissionState>;
+    requestPermission?: (options?: { mode?: FileSystemPermissionMode }) => Promise<FileSystemPermissionState>;
+}
+
+type DirectoryPickerWindow = Window & {
+    showDirectoryPicker?: () => Promise<FileSystemDirectoryHandleLike>;
+};
+
 type DashboardExportButtonProps = {
     dashboardType: DashboardType;
     reportName: string;
-    targetRef: RefObject<HTMLElement | null>;
+    dashboardPayload: Record<string, unknown> | null;
 };
 
-const DEFAULT_OUTPUT_DIR = 'output/pdf';
 const DEFAULT_FILE_STEMS: Record<DashboardType, string> = {
     dataset: 'dataset-report',
     tokenizer: 'tokenizer-report',
@@ -29,21 +49,38 @@ const sanitizeFileStem = (value: string, fallback: string): string => {
     return cleaned || fallback;
 };
 
-const toPngBlob = async (canvas: HTMLCanvasElement): Promise<Blob> =>
-    new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob((blob) => {
-            if (blob) {
-                resolve(blob);
-                return;
-            }
-            reject(new Error('Failed to capture dashboard image.'));
-        }, 'image/png', 1);
-    });
+const toPdfFileName = (value: string): string =>
+    value.toLowerCase().endsWith('.pdf') ? value : `${value}.pdf`;
+
+const downloadPdfBlob = (blob: Blob, fileName: string) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+};
+
+const ensureWritePermission = async (directoryHandle: FileSystemDirectoryHandleLike): Promise<void> => {
+    if (directoryHandle.queryPermission) {
+        const state = await directoryHandle.queryPermission({ mode: 'readwrite' });
+        if (state === 'granted') {
+            return;
+        }
+    }
+    if (directoryHandle.requestPermission) {
+        const requestState = await directoryHandle.requestPermission({ mode: 'readwrite' });
+        if (requestState === 'granted') {
+            return;
+        }
+    }
+    throw new Error('Write permission to selected folder was denied.');
+};
 
 const DashboardExportButton = ({
     dashboardType,
     reportName,
-    targetRef,
+    dashboardPayload,
 }: DashboardExportButtonProps) => {
     const fallbackStem = DEFAULT_FILE_STEMS[dashboardType];
     const defaultStem = useMemo(
@@ -52,8 +89,9 @@ const DashboardExportButton = ({
     );
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [outputDir, setOutputDir] = useState(DEFAULT_OUTPUT_DIR);
     const [fileName, setFileName] = useState(defaultStem);
+    const [directoryName, setDirectoryName] = useState<string>('');
+    const [directoryHandle, setDirectoryHandle] = useState<FileSystemDirectoryHandleLike | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -74,51 +112,83 @@ const DashboardExportButton = ({
         resetFeedback();
     };
 
+    const pickFolder = async () => {
+        resetFeedback();
+        const pickerWindow = window as DirectoryPickerWindow;
+        if (!pickerWindow.showDirectoryPicker) {
+            setError('Folder picker is not supported in this browser/runtime.');
+            return;
+        }
+        try {
+            const pickedDirectory = await pickerWindow.showDirectoryPicker();
+            setDirectoryHandle(pickedDirectory);
+            setDirectoryName(pickedDirectory.name);
+        } catch (pickError) {
+            if (pickError instanceof DOMException && pickError.name === 'AbortError') {
+                return;
+            }
+            setError(pickError instanceof Error ? pickError.message : 'Failed to open folder picker.');
+        }
+    };
+
     const handleExport = async () => {
-        const target = targetRef.current;
-        if (!target) {
-            setError('Dashboard content is not available for export.');
+        if (!dashboardPayload) {
+            setError('No dashboard report data available to export.');
+            return;
+        }
+        if (!directoryHandle) {
+            setError('Please choose an output folder before exporting.');
             return;
         }
 
-        const normalizedOutputDir = outputDir.trim();
-        const normalizedFileName = sanitizeFileStem(fileName, defaultStem);
-        if (!normalizedOutputDir) {
-            setError('Output path is required.');
-            return;
-        }
+        const normalizedFileName = toPdfFileName(sanitizeFileStem(fileName, defaultStem));
 
         setSubmitting(true);
         resetFeedback();
         try {
-            const width = Math.max(target.scrollWidth, target.clientWidth, 1);
-            const height = Math.max(target.scrollHeight, target.clientHeight, 1);
-
-            const canvas = await html2canvas(target, {
-                backgroundColor: '#161a1d',
-                width,
-                height,
-                windowWidth: width,
-                windowHeight: height,
-                scale: 2,
-                useCORS: true,
-                logging: false,
-            });
-            const imagePng = await toPngBlob(canvas);
             const response = await exportDashboardPdf({
                 dashboardType,
                 reportName,
-                outputDir: normalizedOutputDir,
                 fileName: normalizedFileName,
-                imagePng,
+                dashboardPayload,
             });
-            setSuccessMessage(`Report saved to ${response.output_path}`);
-        } catch (submissionError) {
-            setError(
-                submissionError instanceof Error
-                    ? submissionError.message
-                    : 'Failed to export dashboard.',
+            await ensureWritePermission(directoryHandle);
+            const fileHandle = await directoryHandle.getFileHandle(response.fileName, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(response.blob);
+            await writable.close();
+            setSuccessMessage(
+                `Report saved to ${directoryName || directoryHandle.name}\\${response.fileName} (${response.pageCount} pages).`,
             );
+        } catch (submissionError) {
+            const message = submissionError instanceof Error
+                ? submissionError.message
+                : 'Failed to export dashboard.';
+            setError(message);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const fallbackDownload = async () => {
+        if (!dashboardPayload) {
+            setError('No dashboard report data available to export.');
+            return;
+        }
+        const normalizedFileName = toPdfFileName(sanitizeFileStem(fileName, defaultStem));
+        setSubmitting(true);
+        resetFeedback();
+        try {
+            const response = await exportDashboardPdf({
+                dashboardType,
+                reportName,
+                fileName: normalizedFileName,
+                dashboardPayload,
+            });
+            downloadPdfBlob(response.blob, response.fileName);
+            setSuccessMessage(`Report downloaded as ${response.fileName}.`);
+        } catch (downloadError) {
+            setError(downloadError instanceof Error ? downloadError.message : 'Failed to download dashboard PDF.');
         } finally {
             setSubmitting(false);
         }
@@ -130,7 +200,7 @@ const DashboardExportButton = ({
                 type="button"
                 className="icon-button subtle dashboard-export-trigger"
                 onClick={openDialog}
-                disabled={submitting}
+                disabled={submitting || !dashboardPayload}
                 title="Export dashboard report as PDF"
                 aria-label="Export dashboard report as PDF"
             >
@@ -148,23 +218,34 @@ const DashboardExportButton = ({
                             <div>
                                 <p id={`export-${dashboardType}-title`} className="panel-label">Export Dashboard PDF</p>
                                 <p className="panel-description">
-                                    Capture the current dashboard layout and save it as a PDF report.
+                                    Generate a fresh PDF report and save it into a selected folder.
                                 </p>
                             </div>
                         </header>
 
                         <div className="dashboard-export-form">
-                            <label className="input-stack" htmlFor={`export-output-dir-${dashboardType}`}>
-                                <span className="field-label">Output Path</span>
-                                <input
-                                    id={`export-output-dir-${dashboardType}`}
-                                    className="text-input"
-                                    value={outputDir}
-                                    onChange={(event) => setOutputDir(event.target.value)}
-                                    placeholder="output/pdf"
+                            <div className="dashboard-export-folder-row">
+                                <label className="input-stack dashboard-export-folder-input" htmlFor={`export-folder-${dashboardType}`}>
+                                    <span className="field-label">Output Folder</span>
+                                    <input
+                                        id={`export-folder-${dashboardType}`}
+                                        className="text-input"
+                                        value={directoryName}
+                                        readOnly
+                                        placeholder="No folder selected"
+                                        disabled={submitting}
+                                    />
+                                </label>
+                                <button
+                                    type="button"
+                                    className="secondary-button dashboard-export-folder-button"
+                                    onClick={() => { void pickFolder(); }}
                                     disabled={submitting}
-                                />
-                            </label>
+                                >
+                                    Browse...
+                                </button>
+                            </div>
+
                             <label className="input-stack" htmlFor={`export-file-name-${dashboardType}`}>
                                 <span className="field-label">File Name</span>
                                 <input
@@ -198,6 +279,16 @@ const DashboardExportButton = ({
                             >
                                 Close
                             </button>
+                            {!((window as DirectoryPickerWindow).showDirectoryPicker) && (
+                                <button
+                                    type="button"
+                                    className="secondary-button"
+                                    onClick={() => { void fallbackDownload(); }}
+                                    disabled={submitting}
+                                >
+                                    Download PDF
+                                </button>
+                            )}
                             <button
                                 type="button"
                                 className="primary-button"
@@ -216,3 +307,4 @@ const DashboardExportButton = ({
 };
 
 export default DashboardExportButton;
+

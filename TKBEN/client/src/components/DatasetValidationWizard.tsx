@@ -45,10 +45,12 @@ const DatasetValidationWizard = ({
     if (!isOpen) {
       return;
     }
+    /* eslint-disable react-hooks/set-state-in-effect */
     setStep(0);
     if (allMetricKeys.length > 0) {
       setSelectedMetricKeys((current) => (current.length > 0 ? current : allMetricKeys));
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [allMetricKeys, isOpen]);
 
   const toggleMetric = (metricKey: string, enabled: boolean) => {

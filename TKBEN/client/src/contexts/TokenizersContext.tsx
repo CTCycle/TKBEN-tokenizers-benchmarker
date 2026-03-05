@@ -11,7 +11,7 @@ import {
     uploadCustomTokenizer,
 } from '../services/tokenizersApi';
 import { runBenchmarks } from '../services/benchmarksApi';
-import { fetchAvailableDatasets } from '../services/datasetsApi';
+import { useAvailableDatasets } from '../hooks/useAvailableDatasets';
 import type { BenchmarkRunResponse, TokenizerReportResponse, TokenizerVocabularyItem } from '../types/api';
 
 const DEFAULT_TOKENIZER_VOCABULARY_LIMIT = 500;
@@ -82,9 +82,16 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
     const [customTokenizerName, setCustomTokenizerName] = useState<string | null>(null);
     const [customTokenizerUploading, setCustomTokenizerUploading] = useState(false);
     const [maxDocuments, setMaxDocuments] = useState(1000);
-    const [availableDatasets, setAvailableDatasets] = useState<string[]>([]);
     const [selectedDataset, setSelectedDataset] = useState('');
-    const [datasetsLoading, setDatasetsLoading] = useState(false);
+    const {
+        availableDatasets: availableDatasetItems,
+        datasetsLoading,
+        refreshAvailableDatasets,
+    } = useAvailableDatasets();
+    const availableDatasets = useMemo(
+        () => availableDatasetItems.map((dataset) => dataset.dataset_name),
+        [availableDatasetItems],
+    );
 
     // Benchmark state
     const [benchmarkInProgress, setBenchmarkInProgress] = useState(false);
@@ -102,20 +109,16 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
     const [tokenizerVocabularyLoading, setTokenizerVocabularyLoading] = useState(false);
 
     const refreshDatasets = useCallback(async () => {
-        setDatasetsLoading(true);
         try {
-            const response = await fetchAvailableDatasets();
-            const datasetNames = response.datasets.map((dataset) => dataset.dataset_name);
-            setAvailableDatasets(datasetNames);
+            const datasets = await refreshAvailableDatasets();
+            const datasetNames = datasets.map((dataset) => dataset.dataset_name);
             if (datasetNames.length > 0 && !selectedDataset) {
                 setSelectedDataset(datasetNames[0]);
             }
         } catch (error) {
             console.error('Failed to fetch datasets:', error);
-        } finally {
-            setDatasetsLoading(false);
         }
-    }, [selectedDataset]);
+    }, [refreshAvailableDatasets, selectedDataset]);
 
     const addTokenizer = useCallback((value: string) => {
         if (!value) return;
@@ -471,6 +474,7 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
     );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useTokenizers = (): TokenizersContextType => {
     const context = useContext(TokenizersContext);
     if (!context) {
