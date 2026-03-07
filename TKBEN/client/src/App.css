@@ -14,75 +14,99 @@
 
 .app-shell {
   display: flex;
+  flex-direction: column;
   min-height: 100vh;
   overflow: visible;
   background: var(--color-bg);
   color: var(--color-text);
 }
 
-.sidebar {
-  width: 90px;
-  height: 100vh;
-  position: sticky;
-  top: 0;
-  align-self: flex-start;
-  flex-shrink: 0;
-  background: #0f1114;
-  border-right: 1px solid var(--color-border);
+.app-header-bar {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  padding: 30px 15px;
-  gap: 30px;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 24px 8px;
+  border-bottom: 1px solid var(--color-border);
+  background: linear-gradient(180deg, #1d2229 0%, #181c22 100%);
 }
 
-.sidebar-logo {
-  font-size: 25px;
-  font-weight: 700;
-  color: var(--color-accent);
+.app-header-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
-.sidebar-nav {
+.app-header-key-button {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+}
+
+.app-tab-nav {
   display: flex;
-  flex-direction: column;
-  gap: 20px;
-  flex: 1;
+  align-items: stretch;
+  gap: 0;
+  height: 44px;
+  padding: 0 24px;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  background: #151a1f;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
-.sidebar-link {
-  width: 55px;
-  height: 55px;
-  border-radius: 12px;
-  border: 1px solid var(--color-border);
-  padding: 0;
+.app-tab {
+  flex: 0 0 clamp(180px, 11.5vw, 230px);
+  min-width: 160px;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  padding: 0 14px;
   background: transparent;
-  appearance: none;
-  -webkit-appearance: none;
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-muted);
+  gap: 8px;
   cursor: pointer;
-  transition: background var(--transition), color var(--transition), border var(--transition);
+  transition: color var(--transition), background var(--transition);
 }
 
-.sidebar-link svg {
-  width: 28px;
-  height: 28px;
+.app-tab:hover {
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.app-tab:focus-visible {
+  outline: 2px solid var(--color-border-strong);
+  outline-offset: -2px;
+}
+
+.app-tab--active {
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.app-tab-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.app-tab-icon svg {
+  width: 14px;
+  height: 14px;
   fill: currentColor;
   stroke: currentColor;
 }
-
-.sidebar-link--active {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-  background: rgba(255, 232, 31, 0.08);
-}
-
-.sidebar-link--utility {
-  margin-top: auto;
-}
-
 .key-manager-backdrop {
   position: fixed;
   inset: 0;
@@ -179,21 +203,11 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  min-height: 0;
   overflow: visible;
-  padding: 32px 40px;
-  gap: 24px;
+  padding: 24px 32px 32px;
+  gap: 20px;
   min-width: 0;
-}
-
-.app-header h1 {
-  margin: 0;
-  font-size: 24px;
-}
-
-.app-header p {
-  margin: 4px 0 0;
-  color: var(--color-muted);
 }
 
 .app-content {
@@ -206,7 +220,6 @@
 .app-content > * {
   min-width: 0;
 }
-
 .page-scroll {
   width: 100%;
   overflow: visible;
@@ -1114,7 +1127,7 @@
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr);
   gap: 20px;
-  align-items: stretch;
+  align-items: start;
 }
 
 .tokenizer-report-left,
@@ -1383,9 +1396,10 @@
 }
 
 .cross-benchmark-start-button {
-  min-width: 240px;
-  width: 240px;
+  min-width: 200px;
+  width: auto;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .cross-benchmark-report-picker {
@@ -1401,8 +1415,8 @@
 }
 
 .cross-benchmark-report-select {
-  width: min(380px, 40vw);
-  min-width: 240px;
+  width: clamp(240px, 24vw, 380px);
+  min-width: 220px;
   max-width: 380px;
 }
 
@@ -1414,6 +1428,30 @@
   max-width: 100%;
 }
 
+.cross-benchmark-dashboard-header {
+  align-items: flex-start;
+  gap: 12px 16px;
+}
+
+.cross-benchmark-dashboard-intro {
+  min-width: 0;
+  max-width: 64ch;
+}
+
+.cross-benchmark-dashboard-meta {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.cross-benchmark-dashboard-controls {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: min(560px, 52vw);
+}
 .cross-benchmark-overview-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -1453,7 +1491,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 12px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .cross-benchmark-chart-grid-secondary {
@@ -2617,14 +2655,22 @@ select {
     display: none;
   }
 
-  .sidebar {
-    display: none;
+  .app-header-bar {
+    padding: 9px 18px 7px;
+  }
+
+  .app-tab-nav {
+    padding: 0 18px;
   }
 
   .app-main {
-    padding: 24px;
+    padding: 20px;
   }
 
+  .app-tab {
+    flex-basis: 170px;
+    min-width: 150px;
+  }
   .tokenizer-exam-scroll {
     padding-inline-end: 10px;
   }
@@ -2657,30 +2703,52 @@ select {
     grid-template-columns: 1fr;
   }
 
-  .cross-benchmark-control-actions {
-    display: grid;
-    grid-template-columns: 1fr;
+  .cross-benchmark-dashboard-header {
+    flex-direction: column;
     align-items: stretch;
   }
 
-  .cross-benchmark-start-button {
+  .cross-benchmark-dashboard-controls {
+    margin-left: 0;
     width: 100%;
-    min-width: 0;
+    justify-content: flex-start;
   }
 
-  .cross-benchmark-report-picker {
+  .cross-benchmark-dashboard-controls .cross-benchmark-start-button {
+    min-width: 180px;
+  }
+
+  .cross-benchmark-dashboard-controls .cross-benchmark-report-picker {
     display: grid;
     grid-template-columns: 1fr;
     gap: 6px;
+    min-width: min(320px, 100%);
   }
 
-  .cross-benchmark-report-select {
+  .cross-benchmark-dashboard-controls .cross-benchmark-report-select {
     width: 100%;
     min-width: 0;
     max-width: none;
   }
 }
 
+@media (max-width: 700px) {
+  .app-header-title {
+    font-size: 16px;
+  }
+
+  .app-tab {
+    flex-basis: 150px;
+    min-width: 140px;
+    font-size: 12px;
+    padding: 0 10px;
+    gap: 6px;
+  }
+
+  .app-main {
+    padding: 16px;
+  }
+}
 @media (max-width: 900px) {
   .tokenizer-modal-columns {
     grid-template-columns: 1fr;
@@ -2740,3 +2808,6 @@ select {
     gap: 6px;
   }
 }
+
+
+

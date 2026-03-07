@@ -416,50 +416,68 @@ const CrossBenchmarkPage = () => {
   return (
     <div className="page-scroll cross-benchmark-scroll">
       <div className="page-grid cross-benchmark-page">
-        <section className="cross-benchmark-control-panel">
-          <div className="cross-benchmark-control-header">
-            <div>
-              <p className="panel-label">Tokenizer Benchmark</p>
+        <section className="panel dashboard-panel dashboard-plain cross-benchmark-dashboard">
+          <header className="panel-header cross-benchmark-dashboard-header">
+            <div className="cross-benchmark-dashboard-intro">
+              <p className="panel-label">Tokenizer Benchmark Dashboard</p>
               <p className="panel-description">
-                Run and reopen persisted tokenizer benchmark reports with metric-level dashboards.
+                Run, reopen, and analyze persisted tokenizer benchmark reports through a metric-level dashboard.
               </p>
+              {activeReport && (
+                <p className="panel-description cross-benchmark-dashboard-meta">
+                  {`Report #${activeReport.report_id ?? 'N/A'}${activeReport.created_at ? ` • ${new Date(activeReport.created_at).toLocaleString()}` : ''}`}
+                </p>
+              )}
             </div>
-          </div>
-          <div className="cross-benchmark-control-actions">
-            <button
-              type="button"
-              className="primary-button cross-benchmark-start-button"
-              onClick={() => setWizardOpen(true)}
-              disabled={runningBenchmark || loadingPage}
-            >
-              {runningBenchmark ? 'Running...' : 'Start benchmark'}
-            </button>
-            <div className="cross-benchmark-report-picker">
-              <label className="field-label" htmlFor="benchmark-report-selector">Report</label>
-              <select
-                id="benchmark-report-selector"
-                className="text-input cross-benchmark-report-select"
-                value={selectedReportId ?? ''}
-                onChange={(event) => {
-                  const nextReportId = Number(event.target.value);
-                  if (Number.isFinite(nextReportId) && nextReportId > 0) {
-                    void loadReportById(nextReportId);
-                  }
-                }}
-                disabled={reports.length === 0 || loadingReport}
+            <div className="cross-benchmark-dashboard-controls">
+              <button
+                type="button"
+                className="primary-button cross-benchmark-start-button"
+                onClick={() => setWizardOpen(true)}
+                disabled={runningBenchmark || loadingPage}
               >
-                {reports.length === 0 ? (
-                  <option value="">No reports available</option>
-                ) : (
-                  reports.map((report) => (
-                    <option key={report.report_id} value={report.report_id}>
-                      #{report.report_id} - {report.run_name || 'unnamed run'} - {report.dataset_name}
-                    </option>
-                  ))
-                )}
-              </select>
+                {runningBenchmark ? 'Running...' : 'Start benchmark'}
+              </button>
+              <div className="cross-benchmark-report-picker">
+                <label className="field-label" htmlFor="benchmark-report-selector">Report</label>
+                <select
+                  id="benchmark-report-selector"
+                  className="text-input cross-benchmark-report-select"
+                  value={selectedReportId ?? ''}
+                  onChange={(event) => {
+                    const nextReportId = Number(event.target.value);
+                    if (Number.isFinite(nextReportId) && nextReportId > 0) {
+                      void loadReportById(nextReportId);
+                    }
+                  }}
+                  disabled={reports.length === 0 || loadingReport}
+                >
+                  {reports.length === 0 ? (
+                    <option value="">No reports available</option>
+                  ) : (
+                    reports.map((report) => (
+                      <option key={report.report_id} value={report.report_id}>
+                        #{report.report_id} - {report.run_name || 'unnamed run'} - {report.dataset_name}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+              <div className="dashboard-export-header-actions">
+                <DashboardExportButton
+                  dashboardType="benchmark"
+                  reportName={benchmarkExportReportName}
+                  dashboardPayload={activeReport
+                    ? {
+                      report: activeReport,
+                      selected_distribution_tokenizer: selectedDistributionTokenizer,
+                    }
+                    : null}
+                />
+              </div>
             </div>
-          </div>
+          </header>
+
           {error && (
             <DismissibleBanner
               message={error}
@@ -467,31 +485,6 @@ const CrossBenchmarkPage = () => {
               dismissLabel="Dismiss error"
             />
           )}
-        </section>
-
-        <section className="panel dashboard-panel dashboard-plain cross-benchmark-dashboard">
-          <header className="panel-header">
-            <div>
-              <p className="panel-label">Benchmark Dashboard</p>
-              <p className="panel-description">
-                {activeReport
-                  ? `Report #${activeReport.report_id ?? 'N/A'}${activeReport.created_at ? ` • ${new Date(activeReport.created_at).toLocaleString()}` : ''}`
-                  : 'Select a report or run a benchmark to populate this dashboard.'}
-              </p>
-            </div>
-            <div className="dashboard-export-header-actions">
-              <DashboardExportButton
-                dashboardType="benchmark"
-                reportName={benchmarkExportReportName}
-                dashboardPayload={activeReport
-                  ? {
-                    report: activeReport,
-                    selected_distribution_tokenizer: selectedDistributionTokenizer,
-                  }
-                  : null}
-              />
-            </div>
-          </header>
 
           {(loadingPage || loadingReport) && (
             <div className="loading-container">
@@ -795,3 +788,4 @@ const CrossBenchmarkPage = () => {
 };
 
 export default CrossBenchmarkPage;
+
