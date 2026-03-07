@@ -28,11 +28,11 @@
   - `/dataset`
   - `/tokenizers`
   - `/cross-benchmark`
-- Keep sidebar and page behavior aligned with current navigation model (`AppShell`, `Sidebar`).
+- Keep page behavior aligned with the current top navigation model in `AppShell` (header + tabs).
 
 ## 6. Quality Checks
 - Run build/lint before finalizing frontend-heavy changes:
-  - `npm run build`
-  - `npm run lint`
+  - `runtimes npm run build`
+  - `runtimes npm run lint`
 - Keep accessibility labels and button semantics for interactive controls.
 

@@ -1,6 +1,6 @@
 # Project-specific generated/runtime artifacts
-TKBEN/resources/datasets/**
-TKBEN/resources/tokenizers/**
+TKBEN/resources/sources/datasets/**
+TKBEN/resources/sources/tokenizers/**
 TKBEN/resources/runtimes/**
 TKBEN/resources/runtimes/uv_cache/**
 TKBEN/resources/logs/**
@@ -43,8 +43,6 @@ yarn.lock
 .DS_Store
 Thumbs.db
 
-# Agents
-.agent/skills/**
 
 # Misc
 .sonarlint/

@@ -89,7 +89,7 @@ const TokenizerExaminationPage = () => {
         setVocabularyPanelHeight(null);
         return;
       }
-      if (window.innerWidth <= 960) {
+      if (window.innerWidth <= 1100) {
         setVocabularyPanelHeight(null);
         return;
       }
