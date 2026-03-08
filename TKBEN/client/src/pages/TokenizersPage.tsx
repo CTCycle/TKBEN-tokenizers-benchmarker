@@ -265,7 +265,7 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
                 ref={customTokenizerInputRef}
                 onChange={handleUploadCustomTokenizer}
                 accept=".json"
-                style={{ display: 'none' }}
+                className="hidden-file-input"
               />
               <button
                 type="button"
@@ -499,11 +499,11 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
       </div>
 
       {isTokenizerModalOpen && (
-        <div className="modal-overlay" role="dialog" aria-modal="true">
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="tokenizer-manager-title">
           <div className="tokenizer-modal-window">
             <header className="tokenizer-modal-header">
               <div>
-                <p className="panel-label">Tokenizer Manager</p>
+                <p id="tokenizer-manager-title" className="panel-label">Tokenizer Manager</p>
                 <p className="panel-description">Download tokenizer IDs from text input or Hugging Face scan results.</p>
               </div>
               <button
@@ -589,7 +589,7 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
                     ref={customTokenizerInputRef}
                     onChange={handleUploadCustomTokenizer}
                     accept=".json"
-                    style={{ display: 'none' }}
+                    className="hidden-file-input"
                   />
                   {customTokenizerName && (
                     <span className="custom-tokenizer-badge">
@@ -651,7 +651,7 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
                 </p>
 
                 <div className="tokenizer-modal-column-content">
-                  <div className="tokenizer-scan-list" role="listbox" aria-multiselectable="true">
+                  <div className="tokenizer-scan-list">
                     {sortedFetchedTokenizers.length === 0 ? (
                       <div className="tokenizer-scan-empty">Run scan to load Hugging Face tokenizer IDs.</div>
                     ) : (
@@ -662,8 +662,8 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
                         return (
                           <div
                             key={tokenizerId}
-                            role="option"
-                            aria-selected={isSelected}
+                            role="button"
+                            aria-pressed={isSelected}
                             tabIndex={0}
                             className={`tokenizer-scan-row${isSelected ? ' selected' : ''}${isDownloaded ? ' downloaded' : ''}`}
                             onClick={(event) => handleScannedTokenizerSelection(event, tokenizerId)}
@@ -710,3 +710,4 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
 };
 
 export default TokenizersPage;
+

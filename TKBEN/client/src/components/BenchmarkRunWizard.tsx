@@ -128,11 +128,11 @@ const BenchmarkRunWizard = ({
   const canRun = canProceedFromStepOne && canProceedFromStepTwo && Boolean(runName.trim());
 
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true">
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="benchmark-wizard-title">
       <div className="modal-card benchmark-wizard-modal">
         <header className="benchmark-wizard-header">
           <div>
-            <p className="panel-label">Run Tokenizer Benchmark</p>
+            <p id="benchmark-wizard-title" className="panel-label">Run Tokenizer Benchmark</p>
             <p className="panel-description">
               Configure metrics, inputs, and run metadata for a persisted benchmark report.
             </p>
@@ -209,7 +209,7 @@ const BenchmarkRunWizard = ({
                 <p className="panel-description">
                   Selected {selectedTokenizers.length} of {MAX_SELECTED_TOKENIZERS}
                 </p>
-                <div className="benchmark-wizard-tokenizer-list" role="listbox" aria-multiselectable="true">
+                <div className="benchmark-wizard-tokenizer-list">
                   {availableTokenizers.length === 0 ? (
                     <div className="chart-placeholder">
                       <p>No tokenizers available. Download tokenizers first.</p>
@@ -353,3 +353,4 @@ const BenchmarkRunWizard = ({
 };
 
 export default BenchmarkRunWizard;
+
