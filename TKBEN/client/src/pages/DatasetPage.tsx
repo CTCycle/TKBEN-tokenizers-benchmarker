@@ -16,6 +16,7 @@ import {
 } from 'recharts';
 import DatasetValidationWizard from '../components/DatasetValidationWizard';
 import DashboardExportButton from '../components/DashboardExportButton';
+import DismissibleBanner from '../components/DismissibleBanner';
 import { useDataset } from '../contexts/DatasetContext';
 import type {
   DatasetAnalysisRequest,
@@ -856,10 +857,11 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
             </div>
           </div>
           {error && (
-            <div className="error-banner">
-              <span>{error}</span>
-              <button onClick={() => setError(null)}>×</button>
-            </div>
+            <DismissibleBanner
+              message={error}
+              onDismiss={() => setError(null)}
+              dismissLabel="Dismiss dataset error"
+            />
           )}
         </section>
 
@@ -1143,10 +1145,10 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
       />
 
       {isModalOpen && (
-        <div className="modal-overlay" role="dialog" aria-modal="true">
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="dataset-selector-title">
           <div className="modal-card dataset-modal">
             <header className="dataset-modal-header">
-              <p className="panel-label">Predefined Datasets</p>
+              <p id="dataset-selector-title" className="panel-label">Predefined Datasets</p>
               <div className="dataset-modal-actions">
                 <button
                   type="button"
@@ -1184,7 +1186,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
               ref={fileInputRef}
               onChange={handleFileChange}
               accept=".csv,.xlsx,.xls"
-              style={{ display: 'none' }}
+              className="hidden-file-input"
             />
             {loading && (
               <div className="dataset-modal-progress" role="status" aria-live="polite">
@@ -1322,3 +1324,4 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
 };
 
 export default DatasetPage;
+

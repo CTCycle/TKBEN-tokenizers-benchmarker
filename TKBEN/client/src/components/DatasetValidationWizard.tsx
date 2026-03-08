@@ -102,11 +102,11 @@ const DatasetValidationWizard = ({
   }
 
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true">
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="validation-wizard-title">
       <div className="modal-card validation-wizard-modal">
         <header className="validation-wizard-header">
           <div>
-            <p className="panel-label">Run Validation Pipeline</p>
+            <p id="validation-wizard-title" className="panel-label">Run Validation Pipeline</p>
             <p className="panel-description">
               Configure metrics and sampling for dataset analysis.
             </p>
@@ -335,3 +335,4 @@ const DatasetValidationWizard = ({
 };
 
 export default DatasetValidationWizard;
+

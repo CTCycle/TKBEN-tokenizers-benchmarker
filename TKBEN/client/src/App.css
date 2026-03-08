@@ -6,9 +6,21 @@
   --color-border-strong: #ffeb3b;
   --color-text: #f5f5f5;
   --color-muted: #9ea7b3;
+  --color-text-muted: #9ea7b3;
   --color-accent: #ffe81f;
   --color-accent-dark: #f0c000;
   --radius: 12px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --control-height: 40px;
+  --focus-ring: 2px solid var(--color-border-strong);
+  --focus-offset: 2px;
   --transition: 200ms ease;
 }
 
@@ -502,6 +514,7 @@
   justify-content: center;
   z-index: 200;
   padding: 24px;
+  overflow-y: auto;
 }
 
 .modal-card {
@@ -1076,9 +1089,9 @@
 }
 
 .tokenizer-selection-remove {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   flex-shrink: 0;
 }
 
@@ -1396,7 +1409,7 @@
 }
 
 .cross-benchmark-start-button {
-  min-width: 200px;
+  min-width: min(200px, 100%);
   width: auto;
   justify-content: center;
   flex-shrink: 0;
@@ -1976,17 +1989,24 @@
   background: transparent;
   color: var(--color-accent);
   border: 1px solid var(--color-accent);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 10px 18px;
+  min-height: var(--control-height);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  transition: background var(--transition), color var(--transition);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
 }
 
 .primary-button:hover {
   background: var(--color-accent);
   color: #111;
+}
+
+.primary-button:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 .primary-button.ghost {
@@ -2008,13 +2028,31 @@
   background: transparent;
   color: var(--color-text);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 10px 18px;
-  transition: background var(--transition);
+  min-height: var(--control-height);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+}
+
+.secondary-button:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.secondary-button:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 .secondary-button:disabled {
   opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.secondary-button:disabled:hover {
+  background: transparent;
+  border-color: var(--color-border);
 }
 
 .checkbox {
@@ -2032,10 +2070,20 @@ select {
   width: 100%;
   background: var(--color-panel-alt);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 10px 12px;
   color: var(--color-text);
   font-size: 15px;
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+}
+
+.text-input:focus-visible,
+.tokenizer-textarea:focus-visible,
+.text-area:focus-visible,
+select:focus-visible {
+  outline: none;
+  border-color: var(--color-border-strong);
+  box-shadow: 0 0 0 2px rgba(255, 235, 59, 0.28);
 }
 
 .tokenizer-textarea,
@@ -2068,7 +2116,7 @@ select {
 .field-row .text-input,
 .field-row select {
   flex: 1;
-  min-width: 200px;
+  min-width: min(200px, 100%);
 }
 
 .input-row {
@@ -2122,6 +2170,11 @@ select {
 
 .custom-tokenizer-badge .clear-button:hover {
   opacity: 1;
+}
+
+.custom-tokenizer-badge .clear-button:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .dashboard-grid {
@@ -2282,6 +2335,10 @@ select {
   font-size: 14px;
 }
 
+.error-banner span {
+  overflow-wrap: anywhere;
+}
+
 .error-banner button {
   background: transparent;
   border: none;
@@ -2298,10 +2355,21 @@ select {
   opacity: 1;
 }
 
+.error-banner button:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
 .tokenizer-select {
   display: flex;
   gap: 10px;
-  min-width: 320px;
+  min-width: 0;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.tokenizer-select .text-input {
+  min-width: min(240px, 100%);
 }
 
 /* Chart container styles */
@@ -2347,9 +2415,14 @@ select {
 }
 
 .dataset-run-pipeline-button {
-  padding: 7px 10px;
-  font-size: 11px;
+  padding: 8px 12px;
+  font-size: 12px;
+  min-height: 36px;
   white-space: nowrap;
+}
+
+.hidden-file-input {
+  display: none;
 }
 
 .dataset-v2-dashboard {
@@ -2748,6 +2821,17 @@ select {
   .app-main {
     padding: 16px;
   }
+
+  .field-row .text-input,
+  .field-row select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .tokenizer-select .primary-button,
+  .tokenizer-select .secondary-button {
+    flex: 1 1 auto;
+  }
 }
 @media (max-width: 900px) {
   .tokenizer-modal-columns {
@@ -2809,5 +2893,15 @@ select {
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 
