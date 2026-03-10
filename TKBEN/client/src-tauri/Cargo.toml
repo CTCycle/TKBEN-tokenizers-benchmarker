@@ -1,0 +1,12 @@
+[package]
+name = "tkben-desktop"
+version = "2.1.0"
+description = "TKBEN desktop shell"
+authors = ["TKBEN"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }

@@ -1,15 +1,15 @@
 from __future__ import annotations
 
+import os
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=SyntaxWarning, module=r"multiprocess\.connection")
 
 from fastapi import FastAPI
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from TKBEN.server.common.constants import (
-    API_ROUTE_DOCS,
-    API_ROUTE_ROOT,
     FASTAPI_DESCRIPTION,
     FASTAPI_TITLE,
     FASTAPI_VERSION,
@@ -22,6 +22,20 @@ from TKBEN.server.routes.keys import router as keys_router
 from TKBEN.server.routes.exports import router as exports_router
 
 
+def tauri_mode_enabled() -> bool:
+    value = os.getenv("TKBEN_TAURI_MODE", "false").strip().lower()
+    return value in {"1", "true", "yes", "on"}
+
+
+def get_client_dist_path() -> str:
+    project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    return os.path.join(project_path, "client", "dist")
+
+
+def packaged_client_available() -> bool:
+    return tauri_mode_enabled() and os.path.isdir(get_client_dist_path())
+
+
 ###############################################################################
 app = FastAPI(
     title=FASTAPI_TITLE,
@@ -29,14 +43,39 @@ app = FastAPI(
     description=FASTAPI_DESCRIPTION,
 )
 
-app.include_router(datasets_router)
-app.include_router(tokenizers_router)
-app.include_router(fit_router)
-app.include_router(jobs_router)
-app.include_router(keys_router)
-app.include_router(exports_router)
+routers = [
+    datasets_router,
+    tokenizers_router,
+    fit_router,
+    jobs_router,
+    keys_router,
+    exports_router,
+]
 
-@app.get(API_ROUTE_ROOT)
-def redirect_to_docs() -> RedirectResponse:
-    return RedirectResponse(url=API_ROUTE_DOCS)
+for router in routers:
+    app.include_router(router)
+    app.include_router(router, prefix="/api", include_in_schema=False)
 
+if packaged_client_available():
+    client_dist_path = get_client_dist_path()
+    assets_path = os.path.join(client_dist_path, "assets")
+
+    if os.path.isdir(assets_path):
+        app.mount("/assets", StaticFiles(directory=assets_path), name="spa-assets")
+
+    @app.get("/", include_in_schema=False)
+    def serve_spa_root() -> FileResponse:
+        return FileResponse(os.path.join(client_dist_path, "index.html"))
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def serve_spa_entrypoint(full_path: str) -> FileResponse:
+        requested_path = os.path.join(client_dist_path, full_path)
+        if os.path.isfile(requested_path):
+            return FileResponse(requested_path)
+        return FileResponse(os.path.join(client_dist_path, "index.html"))
+
+else:
+
+    @app.get("/")
+    def redirect_to_docs() -> RedirectResponse:
+        return RedirectResponse(url="/docs")

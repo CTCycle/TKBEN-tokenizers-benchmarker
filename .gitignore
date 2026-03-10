@@ -56,3 +56,7 @@ Thumbs.db
 !.gitkeep
 
 
+# Tauri
+TKBEN/client/src-tauri/target/
+TKBEN/client/src-tauri/gen/
+release/windows/
