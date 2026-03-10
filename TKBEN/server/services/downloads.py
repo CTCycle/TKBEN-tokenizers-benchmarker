@@ -183,7 +183,9 @@ class TokenizersDownloadManager:
             return None
         return tokenizer
 
-    def _iter_custom_tokenizers(self, custom_tokenizer_path: str) -> list[tuple[str, Any]]:
+    def _iter_custom_tokenizers(
+        self, custom_tokenizer_path: str
+    ) -> list[tuple[str, Any]]:
         loaded_custom_tokenizers: list[tuple[str, Any]] = []
         json_files = [
             os.path.join(custom_tokenizer_path, fn)
@@ -254,4 +256,3 @@ class TokenizersDownloadManager:
                 tokenizers[tokenizer_name] = tokenizer
 
         return tokenizers
-

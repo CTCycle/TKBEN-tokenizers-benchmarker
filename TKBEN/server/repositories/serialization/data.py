@@ -24,6 +24,7 @@ from TKBEN.server.repositories.schemas.models import (
 
 K_ERROR = "k error"
 
+
 ###############################################################################
 class DatasetSerializer:
     def __init__(self, queries: DataRepositoryQueries | None = None) -> None:
@@ -46,7 +47,7 @@ class DatasetSerializer:
         if isinstance(value, str):
             try:
                 return json.loads(value)
-            except (json.JSONDecodeError, TypeError):
+            except json.JSONDecodeError, TypeError:
                 return default
         if isinstance(value, (dict, list)):
             return value
@@ -73,7 +74,9 @@ class DatasetSerializer:
             )
             if isinstance(first_valid, (list, dict)):
                 df_copy[col] = df_copy[col].apply(
-                    lambda value: json.dumps(value) if isinstance(value, (list, dict)) else value
+                    lambda value: (
+                        json.dumps(value) if isinstance(value, (list, dict)) else value
+                    )
                 )
         return df_copy
 
@@ -112,7 +115,9 @@ class DatasetSerializer:
 
     # -------------------------------------------------------------------------
     def get_dataset_id(self, dataset_name: str) -> int | None:
-        query = sqlalchemy.text('SELECT "id" FROM "dataset" WHERE "name" = :dataset LIMIT 1')
+        query = sqlalchemy.text(
+            'SELECT "id" FROM "dataset" WHERE "name" = :dataset LIMIT 1'
+        )
         with self.queries.engine.connect() as conn:
             result = conn.execute(query, {"dataset": dataset_name})
             row = result.first()
@@ -126,7 +131,7 @@ class DatasetSerializer:
     def ensure_dataset_id(self, dataset_name: str) -> int:
         query = sqlalchemy.text(
             'INSERT INTO "dataset" ("name") '
-            'VALUES (:dataset) '
+            "VALUES (:dataset) "
             'ON CONFLICT ("name") DO NOTHING'
         )
         with self.queries.engine.begin() as conn:
@@ -148,7 +153,7 @@ class DatasetSerializer:
     # -------------------------------------------------------------------------
     def count_dataset_documents(self, dataset_name: str) -> int:
         query = sqlalchemy.text(
-            'SELECT COUNT(*) '
+            "SELECT COUNT(*) "
             'FROM "dataset_document" dd '
             'JOIN "dataset" d ON d."id" = dd."dataset_id" '
             'WHERE d."name" = :dataset'
@@ -366,10 +371,10 @@ class DatasetSerializer:
             '"least_common_words", "longest_words", "shortest_words", '
             '"word_cloud_terms", "per_document_stats") '
             "VALUES ("
-            ':dataset_id, :report_version, :created_at, :aggregate_statistics, '
-            ':document_histogram, :word_histogram, :most_common_words, '
-            ':least_common_words, :longest_words, :shortest_words, '
-            ':word_cloud_terms, :per_document_stats)'
+            ":dataset_id, :report_version, :created_at, :aggregate_statistics, "
+            ":document_histogram, :word_histogram, :most_common_words, "
+            ":least_common_words, :longest_words, :shortest_words, "
+            ":word_cloud_terms, :per_document_stats)"
         )
 
         with self.queries.engine.begin() as conn:
@@ -394,9 +399,7 @@ class DatasetSerializer:
                     ),
                     "longest_words": json.dumps(storage.get("longest_words", [])),
                     "shortest_words": json.dumps(storage.get("shortest_words", [])),
-                    "word_cloud_terms": json.dumps(
-                        storage.get("word_cloud_terms", [])
-                    ),
+                    "word_cloud_terms": json.dumps(storage.get("word_cloud_terms", [])),
                     "per_document_stats": json.dumps(
                         storage.get("per_document_stats", {})
                     ),
@@ -437,11 +440,15 @@ class DatasetSerializer:
         return self.save_dataset_validation_report(report)
 
     # -------------------------------------------------------------------------
-    def build_validation_report_response(self, storage: dict[str, Any]) -> dict[str, Any]:
+    def build_validation_report_response(
+        self, storage: dict[str, Any]
+    ) -> dict[str, Any]:
         aggregate_statistics = self.parse_json(
             storage.get("aggregate_statistics"), default={}
         )
-        document_histogram = self._normalize_histogram(storage.get("document_histogram"))
+        document_histogram = self._normalize_histogram(
+            storage.get("document_histogram")
+        )
         word_histogram = self._normalize_histogram(storage.get("word_histogram"))
         created_at_raw = storage.get("created_at")
         created_at = pd.to_datetime(created_at_raw, utc=True, errors="coerce")
@@ -460,13 +467,23 @@ class DatasetSerializer:
             "word_length_histogram": word_histogram,
             "min_document_length": document_histogram["min_length"],
             "max_document_length": document_histogram["max_length"],
-            "most_common_words": self.parse_json(storage.get("most_common_words"), default=[]),
-            "least_common_words": self.parse_json(storage.get("least_common_words"), default=[]),
+            "most_common_words": self.parse_json(
+                storage.get("most_common_words"), default=[]
+            ),
+            "least_common_words": self.parse_json(
+                storage.get("least_common_words"), default=[]
+            ),
             "longest_words": self.parse_json(storage.get("longest_words"), default=[]),
-            "shortest_words": self.parse_json(storage.get("shortest_words"), default=[]),
-            "word_cloud_terms": self.parse_json(storage.get("word_cloud_terms"), default=[]),
+            "shortest_words": self.parse_json(
+                storage.get("shortest_words"), default=[]
+            ),
+            "word_cloud_terms": self.parse_json(
+                storage.get("word_cloud_terms"), default=[]
+            ),
             "aggregate_statistics": aggregate_statistics,
-            "per_document_stats": self.parse_json(storage.get("per_document_stats"), default={}),
+            "per_document_stats": self.parse_json(
+                storage.get("per_document_stats"), default={}
+            ),
         }
 
     # -------------------------------------------------------------------------
@@ -512,20 +529,24 @@ class DatasetSerializer:
             "report_version": 1,
             "created_at": None,
             "dataset_name": storage.get("dataset_name", ""),
-            "document_count": int(
-                document_statistics.get("document_count", 0) or 0
-            ),
+            "document_count": int(document_statistics.get("document_count", 0) or 0),
             "document_length_histogram": document_histogram,
             "word_length_histogram": word_histogram,
             "min_document_length": document_histogram["min_length"],
             "max_document_length": document_histogram["max_length"],
-            "most_common_words": self.parse_json(storage.get("most_common_words"), default=[]),
-            "least_common_words": self.parse_json(storage.get("least_common_words"), default=[]),
+            "most_common_words": self.parse_json(
+                storage.get("most_common_words"), default=[]
+            ),
+            "least_common_words": self.parse_json(
+                storage.get("least_common_words"), default=[]
+            ),
             "longest_words": [],
             "shortest_words": [],
             "word_cloud_terms": [],
             "aggregate_statistics": {
-                "document_count": int(document_statistics.get("document_count", 0) or 0),
+                "document_count": int(
+                    document_statistics.get("document_count", 0) or 0
+                ),
             },
             "per_document_stats": {},
         }
@@ -561,7 +582,9 @@ class DatasetSerializer:
         if hasattr(row, "_mapping"):
             storage = dict(row._mapping)
         else:
-            storage = {key: value for key, value in zip(result.keys(), row, strict=False)}
+            storage = {
+                key: value for key, value in zip(result.keys(), row, strict=False)
+            }
         return self.build_report_response(storage)
 
     # -------------------------------------------------------------------------
@@ -634,8 +657,8 @@ class DatasetSerializer:
             '"dataset_id", "session_name", "status", "report_version", '
             '"created_at", "completed_at", "parameters", "selected_metric_keys") '
             "VALUES ("
-            ':dataset_id, :session_name, :status, :report_version, '
-            ':created_at, :completed_at, :parameters, :selected_metric_keys)'
+            ":dataset_id, :session_name, :status, :report_version, "
+            ":created_at, :completed_at, :parameters, :selected_metric_keys)"
         )
         with self.queries.engine.begin() as conn:
             conn.execute(
@@ -666,7 +689,9 @@ class DatasetSerializer:
         return int(row[0])
 
     # -------------------------------------------------------------------------
-    def complete_analysis_session(self, session_id: int, status: str = "completed") -> None:
+    def complete_analysis_session(
+        self, session_id: int, status: str = "completed"
+    ) -> None:
         query = sqlalchemy.text(
             'UPDATE "analysis_session" '
             'SET "status" = :status, "completed_at" = :completed_at '
@@ -683,7 +708,9 @@ class DatasetSerializer:
             )
 
     # -------------------------------------------------------------------------
-    def save_metric_values_batch(self, session_id: int, batch: list[dict[str, Any]]) -> None:
+    def save_metric_values_batch(
+        self, session_id: int, batch: list[dict[str, Any]]
+    ) -> None:
         if not batch:
             return
         metric_type_map = self.get_metric_type_map()
@@ -823,7 +850,9 @@ class DatasetSerializer:
         return result
 
     # -------------------------------------------------------------------------
-    def _build_session_report_response(self, session_row: dict[str, Any]) -> dict[str, Any]:
+    def _build_session_report_response(
+        self, session_row: dict[str, Any]
+    ) -> dict[str, Any]:
         session_id = int(session_row.get("id") or 0)
         metric_rows = self._load_metric_rows_for_session(session_id)
         histogram_rows = self._load_histogram_rows_for_session(session_id)
@@ -883,7 +912,9 @@ class DatasetSerializer:
 
         document_histogram = histogram_rows.get("hist.document_length", {})
         word_histogram = histogram_rows.get("hist.word_length", {})
-        created_at = pd.to_datetime(session_row.get("created_at"), utc=True, errors="coerce")
+        created_at = pd.to_datetime(
+            session_row.get("created_at"), utc=True, errors="coerce"
+        )
         created_at_iso = (
             created_at.isoformat().replace("+00:00", "Z")
             if not pd.isna(created_at)
@@ -896,9 +927,15 @@ class DatasetSerializer:
             "created_at": created_at_iso,
             "dataset_name": str(session_row.get("dataset_name") or ""),
             "session_name": session_row.get("session_name"),
-            "selected_metric_keys": self.parse_json(session_row.get("selected_metric_keys"), default=[]),
-            "session_parameters": self.parse_json(session_row.get("parameters"), default={}),
-            "document_count": int(aggregate_statistics.get("corpus.document_count", 0) or 0),
+            "selected_metric_keys": self.parse_json(
+                session_row.get("selected_metric_keys"), default=[]
+            ),
+            "session_parameters": self.parse_json(
+                session_row.get("parameters"), default={}
+            ),
+            "document_count": int(
+                aggregate_statistics.get("corpus.document_count", 0) or 0
+            ),
             "document_length_histogram": {
                 "bins": list(document_histogram.get("bins", [])),
                 "counts": list(document_histogram.get("counts", [])),
@@ -906,7 +943,9 @@ class DatasetSerializer:
                 "min_length": int(document_histogram.get("min_length", 0) or 0),
                 "max_length": int(document_histogram.get("max_length", 0) or 0),
                 "mean_length": float(document_histogram.get("mean_length", 0.0) or 0.0),
-                "median_length": float(document_histogram.get("median_length", 0.0) or 0.0),
+                "median_length": float(
+                    document_histogram.get("median_length", 0.0) or 0.0
+                ),
             },
             "word_length_histogram": {
                 "bins": list(word_histogram.get("bins", [])),
@@ -919,11 +958,21 @@ class DatasetSerializer:
             },
             "min_document_length": int(document_histogram.get("min_length", 0) or 0),
             "max_document_length": int(document_histogram.get("max_length", 0) or 0),
-            "most_common_words": self.parse_json(aggregate_statistics.get("words.most_common"), default=[]),
-            "least_common_words": self.parse_json(aggregate_statistics.get("words.least_common"), default=[]),
-            "longest_words": self.parse_json(aggregate_statistics.get("words.longest"), default=[]),
-            "shortest_words": self.parse_json(aggregate_statistics.get("words.shortest"), default=[]),
-            "word_cloud_terms": self.parse_json(aggregate_statistics.get("words.word_cloud"), default=[]),
+            "most_common_words": self.parse_json(
+                aggregate_statistics.get("words.most_common"), default=[]
+            ),
+            "least_common_words": self.parse_json(
+                aggregate_statistics.get("words.least_common"), default=[]
+            ),
+            "longest_words": self.parse_json(
+                aggregate_statistics.get("words.longest"), default=[]
+            ),
+            "shortest_words": self.parse_json(
+                aggregate_statistics.get("words.shortest"), default=[]
+            ),
+            "word_cloud_terms": self.parse_json(
+                aggregate_statistics.get("words.word_cloud"), default=[]
+            ),
             "aggregate_statistics": aggregate_statistics,
             "per_document_stats": per_document_stats,
         }
@@ -949,7 +998,9 @@ class DatasetSerializer:
         return None
 
     # -------------------------------------------------------------------------
-    def load_analysis_report_by_session_id(self, session_id: int) -> dict[str, Any] | None:
+    def load_analysis_report_by_session_id(
+        self, session_id: int
+    ) -> dict[str, Any] | None:
         query = sqlalchemy.text(
             'SELECT s.*, d."name" AS "dataset_name" '
             'FROM "analysis_session" s '
@@ -1012,12 +1063,10 @@ class TokenizerReportSerializer:
             '"tokenizer_id", "report_version", "created_at", "metadata", '
             '"token_length_histogram", "description") '
             "VALUES ("
-            ':tokenizer_id, :report_version, :created_at, :metadata, '
-            ':token_length_histogram, :description)'
+            ":tokenizer_id, :report_version, :created_at, :metadata, "
+            ":token_length_histogram, :description)"
         )
-        created_at = pd.to_datetime(
-            report.get("created_at"), utc=True, errors="coerce"
-        )
+        created_at = pd.to_datetime(report.get("created_at"), utc=True, errors="coerce")
         if pd.isna(created_at):
             created_at = pd.Timestamp.utcnow()
 
@@ -1066,8 +1115,12 @@ class TokenizerReportSerializer:
         return tokenizer_id
 
     # -------------------------------------------------------------------------
-    def _build_tokenizer_report_response(self, storage: dict[str, Any]) -> dict[str, Any]:
-        created_at = pd.to_datetime(storage.get("created_at"), utc=True, errors="coerce")
+    def _build_tokenizer_report_response(
+        self, storage: dict[str, Any]
+    ) -> dict[str, Any]:
+        created_at = pd.to_datetime(
+            storage.get("created_at"), utc=True, errors="coerce"
+        )
         created_at_iso = (
             created_at.isoformat().replace("+00:00", "Z")
             if not pd.isna(created_at)
@@ -1111,7 +1164,9 @@ class TokenizerReportSerializer:
         }
 
     # -------------------------------------------------------------------------
-    def load_latest_tokenizer_report(self, tokenizer_name: str) -> dict[str, Any] | None:
+    def load_latest_tokenizer_report(
+        self, tokenizer_name: str
+    ) -> dict[str, Any] | None:
         query = sqlalchemy.text(
             'SELECT tr.*, t."name" AS "tokenizer_name" '
             'FROM "tokenizer_report" tr '
@@ -1164,10 +1219,12 @@ class TokenizerReportSerializer:
             'FROM "tokenizer_vocabulary" '
             'WHERE "tokenizer_id" = :tokenizer_id '
             'ORDER BY "token_id" ASC '
-            'LIMIT :limit OFFSET :offset'
+            "LIMIT :limit OFFSET :offset"
         )
         with self.queries.engine.connect() as conn:
-            total = int(conn.execute(count_query, {"tokenizer_id": tokenizer_id}).scalar() or 0)
+            total = int(
+                conn.execute(count_query, {"tokenizer_id": tokenizer_id}).scalar() or 0
+            )
             rows = conn.execute(
                 page_query,
                 {
@@ -1266,9 +1323,7 @@ class BenchmarkReportSerializer:
                 insert_query,
                 {
                     "dataset_id": int(dataset_id),
-                    "report_version": int(
-                        report_payload.get("report_version", 1) or 1
-                    ),
+                    "report_version": int(report_payload.get("report_version", 1) or 1),
                     "created_at": created_at_value,
                     "run_name": run_name,
                     "selected_metric_keys": json.dumps(selected_metric_keys),

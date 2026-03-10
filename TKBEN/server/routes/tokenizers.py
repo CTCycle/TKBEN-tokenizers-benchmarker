@@ -36,7 +36,10 @@ from TKBEN.server.common.constants import (
     API_ROUTER_PREFIX_TOKENIZERS,
 )
 from TKBEN.server.common.utils.logger import logger
-from TKBEN.server.common.utils.security import normalize_identifier, normalize_upload_stem
+from TKBEN.server.common.utils.security import (
+    normalize_identifier,
+    normalize_upload_stem,
+)
 from TKBEN.server.services.jobs import JobProgressReporter, JobStopChecker, job_manager
 from TKBEN.server.services.benchmarks import BenchmarkTools
 from TKBEN.server.services.tokenizers import TokenizersService
@@ -300,7 +303,9 @@ async def get_latest_tokenizer_report(tokenizer_name: str) -> TokenizerReportRes
             detail=str(exc),
         ) from exc
     service = TokenizersService()
-    report = await asyncio.to_thread(service.get_latest_tokenizer_report, tokenizer_name)
+    report = await asyncio.to_thread(
+        service.get_latest_tokenizer_report, tokenizer_name
+    )
     if report is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -491,4 +496,3 @@ async def delete_custom_tokenizers() -> dict:
     """
     clear_custom_tokenizers()
     return {"status": "success", "message": "Custom tokenizers cleared"}
-

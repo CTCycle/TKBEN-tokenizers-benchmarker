@@ -126,7 +126,8 @@ def test_dataset_serializer_ensure_dataset_id_uses_conflict_safe_insert() -> Non
 
     assert dataset_id == 17
     insert_query = next(
-        query for query in state["queries"]  # type: ignore[index]
+        query
+        for query in state["queries"]  # type: ignore[index]
         if 'INSERT INTO "dataset" ("name")' in query
     )
     assert 'ON CONFLICT ("name") DO NOTHING' in insert_query
@@ -144,7 +145,8 @@ def test_tokenizers_service_insert_uses_conflict_safe_insert(
     service.insert_tokenizer_if_missing("bert-base-uncased")
 
     insert_query = next(
-        query for query in state["queries"]  # type: ignore[index]
+        query
+        for query in state["queries"]  # type: ignore[index]
         if 'INSERT INTO "tokenizer" ("name")' in query
     )
     assert 'ON CONFLICT ("name") DO NOTHING' in insert_query
@@ -163,7 +165,8 @@ def test_benchmark_service_ensure_tokenizer_ids_uses_conflict_safe_insert(
 
     assert mapping == {"tok/a": 101, "tok/b": 202}
     insert_query = next(
-        query for query in state["queries"]  # type: ignore[index]
+        query
+        for query in state["queries"]  # type: ignore[index]
         if 'INSERT INTO "tokenizer" ("name")' in query
     )
     assert 'ON CONFLICT ("name") DO NOTHING' in insert_query
@@ -265,7 +268,9 @@ def test_session_report_rehydrates_json_metrics_when_numeric_is_nan(
             },
         ],
     )
-    monkeypatch.setattr(serializer, "_load_histogram_rows_for_session", lambda session_id: {})
+    monkeypatch.setattr(
+        serializer, "_load_histogram_rows_for_session", lambda session_id: {}
+    )
 
     session_row = {
         "id": 123,
@@ -279,9 +284,13 @@ def test_session_report_rehydrates_json_metrics_when_numeric_is_nan(
 
     report = serializer._build_session_report_response(session_row)
 
-    assert report["aggregate_statistics"]["words.zipf_curve"] == [{"rank": 1, "frequency": 9}]
+    assert report["aggregate_statistics"]["words.zipf_curve"] == [
+        {"rank": 1, "frequency": 9}
+    ]
     assert report["aggregate_statistics"]["words.word_cloud"] == [
         {"word": "hello", "count": 9, "weight": 100}
     ]
-    assert report["aggregate_statistics"]["words.most_common"] == [{"word": "hello", "count": 9}]
+    assert report["aggregate_statistics"]["words.most_common"] == [
+        {"word": "hello", "count": 9}
+    ]
     assert report["word_cloud_terms"] == [{"word": "hello", "count": 9, "weight": 100}]

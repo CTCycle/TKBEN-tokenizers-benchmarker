@@ -100,7 +100,9 @@ HF_DATASET_ALIASES: dict[str, DatasetAlias] = {
     "openwebtext": DatasetAlias(hf_dataset_id="Skylion007/openwebtext"),
     "bookcorpus": DatasetAlias(hf_dataset_id="Yuti/bookcorpus"),
     "ag_news": DatasetAlias(hf_dataset_id="fancyzhx/ag_news"),
-    "cnn_dailymail": DatasetAlias(hf_dataset_id="ccdv/cnn_dailymail", default_config="3.0.0"),
+    "cnn_dailymail": DatasetAlias(
+        hf_dataset_id="ccdv/cnn_dailymail", default_config="3.0.0"
+    ),
     "gigaword": DatasetAlias(hf_dataset_id="SalmanFaroz/gigaword"),
     "multi_news": DatasetAlias(hf_dataset_id="alexfabbri/multi_news"),
     "squad": DatasetAlias(hf_dataset_id="rajpurkar/squad"),
@@ -121,7 +123,9 @@ HF_DATASET_ALIASES: dict[str, DatasetAlias] = {
     "pubmed": DatasetAlias(hf_dataset_id="ccdv/pubmed-summarization"),
     "flores": DatasetAlias(hf_dataset_id="facebook/flores", default_config="all"),
     "wiki40b": DatasetAlias(hf_dataset_id="google/wiki40b", default_config="en"),
-    "opus_books": DatasetAlias(hf_dataset_id="Helsinki-NLP/opus_books", default_config="en-fr"),
+    "opus_books": DatasetAlias(
+        hf_dataset_id="Helsinki-NLP/opus_books", default_config="en-fr"
+    ),
 }
 
 
@@ -234,7 +238,6 @@ class HistogramBuilder:
 
 ###############################################################################
 class DatasetService:
-
     SUPPORTED_TEXT_FIELDS = ("text", "content", "sentence", "document", "tokens")
     REPORT_VERSION = 2
     WORD_LIST_LIMIT = 15
@@ -294,12 +297,16 @@ class DatasetService:
 
         alias = HF_DATASET_ALIASES.get(requested_corpus.lower())
         hf_dataset_id = alias.hf_dataset_id if alias else requested_corpus
-        hf_config = requested_config if requested_config is not None else (
-            alias.default_config if alias else None
+        hf_config = (
+            requested_config
+            if requested_config is not None
+            else (alias.default_config if alias else None)
         )
         split = alias.default_split if alias else None
 
-        hf_dataset_id = self.validate_non_empty_text(hf_dataset_id, "Resolved dataset id")
+        hf_dataset_id = self.validate_non_empty_text(
+            hf_dataset_id, "Resolved dataset id"
+        )
         if hf_config is not None:
             hf_config = self.validate_non_empty_text(hf_config, "Dataset configuration")
         if split is not None:
@@ -344,11 +351,7 @@ class DatasetService:
         ):
             return "invalid_dataset_or_config"
 
-        if (
-            "timed out" in message
-            or "temporary" in message
-            or "connection" in message
-        ):
+        if "timed out" in message or "temporary" in message or "connection" in message:
             return "network_or_transient"
 
         return "unknown"
@@ -432,7 +435,10 @@ class DatasetService:
             )
         if category == "unsupported_dataset_script":
             script_hint = ""
-            if "pile" in requested_dataset_name.lower() or "pile" in resolved_dataset_name.lower():
+            if (
+                "pile" in requested_dataset_name.lower()
+                or "pile" in resolved_dataset_name.lower()
+            ):
                 script_hint = (
                     " For this Pile source, the official dataset currently uses legacy script loading; "
                     "try a parquet mirror such as 'monology/pile-uncopyrighted'."
@@ -525,14 +531,16 @@ class DatasetService:
     def cleanup_cancelled_dataset(self, dataset_name: str) -> None:
         try:
             self.dataset_serializer.delete_dataset(dataset_name)
-            logger.info("Removed partially persisted dataset after cancellation: %s", dataset_name)
+            logger.info(
+                "Removed partially persisted dataset after cancellation: %s",
+                dataset_name,
+            )
         except Exception:
             logger.warning(
                 "Failed to cleanup partially persisted dataset after cancellation: %s",
                 dataset_name,
                 exc_info=True,
             )
-
 
     # -------------------------------------------------------------------------
     def get_dataset_name(self, corpus: str, config: str | None = None) -> str:
@@ -578,7 +586,9 @@ class DatasetService:
         }
 
     # -------------------------------------------------------------------------
-    def maybe_cleanup_downloaded_source(self, cache_path: str, dataset_name: str) -> None:
+    def maybe_cleanup_downloaded_source(
+        self, cache_path: str, dataset_name: str
+    ) -> None:
         try:
             if os.path.isdir(cache_path):
                 shutil.rmtree(cache_path)
@@ -591,7 +601,9 @@ class DatasetService:
                     cache_path,
                 )
                 return
-            logger.info("Removed downloaded source for %s: %s", dataset_name, cache_path)
+            logger.info(
+                "Removed downloaded source for %s: %s", dataset_name, cache_path
+            )
         except FileNotFoundError:
             logger.info(
                 "Downloaded source already removed for %s, skipping cleanup: %s",
@@ -659,7 +671,11 @@ class DatasetService:
                 for row in split_data:
                     text = row[text_column]
                     if remove_invalid:
-                        if text is None or not isinstance(text, str) or not text.strip():
+                        if (
+                            text is None
+                            or not isinstance(text, str)
+                            or not text.strip()
+                        ):
                             continue
                     yield text
         else:
@@ -728,7 +744,9 @@ class DatasetService:
         dataset_name: str,
         batch_size: int,
     ) -> Iterator[int]:
-        for batch in self.dataset_serializer.iterate_dataset_batches(dataset_name, batch_size):
+        for batch in self.dataset_serializer.iterate_dataset_batches(
+            dataset_name, batch_size
+        ):
             for text in batch:
                 yield len(text)
 
@@ -740,7 +758,9 @@ class DatasetService:
         remove_invalid: bool,
     ) -> Iterator[str]:
         for value in dataframe[text_column]:
-            if remove_invalid and (value is None or not isinstance(value, str) or not value.strip()):
+            if remove_invalid and (
+                value is None or not isinstance(value, str) or not value.strip()
+            ):
                 continue
             yield str(value)
 
@@ -751,7 +771,9 @@ class DatasetService:
         text_column: str,
         remove_invalid: bool,
     ) -> Iterator[int]:
-        for text in self._iterate_dataframe_texts(dataframe, text_column, remove_invalid):
+        for text in self._iterate_dataframe_texts(
+            dataframe, text_column, remove_invalid
+        ):
             yield len(text)
 
     # -------------------------------------------------------------------------
@@ -788,7 +810,11 @@ class DatasetService:
         stats = LengthStatistics()
         processed_count = 0
         update_every = max(1, self.log_interval)
-        safe_total = estimated_total if isinstance(estimated_total, int) and estimated_total > 0 else None
+        safe_total = (
+            estimated_total
+            if isinstance(estimated_total, int) and estimated_total > 0
+            else None
+        )
 
         for length in stream_factory():
             stats.update(length)
@@ -854,7 +880,9 @@ class DatasetService:
         return ranked[: self.WORD_LIST_LIMIT]
 
     # -------------------------------------------------------------------------
-    def build_word_cloud_terms(self, word_counter: Counter[str]) -> list[dict[str, Any]]:
+    def build_word_cloud_terms(
+        self, word_counter: Counter[str]
+    ) -> list[dict[str, Any]]:
         ranked = sorted(
             (
                 (word, int(count))
@@ -912,9 +940,9 @@ class DatasetService:
                     logger.info("Saved %d documents so far...", saved_count)
                     last_logged = saved_count
                 if progress_callback:
-                    progress_value = progress_base + (
-                        saved_count / total_documents
-                    ) * progress_span
+                    progress_value = (
+                        progress_base + (saved_count / total_documents) * progress_span
+                    )
                     progress_callback(progress_value)
                 batch.clear()
 
@@ -923,9 +951,9 @@ class DatasetService:
             database.insert_dataframe(df, DatasetDocument.__tablename__)
             saved_count += len(batch)
             if progress_callback:
-                progress_value = progress_base + (
-                    saved_count / total_documents
-                ) * progress_span
+                progress_value = (
+                    progress_base + (saved_count / total_documents) * progress_span
+                )
                 progress_callback(progress_value)
 
         logger.info("Completed saving %d documents to database", saved_count)
@@ -1086,7 +1114,9 @@ class DatasetService:
         dataset_name = f"custom/{safe_stem}"
         extension = os.path.splitext(normalized_name)[1].lower()
 
-        logger.info("Processing uploaded file: %s (type: %s)", normalized_name, extension)
+        logger.info(
+            "Processing uploaded file: %s (type: %s)", normalized_name, extension
+        )
         if self.is_dataset_in_database(dataset_name):
             logger.info(
                 "Dataset %s already present in database. Reusing persisted texts.",
@@ -1106,7 +1136,9 @@ class DatasetService:
             elif extension in (".xlsx", ".xls"):
                 df = pd.read_excel(file_buffer)
             else:
-                raise ValueError(f"Unsupported file type: {extension}. Use .csv, .xlsx, or .xls")
+                raise ValueError(
+                    f"Unsupported file type: {extension}. Use .csv, .xlsx, or .xls"
+                )
         except Exception as exc:
             logger.exception("Failed to read uploaded file %s", filename)
             raise ValueError(f"Failed to read file: {exc}") from exc
@@ -1158,9 +1190,9 @@ class DatasetService:
                     logger.info("Saved %d documents so far...", saved_count)
                     last_logged = saved_count
                 if progress_callback:
-                    progress_value = 15.0 + (
-                        saved_count / max(stats.document_count, 1)
-                    ) * 85.0
+                    progress_value = (
+                        15.0 + (saved_count / max(stats.document_count, 1)) * 85.0
+                    )
                     progress_callback(progress_value)
                 batch.clear()
 
@@ -1169,9 +1201,9 @@ class DatasetService:
             database.insert_dataframe(batch_df, DatasetDocument.__tablename__)
             saved_count += len(batch)
             if progress_callback:
-                progress_value = 15.0 + (
-                    saved_count / max(stats.document_count, 1)
-                ) * 85.0
+                progress_value = (
+                    15.0 + (saved_count / max(stats.document_count, 1)) * 85.0
+                )
                 progress_callback(progress_value)
 
         if cancelled and saved_count < stats.document_count:
@@ -1243,7 +1275,9 @@ class DatasetService:
     ) -> dict[str, Any]:
         sampling_config = sampling if isinstance(sampling, dict) else {}
         filter_config = filters if isinstance(filters, dict) else {}
-        parameter_overrides = metric_parameters if isinstance(metric_parameters, dict) else {}
+        parameter_overrides = (
+            metric_parameters if isinstance(metric_parameters, dict) else {}
+        )
         has_custom_request = bool(
             session_name
             or selected_metric_keys
@@ -1252,7 +1286,9 @@ class DatasetService:
             or parameter_overrides
         )
 
-        cached_report = self.dataset_serializer.load_latest_analysis_report(dataset_name)
+        cached_report = self.dataset_serializer.load_latest_analysis_report(
+            dataset_name
+        )
         if use_cached and not has_custom_request and cached_report is not None:
             if progress_callback:
                 progress_callback(100.0)
@@ -1295,7 +1331,8 @@ class DatasetService:
         sample_count = sampling_config.get("count")
         normalized_fraction = (
             float(sample_fraction)
-            if isinstance(sample_fraction, (int, float)) and 0 < float(sample_fraction) < 1
+            if isinstance(sample_fraction, (int, float))
+            and 0 < float(sample_fraction) < 1
             else None
         )
         normalized_count = (
@@ -1311,7 +1348,9 @@ class DatasetService:
         if normalized_count is not None:
             expected_total = min(expected_total, normalized_count)
         if normalized_fraction is not None:
-            expected_total = max(1, int(math.ceil(expected_total * normalized_fraction)))
+            expected_total = max(
+                1, int(math.ceil(expected_total * normalized_fraction))
+            )
 
         analyzed = 0
         persisted = 0
@@ -1323,7 +1362,9 @@ class DatasetService:
             exclude_empty=exclude_empty,
         ):
             if self.stop_requested(should_stop):
-                self.dataset_serializer.complete_analysis_session(session_id, status="cancelled")
+                self.dataset_serializer.complete_analysis_session(
+                    session_id, status="cancelled"
+                )
                 return {}
 
             for row in batch:
@@ -1343,12 +1384,16 @@ class DatasetService:
                 if normalized_count is not None and analyzed >= normalized_count:
                     break
                 if len(per_doc_buffer) >= self.streaming_batch_size:
-                    self.dataset_serializer.save_metric_values_batch(session_id, per_doc_buffer)
+                    self.dataset_serializer.save_metric_values_batch(
+                        session_id, per_doc_buffer
+                    )
                     persisted += len(per_doc_buffer)
                     per_doc_buffer.clear()
 
             if per_doc_buffer and len(per_doc_buffer) >= self.streaming_batch_size:
-                self.dataset_serializer.save_metric_values_batch(session_id, per_doc_buffer)
+                self.dataset_serializer.save_metric_values_batch(
+                    session_id, per_doc_buffer
+                )
                 persisted += len(per_doc_buffer)
                 per_doc_buffer.clear()
 
@@ -1378,7 +1423,9 @@ class DatasetService:
             metric_key="hist.word_length",
             histogram=finalized.get("word_histogram", {}),
         )
-        self.dataset_serializer.complete_analysis_session(session_id, status="completed")
+        self.dataset_serializer.complete_analysis_session(
+            session_id, status="completed"
+        )
 
         report = self.dataset_serializer.load_analysis_report_by_session_id(session_id)
         if report is None:
@@ -1418,8 +1465,12 @@ class DatasetService:
             "total_documents": int(aggregate.get("corpus.document_count", 0) or 0),
             "mean_words_count": float(aggregate.get("doc.length_mean", 0.0) or 0.0),
             "median_words_count": float(aggregate.get("doc.length_p50", 0.0) or 0.0),
-            "mean_avg_word_length": float(aggregate.get("words.length_mean", 0.0) or 0.0),
-            "mean_std_word_length": float(aggregate.get("words.length_std", 0.0) or 0.0),
+            "mean_avg_word_length": float(
+                aggregate.get("words.length_mean", 0.0) or 0.0
+            ),
+            "mean_std_word_length": float(
+                aggregate.get("words.length_std", 0.0) or 0.0
+            ),
         }
 
     # -------------------------------------------------------------------------
@@ -1431,5 +1482,3 @@ class DatasetService:
     # -------------------------------------------------------------------------
     def remove_dataset(self, dataset_name: str) -> None:
         self.dataset_serializer.delete_dataset(dataset_name)
-
-

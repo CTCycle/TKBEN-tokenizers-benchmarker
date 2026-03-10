@@ -19,9 +19,13 @@ class DatasetPayload(BaseModel):
 
 ###############################################################################
 class HistogramData(BaseModel):
-    bins: list[str] = Field(default_factory=list, description="Bin labels for histogram")
+    bins: list[str] = Field(
+        default_factory=list, description="Bin labels for histogram"
+    )
     counts: list[int] = Field(default_factory=list, description="Count per bin")
-    bin_edges: list[float] = Field(default_factory=list, description="Numeric bin edges")
+    bin_edges: list[float] = Field(
+        default_factory=list, description="Numeric bin edges"
+    )
     min_length: int = Field(default=0, description="Minimum document length")
     max_length: int = Field(default=0, description="Maximum document length")
     mean_length: float = Field(default=0.0, description="Mean document length")
@@ -49,7 +53,8 @@ class DatasetDownloadConfigs(BaseModel):
 class DatasetDownloadRequest(BaseModel):
     corpus: str = Field(..., description="HuggingFace dataset corpus identifier")
     configs: DatasetDownloadConfigs = Field(
-        ..., description="Dataset download options. Use configs.configuration when needed."
+        ...,
+        description="Dataset download options. Use configs.configuration when needed.",
     )
 
     # -------------------------------------------------------------------------
@@ -93,7 +98,9 @@ class DatasetAnalysisRequest(BaseModel):
     """Request schema for dataset analysis."""
 
     dataset_name: str = Field(..., description="Name of dataset to analyze")
-    session_name: str | None = Field(default=None, description="Optional analysis session label")
+    session_name: str | None = Field(
+        default=None, description="Optional analysis session label"
+    )
     selected_metric_keys: list[str] | None = Field(
         default=None,
         description="Optional explicit metric keys selected in the validation wizard",
@@ -189,10 +196,18 @@ class DatasetStatisticsSummary(BaseModel):
     """Summary of word-level statistics from dataset analysis."""
 
     total_documents: int = Field(default=0, description="Number of analyzed documents")
-    mean_words_count: float = Field(default=0.0, description="Mean word count per document")
-    median_words_count: float = Field(default=0.0, description="Median word count per document")
-    mean_avg_word_length: float = Field(default=0.0, description="Mean average word length")
-    mean_std_word_length: float = Field(default=0.0, description="Mean std deviation of word length")
+    mean_words_count: float = Field(
+        default=0.0, description="Mean word count per document"
+    )
+    median_words_count: float = Field(
+        default=0.0, description="Median word count per document"
+    )
+    mean_avg_word_length: float = Field(
+        default=0.0, description="Mean average word length"
+    )
+    mean_std_word_length: float = Field(
+        default=0.0, description="Mean std deviation of word length"
+    )
 
 
 ###############################################################################
@@ -200,13 +215,17 @@ class DatasetAnalysisResponse(BaseModel):
     """Response schema for dataset analysis endpoint."""
 
     status: str = Field(default="success")
-    report_id: int | None = Field(default=None, description="Persisted report identifier")
+    report_id: int | None = Field(
+        default=None, description="Persisted report identifier"
+    )
     report_version: int = Field(default=1, description="Report payload version")
     created_at: str | None = Field(
         default=None, description="UTC ISO timestamp for report creation"
     )
     dataset_name: str = Field(..., description="Name of analyzed dataset")
-    session_name: str | None = Field(default=None, description="Optional analysis session name")
+    session_name: str | None = Field(
+        default=None, description="Optional analysis session name"
+    )
     selected_metric_keys: list[str] = Field(
         default_factory=list,
         description="Metric keys enabled for this session.",
@@ -258,7 +277,9 @@ class DatasetMetricCatalogMetric(BaseModel):
     label: str = Field(..., description="UI label")
     description: str = Field(default="", description="Metric description")
     scope: str = Field(default="aggregate", description="aggregate or per_document")
-    value_kind: str = Field(default="number", description="number, text, json, histogram")
+    value_kind: str = Field(
+        default="number", description="number, text, json, histogram"
+    )
     core: bool = Field(default=False, description="High-signal core metric")
 
 
@@ -287,5 +308,3 @@ class DatasetListResponse(BaseModel):
     datasets: list[DatasetPreview] = Field(
         default_factory=list, description="List of dataset names in the database"
     )
-
-

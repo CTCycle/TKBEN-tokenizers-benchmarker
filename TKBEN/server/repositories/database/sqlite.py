@@ -74,7 +74,9 @@ class SQLiteRepository:
             inspector = inspect(conn)
             if not inspector.has_table(table_name):
                 return
-            existing_cols = {column["name"] for column in inspector.get_columns(table_name)}
+            existing_cols = {
+                column["name"] for column in inspector.get_columns(table_name)
+            }
             if existing_cols == expected_cols:
                 return
             raise RuntimeError(
@@ -135,6 +137,7 @@ class SQLiteRepository:
             query = sqlalchemy.text(f'SELECT * FROM "{safe_name}"')
             data = pd.read_sql_query(query, conn)
         return data
+
     # -------------------------------------------------------------------------
     def upsert_into_database(self, df: pd.DataFrame, table_name: str) -> None:
         table_cls = self.get_table_class(table_name)
@@ -190,6 +193,3 @@ class SQLiteRepository:
                 sqlalchemy.text(f'SELECT DISTINCT "{safe_column}" FROM "{safe_name}"')
             )
             return [row[0] for row in result.fetchall() if row[0] is not None]
-
-
-

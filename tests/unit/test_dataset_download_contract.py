@@ -43,7 +43,9 @@ def test_datasets_dill_dump_works_without_compatibility_patch() -> None:
     assert payload
 
 
-def test_upload_existing_dataset_is_non_destructive(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_upload_existing_dataset_is_non_destructive(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     service = DatasetService()
     expected_payload = {
         "dataset_name": "custom/sample",
@@ -70,7 +72,9 @@ def test_upload_existing_dataset_is_non_destructive(monkeypatch: pytest.MonkeyPa
         lambda dataset_name: delete_calls.append(dataset_name),
     )
 
-    result = service.upload_and_persist(file_content=b"text\nhello", filename="sample.csv")
+    result = service.upload_and_persist(
+        file_content=b"text\nhello", filename="sample.csv"
+    )
 
     assert result == expected_payload
     assert delete_calls == []
@@ -182,7 +186,9 @@ def test_download_and_persist_keeps_wikitext_working(
         captured["token"] = token
         return object()
 
-    monkeypatch.setattr("TKBEN.server.services.datasets.load_dataset", fake_load_dataset)
+    monkeypatch.setattr(
+        "TKBEN.server.services.datasets.load_dataset", fake_load_dataset
+    )
 
     result = service.download_and_persist(
         corpus="wikitext",
@@ -215,7 +221,9 @@ def test_download_and_persist_maps_c4_friendly_name(
         captured["token"] = token
         return object()
 
-    monkeypatch.setattr("TKBEN.server.services.datasets.load_dataset", fake_load_dataset)
+    monkeypatch.setattr(
+        "TKBEN.server.services.datasets.load_dataset", fake_load_dataset
+    )
 
     result = service.download_and_persist(
         corpus="c4",
@@ -246,7 +254,9 @@ def test_download_and_persist_maps_arxiv_to_canonical_hf_repo(
         captured["config"] = config
         return object()
 
-    monkeypatch.setattr("TKBEN.server.services.datasets.load_dataset", fake_load_dataset)
+    monkeypatch.setattr(
+        "TKBEN.server.services.datasets.load_dataset", fake_load_dataset
+    )
 
     result = service.download_and_persist(
         corpus="arxiv",
@@ -269,7 +279,9 @@ def test_download_and_persist_success_triggers_source_cleanup(
     monkeypatch.setattr(
         service,
         "maybe_cleanup_downloaded_source",
-        lambda cache_path, dataset_name: cleanup_calls.append((cache_path, dataset_name)),
+        lambda cache_path, dataset_name: cleanup_calls.append(
+            (cache_path, dataset_name)
+        ),
     )
 
     def fake_load_dataset(
@@ -281,7 +293,9 @@ def test_download_and_persist_success_triggers_source_cleanup(
     ):
         return object()
 
-    monkeypatch.setattr("TKBEN.server.services.datasets.load_dataset", fake_load_dataset)
+    monkeypatch.setattr(
+        "TKBEN.server.services.datasets.load_dataset", fake_load_dataset
+    )
 
     result = service.download_and_persist(
         corpus="wikitext",
@@ -321,7 +335,9 @@ def test_download_and_persist_failed_import_does_not_cleanup_sources(
     monkeypatch.setattr(
         service,
         "maybe_cleanup_downloaded_source",
-        lambda cache_path, dataset_name: cleanup_calls.append((cache_path, dataset_name)),
+        lambda cache_path, dataset_name: cleanup_calls.append(
+            (cache_path, dataset_name)
+        ),
     )
 
     def fake_load_dataset(
@@ -333,7 +349,9 @@ def test_download_and_persist_failed_import_does_not_cleanup_sources(
     ):
         return object()
 
-    monkeypatch.setattr("TKBEN.server.services.datasets.load_dataset", fake_load_dataset)
+    monkeypatch.setattr(
+        "TKBEN.server.services.datasets.load_dataset", fake_load_dataset
+    )
 
     with pytest.raises(RuntimeError, match="persist failed"):
         service.download_and_persist(
@@ -374,7 +392,9 @@ def test_download_and_persist_uses_database_for_existence_not_filesystem(
     ):
         return object()
 
-    monkeypatch.setattr("TKBEN.server.services.datasets.load_dataset", fake_load_dataset)
+    monkeypatch.setattr(
+        "TKBEN.server.services.datasets.load_dataset", fake_load_dataset
+    )
 
     result = service.download_and_persist(
         corpus="wikitext",
@@ -400,7 +420,9 @@ def test_download_and_persist_classifies_invalid_dataset_or_config(
     monkeypatch.setattr("TKBEN.server.services.datasets.load_dataset", raise_not_found)
 
     with pytest.raises(RuntimeError) as exc_info:
-        service.download_and_persist(corpus="unknown_dataset_name", config=None, job_id="job00001")
+        service.download_and_persist(
+            corpus="unknown_dataset_name", config=None, job_id="job00001"
+        )
 
     message = str(exc_info.value)
     assert "invalid dataset id or configuration" in message
@@ -419,10 +441,14 @@ def test_download_and_persist_classifies_unsupported_dataset_script(
     def raise_script_error(*args, **kwargs):
         raise RuntimeError("Dataset scripts are no longer supported, but found pile.py")
 
-    monkeypatch.setattr("TKBEN.server.services.datasets.load_dataset", raise_script_error)
+    monkeypatch.setattr(
+        "TKBEN.server.services.datasets.load_dataset", raise_script_error
+    )
 
     with pytest.raises(RuntimeError) as exc_info:
-        service.download_and_persist(corpus="EleutherAI/pile", config="all", job_id="job00004")
+        service.download_and_persist(
+            corpus="EleutherAI/pile", config="all", job_id="job00004"
+        )
 
     message = str(exc_info.value)
     assert "requires a legacy dataset script" in message
@@ -475,7 +501,9 @@ def test_load_dataset_with_progress_reports_stage_progress(
     ):
         return object()
 
-    monkeypatch.setattr("TKBEN.server.services.datasets.load_dataset", fake_load_dataset)
+    monkeypatch.setattr(
+        "TKBEN.server.services.datasets.load_dataset", fake_load_dataset
+    )
 
     service.load_dataset_with_progress(
         hf_dataset_id="wikitext",
@@ -505,7 +533,9 @@ def test_download_and_persist_classifies_network_errors(
     monkeypatch.setattr("TKBEN.server.services.datasets.load_dataset", raise_network)
 
     with pytest.raises(RuntimeError) as exc_info:
-        service.download_and_persist(corpus="wikitext", config="wikitext-2-v1", job_id="job00003")
+        service.download_and_persist(
+            corpus="wikitext", config="wikitext-2-v1", job_id="job00003"
+        )
 
     message = str(exc_info.value)
     assert "network/transient error" in message

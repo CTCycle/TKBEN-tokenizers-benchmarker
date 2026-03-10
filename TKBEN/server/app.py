@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import os
 import warnings
+
 warnings.filterwarnings("ignore", category=FutureWarning)
-warnings.filterwarnings("ignore", category=SyntaxWarning, module=r"multiprocess\.connection")
+warnings.filterwarnings(
+    "ignore", category=SyntaxWarning, module=r"multiprocess\.connection"
+)
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, RedirectResponse

@@ -2,6 +2,7 @@
 Pytest configuration for TKBEN E2E tests.
 Provides fixtures for Playwright page objects and API client.
 """
+
 import os
 import time
 from typing import Any
@@ -24,7 +25,9 @@ def _normalize_host(host: str) -> str:
     return host
 
 
-def _build_base_url(host_env: str, port_env: str, default_host: str, default_port: str) -> str:
+def _build_base_url(
+    host_env: str, port_env: str, default_host: str, default_port: str
+) -> str:
     host = _normalize_host(_read_env(host_env, default_host) or default_host)
     port = _read_env(port_env, default_port) or default_port
     return f"http://{host}:{port}"
@@ -82,13 +85,17 @@ def wait_for_job_completion(
         if status in {"completed", "failed", "cancelled"}:
             return payload
         if time.time() >= deadline:
-            raise AssertionError(f"Job {job_id} timed out after {timeout_seconds} seconds")
+            raise AssertionError(
+                f"Job {job_id} timed out after {timeout_seconds} seconds"
+            )
         time.sleep(max(poll_interval, 0.1))
 
 
 @pytest.fixture(scope="session")
 def job_waiter(api_context: APIRequestContext):
-    def _wait(job_id: str, poll_interval: float = 1.0, timeout_seconds: float = 300.0) -> dict[str, Any]:
+    def _wait(
+        job_id: str, poll_interval: float = 1.0, timeout_seconds: float = 300.0
+    ) -> dict[str, Any]:
         return wait_for_job_completion(
             api_context=api_context,
             job_id=job_id,

@@ -122,7 +122,7 @@ class TokenizersService:
     def insert_tokenizer_if_missing(self, tokenizer_id: str) -> None:
         query = sqlalchemy.text(
             'INSERT INTO "tokenizer" ("name") '
-            'VALUES (:name) '
+            "VALUES (:name) "
             'ON CONFLICT ("name") DO NOTHING'
         )
         with database.backend.engine.begin() as conn:
@@ -130,9 +130,7 @@ class TokenizersService:
 
     # -------------------------------------------------------------------------
     def list_downloaded_tokenizers(self) -> list[str]:
-        query = sqlalchemy.text(
-            'SELECT "name" FROM "tokenizer" ORDER BY "name" ASC'
-        )
+        query = sqlalchemy.text('SELECT "name" FROM "tokenizer" ORDER BY "name" ASC')
         with database.backend.engine.connect() as conn:
             rows = conn.execute(query).fetchall()
         names: list[str] = []
@@ -276,7 +274,11 @@ class TokenizersService:
             "model_summary",
         )
         payload = card_data
-        if payload is not None and hasattr(payload, "to_dict") and callable(payload.to_dict):
+        if (
+            payload is not None
+            and hasattr(payload, "to_dict")
+            and callable(payload.to_dict)
+        ):
             try:
                 payload = payload.to_dict()
             except Exception:
@@ -390,7 +392,9 @@ class TokenizersService:
                 return payload
             return {}
         except Exception:
-            logger.debug("Failed to parse tokenizer metadata file: %s", path, exc_info=True)
+            logger.debug(
+                "Failed to parse tokenizer metadata file: %s", path, exc_info=True
+            )
             return {}
 
     # -------------------------------------------------------------------------
@@ -409,7 +413,10 @@ class TokenizersService:
         backend_tokenizer = getattr(tokenizer, "backend_tokenizer", None)
         backend_model = getattr(backend_tokenizer, "model", None)
         backend_class_name = getattr(backend_model, "__class__", type(None)).__name__
-        if isinstance(backend_class_name, str) and backend_class_name not in {"", "NoneType"}:
+        if isinstance(backend_class_name, str) and backend_class_name not in {
+            "",
+            "NoneType",
+        }:
             return backend_class_name
 
         tokenizer_class = tokenizer_config.get("tokenizer_class")
@@ -439,7 +446,9 @@ class TokenizersService:
 
         all_special_tokens = getattr(tokenizer, "all_special_tokens", [])
         if isinstance(all_special_tokens, (list, tuple, set)):
-            normalized.extend(str(item) for item in all_special_tokens if item is not None)
+            normalized.extend(
+                str(item) for item in all_special_tokens if item is not None
+            )
 
         return sorted({token for token in normalized if token})
 
@@ -495,7 +504,9 @@ class TokenizersService:
         tokenizer: Any,
         init_kwargs: dict[str, Any],
     ) -> int | None:
-        value = self.normalize_model_max_length(getattr(tokenizer, "model_max_length", None))
+        value = self.normalize_model_max_length(
+            getattr(tokenizer, "model_max_length", None)
+        )
         if value is not None:
             return value
         return self.normalize_model_max_length(init_kwargs.get("model_max_length"))
@@ -555,13 +566,19 @@ class TokenizersService:
         total = len(sorted_lengths)
         midpoint = total // 2
         if total % 2 == 0:
-            median_length = (sorted_lengths[midpoint - 1] + sorted_lengths[midpoint]) / 2.0
+            median_length = (
+                sorted_lengths[midpoint - 1] + sorted_lengths[midpoint]
+            ) / 2.0
         else:
             median_length = float(sorted_lengths[midpoint])
 
         special_lookup = {token for token in special_tokens if token}
-        special_in_vocab_count = sum(1 for token in vocab_tokens if token in special_lookup)
-        special_in_vocab_percentage = (float(special_in_vocab_count) / float(total)) * 100.0
+        special_in_vocab_count = sum(
+            1 for token in vocab_tokens if token in special_lookup
+        )
+        special_in_vocab_percentage = (
+            float(special_in_vocab_count) / float(total)
+        ) * 100.0
 
         considered_non_special_count = 0
         subword_like_count = 0
@@ -569,7 +586,9 @@ class TokenizersService:
             normalized = str(token).strip()
             if not normalized:
                 continue
-            if normalized in special_lookup or self.special_token_pattern.match(normalized):
+            if normalized in special_lookup or self.special_token_pattern.match(
+                normalized
+            ):
                 continue
             considered_non_special_count += 1
             if self.is_subword_like_token(normalized):
@@ -592,7 +611,9 @@ class TokenizersService:
             "special_tokens_in_vocab_count": int(special_in_vocab_count),
             "special_tokens_in_vocab_percentage": float(special_in_vocab_percentage),
             "unique_token_lengths": int(len(set(sorted_lengths))),
-            "empty_token_count": int(sum(1 for token in vocab_tokens if len(token) == 0)),
+            "empty_token_count": int(
+                sum(1 for token in vocab_tokens if len(token) == 0)
+            ),
             "considered_non_special_count": int(considered_non_special_count),
         }
 
@@ -680,11 +701,7 @@ class TokenizersService:
             if considered_count > 0
             else 0.0
         )
-        ratio = (
-            float(subword_count) / float(word_count)
-            if word_count > 0
-            else None
-        )
+        ratio = float(subword_count) / float(word_count) if word_count > 0 else None
 
         return {
             "heuristic": "hash_prefix_atat_suffix_sentencepiece_markers",
@@ -755,7 +772,9 @@ class TokenizersService:
         total = len(sorted_lengths)
         midpoint = total // 2
         if total % 2 == 0:
-            median_length = (sorted_lengths[midpoint - 1] + sorted_lengths[midpoint]) / 2.0
+            median_length = (
+                sorted_lengths[midpoint - 1] + sorted_lengths[midpoint]
+            ) / 2.0
         else:
             median_length = float(sorted_lengths[midpoint])
 
@@ -821,7 +840,9 @@ class TokenizersService:
             progress_callback(20.0)
 
         tokenizer_json_path = self.find_cached_file(cache_dir, ("tokenizer.json",))
-        tokenizer_config_path = self.find_cached_file(cache_dir, ("tokenizer_config.json",))
+        tokenizer_config_path = self.find_cached_file(
+            cache_dir, ("tokenizer_config.json",)
+        )
         model_config_path = self.find_cached_file(cache_dir, ("config.json",))
 
         tokenizer_json = self.load_json_if_present(tokenizer_json_path)
@@ -867,15 +888,22 @@ class TokenizersService:
             tokenizer_json=tokenizer_json,
             tokenizer_config=tokenizer_config,
         )
-        normalization_hint = self.resolve_normalization_hint(tokenizer_json, tokenizer_config)
+        normalization_hint = self.resolve_normalization_hint(
+            tokenizer_json, tokenizer_config
+        )
         casing_hint = self.resolve_casing_hint(tokenizer, tokenizer_config)
         model_max_length = self.resolve_model_max_length(tokenizer, init_kwargs)
         padding_side = self.resolve_padding_side(tokenizer, init_kwargs)
         base_vocabulary_size = self.resolve_base_vocabulary_size(tokenizer)
         added_tokens_count = self.resolve_added_tokens_count(tokenizer)
         backend_tokenizer = getattr(tokenizer, "backend_tokenizer", None)
-        backend_tokenizer_class = getattr(backend_tokenizer, "__class__", type(None)).__name__
-        if not isinstance(backend_tokenizer_class, str) or backend_tokenizer_class in {"", "NoneType"}:
+        backend_tokenizer_class = getattr(
+            backend_tokenizer, "__class__", type(None)
+        ).__name__
+        if not isinstance(backend_tokenizer_class, str) or backend_tokenizer_class in {
+            "",
+            "NoneType",
+        }:
             backend_tokenizer_class = None
         config_description = self.resolve_description(tokenizer_config, model_config)
         hf_description, huggingface_url = self.resolve_hf_repo_metadata(name)

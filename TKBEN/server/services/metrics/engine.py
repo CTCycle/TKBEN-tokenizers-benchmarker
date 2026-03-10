@@ -19,10 +19,49 @@ SENTENCE_SPLIT_PATTERN = re.compile(r"[.!?]+")
 WORD_PATTERN = re.compile(r"\b\w+\b", flags=re.UNICODE)
 
 STOPWORDS: dict[str, set[str]] = {
-    "en": {"the", "and", "of", "to", "a", "in", "is", "that", "for", "on", "it", "with"},
+    "en": {
+        "the",
+        "and",
+        "of",
+        "to",
+        "a",
+        "in",
+        "is",
+        "that",
+        "for",
+        "on",
+        "it",
+        "with",
+    },
     "es": {"el", "la", "de", "que", "y", "en", "a", "los", "se", "del", "las", "por"},
-    "fr": {"le", "de", "un", "et", "la", "les", "des", "en", "du", "est", "pour", "que"},
-    "de": {"der", "die", "und", "in", "den", "von", "zu", "das", "mit", "sich", "des", "auf"},
+    "fr": {
+        "le",
+        "de",
+        "un",
+        "et",
+        "la",
+        "les",
+        "des",
+        "en",
+        "du",
+        "est",
+        "pour",
+        "que",
+    },
+    "de": {
+        "der",
+        "die",
+        "und",
+        "in",
+        "den",
+        "von",
+        "zu",
+        "das",
+        "mit",
+        "sich",
+        "des",
+        "auf",
+    },
     "it": {"di", "e", "il", "la", "che", "a", "per", "in", "un", "del", "le", "si"},
 }
 
@@ -69,8 +108,8 @@ class RunningMoments:
         var = self.variance()
         if var <= 0.0:
             return 0.0
-        m3 = (self.sum_cubed / float(self.count)) - (3 * mu * var) - (mu ** 3)
-        return m3 / (var ** 1.5)
+        m3 = (self.sum_cubed / float(self.count)) - (3 * mu * var) - (mu**3)
+        return m3 / (var**1.5)
 
     # -------------------------------------------------------------------------
     def kurtosis(self) -> float:
@@ -83,8 +122,8 @@ class RunningMoments:
         m4 = (
             (self.sum_fourth / float(self.count))
             - (4 * mu * (self.sum_cubed / float(self.count)))
-            + (6 * (mu ** 2) * (self.sum_squared / float(self.count)))
-            - (3 * (mu ** 4))
+            + (6 * (mu**2) * (self.sum_squared / float(self.count)))
+            - (3 * (mu**4))
         )
         return (m4 / (var * var)) - 3.0
 
@@ -224,7 +263,9 @@ class DatasetMetricsEngine:
     def _std_word_length(self, words: list[str], mean_word_length: float) -> float:
         if not words:
             return 0.0
-        variance = sum((len(word) - mean_word_length) ** 2 for word in words) / float(len(words))
+        variance = sum((len(word) - mean_word_length) ** 2 for word in words) / float(
+            len(words)
+        )
         return math.sqrt(max(0.0, variance))
 
     # -------------------------------------------------------------------------
@@ -253,7 +294,9 @@ class DatasetMetricsEngine:
                 self.word_length_counts[length] += 1
                 self.word_length_moments.update(float(length))
 
-        digest = hashlib.blake2b(content.encode("utf-8", errors="ignore"), digest_size=16).hexdigest()
+        digest = hashlib.blake2b(
+            content.encode("utf-8", errors="ignore"), digest_size=16
+        ).hexdigest()
         self.exact_hashes[digest] += 1
         is_exact_duplicate = self.exact_hashes[digest] > 1
         if is_exact_duplicate:
@@ -291,7 +334,9 @@ class DatasetMetricsEngine:
             self.total_sentence_words += sentence_words
             self.sentence_length_moments.update(float(sentence_words))
 
-        paragraph_count = len([segment for segment in re.split(r"\n\s*\n", content) if segment.strip()])
+        paragraph_count = len(
+            [segment for segment in re.split(r"\n\s*\n", content) if segment.strip()]
+        )
         self.total_paragraphs += paragraph_count
         self.total_line_breaks += content.count("\n")
 
@@ -308,14 +353,46 @@ class DatasetMetricsEngine:
         avg_word_length = self._mean_word_length(words)
         std_word_length = self._std_word_length(words, avg_word_length)
         return [
-            {"metric_key": "doc.length_chars", "document_id": document_id, "numeric_value": float(doc_length)},
-            {"metric_key": "doc.word_count", "document_id": document_id, "numeric_value": float(word_count)},
-            {"metric_key": "doc.avg_word_length", "document_id": document_id, "numeric_value": float(avg_word_length)},
-            {"metric_key": "doc.std_word_length", "document_id": document_id, "numeric_value": float(std_word_length)},
-            {"metric_key": "doc.compression_ratio", "document_id": document_id, "numeric_value": float(doc_compression_ratio)},
-            {"metric_key": "quality.is_exact_duplicate", "document_id": document_id, "numeric_value": 1.0 if is_exact_duplicate else 0.0},
-            {"metric_key": "quality.is_near_duplicate", "document_id": document_id, "numeric_value": 1.0 if is_near_duplicate else 0.0},
-            {"metric_key": "quality.language_tag", "document_id": document_id, "text_value": language_tag},
+            {
+                "metric_key": "doc.length_chars",
+                "document_id": document_id,
+                "numeric_value": float(doc_length),
+            },
+            {
+                "metric_key": "doc.word_count",
+                "document_id": document_id,
+                "numeric_value": float(word_count),
+            },
+            {
+                "metric_key": "doc.avg_word_length",
+                "document_id": document_id,
+                "numeric_value": float(avg_word_length),
+            },
+            {
+                "metric_key": "doc.std_word_length",
+                "document_id": document_id,
+                "numeric_value": float(std_word_length),
+            },
+            {
+                "metric_key": "doc.compression_ratio",
+                "document_id": document_id,
+                "numeric_value": float(doc_compression_ratio),
+            },
+            {
+                "metric_key": "quality.is_exact_duplicate",
+                "document_id": document_id,
+                "numeric_value": 1.0 if is_exact_duplicate else 0.0,
+            },
+            {
+                "metric_key": "quality.is_near_duplicate",
+                "document_id": document_id,
+                "numeric_value": 1.0 if is_near_duplicate else 0.0,
+            },
+            {
+                "metric_key": "quality.language_tag",
+                "document_id": document_id,
+                "text_value": language_tag,
+            },
         ]
 
     # -------------------------------------------------------------------------
@@ -386,7 +463,9 @@ class DatasetMetricsEngine:
             left = edges[index]
             right = edges[index + 1] - 1
             labels.append(f"{left}-{max(left, right)}")
-        mean_value = sum(value * count for value, count in counts.items()) / float(total)
+        mean_value = sum(value * count for value, count in counts.items()) / float(
+            total
+        )
         return {
             "bins": labels,
             "counts": histogram_counts,
@@ -463,7 +542,9 @@ class DatasetMetricsEngine:
         unique_words = self.word_frequency.unique_count()
         if total_words <= 0 or unique_words <= 0:
             return 0.0
-        bottom_k = max(1, int(math.ceil(unique_words * max(0.0, min(1.0, bottom_fraction)))))
+        bottom_k = max(
+            1, int(math.ceil(unique_words * max(0.0, min(1.0, bottom_fraction))))
+        )
         bottom_sum = self.word_frequency.sum_bottom_k(bottom_k)
         return bottom_sum / float(total_words)
 
@@ -486,12 +567,20 @@ class DatasetMetricsEngine:
         return hhi
 
     # -------------------------------------------------------------------------
-    def _common_word_payload(self, top_k: int = 10, least: bool = False) -> list[dict[str, Any]]:
-        items = self.word_frequency.bottom_k(top_k) if least else self.word_frequency.top_k(top_k)
+    def _common_word_payload(
+        self, top_k: int = 10, least: bool = False
+    ) -> list[dict[str, Any]]:
+        items = (
+            self.word_frequency.bottom_k(top_k)
+            if least
+            else self.word_frequency.top_k(top_k)
+        )
         return [{"word": token, "count": int(count)} for token, count in items]
 
     # -------------------------------------------------------------------------
-    def _word_items_for_length(self, ascending: bool, top_k: int = 15) -> list[dict[str, Any]]:
+    def _word_items_for_length(
+        self, ascending: bool, top_k: int = 15
+    ) -> list[dict[str, Any]]:
         target_k = max(1, int(top_k))
         rows = (
             self.word_frequency.shortest_k(target_k)
@@ -527,9 +616,7 @@ class DatasetMetricsEngine:
         vocabulary_size = self.word_frequency.unique_count()
         shannon_entropy = self._shannon_entropy()
         normalized_entropy = (
-            shannon_entropy / math.log2(vocabulary_size)
-            if vocabulary_size > 1
-            else 0.0
+            shannon_entropy / math.log2(vocabulary_size) if vocabulary_size > 1 else 0.0
         )
         zipf_slope, zipf_curve = self._zipf_slope_and_curve()
 
@@ -539,8 +626,12 @@ class DatasetMetricsEngine:
         dis_legomena_ratio = (
             dis_legomena / float(vocabulary_size) if vocabulary_size > 0 else 0.0
         )
-        rare_tail_mass = self._rare_tail_mass(float(self.parameters.get("rare_tail_percent", 0.10)))
-        topk_concentration = self._top_k_concentration(int(self.parameters.get("top_k_concentration", 20)))
+        rare_tail_mass = self._rare_tail_mass(
+            float(self.parameters.get("rare_tail_percent", 0.10))
+        )
+        topk_concentration = self._top_k_concentration(
+            int(self.parameters.get("top_k_concentration", 20))
+        )
         word_frequency_gini = self._word_frequency_gini()
         hhi = self._word_frequency_hhi()
 
@@ -557,7 +648,9 @@ class DatasetMetricsEngine:
 
         language_consistency = 0.0
         if self.document_count > 0 and self.language_tag_counts:
-            language_consistency = self.language_tag_counts.most_common(1)[0][1] / float(self.document_count)
+            language_consistency = self.language_tag_counts.most_common(1)[0][
+                1
+            ] / float(self.document_count)
 
         compression_ratio = (
             self.compressed_bytes / float(self.raw_bytes) if self.raw_bytes > 0 else 0.0
@@ -569,18 +662,26 @@ class DatasetMetricsEngine:
             total_words / float(vocabulary_size) if vocabulary_size > 0 else 0.0
         )
         bigram_repetition_rate = (
-            self.bigram_repeated / float(self.bigram_total) if self.bigram_total > 0 else 0.0
+            self.bigram_repeated / float(self.bigram_total)
+            if self.bigram_total > 0
+            else 0.0
         )
 
         sentence_length_variance = self.sentence_length_moments.variance()
         avg_sentence_count = (
-            self.total_sentences / float(self.document_count) if self.document_count > 0 else 0.0
+            self.total_sentences / float(self.document_count)
+            if self.document_count > 0
+            else 0.0
         )
         avg_sentence_length = (
-            self.total_sentence_words / float(self.total_sentences) if self.total_sentences > 0 else 0.0
+            self.total_sentence_words / float(self.total_sentences)
+            if self.total_sentences > 0
+            else 0.0
         )
 
-        doc_hist = self._build_histogram(self.document_length_counts, bins=histogram_bins)
+        doc_hist = self._build_histogram(
+            self.document_length_counts, bins=histogram_bins
+        )
         word_hist = self._build_histogram(self.word_length_counts, bins=histogram_bins)
 
         char_entropy = self._char_entropy()
@@ -603,16 +704,37 @@ class DatasetMetricsEngine:
         )
 
         metric_rows: list[dict[str, Any]] = [
-            {"metric_key": "corpus.document_count", "numeric_value": float(self.document_count)},
+            {
+                "metric_key": "corpus.document_count",
+                "numeric_value": float(self.document_count),
+            },
             {"metric_key": "corpus.total_chars", "numeric_value": float(total_chars)},
             {"metric_key": "corpus.total_words", "numeric_value": float(total_words)},
-            {"metric_key": "corpus.unique_words", "numeric_value": float(vocabulary_size)},
-            {"metric_key": "corpus.ttr", "numeric_value": (vocabulary_size / float(total_words)) if total_words > 0 else 0.0},
+            {
+                "metric_key": "corpus.unique_words",
+                "numeric_value": float(vocabulary_size),
+            },
+            {
+                "metric_key": "corpus.ttr",
+                "numeric_value": (vocabulary_size / float(total_words))
+                if total_words > 0
+                else 0.0,
+            },
             {"metric_key": "corpus.mattr", "numeric_value": self.mattr.value()},
             {"metric_key": "doc.length_mean", "numeric_value": doc_mean},
             {"metric_key": "doc.length_median", "numeric_value": p50},
-            {"metric_key": "doc.length_min", "numeric_value": float(min(self.document_length_counts.keys(), default=0))},
-            {"metric_key": "doc.length_max", "numeric_value": float(max(self.document_length_counts.keys(), default=0))},
+            {
+                "metric_key": "doc.length_min",
+                "numeric_value": float(
+                    min(self.document_length_counts.keys(), default=0)
+                ),
+            },
+            {
+                "metric_key": "doc.length_max",
+                "numeric_value": float(
+                    max(self.document_length_counts.keys(), default=0)
+                ),
+            },
             {"metric_key": "doc.length_cv", "numeric_value": doc_cv},
             {"metric_key": "doc.length_p10", "numeric_value": p10},
             {"metric_key": "doc.length_p25", "numeric_value": p25},
@@ -621,54 +743,178 @@ class DatasetMetricsEngine:
             {"metric_key": "doc.length_p90", "numeric_value": p90},
             {"metric_key": "doc.length_p95", "numeric_value": p95},
             {"metric_key": "doc.length_p99", "numeric_value": p99},
-            {"metric_key": "doc.length_skewness", "numeric_value": self.document_length_moments.skewness()},
-            {"metric_key": "doc.length_kurtosis", "numeric_value": self.document_length_moments.kurtosis()},
-            {"metric_key": "doc.length_gini", "numeric_value": self._weighted_gini(self.document_length_counts)},
+            {
+                "metric_key": "doc.length_skewness",
+                "numeric_value": self.document_length_moments.skewness(),
+            },
+            {
+                "metric_key": "doc.length_kurtosis",
+                "numeric_value": self.document_length_moments.kurtosis(),
+            },
+            {
+                "metric_key": "doc.length_gini",
+                "numeric_value": self._weighted_gini(self.document_length_counts),
+            },
             {"metric_key": "doc.length_iqr", "numeric_value": p75 - p25},
-            {"metric_key": "doc.length_mad", "numeric_value": self._median_absolute_deviation(self.document_length_counts)},
+            {
+                "metric_key": "doc.length_mad",
+                "numeric_value": self._median_absolute_deviation(
+                    self.document_length_counts
+                ),
+            },
             {"metric_key": "words.shannon_entropy", "numeric_value": shannon_entropy},
-            {"metric_key": "words.normalized_entropy", "numeric_value": normalized_entropy},
+            {
+                "metric_key": "words.normalized_entropy",
+                "numeric_value": normalized_entropy,
+            },
             {"metric_key": "words.zipf_slope", "numeric_value": zipf_slope},
             {"metric_key": "words.hapax_ratio", "numeric_value": hapax_ratio},
-            {"metric_key": "words.dis_legomena_ratio", "numeric_value": dis_legomena_ratio},
+            {
+                "metric_key": "words.dis_legomena_ratio",
+                "numeric_value": dis_legomena_ratio,
+            },
             {"metric_key": "words.rare_tail_mass", "numeric_value": rare_tail_mass},
-            {"metric_key": "words.topk_concentration", "numeric_value": topk_concentration},
-            {"metric_key": "words.frequency_gini", "numeric_value": word_frequency_gini},
+            {
+                "metric_key": "words.topk_concentration",
+                "numeric_value": topk_concentration,
+            },
+            {
+                "metric_key": "words.frequency_gini",
+                "numeric_value": word_frequency_gini,
+            },
             {"metric_key": "words.hhi", "numeric_value": hhi},
-            {"metric_key": "words.length_mean", "numeric_value": self.word_length_moments.mean()},
-            {"metric_key": "words.length_median", "numeric_value": self._percentile(self.word_length_counts, 50.0)},
-            {"metric_key": "words.length_std", "numeric_value": self.word_length_moments.std()},
+            {
+                "metric_key": "words.length_mean",
+                "numeric_value": self.word_length_moments.mean(),
+            },
+            {
+                "metric_key": "words.length_median",
+                "numeric_value": self._percentile(self.word_length_counts, 50.0),
+            },
+            {
+                "metric_key": "words.length_std",
+                "numeric_value": self.word_length_moments.std(),
+            },
             {"metric_key": "chars.entropy", "numeric_value": char_entropy},
             {"metric_key": "chars.whitespace_ratio", "numeric_value": whitespace_ratio},
-            {"metric_key": "chars.punctuation_ratio", "numeric_value": punctuation_ratio},
+            {
+                "metric_key": "chars.punctuation_ratio",
+                "numeric_value": punctuation_ratio,
+            },
             {"metric_key": "chars.digit_ratio", "numeric_value": digit_ratio},
             {"metric_key": "chars.uppercase_ratio", "numeric_value": uppercase_ratio},
             {"metric_key": "chars.non_ascii_ratio", "numeric_value": non_ascii_ratio},
             {"metric_key": "chars.control_ratio", "numeric_value": control_ratio},
             {"metric_key": "chars.other_ratio", "numeric_value": other_ratio},
-            {"metric_key": "quality.empty_rate", "numeric_value": (self.empty_documents / float(self.document_count)) if self.document_count > 0 else 0.0},
-            {"metric_key": "quality.near_empty_rate", "numeric_value": (self.near_empty_documents / float(self.document_count)) if self.document_count > 0 else 0.0},
-            {"metric_key": "quality.exact_duplicate_rate", "numeric_value": (self.exact_duplicate_documents / float(self.document_count)) if self.document_count > 0 else 0.0},
-            {"metric_key": "quality.duplicate_rate", "numeric_value": (self.exact_duplicate_documents / float(self.document_count)) if self.document_count > 0 else 0.0},
-            {"metric_key": "quality.near_duplicate_rate", "numeric_value": (self.near_duplicate_documents / float(self.document_count)) if self.document_count > 0 else 0.0},
-            {"metric_key": "quality.language_consistency", "numeric_value": language_consistency},
-            {"metric_key": "quality.avg_sentence_count", "numeric_value": avg_sentence_count},
-            {"metric_key": "quality.avg_sentence_length", "numeric_value": avg_sentence_length},
-            {"metric_key": "quality.sentence_length_variance", "numeric_value": sentence_length_variance},
-            {"metric_key": "structure.avg_paragraph_count", "numeric_value": (self.total_paragraphs / float(self.document_count)) if self.document_count > 0 else 0.0},
-            {"metric_key": "structure.line_break_density", "numeric_value": self.total_line_breaks / denominator_chars},
-            {"metric_key": "structure.html_tag_ratio", "numeric_value": self.total_html_tag_chars / denominator_chars},
-            {"metric_key": "structure.url_density", "numeric_value": self.total_urls / float(max(1, total_words))},
-            {"metric_key": "structure.email_density", "numeric_value": self.total_emails / float(max(1, total_words))},
+            {
+                "metric_key": "quality.empty_rate",
+                "numeric_value": (self.empty_documents / float(self.document_count))
+                if self.document_count > 0
+                else 0.0,
+            },
+            {
+                "metric_key": "quality.near_empty_rate",
+                "numeric_value": (
+                    self.near_empty_documents / float(self.document_count)
+                )
+                if self.document_count > 0
+                else 0.0,
+            },
+            {
+                "metric_key": "quality.exact_duplicate_rate",
+                "numeric_value": (
+                    self.exact_duplicate_documents / float(self.document_count)
+                )
+                if self.document_count > 0
+                else 0.0,
+            },
+            {
+                "metric_key": "quality.duplicate_rate",
+                "numeric_value": (
+                    self.exact_duplicate_documents / float(self.document_count)
+                )
+                if self.document_count > 0
+                else 0.0,
+            },
+            {
+                "metric_key": "quality.near_duplicate_rate",
+                "numeric_value": (
+                    self.near_duplicate_documents / float(self.document_count)
+                )
+                if self.document_count > 0
+                else 0.0,
+            },
+            {
+                "metric_key": "quality.language_consistency",
+                "numeric_value": language_consistency,
+            },
+            {
+                "metric_key": "quality.avg_sentence_count",
+                "numeric_value": avg_sentence_count,
+            },
+            {
+                "metric_key": "quality.avg_sentence_length",
+                "numeric_value": avg_sentence_length,
+            },
+            {
+                "metric_key": "quality.sentence_length_variance",
+                "numeric_value": sentence_length_variance,
+            },
+            {
+                "metric_key": "structure.avg_paragraph_count",
+                "numeric_value": (self.total_paragraphs / float(self.document_count))
+                if self.document_count > 0
+                else 0.0,
+            },
+            {
+                "metric_key": "structure.line_break_density",
+                "numeric_value": self.total_line_breaks / denominator_chars,
+            },
+            {
+                "metric_key": "structure.html_tag_ratio",
+                "numeric_value": self.total_html_tag_chars / denominator_chars,
+            },
+            {
+                "metric_key": "structure.url_density",
+                "numeric_value": self.total_urls / float(max(1, total_words)),
+            },
+            {
+                "metric_key": "structure.email_density",
+                "numeric_value": self.total_emails / float(max(1, total_words)),
+            },
             {"metric_key": "compression.ratio", "numeric_value": compression_ratio},
-            {"metric_key": "compression.chars_per_unique_word", "numeric_value": chars_per_unique_word},
-            {"metric_key": "compression.avg_repetition_factor", "numeric_value": avg_repetition_factor},
-            {"metric_key": "compression.bigram_repetition_rate", "numeric_value": bigram_repetition_rate},
-            {"metric_key": "words.most_common", "json_value": self._common_word_payload(10, least=False)},
-            {"metric_key": "words.least_common", "json_value": self._common_word_payload(10, least=True)},
-            {"metric_key": "words.longest", "json_value": self._word_items_for_length(ascending=False, top_k=15)},
-            {"metric_key": "words.shortest", "json_value": self._word_items_for_length(ascending=True, top_k=15)},
-            {"metric_key": "words.word_cloud", "json_value": self._word_cloud_payload(120)},
+            {
+                "metric_key": "compression.chars_per_unique_word",
+                "numeric_value": chars_per_unique_word,
+            },
+            {
+                "metric_key": "compression.avg_repetition_factor",
+                "numeric_value": avg_repetition_factor,
+            },
+            {
+                "metric_key": "compression.bigram_repetition_rate",
+                "numeric_value": bigram_repetition_rate,
+            },
+            {
+                "metric_key": "words.most_common",
+                "json_value": self._common_word_payload(10, least=False),
+            },
+            {
+                "metric_key": "words.least_common",
+                "json_value": self._common_word_payload(10, least=True),
+            },
+            {
+                "metric_key": "words.longest",
+                "json_value": self._word_items_for_length(ascending=False, top_k=15),
+            },
+            {
+                "metric_key": "words.shortest",
+                "json_value": self._word_items_for_length(ascending=True, top_k=15),
+            },
+            {
+                "metric_key": "words.word_cloud",
+                "json_value": self._word_cloud_payload(120),
+            },
             {"metric_key": "words.zipf_curve", "json_value": zipf_curve},
         ]
 

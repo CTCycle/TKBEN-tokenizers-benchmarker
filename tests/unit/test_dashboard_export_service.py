@@ -200,4 +200,3 @@ def test_export_dashboard_pdf_rejects_unsupported_dashboard_type() -> None:
             file_name="x",
             dashboard_payload={},
         )
-

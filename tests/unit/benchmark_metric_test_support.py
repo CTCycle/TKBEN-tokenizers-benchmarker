@@ -93,7 +93,9 @@ DATASET_BENCHMARK_METRIC_KEYS: set[str] = {
     "global.round_trip_fidelity_rate",
 }
 
-TOKENIZER_BENCHMARK_METRIC_KEYS: set[str] = BENCHMARK_METRIC_KEYS - DATASET_BENCHMARK_METRIC_KEYS
+TOKENIZER_BENCHMARK_METRIC_KEYS: set[str] = (
+    BENCHMARK_METRIC_KEYS - DATASET_BENCHMARK_METRIC_KEYS
+)
 
 
 class DummyTokenizer:
@@ -117,7 +119,9 @@ class DummyTokenizer:
 
     def decode(self, token_ids: Any) -> str:
         ids = token_ids.ids if hasattr(token_ids, "ids") else token_ids
-        return " ".join(self._id_to_token.get(int(token_id), "[UNK]") for token_id in ids)
+        return " ".join(
+            self._id_to_token.get(int(token_id), "[UNK]") for token_id in ids
+        )
 
     def convert_ids_to_tokens(self, token_ids: list[int]) -> list[str]:
         return [self._id_to_token.get(int(token_id), "[UNK]") for token_id in token_ids]
@@ -140,7 +144,9 @@ def run_deterministic_benchmark() -> dict[str, Any]:
 
     service.get_dataset_document_count = lambda dataset_name: len(rows)  # type: ignore[method-assign]
     service.stream_dataset_rows_from_database = lambda dataset_name: iter(rows)  # type: ignore[method-assign]
-    service.load_tokenizers = lambda tokenizer_ids: {"dummy/tokenizer": DummyTokenizer()}  # type: ignore[method-assign]
+    service.load_tokenizers = lambda tokenizer_ids: {
+        "dummy/tokenizer": DummyTokenizer()
+    }  # type: ignore[method-assign]
     service.persist_results = lambda **kwargs: None  # type: ignore[method-assign]
     service.calculate_morphological_consistency = (  # type: ignore[method-assign]
         lambda tokenizer, base_words: 0.5
@@ -186,7 +192,9 @@ def build_benchmark_metric_value_map(result: dict[str, Any]) -> dict[str, Any]:
         "global.word_recovery_rate": global_metrics["word_recovery_rate"],
         "global.character_coverage": global_metrics["character_coverage"],
         "global.determinism_rate": global_metrics["determinism_rate"],
-        "global.boundary_preservation_rate": global_metrics["boundary_preservation_rate"],
+        "global.boundary_preservation_rate": global_metrics[
+            "boundary_preservation_rate"
+        ],
         "global.round_trip_fidelity_rate": global_metrics["round_trip_fidelity_rate"],
         "vocabulary.vocabulary_size": vocabulary_stats["vocabulary_size"],
         "vocabulary.subwords_count": vocabulary_stats["subwords_count"],
@@ -198,10 +206,14 @@ def build_benchmark_metric_value_map(result: dict[str, Any]) -> dict[str, Any]:
         "speed.processing_time_seconds": speed_metrics["processing_time_seconds"],
         "internal.model_size_mb": global_metrics["model_size_mb"],
         "internal.segmentation_consistency": global_metrics["segmentation_consistency"],
-        "internal.token_distribution_entropy": global_metrics["token_distribution_entropy"],
+        "internal.token_distribution_entropy": global_metrics[
+            "token_distribution_entropy"
+        ],
         "internal.rare_token_tail_1": global_metrics["rare_token_tail_1"],
         "internal.rare_token_tail_2": global_metrics["rare_token_tail_2"],
-        "internal.compression_chars_per_token": global_metrics["compression_chars_per_token"],
+        "internal.compression_chars_per_token": global_metrics[
+            "compression_chars_per_token"
+        ],
         "internal.compression_bytes_per_character": global_metrics[
             "compression_bytes_per_character"
         ],
@@ -229,7 +241,9 @@ def build_benchmark_metric_value_map(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def assert_metric_value(actual: Any, expected: Any, metric_key: str, path: str = "") -> None:
+def assert_metric_value(
+    actual: Any, expected: Any, metric_key: str, path: str = ""
+) -> None:
     location = f"{metric_key}{path}"
     if isinstance(expected, float):
         assert isinstance(actual, (int, float)), (
@@ -241,11 +255,15 @@ def assert_metric_value(actual: Any, expected: Any, metric_key: str, path: str =
         return
 
     if isinstance(expected, int):
-        assert actual == expected, f"{location} mismatch: expected {expected}, got {actual}"
+        assert actual == expected, (
+            f"{location} mismatch: expected {expected}, got {actual}"
+        )
         return
 
     if isinstance(expected, str):
-        assert actual == expected, f"{location} mismatch: expected {expected!r}, got {actual!r}"
+        assert actual == expected, (
+            f"{location} mismatch: expected {expected!r}, got {actual!r}"
+        )
         return
 
     if isinstance(expected, list):

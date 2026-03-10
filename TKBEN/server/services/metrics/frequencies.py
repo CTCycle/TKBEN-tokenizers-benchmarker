@@ -66,7 +66,9 @@ class DiskBackedFrequencyStore:
         self.flush()
         cursor = self.conn.cursor()
         try:
-            row = cursor.execute("SELECT COALESCE(SUM(count), 0) FROM frequencies").fetchone()
+            row = cursor.execute(
+                "SELECT COALESCE(SUM(count), 0) FROM frequencies"
+            ).fetchone()
             return int(row[0] if row else 0)
         finally:
             cursor.close()
@@ -116,7 +118,9 @@ class DiskBackedFrequencyStore:
         cursor = self.conn.cursor()
         order = "DESC" if descending else "ASC"
         try:
-            cursor.execute(f"SELECT token, count FROM frequencies ORDER BY count {order}, token ASC")
+            cursor.execute(
+                f"SELECT token, count FROM frequencies ORDER BY count {order}, token ASC"
+            )
             while True:
                 rows = cursor.fetchmany(int(max(100, batch_size)))
                 if not rows:

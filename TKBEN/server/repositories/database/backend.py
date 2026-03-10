@@ -43,6 +43,7 @@ def build_sqlite_backend(settings: DatabaseSettings) -> DatabaseBackend:
     should_initialize_schema = not os.path.exists(db_path)
     return SQLiteRepository(settings, initialize_schema=should_initialize_schema)
 
+
 # -----------------------------------------------------------------------------
 def build_postgres_backend(settings: DatabaseSettings) -> DatabaseBackend:
     return PostgresRepository(settings)
@@ -66,7 +67,11 @@ class TKBENWebappDatabase:
             backend_name = "sqlite"
         else:
             normalized_engine = normalize_postgres_engine(self.settings.engine).lower()
-            backend_name = "postgres" if normalized_engine.startswith("postgresql") else normalized_engine
+            backend_name = (
+                "postgres"
+                if normalized_engine.startswith("postgresql")
+                else normalized_engine
+            )
         normalized_name = backend_name.lower()
         logger.info("Initializing %s database backend", backend_name)
         if normalized_name not in BACKEND_FACTORIES:
@@ -96,5 +101,3 @@ class TKBENWebappDatabase:
 
 
 database = TKBENWebappDatabase()
-
-

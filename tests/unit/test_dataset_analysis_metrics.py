@@ -201,7 +201,9 @@ EXPECTED_DATASET_METRICS: dict[str, Any] = {
 }
 
 
-def _assert_metric_value(actual: Any, expected: Any, metric_key: str, path: str = "") -> None:
+def _assert_metric_value(
+    actual: Any, expected: Any, metric_key: str, path: str = ""
+) -> None:
     location = f"{metric_key}{path}"
     if isinstance(expected, float):
         assert isinstance(actual, (int, float)), (
@@ -213,11 +215,15 @@ def _assert_metric_value(actual: Any, expected: Any, metric_key: str, path: str 
         return
 
     if isinstance(expected, int):
-        assert actual == expected, f"{location} mismatch: expected {expected}, got {actual}"
+        assert actual == expected, (
+            f"{location} mismatch: expected {expected}, got {actual}"
+        )
         return
 
     if isinstance(expected, str):
-        assert actual == expected, f"{location} mismatch: expected {expected!r}, got {actual!r}"
+        assert actual == expected, (
+            f"{location} mismatch: expected {expected!r}, got {actual!r}"
+        )
         return
 
     if isinstance(expected, list):
@@ -337,7 +343,9 @@ def test_dataset_analysis_metric_correctness(
     actual_dataset_metrics: dict[str, Any],
     metric_key: str,
 ) -> None:
-    assert metric_key in actual_dataset_metrics, f"Missing computed dataset metric '{metric_key}'"
+    assert metric_key in actual_dataset_metrics, (
+        f"Missing computed dataset metric '{metric_key}'"
+    )
     expected = EXPECTED_DATASET_METRICS[metric_key]
     actual = actual_dataset_metrics[metric_key]
     _assert_metric_value(actual, expected, metric_key=metric_key)

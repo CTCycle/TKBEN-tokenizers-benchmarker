@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field, field_validator
 
-from TKBEN.server.common.utils.security import contains_control_chars, normalize_identifier
+from TKBEN.server.common.utils.security import (
+    contains_control_chars,
+    normalize_identifier,
+)
 
 
 ###############################################################################
@@ -10,6 +13,7 @@ from TKBEN.server.common.utils.security import contains_control_chars, normalize
 ###############################################################################
 class VocabularyStats(BaseModel):
     """Vocabulary statistics for a single tokenizer."""
+
     tokenizer: str
     vocabulary_size: int = Field(default=0)
     subwords_count: int = Field(default=0)
@@ -19,6 +23,7 @@ class VocabularyStats(BaseModel):
 
 class TokenLengthBin(BaseModel):
     """A single bin in token length histogram."""
+
     bin_start: int
     bin_end: int
     count: int
@@ -26,6 +31,7 @@ class TokenLengthBin(BaseModel):
 
 class TokenLengthDistribution(BaseModel):
     """Token length distribution for a tokenizer."""
+
     tokenizer: str
     bins: list[TokenLengthBin] = Field(default_factory=list)
     mean: float = Field(default=0.0)
@@ -34,6 +40,7 @@ class TokenLengthDistribution(BaseModel):
 
 class SpeedMetric(BaseModel):
     """Speed and throughput metrics for comparison charts."""
+
     tokenizer: str
     tokens_per_second: float = Field(default=0.0)
     chars_per_second: float = Field(default=0.0)
@@ -42,8 +49,11 @@ class SpeedMetric(BaseModel):
 
 class ChartData(BaseModel):
     """All chart data for frontend visualization."""
+
     vocabulary_stats: list[VocabularyStats] = Field(default_factory=list)
-    token_length_distributions: list[TokenLengthDistribution] = Field(default_factory=list)
+    token_length_distributions: list[TokenLengthDistribution] = Field(
+        default_factory=list
+    )
     speed_metrics: list[SpeedMetric] = Field(default_factory=list)
 
 
@@ -78,9 +88,7 @@ class GlobalMetrics(BaseModel):
 
 ###############################################################################
 class BenchmarkRunRequest(BaseModel):
-    tokenizers: list[str] = Field(
-        ..., description="List of tokenizer IDs to benchmark"
-    )
+    tokenizers: list[str] = Field(..., description="List of tokenizer IDs to benchmark")
     dataset_name: str = Field(..., description="Name of the dataset to use")
     max_documents: int = Field(
         default=0,
@@ -235,7 +243,9 @@ class BenchmarkRunResponse(BaseModel):
     tokenizers_processed: list[str] = Field(
         default_factory=list, description="List of successfully processed tokenizers"
     )
-    tokenizers_count: int = Field(default=0, description="Number of tokenizers benchmarked")
+    tokenizers_count: int = Field(
+        default=0, description="Number of tokenizers benchmarked"
+    )
     global_metrics: list[GlobalMetrics] = Field(
         default_factory=list, description="Global benchmark metrics per tokenizer"
     )
@@ -246,4 +256,3 @@ class BenchmarkRunResponse(BaseModel):
         default_factory=list,
         description="Per-document tokenizer statistics arrays for dispersion views",
     )
-

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from TKBEN.server.configurations.base import (    
+from TKBEN.server.configurations.base import (
     ensure_mapping,
     load_configurations,
 )
@@ -25,4 +25,3 @@ __all__ = [
     "ensure_mapping",
     "load_configurations",
 ]
-
