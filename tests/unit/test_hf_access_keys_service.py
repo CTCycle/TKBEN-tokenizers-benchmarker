@@ -15,7 +15,9 @@ from TKBEN.server.services.keys import (
 
 ###############################################################################
 class FakeResult:
-    def __init__(self, rows: list[tuple[str]] | None = None, row: tuple | None = None) -> None:
+    def __init__(
+        self, rows: list[tuple[str]] | None = None, row: tuple | None = None
+    ) -> None:
         self.rows = rows or []
         self.row = row
 
@@ -247,12 +249,14 @@ def test_set_active_key_is_idempotent_for_already_active_key(
     service.set_active_key(11)
 
     assert any(
-        'UPDATE "hf_access_keys" SET "is_active" = :is_active WHERE "id" != :key_id' in sql
+        'UPDATE "hf_access_keys" SET "is_active" = :is_active WHERE "id" != :key_id'
+        in sql
         and payload == {"is_active": False, "key_id": 11}
         for sql, payload in execute_calls
     )
     assert any(
-        'UPDATE "hf_access_keys" SET "is_active" = :is_active WHERE "id" = :key_id' in sql
+        'UPDATE "hf_access_keys" SET "is_active" = :is_active WHERE "id" = :key_id'
+        in sql
         and payload == {"is_active": True, "key_id": 11}
         for sql, payload in execute_calls
     )

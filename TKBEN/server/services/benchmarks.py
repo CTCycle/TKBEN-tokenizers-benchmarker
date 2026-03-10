@@ -27,7 +27,10 @@ from TKBEN.server.repositories.serialization.data import BenchmarkReportSerializ
 from TKBEN.server.configurations import server_settings
 from TKBEN.server.common.constants import TOKENIZERS_PATH
 from TKBEN.server.common.utils.logger import logger
-from TKBEN.server.common.utils.security import ensure_path_is_within, normalize_identifier
+from TKBEN.server.common.utils.security import (
+    ensure_path_is_within,
+    normalize_identifier,
+)
 
 
 ###############################################################################
@@ -409,7 +412,6 @@ BENCHMARK_METRIC_CATALOG: list[dict[str, Any]] = [
 
 ###############################################################################
 class BenchmarkTools:
-
     def __call__(self) -> None:
         pass
 
@@ -602,9 +604,7 @@ class BenchmarkTools:
         return boundary_matches / total_boundaries
 
     # -------------------------------------------------------------------------
-    def jaccard_similarity(
-        self, first: Sequence[str], second: Sequence[str]
-    ) -> float:
+    def jaccard_similarity(self, first: Sequence[str], second: Sequence[str]) -> float:
         if not first and not second:
             return 1.0
         if not first or not second:
@@ -647,7 +647,7 @@ class BenchmarkService:
         self.reduce_data_size = True  # Always true for webapp
         self.tools = BenchmarkTools()
         self.report_serializer = BenchmarkReportSerializer()
-        
+
         # Load settings from config
         self.streaming_batch_size = server_settings.benchmarks.streaming_batch_size
         self.log_interval = server_settings.benchmarks.log_interval
@@ -770,7 +770,7 @@ class BenchmarkService:
     # -------------------------------------------------------------------------
     def get_dataset_document_count(self, dataset_name: str) -> int:
         query = sqlalchemy.text(
-            'SELECT COUNT(*) '
+            "SELECT COUNT(*) "
             'FROM "dataset_document" dd '
             'JOIN "dataset" d ON d."id" = dd."dataset_id" '
             'WHERE d."name" = :dataset'
@@ -866,7 +866,9 @@ class BenchmarkService:
                 if column == "tokens_count":
                     tokenizer_stats[column] = [int(value) for value in series.tolist()]
                 else:
-                    tokenizer_stats[column] = [float(value) for value in series.tolist()]
+                    tokenizer_stats[column] = [
+                        float(value) for value in series.tolist()
+                    ]
 
             stats.append(tokenizer_stats)
 
@@ -908,12 +910,10 @@ class BenchmarkService:
     ) -> tuple[list[Any], pd.DataFrame]:
         vocabulary_stats: list[dict[str, Any]] = []
         vocabularies: list[pd.DataFrame] = []
-        
+
         for name, tokenizer in tokenizers.items():
             if not self.tools.is_tokenizer_compatible(tokenizer):
-                logger.warning(
-                    "Skipping tokenizer %s for vocab stats", name
-                )
+                logger.warning("Skipping tokenizer %s for vocab stats", name)
                 continue
 
             tokenizer_label = getattr(tokenizer, "name_or_path", name)
@@ -972,7 +972,7 @@ class BenchmarkService:
                     }
                 )
                 vocabularies.append(vocabulary)
-                
+
             except Exception:
                 logger.warning("Could not process tokenizer %s for vocab stats", name)
                 continue
@@ -987,9 +987,9 @@ class BenchmarkService:
         if not base_words or not self.tools.is_tokenizer_compatible(tokenizer):
             return 0.0
 
-        selected_words = [
-            w for w in sorted(base_words) if re.match(r"^[A-Za-z]+$", w)
-        ][:200]
+        selected_words = [w for w in sorted(base_words) if re.match(r"^[A-Za-z]+$", w)][
+            :200
+        ]
         if not selected_words:
             return 0.0
 
@@ -1067,7 +1067,7 @@ class BenchmarkService:
 
         # Load tokenizers from HuggingFace
         tokenizers = self.load_tokenizers(tokenizer_ids)
-        
+
         # Merge in custom tokenizers if provided
         if custom_tokenizers:
             for name, tok in custom_tokenizers.items():
@@ -1083,7 +1083,9 @@ class BenchmarkService:
             progress_callback(10.0)
 
         # Calculate vocabulary statistics
-        vocabularies, vocabulary_stats = self.calculate_vocabulary_statistics(tokenizers)
+        vocabularies, vocabulary_stats = self.calculate_vocabulary_statistics(
+            tokenizers
+        )
         if progress_callback:
             progress_callback(15.0)
 
@@ -1156,9 +1158,10 @@ class BenchmarkService:
                     split_tokens.append(tokens_list)
                     processed_docs += 1
                     if progress_callback and processed_docs % progress_interval == 0:
-                        progress_value = tokenizer_progress_base + (
-                            processed_docs / max(num_docs, 1)
-                        ) * per_tokenizer_span
+                        progress_value = (
+                            tokenizer_progress_base
+                            + (processed_docs / max(num_docs, 1)) * per_tokenizer_span
+                        )
                         progress_callback(progress_value)
 
                 data["tokens"] = decoded_tokens
@@ -1319,14 +1322,12 @@ class BenchmarkService:
                 if dataset_chars
                 else 0.0
             )
-            
+
             determinism_rate = (
                 float(np.mean(determinism_flags)) if determinism_flags else 0.0
             )
             boundary_preservation_rate = (
-                float(np.mean(boundary_preservation))
-                if boundary_preservation
-                else 0.0
+                float(np.mean(boundary_preservation)) if boundary_preservation else 0.0
             )
             round_trip_fidelity_rate = (
                 float(np.mean(round_trip_token_fidelity))
@@ -1462,7 +1463,7 @@ class BenchmarkService:
         tokenizers: dict[str, Any],
     ) -> dict[str, Any]:
         """Generate structured chart data for frontend visualization."""
-        
+
         # Vocabulary stats for bar chart
         vocabulary_stats = []
         if not vocabulary_stats_df.empty:
@@ -1472,26 +1473,34 @@ class BenchmarkService:
                 words_pct = float(row.get("percentage_true_words", 0.0))
                 subwords_count = int(vocab_size * subwords_pct / 100.0)
                 true_words_count = int(vocab_size * words_pct / 100.0)
-                vocabulary_stats.append({
-                    "tokenizer": str(row.get("tokenizer", "")),
-                    "vocabulary_size": vocab_size,
-                    "subwords_count": subwords_count,
-                    "true_words_count": true_words_count,
-                    "subwords_percentage": subwords_pct,
-                })
+                vocabulary_stats.append(
+                    {
+                        "tokenizer": str(row.get("tokenizer", "")),
+                        "vocabulary_size": vocab_size,
+                        "subwords_count": subwords_count,
+                        "true_words_count": true_words_count,
+                        "subwords_percentage": subwords_pct,
+                    }
+                )
 
         # Speed metrics from global metrics
         speed_metrics = []
         if not global_metrics_df.empty:
             for _, row in global_metrics_df.iterrows():
-                speed_metrics.append({
-                    "tokenizer": str(row.get("tokenizer", "")),
-                    "tokens_per_second": float(row.get("tokenization_speed_tps", 0.0)),
-                    "chars_per_second": float(row.get("throughput_chars_per_sec", 0.0)),
-                    "processing_time_seconds": float(
-                        row.get("processing_time_seconds", 0.0)
-                    ),
-                })
+                speed_metrics.append(
+                    {
+                        "tokenizer": str(row.get("tokenizer", "")),
+                        "tokens_per_second": float(
+                            row.get("tokenization_speed_tps", 0.0)
+                        ),
+                        "chars_per_second": float(
+                            row.get("throughput_chars_per_sec", 0.0)
+                        ),
+                        "processing_time_seconds": float(
+                            row.get("processing_time_seconds", 0.0)
+                        ),
+                    }
+                )
 
         # Token length distributions (histogram bins)
         token_length_distributions = []
@@ -1502,31 +1511,35 @@ class BenchmarkService:
             tokenizer_name = vocab_df["tokenizer"].iloc[0]
             tokens = vocab_df["vocabulary_tokens"].astype(str)
             lengths = tokens.str.len().dropna().astype(int)
-            
+
             if len(lengths) == 0:
                 continue
-            
+
             # Create histogram bins
             max_len = min(int(lengths.max()), 30)  # Cap at 30 chars
-            bins_edges = list(range(0, max_len + 2, 2))  
+            bins_edges = list(range(0, max_len + 2, 2))
             if len(bins_edges) < 2:
                 bins_edges = [0, max_len + 1]
-            
+
             counts, edges = np.histogram(lengths, bins=bins_edges)
             bins = []
             for i in range(len(counts)):
-                bins.append({
-                    "bin_start": int(edges[i]),
-                    "bin_end": int(edges[i + 1]),
-                    "count": int(counts[i]),
-                })
-            
-            token_length_distributions.append({
-                "tokenizer": tokenizer_name,
-                "bins": bins,
-                "mean": float(lengths.mean()) if len(lengths) > 0 else 0.0,
-                "std": float(lengths.std()) if len(lengths) > 1 else 0.0,
-            })
+                bins.append(
+                    {
+                        "bin_start": int(edges[i]),
+                        "bin_end": int(edges[i + 1]),
+                        "count": int(counts[i]),
+                    }
+                )
+
+            token_length_distributions.append(
+                {
+                    "tokenizer": tokenizer_name,
+                    "bins": bins,
+                    "mean": float(lengths.mean()) if len(lengths) > 0 else 0.0,
+                    "std": float(lengths.std()) if len(lengths) > 1 else 0.0,
+                }
+            )
 
         return {
             "vocabulary_stats": vocabulary_stats,
@@ -1546,10 +1559,14 @@ class BenchmarkService:
         dataset_names: list[str] = []
 
         if not local_stats.empty:
-            tokenizer_names.update(local_stats["tokenizer"].dropna().astype(str).tolist())
+            tokenizer_names.update(
+                local_stats["tokenizer"].dropna().astype(str).tolist()
+            )
             dataset_names.extend(local_stats["name"].dropna().astype(str).tolist())
         if not global_metrics.empty:
-            tokenizer_names.update(global_metrics["tokenizer"].dropna().astype(str).tolist())
+            tokenizer_names.update(
+                global_metrics["tokenizer"].dropna().astype(str).tolist()
+            )
             dataset_names.extend(
                 global_metrics["dataset_name"].dropna().astype(str).tolist()
             )
@@ -1587,12 +1604,18 @@ class BenchmarkService:
                 [col for col in local_columns if col in local_stats.columns]
             ].copy()
             if not local_storage.empty:
-                local_storage["tokenizer_id"] = local_storage["tokenizer"].map(tokenizer_ids)
+                local_storage["tokenizer_id"] = local_storage["tokenizer"].map(
+                    tokenizer_ids
+                )
                 local_storage["document_id"] = pd.to_numeric(
                     local_storage["text_id"], errors="coerce"
                 )
-                local_storage = local_storage.dropna(subset=["tokenizer_id", "document_id"])
-                local_storage["tokenizer_id"] = local_storage["tokenizer_id"].astype(int)
+                local_storage = local_storage.dropna(
+                    subset=["tokenizer_id", "document_id"]
+                )
+                local_storage["tokenizer_id"] = local_storage["tokenizer_id"].astype(
+                    int
+                )
                 local_storage["document_id"] = local_storage["document_id"].astype(int)
                 local_storage = local_storage[
                     [
@@ -1616,9 +1639,13 @@ class BenchmarkService:
         # Persist global metrics (core + detail split)
         if not global_metrics.empty:
             global_storage = global_metrics.copy()
-            global_storage["tokenizer_id"] = global_storage["tokenizer"].map(tokenizer_ids)
+            global_storage["tokenizer_id"] = global_storage["tokenizer"].map(
+                tokenizer_ids
+            )
             global_storage["dataset_id"] = dataset_id
-            global_storage = global_storage.dropna(subset=["tokenizer_id", "dataset_id"])
+            global_storage = global_storage.dropna(
+                subset=["tokenizer_id", "dataset_id"]
+            )
             global_storage["tokenizer_id"] = global_storage["tokenizer_id"].astype(int)
             global_storage["dataset_id"] = global_storage["dataset_id"].astype(int)
 
@@ -1683,9 +1710,9 @@ class BenchmarkService:
                     tokenizer_to_global
                 )
                 detail_storage = detail_storage.dropna(subset=["global_stats_id"])
-                detail_storage["global_stats_id"] = detail_storage["global_stats_id"].astype(
-                    int
-                )
+                detail_storage["global_stats_id"] = detail_storage[
+                    "global_stats_id"
+                ].astype(int)
                 detail_storage = detail_storage.drop(columns=["tokenizer_id"])
                 database.upsert_into_database(
                     detail_storage, TokenizationDatasetStatsDetail.__tablename__
@@ -1706,13 +1733,15 @@ class BenchmarkService:
                 [col for col in vocab_stats_columns if col in vocabulary_stats.columns]
             ].copy()
             if not vocab_stats_storage.empty:
-                vocab_stats_storage["tokenizer_id"] = vocab_stats_storage["tokenizer"].map(
-                    tokenizer_ids
+                vocab_stats_storage["tokenizer_id"] = vocab_stats_storage[
+                    "tokenizer"
+                ].map(tokenizer_ids)
+                vocab_stats_storage = vocab_stats_storage.dropna(
+                    subset=["tokenizer_id"]
                 )
-                vocab_stats_storage = vocab_stats_storage.dropna(subset=["tokenizer_id"])
-                vocab_stats_storage["tokenizer_id"] = vocab_stats_storage["tokenizer_id"].astype(
-                    int
-                )
+                vocab_stats_storage["tokenizer_id"] = vocab_stats_storage[
+                    "tokenizer_id"
+                ].astype(int)
                 vocab_stats_storage = vocab_stats_storage[
                     [
                         "tokenizer_id",
@@ -1746,7 +1775,9 @@ class BenchmarkService:
             ].copy()
             if vocab_storage.empty:
                 continue
-            vocab_storage["tokenizer_id"] = vocab_storage["tokenizer"].map(tokenizer_ids)
+            vocab_storage["tokenizer_id"] = vocab_storage["tokenizer"].map(
+                tokenizer_ids
+            )
             vocab_storage = vocab_storage.dropna(subset=["tokenizer_id"])
             vocab_storage["tokenizer_id"] = vocab_storage["tokenizer_id"].astype(int)
             vocab_storage = vocab_storage[
@@ -1781,7 +1812,7 @@ class BenchmarkService:
             return {}
         insert_query = sqlalchemy.text(
             'INSERT INTO "tokenizer" ("name") '
-            'VALUES (:name) '
+            "VALUES (:name) "
             'ON CONFLICT ("name") DO NOTHING'
         )
         with database.backend.engine.begin() as conn:
@@ -1820,10 +1851,12 @@ class BenchmarkService:
                     buf = io.BytesIO()
                     fig.savefig(buf, format="png", bbox_inches="tight", dpi=150)
                     buf.seek(0)
-                    plots.append({
-                        "name": "vocabulary_size",
-                        "data": base64.b64encode(buf.read()).decode("utf-8"),
-                    })
+                    plots.append(
+                        {
+                            "name": "vocabulary_size",
+                            "data": base64.b64encode(buf.read()).decode("utf-8"),
+                        }
+                    )
                     plt.close(fig)
 
         # Plot subwords vs words
@@ -1835,10 +1868,12 @@ class BenchmarkService:
                     buf = io.BytesIO()
                     fig.savefig(buf, format="png", bbox_inches="tight", dpi=150)
                     buf.seek(0)
-                    plots.append({
-                        "name": "subwords_vs_words",
-                        "data": base64.b64encode(buf.read()).decode("utf-8"),
-                    })
+                    plots.append(
+                        {
+                            "name": "subwords_vs_words",
+                            "data": base64.b64encode(buf.read()).decode("utf-8"),
+                        }
+                    )
                     plt.close(fig)
 
         return plots
@@ -1980,4 +2015,3 @@ class BenchmarkService:
 
         fig.tight_layout()
         return fig
-

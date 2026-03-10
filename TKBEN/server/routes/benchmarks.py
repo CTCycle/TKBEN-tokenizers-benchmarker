@@ -29,6 +29,7 @@ from TKBEN.server.services.benchmarks import BenchmarkService
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_BENCHMARKS, tags=["benchmarks"])
 
+
 ###############################################################################
 def build_benchmark_payload(
     result: dict[str, Any],
@@ -56,9 +57,7 @@ def build_benchmark_payload(
                 ),
                 "round_trip_fidelity_rate": metric.get("round_trip_fidelity_rate", 0.0),
                 "model_size_mb": metric.get("model_size_mb", 0.0),
-                "segmentation_consistency": metric.get(
-                    "segmentation_consistency", 0.0
-                ),
+                "segmentation_consistency": metric.get("segmentation_consistency", 0.0),
                 "token_distribution_entropy": metric.get(
                     "token_distribution_entropy", 0.0
                 ),
@@ -197,7 +196,9 @@ def run_benchmark_job(
     if job_manager.should_stop(job_id):
         return {}
     payload = build_benchmark_payload(result, request_payload.get("dataset_name", ""))
-    payload["created_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    payload["created_at"] = (
+        datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    )
     payload["report_version"] = 1
     report_id = service.save_benchmark_report(payload)
     payload["report_id"] = int(report_id)
@@ -248,7 +249,9 @@ async def run_benchmarks(request: BenchmarkRunRequest) -> JobStartResponse:
     if request.custom_tokenizer_name:
         uploaded = get_custom_tokenizers()
         if request.custom_tokenizer_name in uploaded:
-            custom_tokenizers[request.custom_tokenizer_name] = uploaded[request.custom_tokenizer_name]
+            custom_tokenizers[request.custom_tokenizer_name] = uploaded[
+                request.custom_tokenizer_name
+            ]
             logger.info("Including custom tokenizer: %s", request.custom_tokenizer_name)
 
     if job_manager.is_job_running("benchmark_run"):
@@ -266,7 +269,9 @@ async def run_benchmarks(request: BenchmarkRunRequest) -> JobStartResponse:
         )
 
     try:
-        missing_tokenizers = service.get_missing_persisted_tokenizers(request.tokenizers)
+        missing_tokenizers = service.get_missing_persisted_tokenizers(
+            request.tokenizers
+        )
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -358,4 +363,3 @@ async def get_benchmark_metrics_catalog() -> BenchmarkMetricCatalogResponse:
     service = BenchmarkService()
     categories = await asyncio.to_thread(service.get_metric_catalog)
     return BenchmarkMetricCatalogResponse(categories=categories)
-

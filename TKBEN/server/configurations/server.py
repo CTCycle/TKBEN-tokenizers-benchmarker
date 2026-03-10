@@ -5,7 +5,7 @@ from typing import Any
 
 from TKBEN.server.common.utils.types import coerce_str_sequence
 
-from TKBEN.server.configurations import (  
+from TKBEN.server.configurations import (
     ensure_mapping,
     load_configurations,
 )
@@ -17,6 +17,7 @@ from TKBEN.server.common.utils.types import (
     coerce_str_or_none,
 )
 from TKBEN.server.common.utils.variables import env_variables
+
 
 # [SERVER SETTINGS]
 ###############################################################################
@@ -34,6 +35,7 @@ class DatabaseSettings:
     connect_timeout: int
     insert_batch_size: int
 
+
 # -----------------------------------------------------------------------------
 @dataclass(frozen=True)
 class DatasetSettings:
@@ -44,6 +46,7 @@ class DatasetSettings:
     streaming_batch_size: int
     log_interval: int
     cleanup_downloaded_sources: bool
+
 
 # -----------------------------------------------------------------------------
 @dataclass(frozen=True)
@@ -56,6 +59,7 @@ class FittingSettings:
     parameter_max_default: float
     preview_row_limit: int
 
+
 # -----------------------------------------------------------------------------
 @dataclass(frozen=True)
 class TokenizerSettings:
@@ -64,16 +68,19 @@ class TokenizerSettings:
     min_scan_limit: int
     max_upload_bytes: int
 
+
 # -----------------------------------------------------------------------------
 @dataclass(frozen=True)
 class BenchmarkSettings:
     streaming_batch_size: int
     log_interval: int
 
+
 # -----------------------------------------------------------------------------
 @dataclass(frozen=True)
 class JobsSettings:
     polling_interval: float
+
 
 # -----------------------------------------------------------------------------
 @dataclass(frozen=True)
@@ -94,7 +101,9 @@ def build_database_settings(payload: dict[str, Any] | Any) -> DatabaseSettings:
         embedded_value = payload.get("embedded_database")
     embedded = coerce_bool(embedded_value, True)
 
-    insert_batch_value = env_variables.get("DB_INSERT_BATCH_SIZE") or payload.get("insert_batch_size")
+    insert_batch_value = env_variables.get("DB_INSERT_BATCH_SIZE") or payload.get(
+        "insert_batch_size"
+    )
     if embedded:
         return DatabaseSettings(
             embedded_database=True,
@@ -107,7 +116,8 @@ def build_database_settings(payload: dict[str, Any] | Any) -> DatabaseSettings:
             ssl=False,
             ssl_ca=None,
             connect_timeout=coerce_int(
-                env_variables.get("DB_CONNECT_TIMEOUT") or payload.get("connect_timeout"),
+                env_variables.get("DB_CONNECT_TIMEOUT")
+                or payload.get("connect_timeout"),
                 10,
                 minimum=1,
             ),
@@ -128,7 +138,9 @@ def build_database_settings(payload: dict[str, Any] | Any) -> DatabaseSettings:
     password_value = env_variables.get("DB_PASSWORD") or payload.get("password")
     ssl_value = env_variables.get("DB_SSL") or payload.get("ssl")
     ssl_ca_value = env_variables.get("DB_SSL_CA") or payload.get("ssl_ca")
-    timeout_value = env_variables.get("DB_CONNECT_TIMEOUT") or payload.get("connect_timeout")
+    timeout_value = env_variables.get("DB_CONNECT_TIMEOUT") or payload.get(
+        "connect_timeout"
+    )
 
     return DatabaseSettings(
         embedded_database=False,
@@ -143,6 +155,7 @@ def build_database_settings(payload: dict[str, Any] | Any) -> DatabaseSettings:
         connect_timeout=coerce_int(timeout_value, 10, minimum=1),
         insert_batch_size=coerce_int(insert_batch_value, 1000, minimum=1),
     )
+
 
 # -----------------------------------------------------------------------------
 def build_dataset_settings(payload: dict[str, Any] | Any) -> DatasetSettings:
@@ -162,13 +175,12 @@ def build_dataset_settings(payload: dict[str, Any] | Any) -> DatasetSettings:
         streaming_batch_size=coerce_int(
             payload.get("streaming_batch_size"), 10000, minimum=100
         ),
-        log_interval=coerce_int(
-            payload.get("log_interval"), 100000, minimum=1000
-        ),
+        log_interval=coerce_int(payload.get("log_interval"), 100000, minimum=1000),
         cleanup_downloaded_sources=coerce_bool(
             payload.get("cleanup_downloaded_sources"), False
         ),
     )
+
 
 # -----------------------------------------------------------------------------
 def build_fitting_settings(payload: dict[str, Any] | Any) -> FittingSettings:
@@ -197,6 +209,7 @@ def build_fitting_settings(payload: dict[str, Any] | Any) -> FittingSettings:
         preview_row_limit=coerce_int(payload.get("preview_row_limit"), 5, minimum=1),
     )
 
+
 # -----------------------------------------------------------------------------
 def build_tokenizer_settings(payload: dict[str, Any] | Any) -> TokenizerSettings:
     min_limit = coerce_int(payload.get("min_scan_limit"), 1, minimum=1)
@@ -213,22 +226,23 @@ def build_tokenizer_settings(payload: dict[str, Any] | Any) -> TokenizerSettings
         ),
     )
 
+
 # -----------------------------------------------------------------------------
 def build_benchmark_settings(payload: dict[str, Any] | Any) -> BenchmarkSettings:
     return BenchmarkSettings(
         streaming_batch_size=coerce_int(
             payload.get("streaming_batch_size"), 1000, minimum=100
         ),
-        log_interval=coerce_int(
-            payload.get("log_interval"), 10000, minimum=100
-        ),
+        log_interval=coerce_int(payload.get("log_interval"), 10000, minimum=100),
     )
+
 
 # -----------------------------------------------------------------------------
 def build_jobs_settings(payload: dict[str, Any] | Any) -> JobsSettings:
     return JobsSettings(
         polling_interval=coerce_float(payload.get("polling_interval"), 1.0),
     )
+
 
 # -----------------------------------------------------------------------------
 def build_server_settings(payload: dict[str, Any] | Any) -> ServerSettings:
@@ -259,4 +273,3 @@ def get_server_settings(config_path: str | None = None) -> ServerSettings:
 
 
 server_settings = get_server_settings()
-

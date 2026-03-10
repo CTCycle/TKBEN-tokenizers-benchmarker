@@ -56,9 +56,13 @@ class DashboardExportService:
             if normalized_dashboard_type == "dataset":
                 page_count += self._render_dataset_dashboard(pdf, report_name, payload)
             elif normalized_dashboard_type == "tokenizer":
-                page_count += self._render_tokenizer_dashboard(pdf, report_name, payload)
+                page_count += self._render_tokenizer_dashboard(
+                    pdf, report_name, payload
+                )
             else:
-                page_count += self._render_benchmark_dashboard(pdf, report_name, payload)
+                page_count += self._render_benchmark_dashboard(
+                    pdf, report_name, payload
+                )
 
         pdf_bytes = buffer.getvalue()
         if not pdf_bytes:
@@ -167,7 +171,10 @@ class DashboardExportService:
 
         word_metrics_ax = fig.add_subplot(grid[1, 1])
         word_rows = [
-            ("Vocabulary size", self._format_count(aggregate.get("corpus.unique_words"))),
+            (
+                "Vocabulary size",
+                self._format_count(aggregate.get("corpus.unique_words")),
+            ),
             ("MATTR", self._format_number(aggregate.get("corpus.mattr"), 4)),
             ("Entropy", self._format_number(aggregate.get("words.shannon_entropy"), 4)),
             ("Hapax ratio", self._format_number(aggregate.get("words.hapax_ratio"), 4)),
@@ -212,12 +219,21 @@ class DashboardExportService:
         ]
         labels = [name for name, value in composition_rows if value > 0]
         values = [value for _, value in composition_rows if value > 0]
-        composition_ax.set_title("Character Composition", fontsize=12, fontweight="bold")
+        composition_ax.set_title(
+            "Character Composition", fontsize=12, fontweight="bold"
+        )
         if values:
             composition_ax.pie(values, labels=labels, autopct="%1.1f%%", startangle=90)
         else:
             composition_ax.axis("off")
-            composition_ax.text(0.5, 0.5, "No composition data", ha="center", va="center", color=MUTED_TEXT)
+            composition_ax.text(
+                0.5,
+                0.5,
+                "No composition data",
+                ha="center",
+                va="center",
+                color=MUTED_TEXT,
+            )
 
         zipf_ax = fig2.add_subplot(grid2[0, 1])
         zipf_points = self._parse_zipf_curve(
@@ -236,11 +252,20 @@ class DashboardExportService:
             zipf_ax.grid(alpha=0.25)
         else:
             zipf_ax.axis("off")
-            zipf_ax.text(0.5, 0.5, "No Zipf curve data", ha="center", va="center", color=MUTED_TEXT)
+            zipf_ax.text(
+                0.5,
+                0.5,
+                "No Zipf curve data",
+                ha="center",
+                va="center",
+                color=MUTED_TEXT,
+            )
 
         indicators_ax = fig2.add_subplot(grid2[1, 0])
         indicators_ax.axis("off")
-        indicators_ax.set_title("Quality Indicators", fontsize=12, fontweight="bold", loc="left")
+        indicators_ax.set_title(
+            "Quality Indicators", fontsize=12, fontweight="bold", loc="left"
+        )
         indicator_lines = [
             f"Duplicate rate: {self._format_percent(aggregate.get('quality.duplicate_rate'))}",
             f"Near-duplicate rate: {self._format_percent(aggregate.get('quality.near_duplicate_rate'))}",
@@ -269,7 +294,14 @@ class DashboardExportService:
             top_words_ax.set_xlabel("Count")
         else:
             top_words_ax.axis("off")
-            top_words_ax.text(0.5, 0.5, "No word frequency data", ha="center", va="center", color=MUTED_TEXT)
+            top_words_ax.text(
+                0.5,
+                0.5,
+                "No word frequency data",
+                ha="center",
+                va="center",
+                color=MUTED_TEXT,
+            )
 
         pdf.savefig(fig2)
         plt.close(fig2)
@@ -294,20 +326,53 @@ class DashboardExportService:
         title_ax = fig.add_subplot(grid[0, :])
         title_ax.axis("off")
         tokenizer_name = str(source.get("tokenizer_name") or "N/A")
-        title_ax.text(0.0, 0.9, "Tokenizer Dashboard Report", fontsize=18, fontweight="bold", color="#111827")
-        title_ax.text(0.0, 0.62, f"Report: {report_name or tokenizer_name}", fontsize=11, color=MUTED_TEXT)
-        title_ax.text(0.0, 0.42, f"Tokenizer: {tokenizer_name}", fontsize=11, color=MUTED_TEXT)
-        title_ax.text(0.0, 0.22, f"Report ID: {source.get('report_id') or 'N/A'}", fontsize=10, color=MUTED_TEXT)
+        title_ax.text(
+            0.0,
+            0.9,
+            "Tokenizer Dashboard Report",
+            fontsize=18,
+            fontweight="bold",
+            color="#111827",
+        )
+        title_ax.text(
+            0.0,
+            0.62,
+            f"Report: {report_name or tokenizer_name}",
+            fontsize=11,
+            color=MUTED_TEXT,
+        )
+        title_ax.text(
+            0.0, 0.42, f"Tokenizer: {tokenizer_name}", fontsize=11, color=MUTED_TEXT
+        )
+        title_ax.text(
+            0.0,
+            0.22,
+            f"Report ID: {source.get('report_id') or 'N/A'}",
+            fontsize=10,
+            color=MUTED_TEXT,
+        )
 
         basics_ax = fig.add_subplot(grid[1, 0])
         basics_rows = [
             ("Tokenizer class", str(global_stats.get("tokenizer_class") or "N/A")),
             ("Vocabulary size", self._format_count(source.get("vocabulary_size"))),
-            ("Base vocabulary", self._format_count(global_stats.get("base_vocabulary_size"))),
-            ("Model max length", self._format_count(global_stats.get("model_max_length"))),
+            (
+                "Base vocabulary",
+                self._format_count(global_stats.get("base_vocabulary_size")),
+            ),
+            (
+                "Model max length",
+                self._format_count(global_stats.get("model_max_length")),
+            ),
             ("Padding side", str(global_stats.get("padding_side") or "N/A")),
-            ("Special tokens", self._format_count(global_stats.get("special_tokens_count"))),
-            ("Added tokens", self._format_count(global_stats.get("added_tokens_count"))),
+            (
+                "Special tokens",
+                self._format_count(global_stats.get("special_tokens_count")),
+            ),
+            (
+                "Added tokens",
+                self._format_count(global_stats.get("added_tokens_count")),
+            ),
             ("Hugging Face URL", str(source.get("huggingface_url") or "N/A")),
         ]
         self._render_table_card(basics_ax, "Basics", basics_rows, font_size=9)
@@ -330,7 +395,7 @@ class DashboardExportService:
         pages = 0
         chunk_size = 45
         for start in range(0, min(len(rows), 180), chunk_size):
-            chunk = rows[start:start + chunk_size]
+            chunk = rows[start : start + chunk_size]
             fig_page = plt.figure(figsize=(11.69, 8.27), constrained_layout=True)
             ax = fig_page.add_subplot(111)
             ax.axis("off")
@@ -342,7 +407,11 @@ class DashboardExportService:
             )
             table = ax.table(
                 cellText=[
-                    [str(item.get("token_id", "")), str(item.get("token", "")), str(item.get("length", ""))]
+                    [
+                        str(item.get("token_id", "")),
+                        str(item.get("token", "")),
+                        str(item.get("length", "")),
+                    ]
                     for item in chunk
                 ],
                 colLabels=["token_id", "token", "length"],
@@ -379,9 +448,24 @@ class DashboardExportService:
         title_ax = fig.add_subplot(grid[0, :])
         title_ax.axis("off")
         dataset_name = str(source.get("dataset_name") or "N/A")
-        title_ax.text(0.0, 0.9, "Benchmark Dashboard Report", fontsize=18, fontweight="bold", color="#111827")
-        title_ax.text(0.0, 0.62, f"Report: {report_name or dataset_name}", fontsize=11, color=MUTED_TEXT)
-        title_ax.text(0.0, 0.42, f"Dataset: {dataset_name}", fontsize=11, color=MUTED_TEXT)
+        title_ax.text(
+            0.0,
+            0.9,
+            "Benchmark Dashboard Report",
+            fontsize=18,
+            fontweight="bold",
+            color="#111827",
+        )
+        title_ax.text(
+            0.0,
+            0.62,
+            f"Report: {report_name or dataset_name}",
+            fontsize=11,
+            color=MUTED_TEXT,
+        )
+        title_ax.text(
+            0.0, 0.42, f"Dataset: {dataset_name}", fontsize=11, color=MUTED_TEXT
+        )
         title_ax.text(
             0.0,
             0.22,
@@ -395,26 +479,56 @@ class DashboardExportService:
         speed_ax.set_title("Speed Comparison", fontsize=12, fontweight="bold")
         speed_rows = chart_data.get("speed_metrics")
         if isinstance(speed_rows, list) and speed_rows:
-            labels = [self._short_name(str(item.get("tokenizer") or "")) for item in speed_rows]
-            values = [self._to_number(item.get("tokens_per_second")) for item in speed_rows]
+            labels = [
+                self._short_name(str(item.get("tokenizer") or ""))
+                for item in speed_rows
+            ]
+            values = [
+                self._to_number(item.get("tokens_per_second")) for item in speed_rows
+            ]
             speed_ax.bar(labels, values, color=SECONDARY_COLOR)
             speed_ax.set_ylabel("tokens/sec")
             speed_ax.tick_params(axis="x", rotation=35)
             speed_ax.grid(axis="y", alpha=0.25)
         else:
             speed_ax.axis("off")
-            speed_ax.text(0.5, 0.5, "No speed metrics available", ha="center", va="center", color=MUTED_TEXT)
+            speed_ax.text(
+                0.5,
+                0.5,
+                "No speed metrics available",
+                ha="center",
+                va="center",
+                color=MUTED_TEXT,
+            )
 
         rates_ax = fig.add_subplot(grid[1, 1])
         rates_ax.set_title("Global Rates", fontsize=12, fontweight="bold")
         if global_metrics:
-            labels = [self._short_name(str(item.get("tokenizer") or "")) for item in global_metrics]
+            labels = [
+                self._short_name(str(item.get("tokenizer") or ""))
+                for item in global_metrics
+            ]
             oov = [self._as_percent(item.get("oov_rate")) for item in global_metrics]
-            round_trip = [self._as_percent(item.get("round_trip_fidelity_rate")) for item in global_metrics]
+            round_trip = [
+                self._as_percent(item.get("round_trip_fidelity_rate"))
+                for item in global_metrics
+            ]
             x = list(range(len(labels)))
             width = 0.38
-            rates_ax.bar([value - width / 2 for value in x], oov, width=width, label="OOV %", color="#f87171")
-            rates_ax.bar([value + width / 2 for value in x], round_trip, width=width, label="Round-trip %", color=TERTIARY_COLOR)
+            rates_ax.bar(
+                [value - width / 2 for value in x],
+                oov,
+                width=width,
+                label="OOV %",
+                color="#f87171",
+            )
+            rates_ax.bar(
+                [value + width / 2 for value in x],
+                round_trip,
+                width=width,
+                label="Round-trip %",
+                color=TERTIARY_COLOR,
+            )
             rates_ax.set_xticks(x, labels)
             rates_ax.tick_params(axis="x", rotation=35)
             rates_ax.set_ylabel("Percent")
@@ -422,40 +536,78 @@ class DashboardExportService:
             rates_ax.grid(axis="y", alpha=0.25)
         else:
             rates_ax.axis("off")
-            rates_ax.text(0.5, 0.5, "No global rate metrics available", ha="center", va="center", color=MUTED_TEXT)
+            rates_ax.text(
+                0.5,
+                0.5,
+                "No global rate metrics available",
+                ha="center",
+                va="center",
+                color=MUTED_TEXT,
+            )
 
         vocab_ax = fig.add_subplot(grid[2, 0])
         vocab_ax.set_title("Vocabulary Size", fontsize=12, fontweight="bold")
         vocabulary_rows = chart_data.get("vocabulary_stats")
         if isinstance(vocabulary_rows, list) and vocabulary_rows:
-            labels = [self._short_name(str(item.get("tokenizer") or "")) for item in vocabulary_rows]
-            values = [self._to_number(item.get("vocabulary_size")) for item in vocabulary_rows]
+            labels = [
+                self._short_name(str(item.get("tokenizer") or ""))
+                for item in vocabulary_rows
+            ]
+            values = [
+                self._to_number(item.get("vocabulary_size")) for item in vocabulary_rows
+            ]
             vocab_ax.bar(labels, values, color=PRIMARY_COLOR)
             vocab_ax.tick_params(axis="x", rotation=35)
             vocab_ax.grid(axis="y", alpha=0.25)
         else:
             vocab_ax.axis("off")
-            vocab_ax.text(0.5, 0.5, "No vocabulary stats available", ha="center", va="center", color=MUTED_TEXT)
+            vocab_ax.text(
+                0.5,
+                0.5,
+                "No vocabulary stats available",
+                ha="center",
+                va="center",
+                color=MUTED_TEXT,
+            )
 
         dist_ax = fig.add_subplot(grid[2, 1])
         dist_ax.set_title("Token Length Distribution", fontsize=12, fontweight="bold")
         distribution_rows = chart_data.get("token_length_distributions")
-        selected_distribution = str(payload.get("selected_distribution_tokenizer") or "")
+        selected_distribution = str(
+            payload.get("selected_distribution_tokenizer") or ""
+        )
         selected = self._select_distribution(distribution_rows, selected_distribution)
         if selected:
             bins = selected.get("bins")
             if isinstance(bins, list) and bins:
-                labels = [f"{int(self._to_number(item.get('bin_start')))}-{int(self._to_number(item.get('bin_end')))}" for item in bins]
+                labels = [
+                    f"{int(self._to_number(item.get('bin_start')))}-{int(self._to_number(item.get('bin_end')))}"
+                    for item in bins
+                ]
                 counts = [self._to_number(item.get("count")) for item in bins]
                 dist_ax.bar(labels, counts, color="#a78bfa")
                 dist_ax.tick_params(axis="x", rotation=45)
                 dist_ax.grid(axis="y", alpha=0.25)
             else:
                 dist_ax.axis("off")
-                dist_ax.text(0.5, 0.5, "No distribution bins", ha="center", va="center", color=MUTED_TEXT)
+                dist_ax.text(
+                    0.5,
+                    0.5,
+                    "No distribution bins",
+                    ha="center",
+                    va="center",
+                    color=MUTED_TEXT,
+                )
         else:
             dist_ax.axis("off")
-            dist_ax.text(0.5, 0.5, "No token length distribution", ha="center", va="center", color=MUTED_TEXT)
+            dist_ax.text(
+                0.5,
+                0.5,
+                "No token length distribution",
+                ha="center",
+                va="center",
+                color=MUTED_TEXT,
+            )
 
         pdf.savefig(fig)
         plt.close(fig)
@@ -463,12 +615,23 @@ class DashboardExportService:
         metrics_page = plt.figure(figsize=(11.69, 8.27), constrained_layout=True)
         ax = metrics_page.add_subplot(111)
         ax.axis("off")
-        ax.set_title("Per Tokenizer Additional Metrics", fontsize=13, fontweight="bold", loc="left")
+        ax.set_title(
+            "Per Tokenizer Additional Metrics",
+            fontsize=13,
+            fontweight="bold",
+            loc="left",
+        )
 
         table_rows = self._build_benchmark_metrics_table(global_metrics)
         table = ax.table(
             cellText=table_rows,
-            colLabels=["Tokenizer", "Word Recovery %", "Coverage %", "Subword Fertility", "Entropy"],
+            colLabels=[
+                "Tokenizer",
+                "Word Recovery %",
+                "Coverage %",
+                "Subword Fertility",
+                "Entropy",
+            ],
             cellLoc="left",
             colLoc="left",
             bbox=[0, 0.02, 1, 0.92],
@@ -511,14 +674,28 @@ class DashboardExportService:
         ax.set_title(title, fontsize=12, fontweight="bold")
         if not isinstance(histogram, dict):
             ax.axis("off")
-            ax.text(0.5, 0.5, "No histogram data", ha="center", va="center", color=MUTED_TEXT)
+            ax.text(
+                0.5,
+                0.5,
+                "No histogram data",
+                ha="center",
+                va="center",
+                color=MUTED_TEXT,
+            )
             return
 
         bins = histogram.get("bins")
         counts = histogram.get("counts")
         if not isinstance(bins, list) or not isinstance(counts, list) or not counts:
             ax.axis("off")
-            ax.text(0.5, 0.5, "No histogram data", ha="center", va="center", color=MUTED_TEXT)
+            ax.text(
+                0.5,
+                0.5,
+                "No histogram data",
+                ha="center",
+                va="center",
+                color=MUTED_TEXT,
+            )
             return
 
         x = list(range(len(counts)))
@@ -593,12 +770,17 @@ class DashboardExportService:
         return rows
 
     # -------------------------------------------------------------------------
-    def _select_distribution(self, distributions: Any, selected_tokenizer: str) -> dict[str, Any] | None:
+    def _select_distribution(
+        self, distributions: Any, selected_tokenizer: str
+    ) -> dict[str, Any] | None:
         if not isinstance(distributions, list) or not distributions:
             return None
         if selected_tokenizer:
             for item in distributions:
-                if isinstance(item, dict) and str(item.get("tokenizer") or "") == selected_tokenizer:
+                if (
+                    isinstance(item, dict)
+                    and str(item.get("tokenizer") or "") == selected_tokenizer
+                ):
                     return item
         for item in distributions:
             if isinstance(item, dict):
@@ -606,7 +788,9 @@ class DashboardExportService:
         return None
 
     # -------------------------------------------------------------------------
-    def _build_benchmark_metrics_table(self, global_metrics: list[Any]) -> list[list[str]]:
+    def _build_benchmark_metrics_table(
+        self, global_metrics: list[Any]
+    ) -> list[list[str]]:
         rows: list[list[str]] = []
         for item in global_metrics[:18]:
             if not isinstance(item, dict):
@@ -637,7 +821,7 @@ class DashboardExportService:
         short = trimmed.split("/")[-1] or trimmed
         if len(short) <= max_length:
             return short
-        return f"{short[:max(1, max_length - 3)]}..."
+        return f"{short[: max(1, max_length - 3)]}..."
 
     # -------------------------------------------------------------------------
     def _to_number(self, value: Any, fallback: float = 0.0) -> float:
@@ -683,4 +867,3 @@ class DashboardExportService:
             return json.loads(candidate)
         except json.JSONDecodeError:
             return value
-

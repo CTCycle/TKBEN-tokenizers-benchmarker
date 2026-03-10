@@ -2,6 +2,7 @@
 E2E tests for tokenizer API endpoints.
 Covers /tokenizers/settings, /tokenizers/scan, /tokenizers/upload, /tokenizers/custom.
 """
+
 import json
 import os
 
@@ -10,7 +11,11 @@ from playwright.sync_api import APIRequestContext
 
 
 RUN_HF_SCAN = os.getenv("E2E_RUN_HF_SCAN", "").lower() in ("1", "true", "yes")
-RUN_TOKENIZER_REPORT_FLOW = os.getenv("E2E_RUN_TOKENIZER_REPORT_FLOW", "").lower() in ("1", "true", "yes")
+RUN_TOKENIZER_REPORT_FLOW = os.getenv("E2E_RUN_TOKENIZER_REPORT_FLOW", "").lower() in (
+    "1",
+    "true",
+    "yes",
+)
 
 
 def _build_wordlevel_tokenizer_json() -> bytes:
@@ -40,7 +45,9 @@ def test_get_tokenizer_settings(api_context: APIRequestContext) -> None:
     assert "default_scan_limit" in data
     assert "max_scan_limit" in data
     assert "min_scan_limit" in data
-    assert data["min_scan_limit"] <= data["default_scan_limit"] <= data["max_scan_limit"]
+    assert (
+        data["min_scan_limit"] <= data["default_scan_limit"] <= data["max_scan_limit"]
+    )
 
 
 @pytest.mark.skipif(not RUN_HF_SCAN, reason="Set E2E_RUN_HF_SCAN=1 to enable.")

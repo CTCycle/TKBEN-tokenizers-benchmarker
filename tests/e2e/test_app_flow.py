@@ -2,6 +2,7 @@
 E2E tests for UI navigation and page rendering.
 Targets datasets, tokenizers, and cross benchmark workflows.
 """
+
 import re
 from playwright.sync_api import Page, expect
 
@@ -22,7 +23,9 @@ class TestAppShell:
         expect(page.get_by_role("button", name="Tokenizers")).to_be_visible()
         expect(page.get_by_role("button", name="Cross Benchmark")).to_be_visible()
 
-    def test_unknown_route_redirects_to_dataset(self, page: Page, base_url: str) -> None:
+    def test_unknown_route_redirects_to_dataset(
+        self, page: Page, base_url: str
+    ) -> None:
         """Unknown routes should redirect back to the dataset page."""
         page.goto(f"{base_url}/does-not-exist")
         expect(page).to_have_url(re.compile(r".*/dataset/?$"))
@@ -52,7 +55,9 @@ class TestTokenizersPage:
 class TestCrossBenchmarkPage:
     """Tests for cross benchmark page UI elements."""
 
-    def test_cross_benchmark_page_loads_controls(self, page: Page, base_url: str) -> None:
+    def test_cross_benchmark_page_loads_controls(
+        self, page: Page, base_url: str
+    ) -> None:
         """Cross benchmark page should render control panel and report selector."""
         page.goto(f"{base_url}/cross-benchmark")
         expect(page.get_by_text("Tokenizer Benchmark")).to_be_visible()

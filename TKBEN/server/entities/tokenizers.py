@@ -152,4 +152,3 @@ class TokenizerVocabularyPageResponse(BaseModel):
     limit: int
     total: int
     items: list[TokenizerVocabularyItem] = Field(default_factory=list)
-

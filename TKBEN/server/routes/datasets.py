@@ -16,7 +16,10 @@ from TKBEN.server.entities.dataset import (
 from TKBEN.server.entities.jobs import JobStartResponse
 from TKBEN.server.configurations import server_settings
 from TKBEN.server.common.utils.logger import logger
-from TKBEN.server.common.utils.security import normalize_identifier, normalize_upload_stem
+from TKBEN.server.common.utils.security import (
+    normalize_identifier,
+    normalize_upload_stem,
+)
 from TKBEN.server.common.constants import (
     API_ROUTE_DATASETS_ANALYZE,
     API_ROUTE_DATASETS_DELETE,
@@ -428,7 +431,9 @@ async def analyze_dataset(request: DatasetAnalysisRequest) -> JobStartResponse:
 )
 async def get_latest_dataset_report(dataset_name: str) -> DatasetAnalysisResponse:
     try:
-        dataset_name = normalize_identifier(dataset_name, "Dataset name", max_length=200)
+        dataset_name = normalize_identifier(
+            dataset_name, "Dataset name", max_length=200
+        )
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -468,7 +473,9 @@ async def get_dataset_report_by_id(report_id: int) -> DatasetAnalysisResponse:
 )
 async def delete_dataset(dataset_name: str) -> dict[str, Any]:
     try:
-        dataset_name = normalize_identifier(dataset_name, "Dataset name", max_length=200)
+        dataset_name = normalize_identifier(
+            dataset_name, "Dataset name", max_length=200
+        )
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -486,4 +493,3 @@ async def delete_dataset(dataset_name: str) -> dict[str, Any]:
         "dataset_name": dataset_name,
         "message": "Dataset removed.",
     }
-

@@ -10,7 +10,9 @@ def compute_simhash(features: list[str], bits: int = 64) -> int:
         return 0
     vector = [0] * bits
     for feature in features:
-        digest = hashlib.blake2b(feature.encode("utf-8", errors="ignore"), digest_size=8).digest()
+        digest = hashlib.blake2b(
+            feature.encode("utf-8", errors="ignore"), digest_size=8
+        ).digest()
         value = int.from_bytes(digest, "big", signed=False)
         for bit_index in range(bits):
             mask = 1 << bit_index
@@ -35,7 +37,9 @@ def jaccard_like_similarity_from_hamming(a: int, b: int, bits: int = 64) -> floa
 
 ###############################################################################
 class SimHashNearDuplicateAnalyzer:
-    def __init__(self, similarity_threshold: float = 0.9, bands: int = 4, bits: int = 64) -> None:
+    def __init__(
+        self, similarity_threshold: float = 0.9, bands: int = 4, bits: int = 64
+    ) -> None:
         self.similarity_threshold = float(similarity_threshold)
         self.bands = max(1, int(bands))
         self.bits = int(bits)
@@ -55,7 +59,9 @@ class SimHashNearDuplicateAnalyzer:
         lowered = [token.lower() for token in tokens if token]
         if len(lowered) < 3:
             return lowered
-        return [" ".join(lowered[index : index + 3]) for index in range(len(lowered) - 2)]
+        return [
+            " ".join(lowered[index : index + 3]) for index in range(len(lowered) - 2)
+        ]
 
     # -------------------------------------------------------------------------
     def check_and_add(self, tokens: list[str]) -> bool:
@@ -84,4 +90,3 @@ class SimHashNearDuplicateAnalyzer:
             self.buckets[bucket].append(current_index)
 
         return is_near_duplicate
-

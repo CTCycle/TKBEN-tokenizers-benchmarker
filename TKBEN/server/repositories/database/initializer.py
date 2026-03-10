@@ -53,19 +53,22 @@ def clone_settings_with_database(
         insert_batch_size=settings.insert_batch_size,
     )
 
+
 # -----------------------------------------------------------------------------
 def build_postgres_create_database_sql(
     database_name: str,
 ) -> TextClause:
     safe_database = database_name.replace('"', '""')
     return sqlalchemy.text(
-        f'CREATE DATABASE "{safe_database}" WITH ENCODING \'UTF8\' TEMPLATE template0'
+        f"CREATE DATABASE \"{safe_database}\" WITH ENCODING 'UTF8' TEMPLATE template0"
     )
+
 
 # -----------------------------------------------------------------------------
 def initialize_sqlite_database(settings: DatabaseSettings) -> None:
     repository = SQLiteRepository(settings, initialize_schema=True)
     logger.info("Initialized SQLite database at %s", repository.db_path)
+
 
 # -----------------------------------------------------------------------------
 def ensure_postgres_database(settings: DatabaseSettings) -> str:
@@ -107,6 +110,7 @@ def ensure_postgres_database(settings: DatabaseSettings) -> str:
 
     return target_database
 
+
 # -----------------------------------------------------------------------------
 def run_database_initialization() -> None:
     settings = server_settings.database
@@ -125,6 +129,7 @@ def run_database_initialization() -> None:
 
     ensure_postgres_database(settings)
 
+
 # -----------------------------------------------------------------------------
 def initialize_database() -> None:
     try:
@@ -135,4 +140,3 @@ def initialize_database() -> None:
     except Exception as exc:
         logger.exception("Unexpected error during database initialization.")
         raise SystemExit(1) from exc
-

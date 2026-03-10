@@ -1,1 +1,1 @@
-raise RuntimeError('Module moved: use TKBEN.server.services.metrics.frequencies')
+raise RuntimeError("Module moved: use TKBEN.server.services.metrics.frequencies")

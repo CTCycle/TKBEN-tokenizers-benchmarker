@@ -39,9 +39,7 @@ class HFAccessKey(Base):
     key_value = Column(String, nullable=False, unique=True)
     created_at = Column(DateTime, nullable=False)
     is_active = Column(Boolean, nullable=False, default=False)
-    __table_args__ = (
-        Index("ix_hf_access_keys_is_active", "is_active"),
-    )
+    __table_args__ = (Index("ix_hf_access_keys_is_active", "is_active"),)
 
 
 ###############################################################################
@@ -54,9 +52,7 @@ class DatasetDocument(Base):
         nullable=False,
     )
     text = Column(String, nullable=False)
-    __table_args__ = (
-        Index("ix_dataset_document_dataset_id_id", "dataset_id", "id"),
-    )
+    __table_args__ = (Index("ix_dataset_document_dataset_id_id", "dataset_id", "id"),)
 
 
 ###############################################################################
@@ -95,9 +91,7 @@ class MetricType(Base):
     description = Column(String, nullable=True)
     scope = Column(String, nullable=False, default="aggregate")
     value_kind = Column(String, nullable=False, default="number")
-    __table_args__ = (
-        Index("ix_metric_type_category", "category"),
-    )
+    __table_args__ = (Index("ix_metric_type_category", "category"),)
 
 
 ###############################################################################
@@ -288,7 +282,9 @@ class TokenizerReport(Base):
     description = Column(String)
     __table_args__ = (
         Index("ix_tokenizer_report_tokenizer_id", "tokenizer_id"),
-        Index("ix_tokenizer_report_tokenizer_id_created_at", "tokenizer_id", "created_at"),
+        Index(
+            "ix_tokenizer_report_tokenizer_id_created_at", "tokenizer_id", "created_at"
+        ),
     )
 
 

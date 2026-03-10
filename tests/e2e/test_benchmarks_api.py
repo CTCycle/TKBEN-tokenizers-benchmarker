@@ -2,6 +2,7 @@
 E2E tests for benchmark API endpoints.
 Covers /benchmarks/run validation and optional happy-path execution.
 """
+
 import os
 
 import pytest
@@ -26,7 +27,10 @@ def test_run_benchmarks_requires_dataset(api_context: APIRequestContext) -> None
     """POST /benchmarks/run should reject missing dataset names."""
     response = api_context.post(
         "/benchmarks/run",
-        data={"tokenizers": ["hf-internal-testing/tiny-random-bert"], "dataset_name": ""},
+        data={
+            "tokenizers": ["hf-internal-testing/tiny-random-bert"],
+            "dataset_name": "",
+        },
     )
     assert response.status == 400
     data = response.json()

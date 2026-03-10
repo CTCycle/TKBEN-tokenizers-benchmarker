@@ -6,7 +6,6 @@ from typing import Any
 # [PROCESS TEXT DATASET]
 ###############################################################################
 class ProcessDataset:
-    
     def __init__(self, configuration: dict[str, Any], datasets: dict[str, Any]) -> None:
         self.datasets = datasets
         self.clean_docs = configuration.get("remove_invalid_documents", True)

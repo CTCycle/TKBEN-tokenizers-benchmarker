@@ -124,7 +124,7 @@ class HFAccessKeyService:
         list_query = sqlalchemy.text('SELECT "key_value" FROM "hf_access_keys"')
         insert_query = sqlalchemy.text(
             'INSERT INTO "hf_access_keys" ("key_value", "created_at", "is_active") '
-            'VALUES (:key_value, :created_at, :is_active)'
+            "VALUES (:key_value, :created_at, :is_active)"
         )
         select_query = sqlalchemy.text(
             'SELECT "id", "created_at", "is_active" '
@@ -178,7 +178,9 @@ class HFAccessKeyService:
             raise RuntimeError("Failed to save Hugging Face key.")
 
         key_id = int(self.read_row_value(inserted, "id", 0))
-        inserted_created_at = self.read_row_value(inserted, "created_at", 1) or created_at
+        inserted_created_at = (
+            self.read_row_value(inserted, "created_at", 1) or created_at
+        )
         return {
             "id": key_id,
             "created_at": inserted_created_at,
@@ -212,9 +214,7 @@ class HFAccessKeyService:
     # -------------------------------------------------------------------------
     def delete_key(self, key_id: int, confirm: bool) -> None:
         if not confirm:
-            raise HFAccessKeyValidationError(
-                "Deletion requires explicit confirmation."
-            )
+            raise HFAccessKeyValidationError("Deletion requires explicit confirmation.")
 
         find_query = sqlalchemy.text(
             'SELECT "is_active" FROM "hf_access_keys" WHERE "id" = :key_id LIMIT 1'
@@ -303,11 +303,13 @@ class HFAccessKeyService:
                 )
                 try:
                     normalized_key_id = int(key_id)
-                except (TypeError, ValueError):
+                except TypeError, ValueError:
                     normalized_key_id = None
                 if normalized_key_id is not None:
                     try:
-                        self.migrate_plaintext_key(normalized_key_id, encrypted_text.strip())
+                        self.migrate_plaintext_key(
+                            normalized_key_id, encrypted_text.strip()
+                        )
                     except Exception:
                         logger.warning(
                             "Failed to migrate plaintext Hugging Face key for id=%s",

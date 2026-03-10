@@ -8,7 +8,9 @@ from TKBEN.server.repositories.serialization.data import TokenizerReportSerializ
 from TKBEN.server.services.tokenizers import TokenizersService
 
 
-def test_compute_subword_word_stats_excludes_special_tokens_and_classifies_markers() -> None:
+def test_compute_subword_word_stats_excludes_special_tokens_and_classifies_markers() -> (
+    None
+):
     service = TokenizersService()
     stats = service.compute_subword_word_stats(
         vocab_tokens=[
@@ -125,7 +127,9 @@ def test_generate_report_payload_includes_hf_url_and_subword_stats(
         captured_report.update(report)
         return 123
 
-    monkeypatch.setattr(service.report_serializer, "save_tokenizer_report", capture_report)
+    monkeypatch.setattr(
+        service.report_serializer, "save_tokenizer_report", capture_report
+    )
 
     report = service.generate_and_store_report("bert-base-uncased")
 
@@ -140,9 +144,15 @@ def test_generate_report_payload_includes_hf_url_and_subword_stats(
     assert report["global_stats"]["special_tokens_ids_count"] == 2
     assert report["global_stats"]["special_tokens_count"] == 2
     assert report["global_stats"]["vocabulary_stats"]["subword_like_count"] == 3
-    assert report["global_stats"]["vocabulary_stats"]["special_tokens_in_vocab_count"] == 1
-    assert captured_report["huggingface_url"] == "https://huggingface.co/bert-base-uncased"
-    assert captured_report["global_stats"]["vocabulary_stats"]["unique_token_lengths"] == 3
+    assert (
+        report["global_stats"]["vocabulary_stats"]["special_tokens_in_vocab_count"] == 1
+    )
+    assert (
+        captured_report["huggingface_url"] == "https://huggingface.co/bert-base-uncased"
+    )
+    assert (
+        captured_report["global_stats"]["vocabulary_stats"]["unique_token_lengths"] == 3
+    )
 
 
 def test_tokenizer_report_serializer_roundtrip_preserves_huggingface_url() -> None:
@@ -203,7 +213,10 @@ def test_tokenizer_report_serializer_roundtrip_preserves_huggingface_url() -> No
     loaded = serializer.load_tokenizer_report_by_id(report_id)
 
     assert loaded is not None
-    assert loaded["huggingface_url"] == "https://huggingface.co/test/tokenizer-report-roundtrip"
+    assert (
+        loaded["huggingface_url"]
+        == "https://huggingface.co/test/tokenizer-report-roundtrip"
+    )
     assert loaded["global_stats"]["subword_word_stats"]["subword_count"] == 1
     assert loaded["global_stats"]["base_vocabulary_size"] == 2
     assert loaded["global_stats"]["model_max_length"] == 512

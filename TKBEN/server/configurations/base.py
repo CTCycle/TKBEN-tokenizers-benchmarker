@@ -12,6 +12,7 @@ def ensure_mapping(value: Any) -> dict[str, Any]:
         return value
     return {}
 
+
 # -----------------------------------------------------------------------------
 def load_configurations(path: str) -> dict[str, Any]:
     if not os.path.exists(path):
@@ -24,4 +25,3 @@ def load_configurations(path: str) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise RuntimeError("Configuration must be a JSON object.")
     return data
-
