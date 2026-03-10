@@ -44,6 +44,7 @@ echo ==========================================================================
 echo 1. Remove logs
 echo 2. Uninstall app
 echo 3. Initialize database
+echo 4. Clean desktop build artifacts
 echo 5. Exit
 echo.
 set /p sub_choice="Select an option (1-5): "
@@ -51,6 +52,7 @@ set /p sub_choice="Select an option (1-5): "
 if "%sub_choice%"=="1" goto :logs
 if "%sub_choice%"=="2" goto :uninstall
 if "%sub_choice%"=="3" goto :run_init_db
+if "%sub_choice%"=="4" goto :clean_desktop_build
 if "%sub_choice%"=="5" goto :exit
 echo Invalid option, try again.
 pause
@@ -164,6 +166,18 @@ goto :setup_menu
 
 :run_init_db
 call :run_server_script "" "Database initialization" "%init_db_script%"
+goto :setup_menu
+
+:clean_desktop_build
+if not exist "%root_folder%release\tauri\scripts\clean-tauri-build.ps1" (
+  echo [ERROR] Desktop cleanup script not found.
+  pause
+  goto :setup_menu
+)
+echo [RUN] Cleaning desktop build artifacts
+powershell -NoProfile -ExecutionPolicy Bypass -File "%root_folder%release\tauri\scripts\clean-tauri-build.ps1"
+echo.
+pause
 goto :setup_menu
 
 :run_server_script

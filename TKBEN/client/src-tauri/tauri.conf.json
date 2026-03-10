@@ -1,0 +1,49 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "TKBEN Desktop",
+  "version": "2.1.0",
+  "identifier": "com.tkben.desktop",
+  "build": {
+    "beforeBuildCommand": "",
+    "frontendDist": "../dist",
+    "devUrl": "about:blank"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "TKBEN Desktop",
+        "url": "about:blank",
+        "width": 1440,
+        "height": 920,
+        "center": true,
+        "resizable": true
+      }
+    ],
+    "withGlobalTauri": false
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": {
+      "r/p.toml": "pyproject.toml",
+      "r/u.lock": "uv.lock",
+      "r/srv": "TKBEN/server",
+      "r/sc": "TKBEN/scripts",
+      "r/set": "TKBEN/settings",
+      "r/d": "TKBEN/client/dist",
+      "r/tpl": "TKBEN/resources/templates",
+      "r/src": "TKBEN/resources/sources",
+      "r/db": "TKBEN/resources/database.db",
+      "r/py": "TKBEN/resources/runtimes/python",
+      "r/uv": "TKBEN/resources/runtimes/uv"
+    }
+  }
+}
