@@ -117,19 +117,41 @@ Cloud same-origin API contract:
 
 Load data from Hugging Face presets or manual IDs, or upload local CSV/XLS/XLSX files. Then run dataset analysis and reopen saved reports for statistics and charts.
 
-![Dataset workspace](./assets/figures/dataset_page.png)
+![Dataset workspace](assets/figures/dataset.png)
 
 **Tokenizers (`/tokenizers`)**
 
 Scan available tokenizer IDs, download selected tokenizers, optionally upload a custom `tokenizer.json`, and inspect tokenizer reports.
 
-![Tokenizer workspace](./assets/figures/tokenizer_page.png)
+![Tokenizer workspace](assets/figures/tokenizers-overview.png)
 
 **Cross Benchmark (`/cross-benchmark`)**
 
 Create benchmark runs by selecting dataset, tokenizers, and metric categories, then compare persisted results across tokenizer candidates.
 
-![Cross benchmark workspace](./assets/figures/benchmarks_page.png)
+![Cross benchmark workspace](assets/figures/cross-benchmark.png)
+
+### 3.5 Screenshots
+
+#### Home
+
+![Home](assets/figures/home.png)
+
+#### Dataset
+
+![Dataset](assets/figures/dataset.png)
+
+#### Tokenizers
+
+![Tokenizers](assets/figures/tokenizers-overview.png)
+
+#### Cross Benchmark
+
+![Cross Benchmark](assets/figures/cross-benchmark.png)
+
+#### Settings
+
+![Settings](assets/figures/settings.png)
 
 ## 4. Setup and Maintenance
 
@@ -186,3 +208,4 @@ Determinism:
 ## 7. License
 
 This project is licensed under the MIT License. See `LICENSE` for details.
+

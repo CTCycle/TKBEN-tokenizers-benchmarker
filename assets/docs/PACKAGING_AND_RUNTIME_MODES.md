@@ -80,7 +80,7 @@ Behavior:
 
 Desktop packaging profile:
 - `TKBEN/settings/.env.local.tauri.example`
-- expected packaged defaults: loopback host, `/api`, `RELOAD=false`, `OPTIONAL_DEPENDENCIES=false`
+- expected packaged defaults: loopback host, `/api`, `RELOAD=true`, `OPTIONAL_DEPENDENCIES=false`
 
 ## 7. Determinism
 - Backend lockfile: `uv.lock` + `uv sync --frozen` in Docker image build
