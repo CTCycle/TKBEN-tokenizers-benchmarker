@@ -4,7 +4,6 @@ import {
     useContext,
     useEffect,
     useMemo,
-    useRef,
     useState,
 } from 'react';
 import type { ReactNode } from 'react';
@@ -24,6 +23,7 @@ import type {
     HistogramData,
 } from '../types/api';
 import { useAvailableDatasets } from '../hooks/useAvailableDatasets';
+import { useFileInputControl } from '../hooks/useFileInputControl';
 
 interface DatasetStats {
     documentCount: number;
@@ -77,7 +77,11 @@ interface DatasetContextType {
 const DatasetContext = createContext<DatasetContextType | null>(null);
 
 export const DatasetProvider = ({ children }: { children: ReactNode }) => {
-    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const {
+        inputRef: fileInputRef,
+        openFileDialog: handleUploadClick,
+        resetFileInput,
+    } = useFileInputControl();
     const [datasetName, setDatasetName] = useState<string | null>(null);
     const [selectedCorpus, setSelectedCorpus] = useState('wikitext');
     const [selectedConfig, setSelectedConfig] = useState('wikitext-2-v1');
@@ -177,10 +181,6 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
         }
     }, [refreshAvailableDatasets, selectedCorpus, selectedConfig]);
 
-    const handleUploadClick = useCallback(() => {
-        fileInputRef.current?.click();
-    }, []);
-
     const handleFileChange = useCallback(
         async (event: React.ChangeEvent<HTMLInputElement>) => {
             const file = event.target.files?.[0];
@@ -211,12 +211,10 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             } finally {
                 setLoading(false);
                 setLoadProgress(null);
-                if (fileInputRef.current) {
-                    fileInputRef.current.value = '';
-                }
+                resetFileInput();
             }
         },
-        [refreshAvailableDatasets],
+        [refreshAvailableDatasets, resetFileInput],
     );
 
     const handleSelectDataset = useCallback(
