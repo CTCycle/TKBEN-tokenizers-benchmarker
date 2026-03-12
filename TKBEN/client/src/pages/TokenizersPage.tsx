@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { KeyboardEvent, MouseEvent } from 'react';
-import DismissibleBanner from '../components/DismissibleBanner';
+import TokenizerStatusBanners from '../components/TokenizerStatusBanners';
 import { useTokenizers } from '../contexts/TokenizersContext';
 import {
   BarChart,
@@ -201,12 +201,13 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
           </div>
         </header>
         <div className="panel-body">
-          {scanError && (
-            <DismissibleBanner message={scanError} onDismiss={() => setScanError(null)} />
-          )}
-          {benchmarkError && (
-            <DismissibleBanner message={benchmarkError} onDismiss={() => setBenchmarkError(null)} />
-          )}
+          <TokenizerStatusBanners
+            warningMode="without-warning"
+            scanError={scanError}
+            benchmarkError={benchmarkError}
+            onDismissScanError={() => setScanError(null)}
+            onDismissBenchmarkError={() => setBenchmarkError(null)}
+          />
           <textarea
             className="text-area"
             placeholder="Paste tokenizer IDs here, one per line..."
@@ -483,12 +484,13 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
             </div>
           </div>
 
-          {scanError && (
-            <DismissibleBanner message={scanError} onDismiss={() => setScanError(null)} />
-          )}
-          {benchmarkError && (
-            <DismissibleBanner message={benchmarkError} onDismiss={() => setBenchmarkError(null)} />
-          )}
+          <TokenizerStatusBanners
+            warningMode="without-warning"
+            scanError={scanError}
+            benchmarkError={benchmarkError}
+            onDismissScanError={() => setScanError(null)}
+            onDismissBenchmarkError={() => setBenchmarkError(null)}
+          />
           {tokenizerReport && (
             <div className="tokenizer-report-hint">
               Latest loaded report: {tokenizerReport.tokenizer_name}
@@ -515,24 +517,17 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
               </button>
             </header>
 
-            {(downloadWarning || scanError || benchmarkError) && (
-              <div className="tokenizer-modal-messages">
-                {downloadWarning && (
-                  <DismissibleBanner
-                    message={downloadWarning}
-                    onDismiss={() => setDownloadWarning(null)}
-                    role="status"
-                    className="tokenizer-warning-banner"
-                  />
-                )}
-                {scanError && (
-                  <DismissibleBanner message={scanError} onDismiss={() => setScanError(null)} />
-                )}
-                {benchmarkError && (
-                  <DismissibleBanner message={benchmarkError} onDismiss={() => setBenchmarkError(null)} />
-                )}
-              </div>
-            )}
+            <TokenizerStatusBanners
+              warningMode="with-warning"
+              containerClassName="tokenizer-modal-messages"
+              warningClassName="tokenizer-warning-banner"
+              downloadWarning={downloadWarning}
+              scanError={scanError}
+              benchmarkError={benchmarkError}
+              onDismissDownloadWarning={() => setDownloadWarning(null)}
+              onDismissScanError={() => setScanError(null)}
+              onDismissBenchmarkError={() => setBenchmarkError(null)}
+            />
 
             <div className="tokenizer-modal-columns">
               <div className="tokenizer-modal-column tokenizer-modal-column--manual">
@@ -710,4 +705,3 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
 };
 
 export default TokenizersPage;
-

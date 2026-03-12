@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useContext, useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
     clearCustomTokenizers,
@@ -12,6 +12,7 @@ import {
 } from '../services/tokenizersApi';
 import { runBenchmarks } from '../services/benchmarksApi';
 import { useAvailableDatasets } from '../hooks/useAvailableDatasets';
+import { useFileInputControl } from '../hooks/useFileInputControl';
 import type { BenchmarkRunResponse, TokenizerReportResponse, TokenizerVocabularyItem } from '../types/api';
 
 const DEFAULT_TOKENIZER_VOCABULARY_LIMIT = 500;
@@ -70,7 +71,11 @@ interface TokenizersContextType {
 const TokenizersContext = createContext<TokenizersContextType | null>(null);
 
 export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
-    const customTokenizerInputRef = useRef<HTMLInputElement | null>(null);
+    const {
+        inputRef: customTokenizerInputRef,
+        openFileDialog: triggerCustomTokenizerUpload,
+        resetFileInput: resetCustomTokenizerInput,
+    } = useFileInputControl();
     const [scanInProgress, setScanInProgress] = useState(false);
     const [scanError, setScanError] = useState<string | null>(null);
     const [downloadInProgress, setDownloadInProgress] = useState(false);
@@ -197,10 +202,6 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         }
     }, []);
 
-    const triggerCustomTokenizerUpload = useCallback(() => {
-        customTokenizerInputRef.current?.click();
-    }, []);
-
     const handleUploadCustomTokenizer = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
@@ -221,11 +222,9 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
             console.error('Upload error:', error);
         } finally {
             setCustomTokenizerUploading(false);
-            if (customTokenizerInputRef.current) {
-                customTokenizerInputRef.current.value = '';
-            }
+            resetCustomTokenizerInput();
         }
-    }, []);
+    }, [resetCustomTokenizerInput]);
 
     const handleClearCustomTokenizer = useCallback(async () => {
         try {

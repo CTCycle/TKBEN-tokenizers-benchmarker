@@ -20,7 +20,6 @@ import DismissibleBanner from '../components/DismissibleBanner';
 import { useDataset } from '../contexts/DatasetContext';
 import type {
   DatasetAnalysisRequest,
-  DatasetMetricCatalogCategory,
   HistogramData,
   WordCloudTerm,
   WordFrequency,
@@ -1136,7 +1135,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
       <DatasetValidationWizard
         isOpen={wizardOpen}
         datasetName={wizardDatasetName ?? datasetName}
-        categories={metricsCatalog as DatasetMetricCatalogCategory[]}
+        categories={metricsCatalog}
         loadingCategories={metricsCatalogLoading}
         validating={validating}
         onRetryCatalogLoad={() => { void loadMetricsCatalog(); }}
@@ -1324,4 +1323,3 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
 };
 
 export default DatasetPage;
-
