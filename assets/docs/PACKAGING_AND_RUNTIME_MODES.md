@@ -16,7 +16,7 @@ Entry point:
 - `TKBEN/start_on_windows.bat`
 
 Behavior:
-- installs portable Python, uv, and Node runtimes in `TKBEN/resources/runtimes`
+- installs portable Python, uv, and Node runtimes in `runtimes`
 - syncs backend dependencies with `uv sync`
 - installs/builds frontend
 - starts backend (uvicorn) and frontend preview server
@@ -41,10 +41,13 @@ Build packaged desktop artifacts:
 release\tauri\build_with_tauri.bat
 ```
 
+Rust prerequisite:
+- install Rust and set a default toolchain (`rustup toolchain install stable` and `rustup default stable`)
+
 Behavior:
 - the Tauri app starts on `about:blank` and renders an in-window splash
 - Rust resolves a packaged workspace containing `pyproject.toml` and `TKBEN/server/app.py`
-- bundled `uv` and embedded Python prepare or reuse `.venv`
+- bundled `uv` and embedded Python prepare or reuse `runtimes/.venv`
 - FastAPI serves the packaged SPA from `TKBEN/client/dist`
 - API routes remain available at their original paths and under `/api`
 - exported user-facing artifacts land in `release/windows/installers` and `release/windows/portable`
@@ -70,6 +73,6 @@ Desktop packaging profile:
 - expected packaged defaults: loopback host, `/api`, `RELOAD=true`, `OPTIONAL_DEPENDENCIES=false`
 
 ## 6. Determinism
-- Backend lockfile: `uv.lock` + `uv sync --frozen`
+- Backend lockfile: `runtimes/uv.lock` (copied to root `uv.lock` before `uv sync --frozen`, then copied back)
 - Frontend lockfile: `TKBEN/client/package-lock.json` + `npm ci`
 - Desktop build entrypoint: `release/tauri/build_with_tauri.bat`

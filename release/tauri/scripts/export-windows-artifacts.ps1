@@ -57,19 +57,42 @@ foreach ($file in $portableExeCandidates) {
   Copy-Item -Path $file.FullName -Destination $portableDir -Force
 }
 
-$portableResourceEntries = @(
+$portableRequiredEntries = @(
   "TKBEN",
   "pyproject.toml",
   "uv.lock",
-  "_up_"
+  "runtimes"
 )
 
-foreach ($entry in $portableResourceEntries) {
+$portableOptionalEntries = @(
+  "_up_"
+  "resources"
+)
+
+foreach ($entry in $portableRequiredEntries) {
+  $sourcePath = Join-Path $releaseDir $entry
+  if (-not (Test-Path $sourcePath)) {
+    throw "Required portable payload is missing from release output: $sourcePath"
+  }
+  $destinationPath = Join-Path $portableDir $entry
+  Copy-Item -Path $sourcePath -Destination $destinationPath -Recurse -Force
+}
+
+foreach ($entry in $portableOptionalEntries) {
   $sourcePath = Join-Path $releaseDir $entry
   if (Test-Path $sourcePath) {
     $destinationPath = Join-Path $portableDir $entry
     Copy-Item -Path $sourcePath -Destination $destinationPath -Recurse -Force
   }
+}
+
+$portableUvExe = Join-Path $portableDir "runtimes\uv\uv.exe"
+$portablePythonExe = Join-Path $portableDir "runtimes\python\python.exe"
+if (-not (Test-Path $portableUvExe)) {
+  throw "Portable export is missing bundled uv runtime: $portableUvExe"
+}
+if (-not (Test-Path $portablePythonExe)) {
+  throw "Portable export is missing bundled Python runtime: $portablePythonExe"
 }
 
 $instructions = @"

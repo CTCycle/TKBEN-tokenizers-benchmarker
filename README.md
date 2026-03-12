@@ -31,12 +31,15 @@ Run the launcher from repository root:
 ```
 
 The launcher will:
-1. Install portable Python, `uv`, and Node.js under `TKBEN/resources/runtimes`.
+1. Install portable Python, `uv`, and Node.js under `runtimes`.
 2. Install backend dependencies using `uv sync`.
 3. Install frontend dependencies (`npm ci` when lockfile is present, fallback to `npm install`).
 4. Build and start backend + frontend.
 
 ### 2.2 Windows Packaged Desktop (Tauri)
+
+Prerequisites:
+- Rust toolchain (`cargo`) with a default toolchain configured.
 
 ```bat
 copy /Y TKBEN\settings\.env.local.tauri.example TKBEN\settings\.env
@@ -156,7 +159,7 @@ Run:
 
 Available actions:
 - **Remove logs**: Deletes `*.log` files under `TKBEN/resources/logs`.
-- **Uninstall app**: Removes local runtimes, caches, `.venv`, frontend `node_modules`, frontend `dist`, and related local artifacts.
+- **Uninstall app**: Removes local runtime artifacts under `runtimes\` (including `runtimes\.venv` and `runtimes\uv.lock`), frontend `node_modules`, frontend `dist`, and related local artifacts.
 - **Initialize database**: Executes `TKBEN/scripts/initialize_database.py` using local `uv` + portable Python runtime.
 
 ## 5. Resources
@@ -166,7 +169,7 @@ Key paths:
 - `TKBEN/resources/sources/datasets`: Dataset source/download artifacts.
 - `TKBEN/resources/sources/tokenizers`: Tokenizer source/download artifacts.
 - `TKBEN/resources/logs`: Launcher and backend logs.
-- `TKBEN/resources/runtimes`: Portable Windows runtimes.
+- `runtimes`: Portable Windows runtimes.
 - `assets/docs/PACKAGING_AND_RUNTIME_MODES.md`: Runtime packaging and mode details.
 
 ## 6. Configuration
@@ -194,9 +197,10 @@ Core runtime keys:
 | `HF_KEYS_ENCRYPTION_KEY` | Required key-management encryption secret. |
 
 Determinism:
-- Backend lockfile: `uv.lock` + `uv sync --frozen` in local runtime/bootstrap flow.
+- Backend lockfile: `runtimes/uv.lock` (copied to root `uv.lock` before `uv sync --frozen`, then copied back).
 - Frontend lockfile: committed `TKBEN/client/package-lock.json` + `npm ci` in local runtime/bootstrap flow.
 
 ## 7. License
 
 This project is licensed under the MIT License. See `LICENSE` for details.
+

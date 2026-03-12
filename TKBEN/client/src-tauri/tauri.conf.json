@@ -42,8 +42,9 @@
       "r/tpl": "TKBEN/resources/templates",
       "r/src": "TKBEN/resources/sources",
       "r/db": "TKBEN/resources/database.db",
-      "r/py": "TKBEN/resources/runtimes/python",
-      "r/uv": "TKBEN/resources/runtimes/uv"
+      "r/py": "runtimes/python",
+      "r/uv": "runtimes/uv",
+      "r/node": "runtimes/nodejs"
     }
   }
 }

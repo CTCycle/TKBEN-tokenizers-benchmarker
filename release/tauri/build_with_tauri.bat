@@ -6,9 +6,10 @@ for %%I in ("%script_dir%..\..") do set "repo_root=%%~fI"
 set "actual_repo_root=%repo_root%"
 set "actual_project_folder=%actual_repo_root%\TKBEN\"
 set "actual_client_dir=%actual_project_folder%client"
-set "actual_runtime_python_exe=%actual_project_folder%resources\runtimes\python\python.exe"
-set "actual_runtime_uv_exe=%actual_project_folder%resources\runtimes\uv\uv.exe"
-set "actual_runtime_node_dir=%actual_project_folder%resources\runtimes\nodejs"
+set "actual_runtime_python_exe=%actual_repo_root%\runtimes\python\python.exe"
+set "actual_runtime_uv_exe=%actual_repo_root%\runtimes\uv\uv.exe"
+set "actual_runtime_uv_lock=%actual_repo_root%\runtimes\uv.lock"
+set "actual_runtime_node_dir=%actual_repo_root%\runtimes\nodejs"
 set "actual_node_cmd=%actual_runtime_node_dir%\node.exe"
 set "actual_npm_cmd=%actual_runtime_node_dir%\npm.cmd"
 set "short_drive=Q:"
@@ -36,6 +37,7 @@ echo [TAURI] Release build helper
 echo [CHECK] Validating bundled runtimes...
 call :require_file "%actual_runtime_python_exe%" "embedded Python runtime" || goto build_error
 call :require_file "%actual_runtime_uv_exe%" "embedded uv runtime" || goto build_error
+call :require_file "%actual_runtime_uv_lock%" "runtime lockfile" || goto build_error
 call :require_file "%actual_node_cmd%" "embedded Node.js runtime" || goto build_error
 call :require_file "%actual_npm_cmd%" "embedded npm runtime" || goto build_error
 
@@ -51,6 +53,16 @@ if not defined cargo_cmd (
 )
 if not defined cargo_cmd (
   echo [FATAL] Rust/Cargo not found. Install Rust first: https://rustup.rs/
+  goto build_error
+)
+
+"%cargo_cmd%" --version >nul 2>&1
+if errorlevel 1 (
+  echo [FATAL] Cargo was found at "%cargo_cmd%" but no default Rust toolchain is configured.
+  echo         Run the following commands, then retry packaging:
+  echo           rustup toolchain install stable
+  echo           rustup default stable
+  echo           rustup target add x86_64-pc-windows-msvc
   goto build_error
 )
 for /f "delims=" %%V in ('"%cargo_cmd%" --version 2^>nul') do set "cargo_version=%%V"
@@ -158,9 +170,14 @@ if errorlevel 1 (
   echo [FATAL] Failed to stage pyproject.toml for Tauri bundling.
   exit /b 1
 )
-copy /y "%repo_root%uv.lock" "%bundle_source_dir%\u.lock" >nul
+if not exist "%repo_root%runtimes\uv.lock" (
+  echo [FATAL] Missing runtime lockfile at "%repo_root%runtimes\uv.lock".
+  echo         Run TKBEN\start_on_windows.bat to generate runtimes\uv.lock before packaging.
+  exit /b 1
+)
+copy /y "%repo_root%runtimes\uv.lock" "%bundle_source_dir%\u.lock" >nul
 if errorlevel 1 (
-  echo [FATAL] Failed to stage uv.lock for Tauri bundling.
+  echo [FATAL] Failed to stage runtime lockfile for Tauri bundling.
   exit /b 1
 )
 
@@ -180,8 +197,9 @@ call :make_junction "%bundle_source_dir%\set" "%project_folder%settings" || exit
 call :make_junction "%bundle_source_dir%\d" "%project_folder%client\dist" || exit /b 1
 call :make_junction "%bundle_source_dir%\tpl" "%project_folder%resources\templates" || exit /b 1
 call :make_junction "%bundle_source_dir%\src" "%project_folder%resources\sources" || exit /b 1
-call :make_junction "%bundle_source_dir%\py" "%project_folder%resources\runtimes\python" || exit /b 1
-call :make_junction "%bundle_source_dir%\uv" "%project_folder%resources\runtimes\uv" || exit /b 1
+call :make_junction "%bundle_source_dir%\py" "%repo_root%runtimes\python" || exit /b 1
+call :make_junction "%bundle_source_dir%\uv" "%repo_root%runtimes\uv" || exit /b 1
+call :make_junction "%bundle_source_dir%\node" "%repo_root%runtimes\nodejs" || exit /b 1
 exit /b 0
 
 :make_junction
