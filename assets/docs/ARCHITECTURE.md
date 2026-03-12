@@ -21,7 +21,7 @@ TKBEN is a tokenizer benchmarking web app. It supports:
   - `TKBEN/client/src/contexts/TokenizersContext.tsx`
 - API clients:
   - `TKBEN/client/src/services/*`
-  - all calls use `/api` base path (proxied in dev/preview and Docker nginx)
+  - all calls use `/api` base path (proxied in local dev/preview and preserved in desktop packaging)
 - Key pages:
   - `DatasetPage.tsx`
   - `TokenizerExaminationPage.tsx` (includes `TokenizersPage.tsx`)
@@ -110,11 +110,10 @@ Main tables in `models.py`:
 ## 8. Runtime and Packaging
 - Local launcher: `TKBEN/start_on_windows.bat`
 - Maintenance utilities: `TKBEN/setup_and_maintenance.bat`
-- Docker stack: `docker-compose.yml` + `docker/backend.Dockerfile` + `docker/frontend.Dockerfile`
-- Frontend nginx reverse proxy: `docker/nginx/default.conf` (`/api` -> `backend:8000`)
+- Desktop packaging build: `release/tauri/build_with_tauri.bat`
+- Desktop runtime serves API routes under original paths and `/api`
 
 ## 9. Current Constraints
 - No application-level auth for datasets/tokenizers/benchmarks endpoints.
 - HF access keys are managed server-side, but API access itself is not user-authenticated.
 - Uploaded custom tokenizers are kept in process memory and are not persisted across server restart.
-

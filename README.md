@@ -14,9 +14,9 @@ Main workflow routes:
 - `/cross-benchmark`
 
 Runtime model:
-- **Local mode (default)**: run directly on host via `TKBEN/start_on_windows.bat`.
-- **Cloud mode**: run with Docker (`backend` + `frontend`).
-- **Mode switch**: replace values in `TKBEN/settings/.env` (using local/cloud example profiles).
+- **Local webapp mode (default)**: run directly on host via `TKBEN/start_on_windows.bat`.
+- **Packaged desktop mode**: build and run the local Tauri package.
+- **Mode switch**: replace values in `TKBEN/settings/.env` using local profile templates.
 
 Default embedded storage is the SQLite file at `TKBEN/resources/database.db`.
 
@@ -36,11 +36,11 @@ The launcher will:
 3. Install frontend dependencies (`npm ci` when lockfile is present, fallback to `npm install`).
 4. Build and start backend + frontend.
 
-### 2.2 Docker (Cloud Packaging)
+### 2.2 Windows Packaged Desktop (Tauri)
 
 ```bat
-docker compose --env-file TKBEN/settings/.env build
-docker compose --env-file TKBEN/settings/.env up -d
+copy /Y TKBEN\settings\.env.local.tauri.example TKBEN\settings\.env
+.\release\tauri\build_with_tauri.bat
 ```
 
 ### 2.3 macOS / Linux (Manual Local Setup)
@@ -72,17 +72,17 @@ docker compose --env-file TKBEN/settings/.env up -d
 
 Use `TKBEN/settings/.env` as the active runtime file.
 
-Local profile:
+Local webapp profile:
 ```bat
 copy /Y TKBEN\settings\.env.local.example TKBEN\settings\.env
 ```
 
-Cloud profile:
+Local packaged desktop profile (Tauri):
 ```bat
-copy /Y TKBEN\settings\.env.cloud.example TKBEN\settings\.env
+copy /Y TKBEN\settings\.env.local.tauri.example TKBEN\settings\.env
 ```
 
-### 3.2 Local Mode (Default)
+### 3.2 Local Webapp Mode (Default)
 
 ```bat
 .\TKBEN\start_on_windows.bat
@@ -93,23 +93,16 @@ Runtime addresses are taken from `TKBEN/settings/.env`:
 - **Backend API**: `http://<FASTAPI_HOST>:<FASTAPI_PORT>`
 - **API Docs**: `http://<FASTAPI_HOST>:<FASTAPI_PORT>/docs`
 
-### 3.3 Cloud Mode (Docker)
+### 3.3 Packaged Desktop Mode (Tauri)
 
 ```bat
-docker compose --env-file TKBEN/settings/.env build --no-cache
-docker compose --env-file TKBEN/settings/.env up -d
+copy /Y TKBEN\settings\.env.local.tauri.example TKBEN\settings\.env
+.\release\tauri\build_with_tauri.bat
 ```
 
-Stop stack:
-
-```bat
-docker compose --env-file TKBEN/settings/.env down
-```
-
-Cloud same-origin API contract:
-- Frontend serves the SPA from Nginx.
-- Frontend origin `/api/*` is reverse-proxied to backend (`backend:8000`).
-- API docs are reachable at `http://<UI_HOST>:<UI_PORT>/api/docs`.
+Build artifacts are produced under:
+- `release/windows/installers`
+- `release/windows/portable`
 
 ### 3.4 Application Flow
 
@@ -174,15 +167,14 @@ Key paths:
 - `TKBEN/resources/sources/tokenizers`: Tokenizer source/download artifacts.
 - `TKBEN/resources/logs`: Launcher and backend logs.
 - `TKBEN/resources/runtimes`: Portable Windows runtimes.
-- `docs/PACKAGING_AND_RUNTIME_MODES.md`: Runtime packaging and mode details.
-- `docker-compose.yml`: Cloud runtime topology (`backend` + `frontend`).
+- `assets/docs/PACKAGING_AND_RUNTIME_MODES.md`: Runtime packaging and mode details.
 
 ## 6. Configuration
 
 Configuration is split between:
-- `TKBEN/settings/.env`: Active runtime profile used by launcher/tests/Docker.
+- `TKBEN/settings/.env`: Active runtime profile used by launcher, local runs, and desktop packaging.
 - `TKBEN/settings/.env.local.example`: Reference local profile.
-- `TKBEN/settings/.env.cloud.example`: Reference cloud profile.
+- `TKBEN/settings/.env.local.tauri.example`: Reference Tauri-local profile.
 - `TKBEN/settings/configurations.json`: Backend operational defaults.
 
 Core runtime keys:
@@ -190,7 +182,7 @@ Core runtime keys:
 | Key | Purpose |
 |---|---|
 | `FASTAPI_HOST`, `FASTAPI_PORT` | Backend bind host/port. |
-| `UI_HOST`, `UI_PORT` | Frontend host/port and published UI port in Docker. |
+| `UI_HOST`, `UI_PORT` | Frontend host/port for local webapp and packaged desktop runtime. |
 | `VITE_API_BASE_URL` | Frontend API base path (`/api`). |
 | `RELOAD` | Backend live reload toggle for local development. |
 | `DB_EMBEDDED` | Runtime DB mode switch (`true` = SQLite, `false` = external DB). |
@@ -202,10 +194,9 @@ Core runtime keys:
 | `HF_KEYS_ENCRYPTION_KEY` | Required key-management encryption secret. |
 
 Determinism:
-- Backend lockfile: `uv.lock` + `uv sync --frozen` in Docker.
-- Frontend lockfile: committed `TKBEN/client/package-lock.json` + `npm ci` in Docker.
+- Backend lockfile: `uv.lock` + `uv sync --frozen` in local runtime/bootstrap flow.
+- Frontend lockfile: committed `TKBEN/client/package-lock.json` + `npm ci` in local runtime/bootstrap flow.
 
 ## 7. License
 
 This project is licensed under the MIT License. See `LICENSE` for details.
-
