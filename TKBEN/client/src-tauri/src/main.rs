@@ -167,6 +167,7 @@ fn is_workspace_root(candidate: &Path) -> bool {
 
 fn has_workspace_venv(candidate: &Path) -> bool {
     candidate
+        .join("runtimes")
         .join(".venv")
         .join("Scripts")
         .join("python.exe")
@@ -314,29 +315,25 @@ fn spawn_backend(app_handle: &tauri::AppHandle, state: &BackendChildState) -> Re
         let project_dir = workspace_root.join("TKBEN");
         let env_path = project_dir.join("settings").join(".env");
         let backend_config = resolve_backend_launch_config(&env_path);
-        let uv_exe = project_dir
-            .join("resources")
-            .join("runtimes")
-            .join("uv")
-            .join("uv.exe");
-        let python_exe = project_dir
-            .join("resources")
+        let uv_exe = workspace_root.join("runtimes").join("uv").join("uv.exe");
+        let python_exe = workspace_root
             .join("runtimes")
             .join("python")
             .join("python.exe");
-        let venv_dir = runtime_root.join(".venv");
+        let runtime_runtimes_dir = runtime_root.join("runtimes");
+        let venv_dir = runtime_runtimes_dir.join(".venv");
         let venv_python_exe = venv_dir.join("Scripts").join("python.exe");
-        let uv_cache_dir = runtime_root.join(".uv-cache");
+        let uv_cache_dir = runtime_runtimes_dir.join(".uv-cache");
 
         if !uv_exe.is_file() {
             return Err(format!(
-                "Bundled uv runtime not found at {}",
+                "Bundled uv runtime not found.\nChecked path:\n- {}",
                 uv_exe.display()
             ));
         }
         if !python_exe.is_file() {
             return Err(format!(
-                "Bundled python runtime not found at {}",
+                "Bundled python runtime not found.\nChecked path:\n- {}",
                 python_exe.display()
             ));
         }

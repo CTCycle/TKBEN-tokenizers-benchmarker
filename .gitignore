@@ -1,8 +1,9 @@
 # Project-specific generated/runtime artifacts
 TKBEN/resources/sources/datasets/**
 TKBEN/resources/sources/tokenizers/**
-TKBEN/resources/runtimes/**
-TKBEN/resources/runtimes/uv_cache/**
+runtimes/**
+runtimes/.uv-cache/**
+!runtimes/uv.lock
 TKBEN/resources/logs/**
 TKBEN/client/node_modules/
 TKBEN/client/dist/
@@ -14,7 +15,7 @@ TKBEN/client/*.local
 __pycache__/
 *.py[cod]
 *.egg-info/
-.venv/
+runtimes/.venv/
 venv/
 .pytest_cache/
 .mypy_cache/
@@ -47,6 +48,7 @@ Thumbs.db
 # Misc
 .sonarlint/
 *.lock
+!runtimes/uv.lock
 *.log
 *.db
 *.sqlite*
