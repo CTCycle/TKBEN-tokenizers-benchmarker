@@ -27,8 +27,9 @@ Use this structure:
 ## 4. Runtime Accuracy
 - Align commands and ports with:
   - `TKBEN/start_on_windows.bat`
-  - `docker-compose.yml`
-  - `TKBEN/settings/.env*`
+  - `release/tauri/build_with_tauri.bat`
+  - `TKBEN/settings/.env.local.example`
+  - `TKBEN/settings/.env.local.tauri.example`
 - Use `TKBEN/resources/database.db` as the default embedded DB path.
 
 ## 5. Media and Links
@@ -39,4 +40,3 @@ Use this structure:
 - Prefer concise, factual wording.
 - Avoid speculative claims.
 - Update README when runtime/setup/API contracts change.
-

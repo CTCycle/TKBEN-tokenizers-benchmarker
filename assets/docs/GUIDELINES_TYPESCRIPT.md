@@ -20,7 +20,7 @@
 
 ## 4. API Integration
 - Use endpoints from `TKBEN/client/src/constants.ts`.
-- Keep `/api`-based requests compatible with Vite proxy and Docker nginx proxy.
+- Keep `/api`-based requests compatible with local Vite preview and packaged desktop runtime routing.
 - For long-running backend operations, use the existing job polling utilities (`services/jobsApi.ts`).
 
 ## 5. UI and Routing Consistency

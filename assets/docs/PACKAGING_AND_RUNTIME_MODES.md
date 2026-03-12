@@ -7,12 +7,11 @@ Active profile:
 Profile templates:
 - `TKBEN/settings/.env.local.example`
 - `TKBEN/settings/.env.local.tauri.example`
-- `TKBEN/settings/.env.cloud.example`
 
 Non-env defaults:
 - `TKBEN/settings/configurations.json`
 
-## 2. Local Mode (Default)
+## 2. Local Webapp Mode (Default)
 Entry point:
 - `TKBEN/start_on_windows.bat`
 
@@ -26,19 +25,7 @@ Default local targets from examples:
 - backend: `127.0.0.1:5000`
 - frontend: `127.0.0.1:8000`
 
-## 3. Cloud Mode (Docker)
-Use:
-```bat
-docker compose --env-file TKBEN/settings/.env build
-docker compose --env-file TKBEN/settings/.env up -d
-```
-
-Topology:
-- `backend`: FastAPI/Uvicorn on container `8000`
-- `frontend`: nginx on container `80`
-- frontend `/api/*` reverse-proxies to `backend:8000`
-
-## 4. Packaged Desktop Mode (Tauri)
+## 3. Packaged Desktop Mode (Tauri)
 Prepare desktop profile:
 ```bat
 copy /Y TKBEN\settings\.env.local.tauri.example TKBEN\settings\.env
@@ -62,13 +49,13 @@ Behavior:
 - API routes remain available at their original paths and under `/api`
 - exported user-facing artifacts land in `release/windows/installers` and `release/windows/portable`
 
-## 5. Database Mode
+## 4. Database Mode
 - Embedded mode (`DB_EMBEDDED=true`):
   - SQLite at `TKBEN/resources/database.db`
 - External mode (`DB_EMBEDDED=false`):
   - PostgreSQL connection via `DB_*` settings
 
-## 6. Critical Env Keys
+## 5. Critical Env Keys
 - `FASTAPI_HOST`, `FASTAPI_PORT`
 - `UI_HOST`, `UI_PORT`
 - `VITE_API_BASE_URL` (expected `/api`)
@@ -82,7 +69,7 @@ Desktop packaging profile:
 - `TKBEN/settings/.env.local.tauri.example`
 - expected packaged defaults: loopback host, `/api`, `RELOAD=true`, `OPTIONAL_DEPENDENCIES=false`
 
-## 7. Determinism
-- Backend lockfile: `uv.lock` + `uv sync --frozen` in Docker image build
+## 6. Determinism
+- Backend lockfile: `uv.lock` + `uv sync --frozen`
 - Frontend lockfile: `TKBEN/client/package-lock.json` + `npm ci`
 - Desktop build entrypoint: `release/tauri/build_with_tauri.bat`
