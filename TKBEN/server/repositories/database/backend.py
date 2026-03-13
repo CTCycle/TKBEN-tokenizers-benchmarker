@@ -56,7 +56,7 @@ BACKEND_FACTORIES: dict[str, BackendFactory] = {
 
 
 ###############################################################################
-class TKBENWebappDatabase:
+class TKBENDatabase:
     def __init__(self) -> None:
         self.settings = server_settings.database
         self.backend = self._build_backend(self.settings.embedded_database)
@@ -100,4 +100,4 @@ class TKBENWebappDatabase:
         self.backend.insert_dataframe(df, table_name, ignore_duplicates)
 
 
-database = TKBENWebappDatabase()
+database = TKBENDatabase()

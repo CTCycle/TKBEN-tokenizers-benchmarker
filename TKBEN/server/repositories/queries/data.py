@@ -5,12 +5,12 @@ from typing import Any
 import pandas as pd
 from sqlalchemy.engine import Engine
 
-from TKBEN.server.repositories.database.backend import TKBENWebappDatabase, database
+from TKBEN.server.repositories.database.backend import TKBENDatabase, database
 
 
 ###############################################################################
 class DataRepositoryQueries:
-    def __init__(self, db: TKBENWebappDatabase = database) -> None:
+    def __init__(self, db: TKBENDatabase = database) -> None:
         self.database = db
 
     # -------------------------------------------------------------------------
