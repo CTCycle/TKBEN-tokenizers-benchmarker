@@ -6,6 +6,8 @@ import tempfile
 from collections import Counter
 from collections.abc import Iterator
 
+from TKBEN.server.repositories.queries import frequencies as frequency_queries
+
 
 ###############################################################################
 class DiskBackedFrequencyStore:
@@ -21,12 +23,8 @@ class DiskBackedFrequencyStore:
     def _initialize(self) -> None:
         cursor = self.conn.cursor()
         try:
-            cursor.execute(
-                "CREATE TABLE IF NOT EXISTS frequencies (token TEXT PRIMARY KEY, count INTEGER NOT NULL)"
-            )
-            cursor.execute(
-                "CREATE INDEX IF NOT EXISTS ix_frequencies_count ON frequencies(count)"
-            )
+            cursor.execute(frequency_queries.CREATE_FREQUENCIES_TABLE)
+            cursor.execute(frequency_queries.CREATE_FREQUENCIES_COUNT_INDEX)
             self.conn.commit()
         finally:
             cursor.close()
@@ -52,8 +50,7 @@ class DiskBackedFrequencyStore:
         try:
             for token, count in self.memory.items():
                 cursor.execute(
-                    "INSERT INTO frequencies (token, count) VALUES (?, ?) "
-                    "ON CONFLICT(token) DO UPDATE SET count = count + excluded.count",
+                    frequency_queries.UPSERT_FREQUENCY_COUNT,
                     (token, int(count)),
                 )
             self.conn.commit()
@@ -66,9 +63,7 @@ class DiskBackedFrequencyStore:
         self.flush()
         cursor = self.conn.cursor()
         try:
-            row = cursor.execute(
-                "SELECT COALESCE(SUM(count), 0) FROM frequencies"
-            ).fetchone()
+            row = cursor.execute(frequency_queries.SELECT_TOTAL_FREQUENCY_COUNT).fetchone()
             return int(row[0] if row else 0)
         finally:
             cursor.close()
@@ -78,7 +73,7 @@ class DiskBackedFrequencyStore:
         self.flush()
         cursor = self.conn.cursor()
         try:
-            row = cursor.execute("SELECT COUNT(*) FROM frequencies").fetchone()
+            row = cursor.execute(frequency_queries.SELECT_UNIQUE_FREQUENCY_COUNT).fetchone()
             return int(row[0] if row else 0)
         finally:
             cursor.close()
@@ -88,7 +83,7 @@ class DiskBackedFrequencyStore:
         self.flush()
         cursor = self.conn.cursor()
         try:
-            rows = cursor.execute("SELECT token, count FROM frequencies").fetchall()
+            rows = cursor.execute(frequency_queries.SELECT_ALL_TOKEN_COUNTS).fetchall()
             return [(str(token), int(count)) for token, count in rows]
         finally:
             cursor.close()
@@ -98,7 +93,7 @@ class DiskBackedFrequencyStore:
         self.flush()
         cursor = self.conn.cursor()
         try:
-            cursor.execute("SELECT token, count FROM frequencies")
+            cursor.execute(frequency_queries.SELECT_ALL_TOKEN_COUNTS)
             while True:
                 rows = cursor.fetchmany(int(max(100, batch_size)))
                 if not rows:
@@ -116,10 +111,11 @@ class DiskBackedFrequencyStore:
     ) -> Iterator[tuple[str, int]]:
         self.flush()
         cursor = self.conn.cursor()
-        order = "DESC" if descending else "ASC"
         try:
             cursor.execute(
-                f"SELECT token, count FROM frequencies ORDER BY count {order}, token ASC"
+                frequency_queries.select_sorted_token_counts_query(
+                    descending=descending
+                )
             )
             while True:
                 rows = cursor.fetchmany(int(max(100, batch_size)))
@@ -136,7 +132,7 @@ class DiskBackedFrequencyStore:
         cursor = self.conn.cursor()
         try:
             rows = cursor.execute(
-                "SELECT token, count FROM frequencies ORDER BY count DESC, token ASC LIMIT ?",
+                frequency_queries.SELECT_TOP_K_TOKEN_COUNTS,
                 (int(max(1, k)),),
             ).fetchall()
             return [(str(token), int(count)) for token, count in rows]
@@ -149,7 +145,7 @@ class DiskBackedFrequencyStore:
         cursor = self.conn.cursor()
         try:
             rows = cursor.execute(
-                "SELECT token, count FROM frequencies ORDER BY count ASC, token ASC LIMIT ?",
+                frequency_queries.SELECT_BOTTOM_K_TOKEN_COUNTS,
                 (int(max(1, k)),),
             ).fetchall()
             return [(str(token), int(count)) for token, count in rows]
@@ -162,8 +158,7 @@ class DiskBackedFrequencyStore:
         cursor = self.conn.cursor()
         try:
             row = cursor.execute(
-                "SELECT COALESCE(SUM(count), 0) "
-                "FROM (SELECT count FROM frequencies ORDER BY count DESC, token ASC LIMIT ?)",
+                frequency_queries.SELECT_SUM_TOP_K_COUNTS,
                 (int(max(1, k)),),
             ).fetchone()
             return int(row[0] if row else 0)
@@ -176,8 +171,7 @@ class DiskBackedFrequencyStore:
         cursor = self.conn.cursor()
         try:
             row = cursor.execute(
-                "SELECT COALESCE(SUM(count), 0) "
-                "FROM (SELECT count FROM frequencies ORDER BY count ASC, token ASC LIMIT ?)",
+                frequency_queries.SELECT_SUM_BOTTOM_K_COUNTS,
                 (int(max(1, k)),),
             ).fetchone()
             return int(row[0] if row else 0)
@@ -190,8 +184,7 @@ class DiskBackedFrequencyStore:
         cursor = self.conn.cursor()
         try:
             rows = cursor.execute(
-                "SELECT token, count FROM frequencies "
-                "ORDER BY LENGTH(token) DESC, token ASC LIMIT ?",
+                frequency_queries.SELECT_LONGEST_K_TOKEN_COUNTS,
                 (int(max(1, k)),),
             ).fetchall()
             return [(str(token), int(count)) for token, count in rows]
@@ -204,8 +197,7 @@ class DiskBackedFrequencyStore:
         cursor = self.conn.cursor()
         try:
             rows = cursor.execute(
-                "SELECT token, count FROM frequencies "
-                "ORDER BY LENGTH(token) ASC, token ASC LIMIT ?",
+                frequency_queries.SELECT_SHORTEST_K_TOKEN_COUNTS,
                 (int(max(1, k)),),
             ).fetchall()
             return [(str(token), int(count)) for token, count in rows]
@@ -218,7 +210,7 @@ class DiskBackedFrequencyStore:
         cursor = self.conn.cursor()
         try:
             row = cursor.execute(
-                "SELECT COUNT(*) FROM frequencies WHERE count = ?",
+                frequency_queries.SELECT_FREQUENCY_OF_FREQUENCY_COUNT,
                 (int(n),),
             ).fetchone()
             return int(row[0] if row else 0)

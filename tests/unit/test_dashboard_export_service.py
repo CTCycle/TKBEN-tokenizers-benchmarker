@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from TKBEN.server.services.dashboard_export import DashboardExportService
+from TKBEN.server.services.export import DashboardExportService
 
 
 def build_dataset_payload() -> dict:

@@ -1,7 +1,7 @@
 from TKBEN.server.repositories.database.backend import (
     BACKEND_FACTORIES,
     DatabaseBackend,
-    TKBENWebappDatabase,
+    TKBENDatabase,
     database,
 )
 from TKBEN.server.repositories.database.initializer import initialize_database
@@ -11,7 +11,7 @@ from TKBEN.server.repositories.database.sqlite import SQLiteRepository
 __all__ = [
     "BACKEND_FACTORIES",
     "DatabaseBackend",
-    "TKBENWebappDatabase",
+    "TKBENDatabase",
     "database",
     "initialize_database",
     "PostgresRepository",

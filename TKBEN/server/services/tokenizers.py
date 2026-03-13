@@ -9,7 +9,6 @@ from datetime import datetime, timezone
 from typing import Any
 
 from huggingface_hub import HfApi, ModelCard
-import sqlalchemy
 from transformers import AutoTokenizer
 
 from TKBEN.server.common.constants import TOKENIZERS_PATH
@@ -20,6 +19,7 @@ from TKBEN.server.common.utils.security import (
 )
 from TKBEN.server.configurations import server_settings
 from TKBEN.server.repositories.database.backend import database
+from TKBEN.server.repositories.queries import tokenizers as tokenizer_queries
 from TKBEN.server.repositories.serialization.data import TokenizerReportSerializer
 from TKBEN.server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
 
@@ -111,28 +111,25 @@ class TokenizersService:
 
     # -------------------------------------------------------------------------
     def is_tokenizer_persisted(self, tokenizer_id: str) -> bool:
-        query = sqlalchemy.text(
-            'SELECT 1 FROM "tokenizer" WHERE "name" = :name LIMIT 1'
-        )
         with database.backend.engine.connect() as conn:
-            row = conn.execute(query, {"name": tokenizer_id}).first()
+            row = conn.execute(
+                tokenizer_queries.SELECT_TOKENIZER_EXISTS_BY_NAME,
+                {"name": tokenizer_id},
+            ).first()
         return row is not None
 
     # -------------------------------------------------------------------------
     def insert_tokenizer_if_missing(self, tokenizer_id: str) -> None:
-        query = sqlalchemy.text(
-            'INSERT INTO "tokenizer" ("name") '
-            "VALUES (:name) "
-            'ON CONFLICT ("name") DO NOTHING'
-        )
         with database.backend.engine.begin() as conn:
-            conn.execute(query, {"name": tokenizer_id})
+            conn.execute(
+                tokenizer_queries.INSERT_TOKENIZER_IF_MISSING,
+                {"name": tokenizer_id},
+            )
 
     # -------------------------------------------------------------------------
     def list_downloaded_tokenizers(self) -> list[str]:
-        query = sqlalchemy.text('SELECT "name" FROM "tokenizer" ORDER BY "name" ASC')
         with database.backend.engine.connect() as conn:
-            rows = conn.execute(query).fetchall()
+            rows = conn.execute(tokenizer_queries.SELECT_TOKENIZER_NAMES_ASC).fetchall()
         names: list[str] = []
         for row in rows:
             if hasattr(row, "_mapping"):
