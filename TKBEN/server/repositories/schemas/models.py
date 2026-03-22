@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from sqlalchemy import (
     Boolean,
-    Column,
     DateTime,
     Float,
     ForeignKey,
@@ -11,7 +10,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
 )
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.orm import declarative_base, mapped_column, relationship
 
 from TKBEN.server.repositories.schemas.types import JSONMapping, JSONSequence
 
@@ -21,8 +20,8 @@ Base = declarative_base()
 ###############################################################################
 class Dataset(Base):
     __tablename__ = "dataset"
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    name = Column(String, nullable=False, unique=True)
+    id = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    name = mapped_column(String, nullable=False, unique=True)
     documents = relationship(
         "DatasetDocument", back_populates="dataset", cascade="all, delete-orphan"
     )
@@ -43,8 +42,8 @@ class Dataset(Base):
 ###############################################################################
 class Tokenizer(Base):
     __tablename__ = "tokenizer"
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    name = Column(String, nullable=False, unique=True)
+    id = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    name = mapped_column(String, nullable=False, unique=True)
     reports = relationship(
         "TokenizerReport", back_populates="tokenizer", cascade="all, delete-orphan"
     )
@@ -72,23 +71,23 @@ class Tokenizer(Base):
 ###############################################################################
 class HFAccessKey(Base):
     __tablename__ = "hf_access_keys"
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    key_value = Column(String, nullable=False, unique=True)
-    created_at = Column(DateTime, nullable=False)
-    is_active = Column(Boolean, nullable=False, default=False)
+    id = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    key_value = mapped_column(String, nullable=False, unique=True)
+    created_at = mapped_column(DateTime, nullable=False)
+    is_active = mapped_column(Boolean, nullable=False, default=False)
     __table_args__ = (Index("ix_hf_access_keys_is_active", "is_active"),)
 
 
 ###############################################################################
 class DatasetDocument(Base):
     __tablename__ = "dataset_document"
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    dataset_id = Column(
+    id = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    dataset_id = mapped_column(
         Integer,
         ForeignKey("dataset.id", ondelete="CASCADE"),
         nullable=False,
     )
-    text = Column(String, nullable=False)
+    text = mapped_column(String, nullable=False)
     __table_args__ = (Index("ix_dataset_document_dataset_id_id", "dataset_id", "id"),)
     dataset = relationship("Dataset", back_populates="documents")
     metric_values = relationship("MetricValue", back_populates="document")
@@ -100,19 +99,19 @@ class DatasetDocument(Base):
 ###############################################################################
 class AnalysisSession(Base):
     __tablename__ = "analysis_session"
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    dataset_id = Column(
+    id = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    dataset_id = mapped_column(
         Integer,
         ForeignKey("dataset.id", ondelete="CASCADE"),
         nullable=False,
     )
-    session_name = Column(String, nullable=True)
-    status = Column(String, nullable=False, default="completed")
-    report_version = Column(Integer, nullable=False, default=2)
-    created_at = Column(DateTime, nullable=False)
-    completed_at = Column(DateTime, nullable=True)
-    parameters = Column(JSONMapping)
-    selected_metric_keys = Column(JSONSequence)
+    session_name = mapped_column(String, nullable=True)
+    status = mapped_column(String, nullable=False, default="completed")
+    report_version = mapped_column(Integer, nullable=False, default=2)
+    created_at = mapped_column(DateTime, nullable=False)
+    completed_at = mapped_column(DateTime, nullable=True)
+    parameters = mapped_column(JSONMapping)
+    selected_metric_keys = mapped_column(JSONSequence)
     __table_args__ = (
         Index("ix_analysis_session_dataset_id", "dataset_id"),
         Index(
@@ -133,13 +132,13 @@ class AnalysisSession(Base):
 ###############################################################################
 class MetricType(Base):
     __tablename__ = "metric_type"
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    key = Column(String, nullable=False, unique=True)
-    category = Column(String, nullable=False)
-    label = Column(String, nullable=False)
-    description = Column(String, nullable=True)
-    scope = Column(String, nullable=False, default="aggregate")
-    value_kind = Column(String, nullable=False, default="number")
+    id = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    key = mapped_column(String, nullable=False, unique=True)
+    category = mapped_column(String, nullable=False)
+    label = mapped_column(String, nullable=False)
+    description = mapped_column(String, nullable=True)
+    scope = mapped_column(String, nullable=False, default="aggregate")
+    value_kind = mapped_column(String, nullable=False, default="number")
     __table_args__ = (Index("ix_metric_type_category", "category"),)
     metric_values = relationship("MetricValue", back_populates="metric_type")
     histograms = relationship("HistogramArtifact", back_populates="metric_type")
@@ -148,25 +147,25 @@ class MetricType(Base):
 ###############################################################################
 class MetricValue(Base):
     __tablename__ = "metric_value"
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    session_id = Column(
+    id = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    session_id = mapped_column(
         Integer,
         ForeignKey("analysis_session.id", ondelete="CASCADE"),
         nullable=False,
     )
-    metric_type_id = Column(
+    metric_type_id = mapped_column(
         Integer,
         ForeignKey("metric_type.id", ondelete="CASCADE"),
         nullable=False,
     )
-    document_id = Column(
+    document_id = mapped_column(
         Integer,
         ForeignKey("dataset_document.id", ondelete="CASCADE"),
         nullable=True,
     )
-    numeric_value = Column(Float, nullable=True)
-    text_value = Column(String, nullable=True)
-    json_value = Column(JSONMapping, nullable=True)
+    numeric_value = mapped_column(Float, nullable=True)
+    text_value = mapped_column(String, nullable=True)
+    json_value = mapped_column(JSONMapping, nullable=True)
     __table_args__ = (
         UniqueConstraint("session_id", "metric_type_id", "document_id"),
         Index("ix_metric_value_session_metric", "session_id", "metric_type_id"),
@@ -180,24 +179,24 @@ class MetricValue(Base):
 ###############################################################################
 class HistogramArtifact(Base):
     __tablename__ = "histogram_artifact"
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    session_id = Column(
+    id = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    session_id = mapped_column(
         Integer,
         ForeignKey("analysis_session.id", ondelete="CASCADE"),
         nullable=False,
     )
-    metric_type_id = Column(
+    metric_type_id = mapped_column(
         Integer,
         ForeignKey("metric_type.id", ondelete="CASCADE"),
         nullable=False,
     )
-    bins = Column(JSONSequence)
-    bin_edges = Column(JSONSequence)
-    counts = Column(JSONSequence)
-    min_value = Column(Float, nullable=False, default=0.0)
-    max_value = Column(Float, nullable=False, default=0.0)
-    mean_value = Column(Float, nullable=False, default=0.0)
-    median_value = Column(Float, nullable=False, default=0.0)
+    bins = mapped_column(JSONSequence)
+    bin_edges = mapped_column(JSONSequence)
+    counts = mapped_column(JSONSequence)
+    min_value = mapped_column(Float, nullable=False, default=0.0)
+    max_value = mapped_column(Float, nullable=False, default=0.0)
+    mean_value = mapped_column(Float, nullable=False, default=0.0)
+    median_value = mapped_column(Float, nullable=False, default=0.0)
     __table_args__ = (
         UniqueConstraint("session_id", "metric_type_id"),
         Index("ix_histogram_artifact_session", "session_id"),
@@ -209,25 +208,25 @@ class HistogramArtifact(Base):
 ###############################################################################
 class TokenizationDocumentStats(Base):
     __tablename__ = "tokenization_document_stats"
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    tokenizer_id = Column(
+    id = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    tokenizer_id = mapped_column(
         Integer,
         ForeignKey("tokenizer.id", ondelete="CASCADE"),
         nullable=False,
     )
-    document_id = Column(
+    document_id = mapped_column(
         Integer,
         ForeignKey("dataset_document.id", ondelete="CASCADE"),
         nullable=False,
     )
-    tokens_count = Column(Integer)
-    tokens_to_words_ratio = Column(Float)
-    bytes_per_token = Column(Float)
-    boundary_preservation_rate = Column(Float)
-    round_trip_token_fidelity = Column(Float)
-    round_trip_text_fidelity = Column(Float)
-    determinism_stability = Column(Float)
-    bytes_per_character = Column(Float)
+    tokens_count = mapped_column(Integer)
+    tokens_to_words_ratio = mapped_column(Float)
+    bytes_per_token = mapped_column(Float)
+    boundary_preservation_rate = mapped_column(Float)
+    round_trip_token_fidelity = mapped_column(Float)
+    round_trip_text_fidelity = mapped_column(Float)
+    determinism_stability = mapped_column(Float)
+    bytes_per_character = mapped_column(Float)
     __table_args__ = (
         UniqueConstraint("tokenizer_id", "document_id"),
         Index("ix_tokenization_document_stats_tokenizer_id", "tokenizer_id"),
@@ -240,24 +239,24 @@ class TokenizationDocumentStats(Base):
 ###############################################################################
 class TokenizationDatasetStats(Base):
     __tablename__ = "tokenization_dataset_stats"
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    tokenizer_id = Column(
+    id = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    tokenizer_id = mapped_column(
         Integer,
         ForeignKey("tokenizer.id", ondelete="CASCADE"),
         nullable=False,
     )
-    dataset_id = Column(
+    dataset_id = mapped_column(
         Integer,
         ForeignKey("dataset.id", ondelete="CASCADE"),
         nullable=False,
     )
-    tokenization_speed_tps = Column(Float)
-    throughput_chars_per_sec = Column(Float)
-    model_size_mb = Column(Float)
-    vocabulary_size = Column(Integer)
-    subword_fertility = Column(Float)
-    oov_rate = Column(Float)
-    word_recovery_rate = Column(Float)
+    tokenization_speed_tps = mapped_column(Float)
+    throughput_chars_per_sec = mapped_column(Float)
+    model_size_mb = mapped_column(Float)
+    vocabulary_size = mapped_column(Integer)
+    subword_fertility = mapped_column(Float)
+    oov_rate = mapped_column(Float)
+    word_recovery_rate = mapped_column(Float)
     __table_args__ = (
         UniqueConstraint("tokenizer_id", "dataset_id"),
         Index("ix_tokenization_dataset_stats_tokenizer_id", "tokenizer_id"),
@@ -276,58 +275,58 @@ class TokenizationDatasetStats(Base):
 ###############################################################################
 class TokenizationDatasetStatsDetail(Base):
     __tablename__ = "tokenization_dataset_stats_detail"
-    global_stats_id = Column(
+    global_stats_id = mapped_column(
         Integer,
         ForeignKey("tokenization_dataset_stats.id", ondelete="CASCADE"),
         primary_key=True,
         nullable=False,
     )
-    character_coverage = Column(Float)
-    segmentation_consistency = Column(Float)
-    determinism_rate = Column(Float)
-    token_distribution_entropy = Column(Float)
-    rare_token_tail_1 = Column(Integer)
-    rare_token_tail_2 = Column(Integer)
-    boundary_preservation_rate = Column(Float)
-    compression_chars_per_token = Column(Float)
-    compression_bytes_per_character = Column(Float)
-    round_trip_fidelity_rate = Column(Float)
-    round_trip_text_fidelity_rate = Column(Float)
-    token_id_ordering_monotonicity = Column(Float)
-    token_unigram_coverage = Column(Float)
+    character_coverage = mapped_column(Float)
+    segmentation_consistency = mapped_column(Float)
+    determinism_rate = mapped_column(Float)
+    token_distribution_entropy = mapped_column(Float)
+    rare_token_tail_1 = mapped_column(Integer)
+    rare_token_tail_2 = mapped_column(Integer)
+    boundary_preservation_rate = mapped_column(Float)
+    compression_chars_per_token = mapped_column(Float)
+    compression_bytes_per_character = mapped_column(Float)
+    round_trip_fidelity_rate = mapped_column(Float)
+    round_trip_text_fidelity_rate = mapped_column(Float)
+    token_id_ordering_monotonicity = mapped_column(Float)
+    token_unigram_coverage = mapped_column(Float)
     global_stats = relationship("TokenizationDatasetStats", back_populates="detail")
 
 
 ###############################################################################
 class TokenizerVocabularyStatistics(Base):
     __tablename__ = "tokenizer_vocabulary_statistics"
-    tokenizer_id = Column(
+    tokenizer_id = mapped_column(
         Integer,
         ForeignKey("tokenizer.id", ondelete="CASCADE"),
         primary_key=True,
         nullable=False,
     )
-    vocabulary_size = Column(Integer)
-    decoded_tokens = Column(Integer)
-    number_shared_tokens = Column(Integer)
-    number_unshared_tokens = Column(Integer)
-    percentage_subwords = Column(Float)
-    percentage_true_words = Column(Float)
+    vocabulary_size = mapped_column(Integer)
+    decoded_tokens = mapped_column(Integer)
+    number_shared_tokens = mapped_column(Integer)
+    number_unshared_tokens = mapped_column(Integer)
+    percentage_subwords = mapped_column(Float)
+    percentage_true_words = mapped_column(Float)
     tokenizer = relationship("Tokenizer", back_populates="vocabulary_statistics")
 
 
 ###############################################################################
 class TokenizerVocabulary(Base):
     __tablename__ = "tokenizer_vocabulary"
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    tokenizer_id = Column(
+    id = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    tokenizer_id = mapped_column(
         Integer,
         ForeignKey("tokenizer.id", ondelete="CASCADE"),
         nullable=False,
     )
-    token_id = Column(Integer, nullable=False)
-    vocabulary_tokens = Column(String)
-    decoded_tokens = Column(String)
+    token_id = mapped_column(Integer, nullable=False)
+    vocabulary_tokens = mapped_column(String)
+    decoded_tokens = mapped_column(String)
     __table_args__ = (
         UniqueConstraint("tokenizer_id", "token_id"),
         Index("ix_tokenizer_vocabulary_tokenizer_id", "tokenizer_id"),
@@ -338,17 +337,17 @@ class TokenizerVocabulary(Base):
 ###############################################################################
 class TokenizerReport(Base):
     __tablename__ = "tokenizer_report"
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    tokenizer_id = Column(
+    id = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    tokenizer_id = mapped_column(
         Integer,
         ForeignKey("tokenizer.id", ondelete="CASCADE"),
         nullable=False,
     )
-    report_version = Column(Integer, nullable=False, default=1)
-    created_at = Column(DateTime, nullable=False)
-    metadata_json = Column("metadata", JSONMapping)
-    token_length_histogram = Column(JSONMapping)
-    description = Column(String)
+    report_version = mapped_column(Integer, nullable=False, default=1)
+    created_at = mapped_column(DateTime, nullable=False)
+    metadata_json = mapped_column("metadata", JSONMapping)
+    token_length_histogram = mapped_column(JSONMapping)
+    description = mapped_column(String)
     __table_args__ = (
         Index("ix_tokenizer_report_tokenizer_id", "tokenizer_id"),
         Index(
@@ -361,17 +360,17 @@ class TokenizerReport(Base):
 ###############################################################################
 class BenchmarkReport(Base):
     __tablename__ = "benchmark_report"
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    dataset_id = Column(
+    id = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    dataset_id = mapped_column(
         Integer,
         ForeignKey("dataset.id", ondelete="CASCADE"),
         nullable=False,
     )
-    report_version = Column(Integer, nullable=False, default=1)
-    created_at = Column(DateTime, nullable=False)
-    run_name = Column(String, nullable=True)
-    selected_metric_keys = Column(JSONSequence)
-    payload = Column(JSONMapping)
+    report_version = mapped_column(Integer, nullable=False, default=1)
+    created_at = mapped_column(DateTime, nullable=False)
+    run_name = mapped_column(String, nullable=True)
+    selected_metric_keys = mapped_column(JSONSequence)
+    payload = mapped_column(JSONMapping)
     __table_args__ = (
         Index("ix_benchmark_report_dataset_id", "dataset_id"),
         Index("ix_benchmark_report_created_at", "created_at"),
@@ -382,40 +381,40 @@ class BenchmarkReport(Base):
 ###############################################################################
 class DatasetReport(Base):
     __tablename__ = "dataset_report"
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    dataset_id = Column(
+    id = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    dataset_id = mapped_column(
         Integer,
         ForeignKey("dataset.id", ondelete="CASCADE"),
         nullable=False,
         unique=True,
     )
-    document_statistics = Column(JSONMapping)
-    word_statistics = Column(JSONMapping)
-    most_common_words = Column(JSONSequence)
-    least_common_words = Column(JSONSequence)
+    document_statistics = mapped_column(JSONMapping)
+    word_statistics = mapped_column(JSONMapping)
+    most_common_words = mapped_column(JSONSequence)
+    least_common_words = mapped_column(JSONSequence)
     dataset = relationship("Dataset", back_populates="legacy_reports")
 
 
 ###############################################################################
 class DatasetValidationReport(Base):
     __tablename__ = "dataset_validation_report"
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    dataset_id = Column(
+    id = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    dataset_id = mapped_column(
         Integer,
         ForeignKey("dataset.id", ondelete="CASCADE"),
         nullable=False,
     )
-    report_version = Column(Integer, nullable=False, default=1)
-    created_at = Column(DateTime, nullable=False)
-    aggregate_statistics = Column(JSONMapping)
-    document_histogram = Column(JSONMapping)
-    word_histogram = Column(JSONMapping)
-    most_common_words = Column(JSONSequence)
-    least_common_words = Column(JSONSequence)
-    longest_words = Column(JSONSequence)
-    shortest_words = Column(JSONSequence)
-    word_cloud_terms = Column(JSONSequence)
-    per_document_stats = Column(JSONMapping)
+    report_version = mapped_column(Integer, nullable=False, default=1)
+    created_at = mapped_column(DateTime, nullable=False)
+    aggregate_statistics = mapped_column(JSONMapping)
+    document_histogram = mapped_column(JSONMapping)
+    word_histogram = mapped_column(JSONMapping)
+    most_common_words = mapped_column(JSONSequence)
+    least_common_words = mapped_column(JSONSequence)
+    longest_words = mapped_column(JSONSequence)
+    shortest_words = mapped_column(JSONSequence)
+    word_cloud_terms = mapped_column(JSONSequence)
+    per_document_stats = mapped_column(JSONMapping)
     __table_args__ = (
         Index("ix_dataset_validation_report_dataset_id", "dataset_id"),
         Index(
@@ -425,3 +424,4 @@ class DatasetValidationReport(Base):
         ),
     )
     dataset = relationship("Dataset", back_populates="validation_reports")
+
