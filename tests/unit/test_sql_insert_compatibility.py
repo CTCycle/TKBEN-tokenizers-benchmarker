@@ -5,70 +5,21 @@ import math
 import pandas as pd
 import pytest
 import sqlalchemy
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
 
 from TKBEN.server.repositories.database.backend import database
 from TKBEN.server.repositories.database.postgres import PostgresRepository
 from TKBEN.server.repositories.database.sqlite import SQLiteRepository
 from TKBEN.server.repositories.serialization.data import DatasetSerializer
+from TKBEN.server.repositories.schemas.models import Base, Dataset, Tokenizer
 from TKBEN.server.services.benchmarks import BenchmarkService
 from TKBEN.server.services.tokenizers import TokenizersService
 
 
 ###############################################################################
-class FakeResult:
-    def __init__(self, row: tuple | None = None) -> None:
-        self.row = row
-
-    # -------------------------------------------------------------------------
-    def first(self) -> tuple | None:
-        return self.row
-
-
-###############################################################################
-class SQLCaptureConnection:
-    def __init__(self, state: dict[str, object]) -> None:
-        self.state = state
-
-    # -------------------------------------------------------------------------
-    def __enter__(self) -> "SQLCaptureConnection":
-        return self
-
-    # -------------------------------------------------------------------------
-    def __exit__(self, exc_type, exc_value, traceback) -> bool:
-        return False
-
-    # -------------------------------------------------------------------------
-    def execute(self, statement, params=None) -> FakeResult:  # noqa: ANN001
-        sql = str(statement)
-        self.state["queries"].append(sql)  # type: ignore[index]
-        self.state["params"].append(dict(params or {}))  # type: ignore[index]
-
-        if 'SELECT "id" FROM "dataset"' in sql:
-            return FakeResult(row=(17,))
-        if 'SELECT "id", "name" FROM "tokenizer"' in sql:
-            name = str((params or {}).get("name", ""))
-            name_to_id = {"tok/a": 101, "tok/b": 202}
-            return FakeResult(row=(name_to_id.get(name, 0), name))
-        return FakeResult()
-
-
-###############################################################################
-class SQLCaptureEngine:
-    def __init__(self, state: dict[str, object]) -> None:
-        self.state = state
-
-    # -------------------------------------------------------------------------
-    def begin(self) -> SQLCaptureConnection:
-        return SQLCaptureConnection(self.state)
-
-    # -------------------------------------------------------------------------
-    def connect(self) -> SQLCaptureConnection:
-        return SQLCaptureConnection(self.state)
-
-
-###############################################################################
 class FakeQueries:
-    def __init__(self, engine: SQLCaptureEngine) -> None:
+    def __init__(self, engine: sqlalchemy.Engine) -> None:
         self.engine = engine
 
 
@@ -86,10 +37,10 @@ class InsertCaptureConnection:
         return False
 
     # -------------------------------------------------------------------------
-    def execute(self, statement, params=None) -> FakeResult:  # noqa: ANN001
+    def execute(self, statement, params=None):  # noqa: ANN001
         del params
         self.statements.append(statement)
-        return FakeResult()
+        return object()
 
 
 ###############################################################################
@@ -100,6 +51,29 @@ class InsertCaptureEngine:
     # -------------------------------------------------------------------------
     def begin(self) -> InsertCaptureConnection:
         return self.connection
+
+
+###############################################################################
+class InsertCaptureSession:
+    def __init__(self) -> None:
+        self.statements: list[object] = []
+
+    # -------------------------------------------------------------------------
+    def execute(self, statement) -> object:  # noqa: ANN001
+        self.statements.append(statement)
+        return object()
+
+    # -------------------------------------------------------------------------
+    def commit(self) -> None:
+        return None
+
+    # -------------------------------------------------------------------------
+    def rollback(self) -> None:
+        return None
+
+    # -------------------------------------------------------------------------
+    def close(self) -> None:
+        return None
 
 
 ###############################################################################
@@ -118,59 +92,54 @@ def build_metric_value_table() -> sqlalchemy.Table:
 
 
 ###############################################################################
-def test_dataset_serializer_ensure_dataset_id_uses_conflict_safe_insert() -> None:
-    state: dict[str, object] = {"queries": [], "params": []}
-    serializer = DatasetSerializer(queries=FakeQueries(SQLCaptureEngine(state)))
+def test_dataset_serializer_ensure_dataset_id_is_idempotent() -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    Base.metadata.create_all(engine, checkfirst=True)
+    serializer = DatasetSerializer(queries=FakeQueries(engine))
 
-    dataset_id = serializer.ensure_dataset_id("wikitext/wikitext-2-v1")
+    first_id = serializer.ensure_dataset_id("wikitext/wikitext-2-v1")
+    second_id = serializer.ensure_dataset_id("wikitext/wikitext-2-v1")
 
-    assert dataset_id == 17
-    insert_query = next(
-        query
-        for query in state["queries"]  # type: ignore[index]
-        if 'INSERT INTO "dataset" ("name")' in query
-    )
-    assert 'ON CONFLICT ("name") DO NOTHING' in insert_query
-    assert "WHERE NOT EXISTS" not in insert_query
+    assert first_id == second_id
+    with Session(bind=engine) as session:
+        count = session.execute(select(sqlalchemy.func.count(Dataset.id))).scalar_one()
+    assert int(count) == 1
 
 
 ###############################################################################
-def test_tokenizers_service_insert_uses_conflict_safe_insert(
+def test_tokenizers_service_insert_if_missing_is_idempotent(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    state: dict[str, object] = {"queries": [], "params": []}
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    Base.metadata.create_all(engine, checkfirst=True)
+    monkeypatch.setattr(database.backend, "engine", engine)
     service = TokenizersService()
-    monkeypatch.setattr(database.backend, "engine", SQLCaptureEngine(state))
 
     service.insert_tokenizer_if_missing("bert-base-uncased")
+    service.insert_tokenizer_if_missing("bert-base-uncased")
 
-    insert_query = next(
-        query
-        for query in state["queries"]  # type: ignore[index]
-        if 'INSERT INTO "tokenizer" ("name")' in query
-    )
-    assert 'ON CONFLICT ("name") DO NOTHING' in insert_query
-    assert "WHERE NOT EXISTS" not in insert_query
+    with Session(bind=engine) as session:
+        rows = session.execute(select(Tokenizer)).scalars().all()
+    assert len(rows) == 1
+    assert rows[0].name == "bert-base-uncased"
 
 
 ###############################################################################
-def test_benchmark_service_ensure_tokenizer_ids_uses_conflict_safe_insert(
+def test_benchmark_service_ensure_tokenizer_ids_returns_mapping(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    state: dict[str, object] = {"queries": [], "params": []}
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    Base.metadata.create_all(engine, checkfirst=True)
+    monkeypatch.setattr(database.backend, "engine", engine)
     service = BenchmarkService()
-    monkeypatch.setattr(database.backend, "engine", SQLCaptureEngine(state))
 
-    mapping = service.ensure_tokenizer_ids(["tok/a", "tok/b"])
+    mapping = service.ensure_tokenizer_ids(["tok/a", "tok/b", "tok/a"])
 
-    assert mapping == {"tok/a": 101, "tok/b": 202}
-    insert_query = next(
-        query
-        for query in state["queries"]  # type: ignore[index]
-        if 'INSERT INTO "tokenizer" ("name")' in query
-    )
-    assert 'ON CONFLICT ("name") DO NOTHING' in insert_query
-    assert "WHERE NOT EXISTS" not in insert_query
+    assert set(mapping.keys()) == {"tok/a", "tok/b"}
+    assert mapping["tok/a"] != mapping["tok/b"]
+    with Session(bind=engine) as session:
+        count = session.execute(select(sqlalchemy.func.count(Tokenizer.id))).scalar_one()
+    assert int(count) == 2
 
 
 ###############################################################################
@@ -182,9 +151,10 @@ def test_insert_dataframe_without_ignore_duplicates_uses_sqlalchemy_insert(
     monkeypatch: pytest.MonkeyPatch,
     repository_class: type[PostgresRepository] | type[SQLiteRepository],
 ) -> None:
-    connection = InsertCaptureConnection()
+    capture_session = InsertCaptureSession()
     repository = repository_class.__new__(repository_class)
-    repository.engine = InsertCaptureEngine(connection)  # type: ignore[attr-defined]
+    repository.engine = object()  # type: ignore[attr-defined]
+    repository.session = lambda: capture_session  # type: ignore[attr-defined]
     repository.insert_batch_size = 100  # type: ignore[attr-defined]
 
     table = build_metric_value_table()
@@ -222,8 +192,8 @@ def test_insert_dataframe_without_ignore_duplicates_uses_sqlalchemy_insert(
 
     repository.insert_dataframe(frame, "metric_value", ignore_duplicates=False)  # type: ignore[attr-defined]
 
-    assert len(connection.statements) == 1
-    sql = str(connection.statements[0])
+    assert len(capture_session.statements) == 1
+    sql = str(capture_session.statements[0])
     assert "INSERT INTO metric_value" in sql
     assert "json_value" in sql
 

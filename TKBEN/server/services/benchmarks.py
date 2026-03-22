@@ -11,15 +11,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.figure import Figure
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 from transformers import AutoTokenizer
 from transformers.utils.logging import set_verbosity_error
 
 from TKBEN.server.repositories.database.backend import database
-from TKBEN.server.repositories.queries import benchmarks as benchmark_queries
 from TKBEN.server.repositories.schemas.models import (
+    Dataset,
+    DatasetDocument,
     TokenizationDatasetStats,
     TokenizationDatasetStatsDetail,
     TokenizationDocumentStats,
+    Tokenizer,
     TokenizerVocabulary,
     TokenizerVocabularyStatistics,
 )
@@ -277,6 +282,10 @@ class BenchmarkService:
         self.log_interval = server_settings.benchmarks.log_interval
 
     # -------------------------------------------------------------------------
+    def _session(self) -> Session:
+        return Session(bind=database.backend.engine)
+
+    # -------------------------------------------------------------------------
     def get_tokenizer_cache_dir(self, tokenizer_id: str) -> str:
         safe_id = normalize_identifier(
             tokenizer_id,
@@ -314,22 +323,23 @@ class BenchmarkService:
             return []
 
         unique_requested = list(dict.fromkeys(requested))
+        with self._session() as session:
+            persisted_names = set(
+                session.execute(
+                    select(Tokenizer.name).where(Tokenizer.name.in_(unique_requested))
+                ).scalars()
+            )
         missing: list[str] = []
-        with database.backend.engine.connect() as conn:
-            for tokenizer_name in unique_requested:
-                row = conn.execute(
-                    benchmark_queries.SELECT_TOKENIZER_EXISTS_BY_NAME,
-                    {"name": tokenizer_name},
-                ).first()
-                cache_dir = self.get_tokenizer_cache_dir(tokenizer_name)
-                has_cached_files = False
-                if os.path.isdir(cache_dir):
-                    for _, _, files in os.walk(cache_dir):
-                        if files:
-                            has_cached_files = True
-                            break
-                if row is None or not has_cached_files:
-                    missing.append(tokenizer_name)
+        for tokenizer_name in unique_requested:
+            cache_dir = self.get_tokenizer_cache_dir(tokenizer_name)
+            has_cached_files = False
+            if os.path.isdir(cache_dir):
+                for _, _, files in os.walk(cache_dir):
+                    if files:
+                        has_cached_files = True
+                        break
+            if tokenizer_name not in persisted_names or not has_cached_files:
+                missing.append(tokenizer_name)
         return missing
 
     # -------------------------------------------------------------------------
@@ -362,24 +372,19 @@ class BenchmarkService:
         self, dataset_name: str
     ) -> Generator[tuple[int, str], None, None]:
         count = 0
-        with database.backend.engine.connect().execution_options(
-            stream_results=True
-        ) as conn:
-            result = conn.execute(
-                benchmark_queries.SELECT_DATASET_DOCUMENT_ROWS_BY_DATASET_NAME,
-                {"dataset": dataset_name},
-            )
+        stmt = (
+            select(DatasetDocument.id, DatasetDocument.text)
+            .join(Dataset, Dataset.id == DatasetDocument.dataset_id)
+            .where(Dataset.name == dataset_name)
+            .order_by(DatasetDocument.id.asc())
+        )
+        with self._session() as session:
+            result = session.execute(stmt.execution_options(stream_results=True))
             while True:
                 rows = result.fetchmany(self.streaming_batch_size)
                 if not rows:
                     break
-                for row in rows:
-                    if hasattr(row, "_mapping"):
-                        row_id = row._mapping.get("id")
-                        text = row._mapping.get("text", "")
-                    else:
-                        row_id = row[0] if row else None
-                        text = row[1] if len(row) > 1 else ""
+                for row_id, text in rows:
                     if row_id is None:
                         continue
                     if text and isinstance(text, str):
@@ -390,13 +395,14 @@ class BenchmarkService:
 
     # -------------------------------------------------------------------------
     def get_dataset_document_count(self, dataset_name: str) -> int:
-        with database.backend.engine.connect() as conn:
-            result = conn.execute(
-                benchmark_queries.SELECT_DATASET_DOCUMENT_COUNT_BY_DATASET_NAME,
-                {"dataset": dataset_name},
-            )
-            row = result.first()
-            return row[0] if row else 0
+        stmt = (
+            select(func.count(DatasetDocument.id))
+            .join(Dataset, Dataset.id == DatasetDocument.dataset_id)
+            .where(Dataset.name == dataset_name)
+        )
+        with self._session() as session:
+            value = session.execute(stmt).scalar_one_or_none() or 0
+        return int(value)
 
     # -------------------------------------------------------------------------
     def get_metric_catalog(self) -> list[dict[str, Any]]:
@@ -1306,20 +1312,15 @@ class BenchmarkService:
                 [col for col in detail_columns if col in global_storage.columns]
             ].copy()
             if not detail_storage.empty:
-                with database.backend.engine.connect() as conn:
-                    result = conn.execute(
-                        benchmark_queries.SELECT_TOKENIZATION_DATASET_STATS_IDS_BY_DATASET_ID,
-                        {"dataset_id": int(dataset_id)},
-                    )
-                    rows = result.fetchall()
+                stmt = select(
+                    TokenizationDatasetStats.id,
+                    TokenizationDatasetStats.tokenizer_id,
+                ).where(TokenizationDatasetStats.dataset_id == int(dataset_id))
+                with self._session() as session:
+                    rows = session.execute(stmt).all()
                 tokenizer_to_global: dict[int, int] = {}
-                for row in rows:
-                    if hasattr(row, "_mapping"):
-                        tokenizer_to_global[int(row._mapping["tokenizer_id"])] = int(
-                            row._mapping["id"]
-                        )
-                    else:
-                        tokenizer_to_global[int(row[1])] = int(row[0])
+                for global_stats_id, tokenizer_id in rows:
+                    tokenizer_to_global[int(tokenizer_id)] = int(global_stats_id)
 
                 detail_storage["tokenizer_id"] = global_storage["tokenizer_id"]
                 detail_storage["global_stats_id"] = detail_storage["tokenizer_id"].map(
@@ -1410,43 +1411,35 @@ class BenchmarkService:
 
     # -------------------------------------------------------------------------
     def get_dataset_id(self, dataset_name: str) -> int | None:
-        with database.backend.engine.connect() as conn:
-            result = conn.execute(
-                benchmark_queries.SELECT_DATASET_ID_BY_NAME,
-                {"dataset": dataset_name},
-            )
-            row = result.first()
-        if row is None:
-            return None
-        if hasattr(row, "_mapping"):
-            return int(row._mapping["id"])
-        return int(row[0])
+        stmt = select(Dataset.id).where(Dataset.name == dataset_name).limit(1)
+        with self._session() as session:
+            dataset_id = session.execute(stmt).scalar_one_or_none()
+        return int(dataset_id) if dataset_id is not None else None
 
     # -------------------------------------------------------------------------
     def ensure_tokenizer_ids(self, tokenizer_names: list[str]) -> dict[str, int]:
         if not tokenizer_names:
             return {}
-        with database.backend.engine.begin() as conn:
-            for name in tokenizer_names:
-                conn.execute(
-                    benchmark_queries.INSERT_TOKENIZER_IF_MISSING,
-                    {"name": name},
-                )
-
-        mapping: dict[str, int] = {}
-        with database.backend.engine.connect() as conn:
-            for name in tokenizer_names:
-                row = conn.execute(
-                    benchmark_queries.SELECT_TOKENIZER_ID_AND_NAME_BY_NAME,
-                    {"name": name},
-                ).first()
-                if row is None:
+        deduped_names = list(dict.fromkeys(tokenizer_names))
+        with self._session() as session:
+            existing_rows = session.execute(
+                select(Tokenizer).where(Tokenizer.name.in_(deduped_names))
+            ).scalars().all()
+            existing_names = {row.name for row in existing_rows}
+            for name in deduped_names:
+                if name in existing_names:
                     continue
-                if hasattr(row, "_mapping"):
-                    mapping[str(row._mapping["name"])] = int(row._mapping["id"])
-                else:
-                    mapping[str(row[1])] = int(row[0])
-        return mapping
+                session.add(Tokenizer(name=name))
+            try:
+                session.commit()
+            except IntegrityError:
+                session.rollback()
+            mapping_rows = session.execute(
+                select(Tokenizer.id, Tokenizer.name).where(
+                    Tokenizer.name.in_(deduped_names)
+                )
+            ).all()
+        return {str(name): int(tokenizer_id) for tokenizer_id, name in mapping_rows}
 
     # -------------------------------------------------------------------------
     def generate_plots(
