@@ -5,7 +5,8 @@ from collections.abc import Iterator
 from typing import Any
 
 import pandas as pd
-from sqlalchemy import and_, delete, func, insert, select, update
+from sqlalchemy import MetaData, Table, and_, delete, func, select, update
+from sqlalchemy.exc import IntegrityError, NoSuchTableError
 from sqlalchemy.orm import Session
 
 from TKBEN.server.repositories.queries.data import DataRepositoryQueries
@@ -120,15 +121,18 @@ class DatasetSerializer:
     # -------------------------------------------------------------------------
     def ensure_dataset_id(self, dataset_name: str) -> int:
         with self._session() as session:
-            session.execute(
-                insert(Dataset)
-                .values(name=dataset_name)
-                .on_conflict_do_nothing(index_elements=[Dataset.name])
-            )
-            session.commit()
             dataset_id = session.execute(
                 select(Dataset.id).where(Dataset.name == dataset_name).limit(1)
             ).scalar_one_or_none()
+            if dataset_id is None:
+                session.add(Dataset(name=dataset_name))
+                try:
+                    session.commit()
+                except IntegrityError:
+                    session.rollback()
+                dataset_id = session.execute(
+                    select(Dataset.id).where(Dataset.name == dataset_name).limit(1)
+                ).scalar_one_or_none()
         if dataset_id is None:
             raise ValueError(f"Failed to resolve dataset id for '{dataset_name}'")
         return int(dataset_id)
@@ -229,8 +233,24 @@ class DatasetSerializer:
 
     # -------------------------------------------------------------------------
     def delete_dataset_statistics(self, dataset_name: str) -> None:
-        table = self.queries.engine.dialect.get_table_names  # type: ignore[attr-defined]
-        del table  # legacy table may not exist in modern schema
+        metadata = MetaData()
+        try:
+            stats_table = Table(
+                self.stats_table,
+                metadata,
+                autoload_with=self.queries.engine,
+            )
+        except NoSuchTableError:
+            return
+        doc_ids = (
+            select(DatasetDocument.id)
+            .join(Dataset, Dataset.id == DatasetDocument.dataset_id)
+            .where(Dataset.name == dataset_name)
+        )
+        stmt = delete(stats_table).where(stats_table.c.document_id.in_(doc_ids))
+        with self._session() as session:
+            session.execute(stmt)
+            session.commit()
 
     # -------------------------------------------------------------------------
     def save_dataset_statistics_batch(self, batch: list[dict[str, Any]]) -> None:
