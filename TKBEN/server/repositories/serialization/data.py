@@ -5,14 +5,17 @@ from collections.abc import Iterator
 from typing import Any
 
 import pandas as pd
-import sqlalchemy
+from sqlalchemy import and_, delete, func, insert, select, update
+from sqlalchemy.orm import Session
 
 from TKBEN.server.repositories.queries.data import DataRepositoryQueries
 from TKBEN.server.repositories.schemas.models import (
     AnalysisSession,
     BenchmarkReport,
     Dataset,
+    DatasetReport,
     DatasetDocument,
+    DatasetValidationReport,
     HistogramArtifact,
     MetricType,
     MetricValue,
@@ -39,6 +42,10 @@ class DatasetSerializer:
         self.metric_value_table = MetricValue.__tablename__
         self.histogram_table = HistogramArtifact.__tablename__
         self.local_stats_table = TokenizationDocumentStats.__tablename__
+
+    # -------------------------------------------------------------------------
+    def _session(self) -> Session:
+        return Session(bind=self.queries.engine)
 
     # -------------------------------------------------------------------------
     def parse_json(self, value: Any, default: Any | None = None) -> Any:
@@ -82,32 +89,22 @@ class DatasetSerializer:
 
     # -------------------------------------------------------------------------
     def list_dataset_previews(self) -> list[dict[str, Any]]:
-        query = sqlalchemy.text(
-            'SELECT d."name" as dataset_name, '
-            'COUNT(dd."id") as document_count '
-            'FROM "dataset" d '
-            'LEFT JOIN "dataset_document" dd ON dd."dataset_id" = d."id" '
-            'GROUP BY d."name" ORDER BY d."name"'
-        )
-        with self.queries.engine.connect() as conn:
-            result = conn.execute(query)
-            rows = result.fetchall()
-
-        previews: list[dict[str, Any]] = []
-        for row in rows:
-            if hasattr(row, "_mapping"):
-                data = row._mapping
-                name = data.get("dataset_name")
-                count = data.get("document_count", 0)
-            else:
-                name = row[0]
-                count = row[1] if len(row) > 1 else 0
-            if name is None:
-                continue
-            previews.append(
-                {"dataset_name": str(name), "document_count": int(count or 0)}
+        stmt = (
+            select(
+                Dataset.name.label("dataset_name"),
+                func.count(DatasetDocument.id).label("document_count"),
             )
-        return previews
+            .outerjoin(DatasetDocument, DatasetDocument.dataset_id == Dataset.id)
+            .group_by(Dataset.id, Dataset.name)
+            .order_by(Dataset.name.asc())
+        )
+        with self._session() as session:
+            rows = session.execute(stmt).all()
+        return [
+            {"dataset_name": str(dataset_name), "document_count": int(document_count or 0)}
+            for dataset_name, document_count in rows
+            if dataset_name is not None
+        ]
 
     # -------------------------------------------------------------------------
     def list_dataset_names(self) -> list[str]:
@@ -115,52 +112,42 @@ class DatasetSerializer:
 
     # -------------------------------------------------------------------------
     def get_dataset_id(self, dataset_name: str) -> int | None:
-        query = sqlalchemy.text(
-            'SELECT "id" FROM "dataset" WHERE "name" = :dataset LIMIT 1'
-        )
-        with self.queries.engine.connect() as conn:
-            result = conn.execute(query, {"dataset": dataset_name})
-            row = result.first()
-        if row is None:
-            return None
-        if hasattr(row, "_mapping"):
-            return int(row._mapping.get("id"))
-        return int(row[0])
+        stmt = select(Dataset.id).where(Dataset.name == dataset_name).limit(1)
+        with self._session() as session:
+            dataset_id = session.execute(stmt).scalar_one_or_none()
+        return int(dataset_id) if dataset_id is not None else None
 
     # -------------------------------------------------------------------------
     def ensure_dataset_id(self, dataset_name: str) -> int:
-        query = sqlalchemy.text(
-            'INSERT INTO "dataset" ("name") '
-            "VALUES (:dataset) "
-            'ON CONFLICT ("name") DO NOTHING'
-        )
-        with self.queries.engine.begin() as conn:
-            conn.execute(query, {"dataset": dataset_name})
-        dataset_id = self.get_dataset_id(dataset_name)
+        with self._session() as session:
+            session.execute(
+                insert(Dataset)
+                .values(name=dataset_name)
+                .on_conflict_do_nothing(index_elements=[Dataset.name])
+            )
+            session.commit()
+            dataset_id = session.execute(
+                select(Dataset.id).where(Dataset.name == dataset_name).limit(1)
+            ).scalar_one_or_none()
         if dataset_id is None:
             raise ValueError(f"Failed to resolve dataset id for '{dataset_name}'")
-        return dataset_id
+        return int(dataset_id)
 
     # -------------------------------------------------------------------------
     def dataset_exists(self, dataset_name: str) -> bool:
-        query = sqlalchemy.text(
-            'SELECT 1 FROM "dataset" WHERE "name" = :dataset LIMIT 1'
-        )
-        with self.queries.engine.connect() as conn:
-            result = conn.execute(query, {"dataset": dataset_name})
-            return result.first() is not None
+        stmt = select(Dataset.id).where(Dataset.name == dataset_name).limit(1)
+        with self._session() as session:
+            return session.execute(stmt).first() is not None
 
     # -------------------------------------------------------------------------
     def count_dataset_documents(self, dataset_name: str) -> int:
-        query = sqlalchemy.text(
-            "SELECT COUNT(*) "
-            'FROM "dataset_document" dd '
-            'JOIN "dataset" d ON d."id" = dd."dataset_id" '
-            'WHERE d."name" = :dataset'
+        stmt = (
+            select(func.count(DatasetDocument.id))
+            .join(Dataset, Dataset.id == DatasetDocument.dataset_id)
+            .where(Dataset.name == dataset_name)
         )
-        with self.queries.engine.connect() as conn:
-            result = conn.execute(query, {"dataset": dataset_name})
-            value = result.scalar() or 0
+        with self._session() as session:
+            value = session.execute(stmt).scalar_one_or_none() or 0
         return int(value)
 
     # -------------------------------------------------------------------------
@@ -171,31 +158,21 @@ class DatasetSerializer:
     ) -> Iterator[list[str]]:
         offset = 0
         while True:
-            query = sqlalchemy.text(
-                'SELECT dd."text" FROM "dataset_document" dd '
-                'JOIN "dataset" d ON d."id" = dd."dataset_id" '
-                'WHERE d."name" = :dataset '
-                'ORDER BY dd."id" LIMIT :limit OFFSET :offset'
+            stmt = (
+                select(DatasetDocument.text)
+                .join(Dataset, Dataset.id == DatasetDocument.dataset_id)
+                .where(Dataset.name == dataset_name)
+                .order_by(DatasetDocument.id.asc())
+                .limit(int(batch_size))
+                .offset(int(offset))
             )
-            with self.queries.engine.connect() as conn:
-                result = conn.execute(
-                    query,
-                    {"dataset": dataset_name, "limit": batch_size, "offset": offset},
-                )
-                rows = result.fetchall()
+            with self._session() as session:
+                rows = session.execute(stmt).all()
 
             if not rows:
                 break
 
-            texts: list[str] = []
-            for row in rows:
-                if hasattr(row, "_mapping"):
-                    text_value = row._mapping.get("text")
-                else:
-                    text_value = row[0] if row else None
-                if text_value is None:
-                    continue
-                texts.append(str(text_value))
+            texts = [str(text_value) for (text_value,) in rows if text_value is not None]
 
             if texts:
                 yield texts
@@ -211,49 +188,30 @@ class DatasetSerializer:
         exclude_empty: bool = False,
     ) -> Iterator[list[dict[str, Any]]]:
         offset = 0
-        conditions = ['d."name" = :dataset']
-        params: dict[str, Any] = {"dataset": dataset_name}
+        conditions = [Dataset.name == dataset_name]
         if isinstance(min_length, int):
-            conditions.append('LENGTH(dd."text") >= :min_length')
-            params["min_length"] = int(min_length)
+            conditions.append(func.length(DatasetDocument.text) >= int(min_length))
         if isinstance(max_length, int):
-            conditions.append('LENGTH(dd."text") <= :max_length')
-            params["max_length"] = int(max_length)
+            conditions.append(func.length(DatasetDocument.text) <= int(max_length))
         if exclude_empty:
-            conditions.append('LENGTH(TRIM(dd."text")) > 0')
-        where_clause = " AND ".join(conditions)
+            conditions.append(func.length(func.trim(DatasetDocument.text)) > 0)
         while True:
-            query = sqlalchemy.text(
-                'SELECT dd."id", dd."text" FROM "dataset_document" dd '
-                'JOIN "dataset" d ON d."id" = dd."dataset_id" '
-                f"WHERE {where_clause} "
-                'ORDER BY dd."id" LIMIT :limit OFFSET :offset'
+            stmt = (
+                select(DatasetDocument.id, DatasetDocument.text)
+                .join(Dataset, Dataset.id == DatasetDocument.dataset_id)
+                .where(and_(*conditions))
+                .order_by(DatasetDocument.id.asc())
+                .limit(int(batch_size))
+                .offset(int(offset))
             )
-            with self.queries.engine.connect() as conn:
-                batch_params = {
-                    **params,
-                    "limit": batch_size,
-                    "offset": offset,
-                }
-                result = conn.execute(
-                    query,
-                    batch_params,
-                )
-                rows = result.fetchall()
+            with self._session() as session:
+                rows = session.execute(stmt).all()
 
             if not rows:
                 break
 
             batch: list[dict[str, Any]] = []
-            for row in rows:
-                if hasattr(row, "_mapping"):
-                    mapping = row._mapping
-                    row_id = mapping.get("id")
-                    text_value = mapping.get("text")
-                else:
-                    row_id = row[0] if row else None
-                    text_value = row[1] if len(row) > 1 else None
-
+            for row_id, text_value in rows:
                 if row_id is None or text_value is None:
                     continue
                 batch.append({"id": int(row_id), "text": str(text_value)})
@@ -264,22 +222,15 @@ class DatasetSerializer:
 
     # -------------------------------------------------------------------------
     def delete_dataset(self, dataset_name: str) -> None:
-        query = sqlalchemy.text('DELETE FROM "dataset" WHERE "name" = :dataset')
-        with self.queries.engine.begin() as conn:
-            conn.execute(query, {"dataset": dataset_name})
+        stmt = delete(Dataset).where(Dataset.name == dataset_name)
+        with self._session() as session:
+            session.execute(stmt)
+            session.commit()
 
     # -------------------------------------------------------------------------
     def delete_dataset_statistics(self, dataset_name: str) -> None:
-        query = sqlalchemy.text(
-            'DELETE FROM "dataset_document_statistics" '
-            'WHERE "document_id" IN ('
-            'SELECT dd."id" '
-            'FROM "dataset_document" dd '
-            'JOIN "dataset" d ON d."id" = dd."dataset_id" '
-            'WHERE d."name" = :dataset)'
-        )
-        with self.queries.engine.begin() as conn:
-            conn.execute(query, {"dataset": dataset_name})
+        table = self.queries.engine.dialect.get_table_names  # type: ignore[attr-defined]
+        del table  # legacy table may not exist in modern schema
 
     # -------------------------------------------------------------------------
     def save_dataset_statistics_batch(self, batch: list[dict[str, Any]]) -> None:

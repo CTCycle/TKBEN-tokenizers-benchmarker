@@ -11,7 +11,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
 )
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declarative_base, relationship
 
 from TKBEN.server.repositories.schemas.types import JSONMapping, JSONSequence
 
@@ -23,6 +23,21 @@ class Dataset(Base):
     __tablename__ = "dataset"
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     name = Column(String, nullable=False, unique=True)
+    documents = relationship(
+        "DatasetDocument", back_populates="dataset", cascade="all, delete-orphan"
+    )
+    analysis_sessions = relationship(
+        "AnalysisSession", back_populates="dataset", cascade="all, delete-orphan"
+    )
+    benchmark_reports = relationship(
+        "BenchmarkReport", back_populates="dataset", cascade="all, delete-orphan"
+    )
+    legacy_reports = relationship(
+        "DatasetReport", back_populates="dataset", cascade="all, delete-orphan"
+    )
+    validation_reports = relationship(
+        "DatasetValidationReport", back_populates="dataset", cascade="all, delete-orphan"
+    )
 
 
 ###############################################################################
@@ -30,6 +45,28 @@ class Tokenizer(Base):
     __tablename__ = "tokenizer"
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     name = Column(String, nullable=False, unique=True)
+    reports = relationship(
+        "TokenizerReport", back_populates="tokenizer", cascade="all, delete-orphan"
+    )
+    vocabularies = relationship(
+        "TokenizerVocabulary", back_populates="tokenizer", cascade="all, delete-orphan"
+    )
+    vocabulary_statistics = relationship(
+        "TokenizerVocabularyStatistics",
+        back_populates="tokenizer",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    document_stats = relationship(
+        "TokenizationDocumentStats",
+        back_populates="tokenizer",
+        cascade="all, delete-orphan",
+    )
+    dataset_stats = relationship(
+        "TokenizationDatasetStats",
+        back_populates="tokenizer",
+        cascade="all, delete-orphan",
+    )
 
 
 ###############################################################################
@@ -53,6 +90,11 @@ class DatasetDocument(Base):
     )
     text = Column(String, nullable=False)
     __table_args__ = (Index("ix_dataset_document_dataset_id_id", "dataset_id", "id"),)
+    dataset = relationship("Dataset", back_populates="documents")
+    metric_values = relationship("MetricValue", back_populates="document")
+    tokenization_stats = relationship(
+        "TokenizationDocumentStats", back_populates="document"
+    )
 
 
 ###############################################################################
@@ -79,6 +121,13 @@ class AnalysisSession(Base):
             "created_at",
         ),
     )
+    dataset = relationship("Dataset", back_populates="analysis_sessions")
+    metric_values = relationship(
+        "MetricValue", back_populates="session", cascade="all, delete-orphan"
+    )
+    histograms = relationship(
+        "HistogramArtifact", back_populates="session", cascade="all, delete-orphan"
+    )
 
 
 ###############################################################################
@@ -92,6 +141,8 @@ class MetricType(Base):
     scope = Column(String, nullable=False, default="aggregate")
     value_kind = Column(String, nullable=False, default="number")
     __table_args__ = (Index("ix_metric_type_category", "category"),)
+    metric_values = relationship("MetricValue", back_populates="metric_type")
+    histograms = relationship("HistogramArtifact", back_populates="metric_type")
 
 
 ###############################################################################
@@ -121,6 +172,9 @@ class MetricValue(Base):
         Index("ix_metric_value_session_metric", "session_id", "metric_type_id"),
         Index("ix_metric_value_document", "document_id"),
     )
+    session = relationship("AnalysisSession", back_populates="metric_values")
+    metric_type = relationship("MetricType", back_populates="metric_values")
+    document = relationship("DatasetDocument", back_populates="metric_values")
 
 
 ###############################################################################
@@ -148,6 +202,8 @@ class HistogramArtifact(Base):
         UniqueConstraint("session_id", "metric_type_id"),
         Index("ix_histogram_artifact_session", "session_id"),
     )
+    session = relationship("AnalysisSession", back_populates="histograms")
+    metric_type = relationship("MetricType", back_populates="histograms")
 
 
 ###############################################################################
@@ -177,6 +233,8 @@ class TokenizationDocumentStats(Base):
         Index("ix_tokenization_document_stats_tokenizer_id", "tokenizer_id"),
         Index("ix_tokenization_document_stats_document_id", "document_id"),
     )
+    tokenizer = relationship("Tokenizer", back_populates="document_stats")
+    document = relationship("DatasetDocument", back_populates="tokenization_stats")
 
 
 ###############################################################################
@@ -205,6 +263,14 @@ class TokenizationDatasetStats(Base):
         Index("ix_tokenization_dataset_stats_tokenizer_id", "tokenizer_id"),
         Index("ix_tokenization_dataset_stats_dataset_id", "dataset_id"),
     )
+    tokenizer = relationship("Tokenizer", back_populates="dataset_stats")
+    dataset = relationship("Dataset")
+    detail = relationship(
+        "TokenizationDatasetStatsDetail",
+        back_populates="global_stats",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
 
 ###############################################################################
@@ -229,6 +295,7 @@ class TokenizationDatasetStatsDetail(Base):
     round_trip_text_fidelity_rate = Column(Float)
     token_id_ordering_monotonicity = Column(Float)
     token_unigram_coverage = Column(Float)
+    global_stats = relationship("TokenizationDatasetStats", back_populates="detail")
 
 
 ###############################################################################
@@ -246,6 +313,7 @@ class TokenizerVocabularyStatistics(Base):
     number_unshared_tokens = Column(Integer)
     percentage_subwords = Column(Float)
     percentage_true_words = Column(Float)
+    tokenizer = relationship("Tokenizer", back_populates="vocabulary_statistics")
 
 
 ###############################################################################
@@ -264,6 +332,7 @@ class TokenizerVocabulary(Base):
         UniqueConstraint("tokenizer_id", "token_id"),
         Index("ix_tokenizer_vocabulary_tokenizer_id", "tokenizer_id"),
     )
+    tokenizer = relationship("Tokenizer", back_populates="vocabularies")
 
 
 ###############################################################################
@@ -286,6 +355,7 @@ class TokenizerReport(Base):
             "ix_tokenizer_report_tokenizer_id_created_at", "tokenizer_id", "created_at"
         ),
     )
+    tokenizer = relationship("Tokenizer", back_populates="reports")
 
 
 ###############################################################################
@@ -306,3 +376,52 @@ class BenchmarkReport(Base):
         Index("ix_benchmark_report_dataset_id", "dataset_id"),
         Index("ix_benchmark_report_created_at", "created_at"),
     )
+    dataset = relationship("Dataset", back_populates="benchmark_reports")
+
+
+###############################################################################
+class DatasetReport(Base):
+    __tablename__ = "dataset_report"
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    dataset_id = Column(
+        Integer,
+        ForeignKey("dataset.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    document_statistics = Column(JSONMapping)
+    word_statistics = Column(JSONMapping)
+    most_common_words = Column(JSONSequence)
+    least_common_words = Column(JSONSequence)
+    dataset = relationship("Dataset", back_populates="legacy_reports")
+
+
+###############################################################################
+class DatasetValidationReport(Base):
+    __tablename__ = "dataset_validation_report"
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    dataset_id = Column(
+        Integer,
+        ForeignKey("dataset.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    report_version = Column(Integer, nullable=False, default=1)
+    created_at = Column(DateTime, nullable=False)
+    aggregate_statistics = Column(JSONMapping)
+    document_histogram = Column(JSONMapping)
+    word_histogram = Column(JSONMapping)
+    most_common_words = Column(JSONSequence)
+    least_common_words = Column(JSONSequence)
+    longest_words = Column(JSONSequence)
+    shortest_words = Column(JSONSequence)
+    word_cloud_terms = Column(JSONSequence)
+    per_document_stats = Column(JSONMapping)
+    __table_args__ = (
+        Index("ix_dataset_validation_report_dataset_id", "dataset_id"),
+        Index(
+            "ix_dataset_validation_report_dataset_id_id_desc",
+            "dataset_id",
+            "id",
+        ),
+    )
+    dataset = relationship("Dataset", back_populates="validation_reports")
