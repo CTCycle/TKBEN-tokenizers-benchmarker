@@ -48,15 +48,11 @@ Thumbs.db
 # Misc
 .sonarlint/
 *.lock
-!runtimes/uv.lock
 *.log
 *.db
 *.sqlite*
 *.exe
-
-
 !.gitkeep
-
 
 # Tauri
 TKBEN/client/src-tauri/target/
