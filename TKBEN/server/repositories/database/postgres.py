@@ -6,7 +6,7 @@ from typing import Any
 
 import pandas as pd
 import sqlalchemy
-from sqlalchemy import UniqueConstraint, inspect
+from sqlalchemy import MetaData, Table, UniqueConstraint, inspect, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
@@ -133,13 +133,17 @@ class PostgresRepository:
     # -------------------------------------------------------------------------
     def load_from_database(self, table_name: str) -> pd.DataFrame:
         safe_name = self.sanitize_identifier(table_name)
-        with self.engine.connect() as conn:
+        with self.session() as session:
+            conn = session.connection()
             if not self.relation_exists(conn, safe_name):
                 logger.warning("Table %s does not exist", table_name)
                 return pd.DataFrame()
-            query = sqlalchemy.text(f'SELECT * FROM "{safe_name}"')
-            data = pd.read_sql_query(query, conn)
-        return data
+            try:
+                table_obj = self.get_table_class(safe_name).__table__
+            except ValueError:
+                table_obj = Table(safe_name, MetaData(), autoload_with=self.engine)
+            rows = session.execute(select(table_obj)).mappings().all()
+        return pd.DataFrame([dict(row) for row in rows])
 
     # -------------------------------------------------------------------------
     def upsert_into_database(self, df: pd.DataFrame, table_name: str) -> None:
@@ -169,30 +173,39 @@ class PostgresRepository:
 
         batch_size = self.insert_batch_size
         records = df.to_dict(orient="records")
-
-        for start in range(0, total_rows, batch_size):
-            end = min(start + batch_size, total_rows)
-            batch = records[start:end]
-
-            with self.engine.begin() as conn:
+        session = self.session()
+        try:
+            for start in range(0, total_rows, batch_size):
+                end = min(start + batch_size, total_rows)
+                batch = records[start:end]
+                if not batch:
+                    continue
                 if ignore_duplicates:
-                    # Use ON CONFLICT DO NOTHING to skip duplicates
                     stmt = insert(table).values(batch).on_conflict_do_nothing()
-                    conn.execute(stmt)
                 else:
-                    # Keep SQLAlchemy type bind handling for JSON/text/null values.
                     stmt = insert(table).values(batch)
-                    conn.execute(stmt)
+                session.execute(stmt)
+                session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
 
     # -----------------------------------------------------------------------------
     def get_distinct_values(self, table_name: str, column: str) -> list[str]:
         """Get distinct values from a column in the specified table."""
         safe_name = self.sanitize_identifier(table_name)
         safe_column = self.sanitize_identifier(column)
-        with self.engine.connect() as conn:
+        with self.session() as session:
+            conn = session.connection()
             if not self.relation_exists(conn, safe_name):
                 return []
-            result = conn.execute(
-                sqlalchemy.text(f'SELECT DISTINCT "{safe_column}" FROM "{safe_name}"')
-            )
-            return [row[0] for row in result.fetchall() if row[0] is not None]
+            try:
+                table_obj = self.get_table_class(safe_name).__table__
+            except ValueError:
+                table_obj = Table(safe_name, MetaData(), autoload_with=self.engine)
+            if safe_column not in table_obj.c:
+                return []
+            result = session.execute(select(table_obj.c[safe_column]).distinct()).scalars()
+            return [value for value in result if value is not None]

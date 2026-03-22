@@ -3,12 +3,14 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from TKBEN.server.common.utils.encryption import SymmetricCipher, get_hf_key_cipher
 from TKBEN.server.common.utils.logger import logger
 from TKBEN.server.repositories.database.backend import database
-from TKBEN.server.repositories.queries import keys as key_queries
+from TKBEN.server.repositories.schemas.models import HFAccessKey
 
 
 ###############################################################################
@@ -35,6 +37,10 @@ class HFAccessKeyNotFoundError(HFAccessKeyError):
 class HFAccessKeyService:
     def __init__(self) -> None:
         self._cipher: SymmetricCipher | None = None
+
+    # -------------------------------------------------------------------------
+    def _session(self) -> Session:
+        return Session(bind=database.backend.engine)
 
     # -------------------------------------------------------------------------
     @property
@@ -85,32 +91,31 @@ class HFAccessKeyService:
     # -------------------------------------------------------------------------
     def migrate_plaintext_key(self, key_id: int, raw_key: str) -> None:
         encrypted_value = self.cipher.encrypt(raw_key)
-        with database.backend.engine.begin() as conn:
-            conn.execute(
-                key_queries.UPDATE_HF_ACCESS_KEY_VALUE_BY_ID,
-                {"key_value": encrypted_value, "key_id": key_id},
+        with self._session() as session:
+            session.execute(
+                update(HFAccessKey)
+                .where(HFAccessKey.id == int(key_id))
+                .values(key_value=encrypted_value)
             )
+            session.commit()
 
     # -------------------------------------------------------------------------
     def list_keys(self) -> list[dict[str, Any]]:
-        with database.backend.engine.connect() as conn:
-            rows = conn.execute(key_queries.SELECT_HF_ACCESS_KEYS_FOR_LIST).fetchall()
-
-        keys: list[dict[str, Any]] = []
-        for row in rows:
-            key_id = int(self.read_row_value(row, "id", 0))
-            encrypted_value = str(self.read_row_value(row, "key_value", 1) or "")
-            created_at = self.read_row_value(row, "created_at", 2)
-            is_active = bool(self.read_row_value(row, "is_active", 3))
-            keys.append(
-                {
-                    "id": key_id,
-                    "created_at": created_at,
-                    "is_active": is_active,
-                    "masked_preview": self.mask_key_preview(encrypted_value),
-                }
-            )
-        return keys
+        stmt = select(HFAccessKey).order_by(
+            HFAccessKey.created_at.desc(),
+            HFAccessKey.id.desc(),
+        )
+        with self._session() as session:
+            rows = session.execute(stmt).scalars().all()
+        return [
+            {
+                "id": int(row.id),
+                "created_at": row.created_at,
+                "is_active": bool(row.is_active),
+                "masked_preview": self.mask_key_preview(str(row.key_value or "")),
+            }
+            for row in rows
+        ]
 
     # -------------------------------------------------------------------------
     def add_key(self, raw_key: str) -> dict[str, Any]:
@@ -118,10 +123,9 @@ class HFAccessKeyService:
         created_at = datetime.now(timezone.utc)
 
         encrypted_value = self.cipher.encrypt(normalized_key)
-        with database.backend.engine.begin() as conn:
-            rows = conn.execute(key_queries.SELECT_HF_KEY_VALUES).fetchall()
-            for row in rows:
-                stored_value = self.read_row_value(row, "key_value", 0)
+        with self._session() as session:
+            rows = session.execute(select(HFAccessKey.key_value)).all()
+            for (stored_value,) in rows:
                 if not stored_value:
                     continue
                 stored_text = str(stored_value)
@@ -142,48 +146,41 @@ class HFAccessKeyService:
                     raise HFAccessKeyConflictError(
                         "This Hugging Face key is already stored."
                     )
+            key_row = HFAccessKey(
+                key_value=encrypted_value,
+                created_at=created_at,
+                is_active=False,
+            )
             try:
-                conn.execute(
-                    key_queries.INSERT_HF_ACCESS_KEY,
-                    {
-                        "key_value": encrypted_value,
-                        "created_at": created_at,
-                        "is_active": False,
-                    },
-                )
+                session.add(key_row)
+                session.commit()
             except IntegrityError as exc:
+                session.rollback()
                 raise HFAccessKeyConflictError(
                     "This Hugging Face key is already stored."
                 ) from exc
-            inserted = conn.execute(
-                key_queries.SELECT_HF_ACCESS_KEY_BY_VALUE,
-                {"key_value": encrypted_value},
-            ).first()
+            session.refresh(key_row)
 
-        if inserted is None:
+        if key_row.id is None:
             raise RuntimeError("Failed to save Hugging Face key.")
 
-        key_id = int(self.read_row_value(inserted, "id", 0))
-        inserted_created_at = (
-            self.read_row_value(inserted, "created_at", 1) or created_at
-        )
         return {
-            "id": key_id,
-            "created_at": inserted_created_at,
+            "id": int(key_row.id),
+            "created_at": key_row.created_at or created_at,
             "is_active": False,
             "masked_preview": self.mask_key_preview(encrypted_value),
         }
 
     # -------------------------------------------------------------------------
     def get_encrypted_key(self, key_id: int) -> str:
-        with database.backend.engine.connect() as conn:
-            row = conn.execute(
-                key_queries.SELECT_HF_KEY_VALUE_BY_ID, {"key_id": key_id}
-            ).first()
+        with self._session() as session:
+            row = session.execute(
+                select(HFAccessKey).where(HFAccessKey.id == int(key_id)).limit(1)
+            ).scalar_one_or_none()
         if row is None:
             raise HFAccessKeyNotFoundError("Hugging Face key not found.")
 
-        encrypted_value = self.read_row_value(row, "key_value", 0)
+        encrypted_value = row.key_value
         if not encrypted_value:
             raise HFAccessKeyNotFoundError("Hugging Face key not found.")
         return str(encrypted_value)
@@ -201,64 +198,70 @@ class HFAccessKeyService:
         if not confirm:
             raise HFAccessKeyValidationError("Deletion requires explicit confirmation.")
 
-        with database.backend.engine.begin() as conn:
-            row = conn.execute(
-                key_queries.SELECT_HF_ACCESS_KEY_IS_ACTIVE_BY_ID,
-                {"key_id": key_id},
-            ).first()
+        with self._session() as session:
+            row = session.execute(
+                select(HFAccessKey).where(HFAccessKey.id == int(key_id)).limit(1)
+            ).scalar_one_or_none()
             if row is None:
                 raise HFAccessKeyNotFoundError("Hugging Face key not found.")
-            is_active = bool(self.read_row_value(row, "is_active", 0))
-            if is_active:
+            if bool(row.is_active):
                 raise HFAccessKeyValidationError(
                     "The active Hugging Face key cannot be deleted."
                 )
-            conn.execute(key_queries.DELETE_HF_ACCESS_KEY_BY_ID, {"key_id": key_id})
+            session.delete(row)
+            session.commit()
 
     # -------------------------------------------------------------------------
     def set_active_key(self, key_id: int) -> None:
-        with database.backend.engine.begin() as conn:
-            row = conn.execute(
-                key_queries.SELECT_HF_ACCESS_KEY_ID_AND_IS_ACTIVE_BY_ID,
-                {"key_id": key_id},
-            ).first()
+        with self._session() as session:
+            row = session.execute(
+                select(HFAccessKey).where(HFAccessKey.id == int(key_id)).limit(1)
+            ).scalar_one_or_none()
             if row is None:
                 raise HFAccessKeyNotFoundError("Hugging Face key not found.")
             # Keep activation idempotent: repeated activate calls must leave the key active.
-            conn.execute(
-                key_queries.UPDATE_HF_ACCESS_KEYS_SET_ACTIVE_EXCEPT_ID,
-                {"is_active": False, "key_id": key_id},
+            session.execute(
+                update(HFAccessKey)
+                .where(HFAccessKey.id != int(key_id))
+                .values(is_active=False)
             )
-            conn.execute(
-                key_queries.UPDATE_HF_ACCESS_KEY_SET_ACTIVE_BY_ID,
-                {"is_active": True, "key_id": key_id},
+            session.execute(
+                update(HFAccessKey)
+                .where(HFAccessKey.id == int(key_id))
+                .values(is_active=True)
             )
+            session.commit()
 
     # -------------------------------------------------------------------------
     def clear_active_key(self, key_id: int) -> None:
-        with database.backend.engine.begin() as conn:
-            row = conn.execute(
-                key_queries.SELECT_HF_ACCESS_KEY_ID_BY_ID, {"key_id": key_id}
-            ).first()
+        with self._session() as session:
+            row = session.execute(
+                select(HFAccessKey.id).where(HFAccessKey.id == int(key_id)).limit(1)
+            ).scalar_one_or_none()
             if row is None:
                 raise HFAccessKeyNotFoundError("Hugging Face key not found.")
-            conn.execute(
-                key_queries.UPDATE_HF_ACCESS_KEY_SET_ACTIVE_BY_ID,
-                {"is_active": False, "key_id": key_id},
+            session.execute(
+                update(HFAccessKey)
+                .where(HFAccessKey.id == int(key_id))
+                .values(is_active=False)
             )
+            session.commit()
 
     # -------------------------------------------------------------------------
     def get_active_key(self) -> str:
-        with database.backend.engine.connect() as conn:
-            row = conn.execute(
-                key_queries.SELECT_ACTIVE_HF_ACCESS_KEY, {"is_active": True}
-            ).first()
+        with self._session() as session:
+            row = session.execute(
+                select(HFAccessKey)
+                .where(HFAccessKey.is_active.is_(True))
+                .order_by(HFAccessKey.id.desc())
+                .limit(1)
+            ).scalar_one_or_none()
         if row is None:
             raise HFAccessKeyValidationError(
                 "No active Hugging Face access key is configured."
             )
-        key_id = self.read_row_value(row, "id", 0)
-        encrypted_value = self.read_row_value(row, "key_value", 1)
+        key_id = row.id
+        encrypted_value = row.key_value
         if not encrypted_value:
             raise HFAccessKeyValidationError(
                 "No active Hugging Face access key is configured."

@@ -1,12 +1,21 @@
 from __future__ import annotations
 
 import os
-import sqlite3
 import tempfile
 from collections import Counter
 from collections.abc import Iterator
 
-from TKBEN.server.repositories.queries import frequencies as frequency_queries
+from sqlalchemy import Integer, String, create_engine, func, select
+from sqlalchemy.orm import Session, declarative_base, mapped_column, sessionmaker
+
+Base = declarative_base()
+
+
+###############################################################################
+class FrequencyEntry(Base):
+    __tablename__ = "frequencies"
+    token = mapped_column(String, primary_key=True, nullable=False)
+    count = mapped_column(Integer, nullable=False, default=0, index=True)
 
 
 ###############################################################################
@@ -16,18 +25,17 @@ class DiskBackedFrequencyStore:
         self.memory: Counter[str] = Counter()
         fd, self.path = tempfile.mkstemp(prefix="tkben_freq_", suffix=".sqlite3")
         os.close(fd)
-        self.conn = sqlite3.connect(self.path)
+        self.engine = create_engine(f"sqlite:///{self.path}", future=True)
+        self._session_factory = sessionmaker(bind=self.engine, future=True)
         self._initialize()
 
     # -------------------------------------------------------------------------
     def _initialize(self) -> None:
-        cursor = self.conn.cursor()
-        try:
-            cursor.execute(frequency_queries.CREATE_FREQUENCIES_TABLE)
-            cursor.execute(frequency_queries.CREATE_FREQUENCIES_COUNT_INDEX)
-            self.conn.commit()
-        finally:
-            cursor.close()
+        Base.metadata.create_all(self.engine, checkfirst=True)
+
+    # -------------------------------------------------------------------------
+    def _session(self) -> Session:
+        return self._session_factory()
 
     # -------------------------------------------------------------------------
     def add(self, token: str, count: int = 1) -> None:
@@ -46,62 +54,57 @@ class DiskBackedFrequencyStore:
     def flush(self) -> None:
         if not self.memory:
             return
-        cursor = self.conn.cursor()
-        try:
+        with self._session() as session:
+            tokens = list(self.memory.keys())
+            existing_rows = session.execute(
+                select(FrequencyEntry).where(FrequencyEntry.token.in_(tokens))
+            ).scalars().all()
+            existing = {row.token: row for row in existing_rows}
             for token, count in self.memory.items():
-                cursor.execute(
-                    frequency_queries.UPSERT_FREQUENCY_COUNT,
-                    (token, int(count)),
-                )
-            self.conn.commit()
-            self.memory.clear()
-        finally:
-            cursor.close()
+                row = existing.get(token)
+                if row is None:
+                    session.add(FrequencyEntry(token=token, count=int(count)))
+                else:
+                    row.count = int(row.count) + int(count)
+            session.commit()
+        self.memory.clear()
 
     # -------------------------------------------------------------------------
     def total_count(self) -> int:
         self.flush()
-        cursor = self.conn.cursor()
-        try:
-            row = cursor.execute(frequency_queries.SELECT_TOTAL_FREQUENCY_COUNT).fetchone()
-            return int(row[0] if row else 0)
-        finally:
-            cursor.close()
+        stmt = select(func.coalesce(func.sum(FrequencyEntry.count), 0))
+        with self._session() as session:
+            value = session.execute(stmt).scalar_one_or_none() or 0
+        return int(value)
 
     # -------------------------------------------------------------------------
     def unique_count(self) -> int:
         self.flush()
-        cursor = self.conn.cursor()
-        try:
-            row = cursor.execute(frequency_queries.SELECT_UNIQUE_FREQUENCY_COUNT).fetchone()
-            return int(row[0] if row else 0)
-        finally:
-            cursor.close()
+        stmt = select(func.count(FrequencyEntry.token))
+        with self._session() as session:
+            value = session.execute(stmt).scalar_one_or_none() or 0
+        return int(value)
 
     # -------------------------------------------------------------------------
     def token_counts(self) -> list[tuple[str, int]]:
         self.flush()
-        cursor = self.conn.cursor()
-        try:
-            rows = cursor.execute(frequency_queries.SELECT_ALL_TOKEN_COUNTS).fetchall()
-            return [(str(token), int(count)) for token, count in rows]
-        finally:
-            cursor.close()
+        stmt = select(FrequencyEntry.token, FrequencyEntry.count)
+        with self._session() as session:
+            rows = session.execute(stmt).all()
+        return [(str(token), int(count)) for token, count in rows]
 
     # -------------------------------------------------------------------------
     def iter_counts(self, batch_size: int = 10_000):
         self.flush()
-        cursor = self.conn.cursor()
-        try:
-            cursor.execute(frequency_queries.SELECT_ALL_TOKEN_COUNTS)
+        stmt = select(FrequencyEntry.token, FrequencyEntry.count)
+        with self._session() as session:
+            result = session.execute(stmt)
             while True:
-                rows = cursor.fetchmany(int(max(100, batch_size)))
+                rows = result.fetchmany(int(max(100, batch_size)))
                 if not rows:
                     break
                 for token, count in rows:
                     yield str(token), int(count)
-        finally:
-            cursor.close()
 
     # -------------------------------------------------------------------------
     def iter_sorted_counts(
@@ -110,117 +113,110 @@ class DiskBackedFrequencyStore:
         batch_size: int = 10_000,
     ) -> Iterator[tuple[str, int]]:
         self.flush()
-        cursor = self.conn.cursor()
-        try:
-            cursor.execute(
-                frequency_queries.select_sorted_token_counts_query(
-                    descending=descending
-                )
-            )
+        order_count = FrequencyEntry.count.desc() if descending else FrequencyEntry.count.asc()
+        stmt = select(FrequencyEntry.token, FrequencyEntry.count).order_by(
+            order_count,
+            FrequencyEntry.token.asc(),
+        )
+        with self._session() as session:
+            result = session.execute(stmt)
             while True:
-                rows = cursor.fetchmany(int(max(100, batch_size)))
+                rows = result.fetchmany(int(max(100, batch_size)))
                 if not rows:
                     break
                 for token, count in rows:
                     yield str(token), int(count)
-        finally:
-            cursor.close()
 
     # -------------------------------------------------------------------------
     def top_k(self, k: int) -> list[tuple[str, int]]:
         self.flush()
-        cursor = self.conn.cursor()
-        try:
-            rows = cursor.execute(
-                frequency_queries.SELECT_TOP_K_TOKEN_COUNTS,
-                (int(max(1, k)),),
-            ).fetchall()
-            return [(str(token), int(count)) for token, count in rows]
-        finally:
-            cursor.close()
+        stmt = (
+            select(FrequencyEntry.token, FrequencyEntry.count)
+            .order_by(FrequencyEntry.count.desc(), FrequencyEntry.token.asc())
+            .limit(int(max(1, k)))
+        )
+        with self._session() as session:
+            rows = session.execute(stmt).all()
+        return [(str(token), int(count)) for token, count in rows]
 
     # -------------------------------------------------------------------------
     def bottom_k(self, k: int) -> list[tuple[str, int]]:
         self.flush()
-        cursor = self.conn.cursor()
-        try:
-            rows = cursor.execute(
-                frequency_queries.SELECT_BOTTOM_K_TOKEN_COUNTS,
-                (int(max(1, k)),),
-            ).fetchall()
-            return [(str(token), int(count)) for token, count in rows]
-        finally:
-            cursor.close()
+        stmt = (
+            select(FrequencyEntry.token, FrequencyEntry.count)
+            .order_by(FrequencyEntry.count.asc(), FrequencyEntry.token.asc())
+            .limit(int(max(1, k)))
+        )
+        with self._session() as session:
+            rows = session.execute(stmt).all()
+        return [(str(token), int(count)) for token, count in rows]
 
     # -------------------------------------------------------------------------
     def sum_top_k(self, k: int) -> int:
         self.flush()
-        cursor = self.conn.cursor()
-        try:
-            row = cursor.execute(
-                frequency_queries.SELECT_SUM_TOP_K_COUNTS,
-                (int(max(1, k)),),
-            ).fetchone()
-            return int(row[0] if row else 0)
-        finally:
-            cursor.close()
+        limited = (
+            select(FrequencyEntry.count)
+            .order_by(FrequencyEntry.count.desc(), FrequencyEntry.token.asc())
+            .limit(int(max(1, k)))
+            .subquery()
+        )
+        stmt = select(func.coalesce(func.sum(limited.c.count), 0))
+        with self._session() as session:
+            value = session.execute(stmt).scalar_one_or_none() or 0
+        return int(value)
 
     # -------------------------------------------------------------------------
     def sum_bottom_k(self, k: int) -> int:
         self.flush()
-        cursor = self.conn.cursor()
-        try:
-            row = cursor.execute(
-                frequency_queries.SELECT_SUM_BOTTOM_K_COUNTS,
-                (int(max(1, k)),),
-            ).fetchone()
-            return int(row[0] if row else 0)
-        finally:
-            cursor.close()
+        limited = (
+            select(FrequencyEntry.count)
+            .order_by(FrequencyEntry.count.asc(), FrequencyEntry.token.asc())
+            .limit(int(max(1, k)))
+            .subquery()
+        )
+        stmt = select(func.coalesce(func.sum(limited.c.count), 0))
+        with self._session() as session:
+            value = session.execute(stmt).scalar_one_or_none() or 0
+        return int(value)
 
     # -------------------------------------------------------------------------
     def longest_k(self, k: int) -> list[tuple[str, int]]:
         self.flush()
-        cursor = self.conn.cursor()
-        try:
-            rows = cursor.execute(
-                frequency_queries.SELECT_LONGEST_K_TOKEN_COUNTS,
-                (int(max(1, k)),),
-            ).fetchall()
-            return [(str(token), int(count)) for token, count in rows]
-        finally:
-            cursor.close()
+        stmt = (
+            select(FrequencyEntry.token, FrequencyEntry.count)
+            .order_by(func.length(FrequencyEntry.token).desc(), FrequencyEntry.token.asc())
+            .limit(int(max(1, k)))
+        )
+        with self._session() as session:
+            rows = session.execute(stmt).all()
+        return [(str(token), int(count)) for token, count in rows]
 
     # -------------------------------------------------------------------------
     def shortest_k(self, k: int) -> list[tuple[str, int]]:
         self.flush()
-        cursor = self.conn.cursor()
-        try:
-            rows = cursor.execute(
-                frequency_queries.SELECT_SHORTEST_K_TOKEN_COUNTS,
-                (int(max(1, k)),),
-            ).fetchall()
-            return [(str(token), int(count)) for token, count in rows]
-        finally:
-            cursor.close()
+        stmt = (
+            select(FrequencyEntry.token, FrequencyEntry.count)
+            .order_by(func.length(FrequencyEntry.token).asc(), FrequencyEntry.token.asc())
+            .limit(int(max(1, k)))
+        )
+        with self._session() as session:
+            rows = session.execute(stmt).all()
+        return [(str(token), int(count)) for token, count in rows]
 
     # -------------------------------------------------------------------------
     def count_frequency_of_frequency(self, n: int) -> int:
         self.flush()
-        cursor = self.conn.cursor()
-        try:
-            row = cursor.execute(
-                frequency_queries.SELECT_FREQUENCY_OF_FREQUENCY_COUNT,
-                (int(n),),
-            ).fetchone()
-            return int(row[0] if row else 0)
-        finally:
-            cursor.close()
+        stmt = select(func.count(FrequencyEntry.token)).where(
+            FrequencyEntry.count == int(n)
+        )
+        with self._session() as session:
+            value = session.execute(stmt).scalar_one_or_none() or 0
+        return int(value)
 
     # -------------------------------------------------------------------------
     def close(self) -> None:
         try:
-            self.conn.close()
+            self.engine.dispose()
         finally:
             try:
                 os.remove(self.path)

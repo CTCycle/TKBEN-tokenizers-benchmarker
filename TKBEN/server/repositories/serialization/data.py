@@ -55,7 +55,7 @@ class DatasetSerializer:
         if isinstance(value, str):
             try:
                 return json.loads(value)
-            except json.JSONDecodeError, TypeError:
+            except (json.JSONDecodeError, TypeError):
                 return default
         if isinstance(value, (dict, list)):
             return value
@@ -334,62 +334,25 @@ class DatasetSerializer:
         dataset_id = self.get_dataset_id(dataset_name)
         if dataset_id is None:
             raise ValueError(f"Dataset '{dataset_name}' not found while saving report.")
-
-        insert_query = sqlalchemy.text(
-            'INSERT INTO "dataset_validation_report" ('
-            '"dataset_id", "report_version", "created_at", "aggregate_statistics", '
-            '"document_histogram", "word_histogram", "most_common_words", '
-            '"least_common_words", "longest_words", "shortest_words", '
-            '"word_cloud_terms", "per_document_stats") '
-            "VALUES ("
-            ":dataset_id, :report_version, :created_at, :aggregate_statistics, "
-            ":document_histogram, :word_histogram, :most_common_words, "
-            ":least_common_words, :longest_words, :shortest_words, "
-            ":word_cloud_terms, :per_document_stats)"
+        validation_report = DatasetValidationReport(
+            dataset_id=int(dataset_id),
+            report_version=int(storage.get("report_version", 1) or 1),
+            created_at=self._coerce_datetime(storage.get("created_at")),
+            aggregate_statistics=storage.get("aggregate_statistics", {}),
+            document_histogram=storage.get("document_histogram", {}),
+            word_histogram=storage.get("word_histogram", {}),
+            most_common_words=storage.get("most_common_words", []),
+            least_common_words=storage.get("least_common_words", []),
+            longest_words=storage.get("longest_words", []),
+            shortest_words=storage.get("shortest_words", []),
+            word_cloud_terms=storage.get("word_cloud_terms", []),
+            per_document_stats=storage.get("per_document_stats", {}),
         )
-
-        with self.queries.engine.begin() as conn:
-            conn.execute(
-                insert_query,
-                {
-                    "dataset_id": dataset_id,
-                    "report_version": int(storage.get("report_version", 1) or 1),
-                    "created_at": self._coerce_datetime(storage.get("created_at")),
-                    "aggregate_statistics": json.dumps(
-                        storage.get("aggregate_statistics", {})
-                    ),
-                    "document_histogram": json.dumps(
-                        storage.get("document_histogram", {})
-                    ),
-                    "word_histogram": json.dumps(storage.get("word_histogram", {})),
-                    "most_common_words": json.dumps(
-                        storage.get("most_common_words", [])
-                    ),
-                    "least_common_words": json.dumps(
-                        storage.get("least_common_words", [])
-                    ),
-                    "longest_words": json.dumps(storage.get("longest_words", [])),
-                    "shortest_words": json.dumps(storage.get("shortest_words", [])),
-                    "word_cloud_terms": json.dumps(storage.get("word_cloud_terms", [])),
-                    "per_document_stats": json.dumps(
-                        storage.get("per_document_stats", {})
-                    ),
-                },
-            )
-            result = conn.execute(
-                sqlalchemy.text(
-                    'SELECT "id" FROM "dataset_validation_report" '
-                    'WHERE "dataset_id" = :dataset_id ORDER BY "id" DESC LIMIT 1'
-                ),
-                {"dataset_id": dataset_id},
-            )
-            row = result.first()
-
-        if row is None:
-            raise ValueError("Failed to resolve saved dataset validation report id.")
-        if hasattr(row, "_mapping"):
-            return int(row._mapping["id"])
-        return int(row[0])
+        with self._session() as session:
+            session.add(validation_report)
+            session.commit()
+            session.refresh(validation_report)
+        return int(validation_report.id)
 
     # -------------------------------------------------------------------------
     def save_dataset_report(self, report: dict[str, Any]) -> int:
@@ -538,24 +501,26 @@ class DatasetSerializer:
 
     # -------------------------------------------------------------------------
     def load_legacy_dataset_report(self, dataset_name: str) -> dict[str, Any] | None:
-        query = sqlalchemy.text(
-            'SELECT dr.*, d."name" AS "dataset_name" '
-            'FROM "dataset_report" dr '
-            'JOIN "dataset" d ON d."id" = dr."dataset_id" '
-            'WHERE d."name" = :dataset LIMIT 1'
+        stmt = (
+            select(DatasetReport, Dataset.name.label("dataset_name"))
+            .join(Dataset, Dataset.id == DatasetReport.dataset_id)
+            .where(Dataset.name == dataset_name)
+            .limit(1)
         )
-        with self.queries.engine.connect() as conn:
-            result = conn.execute(query, {"dataset": dataset_name})
-            row = result.first()
-
-        if row is None:
+        with self._session() as session:
+            row = session.execute(stmt).first()
+        if row is None or row[0] is None:
             return None
-        if hasattr(row, "_mapping"):
-            storage = dict(row._mapping)
-        else:
-            storage = {
-                key: value for key, value in zip(result.keys(), row, strict=False)
-            }
+        report_row, dataset_name_value = row
+        storage = {
+            "id": report_row.id,
+            "dataset_id": report_row.dataset_id,
+            "dataset_name": str(dataset_name_value or ""),
+            "document_statistics": report_row.document_statistics,
+            "word_statistics": report_row.word_statistics,
+            "most_common_words": report_row.most_common_words,
+            "least_common_words": report_row.least_common_words,
+        }
         return self.build_report_response(storage)
 
     # -------------------------------------------------------------------------
@@ -564,53 +529,57 @@ class DatasetSerializer:
 
     # -------------------------------------------------------------------------
     def ensure_metric_types_seeded(self, metric_catalog: list[dict[str, Any]]) -> None:
-        query = sqlalchemy.text(
-            'INSERT INTO "metric_type" ("key", "category", "label", "description", "scope", "value_kind") '
-            "VALUES (:key, :category, :label, :description, :scope, :value_kind) "
-            'ON CONFLICT ("key") DO UPDATE SET '
-            '"category" = EXCLUDED."category", '
-            '"label" = EXCLUDED."label", '
-            '"description" = EXCLUDED."description", '
-            '"scope" = EXCLUDED."scope", '
-            '"value_kind" = EXCLUDED."value_kind"'
-        )
-        with self.queries.engine.begin() as conn:
-            for category in metric_catalog:
-                category_key = str(category.get("category_key", "uncategorized"))
-                metrics = category.get("metrics")
-                if not isinstance(metrics, list):
+        entries: list[dict[str, str]] = []
+        for category in metric_catalog:
+            category_key = str(category.get("category_key", "uncategorized"))
+            metrics = category.get("metrics")
+            if not isinstance(metrics, list):
+                continue
+            for metric in metrics:
+                if not isinstance(metric, dict):
                     continue
-                for metric in metrics:
-                    if not isinstance(metric, dict):
-                        continue
-                    key = metric.get("key")
-                    label = metric.get("label")
-                    if not key or not label:
-                        continue
-                    conn.execute(
-                        query,
-                        {
-                            "key": str(key),
-                            "category": category_key,
-                            "label": str(label),
-                            "description": str(metric.get("description") or ""),
-                            "scope": str(metric.get("scope") or "aggregate"),
-                            "value_kind": str(metric.get("value_kind") or "number"),
-                        },
-                    )
+                key = metric.get("key")
+                label = metric.get("label")
+                if not key or not label:
+                    continue
+                entries.append(
+                    {
+                        "key": str(key),
+                        "category": category_key,
+                        "label": str(label),
+                        "description": str(metric.get("description") or ""),
+                        "scope": str(metric.get("scope") or "aggregate"),
+                        "value_kind": str(metric.get("value_kind") or "number"),
+                    }
+                )
+        if not entries:
+            return
+        metric_keys = [entry["key"] for entry in entries]
+        with self._session() as session:
+            existing_types = {
+                metric_type.key: metric_type
+                for metric_type in session.execute(
+                    select(MetricType).where(MetricType.key.in_(metric_keys))
+                ).scalars()
+            }
+            for entry in entries:
+                metric_type = existing_types.get(entry["key"])
+                if metric_type is None:
+                    session.add(MetricType(**entry))
+                    continue
+                metric_type.category = entry["category"]
+                metric_type.label = entry["label"]
+                metric_type.description = entry["description"]
+                metric_type.scope = entry["scope"]
+                metric_type.value_kind = entry["value_kind"]
+            session.commit()
 
     # -------------------------------------------------------------------------
     def get_metric_type_map(self) -> dict[str, int]:
-        query = sqlalchemy.text('SELECT "id", "key" FROM "metric_type"')
-        with self.queries.engine.connect() as conn:
-            rows = conn.execute(query).fetchall()
-        result: dict[str, int] = {}
-        for row in rows:
-            if hasattr(row, "_mapping"):
-                result[str(row._mapping["key"])] = int(row._mapping["id"])
-            else:
-                result[str(row[1])] = int(row[0])
-        return result
+        stmt = select(MetricType.id, MetricType.key)
+        with self._session() as session:
+            rows = session.execute(stmt).all()
+        return {str(metric_key): int(metric_id) for metric_id, metric_key in rows}
 
     # -------------------------------------------------------------------------
     def create_analysis_session(
@@ -623,60 +592,39 @@ class DatasetSerializer:
     ) -> int:
         dataset_id = self.ensure_dataset_id(dataset_name)
         created_at = pd.Timestamp.utcnow().to_pydatetime()
-        query = sqlalchemy.text(
-            'INSERT INTO "analysis_session" ('
-            '"dataset_id", "session_name", "status", "report_version", '
-            '"created_at", "completed_at", "parameters", "selected_metric_keys") '
-            "VALUES ("
-            ":dataset_id, :session_name, :status, :report_version, "
-            ":created_at, :completed_at, :parameters, :selected_metric_keys)"
+        session_row = AnalysisSession(
+            dataset_id=int(dataset_id),
+            session_name=session_name,
+            status="running",
+            report_version=int(report_version),
+            created_at=created_at,
+            completed_at=None,
+            parameters=parameters,
+            selected_metric_keys=selected_metric_keys,
         )
-        with self.queries.engine.begin() as conn:
-            conn.execute(
-                query,
-                {
-                    "dataset_id": dataset_id,
-                    "session_name": session_name,
-                    "status": "running",
-                    "report_version": int(report_version),
-                    "created_at": created_at,
-                    "completed_at": None,
-                    "parameters": json.dumps(parameters),
-                    "selected_metric_keys": json.dumps(selected_metric_keys),
-                },
-            )
-            row = conn.execute(
-                sqlalchemy.text(
-                    'SELECT "id" FROM "analysis_session" '
-                    'WHERE "dataset_id" = :dataset_id '
-                    'ORDER BY "id" DESC LIMIT 1'
-                ),
-                {"dataset_id": dataset_id},
-            ).first()
-        if row is None:
+        with self._session() as session:
+            session.add(session_row)
+            session.commit()
+            session.refresh(session_row)
+        if session_row.id is None:
             raise ValueError("Failed to create analysis session.")
-        if hasattr(row, "_mapping"):
-            return int(row._mapping["id"])
-        return int(row[0])
+        return int(session_row.id)
 
     # -------------------------------------------------------------------------
     def complete_analysis_session(
         self, session_id: int, status: str = "completed"
     ) -> None:
-        query = sqlalchemy.text(
-            'UPDATE "analysis_session" '
-            'SET "status" = :status, "completed_at" = :completed_at '
-            'WHERE "id" = :session_id'
-        )
-        with self.queries.engine.begin() as conn:
-            conn.execute(
-                query,
-                {
-                    "status": str(status),
-                    "completed_at": pd.Timestamp.utcnow().to_pydatetime(),
-                    "session_id": int(session_id),
-                },
+        stmt = (
+            update(AnalysisSession)
+            .where(AnalysisSession.id == int(session_id))
+            .values(
+                status=str(status),
+                completed_at=pd.Timestamp.utcnow().to_pydatetime(),
             )
+        )
+        with self._session() as session:
+            session.execute(stmt)
+            session.commit()
 
     # -------------------------------------------------------------------------
     def save_metric_values_batch(
@@ -745,70 +693,59 @@ class DatasetSerializer:
 
     # -------------------------------------------------------------------------
     def _load_metric_rows_for_session(self, session_id: int) -> list[dict[str, Any]]:
-        query = sqlalchemy.text(
-            'SELECT mv."document_id", mt."key", mv."numeric_value", mv."text_value", mv."json_value" '
-            'FROM "metric_value" mv '
-            'JOIN "metric_type" mt ON mt."id" = mv."metric_type_id" '
-            'WHERE mv."session_id" = :session_id '
-            'ORDER BY mv."id" ASC'
+        stmt = (
+            select(
+                MetricValue.document_id,
+                MetricType.key,
+                MetricValue.numeric_value,
+                MetricValue.text_value,
+                MetricValue.json_value,
+            )
+            .join(MetricType, MetricType.id == MetricValue.metric_type_id)
+            .where(MetricValue.session_id == int(session_id))
+            .order_by(MetricValue.id.asc())
         )
-        with self.queries.engine.connect() as conn:
-            rows = conn.execute(query, {"session_id": int(session_id)}).fetchall()
-        result: list[dict[str, Any]] = []
-        for row in rows:
-            if hasattr(row, "_mapping"):
-                result.append(
-                    {
-                        "document_id": row._mapping.get("document_id"),
-                        "key": str(row._mapping.get("key") or ""),
-                        "numeric_value": row._mapping.get("numeric_value"),
-                        "text_value": row._mapping.get("text_value"),
-                        "json_value": row._mapping.get("json_value"),
-                    }
-                )
-            else:
-                result.append(
-                    {
-                        "document_id": row[0],
-                        "key": str(row[1] or ""),
-                        "numeric_value": row[2],
-                        "text_value": row[3],
-                        "json_value": row[4],
-                    }
-                )
-        return result
+        with self._session() as session:
+            rows = session.execute(stmt).all()
+        return [
+            {
+                "document_id": document_id,
+                "key": str(metric_key or ""),
+                "numeric_value": numeric_value,
+                "text_value": text_value,
+                "json_value": json_value,
+            }
+            for document_id, metric_key, numeric_value, text_value, json_value in rows
+        ]
 
     # -------------------------------------------------------------------------
     def _load_histogram_rows_for_session(self, session_id: int) -> dict[str, Any]:
-        query = sqlalchemy.text(
-            'SELECT mt."key", ha."bins", ha."counts", ha."bin_edges", '
-            'ha."min_value", ha."max_value", ha."mean_value", ha."median_value" '
-            'FROM "histogram_artifact" ha '
-            'JOIN "metric_type" mt ON mt."id" = ha."metric_type_id" '
-            'WHERE ha."session_id" = :session_id'
+        stmt = (
+            select(
+                MetricType.key,
+                HistogramArtifact.bins,
+                HistogramArtifact.counts,
+                HistogramArtifact.bin_edges,
+                HistogramArtifact.min_value,
+                HistogramArtifact.max_value,
+                HistogramArtifact.mean_value,
+                HistogramArtifact.median_value,
+            )
+            .join(MetricType, MetricType.id == HistogramArtifact.metric_type_id)
+            .where(HistogramArtifact.session_id == int(session_id))
         )
-        with self.queries.engine.connect() as conn:
-            rows = conn.execute(query, {"session_id": int(session_id)}).fetchall()
+        with self._session() as session:
+            rows = session.execute(stmt).all()
         result: dict[str, Any] = {}
-        for row in rows:
-            if hasattr(row, "_mapping"):
-                key = str(row._mapping.get("key") or "")
-                bins = self.parse_json(row._mapping.get("bins"), default=[])
-                counts = self.parse_json(row._mapping.get("counts"), default=[])
-                bin_edges = self.parse_json(row._mapping.get("bin_edges"), default=[])
-                min_value = float(row._mapping.get("min_value", 0.0) or 0.0)
-                max_value = float(row._mapping.get("max_value", 0.0) or 0.0)
-                mean_value = float(row._mapping.get("mean_value", 0.0) or 0.0)
-                median_value = float(row._mapping.get("median_value", 0.0) or 0.0)
-            else:
-                key = str(row[0] or "")
-                bins = self.parse_json(row[1], default=[])
-                counts = self.parse_json(row[2], default=[])
-                bin_edges = self.parse_json(row[3], default=[])
-                min_value = float(row[4] or 0.0)
-                max_value = float(row[5] or 0.0)
-                mean_value = float(row[6] or 0.0)
-                median_value = float(row[7] or 0.0)
+        for key, bins_value, counts_value, edges_value, min_value, max_value, mean_value, median_value in rows:
+            key = str(key or "")
+            bins = self.parse_json(bins_value, default=[])
+            counts = self.parse_json(counts_value, default=[])
+            bin_edges = self.parse_json(edges_value, default=[])
+            min_value = float(min_value or 0.0)
+            max_value = float(max_value or 0.0)
+            mean_value = float(mean_value or 0.0)
+            median_value = float(median_value or 0.0)
             result[key] = {
                 "bins": bins,
                 "counts": counts,
@@ -950,41 +887,63 @@ class DatasetSerializer:
 
     # -------------------------------------------------------------------------
     def load_latest_analysis_report(self, dataset_name: str) -> dict[str, Any] | None:
-        query = sqlalchemy.text(
-            'SELECT s.*, d."name" AS "dataset_name" '
-            'FROM "analysis_session" s '
-            'JOIN "dataset" d ON d."id" = s."dataset_id" '
-            'WHERE d."name" = :dataset AND s."status" = :status '
-            'ORDER BY s."id" DESC LIMIT 1'
+        stmt = (
+            select(AnalysisSession, Dataset.name.label("dataset_name"))
+            .join(Dataset, Dataset.id == AnalysisSession.dataset_id)
+            .where(
+                Dataset.name == dataset_name,
+                AnalysisSession.status == "completed",
+            )
+            .order_by(AnalysisSession.id.desc())
+            .limit(1)
         )
-        with self.queries.engine.connect() as conn:
-            row = conn.execute(
-                query,
-                {"dataset": dataset_name, "status": "completed"},
-            ).first()
-        if row is None:
+        with self._session() as session:
+            row = session.execute(stmt).first()
+        if row is None or row[0] is None:
             return None
-        if hasattr(row, "_mapping"):
-            return self._build_session_report_response(dict(row._mapping))
-        return None
+        session_row, dataset_name_value = row
+        mapped = {
+            "id": session_row.id,
+            "dataset_id": session_row.dataset_id,
+            "session_name": session_row.session_name,
+            "status": session_row.status,
+            "report_version": session_row.report_version,
+            "created_at": session_row.created_at,
+            "completed_at": session_row.completed_at,
+            "parameters": session_row.parameters,
+            "selected_metric_keys": session_row.selected_metric_keys,
+            "dataset_name": dataset_name_value,
+        }
+        return self._build_session_report_response(mapped)
 
     # -------------------------------------------------------------------------
     def load_analysis_report_by_session_id(
         self, session_id: int
     ) -> dict[str, Any] | None:
-        query = sqlalchemy.text(
-            'SELECT s.*, d."name" AS "dataset_name" '
-            'FROM "analysis_session" s '
-            'JOIN "dataset" d ON d."id" = s."dataset_id" '
-            'WHERE s."id" = :session_id LIMIT 1'
+        stmt = (
+            select(AnalysisSession, Dataset.name.label("dataset_name"))
+            .join(Dataset, Dataset.id == AnalysisSession.dataset_id)
+            .where(AnalysisSession.id == int(session_id))
+            .limit(1)
         )
-        with self.queries.engine.connect() as conn:
-            row = conn.execute(query, {"session_id": int(session_id)}).first()
-        if row is None:
+        with self._session() as session:
+            row = session.execute(stmt).first()
+        if row is None or row[0] is None:
             return None
-        if hasattr(row, "_mapping"):
-            return self._build_session_report_response(dict(row._mapping))
-        return None
+        session_row, dataset_name_value = row
+        mapped = {
+            "id": session_row.id,
+            "dataset_id": session_row.dataset_id,
+            "session_name": session_row.session_name,
+            "status": session_row.status,
+            "report_version": session_row.report_version,
+            "created_at": session_row.created_at,
+            "completed_at": session_row.completed_at,
+            "parameters": session_row.parameters,
+            "selected_metric_keys": session_row.selected_metric_keys,
+            "dataset_name": dataset_name_value,
+        }
+        return self._build_session_report_response(mapped)
 
 
 ###############################################################################
@@ -996,30 +955,34 @@ class TokenizerReportSerializer:
         self.tokenizer_vocabulary_table = TokenizerVocabulary.__tablename__
 
     # -------------------------------------------------------------------------
+    def _session(self) -> Session:
+        return Session(bind=self.queries.engine)
+
+    # -------------------------------------------------------------------------
     def get_tokenizer_id(self, tokenizer_name: str) -> int | None:
-        query = sqlalchemy.text(
-            'SELECT "id" FROM "tokenizer" WHERE "name" = :name LIMIT 1'
-        )
-        with self.queries.engine.connect() as conn:
-            row = conn.execute(query, {"name": tokenizer_name}).first()
-        if row is None:
-            return None
-        if hasattr(row, "_mapping"):
-            return int(row._mapping["id"])
-        return int(row[0])
+        stmt = select(Tokenizer.id).where(Tokenizer.name == tokenizer_name).limit(1)
+        with self._session() as session:
+            tokenizer_id = session.execute(stmt).scalar_one_or_none()
+        return int(tokenizer_id) if tokenizer_id is not None else None
 
     # -------------------------------------------------------------------------
     def ensure_tokenizer_id(self, tokenizer_name: str) -> int:
-        query = sqlalchemy.text(
-            'INSERT INTO "tokenizer" ("name") VALUES (:name) '
-            'ON CONFLICT ("name") DO NOTHING'
-        )
-        with self.queries.engine.begin() as conn:
-            conn.execute(query, {"name": tokenizer_name})
-        tokenizer_id = self.get_tokenizer_id(tokenizer_name)
+        with self._session() as session:
+            tokenizer_id = session.execute(
+                select(Tokenizer.id).where(Tokenizer.name == tokenizer_name).limit(1)
+            ).scalar_one_or_none()
+            if tokenizer_id is None:
+                session.add(Tokenizer(name=tokenizer_name))
+                try:
+                    session.commit()
+                except IntegrityError:
+                    session.rollback()
+                tokenizer_id = session.execute(
+                    select(Tokenizer.id).where(Tokenizer.name == tokenizer_name).limit(1)
+                ).scalar_one_or_none()
         if tokenizer_id is None:
             raise ValueError(f"Failed to resolve tokenizer id for '{tokenizer_name}'")
-        return tokenizer_id
+        return int(tokenizer_id)
 
     # -------------------------------------------------------------------------
     def save_tokenizer_report(self, report: dict[str, Any]) -> int:
@@ -1029,45 +992,24 @@ class TokenizerReportSerializer:
         metadata_payload = dict(global_stats) if isinstance(global_stats, dict) else {}
         if "huggingface_url" not in metadata_payload:
             metadata_payload["huggingface_url"] = report.get("huggingface_url")
-        insert_query = sqlalchemy.text(
-            'INSERT INTO "tokenizer_report" ('
-            '"tokenizer_id", "report_version", "created_at", "metadata", '
-            '"token_length_histogram", "description") '
-            "VALUES ("
-            ":tokenizer_id, :report_version, :created_at, :metadata, "
-            ":token_length_histogram, :description)"
-        )
         created_at = pd.to_datetime(report.get("created_at"), utc=True, errors="coerce")
         if pd.isna(created_at):
             created_at = pd.Timestamp.utcnow()
-
-        with self.queries.engine.begin() as conn:
-            conn.execute(
-                insert_query,
-                {
-                    "tokenizer_id": tokenizer_id,
-                    "report_version": int(report.get("report_version", 1) or 1),
-                    "created_at": created_at.to_pydatetime(),
-                    "metadata": json.dumps(metadata_payload),
-                    "token_length_histogram": json.dumps(
-                        report.get("token_length_histogram", {})
-                    ),
-                    "description": report.get("description"),
-                },
-            )
-            row = conn.execute(
-                sqlalchemy.text(
-                    'SELECT "id" FROM "tokenizer_report" '
-                    'WHERE "tokenizer_id" = :tokenizer_id ORDER BY "id" DESC LIMIT 1'
-                ),
-                {"tokenizer_id": tokenizer_id},
-            ).first()
-
-        if row is None:
+        report_row = TokenizerReport(
+            tokenizer_id=int(tokenizer_id),
+            report_version=int(report.get("report_version", 1) or 1),
+            created_at=created_at.to_pydatetime(),
+            metadata_json=metadata_payload,
+            token_length_histogram=report.get("token_length_histogram", {}),
+            description=report.get("description"),
+        )
+        with self._session() as session:
+            session.add(report_row)
+            session.commit()
+            session.refresh(report_row)
+        if report_row.id is None:
             raise ValueError("Failed to resolve saved tokenizer report id.")
-        if hasattr(row, "_mapping"):
-            return int(row._mapping["id"])
-        return int(row[0])
+        return int(report_row.id)
 
     # -------------------------------------------------------------------------
     def replace_tokenizer_vocabulary(
@@ -1138,33 +1080,53 @@ class TokenizerReportSerializer:
     def load_latest_tokenizer_report(
         self, tokenizer_name: str
     ) -> dict[str, Any] | None:
-        query = sqlalchemy.text(
-            'SELECT tr.*, t."name" AS "tokenizer_name" '
-            'FROM "tokenizer_report" tr '
-            'JOIN "tokenizer" t ON t."id" = tr."tokenizer_id" '
-            'WHERE t."name" = :tokenizer_name '
-            'ORDER BY tr."id" DESC LIMIT 1'
+        stmt = (
+            select(TokenizerReport, Tokenizer.name.label("tokenizer_name"))
+            .join(Tokenizer, Tokenizer.id == TokenizerReport.tokenizer_id)
+            .where(Tokenizer.name == tokenizer_name)
+            .order_by(TokenizerReport.id.desc())
+            .limit(1)
         )
-        with self.queries.engine.connect() as conn:
-            row = conn.execute(query, {"tokenizer_name": tokenizer_name}).first()
-        if row is None:
+        with self._session() as session:
+            row = session.execute(stmt).first()
+        if row is None or row[0] is None:
             return None
-        storage = dict(row._mapping) if hasattr(row, "_mapping") else {}
+        report_row, tokenizer_name_value = row
+        storage = {
+            "id": report_row.id,
+            "tokenizer_id": report_row.tokenizer_id,
+            "report_version": report_row.report_version,
+            "created_at": report_row.created_at,
+            "metadata": report_row.metadata_json,
+            "token_length_histogram": report_row.token_length_histogram,
+            "description": report_row.description,
+            "tokenizer_name": tokenizer_name_value,
+        }
         return self._build_tokenizer_report_response(storage)
 
     # -------------------------------------------------------------------------
     def load_tokenizer_report_by_id(self, report_id: int) -> dict[str, Any] | None:
-        query = sqlalchemy.text(
-            'SELECT tr.*, t."name" AS "tokenizer_name" '
-            'FROM "tokenizer_report" tr '
-            'JOIN "tokenizer" t ON t."id" = tr."tokenizer_id" '
-            'WHERE tr."id" = :report_id LIMIT 1'
+        stmt = (
+            select(TokenizerReport, Tokenizer.name.label("tokenizer_name"))
+            .join(Tokenizer, Tokenizer.id == TokenizerReport.tokenizer_id)
+            .where(TokenizerReport.id == int(report_id))
+            .limit(1)
         )
-        with self.queries.engine.connect() as conn:
-            row = conn.execute(query, {"report_id": int(report_id)}).first()
-        if row is None:
+        with self._session() as session:
+            row = session.execute(stmt).first()
+        if row is None or row[0] is None:
             return None
-        storage = dict(row._mapping) if hasattr(row, "_mapping") else {}
+        report_row, tokenizer_name_value = row
+        storage = {
+            "id": report_row.id,
+            "tokenizer_id": report_row.tokenizer_id,
+            "report_version": report_row.report_version,
+            "created_at": report_row.created_at,
+            "metadata": report_row.metadata_json,
+            "token_length_histogram": report_row.token_length_histogram,
+            "description": report_row.description,
+            "tokenizer_name": tokenizer_name_value,
+        }
         return self._build_tokenizer_report_response(storage)
 
     # -------------------------------------------------------------------------
@@ -1181,41 +1143,26 @@ class TokenizerReportSerializer:
         tokenizer_id = self.get_tokenizer_id(tokenizer_name)
         if tokenizer_id is None:
             return None
-
-        count_query = sqlalchemy.text(
-            'SELECT COUNT(*) FROM "tokenizer_vocabulary" WHERE "tokenizer_id" = :tokenizer_id'
+        count_stmt = select(func.count(TokenizerVocabulary.id)).where(
+            TokenizerVocabulary.tokenizer_id == int(tokenizer_id)
         )
-        page_query = sqlalchemy.text(
-            'SELECT "token_id", "vocabulary_tokens" '
-            'FROM "tokenizer_vocabulary" '
-            'WHERE "tokenizer_id" = :tokenizer_id '
-            'ORDER BY "token_id" ASC '
-            "LIMIT :limit OFFSET :offset"
+        page_stmt = (
+            select(TokenizerVocabulary.token_id, TokenizerVocabulary.vocabulary_tokens)
+            .where(TokenizerVocabulary.tokenizer_id == int(tokenizer_id))
+            .order_by(TokenizerVocabulary.token_id.asc())
+            .limit(int(limit))
+            .offset(int(offset))
         )
-        with self.queries.engine.connect() as conn:
-            total = int(
-                conn.execute(count_query, {"tokenizer_id": tokenizer_id}).scalar() or 0
-            )
-            rows = conn.execute(
-                page_query,
-                {
-                    "tokenizer_id": tokenizer_id,
-                    "limit": int(limit),
-                    "offset": int(offset),
-                },
-            ).fetchall()
+        with self._session() as session:
+            total = int(session.execute(count_stmt).scalar_one_or_none() or 0)
+            rows = session.execute(page_stmt).all()
 
         items: list[dict[str, Any]] = []
-        for row in rows:
-            if hasattr(row, "_mapping"):
-                token_id = int(row._mapping["token_id"])
-                token = str(row._mapping.get("vocabulary_tokens") or "")
-            else:
-                token_id = int(row[0])
-                token = str(row[1] if len(row) > 1 else "")
+        for token_id, token_value in rows:
+            token = str(token_value or "")
             items.append(
                 {
-                    "token_id": token_id,
+                    "token_id": int(token_id),
                     "token": token,
                     "length": len(token),
                 }
@@ -1238,17 +1185,15 @@ class BenchmarkReportSerializer:
         self.benchmark_report_table = BenchmarkReport.__tablename__
 
     # -------------------------------------------------------------------------
+    def _session(self) -> Session:
+        return Session(bind=self.queries.engine)
+
+    # -------------------------------------------------------------------------
     def get_dataset_id(self, dataset_name: str) -> int | None:
-        query = sqlalchemy.text(
-            'SELECT "id" FROM "dataset" WHERE "name" = :dataset LIMIT 1'
-        )
-        with self.queries.engine.connect() as conn:
-            row = conn.execute(query, {"dataset": dataset_name}).first()
-        if row is None:
-            return None
-        if hasattr(row, "_mapping"):
-            return int(row._mapping["id"])
-        return int(row[0])
+        stmt = select(Dataset.id).where(Dataset.name == dataset_name).limit(1)
+        with self._session() as session:
+            dataset_id = session.execute(stmt).scalar_one_or_none()
+        return int(dataset_id) if dataset_id is not None else None
 
     # -------------------------------------------------------------------------
     def save_benchmark_report(self, report_payload: dict[str, Any]) -> int:
@@ -1279,39 +1224,21 @@ class BenchmarkReportSerializer:
         else:
             run_name = None
 
-        insert_query = sqlalchemy.text(
-            'INSERT INTO "benchmark_report" ('
-            '"dataset_id", "report_version", "created_at", "run_name", '
-            '"selected_metric_keys", "payload"'
-            ") VALUES ("
-            ":dataset_id, :report_version, :created_at, :run_name, "
-            ":selected_metric_keys, :payload"
-            ")"
+        report_row = BenchmarkReport(
+            dataset_id=int(dataset_id),
+            report_version=int(report_payload.get("report_version", 1) or 1),
+            created_at=created_at_value,
+            run_name=run_name,
+            selected_metric_keys=selected_metric_keys,
+            payload=report_payload,
         )
-
-        with self.queries.engine.begin() as conn:
-            conn.execute(
-                insert_query,
-                {
-                    "dataset_id": int(dataset_id),
-                    "report_version": int(report_payload.get("report_version", 1) or 1),
-                    "created_at": created_at_value,
-                    "run_name": run_name,
-                    "selected_metric_keys": json.dumps(selected_metric_keys),
-                    "payload": json.dumps(report_payload),
-                },
-            )
-            row = conn.execute(
-                sqlalchemy.text(
-                    'SELECT "id" FROM "benchmark_report" ORDER BY "id" DESC LIMIT 1'
-                )
-            ).first()
-
-        if row is None:
+        with self._session() as session:
+            session.add(report_row)
+            session.commit()
+            session.refresh(report_row)
+        if report_row.id is None:
             raise ValueError("Failed to resolve saved benchmark report id.")
-        if hasattr(row, "_mapping"):
-            return int(row._mapping["id"])
-        return int(row[0])
+        return int(report_row.id)
 
     # -------------------------------------------------------------------------
     def _parse_json(self, payload: Any, default: Any) -> Any:
@@ -1382,19 +1309,26 @@ class BenchmarkReportSerializer:
     # -------------------------------------------------------------------------
     def list_benchmark_reports(self, limit: int = 200) -> list[dict[str, Any]]:
         capped_limit = max(1, min(1000, int(limit or 200)))
-        query = sqlalchemy.text(
-            'SELECT br."id", br."report_version", br."created_at", br."run_name", '
-            'br."selected_metric_keys", br."payload", d."name" AS "dataset_name" '
-            'FROM "benchmark_report" br '
-            'JOIN "dataset" d ON d."id" = br."dataset_id" '
-            'ORDER BY br."id" DESC LIMIT :limit'
+        stmt = (
+            select(BenchmarkReport, Dataset.name.label("dataset_name"))
+            .join(Dataset, Dataset.id == BenchmarkReport.dataset_id)
+            .order_by(BenchmarkReport.id.desc())
+            .limit(capped_limit)
         )
-        with self.queries.engine.connect() as conn:
-            rows = conn.execute(query, {"limit": capped_limit}).fetchall()
+        with self._session() as session:
+            rows = session.execute(stmt).all()
 
         summaries: list[dict[str, Any]] = []
-        for raw_row in rows:
-            row = dict(raw_row._mapping) if hasattr(raw_row, "_mapping") else {}
+        for report_row, dataset_name in rows:
+            row = {
+                "id": report_row.id,
+                "report_version": report_row.report_version,
+                "created_at": report_row.created_at,
+                "run_name": report_row.run_name,
+                "selected_metric_keys": report_row.selected_metric_keys,
+                "payload": report_row.payload,
+                "dataset_name": dataset_name,
+            }
             normalized = self._normalize_report_row(row)
             summaries.append(
                 {
@@ -1415,16 +1349,24 @@ class BenchmarkReportSerializer:
 
     # -------------------------------------------------------------------------
     def load_benchmark_report_by_id(self, report_id: int) -> dict[str, Any] | None:
-        query = sqlalchemy.text(
-            'SELECT br."id", br."report_version", br."created_at", br."run_name", '
-            'br."selected_metric_keys", br."payload", d."name" AS "dataset_name" '
-            'FROM "benchmark_report" br '
-            'JOIN "dataset" d ON d."id" = br."dataset_id" '
-            'WHERE br."id" = :report_id LIMIT 1'
+        stmt = (
+            select(BenchmarkReport, Dataset.name.label("dataset_name"))
+            .join(Dataset, Dataset.id == BenchmarkReport.dataset_id)
+            .where(BenchmarkReport.id == int(report_id))
+            .limit(1)
         )
-        with self.queries.engine.connect() as conn:
-            row = conn.execute(query, {"report_id": int(report_id)}).first()
-        if row is None:
+        with self._session() as session:
+            row = session.execute(stmt).first()
+        if row is None or row[0] is None:
             return None
-        mapped = dict(row._mapping) if hasattr(row, "_mapping") else {}
+        report_row, dataset_name = row
+        mapped = {
+            "id": report_row.id,
+            "report_version": report_row.report_version,
+            "created_at": report_row.created_at,
+            "run_name": report_row.run_name,
+            "selected_metric_keys": report_row.selected_metric_keys,
+            "payload": report_row.payload,
+            "dataset_name": dataset_name,
+        }
         return self._normalize_report_row(mapped)

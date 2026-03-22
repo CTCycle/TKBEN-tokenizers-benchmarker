@@ -9,6 +9,9 @@ from datetime import datetime, timezone
 from typing import Any
 
 from huggingface_hub import HfApi, ModelCard
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 from transformers import AutoTokenizer
 
 from TKBEN.server.common.constants import TOKENIZERS_PATH
@@ -19,7 +22,7 @@ from TKBEN.server.common.utils.security import (
 )
 from TKBEN.server.configurations import server_settings
 from TKBEN.server.repositories.database.backend import database
-from TKBEN.server.repositories.queries import tokenizers as tokenizer_queries
+from TKBEN.server.repositories.schemas.models import Tokenizer
 from TKBEN.server.repositories.serialization.data import TokenizerReportSerializer
 from TKBEN.server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
 
@@ -58,6 +61,10 @@ class TokenizersService:
             r"^(?:\[[^\]]{0,200}\]|<[^>]{0,200}>|\{[^}]{0,200}\}|</?s>|</?pad>|UNK|PAD)$",
             re.IGNORECASE,
         )
+
+    # -------------------------------------------------------------------------
+    def _session(self) -> Session:
+        return Session(bind=database.backend.engine)
 
     # -------------------------------------------------------------------------
     def validate_tokenizer_identifier(self, value: str) -> str:
@@ -111,31 +118,32 @@ class TokenizersService:
 
     # -------------------------------------------------------------------------
     def is_tokenizer_persisted(self, tokenizer_id: str) -> bool:
-        with database.backend.engine.connect() as conn:
-            row = conn.execute(
-                tokenizer_queries.SELECT_TOKENIZER_EXISTS_BY_NAME,
-                {"name": tokenizer_id},
-            ).first()
+        stmt = select(Tokenizer.id).where(Tokenizer.name == tokenizer_id).limit(1)
+        with self._session() as session:
+            row = session.execute(stmt).first()
         return row is not None
 
     # -------------------------------------------------------------------------
     def insert_tokenizer_if_missing(self, tokenizer_id: str) -> None:
-        with database.backend.engine.begin() as conn:
-            conn.execute(
-                tokenizer_queries.INSERT_TOKENIZER_IF_MISSING,
-                {"name": tokenizer_id},
-            )
+        with self._session() as session:
+            existing = session.execute(
+                select(Tokenizer.id).where(Tokenizer.name == tokenizer_id).limit(1)
+            ).scalar_one_or_none()
+            if existing is None:
+                session.add(Tokenizer(name=tokenizer_id))
+                try:
+                    session.commit()
+                except IntegrityError:
+                    session.rollback()
 
     # -------------------------------------------------------------------------
     def list_downloaded_tokenizers(self) -> list[str]:
-        with database.backend.engine.connect() as conn:
-            rows = conn.execute(tokenizer_queries.SELECT_TOKENIZER_NAMES_ASC).fetchall()
+        stmt = select(Tokenizer.name).order_by(Tokenizer.name.asc())
+        with self._session() as session:
+            rows = session.execute(stmt).all()
         names: list[str] = []
-        for row in rows:
-            if hasattr(row, "_mapping"):
-                name = str(row._mapping["name"])
-            else:
-                name = str(row[0])
+        for (tokenizer_name,) in rows:
+            name = str(tokenizer_name)
             if self.has_cached_tokenizer(name):
                 names.append(name)
         return names
