@@ -13,7 +13,7 @@ from TKBEN.server.common.constants import (
 )
 from TKBEN.server.common.utils.types import coerce_bool
 from TKBEN.server.common.utils.variables import env_variables
-from TKBEN.server.entities.keys import (
+from TKBEN.server.domain.keys import (
     HFAccessKeyActivateResponse,
     HFAccessKeyCreateRequest,
     HFAccessKeyDeleteResponse,

@@ -9,7 +9,7 @@ import anyio
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from tokenizers import Tokenizer
 
-from TKBEN.server.entities.tokenizers import (
+from TKBEN.server.domain.tokenizers import (
     TokenizerDownloadRequest,
     TokenizerListItem,
     TokenizerListResponse,
@@ -20,7 +20,7 @@ from TKBEN.server.entities.tokenizers import (
     TokenizerVocabularyPageResponse,
     TokenizerUploadResponse,
 )
-from TKBEN.server.entities.jobs import JobStartResponse
+from TKBEN.server.domain.jobs import JobStartResponse
 from TKBEN.server.configurations.server import server_settings
 from TKBEN.server.common.constants import (
     API_ROUTE_TOKENIZERS_CUSTOM,

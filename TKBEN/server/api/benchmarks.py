@@ -6,14 +6,14 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from TKBEN.server.routes.tokenizers import get_custom_tokenizers
-from TKBEN.server.entities.benchmarks import (
+from TKBEN.server.api.tokenizers import get_custom_tokenizers
+from TKBEN.server.domain.benchmarks import (
     BenchmarkMetricCatalogResponse,
     BenchmarkReportListResponse,
     BenchmarkRunResponse,
     BenchmarkRunRequest,
 )
-from TKBEN.server.entities.jobs import JobStartResponse
+from TKBEN.server.domain.jobs import JobStartResponse
 from TKBEN.server.configurations import server_settings
 from TKBEN.server.common.constants import (
     API_ROUTE_BENCHMARKS_METRICS_CATALOG,

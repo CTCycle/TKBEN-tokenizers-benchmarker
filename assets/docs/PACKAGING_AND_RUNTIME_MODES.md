@@ -70,7 +70,7 @@ Behavior:
 
 Desktop packaging profile:
 - `TKBEN/settings/.env.local.tauri.example`
-- expected packaged defaults: loopback host, `/api`, `RELOAD=true`, `OPTIONAL_DEPENDENCIES=false`
+- expected packaged defaults: loopback host, `/api`, `RELOAD=false`, `OPTIONAL_DEPENDENCIES=false`
 
 ## 6. Determinism
 - Backend lockfile: `runtimes/uv.lock` (copied to root `uv.lock` before `uv sync --frozen`, then copied back)
