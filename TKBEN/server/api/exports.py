@@ -8,7 +8,7 @@ from TKBEN.server.common.constants import (
     API_ROUTE_EXPORTS_DASHBOARD_PDF,
     API_ROUTER_PREFIX_EXPORTS,
 )
-from TKBEN.server.entities.exports import DashboardExportRequest
+from TKBEN.server.domain.exports import DashboardExportRequest
 from TKBEN.server.services.export import DashboardExportService
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_EXPORTS, tags=["exports"])

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from TKBEN.server.entities.jobs import (
+from TKBEN.server.domain.jobs import (
     JobCancelResponse,
     JobListResponse,
     JobStatusResponse,
