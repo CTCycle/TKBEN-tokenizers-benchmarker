@@ -978,10 +978,19 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                 ) : (
                   <div className="dataset-v2-chart-body">
                     <ResponsiveContainer width="100%" height={260}>
-                      <BarChart data={documentHistogramSeries}>
+                      <BarChart
+                        data={documentHistogramSeries}
+                        margin={{ top: 8, right: 8, bottom: 0, left: 18 }}
+                      >
                         <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
                         <XAxis dataKey="bin" hide />
-                        <YAxis stroke="#9ea7b3" width={48} />
+                        <YAxis
+                          stroke="#94a3b8"
+                          width={62}
+                          tick={{ fill: '#dbe5f1', fontSize: 12 }}
+                          axisLine={{ stroke: '#94a3b8' }}
+                          tickLine={{ stroke: '#94a3b8' }}
+                        />
                         <Tooltip
                           contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }}
                           formatter={tooltipCountFormatter}
@@ -1004,10 +1013,19 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                 ) : (
                   <div className="dataset-v2-chart-body">
                     <ResponsiveContainer width="100%" height={260}>
-                      <BarChart data={wordHistogramSeries}>
+                      <BarChart
+                        data={wordHistogramSeries}
+                        margin={{ top: 8, right: 8, bottom: 0, left: 18 }}
+                      >
                         <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
                         <XAxis dataKey="bin" hide />
-                        <YAxis stroke="#9ea7b3" width={48} />
+                        <YAxis
+                          stroke="#94a3b8"
+                          width={62}
+                          tick={{ fill: '#dbe5f1', fontSize: 12 }}
+                          axisLine={{ stroke: '#94a3b8' }}
+                          tickLine={{ stroke: '#94a3b8' }}
+                        />
                         <Tooltip
                           contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }}
                           formatter={tooltipCountFormatter}
@@ -1026,7 +1044,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                   <p className="panel-label">Additional Visuals</p>
                 </div>
                 <div className="dataset-v2-extras-grid">
-                  <div className="dataset-v2-mini-card">
+                  <div className="dataset-v2-extras-item">
                     <p className="panel-description">Zipf Curve</p>
                     {zipfCurve.length === 0 ? (
                       <div className="chart-placeholder"><p>No Zipf curve data.</p></div>
@@ -1043,7 +1061,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                     )}
                   </div>
 
-                  <div className="dataset-v2-mini-card">
+                  <div className="dataset-v2-extras-item">
                     <p className="panel-description">Entropy Gauge</p>
                     <div className="dataset-v2-gauge-track">
                       <div
@@ -1076,7 +1094,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                     )}
                   </div>
 
-                  <div className="dataset-v2-mini-card">
+                  <div className="dataset-v2-extras-item">
                     <p className="panel-description">Duplicate Indicators</p>
                     <div className="dataset-v2-indicator-row">
                       <span>Exact duplicate rate</span>
@@ -1088,7 +1106,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                     </div>
                   </div>
 
-                  <div className="dataset-v2-mini-card">
+                  <div className="dataset-v2-extras-item">
                     <p className="panel-description">Concentration</p>
                     <div className="dataset-v2-indicator-row">
                       <span>Top-k concentration</span>

@@ -2532,18 +2532,18 @@ select:focus-visible {
 .dataset-v2-extras-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px 16px;
 }
 
-.dataset-v2-mini-card {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.02);
+.dataset-v2-extras-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   min-height: 120px;
+  padding: 2px 0;
 }
 
-.dataset-v2-mini-card .panel-description {
+.dataset-v2-extras-item .panel-description {
   margin: 0 0 8px;
   font-size: 12px;
 }
@@ -2587,7 +2587,8 @@ select:focus-visible {
 
 .dataset-v2-word-cloud-canvas {
   position: relative;
-  height: 300px;
+  flex: 1;
+  min-height: 300px;
   border: 1px dashed rgba(255, 255, 255, 0.14);
   border-radius: 10px;
   overflow: hidden;
