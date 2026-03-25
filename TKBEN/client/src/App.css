@@ -22,6 +22,9 @@
   --focus-ring: 2px solid var(--color-border-strong);
   --focus-offset: 2px;
   --transition: 200ms ease;
+  --app-header-height: 53px;
+  --app-tab-nav-height: 44px;
+  --app-chrome-height: calc(var(--app-header-height) + var(--app-tab-nav-height));
 }
 
 .app-shell {
@@ -38,9 +41,15 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--app-header-height);
   padding: 10px 24px 8px;
   border-bottom: 1px solid var(--color-border);
   background: linear-gradient(180deg, #1d2229 0%, #181c22 100%);
+  z-index: 1100;
 }
 
 .app-header-title {
@@ -61,13 +70,18 @@
   display: flex;
   align-items: stretch;
   gap: 0;
-  height: 44px;
+  position: fixed;
+  top: var(--app-header-height);
+  left: 0;
+  right: 0;
+  height: var(--app-tab-nav-height);
   padding: 0 24px;
   border-top: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
   background: #151a1f;
   overflow-x: auto;
   scrollbar-width: thin;
+  z-index: 1090;
 }
 
 .app-tab {
@@ -217,7 +231,7 @@
   flex-direction: column;
   min-height: 0;
   overflow: visible;
-  padding: 24px 32px 32px;
+  padding: calc(var(--app-chrome-height) + 24px) 32px 32px;
   gap: 20px;
   min-width: 0;
 }
@@ -2698,6 +2712,9 @@ select:focus-visible {
 }
 
 @media (max-width: 1100px) {
+  :root {
+    --app-header-height: 50px;
+  }
 
   .dataset-page,
   .tokenizers-page {
@@ -2738,7 +2755,7 @@ select:focus-visible {
   }
 
   .app-main {
-    padding: 20px;
+    padding: calc(var(--app-chrome-height) + 20px) 20px 20px;
   }
 
   .app-tab {
@@ -2820,7 +2837,7 @@ select:focus-visible {
   }
 
   .app-main {
-    padding: 16px;
+    padding: calc(var(--app-chrome-height) + 16px) 16px 16px;
   }
 
   .field-row .text-input,
