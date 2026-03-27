@@ -46,6 +46,9 @@ class DatasetSettings:
     streaming_batch_size: int
     log_interval: int
     cleanup_downloaded_sources: bool
+    download_timeout_seconds: float
+    download_retry_attempts: int
+    download_retry_backoff_seconds: float
 
 
 # -----------------------------------------------------------------------------
@@ -159,6 +162,20 @@ def build_database_settings(payload: dict[str, Any] | Any) -> DatabaseSettings:
 
 # -----------------------------------------------------------------------------
 def build_dataset_settings(payload: dict[str, Any] | Any) -> DatasetSettings:
+    download_timeout_value = env_variables.get("DATASET_DOWNLOAD_TIMEOUT_SECONDS")
+    if download_timeout_value is None:
+        download_timeout_value = payload.get("download_timeout_seconds")
+
+    download_retry_attempts_value = env_variables.get("DATASET_DOWNLOAD_RETRY_ATTEMPTS")
+    if download_retry_attempts_value is None:
+        download_retry_attempts_value = payload.get("download_retry_attempts")
+
+    download_retry_backoff_value = env_variables.get(
+        "DATASET_DOWNLOAD_RETRY_BACKOFF_SECONDS"
+    )
+    if download_retry_backoff_value is None:
+        download_retry_backoff_value = payload.get("download_retry_backoff_seconds")
+
     return DatasetSettings(
         allowed_extensions=coerce_str_sequence(
             payload.get("allowed_extensions"), [".csv", ".xls", ".xlsx"]
@@ -178,6 +195,15 @@ def build_dataset_settings(payload: dict[str, Any] | Any) -> DatasetSettings:
         log_interval=coerce_int(payload.get("log_interval"), 100000, minimum=1000),
         cleanup_downloaded_sources=coerce_bool(
             payload.get("cleanup_downloaded_sources"), False
+        ),
+        download_timeout_seconds=coerce_float(
+            download_timeout_value, 120.0, minimum=1.0
+        ),
+        download_retry_attempts=coerce_int(
+            download_retry_attempts_value, 3, minimum=1, maximum=10
+        ),
+        download_retry_backoff_seconds=coerce_float(
+            download_retry_backoff_value, 1.0, minimum=0.0, maximum=60.0
         ),
     )
 

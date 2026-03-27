@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import time
+
+import pandas as pd
 import pytest
 from datasets.exceptions import DataFilesNotFoundError
 from huggingface_hub.errors import GatedRepoError
@@ -540,3 +543,108 @@ def test_download_and_persist_classifies_network_errors(
     message = str(exc_info.value)
     assert "network/transient error" in message
     assert "job=job00003" in message
+
+
+def test_download_and_persist_retries_transient_failures_with_backoff(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = DatasetService()
+    configure_download_success_mocks(service, monkeypatch)
+    service.download_retry_attempts = 3
+    service.download_retry_backoff_seconds = 0.25
+    sleep_calls: list[float] = []
+    attempts = {"count": 0}
+
+    def fake_load_dataset(*args, **kwargs):
+        attempts["count"] += 1
+        if attempts["count"] < 3:
+            raise RequestsConnectionError("Connection reset by peer")
+        return object()
+
+    monkeypatch.setattr("TKBEN.server.services.datasets.load_dataset", fake_load_dataset)
+    monkeypatch.setattr("TKBEN.server.services.datasets.time.sleep", sleep_calls.append)
+
+    result = service.download_and_persist(
+        corpus="wikitext",
+        config="wikitext-2-v1",
+        job_id="job-retry-success",
+    )
+
+    assert result["dataset_name"] == "wikitext/wikitext-2-v1"
+    assert attempts["count"] == 3
+    assert sleep_calls == [0.25, 0.5]
+
+
+def test_download_and_persist_does_not_retry_non_transient_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = DatasetService()
+    monkeypatch.setattr(service, "is_dataset_in_database", lambda dataset_name: False)
+    monkeypatch.setattr(service, "dataset_cached_on_disk", lambda cache_path: False)
+    monkeypatch.setattr(service, "get_hf_access_token_for_download", lambda: None)
+    service.download_retry_attempts = 4
+    sleep_calls: list[float] = []
+    attempts = {"count": 0}
+
+    def raise_not_found(*args, **kwargs):
+        attempts["count"] += 1
+        raise DataFilesNotFoundError("No (supported) data files found.")
+
+    monkeypatch.setattr("TKBEN.server.services.datasets.load_dataset", raise_not_found)
+    monkeypatch.setattr("TKBEN.server.services.datasets.time.sleep", sleep_calls.append)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        service.download_and_persist(
+            corpus="unknown_dataset_name",
+            config=None,
+            job_id="job-no-retry-invalid",
+        )
+
+    assert "invalid dataset id or configuration" in str(exc_info.value)
+    assert attempts["count"] == 1
+    assert sleep_calls == []
+
+
+def test_download_and_persist_timeout_is_reported_as_transient_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = DatasetService()
+    configure_download_success_mocks(service, monkeypatch)
+    service.download_timeout_seconds = 0.01
+    service.download_retry_attempts = 1
+
+    def slow_load_dataset(*args, **kwargs):
+        time.sleep(0.05)
+        return object()
+
+    monkeypatch.setattr("TKBEN.server.services.datasets.load_dataset", slow_load_dataset)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        service.download_and_persist(
+            corpus="wikitext",
+            config="wikitext-2-v1",
+            job_id="job-timeout",
+        )
+
+    message = str(exc_info.value)
+    assert "network/transient error" in message
+    assert "job=job-timeout" in message
+
+
+def test_upload_and_persist_hides_internal_parser_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = DatasetService()
+    monkeypatch.setattr(service, "is_dataset_in_database", lambda dataset_name: False)
+
+    def raise_parser_error(*args, **kwargs):
+        raise pd.errors.ParserError("internal parser stack details")
+
+    monkeypatch.setattr("TKBEN.server.services.datasets.pd.read_csv", raise_parser_error)
+
+    with pytest.raises(ValueError) as exc_info:
+        service.upload_and_persist(file_content=b"text\nx", filename="sample.csv")
+
+    assert str(exc_info.value) == (
+        "Could not read the uploaded file. Check the file format and try again."
+    )
