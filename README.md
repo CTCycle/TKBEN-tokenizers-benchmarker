@@ -113,41 +113,28 @@ Build artifacts are produced under:
 
 Load data from Hugging Face presets or manual IDs, or upload local CSV/XLS/XLSX files. Then run dataset analysis and reopen saved reports for statistics and charts.
 
-![Dataset workspace](assets/figures/dataset.png)
-
 **Tokenizers (`/tokenizers`)**
 
 Scan available tokenizer IDs, download selected tokenizers, optionally upload a custom `tokenizer.json`, and inspect tokenizer reports.
 
-![Tokenizer workspace](assets/figures/tokenizers-overview.png)
-
 **Cross Benchmark (`/cross-benchmark`)**
 
 Create benchmark runs by selecting dataset, tokenizers, and metric categories, then compare persisted results across tokenizer candidates.
+### 3.5 End-to-End Activity Snapshots
 
-![Cross benchmark workspace](assets/figures/cross-benchmark.png)
+The following snapshots were captured from a full interactive E2E run in local webapp mode:
 
-### 3.5 Screenshots
+- Dataset dashboard after completed validation (5,000 sampled documents)
+![Dataset dashboard complete](assets/figures/e2e-dataset-dashboard-complete.png)
 
-#### Home
+- Tokenizer dashboard with loaded report (`bert-base-uncased`)
+![Tokenizer dashboard](assets/figures/e2e-tokenizer-dashboard.png)
 
-![Home](assets/figures/home.png)
+- Cross-benchmark run #1 report (`bert-base-uncased`, `gpt2`, `roberta-base`, full metric set)
+![Benchmark report config 1](assets/figures/e2e-benchmark-report-config1.png)
 
-#### Dataset
-
-![Dataset](assets/figures/dataset.png)
-
-#### Tokenizers
-
-![Tokenizers](assets/figures/tokenizers-overview.png)
-
-#### Cross Benchmark
-
-![Cross Benchmark](assets/figures/cross-benchmark.png)
-
-#### Settings
-
-![Settings](assets/figures/settings.png)
+- Cross-benchmark run #2 (`bert-base-uncased`, `roberta-base`, reduced metric set without per-document stats)
+![Benchmark report config 2](assets/figures/e2e-benchmark-report-config2.png)
 
 ## 4. Setup and Maintenance
 

@@ -37,7 +37,7 @@ TKBEN is a tokenizer benchmarking web app. It supports:
   - `keys.py`
 - Services: `TKBEN/server/services`
   - dataset processing, tokenizer handling, benchmark execution, key management, job orchestration
-- Entities (request/response models): `TKBEN/server/entities`
+- Entities (request/response models): `TKBEN/server/domain`
 - Repositories and schema:
   - `TKBEN/server/repositories/database`
   - `TKBEN/server/repositories/schemas/models.py`

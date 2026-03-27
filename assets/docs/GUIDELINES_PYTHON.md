@@ -11,9 +11,11 @@ Target runtime:
 
 ## 2. Style and Structure
 - Follow PEP 8 and keep modules focused.
-- Keep business logic in `services`, HTTP orchestration in `routes`, persistence in `repositories`.
-- Reuse existing domain models in `TKBEN/server/entities` for request/response payloads.
+- Keep business logic in `services`, HTTP orchestration in `api`, persistence in `repositories`.
+- Reuse existing domain models in `TKBEN/server/domain` for request/response payloads.
 - Prefer small pure helper functions for metric/transform logic.
+- Leverage classes to group methods with similar scope
+- Enforce the use of cosmetic separators (series of # and - symbols) for class and functions
 
 ## 3. Typing
 - Keep type hints on public functions and non-trivial internals.
