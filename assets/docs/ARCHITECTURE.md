@@ -98,6 +98,12 @@ Long-running operations return `JobStartResponse` and are polled via `/jobs/{job
 
 This pattern is used for dataset load/analysis, tokenizer download/report generation, and benchmark execution.
 
+## 6.1 Dataset Download Resilience
+Dataset download jobs apply bounded resilience controls from `TKBEN/settings/configurations.json`:
+- `datasets.download_timeout_seconds`: per-attempt timeout for external dataset loading.
+- `datasets.download_retry_attempts`: maximum retry attempts for transient/network failures.
+- `datasets.download_retry_backoff_seconds`: exponential backoff base delay between retry attempts.
+
 ## 7. Database Model (Current)
 Main tables in `models.py`:
 - `dataset`, `dataset_document`

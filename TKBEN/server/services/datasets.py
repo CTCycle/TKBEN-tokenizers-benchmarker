@@ -5,6 +5,7 @@ import math
 import os
 import shutil
 import threading
+import time
 from collections import Counter
 from collections.abc import Callable, Generator, Iterator
 from dataclasses import dataclass
@@ -22,6 +23,7 @@ from huggingface_hub.errors import (
 )
 from requests.exceptions import ConnectionError as RequestsConnectionError
 from requests.exceptions import RequestException, Timeout
+from sqlalchemy.exc import SQLAlchemyError
 
 from TKBEN.server.repositories.database.backend import database
 from TKBEN.server.repositories.schemas.models import DatasetDocument
@@ -250,6 +252,9 @@ class DatasetService:
         self.histogram_bins = self.settings.histogram_bins
         self.streaming_batch_size = self.settings.streaming_batch_size
         self.log_interval = self.settings.log_interval
+        self.download_timeout_seconds = self.settings.download_timeout_seconds
+        self.download_retry_attempts = self.settings.download_retry_attempts
+        self.download_retry_backoff_seconds = self.settings.download_retry_backoff_seconds
         self.dataset_serializer = DatasetSerializer()
 
     # -------------------------------------------------------------------------
@@ -455,6 +460,17 @@ class DatasetService:
         )
 
     # -------------------------------------------------------------------------
+    def should_retry_download(self, category: str, attempt: int, max_attempts: int) -> bool:
+        return category == "network_or_transient" and attempt < max_attempts
+
+    # -------------------------------------------------------------------------
+    def retry_delay_seconds(self, attempt: int) -> float:
+        base = max(0.0, float(self.download_retry_backoff_seconds))
+        if base <= 0.0:
+            return 0.0
+        return base * (2 ** max(0, attempt - 1))
+
+    # -------------------------------------------------------------------------
     def estimate_total_rows(self, dataset: Dataset | DatasetDict) -> int | None:
         if isinstance(dataset, DatasetDict):
             total_rows = 0
@@ -508,13 +524,40 @@ class DatasetService:
             load_kwargs: dict[str, Any] = {}
             if split is not None:
                 load_kwargs["split"] = split
-            dataset = load_dataset(
-                hf_dataset_id,
-                hf_config,
-                cache_dir=cache_path,
-                token=hf_access_token,
-                **load_kwargs,
-            )
+
+            result_holder: dict[str, Dataset | DatasetDict] = {}
+            error_holder: dict[str, Exception] = {}
+
+            def _load_worker() -> None:
+                try:
+                    result_holder["dataset"] = load_dataset(
+                        hf_dataset_id,
+                        hf_config,
+                        cache_dir=cache_path,
+                        token=hf_access_token,
+                        **load_kwargs,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    error_holder["error"] = exc
+
+            worker_thread = threading.Thread(target=_load_worker, daemon=True)
+            worker_thread.start()
+            worker_thread.join(timeout=float(self.download_timeout_seconds))
+
+            if worker_thread.is_alive():
+                raise TimeoutError(
+                    f"Dataset download timed out after {self.download_timeout_seconds:.1f} seconds."
+                )
+
+            worker_error = error_holder.get("error")
+            if worker_error is not None:
+                raise worker_error
+
+            dataset = result_holder.get("dataset")
+            if dataset is None:
+                raise RuntimeError(
+                    "Dataset download failed before producing a dataset result."
+                )
             return dataset
         finally:
             if heartbeat_thread is not None:
@@ -535,11 +578,16 @@ class DatasetService:
                 "Removed partially persisted dataset after cancellation: %s",
                 dataset_name,
             )
-        except Exception:
+        except (SQLAlchemyError, OSError, ValueError, RuntimeError):
             logger.warning(
                 "Failed to cleanup partially persisted dataset after cancellation: %s",
                 dataset_name,
                 exc_info=True,
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception(
+                "Unexpected error while cleaning up cancelled dataset: %s",
+                dataset_name,
             )
 
     # -------------------------------------------------------------------------
@@ -1013,33 +1061,66 @@ class DatasetService:
 
         hf_access_token = self.get_hf_access_token_for_download()
 
-        try:
-            dataset = self.load_dataset_with_progress(
-                hf_dataset_id=target.hf_dataset_id,
-                hf_config=target.hf_config,
-                cache_path=cache_path,
-                hf_access_token=hf_access_token,
-                split=target.split,
-                progress_callback=progress_callback,
-            )
-        except Exception as exc:
-            category = self.classify_download_exception(exc)
-            logger.exception(
-                "Dataset download failed (job=%s, category=%s): requested=%s, resolved=%s",
-                job_id if job_id else "n/a",
-                category,
-                requested_dataset_name,
-                resolved_dataset_name,
+        max_attempts = max(1, int(self.download_retry_attempts))
+        dataset: Dataset | DatasetDict | None = None
+        last_exc: Exception | None = None
+        last_category = "unknown"
+
+        for attempt in range(1, max_attempts + 1):
+            try:
+                dataset = self.load_dataset_with_progress(
+                    hf_dataset_id=target.hf_dataset_id,
+                    hf_config=target.hf_config,
+                    cache_path=cache_path,
+                    hf_access_token=hf_access_token,
+                    split=target.split,
+                    progress_callback=progress_callback,
+                )
+                break
+            except Exception as exc:  # noqa: BLE001
+                last_exc = exc
+                last_category = self.classify_download_exception(exc)
+                should_retry = self.should_retry_download(
+                    category=last_category,
+                    attempt=attempt,
+                    max_attempts=max_attempts,
+                )
+                logger.warning(
+                    "Dataset download attempt %d/%d failed (job=%s, category=%s): requested=%s, resolved=%s",
+                    attempt,
+                    max_attempts,
+                    job_id if job_id else "n/a",
+                    last_category,
+                    requested_dataset_name,
+                    resolved_dataset_name,
+                    exc_info=True,
+                )
+                if not should_retry:
+                    break
+                delay_seconds = self.retry_delay_seconds(attempt)
+                logger.info(
+                    "Retrying dataset download for %s in %.2f seconds (attempt %d/%d)",
+                    requested_dataset_name,
+                    delay_seconds,
+                    attempt + 1,
+                    max_attempts,
+                )
+                if delay_seconds > 0.0:
+                    time.sleep(delay_seconds)
+
+        if dataset is None:
+            failure_exc = last_exc if last_exc is not None else RuntimeError(
+                "Dataset download failed without an exception payload."
             )
             raise RuntimeError(
                 self.build_download_error_message(
-                    category=category,
+                    category=last_category,
                     job_id=job_id,
                     requested_dataset_name=requested_dataset_name,
                     resolved_dataset_name=resolved_dataset_name,
                     has_access_token=bool(hf_access_token),
                 )
-            ) from exc
+            ) from failure_exc
 
         text_column = self.find_text_column(dataset)
         if text_column is None:
@@ -1126,6 +1207,11 @@ class DatasetService:
                 progress_callback(100.0)
             return self.build_persisted_dataset_payload(dataset_name)
 
+        if extension not in (".csv", ".xlsx", ".xls"):
+            raise ValueError(
+                f"Unsupported file type: {extension}. Use .csv, .xlsx, or .xls"
+            )
+
         # Load into DataFrame based on file extension
         try:
             if progress_callback:
@@ -1133,15 +1219,19 @@ class DatasetService:
             file_buffer = io.BytesIO(file_content)
             if extension == ".csv":
                 df = pd.read_csv(file_buffer)
-            elif extension in (".xlsx", ".xls"):
-                df = pd.read_excel(file_buffer)
             else:
-                raise ValueError(
-                    f"Unsupported file type: {extension}. Use .csv, .xlsx, or .xls"
-                )
-        except Exception as exc:
+                df = pd.read_excel(file_buffer)
+        except (
+            OSError,
+            UnicodeDecodeError,
+            pd.errors.EmptyDataError,
+            pd.errors.ParserError,
+            ValueError,
+        ) as exc:
             logger.exception("Failed to read uploaded file %s", filename)
-            raise ValueError(f"Failed to read file: {exc}") from exc
+            raise ValueError(
+                "Could not read the uploaded file. Check the file format and try again."
+            ) from exc
 
         if df.empty:
             raise ValueError("Uploaded file contains no data")
