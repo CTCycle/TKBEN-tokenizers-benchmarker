@@ -1,37 +1,46 @@
 ## WEB SEARCH
-Use web search to verify facts and stay current on tools, frameworks, and industry standards when it improves accuracy.
+Use web search when external facts or version-sensitive information must be verified.
+For repository-local behavior, prefer source code and scripts in this workspace.
 
 ## REQUIRED DOCUMENTATION REVIEW
 Before any task, review the relevant files in `assets/docs`:
 
-- `GENERAL_RULES.md`, mandatory for every task
-- `GUIDELINES_PYTHON.md`, when using Python
-- `GUIDELINES_TYPESCRIPT.md`, when using TypeScript
-- `GUIDELINES_TESTS.md`, when writing tests
-- `ARCHITECTURE.md`, system structure and APIs
-- `BACKGROUND_JOBS.md`, background job management
-- `README_WRITING.md`, required README structure and standards
+- `GENERAL_RULES.md` (mandatory for every task)
+- `ARCHITECTURE.md` (system structure and API surface)
+- `BACKGROUND_JOBS.md` (async job behavior and contracts)
+- `GUIDELINES_PYTHON.md` (when changing Python code)
+- `GUIDELINES_TYPESCRIPT.md` (when changing TypeScript code)
+- `GUIDELINES_TESTS.md` (when adding/updating tests)
+- `PACKAGING_AND_RUNTIME_MODES.md` (when changing runtime/bootstrap/packaging)
+- `README_WRITING.md` (when changing README content)
+- `WINDOWS_DESKTOP_RELEASE_2026-03-25.md` (when changing Windows release process or artifacts)
 
 ## SKILLS REFERENCE
-When task-specific reusable workflows or capabilities are needed, check `.agent/skills/` and use the relevant skill guidance.
+When a task matches an available skill workflow, use the relevant skill instructions from the active skills repository.
 
 ## DOCUMENTATION UPDATES
-If changes materially affect behavior, architecture, or usage, update the relevant `assets/docs` files and notify the user.
+If changes materially affect behavior, architecture, setup, runtime modes, or release outputs, update the relevant file(s) in `assets/docs` and report that update in your final summary.
 
 ## CROSS-LANGUAGE PRINCIPLES
 
 ### Code quality
-- Prefer consistent style, clear naming, and small single-purpose components.
-- Optimize for readability, testability, and low coupling.
+- Prefer clear naming, focused modules, and low-coupling design.
+- Optimize for readability and testability over cleverness.
 
 ### Testing and automation
-- Enforce CI checks: formatting, linting, type checks, tests, and security scans.
+- Keep checks actionable: format, lint, type-check, tests, and security validation where applicable.
+- Prefer deterministic tests and reproducible local commands.
 
 ### Security
-- Apply standard secure coding practices: input validation, correct auth handling, secret protection, minimal attack surface.
+- Validate external input early.
+- Never hardcode secrets.
+- Keep attack surface minimal and follow least-privilege defaults.
 
 ## EXECUTION RULES
 - Use PowerShell by default for terminal commands in this repository.
-- Use `cmd /c` only when invoking `.bat` scripts or CMD-specific syntax.
-- For frontend Node.js commands in agentic tasks, use `runtimes npm ...` (for example: `runtimes npm run build`).
+- Use `cmd /c` only for `.bat` execution or CMD-specific syntax.
+- For Python commands, prefer `runtimes/.venv` when present:
+  - `.\runtimes\.venv\Scripts\python.exe -m ...`
+- For Node.js commands, prefer the bundled runtime:
+  - `.\runtimes\nodejs\npm.cmd run <script>` from `TKBEN/client`
 
