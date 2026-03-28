@@ -2,37 +2,40 @@
 
 ## 1. Stack Baseline
 - React 19 + TypeScript + Vite
-- Router: `react-router-dom`
+- Router: `react-router-dom` (v7)
 - Charts: `recharts`
 - Strict TS config enabled (`TKBEN/client/tsconfig.app.json`)
 
 ## 2. Code Organization
-- Pages live in `TKBEN/client/src/pages`.
-- Shared state lives in `TKBEN/client/src/contexts`.
-- API calls live in `TKBEN/client/src/services`.
-- Shared API types live in `TKBEN/client/src/types/api.ts`.
+- Pages: `TKBEN/client/src/pages`
+- Shared state: `TKBEN/client/src/contexts`
+- API layer: `TKBEN/client/src/services`
+- Shared API typing: `TKBEN/client/src/types/api.ts`
+- Route shell/navigation: `TKBEN/client/src/components/AppShell.tsx`
 
 ## 3. Typing Rules
-- Do not introduce `any` unless unavoidable.
+- Avoid `any` unless absolutely necessary.
 - Prefer explicit domain types from `types/api.ts`.
-- For uncertain payloads, use `unknown` + safe narrowing.
-- Keep helper parsing/normalization functions deterministic and side-effect free.
+- For uncertain payloads, use `unknown` and narrow safely.
+- Keep parsing/normalization helpers deterministic and side-effect free.
 
 ## 4. API Integration
-- Use endpoints from `TKBEN/client/src/constants.ts`.
-- Keep `/api`-based requests compatible with local Vite preview and packaged desktop runtime routing.
-- For long-running backend operations, use the existing job polling utilities (`services/jobsApi.ts`).
+- Use endpoint constants from `TKBEN/client/src/constants.ts`.
+- Keep `/api`-based requests compatible with local and packaged runtime routing.
+- For long-running backend work, use existing job polling helpers in `services/jobsApi.ts`.
 
 ## 5. UI and Routing Consistency
-- Preserve active app routes:
+- Preserve active routes:
   - `/dataset`
   - `/tokenizers`
   - `/cross-benchmark`
-- Keep page behavior aligned with the current top navigation model in `AppShell` (header + tabs).
+- Keep behavior aligned with `AppShell` (header + tab navigation + key manager toggle).
 
 ## 6. Quality Checks
-- Run build/lint before finalizing frontend-heavy changes:
-  - `runtimes npm run build`
-  - `runtimes npm run lint`
-- Keep accessibility labels and button semantics for interactive controls.
+Run from `TKBEN/client` using bundled runtime:
+```bat
+..\..\runtimes\nodejs\npm.cmd run build
+..\..\runtimes\nodejs\npm.cmd run lint
+```
 
+- Maintain accessibility labels and semantic controls for interactive UI elements.

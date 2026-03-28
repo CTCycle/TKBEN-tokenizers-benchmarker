@@ -1,9 +1,9 @@
 # README Writing Rules (TKBEN)
 
 ## 1. Goal
-README content must describe the current TKBEN product accurately and avoid legacy project terminology.
+README content must describe the current TKBEN product accurately and avoid stale/legacy terminology.
 
-## 2. Required Sections
+## 2. Required Section Order
 Use this structure:
 1. Project Overview
 2. Installation
@@ -14,29 +14,31 @@ Use this structure:
 7. License
 
 ## 3. Content Rules
-- Describe user workflows, not internal implementation details.
+- Describe user workflows first; keep implementation details minimal.
 - Keep backend/frontend explanations high-level but concrete.
-- Reference real routes only:
+- Reference active UI routes only:
   - `/dataset`
   - `/tokenizers`
   - `/cross-benchmark`
-- Reference real API families only:
-  - `/datasets`, `/tokenizers`, `/benchmarks`, `/jobs`, `/keys`
-- Do not mention removed features (for example database browser pages/endpoints).
+- Reference active API families only:
+  - `/datasets`, `/tokenizers`, `/benchmarks`, `/exports`, `/jobs`, `/keys`
+- Do not mention removed features/endpoints.
 
 ## 4. Runtime Accuracy
-- Align commands and ports with:
-  - `TKBEN/start_on_windows.bat`
-  - `release/tauri/build_with_tauri.bat`
-  - `TKBEN/settings/.env.local.example`
-  - `TKBEN/settings/.env.local.tauri.example`
-- Use `TKBEN/resources/database.db` as the default embedded DB path.
+Keep commands/ports aligned with:
+- `TKBEN/start_on_windows.bat`
+- `release/tauri/build_with_tauri.bat`
+- `TKBEN/settings/.env.local.example`
+- `TKBEN/settings/.env.local.tauri.example`
+
+Default embedded DB path:
+- `TKBEN/resources/database.db`
 
 ## 5. Media and Links
-- If screenshots are included, they must match current UI pages.
-- Keep file path references valid in this repository.
+- Screenshots must reflect current UI pages and naming.
+- Keep all file path references valid in this repository.
 
 ## 6. Quality Bar
 - Prefer concise, factual wording.
-- Avoid speculative claims.
-- Update README when runtime/setup/API contracts change.
+- Avoid speculative claims and outdated release statements.
+- Update README whenever runtime/setup/API contracts change.

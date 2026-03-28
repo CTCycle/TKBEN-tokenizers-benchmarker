@@ -1,7 +1,7 @@
 # Python Guidelines (TKBEN)
 
 ## 1. Scope
-Apply to:
+Apply these rules to:
 - `TKBEN/server`
 - Python scripts in `TKBEN/scripts`
 - Python tests in `tests`
@@ -9,39 +9,50 @@ Apply to:
 Target runtime:
 - Python `>=3.14` (see `pyproject.toml`)
 
-## 2. Style and Structure
-- Follow PEP 8 and keep modules focused.
-- Keep business logic in `services`, HTTP orchestration in `api`, persistence in `repositories`.
-- Reuse existing domain models in `TKBEN/server/domain` for request/response payloads.
-- Prefer small pure helper functions for metric/transform logic.
-- Leverage classes to group methods with similar scope
-- Enforce the use of cosmetic separators (series of # and - symbols) for class and functions
+Execution preference:
+- If present, use `runtimes/.venv`:
+  - `.\runtimes\.venv\Scripts\python.exe -m ...`
 
-## 3. Typing
+## 2. Structure and Responsibilities
+- Keep HTTP orchestration in `TKBEN/server/api`.
+- Keep business logic in `TKBEN/server/services`.
+- Keep persistence concerns in `TKBEN/server/repositories`.
+- Reuse request/response/domain models from `TKBEN/server/domain`.
+
+## 3. Style and Readability
+- Follow PEP 8 and explicit naming.
+- Keep modules small and focused.
+- Prefer pure helper functions for metric/transform logic.
+- Use classes when methods share state/scope.
+- Preserve existing separator/comment conventions where already used.
+
+## 4. Typing
 - Keep type hints on public functions and non-trivial internals.
 - Prefer built-in generics (`list[str]`, `dict[str, Any]`) and `X | None`.
-- Maintain compatibility with current model typing conventions in `entities` and `configurations`.
+- Avoid `Any` unless unavoidable at boundaries.
+- Keep typing compatible with existing conventions in `domain` and `configurations`.
 
-## 4. API Layer Conventions
-- Use FastAPI routers with constants from `TKBEN/server/common/constants.py`.
+## 5. FastAPI Conventions
+- Use route/path constants from `TKBEN/server/common/constants.py`.
 - Validate inputs early and return explicit `HTTPException` messages.
-- For long-running CPU/IO tasks, keep job-based flow (`JobStartResponse` + `/jobs/{job_id}` polling).
-- Use `asyncio.to_thread(...)` where synchronous service logic is invoked from async routes.
+- For long-running operations, preserve job-based flow:
+  - return `JobStartResponse`
+  - poll via `/jobs/{job_id}`
+- Use `asyncio.to_thread(...)` when sync service code is called from async routes.
 
-## 5. Data and Repository Rules
+## 6. Data and Persistence
 - Do not bypass repository/database abstractions for new persistence logic.
-- Keep SQLite/Postgres compatibility (`repositories/database/*`).
-- Preserve schema consistency with `repositories/schemas/models.py`.
+- Preserve SQLite/PostgreSQL compatibility (`repositories/database/*`).
+- Keep schema changes aligned with `repositories/schemas/models.py`.
 
-## 6. Security and Secrets
+## 7. Security and Secrets
 - Never hardcode secrets.
-- Keep Hugging Face key encryption behavior compatible with `HF_KEYS_ENCRYPTION_KEY`.
-- Validate file uploads and external inputs before processing.
+- Keep HF key encryption compatible with `HF_KEYS_ENCRYPTION_KEY`.
+- Validate uploads and external input before processing.
 
-## 7. Testing
+## 8. Testing
 - Use `pytest`.
-- Add/adjust tests in:
-  - `tests/unit` for logic and contracts
-  - `tests/e2e` for API/UI flows
-- Keep tests deterministic; avoid network-heavy paths unless explicitly opt-in.
-
+- Update tests in:
+  - `tests/unit` for logic/contracts
+  - `tests/e2e` for user/API workflows
+- Keep tests deterministic and avoid real network dependency unless explicitly intended.

@@ -1,50 +1,61 @@
 # TKBEN Architecture
 
 ## 1. Purpose
-TKBEN is a tokenizer benchmarking web app. It supports:
-- dataset ingestion and validation
+TKBEN is a tokenizer benchmarking application that supports:
+- dataset ingestion (Hugging Face download + local upload)
+- dataset analysis and persisted reports
 - tokenizer discovery/download/reporting
-- cross-tokenizer benchmark runs with persisted reports
+- cross-tokenizer benchmark execution with persisted results
+- dashboard PDF export for benchmark/report views
 
 ## 2. High-Level System
-- Frontend: React + TypeScript SPA (`TKBEN/client`)
-- Backend: FastAPI service (`TKBEN/server`)
-- Persistence: SQLite by default (`TKBEN/resources/database.db`), optional PostgreSQL
-- External integrations: Hugging Face datasets/models APIs
+- Frontend: React + TypeScript SPA in `TKBEN/client`
+- Backend: FastAPI service in `TKBEN/server`
+- Persistence:
+  - default embedded SQLite (`TKBEN/resources/database.db`)
+  - optional PostgreSQL (`DB_EMBEDDED=false`)
+- External services: Hugging Face datasets/tokenizers APIs
 
 ## 3. Frontend Structure
 - App shell and routing:
   - `TKBEN/client/src/App.tsx`
+  - `TKBEN/client/src/components/AppShell.tsx`
   - routes: `/dataset`, `/tokenizers`, `/cross-benchmark`
-- State:
+- State contexts:
   - `TKBEN/client/src/contexts/DatasetContext.tsx`
   - `TKBEN/client/src/contexts/TokenizersContext.tsx`
-- API clients:
+- API client modules:
   - `TKBEN/client/src/services/*`
-  - all calls use `/api` base path (proxied in local dev/preview and preserved in desktop packaging)
-- Key pages:
-  - `DatasetPage.tsx`
-  - `TokenizerExaminationPage.tsx` (includes `TokenizersPage.tsx`)
-  - `CrossBenchmarkPage.tsx`
+  - default API base: `/api`
 
 ## 4. Backend Structure
 - App entrypoint: `TKBEN/server/app.py`
-- Routers: `TKBEN/server/routes`
+- API routers: `TKBEN/server/api`
   - `datasets.py`
   - `tokenizers.py`
   - `benchmarks.py`
   - `jobs.py`
   - `keys.py`
+  - `exports.py`
+- Domain models: `TKBEN/server/domain`
 - Services: `TKBEN/server/services`
-  - dataset processing, tokenizer handling, benchmark execution, key management, job orchestration
-- Entities (request/response models): `TKBEN/server/domain`
-- Repositories and schema:
+- Persistence:
   - `TKBEN/server/repositories/database`
   - `TKBEN/server/repositories/schemas/models.py`
 
-## 5. API Surface
-Root:
-- `GET /` -> redirects to `/docs`
+## 5. Routing Model
+Every API router is registered twice:
+- direct path (for example `/datasets/list`)
+- `/api`-prefixed alias (for example `/api/datasets/list`)
+
+This keeps compatibility across local web mode, tests, and packaged desktop mode.
+
+## 6. API Surface
+
+Root behavior:
+- `GET /`
+  - local mode: redirects to `/docs`
+  - packaged Tauri mode with built frontend: serves SPA entrypoint
 
 Datasets:
 - `GET /datasets/list`
@@ -88,38 +99,38 @@ HF Keys:
 - `DELETE /keys/{key_id}`
 - `POST /keys/{key_id}/activate`
 - `POST /keys/{key_id}/deactivate`
-- `POST /keys/{key_id}/reveal`
+- `POST /keys/{key_id}/reveal` (guarded by `ALLOW_KEY_REVEAL`)
 
-## 6. Async Job Pattern
-Long-running operations return `JobStartResponse` and are polled via `/jobs/{job_id}` until:
+## 7. Async Job Pattern
+Long-running operations return `JobStartResponse` and are polled via `/jobs/{job_id}`.
+
+Job terminal states:
 - `completed`
 - `failed`
 - `cancelled`
 
-This pattern is used for dataset load/analysis, tokenizer download/report generation, and benchmark execution.
+Covered workflows:
+- dataset download/upload/analyze
+- tokenizer download/report generation
+- benchmark run
 
-## 6.1 Dataset Download Resilience
-Dataset download jobs apply bounded resilience controls from `TKBEN/settings/configurations.json`:
-- `datasets.download_timeout_seconds`: per-attempt timeout for external dataset loading.
-- `datasets.download_retry_attempts`: maximum retry attempts for transient/network failures.
-- `datasets.download_retry_backoff_seconds`: exponential backoff base delay between retry attempts.
-
-## 7. Database Model (Current)
-Main tables in `models.py`:
+## 8. Database Tables (Current)
+Main ORM tables in `TKBEN/server/repositories/schemas/models.py`:
 - `dataset`, `dataset_document`
 - `analysis_session`, `metric_type`, `metric_value`, `histogram_artifact`
+- `dataset_report`, `dataset_validation_report`
 - `tokenizer`, `tokenizer_report`, `tokenizer_vocabulary`, `tokenizer_vocabulary_statistics`
 - `tokenization_document_stats`, `tokenization_dataset_stats`, `tokenization_dataset_stats_detail`
 - `benchmark_report`
 - `hf_access_keys`
 
-## 8. Runtime and Packaging
-- Local launcher: `TKBEN/start_on_windows.bat`
-- Maintenance utilities: `TKBEN/setup_and_maintenance.bat`
-- Desktop packaging build: `release/tauri/build_with_tauri.bat`
-- Desktop runtime serves API routes under original paths and `/api`
+## 9. Runtime and Packaging Anchors
+- Local bootstrap/launcher: `TKBEN/start_on_windows.bat`
+- Maintenance utility: `TKBEN/setup_and_maintenance.bat`
+- Desktop build entrypoint: `release/tauri/build_with_tauri.bat`
+- Packaged artifacts output: `release/windows/installers`, `release/windows/portable`
 
-## 9. Current Constraints
-- No application-level auth for datasets/tokenizers/benchmarks endpoints.
-- HF access keys are managed server-side, but API access itself is not user-authenticated.
-- Uploaded custom tokenizers are kept in process memory and are not persisted across server restart.
+## 10. Known Constraints
+- API endpoints do not implement user/session auth.
+- HF keys are encrypted at rest but API access itself is not user-authenticated.
+- Uploaded custom tokenizers are in-memory only and are not persisted across backend restart.
