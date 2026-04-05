@@ -13,7 +13,15 @@ type BenchmarkRunWizardProps = {
   onRun: (payload: {
     tokenizers: string[];
     dataset_name: string;
-    max_documents: number;
+    config: {
+      max_documents?: number;
+      warmup_trials: number;
+      timed_trials: number;
+      batch_size: number;
+      seed: number;
+      parallelism: number;
+      include_lm_metrics: boolean;
+    };
     run_name: string;
     selected_metric_keys: string[];
   }) => Promise<void>;
@@ -39,6 +47,12 @@ const BenchmarkRunWizard = ({
   const [datasetName, setDatasetName] = useState('');
   const [maxDocuments, setMaxDocuments] = useState(1000);
   const [runName, setRunName] = useState('');
+  const [warmupTrials, setWarmupTrials] = useState(2);
+  const [timedTrials, setTimedTrials] = useState(8);
+  const [batchSize, setBatchSize] = useState(16);
+  const [seed, setSeed] = useState(42);
+  const [parallelism, setParallelism] = useState(1);
+  const [includeLmMetrics, setIncludeLmMetrics] = useState(false);
   const [tokenizerQuery, setTokenizerQuery] = useState('');
 
   const allMetricKeys = useMemo(
@@ -61,6 +75,12 @@ const BenchmarkRunWizard = ({
     setMaxDocuments(clamp(Math.floor(defaultMaxDocuments || 1000), 1, 100000));
     setRunName('');
     setTokenizerQuery('');
+    setWarmupTrials(2);
+    setTimedTrials(8);
+    setBatchSize(16);
+    setSeed(42);
+    setParallelism(1);
+    setIncludeLmMetrics(false);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [allMetricKeys, availableDatasets, defaultDatasetName, defaultMaxDocuments, isOpen]);
 
@@ -105,7 +125,15 @@ const BenchmarkRunWizard = ({
     await onRun({
       tokenizers: selectedTokenizers,
       dataset_name: datasetName,
-      max_documents: clamp(Math.floor(maxDocuments), 1, 100000),
+      config: {
+        max_documents: clamp(Math.floor(maxDocuments), 1, 100000),
+        warmup_trials: clamp(Math.floor(warmupTrials), 0, 100),
+        timed_trials: clamp(Math.floor(timedTrials), 1, 200),
+        batch_size: clamp(Math.floor(batchSize), 1, 4096),
+        seed: Math.floor(seed),
+        parallelism: clamp(Math.floor(parallelism), 1, 128),
+        include_lm_metrics: includeLmMetrics,
+      },
       run_name: runName.trim(),
       selected_metric_keys: selectedMetricKeys,
     });
@@ -299,6 +327,12 @@ const BenchmarkRunWizard = ({
               <p className="panel-description">dataset_name: <strong>{datasetName || 'N/A'}</strong></p>
               <p className="panel-description">documents_processed: <strong>{clamp(Math.floor(maxDocuments), 1, 100000).toLocaleString()}</strong></p>
               <p className="panel-description">tokenizers_count: <strong>{selectedTokenizers.length}</strong></p>
+              <p className="panel-description">warmup_trials: <strong>{clamp(Math.floor(warmupTrials), 0, 100)}</strong></p>
+              <p className="panel-description">timed_trials: <strong>{clamp(Math.floor(timedTrials), 1, 200)}</strong></p>
+              <p className="panel-description">batch_size: <strong>{clamp(Math.floor(batchSize), 1, 4096)}</strong></p>
+              <p className="panel-description">seed: <strong>{Math.floor(seed)}</strong></p>
+              <p className="panel-description">parallelism: <strong>{clamp(Math.floor(parallelism), 1, 128)}</strong></p>
+              <p className="panel-description">lm_metrics: <strong>{includeLmMetrics ? 'enabled' : 'disabled'}</strong></p>
               <div className="benchmark-wizard-tokenizer-summary-wrap">
                 <p className="panel-description">tokenizers_processed:</p>
                 <ul className="benchmark-wizard-tokenizer-summary">
@@ -314,6 +348,32 @@ const BenchmarkRunWizard = ({
               <p className="panel-description">
                 selected metrics: <strong>{selectedMetricKeys.length.toLocaleString()}</strong>
               </p>
+              <div className="benchmark-wizard-input-grid">
+                <div className="input-stack">
+                  <label className="field-label" htmlFor="benchmark-wizard-warmup">Warmup trials</label>
+                  <input id="benchmark-wizard-warmup" className="text-input" type="number" min={0} max={100} value={warmupTrials} onChange={(event) => setWarmupTrials(Number(event.target.value) || 0)} />
+                </div>
+                <div className="input-stack">
+                  <label className="field-label" htmlFor="benchmark-wizard-timed">Timed trials</label>
+                  <input id="benchmark-wizard-timed" className="text-input" type="number" min={1} max={200} value={timedTrials} onChange={(event) => setTimedTrials(Number(event.target.value) || 1)} />
+                </div>
+                <div className="input-stack">
+                  <label className="field-label" htmlFor="benchmark-wizard-batch">Batch size</label>
+                  <input id="benchmark-wizard-batch" className="text-input" type="number" min={1} max={4096} value={batchSize} onChange={(event) => setBatchSize(Number(event.target.value) || 1)} />
+                </div>
+                <div className="input-stack">
+                  <label className="field-label" htmlFor="benchmark-wizard-seed">Seed</label>
+                  <input id="benchmark-wizard-seed" className="text-input" type="number" value={seed} onChange={(event) => setSeed(Number(event.target.value) || 0)} />
+                </div>
+                <div className="input-stack">
+                  <label className="field-label" htmlFor="benchmark-wizard-parallelism">Parallelism</label>
+                  <input id="benchmark-wizard-parallelism" className="text-input" type="number" min={1} max={128} value={parallelism} onChange={(event) => setParallelism(Number(event.target.value) || 1)} />
+                </div>
+                <label className="checkbox">
+                  <input type="checkbox" checked={includeLmMetrics} onChange={(event) => setIncludeLmMetrics(event.target.checked)} />
+                  <span>Enable LM-backed metrics</span>
+                </label>
+              </div>
             </div>
           )}
         </div>

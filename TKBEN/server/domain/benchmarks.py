@@ -2,124 +2,128 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field, field_validator
 
-from TKBEN.server.common.utils.security import (
-    contains_control_chars,
-    normalize_identifier,
-)
+from TKBEN.server.common.utils.security import contains_control_chars, normalize_identifier
 
 
-###############################################################################
-# Chart data models for frontend visualization
-###############################################################################
-class VocabularyStats(BaseModel):
-    """Vocabulary statistics for a single tokenizer."""
+class BenchmarkRunConfig(BaseModel):
+    max_documents: int = Field(default=0, ge=0)
+    warmup_trials: int = Field(default=2, ge=0, le=100)
+    timed_trials: int = Field(default=8, ge=1, le=200)
+    batch_size: int = Field(default=16, ge=1, le=4096)
+    seed: int = Field(default=42)
+    parallelism: int = Field(default=1, ge=1, le=128)
+    include_lm_metrics: bool = Field(default=False)
 
+
+class BenchmarkHardwareProfile(BaseModel):
+    runtime: str = Field(default="")
+    os: str = Field(default="")
+    cpu_model: str | None = Field(default=None)
+    cpu_logical_cores: int | None = Field(default=None)
+    memory_total_mb: float | None = Field(default=None)
+
+
+class BenchmarkTrialSummary(BaseModel):
+    warmup_trials: int = Field(default=0)
+    timed_trials: int = Field(default=0)
+
+
+class BenchmarkEfficiencyMetrics(BaseModel):
+    encode_tokens_per_second_mean: float = Field(default=0.0)
+    encode_tokens_per_second_ci95_low: float = Field(default=0.0)
+    encode_tokens_per_second_ci95_high: float = Field(default=0.0)
+    encode_chars_per_second_mean: float = Field(default=0.0)
+    encode_bytes_per_second_mean: float = Field(default=0.0)
+    end_to_end_wall_time_seconds: float = Field(default=0.0)
+    load_time_seconds: float = Field(default=0.0)
+
+
+class BenchmarkLatencyMetrics(BaseModel):
+    encode_latency_p50_ms: float = Field(default=0.0)
+    encode_latency_p95_ms: float = Field(default=0.0)
+    encode_latency_p99_ms: float = Field(default=0.0)
+
+
+class BenchmarkFidelityMetrics(BaseModel):
+    exact_round_trip_rate: float = Field(default=0.0)
+    normalized_round_trip_rate: float = Field(default=0.0)
+    unknown_token_rate: float = Field(default=0.0)
+    byte_fallback_rate: float = Field(default=0.0)
+    lossless_encodability_rate: float = Field(default=0.0)
+
+
+class BenchmarkFragmentationBucket(BaseModel):
+    bucket: str
+    pieces_per_word_mean: float = Field(default=0.0)
+
+
+class BenchmarkFragmentationMetrics(BaseModel):
+    tokens_per_character: float = Field(default=0.0)
+    characters_per_token: float = Field(default=0.0)
+    tokens_per_byte: float = Field(default=0.0)
+    bytes_per_token: float = Field(default=0.0)
+    pieces_per_word_mean: float = Field(default=0.0)
+    fragmentation_by_word_length_bucket: list[BenchmarkFragmentationBucket] = Field(default_factory=list)
+
+
+class BenchmarkResourceMetrics(BaseModel):
+    peak_rss_mb: float = Field(default=0.0)
+    memory_delta_mb: float = Field(default=0.0)
+
+
+class BenchmarkTokenizerResult(BaseModel):
     tokenizer: str
+    tokenizer_family: str = Field(default="unknown")
+    runtime_backend: str = Field(default="unknown")
     vocabulary_size: int = Field(default=0)
-    subwords_count: int = Field(default=0)
-    true_words_count: int = Field(default=0)
-    subwords_percentage: float = Field(default=0.0)
+    added_tokens: int = Field(default=0)
+    special_token_share: float = Field(default=0.0)
+    efficiency: BenchmarkEfficiencyMetrics = Field(default_factory=BenchmarkEfficiencyMetrics)
+    latency: BenchmarkLatencyMetrics = Field(default_factory=BenchmarkLatencyMetrics)
+    fidelity: BenchmarkFidelityMetrics = Field(default_factory=BenchmarkFidelityMetrics)
+    fragmentation: BenchmarkFragmentationMetrics = Field(default_factory=BenchmarkFragmentationMetrics)
+    resources: BenchmarkResourceMetrics = Field(default_factory=BenchmarkResourceMetrics)
 
 
-class TokenLengthBin(BaseModel):
-    """A single bin in token length histogram."""
-
-    bin_start: int
-    bin_end: int
-    count: int
-
-
-class TokenLengthDistribution(BaseModel):
-    """Token length distribution for a tokenizer."""
-
+class BenchmarkSeriesPoint(BaseModel):
     tokenizer: str
-    bins: list[TokenLengthBin] = Field(default_factory=list)
-    mean: float = Field(default=0.0)
-    std: float = Field(default=0.0)
+    value: float = Field(default=0.0)
+    ci95_low: float | None = Field(default=None)
+    ci95_high: float | None = Field(default=None)
 
 
-class SpeedMetric(BaseModel):
-    """Speed and throughput metrics for comparison charts."""
-
+class BenchmarkDistributionPoint(BaseModel):
     tokenizer: str
-    tokens_per_second: float = Field(default=0.0)
-    chars_per_second: float = Field(default=0.0)
-    processing_time_seconds: float = Field(default=0.0)
+    min: float = Field(default=0.0)
+    q1: float = Field(default=0.0)
+    median: float = Field(default=0.0)
+    q3: float = Field(default=0.0)
+    max: float = Field(default=0.0)
 
 
-class ChartData(BaseModel):
-    """All chart data for frontend visualization."""
-
-    vocabulary_stats: list[VocabularyStats] = Field(default_factory=list)
-    token_length_distributions: list[TokenLengthDistribution] = Field(
-        default_factory=list
-    )
-    speed_metrics: list[SpeedMetric] = Field(default_factory=list)
+class BenchmarkChartDataV2(BaseModel):
+    efficiency: list[BenchmarkSeriesPoint] = Field(default_factory=list)
+    fidelity: list[BenchmarkSeriesPoint] = Field(default_factory=list)
+    vocabulary: list[BenchmarkSeriesPoint] = Field(default_factory=list)
+    fragmentation: list[BenchmarkSeriesPoint] = Field(default_factory=list)
+    latency_or_memory_distribution: list[BenchmarkDistributionPoint] = Field(default_factory=list)
 
 
-###############################################################################
-class GlobalMetrics(BaseModel):
-    tokenizer: str
-    dataset_name: str
-    tokenization_speed_tps: float = Field(default=0.0)
-    throughput_chars_per_sec: float = Field(default=0.0)
-    processing_time_seconds: float = Field(default=0.0)
-    vocabulary_size: int = Field(default=0)
-    avg_sequence_length: float = Field(default=0.0)
-    median_sequence_length: float = Field(default=0.0)
-    subword_fertility: float = Field(default=0.0)
-    oov_rate: float = Field(default=0.0)
-    word_recovery_rate: float = Field(default=0.0)
-    character_coverage: float = Field(default=0.0)
-    determinism_rate: float = Field(default=0.0)
-    boundary_preservation_rate: float = Field(default=0.0)
-    round_trip_fidelity_rate: float = Field(default=0.0)
-    model_size_mb: float = Field(default=0.0)
-    segmentation_consistency: float = Field(default=0.0)
-    token_distribution_entropy: float = Field(default=0.0)
-    rare_token_tail_1: int = Field(default=0)
-    rare_token_tail_2: int = Field(default=0)
-    compression_chars_per_token: float = Field(default=0.0)
-    compression_bytes_per_character: float = Field(default=0.0)
-    round_trip_text_fidelity_rate: float = Field(default=0.0)
-    token_id_ordering_monotonicity: float = Field(default=0.0)
-    token_unigram_coverage: float = Field(default=0.0)
-
-
-###############################################################################
 class BenchmarkRunRequest(BaseModel):
     tokenizers: list[str] = Field(..., description="List of tokenizer IDs to benchmark")
     dataset_name: str = Field(..., description="Name of the dataset to use")
-    max_documents: int = Field(
-        default=0,
-        ge=0,
-        description="Maximum documents to process (0 = all)",
-    )
-    custom_tokenizer_name: str | None = Field(
-        default=None,
-        description="Name of uploaded custom tokenizer to include",
-    )
-    run_name: str | None = Field(
-        default=None,
-        description="Optional user-defined benchmark run name",
-    )
-    selected_metric_keys: list[str] | None = Field(
-        default=None,
-        description="Optional metric keys selected by the benchmark wizard",
-    )
+    config: BenchmarkRunConfig = Field(default_factory=BenchmarkRunConfig)
+    custom_tokenizer_name: str | None = Field(default=None)
+    run_name: str | None = Field(default=None)
+    selected_metric_keys: list[str] | None = Field(default=None)
 
-    # -------------------------------------------------------------------------
     @field_validator("tokenizers")
     @classmethod
     def validate_tokenizers(cls, value: list[str]) -> list[str]:
         normalized: list[str] = []
         seen: set[str] = set()
         for tokenizer in value:
-            cleaned = normalize_identifier(
-                tokenizer,
-                "Tokenizer identifier",
-                max_length=160,
-            )
+            cleaned = normalize_identifier(tokenizer, "Tokenizer identifier", max_length=160)
             if cleaned in seen:
                 continue
             seen.add(cleaned)
@@ -128,13 +132,11 @@ class BenchmarkRunRequest(BaseModel):
             raise ValueError("Too many tokenizers requested (max 200).")
         return normalized
 
-    # -------------------------------------------------------------------------
     @field_validator("dataset_name")
     @classmethod
     def validate_dataset_name(cls, value: str) -> str:
         return normalize_identifier(value, "Dataset name", max_length=200)
 
-    # -------------------------------------------------------------------------
     @field_validator("custom_tokenizer_name")
     @classmethod
     def validate_custom_tokenizer_name(cls, value: str | None) -> str | None:
@@ -142,7 +144,6 @@ class BenchmarkRunRequest(BaseModel):
             return None
         return normalize_identifier(value, "Custom tokenizer name", max_length=160)
 
-    # -------------------------------------------------------------------------
     @field_validator("run_name")
     @classmethod
     def validate_run_name(cls, value: str | None) -> str | None:
@@ -157,43 +158,7 @@ class BenchmarkRunRequest(BaseModel):
             raise ValueError("Run name contains unsupported control characters.")
         return normalized
 
-    # -------------------------------------------------------------------------
-    @field_validator("selected_metric_keys")
-    @classmethod
-    def validate_selected_metric_keys(cls, value: list[str] | None) -> list[str] | None:
-        if value is None:
-            return None
-        normalized: list[str] = []
-        for key in value:
-            if not isinstance(key, str):
-                raise ValueError("Metric keys must be strings.")
-            cleaned = key.strip()
-            if not cleaned:
-                raise ValueError("Metric keys must not be blank.")
-            if len(cleaned) > 80:
-                raise ValueError("Metric keys are too long (max 80 characters).")
-            if contains_control_chars(cleaned):
-                raise ValueError("Metric keys contain unsupported control characters.")
-            normalized.append(cleaned)
-        if len(normalized) > 256:
-            raise ValueError("Too many metric keys requested (max 256).")
-        return normalized
 
-
-###############################################################################
-class BenchmarkPerDocumentTokenizerStats(BaseModel):
-    tokenizer: str
-    tokens_count: list[int] = Field(default_factory=list)
-    tokens_to_words_ratio: list[float] = Field(default_factory=list)
-    bytes_per_token: list[float] = Field(default_factory=list)
-    boundary_preservation_rate: list[float] = Field(default_factory=list)
-    round_trip_token_fidelity: list[float] = Field(default_factory=list)
-    round_trip_text_fidelity: list[float] = Field(default_factory=list)
-    determinism_stability: list[float] = Field(default_factory=list)
-    bytes_per_character: list[float] = Field(default_factory=list)
-
-
-###############################################################################
 class BenchmarkMetricCatalogMetric(BaseModel):
     key: str
     label: str
@@ -213,7 +178,6 @@ class BenchmarkMetricCatalogResponse(BaseModel):
     categories: list[BenchmarkMetricCatalogCategory] = Field(default_factory=list)
 
 
-###############################################################################
 class BenchmarkReportSummary(BaseModel):
     report_id: int
     report_version: int
@@ -230,29 +194,28 @@ class BenchmarkReportListResponse(BaseModel):
     reports: list[BenchmarkReportSummary] = Field(default_factory=list)
 
 
-###############################################################################
+class BenchmarkPerDocumentTokenizerStats(BaseModel):
+    tokenizer: str
+    tokens_count: list[int] = Field(default_factory=list)
+    bytes_per_token: list[float] = Field(default_factory=list)
+    encode_latency_ms: list[float] = Field(default_factory=list)
+    peak_rss_mb: list[float] = Field(default_factory=list)
+
+
 class BenchmarkRunResponse(BaseModel):
     status: str = Field(default="success")
     report_id: int | None = Field(default=None)
-    report_version: int = Field(default=1)
+    report_version: int = Field(default=2)
     created_at: str | None = Field(default=None)
     run_name: str | None = Field(default=None)
     selected_metric_keys: list[str] = Field(default_factory=list)
-    dataset_name: str = Field(..., description="Name of the benchmarked dataset")
-    documents_processed: int = Field(..., description="Number of documents processed")
-    tokenizers_processed: list[str] = Field(
-        default_factory=list, description="List of successfully processed tokenizers"
-    )
-    tokenizers_count: int = Field(
-        default=0, description="Number of tokenizers benchmarked"
-    )
-    global_metrics: list[GlobalMetrics] = Field(
-        default_factory=list, description="Global benchmark metrics per tokenizer"
-    )
-    chart_data: ChartData = Field(
-        default_factory=ChartData, description="Structured data for frontend charts"
-    )
-    per_document_stats: list[BenchmarkPerDocumentTokenizerStats] = Field(
-        default_factory=list,
-        description="Per-document tokenizer statistics arrays for dispersion views",
-    )
+    dataset_name: str
+    documents_processed: int
+    tokenizers_processed: list[str] = Field(default_factory=list)
+    tokenizers_count: int = Field(default=0)
+    config: BenchmarkRunConfig = Field(default_factory=BenchmarkRunConfig)
+    hardware_profile: BenchmarkHardwareProfile = Field(default_factory=BenchmarkHardwareProfile)
+    trial_summary: BenchmarkTrialSummary = Field(default_factory=BenchmarkTrialSummary)
+    tokenizer_results: list[BenchmarkTokenizerResult] = Field(default_factory=list)
+    chart_data: BenchmarkChartDataV2 = Field(default_factory=BenchmarkChartDataV2)
+    per_document_stats: list[BenchmarkPerDocumentTokenizerStats] = Field(default_factory=list)

@@ -52,18 +52,18 @@ const toVocabularyStats = (value: unknown): TokenizerVocabularyStats | null => {
   };
 
   return {
-    heuristic: parseString(payload.heuristic),
     min_token_length: parseNumber(payload.min_token_length),
     mean_token_length: parseNumber(payload.mean_token_length),
     median_token_length: parseNumber(payload.median_token_length),
     max_token_length: parseNumber(payload.max_token_length),
-    subword_like_count: parseNumber(payload.subword_like_count),
-    subword_like_percentage: parseNumber(payload.subword_like_percentage),
+    mean_token_bytes: parseNumber(payload.mean_token_bytes),
+    token_string_entropy: parseNumber(payload.token_string_entropy),
     special_tokens_in_vocab_count: parseNumber(payload.special_tokens_in_vocab_count),
     special_tokens_in_vocab_percentage: parseNumber(payload.special_tokens_in_vocab_percentage),
-    unique_token_lengths: parseNumber(payload.unique_token_lengths),
-    empty_token_count: parseNumber(payload.empty_token_count),
-    considered_non_special_count: parseNumber(payload.considered_non_special_count),
+    byte_fallback_support: typeof payload.byte_fallback_support === 'boolean' ? payload.byte_fallback_support : null,
+    unknown_token_representation: parseString(payload.unknown_token_representation),
+    normalization_behavior: parseString(payload.normalization_behavior),
+    vocabulary_density: parseNumber(payload.vocabulary_density),
   };
 };
 
@@ -178,11 +178,14 @@ const TokenizerExaminationPage = () => {
                   <table className="tokenizer-meta-table">
                     <tbody>
                       <tr><th>Tokenizer</th><td>{tokenizerReport.tokenizer_name}</td></tr>
-                      <tr><th>Tokenizer class</th><td>{String(globalStats.tokenizer_class ?? NOT_AVAILABLE)}</td></tr>
+                      <tr><th>Family</th><td>{String(globalStats.tokenizer_family ?? NOT_AVAILABLE)}</td></tr>
+                      <tr><th>Backend</th><td>{String(globalStats.runtime_backend ?? NOT_AVAILABLE)}</td></tr>
                       <tr><th>Vocabulary size</th><td>{formatNumber(tokenizerReport.vocabulary_size, 0)}</td></tr>
                       <tr><th>Base vocabulary size</th><td>{formatNumber(toOptionalNumber(globalStats.base_vocabulary_size), 0)}</td></tr>
                       <tr><th>Model max length</th><td>{formatNumber(toOptionalNumber(globalStats.model_max_length), 0)}</td></tr>
-                      <tr><th>Padding side</th><td>{String(globalStats.padding_side ?? NOT_AVAILABLE)}</td></tr>
+                      <tr><th>Normalization</th><td>{String(globalStats.normalization_policy ?? NOT_AVAILABLE)}</td></tr>
+                      <tr><th>Pretokenization</th><td>{String(globalStats.pretokenization_policy ?? NOT_AVAILABLE)}</td></tr>
+                      <tr><th>Fallback policy</th><td>{String(globalStats.fallback_policy ?? NOT_AVAILABLE)}</td></tr>
                       <tr><th>Special tokens count</th><td>{formatNumber(toOptionalNumber(globalStats.special_tokens_count), 0)}</td></tr>
                       <tr><th>Added tokens count</th><td>{formatNumber(toOptionalNumber(globalStats.added_tokens_count), 0)}</td></tr>
                       <tr>
@@ -241,13 +244,14 @@ const TokenizerExaminationPage = () => {
                       <tr><th>Mean token length</th><td>{formatNumber(vocabularyStats?.mean_token_length, 2)}</td></tr>
                       <tr><th>Median token length</th><td>{formatNumber(vocabularyStats?.median_token_length, 2)}</td></tr>
                       <tr><th>Max token length</th><td>{formatNumber(vocabularyStats?.max_token_length, 0)}</td></tr>
-                      <tr><th>Subword-like count</th><td>{formatNumber(vocabularyStats?.subword_like_count, 0)}</td></tr>
-                      <tr><th>Subword-like %</th><td>{formatOptionalPercent(vocabularyStats?.subword_like_percentage)}</td></tr>
+                      <tr><th>Mean token bytes</th><td>{formatNumber(vocabularyStats?.mean_token_bytes, 2)}</td></tr>
+                      <tr><th>Token string entropy</th><td>{formatNumber(vocabularyStats?.token_string_entropy, 4)}</td></tr>
                       <tr><th>Special tokens in vocab</th><td>{formatNumber(vocabularyStats?.special_tokens_in_vocab_count, 0)}</td></tr>
                       <tr><th>Special in vocab %</th><td>{formatOptionalPercent(vocabularyStats?.special_tokens_in_vocab_percentage)}</td></tr>
-                      <tr><th>Unique token lengths</th><td>{formatNumber(vocabularyStats?.unique_token_lengths, 0)}</td></tr>
-                      <tr><th>Empty tokens</th><td>{formatNumber(vocabularyStats?.empty_token_count, 0)}</td></tr>
-                      <tr><th>Heuristic</th><td className="tokenizer-heuristic-value">{vocabularyStats?.heuristic ?? NOT_AVAILABLE}</td></tr>
+                      <tr><th>Byte fallback support</th><td>{vocabularyStats?.byte_fallback_support == null ? NOT_AVAILABLE : (vocabularyStats.byte_fallback_support ? 'Yes' : 'No')}</td></tr>
+                      <tr><th>Unknown token representation</th><td>{vocabularyStats?.unknown_token_representation ?? NOT_AVAILABLE}</td></tr>
+                      <tr><th>Normalization behavior</th><td>{vocabularyStats?.normalization_behavior ?? NOT_AVAILABLE}</td></tr>
+                      <tr><th>Vocabulary density</th><td>{formatNumber(vocabularyStats?.vocabulary_density, 4)}</td></tr>
                     </tbody>
                   </table>
                 </article>

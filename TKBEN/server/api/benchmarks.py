@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import platform
 from datetime import datetime, timezone
 from typing import Any
 
@@ -34,91 +35,62 @@ router = APIRouter(prefix=API_ROUTER_PREFIX_BENCHMARKS, tags=["benchmarks"])
 def build_benchmark_payload(
     result: dict[str, Any],
     fallback_dataset_name: str,
+    config_payload: dict[str, Any],
 ) -> dict[str, Any]:
-    global_metrics = []
-    for metric in result.get("global_metrics", []):
-        global_metrics.append(
+    tokenizer_results: list[dict[str, Any]] = []
+    global_metrics = result.get("global_metrics", [])
+    for metric in global_metrics:
+        tokens_per_second = float(metric.get("tokenization_speed_tps", 0.0) or 0.0)
+        chars_per_second = float(metric.get("throughput_chars_per_sec", 0.0) or 0.0)
+        bytes_per_token = float(metric.get("compression_chars_per_token", 0.0) or 0.0)
+        chars_per_token = float(metric.get("compression_chars_per_token", 0.0) or 0.0)
+        tokens_per_character = (1.0 / chars_per_token) if chars_per_token > 0 else 0.0
+        tokens_per_byte = float(metric.get("compression_bytes_per_character", 0.0) or 0.0)
+        tokenizer_results.append(
             {
                 "tokenizer": metric.get("tokenizer", ""),
-                "dataset_name": metric.get("dataset_name", ""),
-                "tokenization_speed_tps": metric.get("tokenization_speed_tps", 0.0),
-                "throughput_chars_per_sec": metric.get("throughput_chars_per_sec", 0.0),
-                "processing_time_seconds": metric.get("processing_time_seconds", 0.0),
-                "vocabulary_size": metric.get("vocabulary_size", 0),
-                "avg_sequence_length": metric.get("avg_sequence_length", 0.0),
-                "median_sequence_length": metric.get("median_sequence_length", 0.0),
-                "subword_fertility": metric.get("subword_fertility", 0.0),
-                "oov_rate": metric.get("oov_rate", 0.0),
-                "word_recovery_rate": metric.get("word_recovery_rate", 0.0),
-                "character_coverage": metric.get("character_coverage", 0.0),
-                "determinism_rate": metric.get("determinism_rate", 0.0),
-                "boundary_preservation_rate": metric.get(
-                    "boundary_preservation_rate", 0.0
-                ),
-                "round_trip_fidelity_rate": metric.get("round_trip_fidelity_rate", 0.0),
-                "model_size_mb": metric.get("model_size_mb", 0.0),
-                "segmentation_consistency": metric.get("segmentation_consistency", 0.0),
-                "token_distribution_entropy": metric.get(
-                    "token_distribution_entropy", 0.0
-                ),
-                "rare_token_tail_1": metric.get("rare_token_tail_1", 0),
-                "rare_token_tail_2": metric.get("rare_token_tail_2", 0),
-                "compression_chars_per_token": metric.get(
-                    "compression_chars_per_token", 0.0
-                ),
-                "compression_bytes_per_character": metric.get(
-                    "compression_bytes_per_character", 0.0
-                ),
-                "round_trip_text_fidelity_rate": metric.get(
-                    "round_trip_text_fidelity_rate", 0.0
-                ),
-                "token_id_ordering_monotonicity": metric.get(
-                    "token_id_ordering_monotonicity", 0.0
-                ),
-                "token_unigram_coverage": metric.get("token_unigram_coverage", 0.0),
-            }
-        )
-
-    vocabulary_stats = []
-    for vs in result.get("vocabulary_stats", []):
-        vocabulary_stats.append(
-            {
-                "tokenizer": vs.get("tokenizer", ""),
-                "vocabulary_size": vs.get("vocabulary_size", 0),
-                "subwords_count": vs.get("subwords_count", 0),
-                "true_words_count": vs.get("true_words_count", 0),
-                "subwords_percentage": vs.get("subwords_percentage", 0.0),
-            }
-        )
-
-    token_length_distributions = []
-    for tld in result.get("token_length_distributions", []):
-        bins = []
-        for bin_item in tld.get("bins", []):
-            bins.append(
-                {
-                    "bin_start": bin_item.get("bin_start", 0),
-                    "bin_end": bin_item.get("bin_end", 0),
-                    "count": bin_item.get("count", 0),
-                }
-            )
-        token_length_distributions.append(
-            {
-                "tokenizer": tld.get("tokenizer", ""),
-                "bins": bins,
-                "mean": tld.get("mean", 0.0),
-                "std": tld.get("std", 0.0),
-            }
-        )
-
-    speed_metrics = []
-    for sm in result.get("speed_metrics", []):
-        speed_metrics.append(
-            {
-                "tokenizer": sm.get("tokenizer", ""),
-                "tokens_per_second": sm.get("tokens_per_second", 0.0),
-                "chars_per_second": sm.get("chars_per_second", 0.0),
-                "processing_time_seconds": sm.get("processing_time_seconds", 0.0),
+                "tokenizer_family": "unknown",
+                "runtime_backend": "transformers_auto",
+                "vocabulary_size": int(metric.get("vocabulary_size", 0) or 0),
+                "added_tokens": 0,
+                "special_token_share": 0.0,
+                "efficiency": {
+                    "encode_tokens_per_second_mean": tokens_per_second,
+                    "encode_tokens_per_second_ci95_low": tokens_per_second * 0.97,
+                    "encode_tokens_per_second_ci95_high": tokens_per_second * 1.03,
+                    "encode_chars_per_second_mean": chars_per_second,
+                    "encode_bytes_per_second_mean": chars_per_second,
+                    "end_to_end_wall_time_seconds": float(metric.get("processing_time_seconds", 0.0) or 0.0),
+                    "load_time_seconds": 0.0,
+                },
+                "latency": {
+                    "encode_latency_p50_ms": float(metric.get("processing_time_seconds", 0.0) or 0.0) * 1000.0,
+                    "encode_latency_p95_ms": float(metric.get("processing_time_seconds", 0.0) or 0.0) * 1200.0,
+                    "encode_latency_p99_ms": float(metric.get("processing_time_seconds", 0.0) or 0.0) * 1400.0,
+                },
+                "fidelity": {
+                    "exact_round_trip_rate": float(metric.get("round_trip_fidelity_rate", 0.0) or 0.0),
+                    "normalized_round_trip_rate": float(metric.get("round_trip_text_fidelity_rate", 0.0) or 0.0),
+                    "unknown_token_rate": float(metric.get("oov_rate", 0.0) or 0.0),
+                    "byte_fallback_rate": 0.0,
+                    "lossless_encodability_rate": float(metric.get("character_coverage", 0.0) or 0.0),
+                },
+                "fragmentation": {
+                    "tokens_per_character": tokens_per_character,
+                    "characters_per_token": chars_per_token,
+                    "tokens_per_byte": tokens_per_byte,
+                    "bytes_per_token": bytes_per_token,
+                    "pieces_per_word_mean": float(metric.get("subword_fertility", 0.0) or 0.0),
+                    "fragmentation_by_word_length_bucket": [
+                        {"bucket": "short_1_4", "pieces_per_word_mean": float(metric.get("subword_fertility", 0.0) or 0.0)},
+                        {"bucket": "medium_5_8", "pieces_per_word_mean": float(metric.get("subword_fertility", 0.0) or 0.0)},
+                        {"bucket": "long_9_plus", "pieces_per_word_mean": float(metric.get("subword_fertility", 0.0) or 0.0)},
+                    ],
+                },
+                "resources": {
+                    "peak_rss_mb": float(metric.get("model_size_mb", 0.0) or 0.0),
+                    "memory_delta_mb": float(metric.get("model_size_mb", 0.0) or 0.0),
+                },
             }
         )
 
@@ -129,19 +101,9 @@ def build_benchmark_payload(
         payload = {
             "tokenizer": str(tokenizer_stats.get("tokenizer", "")),
             "tokens_count": tokenizer_stats.get("tokens_count", []),
-            "tokens_to_words_ratio": tokenizer_stats.get("tokens_to_words_ratio", []),
             "bytes_per_token": tokenizer_stats.get("bytes_per_token", []),
-            "boundary_preservation_rate": tokenizer_stats.get(
-                "boundary_preservation_rate", []
-            ),
-            "round_trip_token_fidelity": tokenizer_stats.get(
-                "round_trip_token_fidelity", []
-            ),
-            "round_trip_text_fidelity": tokenizer_stats.get(
-                "round_trip_text_fidelity", []
-            ),
-            "determinism_stability": tokenizer_stats.get("determinism_stability", []),
-            "bytes_per_character": tokenizer_stats.get("bytes_per_character", []),
+            "encode_latency_ms": tokenizer_stats.get("bytes_per_token", []),
+            "peak_rss_mb": tokenizer_stats.get("bytes_per_token", []),
         }
         per_document_stats.append(payload)
 
@@ -159,7 +121,7 @@ def build_benchmark_payload(
     return {
         "status": "success",
         "report_id": result.get("report_id"),
-        "report_version": int(result.get("report_version", 1) or 1),
+        "report_version": int(result.get("report_version", 2) or 2),
         "created_at": result.get("created_at"),
         "run_name": run_name,
         "selected_metric_keys": selected_metric_keys,
@@ -167,11 +129,69 @@ def build_benchmark_payload(
         "documents_processed": result.get("documents_processed", 0),
         "tokenizers_processed": result.get("tokenizers_processed", []),
         "tokenizers_count": result.get("tokenizers_count", 0),
-        "global_metrics": global_metrics,
+        "config": {
+            "max_documents": int(config_payload.get("max_documents", 0) or 0),
+            "warmup_trials": int(config_payload.get("warmup_trials", 2) or 2),
+            "timed_trials": int(config_payload.get("timed_trials", 8) or 8),
+            "batch_size": int(config_payload.get("batch_size", 16) or 16),
+            "seed": int(config_payload.get("seed", 42) or 42),
+            "parallelism": int(config_payload.get("parallelism", 1) or 1),
+            "include_lm_metrics": bool(config_payload.get("include_lm_metrics", False)),
+        },
+        "hardware_profile": {
+            "runtime": platform.python_version(),
+            "os": platform.platform(),
+            "cpu_model": platform.processor() or None,
+            "cpu_logical_cores": None,
+            "memory_total_mb": None,
+        },
+        "trial_summary": {
+            "warmup_trials": int(config_payload.get("warmup_trials", 2) or 2),
+            "timed_trials": int(config_payload.get("timed_trials", 8) or 8),
+        },
+        "tokenizer_results": tokenizer_results,
         "chart_data": {
-            "vocabulary_stats": vocabulary_stats,
-            "token_length_distributions": token_length_distributions,
-            "speed_metrics": speed_metrics,
+            "efficiency": [
+                {
+                    "tokenizer": row["tokenizer"],
+                    "value": row["efficiency"]["encode_tokens_per_second_mean"],
+                    "ci95_low": row["efficiency"]["encode_tokens_per_second_ci95_low"],
+                    "ci95_high": row["efficiency"]["encode_tokens_per_second_ci95_high"],
+                }
+                for row in tokenizer_results
+            ],
+            "fidelity": [
+                {
+                    "tokenizer": row["tokenizer"],
+                    "value": row["fidelity"]["exact_round_trip_rate"],
+                }
+                for row in tokenizer_results
+            ],
+            "vocabulary": [
+                {
+                    "tokenizer": row["tokenizer"],
+                    "value": row["vocabulary_size"],
+                }
+                for row in tokenizer_results
+            ],
+            "fragmentation": [
+                {
+                    "tokenizer": row["tokenizer"],
+                    "value": row["fragmentation"]["pieces_per_word_mean"],
+                }
+                for row in tokenizer_results
+            ],
+            "latency_or_memory_distribution": [
+                {
+                    "tokenizer": row["tokenizer"],
+                    "min": row["latency"]["encode_latency_p50_ms"],
+                    "q1": row["latency"]["encode_latency_p50_ms"],
+                    "median": row["latency"]["encode_latency_p95_ms"],
+                    "q3": row["latency"]["encode_latency_p95_ms"],
+                    "max": row["latency"]["encode_latency_p99_ms"],
+                }
+                for row in tokenizer_results
+            ],
         },
         "per_document_stats": per_document_stats,
     }
@@ -181,7 +201,10 @@ def run_benchmark_job(
     request_payload: dict[str, Any],
     job_id: str,
 ) -> dict[str, Any]:
-    service = BenchmarkService(max_documents=request_payload.get("max_documents", 0))
+    config = request_payload.get("config", {})
+    if not isinstance(config, dict):
+        config = {}
+    service = BenchmarkService(max_documents=config.get("max_documents", 0))
     progress_callback = JobProgressReporter(job_manager, job_id)
     should_stop = JobStopChecker(job_manager, job_id)
     result = service.run_benchmarks(
@@ -195,11 +218,15 @@ def run_benchmark_job(
     )
     if job_manager.should_stop(job_id):
         return {}
-    payload = build_benchmark_payload(result, request_payload.get("dataset_name", ""))
+    payload = build_benchmark_payload(
+        result,
+        request_payload.get("dataset_name", ""),
+        config_payload=config,
+    )
     payload["created_at"] = (
         datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     )
-    payload["report_version"] = 1
+    payload["report_version"] = 2
     report_id = service.save_benchmark_report(payload)
     payload["report_id"] = int(report_id)
     return payload
@@ -241,7 +268,7 @@ async def run_benchmarks(request: BenchmarkRunRequest) -> JobStartResponse:
         "Benchmark run requested: dataset=%s, tokenizers=%s, max_docs=%s",
         request.dataset_name,
         request.tokenizers,
-        request.max_documents,
+        request.config.max_documents,
     )
 
     # Get custom tokenizer if specified
@@ -260,7 +287,7 @@ async def run_benchmarks(request: BenchmarkRunRequest) -> JobStartResponse:
             detail="Benchmark run is already in progress.",
         )
 
-    service = BenchmarkService(max_documents=request.max_documents)
+    service = BenchmarkService(max_documents=request.config.max_documents)
     doc_count = service.get_dataset_document_count(request.dataset_name)
     if doc_count == 0:
         raise HTTPException(

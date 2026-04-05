@@ -31,9 +31,6 @@ class Dataset(Base):
     benchmark_reports = relationship(
         "BenchmarkReport", back_populates="dataset", cascade="all, delete-orphan"
     )
-    legacy_reports = relationship(
-        "DatasetReport", back_populates="dataset", cascade="all, delete-orphan"
-    )
     validation_reports = relationship(
         "DatasetValidationReport", back_populates="dataset", cascade="all, delete-orphan"
     )
@@ -378,24 +375,6 @@ class BenchmarkReport(Base):
     dataset = relationship("Dataset", back_populates="benchmark_reports")
 
 
-###############################################################################
-class DatasetReport(Base):
-    __tablename__ = "dataset_report"
-    id = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    dataset_id = mapped_column(
-        Integer,
-        ForeignKey("dataset.id", ondelete="CASCADE"),
-        nullable=False,
-        unique=True,
-    )
-    document_statistics = mapped_column(JSONMapping)
-    word_statistics = mapped_column(JSONMapping)
-    most_common_words = mapped_column(JSONSequence)
-    least_common_words = mapped_column(JSONSequence)
-    dataset = relationship("Dataset", back_populates="legacy_reports")
-
-
-###############################################################################
 class DatasetValidationReport(Base):
     __tablename__ = "dataset_validation_report"
     id = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)

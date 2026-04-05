@@ -14,7 +14,6 @@ from TKBEN.server.repositories.schemas.models import (
     AnalysisSession,
     BenchmarkReport,
     Dataset,
-    DatasetReport,
     DatasetDocument,
     DatasetValidationReport,
     HistogramArtifact,
@@ -36,7 +35,6 @@ class DatasetSerializer:
         self.dataset_dimension_table = Dataset.__tablename__
         self.dataset_table = DatasetDocument.__tablename__
         self.stats_table = "dataset_document_statistics"
-        self.reports_table = "dataset_report"
         self.validation_reports_table = "dataset_validation_report"
         self.analysis_session_table = AnalysisSession.__tablename__
         self.metric_type_table = MetricType.__tablename__
@@ -299,35 +297,6 @@ class DatasetSerializer:
         }
 
     # -------------------------------------------------------------------------
-    def build_report_storage(self, report: dict[str, Any]) -> dict[str, Any]:
-        document_histogram = report.get("document_length_histogram", {})
-        word_histogram = report.get("word_length_histogram", {})
-        return {
-            "dataset_name": report.get("dataset_name", ""),
-            "document_statistics": {
-                "document_count": report.get("document_count", 0),
-                "document_bins": document_histogram.get("bins", []),
-                "document_counts": document_histogram.get("counts", []),
-                "document_bin_edges": document_histogram.get("bin_edges", []),
-                "document_min_length": document_histogram.get("min_length", 0),
-                "document_max_length": document_histogram.get("max_length", 0),
-                "document_mean_length": document_histogram.get("mean_length", 0.0),
-                "document_median_length": document_histogram.get("median_length", 0.0),
-            },
-            "word_statistics": {
-                "word_bins": word_histogram.get("bins", []),
-                "word_counts": word_histogram.get("counts", []),
-                "word_bin_edges": word_histogram.get("bin_edges", []),
-                "word_min_length": word_histogram.get("min_length", 0),
-                "word_max_length": word_histogram.get("max_length", 0),
-                "word_mean_length": word_histogram.get("mean_length", 0.0),
-                "word_median_length": word_histogram.get("median_length", 0.0),
-            },
-            "most_common_words": report.get("most_common_words", []),
-            "least_common_words": report.get("least_common_words", []),
-        }
-
-    # -------------------------------------------------------------------------
     def save_dataset_validation_report(self, report: dict[str, Any]) -> int:
         storage = self.build_validation_report_storage(report)
         dataset_name = str(storage.get("dataset_name") or "")
@@ -356,21 +325,6 @@ class DatasetSerializer:
 
     # -------------------------------------------------------------------------
     def save_dataset_report(self, report: dict[str, Any]) -> int:
-        storage = self.build_report_storage(report)
-        dataset_name = str(storage.get("dataset_name") or "")
-        dataset_id = self.get_dataset_id(dataset_name)
-        if dataset_id is None:
-            raise ValueError(f"Dataset '{dataset_name}' not found while saving report.")
-        row = {
-            "dataset_id": dataset_id,
-            "document_statistics": storage.get("document_statistics"),
-            "word_statistics": storage.get("word_statistics"),
-            "most_common_words": storage.get("most_common_words"),
-            "least_common_words": storage.get("least_common_words"),
-        }
-        df = pd.DataFrame([row])
-        df = self.serialize_json_columns(df)
-        self.queries.upsert_table(df, self.reports_table)
         return self.save_dataset_validation_report(report)
 
     # -------------------------------------------------------------------------
@@ -421,71 +375,6 @@ class DatasetSerializer:
         }
 
     # -------------------------------------------------------------------------
-    def build_report_response(self, storage: dict[str, Any]) -> dict[str, Any]:
-        document_statistics = self.parse_json(
-            storage.get("document_statistics"), default={}
-        )
-        word_statistics = self.parse_json(storage.get("word_statistics"), default={})
-        document_histogram = {
-            "bins": self.parse_json(
-                document_statistics.get("document_bins"), default=[]
-            ),
-            "counts": self.parse_json(
-                document_statistics.get("document_counts"), default=[]
-            ),
-            "bin_edges": self.parse_json(
-                document_statistics.get("document_bin_edges"), default=[]
-            ),
-            "min_length": int(document_statistics.get("document_min_length", 0) or 0),
-            "max_length": int(document_statistics.get("document_max_length", 0) or 0),
-            "mean_length": float(
-                document_statistics.get("document_mean_length", 0.0) or 0.0
-            ),
-            "median_length": float(
-                document_statistics.get("document_median_length", 0.0) or 0.0
-            ),
-        }
-        word_histogram = {
-            "bins": self.parse_json(word_statistics.get("word_bins"), default=[]),
-            "counts": self.parse_json(word_statistics.get("word_counts"), default=[]),
-            "bin_edges": self.parse_json(
-                word_statistics.get("word_bin_edges"), default=[]
-            ),
-            "min_length": int(word_statistics.get("word_min_length", 0) or 0),
-            "max_length": int(word_statistics.get("word_max_length", 0) or 0),
-            "mean_length": float(word_statistics.get("word_mean_length", 0.0) or 0.0),
-            "median_length": float(
-                word_statistics.get("word_median_length", 0.0) or 0.0
-            ),
-        }
-        return {
-            "report_id": None,
-            "report_version": 1,
-            "created_at": None,
-            "dataset_name": storage.get("dataset_name", ""),
-            "document_count": int(document_statistics.get("document_count", 0) or 0),
-            "document_length_histogram": document_histogram,
-            "word_length_histogram": word_histogram,
-            "min_document_length": document_histogram["min_length"],
-            "max_document_length": document_histogram["max_length"],
-            "most_common_words": self.parse_json(
-                storage.get("most_common_words"), default=[]
-            ),
-            "least_common_words": self.parse_json(
-                storage.get("least_common_words"), default=[]
-            ),
-            "longest_words": [],
-            "shortest_words": [],
-            "word_cloud_terms": [],
-            "aggregate_statistics": {
-                "document_count": int(
-                    document_statistics.get("document_count", 0) or 0
-                ),
-            },
-            "per_document_stats": {},
-        }
-
-    # -------------------------------------------------------------------------
     def load_latest_dataset_validation_report(
         self,
         dataset_name: str,
@@ -498,30 +387,6 @@ class DatasetSerializer:
         report_id: int,
     ) -> dict[str, Any] | None:
         return self.load_analysis_report_by_session_id(report_id)
-
-    # -------------------------------------------------------------------------
-    def load_legacy_dataset_report(self, dataset_name: str) -> dict[str, Any] | None:
-        stmt = (
-            select(DatasetReport, Dataset.name.label("dataset_name"))
-            .join(Dataset, Dataset.id == DatasetReport.dataset_id)
-            .where(Dataset.name == dataset_name)
-            .limit(1)
-        )
-        with self._session() as session:
-            row = session.execute(stmt).first()
-        if row is None or row[0] is None:
-            return None
-        report_row, dataset_name_value = row
-        storage = {
-            "id": report_row.id,
-            "dataset_id": report_row.dataset_id,
-            "dataset_name": str(dataset_name_value or ""),
-            "document_statistics": report_row.document_statistics,
-            "word_statistics": report_row.word_statistics,
-            "most_common_words": report_row.most_common_words,
-            "least_common_words": report_row.least_common_words,
-        }
-        return self.build_report_response(storage)
 
     # -------------------------------------------------------------------------
     def load_dataset_report(self, dataset_name: str) -> dict[str, Any] | None:

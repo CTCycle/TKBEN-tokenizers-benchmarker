@@ -70,8 +70,8 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
       { label: 'Queued runs', value: tokenizers.length + (customTokenizerName ? 1 : 0) },
       {
         label: 'Avg. throughput',
-        value: benchmarkResult?.global_metrics?.[0]?.tokenization_speed_tps
-          ? `${Math.round(benchmarkResult.global_metrics[0].tokenization_speed_tps).toLocaleString()} tok/s`
+        value: benchmarkResult?.tokenizer_results?.[0]?.efficiency?.encode_tokens_per_second_mean
+          ? `${Math.round(benchmarkResult.tokenizer_results[0].efficiency.encode_tokens_per_second_mean).toLocaleString()} tok/s`
           : '0 tok/s'
       },
       { label: 'Custom tokenizer', value: customTokenizerName ? 'loaded' : 'none' },
@@ -80,21 +80,18 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
   );
 
   const vocabularyChartData = useMemo(() => {
-    if (!benchmarkResult?.chart_data?.vocabulary_stats) return [];
-    return benchmarkResult.chart_data.vocabulary_stats.map((stat) => ({
+    if (!benchmarkResult?.chart_data?.vocabulary) return [];
+    return benchmarkResult.chart_data.vocabulary.map((stat) => ({
       name: stat.tokenizer.split('/').pop() || stat.tokenizer,
-      'Vocabulary Size': stat.vocabulary_size,
-      Subwords: stat.subwords_count,
-      'True Words': stat.true_words_count,
+      'Vocabulary Size': stat.value,
     }));
   }, [benchmarkResult]);
 
   const speedChartData = useMemo(() => {
-    if (!benchmarkResult?.chart_data?.speed_metrics) return [];
-    return benchmarkResult.chart_data.speed_metrics.map((stat) => ({
+    if (!benchmarkResult?.chart_data?.efficiency) return [];
+    return benchmarkResult.chart_data.efficiency.map((stat) => ({
       name: stat.tokenizer.split('/').pop() || stat.tokenizer,
-      'Tokens/sec': Math.round(stat.tokens_per_second),
-      'Chars/sec': Math.round(stat.chars_per_second),
+      'Tokens/sec': Math.round(stat.value),
     }));
   }, [benchmarkResult]);
 
@@ -349,7 +346,6 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
                   />
                   <Legend />
                   <Bar dataKey="Tokens/sec" fill="#81c784" radius={[0, 4, 4, 0]} />
-                  <Bar dataKey="Chars/sec" fill="#ffb74d" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

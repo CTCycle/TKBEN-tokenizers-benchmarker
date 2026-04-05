@@ -255,7 +255,15 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
             const response = await runBenchmarks({
                 tokenizers,
                 dataset_name: selectedDataset,
-                max_documents: maxDocuments,
+                config: {
+                    max_documents: maxDocuments,
+                    warmup_trials: 2,
+                    timed_trials: 8,
+                    batch_size: 16,
+                    seed: 42,
+                    parallelism: 1,
+                    include_lm_metrics: false,
+                },
                 custom_tokenizer_name: customTokenizerName || undefined,
             }, (status) => setBenchmarkProgress(status.progress));
             setBenchmarkResult(response);

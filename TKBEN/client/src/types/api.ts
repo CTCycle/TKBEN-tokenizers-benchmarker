@@ -277,81 +277,108 @@ export interface DatasetListResponse {
 /**
  * Global metrics for a single tokenizer benchmark
  */
-export interface GlobalMetrics {
+export interface BenchmarkRunConfig {
+    max_documents?: number;
+    warmup_trials: number;
+    timed_trials: number;
+    batch_size: number;
+    seed: number;
+    parallelism: number;
+    include_lm_metrics: boolean;
+}
+
+export interface BenchmarkHardwareProfile {
+    runtime: string;
+    os: string;
+    cpu_model?: string | null;
+    cpu_logical_cores?: number | null;
+    memory_total_mb?: number | null;
+}
+
+export interface BenchmarkTrialSummary {
+    warmup_trials: number;
+    timed_trials: number;
+}
+
+export interface BenchmarkEfficiencyMetrics {
+    encode_tokens_per_second_mean: number;
+    encode_tokens_per_second_ci95_low: number;
+    encode_tokens_per_second_ci95_high: number;
+    encode_chars_per_second_mean: number;
+    encode_bytes_per_second_mean: number;
+    end_to_end_wall_time_seconds: number;
+    load_time_seconds: number;
+}
+
+export interface BenchmarkLatencyMetrics {
+    encode_latency_p50_ms: number;
+    encode_latency_p95_ms: number;
+    encode_latency_p99_ms: number;
+}
+
+export interface BenchmarkFidelityMetrics {
+    exact_round_trip_rate: number;
+    normalized_round_trip_rate: number;
+    unknown_token_rate: number;
+    byte_fallback_rate: number;
+    lossless_encodability_rate: number;
+}
+
+export interface BenchmarkFragmentationBucket {
+    bucket: string;
+    pieces_per_word_mean: number;
+}
+
+export interface BenchmarkFragmentationMetrics {
+    tokens_per_character: number;
+    characters_per_token: number;
+    tokens_per_byte: number;
+    bytes_per_token: number;
+    pieces_per_word_mean: number;
+    fragmentation_by_word_length_bucket: BenchmarkFragmentationBucket[];
+}
+
+export interface BenchmarkResourceMetrics {
+    peak_rss_mb: number;
+    memory_delta_mb: number;
+}
+
+export interface BenchmarkTokenizerResult {
     tokenizer: string;
-    dataset_name: string;
-    tokenization_speed_tps: number;
-    throughput_chars_per_sec: number;
-    processing_time_seconds: number;
+    tokenizer_family: string;
+    runtime_backend: string;
     vocabulary_size: number;
-    avg_sequence_length: number;
-    median_sequence_length: number;
-    subword_fertility: number;
-    oov_rate: number;
-    word_recovery_rate: number;
-    character_coverage: number;
-    determinism_rate: number;
-    boundary_preservation_rate: number;
-    round_trip_fidelity_rate: number;
-    model_size_mb?: number;
-    segmentation_consistency?: number;
-    token_distribution_entropy?: number;
-    rare_token_tail_1?: number;
-    rare_token_tail_2?: number;
-    compression_chars_per_token?: number;
-    compression_bytes_per_character?: number;
-    round_trip_text_fidelity_rate?: number;
-    token_id_ordering_monotonicity?: number;
-    token_unigram_coverage?: number;
+    added_tokens: number;
+    special_token_share: number;
+    efficiency: BenchmarkEfficiencyMetrics;
+    latency: BenchmarkLatencyMetrics;
+    fidelity: BenchmarkFidelityMetrics;
+    fragmentation: BenchmarkFragmentationMetrics;
+    resources: BenchmarkResourceMetrics;
 }
 
-/**
- * Vocabulary statistics for chart
- */
-export interface VocabularyStats {
+export interface BenchmarkSeriesPoint {
     tokenizer: string;
-    vocabulary_size: number;
-    subwords_count: number;
-    true_words_count: number;
-    subwords_percentage: number;
+    value: number;
+    ci95_low?: number;
+    ci95_high?: number;
 }
 
-/**
- * Token length histogram bin
- */
-export interface TokenLengthBin {
-    bin_start: number;
-    bin_end: number;
-    count: number;
-}
-
-/**
- * Token length distribution for a tokenizer
- */
-export interface TokenLengthDistribution {
+export interface BenchmarkDistributionPoint {
     tokenizer: string;
-    bins: TokenLengthBin[];
-    mean: number;
-    std: number;
+    min: number;
+    q1: number;
+    median: number;
+    q3: number;
+    max: number;
 }
 
-/**
- * Speed metrics for comparison
- */
-export interface SpeedMetric {
-    tokenizer: string;
-    tokens_per_second: number;
-    chars_per_second: number;
-    processing_time_seconds: number;
-}
-
-/**
- * Chart data for frontend visualization
- */
-export interface ChartData {
-    vocabulary_stats: VocabularyStats[];
-    token_length_distributions: TokenLengthDistribution[];
-    speed_metrics: SpeedMetric[];
+export interface BenchmarkChartDataV2 {
+    efficiency: BenchmarkSeriesPoint[];
+    fidelity: BenchmarkSeriesPoint[];
+    vocabulary: BenchmarkSeriesPoint[];
+    fragmentation: BenchmarkSeriesPoint[];
+    latency_or_memory_distribution: BenchmarkDistributionPoint[];
 }
 
 /**
@@ -360,7 +387,7 @@ export interface ChartData {
 export interface BenchmarkRunRequest {
     tokenizers: string[];
     dataset_name: string;
-    max_documents?: number;
+    config: BenchmarkRunConfig;
     custom_tokenizer_name?: string;
     run_name?: string | null;
     selected_metric_keys?: string[] | null;
@@ -368,14 +395,11 @@ export interface BenchmarkRunRequest {
 
 export interface BenchmarkPerDocumentTokenizerStats {
     tokenizer: string;
-    tokens_count: number[];
-    tokens_to_words_ratio: number[];
+    tokens_count?: number[];
+    pieces_per_word?: number[];
     bytes_per_token: number[];
-    boundary_preservation_rate: number[];
-    round_trip_token_fidelity: number[];
-    round_trip_text_fidelity: number[];
-    determinism_stability: number[];
-    bytes_per_character: number[];
+    encode_latency_ms?: number[];
+    peak_rss_mb?: number[];
 }
 
 export interface BenchmarkMetricCatalogMetric {
@@ -426,37 +450,26 @@ export interface TokenizerValidationGenerateRequest {
     tokenizer_name: string;
 }
 
-export interface TokenizerSubwordWordStats {
-    heuristic: string;
-    subword_count: number;
-    word_count: number;
-    considered_count: number;
-    subword_percentage: number;
-    word_percentage: number;
-    subword_to_word_ratio: number | null;
-}
-
 export interface TokenizerVocabularyStats {
-    heuristic?: string | null;
     min_token_length?: number | null;
     mean_token_length?: number | null;
     median_token_length?: number | null;
     max_token_length?: number | null;
-    subword_like_count?: number | null;
-    subword_like_percentage?: number | null;
+    mean_token_bytes?: number | null;
+    token_string_entropy?: number | null;
     special_tokens_in_vocab_count?: number | null;
     special_tokens_in_vocab_percentage?: number | null;
-    unique_token_lengths?: number | null;
-    empty_token_count?: number | null;
-    considered_non_special_count?: number | null;
+    byte_fallback_support?: boolean | null;
+    unknown_token_representation?: string | null;
+    normalization_behavior?: string | null;
+    vocabulary_density?: number | null;
 }
 
 export interface TokenizerGlobalStats extends Record<string, unknown> {
     vocabulary_size?: number;
     base_vocabulary_size?: number | null;
-    tokenizer_algorithm?: string | null;
-    tokenizer_class?: string | null;
-    backend_tokenizer_class?: string | null;
+    tokenizer_family?: string | null;
+    runtime_backend?: string | null;
     has_special_tokens?: boolean;
     special_tokens?: string[];
     special_tokens_count?: number;
@@ -464,12 +477,14 @@ export interface TokenizerGlobalStats extends Record<string, unknown> {
     model_max_length?: number | null;
     padding_side?: string | null;
     added_tokens_count?: number;
-    do_lower_case?: boolean | null;
-    normalization_hint?: string | null;
+    normalization_policy?: string | null;
+    pretokenization_policy?: string | null;
+    fallback_policy?: string | null;
+    unknown_token_policy?: string | null;
+    byte_fallback_enabled?: boolean | null;
     token_length_measure?: string | null;
     persistence_mode?: string;
     persistence_reason?: string;
-    subword_word_stats?: TokenizerSubwordWordStats;
     vocabulary_stats?: TokenizerVocabularyStats;
 }
 
@@ -516,8 +531,11 @@ export interface BenchmarkRunResponse {
     documents_processed: number;
     tokenizers_processed: string[];
     tokenizers_count: number;
-    global_metrics: GlobalMetrics[];
-    chart_data: ChartData;
+    config: BenchmarkRunConfig;
+    hardware_profile: BenchmarkHardwareProfile;
+    trial_summary: BenchmarkTrialSummary;
+    tokenizer_results: BenchmarkTokenizerResult[];
+    chart_data: BenchmarkChartDataV2;
     per_document_stats: BenchmarkPerDocumentTokenizerStats[];
 }
 
