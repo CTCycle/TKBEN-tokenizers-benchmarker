@@ -445,11 +445,11 @@ const parseZipfCurve = (value: unknown): Array<{ rank: number; frequency: number
   return [];
 };
 
-const tooltipPercentFormatter = (value: number | string | undefined): string =>
+const tooltipPercentFormatter = (value: unknown): string =>
   normalizePercent(toNumber(value, 0));
 
 const tooltipCountFormatter = (
-  value: number | string | undefined,
+  value: unknown,
 ): [string, 'count'] => [normalizeCount(toNumber(value, 0)), 'count'];
 
 const buildZipfCurveFromWordFrequencies = (
@@ -549,8 +549,8 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
 
   const zipfCurve = useMemo(() => {
     const parsed = parseZipfCurve(
-      aggregate['words.zipf_curve']
-      ?? aggregate['words.zipf']
+      aggregate['lexical.zipf_curve']
+      ?? aggregate['lexical.zipf']
       ?? aggregate.zipf_curve
       ?? aggregate.zipfCurve,
     );
@@ -563,10 +563,10 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
   const shannonEntropy = toNumber(aggregate['words.shannon_entropy']);
   const hasEntropyGauge = hasMetricValue(aggregate['words.normalized_entropy']);
   const hasShannonEntropy = hasMetricValue(aggregate['words.shannon_entropy']);
-  const duplicateRate = toNumber(aggregate['quality.duplicate_rate']);
-  const nearDuplicateRate = toNumber(aggregate['quality.near_duplicate_rate']);
-  const topKConcentration = toNumber(aggregate['words.topk_concentration']);
-  const rareTailMass = toNumber(aggregate['words.rare_tail_mass']);
+  const duplicateRate = toNumber(aggregate['quality.duplicate_document_rate']);
+  const nearDuplicateRate = toNumber(aggregate['quality.near_duplicate_document_rate']);
+  const topKConcentration = toNumber(aggregate['lexical.topk_concentration']);
+  const rareTailMass = toNumber(aggregate['lexical.tail_mass']);
 
   const aggregateRows = [
     { label: 'Num documents', value: normalizeCount(documentCount) },
@@ -598,7 +598,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
       { key: 'Uppercase', value: toNumber(aggregate['chars.uppercase_ratio']) },
       { key: 'Non-ASCII', value: toNumber(aggregate['chars.non_ascii_ratio']) },
       { key: 'Control', value: toNumber(aggregate['chars.control_ratio']) },
-      { key: 'Other', value: toNumber(aggregate['chars.other_ratio']) },
+      { key: 'Symbols', value: toNumber(aggregate['chars.symbol_ratio']) },
     ];
     return rows.filter((item) => item.value > 0);
   }, [aggregate]);

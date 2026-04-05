@@ -21,6 +21,7 @@ from TKBEN.server.common.utils.logger import logger
 ###############################################################################
 class SQLiteRepository:
     IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+    SQLITE_MAX_VARIABLES = 999
 
     def __init__(
         self, settings: DatabaseSettings, initialize_schema: bool = False
@@ -87,6 +88,14 @@ class SQLiteRepository:
             )
 
     # -------------------------------------------------------------------------
+    def _effective_batch_size(self, row_sample: dict[str, Any] | None) -> int:
+        if not row_sample:
+            return self.insert_batch_size
+        columns_per_row = max(1, len(row_sample))
+        sqlite_cap = max(1, self.SQLITE_MAX_VARIABLES // columns_per_row)
+        return max(1, min(self.insert_batch_size, sqlite_cap))
+
+    # -------------------------------------------------------------------------
     def upsert_dataframe(self, df: pd.DataFrame, table_cls) -> None:
         table = table_cls.__table__
         session = self.session()
@@ -101,8 +110,9 @@ class SQLiteRepository:
             if not unique_cols:
                 raise ValueError(f"No unique constraint found for {table_cls.__name__}")
             records = df.to_dict(orient="records")
-            for i in range(0, len(records), self.insert_batch_size):
-                batch = records[i : i + self.insert_batch_size]
+            batch_size = self._effective_batch_size(records[0] if records else None)
+            for i in range(0, len(records), batch_size):
+                batch = records[i : i + batch_size]
                 if not batch:
                     continue
                 stmt = insert(table).values(batch)
@@ -168,8 +178,8 @@ class SQLiteRepository:
         table_cls = self.get_table_class(table_name)
         table = table_cls.__table__
 
-        batch_size = self.insert_batch_size
         records = df.to_dict(orient="records")
+        batch_size = self._effective_batch_size(records[0] if records else None)
         session = self.session()
         try:
             for start in range(0, total_rows, batch_size):

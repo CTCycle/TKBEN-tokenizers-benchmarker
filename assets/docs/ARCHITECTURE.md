@@ -85,6 +85,15 @@ Benchmarks:
 - `GET /benchmarks/reports/{report_id}`
 - `GET /benchmarks/metrics/catalog`
 
+Benchmark payload contract:
+- `report_version=2` for the active benchmark dashboard contract.
+- V2 benchmark payload centers on:
+  - `config` (warmup/timed trials, batch size, seed, parallelism)
+  - `hardware_profile`
+  - `trial_summary`
+  - `tokenizer_results` grouped by efficiency/latency/fidelity/fragmentation/resources
+  - `chart_data` with V2 series groups for efficiency/fidelity/vocabulary/fragmentation/distribution
+
 Exports:
 - `POST /exports/dashboard/pdf` (returns generated PDF bytes)
 
@@ -118,7 +127,7 @@ Covered workflows:
 Main ORM tables in `TKBEN/server/repositories/schemas/models.py`:
 - `dataset`, `dataset_document`
 - `analysis_session`, `metric_type`, `metric_value`, `histogram_artifact`
-- `dataset_report`, `dataset_validation_report`
+- `dataset_validation_report`
 - `tokenizer`, `tokenizer_report`, `tokenizer_vocabulary`, `tokenizer_vocabulary_statistics`
 - `tokenization_document_stats`, `tokenization_dataset_stats`, `tokenization_dataset_stats_detail`
 - `benchmark_report`

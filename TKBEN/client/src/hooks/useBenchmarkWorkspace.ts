@@ -16,7 +16,15 @@ import type {
 export type BenchmarkRunPayload = {
   tokenizers: string[];
   dataset_name: string;
-  max_documents: number;
+  config: {
+    max_documents?: number;
+    warmup_trials: number;
+    timed_trials: number;
+    batch_size: number;
+    seed: number;
+    parallelism: number;
+    include_lm_metrics: boolean;
+  };
   run_name: string;
   selected_metric_keys: string[];
 };
