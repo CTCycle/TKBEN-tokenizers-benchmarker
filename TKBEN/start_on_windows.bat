@@ -156,9 +156,9 @@ REM == Load env overrides (needed before dependency install)
 REM ============================================================================
 :load_env
 set "FASTAPI_HOST=127.0.0.1"
-set "FASTAPI_PORT=8000"
+set "FASTAPI_PORT=5000"
 set "UI_HOST=127.0.0.1"
-set "UI_PORT=8001"
+set "UI_PORT=8000"
 set "RELOAD=false"
 set "OPTIONAL_DEPENDENCIES=false"
 

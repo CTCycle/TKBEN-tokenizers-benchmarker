@@ -99,14 +99,8 @@ class ServerSettings:
 # [BUILDER FUNCTIONS]
 ###############################################################################
 def build_database_settings(payload: dict[str, Any] | Any) -> DatabaseSettings:
-    embedded_value = env_variables.get("DB_EMBEDDED")
-    if embedded_value is None:
-        embedded_value = payload.get("embedded_database")
-    embedded = coerce_bool(embedded_value, True)
-
-    insert_batch_value = env_variables.get("DB_INSERT_BATCH_SIZE") or payload.get(
-        "insert_batch_size"
-    )
+    embedded = coerce_bool(payload.get("embedded_database"), True)
+    insert_batch_value = payload.get("insert_batch_size")
     if embedded:
         return DatabaseSettings(
             embedded_database=True,
@@ -118,44 +112,27 @@ def build_database_settings(payload: dict[str, Any] | Any) -> DatabaseSettings:
             password=None,
             ssl=False,
             ssl_ca=None,
-            connect_timeout=coerce_int(
-                env_variables.get("DB_CONNECT_TIMEOUT")
-                or payload.get("connect_timeout"),
-                10,
-                minimum=1,
-            ),
+            connect_timeout=coerce_int(payload.get("connect_timeout"), 10, minimum=1),
             insert_batch_size=coerce_int(insert_batch_value, 1000, minimum=1),
         )
 
     engine_value = (
-        coerce_str_or_none(env_variables.get("DB_ENGINE"))
-        or coerce_str_or_none(payload.get("engine"))
+        coerce_str_or_none(payload.get("engine"))
         or "postgres"
     )
     normalized_engine = engine_value.lower() if engine_value else None
 
-    host_value = env_variables.get("DB_HOST") or payload.get("host")
-    port_value = env_variables.get("DB_PORT") or payload.get("port")
-    name_value = env_variables.get("DB_NAME") or payload.get("database_name")
-    user_value = env_variables.get("DB_USER") or payload.get("username")
-    password_value = env_variables.get("DB_PASSWORD") or payload.get("password")
-    ssl_value = env_variables.get("DB_SSL") or payload.get("ssl")
-    ssl_ca_value = env_variables.get("DB_SSL_CA") or payload.get("ssl_ca")
-    timeout_value = env_variables.get("DB_CONNECT_TIMEOUT") or payload.get(
-        "connect_timeout"
-    )
-
     return DatabaseSettings(
         embedded_database=False,
         engine=normalized_engine,
-        host=coerce_str_or_none(host_value),
-        port=coerce_int(port_value, 5432, minimum=1, maximum=65535),
-        database_name=coerce_str_or_none(name_value),
-        username=coerce_str_or_none(user_value),
-        password=coerce_str_or_none(password_value),
-        ssl=coerce_bool(ssl_value, False),
-        ssl_ca=coerce_str_or_none(ssl_ca_value),
-        connect_timeout=coerce_int(timeout_value, 10, minimum=1),
+        host=coerce_str_or_none(payload.get("host")),
+        port=coerce_int(payload.get("port"), 5432, minimum=1, maximum=65535),
+        database_name=coerce_str_or_none(payload.get("database_name")),
+        username=coerce_str_or_none(payload.get("username")),
+        password=coerce_str_or_none(payload.get("password")),
+        ssl=coerce_bool(payload.get("ssl"), False),
+        ssl_ca=coerce_str_or_none(payload.get("ssl_ca")),
+        connect_timeout=coerce_int(payload.get("connect_timeout"), 10, minimum=1),
         insert_batch_size=coerce_int(insert_batch_value, 1000, minimum=1),
     )
 

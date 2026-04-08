@@ -1,4 +1,6 @@
 # Windows Desktop Release v2.1.0 (2026-03-25)
+Last updated: 2026-04-08
+
 
 ## Scope
 Release record for the Windows desktop package built through the Tauri workflow.

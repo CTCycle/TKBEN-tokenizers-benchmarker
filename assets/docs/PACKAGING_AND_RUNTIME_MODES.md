@@ -1,14 +1,15 @@
 # Packaging and Runtime Modes (TKBEN)
+Last updated: 2026-04-08
+
 
 ## 1. Runtime Profiles
 Active runtime profile:
 - `TKBEN/settings/.env`
 
-Profile templates:
-- `TKBEN/settings/.env.local.example`
-- `TKBEN/settings/.env.local.tauri.example`
+Single template:
+- `TKBEN/settings/.env.example`
 
-Non-env defaults:
+Structured backend configuration:
 - `TKBEN/settings/configurations.json`
 
 ## 2. Local Webapp Mode (Default)
@@ -21,18 +22,18 @@ Behavior:
 - installs/builds frontend assets as needed
 - starts backend (`uvicorn`) and frontend preview server
 
-Local profile defaults (`.env.local.example`):
+Default runtime values (`.env.example`):
 - backend: `127.0.0.1:5000`
 - frontend: `127.0.0.1:8000`
 
 Launcher hardcoded fallback if `.env` is missing:
 - backend: `127.0.0.1:5000`
-- frontend: `127.0.0.1:8001`
+- frontend: `127.0.0.1:8000`
 
 ## 3. Packaged Desktop Mode (Tauri)
-Prepare desktop profile:
+Prepare runtime env file:
 ```bat
-copy /Y TKBEN\settings\.env.local.tauri.example TKBEN\settings\.env
+copy /Y TKBEN\settings\.env.example TKBEN\settings\.env
 ```
 
 Provision runtimes if needed:
@@ -58,27 +59,20 @@ Packaged behavior:
 - Exported artifacts land in `release/windows/installers` and `release/windows/portable`.
 
 ## 4. Database Modes
-- Embedded mode (`DB_EMBEDDED=true`):
+- Embedded mode (`database.embedded_database=true` in `configurations.json`):
   - SQLite at `TKBEN/resources/database.db`
-- External mode (`DB_EMBEDDED=false`):
-  - PostgreSQL via `DB_*` environment variables
+- External mode (`database.embedded_database=false`):
+  - PostgreSQL via `database.*` fields in `configurations.json`
 
 ## 5. Critical Environment Keys
 - `FASTAPI_HOST`, `FASTAPI_PORT`
 - `UI_HOST`, `UI_PORT`
 - `VITE_API_BASE_URL` (expected `/api`)
 - `RELOAD`
-- `DB_EMBEDDED`, `DB_ENGINE`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
-- `DB_SSL`, `DB_SSL_CA`, `DB_CONNECT_TIMEOUT`, `DB_INSERT_BATCH_SIZE`
+- `KERAS_BACKEND`, `MPLBACKEND`
 - `OPTIONAL_DEPENDENCIES`
 - `ALLOW_KEY_REVEAL`
 - `HF_KEYS_ENCRYPTION_KEY`
-
-Tauri profile baseline (`.env.local.tauri.example`):
-- loopback hosts
-- `VITE_API_BASE_URL=/api`
-- `RELOAD=false`
-- `OPTIONAL_DEPENDENCIES=false`
 
 ## 6. Reproducibility Anchors
 - Backend dependency lock: `runtimes/uv.lock`

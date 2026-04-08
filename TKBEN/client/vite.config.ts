@@ -10,9 +10,9 @@ export default defineConfig(({ mode }) => {
   const env = { ...localEnv, ...settingsEnv }
 
   const fastapiHost = env.FASTAPI_HOST || '127.0.0.1'
-  const fastapiPort = Number(env.FASTAPI_PORT || 8000)
+  const fastapiPort = Number(env.FASTAPI_PORT || 5000)
   const uiHost = env.UI_HOST || '127.0.0.1'
-  const uiPort = Number(env.UI_PORT || 5173)
+  const uiPort = Number(env.UI_PORT || 8000)
   const apiBase = env.VITE_API_BASE_URL || '/api'
   const apiBasePath = apiBase.startsWith('/') ? apiBase : `/${apiBase}`
   const apiBaseRegex = new RegExp(
