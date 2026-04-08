@@ -50,7 +50,7 @@ fn parse_boolish(raw: &str) -> bool {
 fn resolve_backend_launch_config(env_path: &Path) -> BackendLaunchConfig {
     let mut config = BackendLaunchConfig {
         host: String::from("127.0.0.1"),
-        port: 8000u16,
+        port: 5000u16,
         reload: false,
         install_extras: false,
     };

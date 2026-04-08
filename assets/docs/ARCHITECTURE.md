@@ -1,9 +1,10 @@
 # TKBEN Architecture
+Last updated: 2026-04-08
 
 ## 1. Purpose
 TKBEN is a tokenizer benchmarking application that supports:
 - dataset ingestion (Hugging Face download + local upload)
-- dataset analysis and persisted reports
+- dataset validation/analysis and persisted reports
 - tokenizer discovery/download/reporting
 - cross-tokenizer benchmark execution with persisted results
 - dashboard PDF export for benchmark/report views
@@ -13,7 +14,7 @@ TKBEN is a tokenizer benchmarking application that supports:
 - Backend: FastAPI service in `TKBEN/server`
 - Persistence:
   - default embedded SQLite (`TKBEN/resources/database.db`)
-  - optional PostgreSQL (`DB_EMBEDDED=false`)
+  - optional PostgreSQL (`TKBEN/settings/configurations.json` -> `database.embedded_database=false`)
 - External services: Hugging Face datasets/tokenizers APIs
 
 ## 3. Frontend Structure
@@ -86,8 +87,9 @@ Benchmarks:
 - `GET /benchmarks/metrics/catalog`
 
 Benchmark payload contract:
-- `report_version=2` for the active benchmark dashboard contract.
-- V2 benchmark payload centers on:
+- benchmark API responses use `report_version=2` payload fields.
+- benchmark persistence table currently stores report metadata with default ORM `report_version=1` and JSON payload.
+- active payload centers on:
   - `config` (warmup/timed trials, batch size, seed, parallelism)
   - `hardware_profile`
   - `trial_summary`

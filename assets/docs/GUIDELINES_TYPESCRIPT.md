@@ -1,4 +1,6 @@
 # TypeScript Guidelines (TKBEN Client)
+Last updated: 2026-04-08
+
 
 ## 1. Stack Baseline
 - React 19 + TypeScript + Vite

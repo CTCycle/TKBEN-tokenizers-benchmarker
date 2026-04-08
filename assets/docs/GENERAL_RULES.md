@@ -1,3 +1,5 @@
+Last updated: 2026-04-08
+
 ## WEB SEARCH
 Use web search when external facts or version-sensitive information must be verified.
 For repository-local behavior, prefer source code and scripts in this workspace.
@@ -12,8 +14,19 @@ Before any task, review the relevant files in `assets/docs`:
 - `GUIDELINES_TYPESCRIPT.md` (when changing TypeScript code)
 - `GUIDELINES_TESTS.md` (when adding/updating tests)
 - `PACKAGING_AND_RUNTIME_MODES.md` (when changing runtime/bootstrap/packaging)
-- `README_WRITING.md` (when changing README content)
+- `USER_MANUAL.md` (when changing user-facing workflows and usage guidance)
 - `WINDOWS_DESKTOP_RELEASE_2026-03-25.md` (when changing Windows release process or artifacts)
+
+Complete documentation inventory in `assets/docs`:
+- `ARCHITECTURE.md`
+- `BACKGROUND_JOBS.md`
+- `GENERAL_RULES.md`
+- `GUIDELINES_PYTHON.md`
+- `GUIDELINES_TESTS.md`
+- `GUIDELINES_TYPESCRIPT.md`
+- `PACKAGING_AND_RUNTIME_MODES.md`
+- `USER_MANUAL.md`
+- `WINDOWS_DESKTOP_RELEASE_2026-03-25.md`
 
 ## SKILLS REFERENCE
 When a task matches an available skill workflow, use the relevant skill instructions from the active skills repository.

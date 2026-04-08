@@ -1,4 +1,6 @@
 # Python Guidelines (TKBEN)
+Last updated: 2026-04-08
+
 
 ## 1. Scope
 Apply these rules to:

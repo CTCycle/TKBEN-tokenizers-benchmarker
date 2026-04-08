@@ -4,10 +4,6 @@
 
 TKBEN is a tokenizer benchmarking platform for text datasets and tokenizer assets.
 
-The application is organized as:
-- **Backend**: FastAPI services for data ingestion, tokenizer operations, benchmark jobs, and persisted reports.
-- **Frontend**: React-based UI for dataset management, tokenizer analysis, and cross-benchmark reporting.
-
 Main workflow routes:
 - `/dataset`
 - `/tokenizers`
@@ -16,7 +12,7 @@ Main workflow routes:
 Runtime model:
 - **Local webapp mode (default)**: run directly on host via `TKBEN/start_on_windows.bat`.
 - **Packaged desktop mode**: build and run the local Tauri package.
-- **Mode switch**: replace values in `TKBEN/settings/.env` using local profile templates.
+- **Single runtime env file**: edit `TKBEN/settings/.env` (seed from `TKBEN/settings/.env.example`).
 
 Default embedded storage is the SQLite file at `TKBEN/resources/database.db`.
 
@@ -42,7 +38,7 @@ Prerequisites:
 - Rust toolchain (`cargo`) with a default toolchain configured.
 
 ```bat
-copy /Y TKBEN\settings\.env.local.tauri.example TKBEN\settings\.env
+copy /Y TKBEN\settings\.env.example TKBEN\settings\.env
 .\release\tauri\build_with_tauri.bat
 ```
 
@@ -71,18 +67,13 @@ copy /Y TKBEN\settings\.env.local.tauri.example TKBEN\settings\.env
 
 ## 3. How to Use
 
-### 3.1 Mode Switching (`.env` Profiles)
+### 3.1 Runtime Configuration (`.env`)
 
-Use `TKBEN/settings/.env` as the active runtime file.
+Use `TKBEN/settings/.env` as the active runtime file for both local webapp mode and packaged desktop mode.
 
-Local webapp profile:
+Initialize from the single template:
 ```bat
-copy /Y TKBEN\settings\.env.local.example TKBEN\settings\.env
-```
-
-Local packaged desktop profile (Tauri):
-```bat
-copy /Y TKBEN\settings\.env.local.tauri.example TKBEN\settings\.env
+copy /Y TKBEN\settings\.env.example TKBEN\settings\.env
 ```
 
 ### 3.2 Local Webapp Mode (Default)
@@ -99,7 +90,7 @@ Runtime addresses are taken from `TKBEN/settings/.env`:
 ### 3.3 Packaged Desktop Mode (Tauri)
 
 ```bat
-copy /Y TKBEN\settings\.env.local.tauri.example TKBEN\settings\.env
+copy /Y TKBEN\settings\.env.example TKBEN\settings\.env
 .\release\tauri\build_with_tauri.bat
 ```
 
@@ -158,30 +149,21 @@ Key paths:
 - `TKBEN/resources/logs`: Launcher and backend logs.
 - `runtimes`: Portable Windows runtimes.
 - `assets/docs/PACKAGING_AND_RUNTIME_MODES.md`: Runtime packaging and mode details.
+- `assets/docs/USER_MANUAL.md`: End-user journeys, commands, and feature usage.
 
 ## 6. Configuration
 
 Configuration is split between:
-- `TKBEN/settings/.env`: Active runtime profile used by launcher, local runs, and desktop packaging.
-- `TKBEN/settings/.env.local.example`: Reference local profile.
-- `TKBEN/settings/.env.local.tauri.example`: Reference Tauri-local profile.
-- `TKBEN/settings/configurations.json`: Backend operational defaults.
+- `TKBEN/settings/.env`: Active runtime/process configuration used by launcher, tests, frontend dev/preview, and desktop startup.
+- `TKBEN/settings/.env.example`: Single template for `.env`.
+- `TKBEN/settings/configurations.json`: Backend structured settings, including all database mode/connection/tuning values.
 
-Core runtime keys:
-
-| Key | Purpose |
-|---|---|
-| `FASTAPI_HOST`, `FASTAPI_PORT` | Backend bind host/port. |
-| `UI_HOST`, `UI_PORT` | Frontend host/port for local webapp and packaged desktop runtime. |
-| `VITE_API_BASE_URL` | Frontend API base path (`/api`). |
-| `RELOAD` | Backend live reload toggle for local development. |
-| `DB_EMBEDDED` | Runtime DB mode switch (`true` = SQLite, `false` = external DB). |
-| `DB_ENGINE`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | External DB connection fields. |
-| `DB_SSL`, `DB_SSL_CA` | External DB TLS settings. |
-| `DB_CONNECT_TIMEOUT`, `DB_INSERT_BATCH_SIZE` | DB connection/write tuning. |
-| `OPTIONAL_DEPENDENCIES` | Optional test dependency installation toggle in local launcher flow. |
-| `MPLBACKEND`, `KERAS_BACKEND` | Runtime backend settings for plotting/ML stack. |
-| `HF_KEYS_ENCRYPTION_KEY` | Required key-management encryption secret. |
+Core runtime keys you will commonly edit:
+- `FASTAPI_HOST`, `FASTAPI_PORT`
+- `UI_HOST`, `UI_PORT`
+- `VITE_API_BASE_URL` (normally `/api`)
+- `RELOAD`
+- `HF_KEYS_ENCRYPTION_KEY`
 
 Determinism:
 - Backend lockfile: `runtimes/uv.lock` (copied to root `uv.lock` before `uv sync --frozen`, then copied back).
