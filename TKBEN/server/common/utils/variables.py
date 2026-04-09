@@ -1,23 +1,14 @@
 from __future__ import annotations
 
 import os
-from dotenv import load_dotenv
 
-from TKBEN.server.common.constants import ENV_FILE_PATH
-from TKBEN.server.common.utils.logger import logger
+from TKBEN.server.configurations.bootstrap import ensure_environment_loaded
 
 
 ###############################################################################
 class EnvironmentVariables:
     def __init__(self) -> None:
-        self.env_path = ENV_FILE_PATH
-        if os.path.exists(self.env_path):
-            load_dotenv(self.env_path)
-        else:
-            logger.info(
-                "Environment file not found at %s; default values will be used",
-                self.env_path,
-            )
+        self.env_path = ensure_environment_loaded()
 
     # -------------------------------------------------------------------------
     def get(self, key: str, default: str | None = None) -> str | None:

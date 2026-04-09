@@ -12,7 +12,7 @@ from TKBEN.server.common.constants import (
     API_ROUTER_PREFIX_KEYS,
 )
 from TKBEN.server.common.utils.types import coerce_bool
-from TKBEN.server.common.utils.variables import env_variables
+from TKBEN.server.configurations import get_app_settings
 from TKBEN.server.domain.keys import (
     HFAccessKeyActivateResponse,
     HFAccessKeyCreateRequest,
@@ -36,8 +36,9 @@ ALLOW_KEY_REVEAL_DEFAULT = False
 
 ###############################################################################
 def is_key_reveal_enabled() -> bool:
+    app_settings = get_app_settings()
     return coerce_bool(
-        env_variables.get("ALLOW_KEY_REVEAL"),
+        app_settings.allow_key_reveal,
         ALLOW_KEY_REVEAL_DEFAULT,
     )
 
