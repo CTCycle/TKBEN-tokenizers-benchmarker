@@ -237,6 +237,11 @@ const BenchmarkRunWizard = ({
                 <p className="panel-description">
                   Selected {selectedTokenizers.length} of {MAX_SELECTED_TOKENIZERS}
                 </p>
+                {selectedTokenizers.length === 0 && (
+                  <p className="benchmark-wizard-validation-message" role="status">
+                    Select at least one tokenizer to continue.
+                  </p>
+                )}
                 <div className="benchmark-wizard-tokenizer-list">
                   {availableTokenizers.length === 0 ? (
                     <div className="chart-placeholder">

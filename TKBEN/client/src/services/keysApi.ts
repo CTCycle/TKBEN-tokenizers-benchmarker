@@ -5,14 +5,56 @@ import type {
     HFAccessKeyRevealResponse,
 } from '../types/api';
 
+const formatApiErrorDetail = (detail: unknown): string | null => {
+    if (typeof detail === 'string' && detail.trim()) {
+        return detail;
+    }
+    if (Array.isArray(detail)) {
+        const messages = detail
+            .map((item) => {
+                if (!item || typeof item !== 'object') {
+                    return null;
+                }
+                const payload = item as Record<string, unknown>;
+                const field = Array.isArray(payload.loc)
+                    ? payload.loc.filter((part) => typeof part === 'string' || typeof part === 'number').join('.')
+                    : '';
+                const message = typeof payload.msg === 'string' ? payload.msg : null;
+                if (!message) {
+                    return null;
+                }
+                return field ? `${field}: ${message}` : message;
+            })
+            .filter((message): message is string => message !== null);
+        return messages.length > 0 ? messages.join(' ') : null;
+    }
+    if (detail && typeof detail === 'object') {
+        const payload = detail as Record<string, unknown>;
+        if (typeof payload.message === 'string') {
+            return payload.message;
+        }
+        if (typeof payload.msg === 'string') {
+            return payload.msg;
+        }
+    }
+    return null;
+};
+
+const readKeyApiError = async (response: Response, fallback: string): Promise<Error> => {
+    const errorData = await response.json().catch((): { detail: string } => ({ detail: 'Unknown error' }));
+    const detail = errorData && typeof errorData === 'object'
+        ? (errorData as Record<string, unknown>).detail
+        : errorData;
+    return new Error(formatApiErrorDetail(detail) || `${fallback}: ${response.status}`);
+};
+
 /**
  * Fetch all stored Hugging Face keys (masked previews only).
  */
 export async function fetchHFAccessKeys(): Promise<HFAccessKeyListResponse> {
     const response = await fetch(API_ENDPOINTS.KEYS);
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to fetch keys: ${response.status}`);
+        throw await readKeyApiError(response, 'Failed to fetch keys');
     }
     return response.json();
 }
@@ -29,8 +71,7 @@ export async function addHFAccessKey(rawKey: string): Promise<HFAccessKeyListIte
         body: JSON.stringify({ key_value: rawKey }),
     });
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to add key: ${response.status}`);
+        throw await readKeyApiError(response, 'Failed to add key');
     }
     return response.json();
 }
@@ -43,8 +84,7 @@ export async function activateHFAccessKey(keyId: number): Promise<void> {
         method: 'POST',
     });
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to activate key: ${response.status}`);
+        throw await readKeyApiError(response, 'Failed to activate key');
     }
 }
 
@@ -56,8 +96,7 @@ export async function deactivateHFAccessKey(keyId: number): Promise<void> {
         method: 'POST',
     });
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to deactivate key: ${response.status}`);
+        throw await readKeyApiError(response, 'Failed to deactivate key');
     }
 }
 
@@ -69,8 +108,7 @@ export async function revealHFAccessKey(keyId: number): Promise<HFAccessKeyRevea
         method: 'POST',
     });
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to reveal key: ${response.status}`);
+        throw await readKeyApiError(response, 'Failed to reveal key');
     }
     return response.json();
 }
@@ -83,7 +121,6 @@ export async function deleteHFAccessKey(keyId: number): Promise<void> {
         method: 'DELETE',
     });
     if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to delete key: ${response.status}`);
+        throw await readKeyApiError(response, 'Failed to delete key');
     }
 }
