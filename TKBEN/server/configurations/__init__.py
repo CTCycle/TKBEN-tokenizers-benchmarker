@@ -6,10 +6,10 @@ from TKBEN.server.configurations.bootstrap import (
 )
 from TKBEN.server.configurations.base import (
     ensure_mapping,
+    load_configuration_data,
     load_configurations,
 )
 from TKBEN.server.configurations.server import (
-    AppSettings,
     BenchmarkSettings,
     DatabaseSettings,
     DatasetSettings,
@@ -22,6 +22,10 @@ from TKBEN.server.configurations.server import (
     server_settings,
     get_server_settings,
 )
+from TKBEN.server.domain.settings import AppSettings
+
+
+ensure_environment_loaded()
 
 __all__ = [
     "AppSettings",
@@ -39,5 +43,6 @@ __all__ = [
     "server_settings",
     "get_server_settings",
     "ensure_mapping",
+    "load_configuration_data",
     "load_configurations",
 ]

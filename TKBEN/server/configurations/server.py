@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from TKBEN.server.configurations.settings import (
-    AppSettings,
     get_app_settings,
     get_server_settings,
     reload_settings_for_tests,
 )
 from TKBEN.server.domain.settings import (
+    AppSettings,
     BenchmarkSettings,
     DatabaseSettings,
     DatasetSettings,

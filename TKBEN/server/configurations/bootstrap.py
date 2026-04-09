@@ -1,20 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from threading import Lock
 
 from dotenv import load_dotenv
 
 from TKBEN.server.common.constants import ENV_FILE_PATH
 from TKBEN.server.common.utils.logger import logger
-
-
-@dataclass
-class EnvironmentBootstrapState:
-    lock: Lock = field(default_factory=Lock)
-    bootstrapped: bool = False
+from TKBEN.server.domain.bootstrap import EnvironmentBootstrapState
 
 
 # -----------------------------------------------------------------------------
