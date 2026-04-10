@@ -6,11 +6,11 @@ import type {
     DatasetDownloadResponse,
     DatasetListResponse,
     DatasetMetricCatalogResponse,
-    JobStartResponse,
     JobStatusResponse,
 } from '../types/api';
 import { API_ENDPOINTS, DOWNLOAD_TIMEOUT_MS } from '../constants';
 import { waitForJobResult } from './jobsApi';
+import { parseJobStartResponse, parseRecordPayload } from './responseGuards';
 
 // 10 minute timeout for large dataset downloads
 
@@ -56,10 +56,11 @@ export async function downloadDataset(
         throw new Error(errorData.detail || `Failed to download dataset: ${response.status}`);
     }
 
-    const job = await response.json() as JobStartResponse;
+    const job = parseJobStartResponse(await response.json());
     return waitForJobResult<DatasetDownloadResponse>(job, {
         onUpdate,
         timeoutMs: DOWNLOAD_TIMEOUT_MS,
+        parseResult: (result) => parseRecordPayload<DatasetDownloadResponse>(result, 'dataset download job result'),
     });
 }
 
@@ -86,10 +87,11 @@ export async function uploadCustomDataset(
         throw new Error(errorData.detail || `Failed to upload dataset: ${response.status}`);
     }
 
-    const job = await response.json() as JobStartResponse;
+    const job = parseJobStartResponse(await response.json());
     return waitForJobResult<CustomDatasetUploadResponse>(job, {
         onUpdate,
         timeoutMs: DOWNLOAD_TIMEOUT_MS,
+        parseResult: (result) => parseRecordPayload<CustomDatasetUploadResponse>(result, 'dataset upload job result'),
     });
 }
 
@@ -115,10 +117,11 @@ export async function validateDataset(
         throw new Error(errorData.detail || `Failed to analyze dataset: ${response.status}`);
     }
 
-    const job = await response.json() as JobStartResponse;
+    const job = parseJobStartResponse(await response.json());
     return waitForJobResult<DatasetAnalysisResponse>(job, {
         onUpdate,
         timeoutMs: DOWNLOAD_TIMEOUT_MS,
+        parseResult: (result) => parseRecordPayload<DatasetAnalysisResponse>(result, 'dataset analysis job result'),
     });
 }
 
