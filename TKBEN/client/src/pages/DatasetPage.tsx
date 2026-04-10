@@ -272,15 +272,18 @@ const parseJsonLike = (value: unknown): unknown => {
   }
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 const parseWordFrequencyItems = (value: unknown): WordFrequency[] => {
   const parsed = parseJsonLike(value);
   if (Array.isArray(parsed)) {
     return parsed
       .map((item) => {
-        if (!item || typeof item !== 'object') {
+        if (!isRecord(item)) {
           return null;
         }
-        const payload = item as Record<string, unknown>;
+        const payload = item;
         const word = typeof payload.word === 'string'
           ? payload.word
           : typeof payload.token === 'string'
@@ -301,8 +304,8 @@ const parseWordFrequencyItems = (value: unknown): WordFrequency[] => {
       })
       .filter((item): item is WordFrequency => item !== null && item.count > 0);
   }
-  if (parsed && typeof parsed === 'object') {
-    const payload = parsed as Record<string, unknown>;
+  if (isRecord(parsed)) {
+    const payload = parsed;
     if (
       typeof payload.word === 'string'
       || typeof payload.token === 'string'
@@ -310,7 +313,7 @@ const parseWordFrequencyItems = (value: unknown): WordFrequency[] => {
     ) {
       return parseWordFrequencyItems([payload]);
     }
-    return Object.entries(parsed as Record<string, unknown>)
+    return Object.entries(payload)
       .map(([word, countValue]) => ({
         word,
         count: Math.max(0, Math.round(toNumber(countValue, 0))),
@@ -322,8 +325,8 @@ const parseWordFrequencyItems = (value: unknown): WordFrequency[] => {
 
 const parseWordCloudTerms = (value: unknown): WordCloudTerm[] => {
   const parsed = parseJsonLike(value);
-  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-    const payload = parsed as Record<string, unknown>;
+  if (isRecord(parsed)) {
+    const payload = parsed;
     if (
       typeof payload.word === 'string'
       || typeof payload.token === 'string'
@@ -347,10 +350,10 @@ const parseWordCloudTerms = (value: unknown): WordCloudTerm[] => {
 
   const terms = parsed
     .map((item) => {
-      if (!item || typeof item !== 'object') {
+      if (!isRecord(item)) {
         return null;
       }
-      const payload = item as Record<string, unknown>;
+      const payload = item;
       const word = typeof payload.word === 'string'
         ? payload.word
         : typeof payload.token === 'string'
@@ -396,7 +399,10 @@ const parseZipfCurve = (value: unknown): Array<{ rank: number; frequency: number
         if (!item || typeof item !== 'object') {
           return null;
         }
-        const payload = item as Record<string, unknown>;
+        if (!isRecord(item)) {
+          return null;
+        }
+        const payload = item;
         return {
           rank: toNumber(payload.rank ?? payload.x, index + 1),
           frequency: toNumber(payload.frequency ?? payload.count ?? payload.y ?? payload.value, 0),
@@ -407,8 +413,8 @@ const parseZipfCurve = (value: unknown): Array<{ rank: number; frequency: number
       .slice(0, 200);
   }
 
-  if (parsed && typeof parsed === 'object') {
-    const payload = parsed as Record<string, unknown>;
+  if (isRecord(parsed)) {
+    const payload = parsed;
     if (
       typeof payload.rank === 'number'
       || typeof payload.rank === 'string'
@@ -421,8 +427,8 @@ const parseZipfCurve = (value: unknown): Array<{ rank: number; frequency: number
       return parseZipfCurve(payload.curve);
     }
     if (Array.isArray(payload.ranks) && Array.isArray(payload.frequencies)) {
-      const ranks = payload.ranks as unknown[];
-      const frequencies = payload.frequencies as unknown[];
+      const ranks = payload.ranks;
+      const frequencies = payload.frequencies;
       const points = ranks.map((rank, index) => ({
         rank: toNumber(rank, index + 1),
         frequency: toNumber(frequencies[index], 0),
@@ -525,10 +531,10 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
   const corpusInputId = 'corpus-input';
   const configInputId = 'config-input';
   const manualInsertRegionId = 'dataset-manual-insert-panel';
-  const aggregate = useMemo(
-    () => (validationReport?.aggregate_statistics ?? {}) as Record<string, unknown>,
-    [validationReport?.aggregate_statistics],
-  );
+  const aggregate = useMemo<Record<string, unknown>>(() => {
+    const aggregateStats = validationReport?.aggregate_statistics;
+    return isRecord(aggregateStats) ? aggregateStats : {};
+  }, [validationReport]);
   const hasPersistedReport = validationReport !== null;
   const documentHistogram = hasPersistedReport ? validationReport.document_length_histogram : null;
   const wordHistogram = hasPersistedReport ? validationReport.word_length_histogram : null;

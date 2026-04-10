@@ -3,12 +3,12 @@ import type {
     BenchmarkReportListResponse,
     BenchmarkRunRequest,
     BenchmarkRunResponse,
-    JobStartResponse,
     JobStatusResponse,
 } from '../types/api';
 
 import { API_ENDPOINTS } from '../constants';
 import { waitForJobResult } from './jobsApi';
+import { parseJobStartResponse, parseRecordPayload } from './responseGuards';
 
 // 30 minute timeout for benchmark runs (can be very long-running)
 const BENCHMARK_TIMEOUT_MS = 30 * 60 * 1000;
@@ -35,10 +35,11 @@ export async function runBenchmarks(
         throw new Error(errorData.detail || `Failed to run benchmarks: ${response.status}`);
     }
 
-    const job = await response.json() as JobStartResponse;
+    const job = parseJobStartResponse(await response.json());
     return waitForJobResult<BenchmarkRunResponse>(job, {
         onUpdate,
         timeoutMs: BENCHMARK_TIMEOUT_MS,
+        parseResult: (result) => parseRecordPayload<BenchmarkRunResponse>(result, 'benchmark job result'),
     });
 }
 

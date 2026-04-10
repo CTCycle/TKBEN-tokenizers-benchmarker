@@ -1,5 +1,6 @@
 import type { JobCancelResponse, JobStartResponse, JobStatusResponse } from '../types/api';
 import { API_ENDPOINTS } from '../constants';
+import { parseJobStatusResponse } from './responseGuards';
 
 const MIN_POLL_INTERVAL_MS = 250;
 
@@ -13,7 +14,7 @@ export async function fetchJobStatus(jobId: string): Promise<JobStatusResponse> 
         throw new Error(errorData.detail || `Failed to fetch job status: ${response.status}`);
     }
 
-    return response.json();
+    return parseJobStatusResponse(await response.json());
 }
 
 export async function cancelJob(jobId: string): Promise<JobCancelResponse> {
@@ -27,14 +28,15 @@ export async function cancelJob(jobId: string): Promise<JobCancelResponse> {
     return response.json();
 }
 
-interface JobPollOptions {
+interface JobPollOptions<T> {
     onUpdate?: (status: JobStatusResponse) => void;
     timeoutMs?: number;
+    parseResult?: (result: unknown) => T;
 }
 
 export async function waitForJobResult<T>(
     job: JobStartResponse,
-    options: JobPollOptions = {},
+    options: JobPollOptions<T> = {},
 ): Promise<T> {
     const pollIntervalMs = Math.max(MIN_POLL_INTERVAL_MS, Math.round(job.poll_interval * 1000));
     const startedAt = Date.now();
@@ -44,8 +46,10 @@ export async function waitForJobResult<T>(
         options.onUpdate?.(status);
 
         if (status.status === 'completed') {
-            if (status.result) {
-                return status.result as T;
+            if (status.result !== undefined && status.result !== null) {
+                return options.parseResult
+                    ? options.parseResult(status.result)
+                    : (status.result as T);
             }
             throw new Error('Job completed without a result payload.');
         }

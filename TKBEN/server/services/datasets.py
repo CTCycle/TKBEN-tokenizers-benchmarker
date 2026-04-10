@@ -499,6 +499,28 @@ class DatasetService:
             progress_callback(progress_value)
 
     # -------------------------------------------------------------------------
+    @staticmethod
+    def _load_dataset_worker(
+        result_holder: dict[str, Dataset | DatasetDict],
+        error_holder: dict[str, Exception],
+        hf_dataset_id: str,
+        hf_config: str | None,
+        cache_path: str,
+        hf_access_token: str | None,
+        load_kwargs: dict[str, str],
+    ) -> None:
+        try:
+            result_holder["dataset"] = load_dataset(
+                hf_dataset_id,
+                hf_config,
+                cache_dir=cache_path,
+                token=hf_access_token,
+                **load_kwargs,
+            )
+        except Exception as exc:  # noqa: BLE001
+            error_holder["error"] = exc
+
+    # -------------------------------------------------------------------------
     def load_dataset_with_progress(
         self,
         hf_dataset_id: str,
@@ -521,26 +543,26 @@ class DatasetService:
             heartbeat_thread.start()
 
         try:
-            load_kwargs: dict[str, Any] = {}
+            load_kwargs: dict[str, str] = {}
             if split is not None:
                 load_kwargs["split"] = split
 
             result_holder: dict[str, Dataset | DatasetDict] = {}
             error_holder: dict[str, Exception] = {}
 
-            def _load_worker() -> None:
-                try:
-                    result_holder["dataset"] = load_dataset(
-                        hf_dataset_id,
-                        hf_config,
-                        cache_dir=cache_path,
-                        token=hf_access_token,
-                        **load_kwargs,
-                    )
-                except Exception as exc:  # noqa: BLE001
-                    error_holder["error"] = exc
-
-            worker_thread = threading.Thread(target=_load_worker, daemon=True)
+            worker_thread = threading.Thread(
+                target=self._load_dataset_worker,
+                args=(
+                    result_holder,
+                    error_holder,
+                    hf_dataset_id,
+                    hf_config,
+                    cache_path,
+                    hf_access_token,
+                    load_kwargs,
+                ),
+                daemon=True,
+            )
             worker_thread.start()
             worker_thread.join(timeout=float(self.download_timeout_seconds))
 
