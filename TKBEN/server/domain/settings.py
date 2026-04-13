@@ -3,13 +3,9 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
-from pydantic.fields import FieldInfo
-from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
-
-from TKBEN.server.common.constants import CONFIGURATIONS_FILE
 
 
 ###############################################################################
@@ -209,49 +205,7 @@ class JsonJobsSettings(BaseModel):
 
 
 ###############################################################################
-class JsonConfigurationSettingsSource(PydanticBaseSettingsSource):
-    def __init__(self, settings_cls: type[BaseSettings]) -> None:
-        super().__init__(settings_cls)
-        raw_path = getattr(settings_cls, "_configuration_file", CONFIGURATIONS_FILE)
-        self.configuration_file = Path(raw_path)
-
-    # -------------------------------------------------------------------------
-    def get_field_value(self, field: FieldInfo, field_name: str) -> tuple[Any, str, bool]:
-        return None, field_name, False
-
-    # -------------------------------------------------------------------------
-    def __call__(self) -> dict[str, Any]:
-        if not self.configuration_file.exists():
-            raise RuntimeError(f"Configuration file not found: {self.configuration_file}")
-
-        try:
-            payload = json.loads(self.configuration_file.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
-            raise RuntimeError(f"Unable to load configuration from {self.configuration_file}") from exc
-
-        if not isinstance(payload, dict):
-            raise RuntimeError("Configuration must be a JSON object.")
-
-        return {
-            "database": payload.get("database", {}),
-            "datasets": payload.get("datasets", {}),
-            "fitting": payload.get("fitting", {}),
-            "tokenizers": payload.get("tokenizers", {}),
-            "benchmarks": payload.get("benchmarks", {}),
-            "jobs": payload.get("jobs", {}),
-        }
-
-
-###############################################################################
-class AppSettings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_prefix="",
-        case_sensitive=False,
-        extra="ignore",
-    )
-
-    _configuration_file: ClassVar[str] = CONFIGURATIONS_FILE
-
+class JsonConfiguration(BaseModel):
     database: JsonDatabaseSettings = Field(default_factory=JsonDatabaseSettings)
     datasets: JsonDatasetSettings = Field(default_factory=JsonDatasetSettings)
     fitting: JsonFittingSettings = Field(default_factory=JsonFittingSettings)
@@ -259,53 +213,31 @@ class AppSettings(BaseSettings):
     benchmarks: JsonBenchmarkSettings = Field(default_factory=JsonBenchmarkSettings)
     jobs: JsonJobsSettings = Field(default_factory=JsonJobsSettings)
 
-    fastapi_host: str = "127.0.0.1"
-    fastapi_port: int = Field(default=5000, ge=1, le=65535)
-    ui_host: str = "127.0.0.1"
-    ui_port: int = Field(default=8000, ge=1, le=65535)
-    vite_api_base_url: str = "/api"
-    reload: bool = False
-    optional_dependencies: bool = False
-    keras_backend: str | None = None
-    mplbackend: str | None = None
-    allow_key_reveal: bool = False
-    hf_keys_encryption_key: str | None = None
-    tkben_tauri_mode: bool = False
-
-    @field_validator(
-        "fastapi_host",
-        "ui_host",
-        "vite_api_base_url",
-        "keras_backend",
-        "mplbackend",
-        "hf_keys_encryption_key",
-        mode="before",
-    )
+    # -------------------------------------------------------------------------
     @classmethod
-    def normalize_optional_text(cls, value: Any) -> str | None:
-        if value is None:
-            return None
-        text = str(value).strip()
-        if text == "":
-            return None
-        return text
-
-    @classmethod
-    def settings_customise_sources(
-        cls,
-        settings_cls: type[BaseSettings],
-        init_settings: PydanticBaseSettingsSource,
-        env_settings: PydanticBaseSettingsSource,
-        dotenv_settings: PydanticBaseSettingsSource,
-        file_secret_settings: PydanticBaseSettingsSource,
-    ) -> tuple[PydanticBaseSettingsSource, ...]:
-        _ = dotenv_settings
-        return (
-            init_settings,
-            env_settings,
-            JsonConfigurationSettingsSource(settings_cls),
-            file_secret_settings,
+    def from_payload(cls, payload: dict[str, Any]) -> "JsonConfiguration":
+        return cls(
+            database=payload.get("database", {}),
+            datasets=payload.get("datasets", {}),
+            fitting=payload.get("fitting", {}),
+            tokenizers=payload.get("tokenizers", {}),
+            benchmarks=payload.get("benchmarks", {}),
+            jobs=payload.get("jobs", {}),
         )
+
+    # -------------------------------------------------------------------------
+    @classmethod
+    def from_path(cls, path: str | Path) -> "JsonConfiguration":
+        configuration_path = Path(path)
+        if not configuration_path.exists():
+            raise RuntimeError(f"Configuration file not found: {configuration_path}")
+        try:
+            payload = json.loads(configuration_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise RuntimeError(f"Unable to load configuration from {configuration_path}") from exc
+        if not isinstance(payload, dict):
+            raise RuntimeError("Configuration must be a JSON object.")
+        return cls.from_payload(payload)
 
     # -------------------------------------------------------------------------
     def to_server_settings(self) -> ServerSettings:

@@ -15,7 +15,7 @@ from TKBEN.server.domain.benchmarks import (
     BenchmarkRunRequest,
 )
 from TKBEN.server.domain.jobs import JobStartResponse
-from TKBEN.server.configurations import server_settings
+from TKBEN.server.configurations import get_server_settings
 from TKBEN.server.common.constants import (
     API_ROUTE_BENCHMARKS_METRICS_CATALOG,
     API_ROUTE_BENCHMARKS_REPORT_BY_ID,
@@ -339,7 +339,7 @@ async def run_benchmarks(request: BenchmarkRunRequest) -> JobStartResponse:
         job_type=job_status["job_type"],
         status=job_status["status"],
         message="Benchmark job started.",
-        poll_interval=server_settings.jobs.polling_interval,
+        poll_interval=get_server_settings().jobs.polling_interval,
     )
 
 

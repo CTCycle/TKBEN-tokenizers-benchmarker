@@ -14,7 +14,7 @@ from TKBEN.server.domain.dataset import (
     DatasetMetricCatalogResponse,
 )
 from TKBEN.server.domain.jobs import JobStartResponse
-from TKBEN.server.configurations import server_settings
+from TKBEN.server.configurations import get_server_settings
 from TKBEN.server.common.utils.logger import logger
 from TKBEN.server.common.utils.security import (
     normalize_identifier,
@@ -260,7 +260,7 @@ async def download_dataset(request: DatasetDownloadRequest) -> JobStartResponse:
         job_type=job_status["job_type"],
         status=job_status["status"],
         message="Dataset download job started.",
-        poll_interval=server_settings.jobs.polling_interval,
+        poll_interval=get_server_settings().jobs.polling_interval,
     )
 
 
@@ -307,7 +307,7 @@ async def upload_custom_dataset(
         ) from exc
 
     extension = os.path.splitext(normalized_filename)[1].lower()
-    allowed_extensions = set(server_settings.datasets.allowed_extensions)
+    allowed_extensions = set(get_server_settings().datasets.allowed_extensions)
     if extension not in allowed_extensions:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -330,7 +330,7 @@ async def upload_custom_dataset(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Uploaded file is empty.",
         )
-    max_upload_bytes = int(server_settings.datasets.max_upload_bytes)
+    max_upload_bytes = int(get_server_settings().datasets.max_upload_bytes)
     if len(file_content) > max_upload_bytes:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
@@ -366,7 +366,7 @@ async def upload_custom_dataset(
         job_type=job_status["job_type"],
         status=job_status["status"],
         message="Custom dataset upload job started.",
-        poll_interval=server_settings.jobs.polling_interval,
+        poll_interval=get_server_settings().jobs.polling_interval,
     )
 
 
@@ -419,7 +419,7 @@ async def analyze_dataset(request: DatasetAnalysisRequest) -> JobStartResponse:
         job_type=job_status["job_type"],
         status=job_status["status"],
         message="Dataset validation job started.",
-        poll_interval=server_settings.jobs.polling_interval,
+        poll_interval=get_server_settings().jobs.polling_interval,
     )
 
 

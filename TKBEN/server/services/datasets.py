@@ -28,7 +28,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from TKBEN.server.repositories.database.backend import database
 from TKBEN.server.repositories.schemas.models import DatasetDocument
 from TKBEN.server.repositories.serialization.data import DatasetSerializer
-from TKBEN.server.configurations import server_settings
+from TKBEN.server.configurations import get_server_settings
 from TKBEN.server.common.constants import DATASETS_PATH
 from TKBEN.server.common.utils.logger import logger
 from TKBEN.server.common.utils.security import (
@@ -248,7 +248,7 @@ class DatasetService:
     def __init__(self) -> None:
         self.key_service = HFAccessKeyService()
         # Load settings from centralized configuration
-        self.settings = server_settings.datasets
+        self.settings = get_server_settings().datasets
         self.histogram_bins = self.settings.histogram_bins
         self.streaming_batch_size = self.settings.streaming_batch_size
         self.log_interval = self.settings.log_interval
