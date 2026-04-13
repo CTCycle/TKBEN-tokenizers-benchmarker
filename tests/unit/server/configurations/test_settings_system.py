@@ -6,18 +6,25 @@ import os
 from pathlib import Path
 
 import pytest
+from cryptography.fernet import Fernet
 
-from TKBEN.server.configurations import bootstrap
-from TKBEN.server.configurations.server import get_app_settings, get_server_settings
+from TKBEN.server.api.keys import is_key_reveal_enabled
+from TKBEN.server.common.utils.encryption import get_hf_key_cipher
+from TKBEN.server.configurations import environment as bootstrap
+from TKBEN.server.configurations.startup import (
+    get_configuration_manager,
+    get_server_settings,
+    reload_settings_for_tests,
+)
 
 
 ###############################################################################
 @pytest.fixture(autouse=True)
 def reset_configuration_state() -> None:
-    get_app_settings.cache_clear()
+    reload_settings_for_tests()
     bootstrap.reset_environment_bootstrap_for_tests()
     yield
-    get_app_settings.cache_clear()
+    reload_settings_for_tests()
     bootstrap.reset_environment_bootstrap_for_tests()
 
 
@@ -217,3 +224,84 @@ def test_get_server_settings_path_scoped_loading_is_deterministic(
     assert settings_a.tokenizers.default_scan_limit == 150
     assert settings_a.benchmarks.streaming_batch_size == 2000
     assert settings_a.jobs.polling_interval == 2.5
+
+
+# -----------------------------------------------------------------------------
+def test_configuration_manager_get_block_and_get_value(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "configurations.json"
+    _write_json(
+        config_path,
+        {
+            **_minimal_config_json(),
+            "datasets": {"histogram_bins": 25},
+        },
+    )
+
+    env_path = tmp_path / ".env"
+    _write_env(env_path, ["FASTAPI_HOST=127.0.0.1"])
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", str(env_path))
+
+    manager = get_configuration_manager(config_path=str(config_path))
+
+    assert manager.get_block("datasets") == {"histogram_bins": 25}
+    assert manager.get_value("datasets", "histogram_bins") == 25
+    assert manager.get_value("datasets", "missing", 99) == 99
+    assert manager.get_block("missing") == {}
+
+
+# -----------------------------------------------------------------------------
+def test_configuration_manager_reload_reflects_file_changes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "configurations.json"
+    _write_json(
+        config_path,
+        {
+            **_minimal_config_json(),
+            "datasets": {"histogram_bins": 20},
+        },
+    )
+
+    env_path = tmp_path / ".env"
+    _write_env(env_path, ["FASTAPI_HOST=127.0.0.1"])
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", str(env_path))
+
+    manager = get_configuration_manager(config_path=str(config_path))
+    assert manager.server_settings.datasets.histogram_bins == 20
+
+    _write_json(
+        config_path,
+        {
+            **_minimal_config_json(),
+            "datasets": {"histogram_bins": 45},
+        },
+    )
+
+    manager.reload()
+    assert manager.server_settings.datasets.histogram_bins == 45
+    assert manager.get_value("datasets", "histogram_bins") == 45
+
+
+# -----------------------------------------------------------------------------
+def test_allow_key_reveal_reads_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ALLOW_KEY_REVEAL", "true")
+    assert is_key_reveal_enabled() is True
+
+    monkeypatch.delenv("ALLOW_KEY_REVEAL", raising=False)
+    assert is_key_reveal_enabled() is False
+
+
+# -----------------------------------------------------------------------------
+def test_hf_key_cipher_reads_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    key = Fernet.generate_key().decode("utf-8")
+    monkeypatch.setenv("HF_KEYS_ENCRYPTION_KEY", key)
+
+    cipher = get_hf_key_cipher()
+    encrypted = cipher.encrypt("hf_test")
+    assert cipher.decrypt(encrypted) == "hf_test"
+
+    monkeypatch.delenv("HF_KEYS_ENCRYPTION_KEY", raising=False)
+    with pytest.raises(RuntimeError, match="HF_KEYS_ENCRYPTION_KEY"):
+        _ = get_hf_key_cipher()

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 from fastapi import APIRouter, HTTPException, Query, status
 
 from TKBEN.server.common.constants import (
@@ -12,7 +14,6 @@ from TKBEN.server.common.constants import (
     API_ROUTER_PREFIX_KEYS,
 )
 from TKBEN.server.common.utils.types import coerce_bool
-from TKBEN.server.configurations import get_app_settings
 from TKBEN.server.domain.keys import (
     HFAccessKeyActivateResponse,
     HFAccessKeyCreateRequest,
@@ -36,9 +37,8 @@ ALLOW_KEY_REVEAL_DEFAULT = False
 
 ###############################################################################
 def is_key_reveal_enabled() -> bool:
-    app_settings = get_app_settings()
     return coerce_bool(
-        app_settings.allow_key_reveal,
+        os.getenv("ALLOW_KEY_REVEAL"),
         ALLOW_KEY_REVEAL_DEFAULT,
     )
 

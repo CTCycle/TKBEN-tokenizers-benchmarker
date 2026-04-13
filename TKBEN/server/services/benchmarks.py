@@ -30,7 +30,7 @@ from TKBEN.server.repositories.schemas.models import (
 )
 from TKBEN.server.repositories.serialization.data import BenchmarkReportSerializer
 from TKBEN.server.services.metrics.catalog import BENCHMARK_METRIC_CATALOG
-from TKBEN.server.configurations import server_settings
+from TKBEN.server.configurations import get_server_settings
 from TKBEN.server.common.constants import TOKENIZERS_PATH
 from TKBEN.server.common.utils.logger import logger
 from TKBEN.server.common.utils.security import (
@@ -278,8 +278,8 @@ class BenchmarkService:
         self.report_serializer = BenchmarkReportSerializer()
 
         # Load settings from config
-        self.streaming_batch_size = server_settings.benchmarks.streaming_batch_size
-        self.log_interval = server_settings.benchmarks.log_interval
+        self.streaming_batch_size = get_server_settings().benchmarks.streaming_batch_size
+        self.log_interval = get_server_settings().benchmarks.log_interval
 
     # -------------------------------------------------------------------------
     def _session(self) -> Session:
