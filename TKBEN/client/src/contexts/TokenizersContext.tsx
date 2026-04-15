@@ -16,6 +16,7 @@ import { useFileInputControl } from '../hooks/useFileInputControl';
 import type { BenchmarkRunResponse, TokenizerReportResponse, TokenizerVocabularyItem } from '../types/api';
 
 const DEFAULT_TOKENIZER_VOCABULARY_LIMIT = 500;
+const LAST_TOKENIZER_REPORT_STORAGE_KEY = 'tkben.lastTokenizerReport';
 
 interface TokenizersContextType {
     // State
@@ -310,6 +311,7 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
                 report = await generateTokenizerReport({ tokenizer_name: normalized });
             }
             setTokenizerReport(report);
+            window.localStorage.setItem(LAST_TOKENIZER_REPORT_STORAGE_KEY, normalized);
             await loadTokenizerVocabularyPage(report.report_id, 0, tokenizerVocabularyLimit);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to open tokenizer report';
@@ -318,6 +320,19 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
             setActiveOpeningTokenizer(null);
         }
     }, [loadTokenizerVocabularyPage, tokenizerVocabularyLimit]);
+
+    useEffect(() => {
+        if (tokenizers.length === 0 || tokenizerReport || activeOpeningTokenizer) {
+            return;
+        }
+
+        const savedTokenizer = window.localStorage.getItem(LAST_TOKENIZER_REPORT_STORAGE_KEY)?.trim();
+        if (!savedTokenizer || !tokenizers.includes(savedTokenizer)) {
+            return;
+        }
+
+        void handleOpenTokenizerReport(savedTokenizer);
+    }, [activeOpeningTokenizer, handleOpenTokenizerReport, tokenizerReport, tokenizers]);
 
     const handleNextTokenizerVocabularyPage = useCallback(async () => {
         if (!tokenizerReport || tokenizerVocabularyLoading) {

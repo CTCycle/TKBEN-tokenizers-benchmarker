@@ -1,6 +1,6 @@
 [package]
 name = "tkben-desktop"
-version = "3.1.0"
+version = "2.2.0"
 description = "TKBEN desktop shell"
 authors = ["TKBEN"]
 edition = "2021"
