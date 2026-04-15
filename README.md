@@ -1,9 +1,9 @@
 # TKBEN Tokenizer Benchmarker
-[![Release](https://img.shields.io/github/v/release/CTCycle/TokenExplorer?display_name=tag)](https://github.com/CTCycle/TokenExplorer/releases)
+[![Release](https://img.shields.io/github/v/release/CTCycle/TKBEN-tokenizers-benchmarker?display_name=tag)](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.14-3776AB?logo=python&logoColor=white)
 ![Node.js](https://img.shields.io/badge/node.js-%3E%3D22-339933?logo=node.js&logoColor=white)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![CI](https://github.com/CTCycle/TokenExplorer/actions/workflows/ci.yml/badge.svg)](https://github.com/CTCycle/TokenExplorer/actions/workflows/ci.yml)
+[![CI](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/workflows/ci.yml/badge.svg)](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/workflows/ci.yml)
 
 ## 1. Project Overview
 
@@ -174,4 +174,5 @@ Determinism:
 ## 7. License
 
 This project is licensed under the MIT License. See `LICENSE` for details.
+
 
