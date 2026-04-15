@@ -14,6 +14,21 @@ import { parseJobStartResponse, parseRecordPayload } from './responseGuards';
 
 // 10 minute timeout for large dataset downloads
 
+const sanitizeDatasetJobErrorMessage = (error: unknown, fallback: string): string => {
+    const message = error instanceof Error ? error.message : fallback;
+    const normalized = message.toLowerCase();
+
+    if (normalized.includes('too many sql variables')) {
+        return 'Dataset validation could not be completed because the backend hit a database batching limit. Please retry after updating the backend fix.';
+    }
+
+    if (normalized.includes('sqlite') || normalized.includes('sqlalchemy')) {
+        return 'Dataset validation failed while persisting analysis results. Please retry or inspect the backend logs for details.';
+    }
+
+    return message;
+};
+
 /**
  * Fetch list of available datasets from the database.
  * @returns Promise with the list of dataset names
@@ -118,11 +133,15 @@ export async function validateDataset(
     }
 
     const job = parseJobStartResponse(await response.json());
-    return waitForJobResult<DatasetAnalysisResponse>(job, {
-        onUpdate,
-        timeoutMs: DOWNLOAD_TIMEOUT_MS,
-        parseResult: (result) => parseRecordPayload<DatasetAnalysisResponse>(result, 'dataset analysis job result'),
-    });
+    try {
+        return await waitForJobResult<DatasetAnalysisResponse>(job, {
+            onUpdate,
+            timeoutMs: DOWNLOAD_TIMEOUT_MS,
+            parseResult: (result) => parseRecordPayload<DatasetAnalysisResponse>(result, 'dataset analysis job result'),
+        });
+    } catch (error) {
+        throw new Error(sanitizeDatasetJobErrorMessage(error, 'Failed to analyze dataset'));
+    }
 }
 
 /**
