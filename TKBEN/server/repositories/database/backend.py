@@ -7,7 +7,7 @@ from typing import Any, Protocol
 import pandas as pd
 
 from TKBEN.server.common.constants import DATABASE_FILENAME, RESOURCES_PATH
-from TKBEN.server.configurations import DatabaseSettings, server_settings
+from TKBEN.server.configurations import DatabaseSettings, get_server_settings
 from TKBEN.server.repositories.database.postgres import PostgresRepository
 from TKBEN.server.repositories.database.sqlite import SQLiteRepository
 from TKBEN.server.repositories.database.utils import (
@@ -58,7 +58,7 @@ BACKEND_FACTORIES: dict[str, BackendFactory] = {
 ###############################################################################
 class TKBENDatabase:
     def __init__(self) -> None:
-        self.settings = server_settings.database
+        self.settings = get_server_settings().database
         self.backend = self._build_backend(self.settings.embedded_database)
 
     # -------------------------------------------------------------------------

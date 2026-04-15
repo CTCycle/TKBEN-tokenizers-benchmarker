@@ -20,7 +20,7 @@ from TKBEN.server.common.utils.security import (
     ensure_path_is_within,
     normalize_identifier,
 )
-from TKBEN.server.configurations import server_settings
+from TKBEN.server.configurations import get_server_settings
 from TKBEN.server.repositories.database.backend import database
 from TKBEN.server.repositories.schemas.models import Tokenizer
 from TKBEN.server.repositories.serialization.data import TokenizerReportSerializer
@@ -56,7 +56,7 @@ class TokenizersService:
     def __init__(self) -> None:
         self.key_service = HFAccessKeyService()
         self.report_serializer = TokenizerReportSerializer()
-        self.histogram_bins = max(5, int(server_settings.datasets.histogram_bins))
+        self.histogram_bins = max(5, int(get_server_settings().datasets.histogram_bins))
         self.special_token_pattern = re.compile(
             r"^(?:\[[^\]]{0,200}\]|<[^>]{0,200}>|\{[^}]{0,200}\}|</?s>|</?pad>|UNK|PAD)$",
             re.IGNORECASE,

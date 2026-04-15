@@ -431,10 +431,10 @@ const CrossBenchmarkPage = () => {
               <div className="cross-benchmark-chart-grid">
                 <article className="cross-benchmark-chart-card">
                   <div className="cross-benchmark-chart-header">
-                    <p className="panel-label">Speed Comparison</p>
+                    <p className="panel-label">Tokenization Speed</p>
                   </div>
                   {speedChartData.length === 0 ? (
-                    renderUnavailable('Speed metrics unavailable')
+                    renderUnavailable('Tokenization speed unavailable')
                   ) : (
                     <ResponsiveContainer width="100%" height={PRIMARY_CHART_HEIGHT}>
                       <BarChart
@@ -456,8 +456,38 @@ const CrossBenchmarkPage = () => {
                         <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }} />
                         <Legend {...chartLegendProps} />
                         <Bar dataKey="tokens_per_second" fill="#4fc3f7" name="Tokenization Speed (tokens/sec)" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </article>
+
+                <article className="cross-benchmark-chart-card">
+                  <div className="cross-benchmark-chart-header">
+                    <p className="panel-label">Character Throughput</p>
+                  </div>
+                  {speedChartData.length === 0 ? (
+                    renderUnavailable('Character throughput unavailable')
+                  ) : (
+                    <ResponsiveContainer width="100%" height={PRIMARY_CHART_HEIGHT}>
+                      <BarChart
+                        data={speedChartData}
+                        margin={{ top: 6, right: 12, left: 2, bottom: 16 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
+                        <XAxis
+                          dataKey="tokenizer"
+                          stroke="#9ea7b3"
+                          interval="preserveStartEnd"
+                          tick={{ fontSize: 11 }}
+                          tickFormatter={formatChartTokenizerLabel}
+                          tickMargin={8}
+                          minTickGap={16}
+                          height={54}
+                        />
+                        <YAxis stroke="#9ea7b3" width={78} tick={{ fontSize: 11 }} />
+                        <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }} />
+                        <Legend {...chartLegendProps} />
                         <Bar dataKey="chars_per_second" fill="#81c784" name="Character Throughput (chars/sec)" />
-                        <Bar dataKey="processing_time_seconds" fill="#ffb74d" name="Processing Time (seconds)" />
                       </BarChart>
                     </ResponsiveContainer>
                   )}

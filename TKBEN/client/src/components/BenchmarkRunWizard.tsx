@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { BenchmarkMetricCatalogCategory } from '../types/api';
+import MetricSelectionTree from './MetricSelectionTree';
+import { useMetricSelection } from '../hooks/useMetricSelection';
 
 type BenchmarkRunWizardProps = {
   isOpen: boolean;
@@ -42,7 +44,6 @@ const BenchmarkRunWizard = ({
   onRun,
 }: BenchmarkRunWizardProps) => {
   const [step, setStep] = useState(0);
-  const [selectedMetricKeys, setSelectedMetricKeys] = useState<string[]>([]);
   const [selectedTokenizers, setSelectedTokenizers] = useState<string[]>([]);
   const [datasetName, setDatasetName] = useState('');
   const [maxDocuments, setMaxDocuments] = useState(1000);
@@ -55,10 +56,12 @@ const BenchmarkRunWizard = ({
   const [includeLmMetrics, setIncludeLmMetrics] = useState(false);
   const [tokenizerQuery, setTokenizerQuery] = useState('');
 
-  const allMetricKeys = useMemo(
-    () => categories.flatMap((category) => category.metrics.map((metric) => metric.key)),
-    [categories],
-  );
+  const {
+    selectedMetricKeys,
+    toggleMetric,
+    toggleCategoryByKeys,
+    resetSelectionToAll,
+  } = useMetricSelection(categories);
 
   useEffect(() => {
     if (!isOpen) {
@@ -66,7 +69,7 @@ const BenchmarkRunWizard = ({
     }
     /* eslint-disable react-hooks/set-state-in-effect */
     setStep(0);
-    setSelectedMetricKeys(allMetricKeys);
+    resetSelectionToAll();
     setSelectedTokenizers([]);
     const preferredDataset = defaultDatasetName && availableDatasets.includes(defaultDatasetName)
       ? defaultDatasetName
@@ -82,29 +85,7 @@ const BenchmarkRunWizard = ({
     setParallelism(1);
     setIncludeLmMetrics(false);
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [allMetricKeys, availableDatasets, defaultDatasetName, defaultMaxDocuments, isOpen]);
-
-  const toggleMetric = (metricKey: string, enabled: boolean) => {
-    setSelectedMetricKeys((current) => {
-      if (enabled) {
-        if (current.includes(metricKey)) {
-          return current;
-        }
-        return [...current, metricKey];
-      }
-      return current.filter((key) => key !== metricKey);
-    });
-  };
-
-  const toggleCategory = (category: BenchmarkMetricCatalogCategory, enabled: boolean) => {
-    const keys = category.metrics.map((metric) => metric.key);
-    setSelectedMetricKeys((current) => {
-      if (enabled) {
-        return Array.from(new Set([...current, ...keys]));
-      }
-      return current.filter((key) => !keys.includes(key));
-    });
-  };
+  }, [availableDatasets, defaultDatasetName, defaultMaxDocuments, isOpen, resetSelectionToAll]);
 
   const toggleTokenizer = (tokenizerName: string) => {
     setSelectedTokenizers((current) => {
@@ -184,43 +165,21 @@ const BenchmarkRunWizard = ({
 
         <div className="benchmark-wizard-body">
           {step === 0 && (
-            <div className="benchmark-wizard-tree">
-              {categories.length === 0 ? (
-                <div className="chart-placeholder">
-                  <p>No metrics catalog available.</p>
-                </div>
-              ) : (
-                categories.map((category) => {
-                  const categoryKeys = category.metrics.map((metric) => metric.key);
-                  const selectedCount = categoryKeys.filter((key) => selectedMetricKeys.includes(key)).length;
-                  const allSelected = categoryKeys.length > 0 && selectedCount === categoryKeys.length;
-                  return (
-                    <div key={category.category_key} className="benchmark-wizard-tree-category">
-                      <label className="checkbox">
-                        <input
-                          type="checkbox"
-                          checked={allSelected}
-                          onChange={(event) => toggleCategory(category, event.target.checked)}
-                        />
-                        <span>{category.category_label} ({selectedCount}/{categoryKeys.length})</span>
-                      </label>
-                      <div className="benchmark-wizard-tree-children">
-                        {category.metrics.map((metric) => (
-                          <label key={metric.key} className="checkbox">
-                            <input
-                              type="checkbox"
-                              checked={selectedMetricKeys.includes(metric.key)}
-                              onChange={(event) => toggleMetric(metric.key, event.target.checked)}
-                            />
-                            <span>{metric.label}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
+            categories.length === 0 ? (
+              <div className="chart-placeholder">
+                <p>No metrics catalog available.</p>
+              </div>
+            ) : (
+              <MetricSelectionTree
+                categories={categories}
+                selectedMetricKeys={selectedMetricKeys}
+                onToggleMetric={toggleMetric}
+                onToggleCategory={toggleCategoryByKeys}
+                rootClassName="benchmark-wizard-tree"
+                categoryClassName="benchmark-wizard-tree-category"
+                childrenClassName="benchmark-wizard-tree-children"
+              />
+            )
           )}
 
           {step === 1 && (
@@ -237,6 +196,11 @@ const BenchmarkRunWizard = ({
                 <p className="panel-description">
                   Selected {selectedTokenizers.length} of {MAX_SELECTED_TOKENIZERS}
                 </p>
+                {selectedTokenizers.length === 0 && (
+                  <p className="benchmark-wizard-validation-message" role="status">
+                    Select at least one tokenizer to continue.
+                  </p>
+                )}
                 <div className="benchmark-wizard-tokenizer-list">
                   {availableTokenizers.length === 0 ? (
                     <div className="chart-placeholder">

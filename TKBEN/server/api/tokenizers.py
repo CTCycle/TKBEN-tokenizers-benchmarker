@@ -21,7 +21,7 @@ from TKBEN.server.domain.tokenizers import (
     TokenizerUploadResponse,
 )
 from TKBEN.server.domain.jobs import JobStartResponse
-from TKBEN.server.configurations.server import server_settings
+from TKBEN.server.configurations import get_server_settings
 from TKBEN.server.common.constants import (
     API_ROUTE_TOKENIZERS_CUSTOM,
     API_ROUTE_TOKENIZERS_DOWNLOAD,
@@ -65,9 +65,9 @@ async def get_tokenizer_settings() -> TokenizerSettingsResponse:
         TokenizerSettingsResponse with default, min, and max scan limits.
     """
     return TokenizerSettingsResponse(
-        default_scan_limit=server_settings.tokenizers.default_scan_limit,
-        max_scan_limit=server_settings.tokenizers.max_scan_limit,
-        min_scan_limit=server_settings.tokenizers.min_scan_limit,
+        default_scan_limit=get_server_settings().tokenizers.default_scan_limit,
+        max_scan_limit=get_server_settings().tokenizers.max_scan_limit,
+        min_scan_limit=get_server_settings().tokenizers.min_scan_limit,
     )
 
 
@@ -89,9 +89,9 @@ async def scan_tokenizers(
         TokenizerScanResponse containing the list of tokenizer identifiers.
     """
     # Use configured defaults if limit not provided, and clamp to configured bounds
-    min_limit = server_settings.tokenizers.min_scan_limit
-    max_limit = server_settings.tokenizers.max_scan_limit
-    default_limit = server_settings.tokenizers.default_scan_limit
+    min_limit = get_server_settings().tokenizers.min_scan_limit
+    max_limit = get_server_settings().tokenizers.max_scan_limit
+    default_limit = get_server_settings().tokenizers.default_scan_limit
 
     if limit is None:
         limit = default_limit
@@ -207,7 +207,7 @@ async def download_tokenizers(request: TokenizerDownloadRequest) -> JobStartResp
         job_type=job_status["job_type"],
         status=job_status["status"],
         message="Tokenizer download job started.",
-        poll_interval=server_settings.jobs.polling_interval,
+        poll_interval=get_server_settings().jobs.polling_interval,
     )
 
 
@@ -280,7 +280,7 @@ async def generate_tokenizer_report(
         job_type=job_status["job_type"],
         status=job_status["status"],
         message="Tokenizer report job started.",
-        poll_interval=server_settings.jobs.polling_interval,
+        poll_interval=get_server_settings().jobs.polling_interval,
     )
 
 
@@ -437,7 +437,7 @@ async def upload_custom_tokenizer(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Uploaded file is empty.",
         )
-    max_upload_bytes = int(server_settings.tokenizers.max_upload_bytes)
+    max_upload_bytes = int(get_server_settings().tokenizers.max_upload_bytes)
     if len(content) > max_upload_bytes:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
