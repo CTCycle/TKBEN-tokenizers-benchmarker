@@ -21,7 +21,9 @@ from TKBEN.server.common.utils.logger import logger
 ###############################################################################
 class SQLiteRepository:
     IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
-    SQLITE_MAX_VARIABLES = 999
+    # Leave headroom below SQLite's hard parameter cap because some generated
+    # statements may add a few bound values beyond the raw row payload.
+    SQLITE_MAX_VARIABLES = 900
 
     def __init__(
         self, settings: DatabaseSettings, initialize_schema: bool = False

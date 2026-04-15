@@ -528,9 +528,16 @@ class DatasetSerializer:
             )
         if not rows:
             return
-        df = pd.DataFrame(rows, dtype=object)
-        df = df.where(pd.notna(df), None)
-        self.queries.insert_table(df, self.metric_value_table, ignore_duplicates=False)
+        chunk_size = 100
+        for start in range(0, len(rows), chunk_size):
+            chunk = rows[start : start + chunk_size]
+            df = pd.DataFrame(chunk, dtype=object)
+            df = df.where(pd.notna(df), None)
+            self.queries.insert_table(
+                df,
+                self.metric_value_table,
+                ignore_duplicates=False,
+            )
 
     # -------------------------------------------------------------------------
     def save_histogram_artifact(

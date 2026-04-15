@@ -246,6 +246,14 @@ const hasMetricValue = (value: unknown): boolean => {
   }
   return false;
 };
+const metricDisplayValue = (
+  value: unknown,
+  formatter: (numeric: number) => string,
+): string => (
+  hasMetricValue(value)
+    ? formatter(toNumber(value))
+    : '—'
+);
 
 const toHistogramSeries = (histogram: HistogramData | null): Array<{ bin: string; count: number }> => {
   if (!histogram) {
@@ -540,9 +548,16 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
   const wordHistogram = hasPersistedReport ? validationReport.word_length_histogram : null;
   const documentHistogramSeries = toHistogramSeries(documentHistogram);
   const wordHistogramSeries = toHistogramSeries(wordHistogram);
-  const documentCount = hasPersistedReport ? validationReport.document_count : 0;
-  const emptyRate = toNumber(aggregate['quality.empty_rate']);
-  const emptyCount = Math.round(emptyRate * documentCount);
+  const documentCount = hasMetricValue(aggregate['corpus.document_count'])
+    ? toNumber(aggregate['corpus.document_count'])
+    : hasPersistedReport
+      ? validationReport.document_count
+      : 0;
+  const hasDocumentCount = hasMetricValue(aggregate['corpus.document_count']) || hasPersistedReport;
+  const emptyRateRaw = aggregate['quality.empty_rate'];
+  const emptyCount = hasMetricValue(emptyRateRaw) && hasDocumentCount
+    ? Math.round(toNumber(emptyRateRaw) * documentCount)
+    : null;
   const mostCommonWords = useMemo(() => {
     if (!hasPersistedReport) {
       return [];
@@ -569,31 +584,35 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
   const shannonEntropy = toNumber(aggregate['words.shannon_entropy']);
   const hasEntropyGauge = hasMetricValue(aggregate['words.normalized_entropy']);
   const hasShannonEntropy = hasMetricValue(aggregate['words.shannon_entropy']);
-  const duplicateRate = toNumber(aggregate['quality.duplicate_document_rate']);
-  const nearDuplicateRate = toNumber(aggregate['quality.near_duplicate_document_rate']);
-  const topKConcentration = toNumber(aggregate['lexical.topk_concentration']);
-  const rareTailMass = toNumber(aggregate['lexical.tail_mass']);
+  const duplicateRateRaw = aggregate['quality.duplicate_document_rate'];
+  const nearDuplicateRateRaw = aggregate['quality.near_duplicate_document_rate'];
+  const topKConcentrationRaw = aggregate['lexical.topk_concentration'];
+  const rareTailMassRaw = aggregate['lexical.tail_mass'];
+  const duplicateRate = toNumber(duplicateRateRaw);
+  const nearDuplicateRate = toNumber(nearDuplicateRateRaw);
+  const topKConcentration = toNumber(topKConcentrationRaw);
+  const rareTailMass = toNumber(rareTailMassRaw);
 
   const aggregateRows = [
-    { label: 'Num documents', value: normalizeCount(documentCount) },
-    { label: 'Mean length', value: toNumber(aggregate['doc.length_mean']).toFixed(2) },
-    { label: 'Min length', value: normalizeCount(toNumber(aggregate['doc.length_min'])) },
-    { label: 'Max length', value: normalizeCount(toNumber(aggregate['doc.length_max'])) },
-    { label: 'Empty count', value: normalizeCount(emptyCount) },
-    { label: 'Length CV', value: toNumber(aggregate['doc.length_cv']).toFixed(4) },
-    { label: 'p50', value: normalizeCount(toNumber(aggregate['doc.length_p50'])) },
-    { label: 'p90', value: normalizeCount(toNumber(aggregate['doc.length_p90'])) },
-    { label: 'p99', value: normalizeCount(toNumber(aggregate['doc.length_p99'])) },
+    { label: 'Num documents', value: hasDocumentCount ? normalizeCount(documentCount) : '—' },
+    { label: 'Mean length', value: metricDisplayValue(aggregate['doc.length_mean'], (numeric) => numeric.toFixed(2)) },
+    { label: 'Min length', value: metricDisplayValue(aggregate['doc.length_min'], normalizeCount) },
+    { label: 'Max length', value: metricDisplayValue(aggregate['doc.length_max'], normalizeCount) },
+    { label: 'Empty count', value: emptyCount !== null ? normalizeCount(emptyCount) : '—' },
+    { label: 'Length CV', value: metricDisplayValue(aggregate['doc.length_cv'], (numeric) => numeric.toFixed(4)) },
+    { label: 'p50', value: metricDisplayValue(aggregate['doc.length_p50'], normalizeCount) },
+    { label: 'p90', value: metricDisplayValue(aggregate['doc.length_p90'], normalizeCount) },
+    { label: 'p99', value: metricDisplayValue(aggregate['doc.length_p99'], normalizeCount) },
   ];
 
   const wordMetricRows = [
-    { label: 'Vocabulary size', value: normalizeCount(toNumber(aggregate['corpus.unique_words'])) },
-    { label: 'MATTR', value: toNumber(aggregate['corpus.mattr']).toFixed(4) },
-    { label: 'Entropy', value: toNumber(aggregate['words.shannon_entropy']).toFixed(4) },
-    { label: 'Hapax ratio', value: toNumber(aggregate['words.hapax_ratio']).toFixed(4) },
-    { label: 'Zipf slope', value: toNumber(aggregate['words.zipf_slope']).toFixed(4) },
-    { label: 'Gini', value: toNumber(aggregate['words.frequency_gini']).toFixed(4) },
-    { label: 'HHI', value: toNumber(aggregate['words.hhi']).toFixed(6) },
+    { label: 'Vocabulary size', value: metricDisplayValue(aggregate['corpus.unique_words'], normalizeCount) },
+    { label: 'MATTR', value: metricDisplayValue(aggregate['corpus.mattr'], (numeric) => numeric.toFixed(4)) },
+    { label: 'Entropy', value: metricDisplayValue(aggregate['words.shannon_entropy'], (numeric) => numeric.toFixed(4)) },
+    { label: 'Hapax ratio', value: metricDisplayValue(aggregate['words.hapax_ratio'], (numeric) => numeric.toFixed(4)) },
+    { label: 'Zipf slope', value: metricDisplayValue(aggregate['words.zipf_slope'], (numeric) => numeric.toFixed(4)) },
+    { label: 'Gini', value: metricDisplayValue(aggregate['words.frequency_gini'], (numeric) => numeric.toFixed(4)) },
+    { label: 'HHI', value: metricDisplayValue(aggregate['words.hhi'], (numeric) => numeric.toFixed(6)) },
   ];
 
   const characterSlices = useMemo(() => {
@@ -901,7 +920,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                     {aggregateRows.map((row) => (
                       <tr key={row.label}>
                         <th>{row.label}</th>
-                        <td>{hasPersistedReport ? row.value : '—'}</td>
+                        <td>{row.value}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -917,7 +936,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                     {wordMetricRows.map((row) => (
                       <tr key={row.label}>
                         <th>{row.label}</th>
-                        <td>{hasPersistedReport ? row.value : '—'}</td>
+                        <td>{row.value}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1070,12 +1089,14 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                   <div className="dataset-v2-extras-item">
                     <p className="panel-description">Entropy Gauge</p>
                     <div className="dataset-v2-gauge-track">
-                      <div
-                        className="dataset-v2-gauge-fill"
-                        style={{ width: `${Math.max(0, Math.min(100, entropyGauge * 100))}%` }}
-                      />
+                      {hasEntropyGauge && (
+                        <div
+                          className="dataset-v2-gauge-fill"
+                          style={{ width: `${Math.max(0, Math.min(100, entropyGauge * 100))}%` }}
+                        />
+                      )}
                     </div>
-                    <p className="dataset-v2-gauge-value">{normalizePercent(entropyGauge)}</p>
+                    <p className="dataset-v2-gauge-value">{hasEntropyGauge ? normalizePercent(entropyGauge) : '—'}</p>
                     {hasShannonEntropy ? (
                       <div className="dataset-v2-indicator-row">
                         <span>Shannon entropy</span>
@@ -1104,11 +1125,11 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                     <p className="panel-description">Duplicate Indicators</p>
                     <div className="dataset-v2-indicator-row">
                       <span>Exact duplicate rate</span>
-                      <strong>{normalizePercent(duplicateRate)}</strong>
+                      <strong>{hasMetricValue(duplicateRateRaw) ? normalizePercent(duplicateRate) : '—'}</strong>
                     </div>
                     <div className="dataset-v2-indicator-row">
                       <span>Near-duplicate rate</span>
-                      <strong>{normalizePercent(nearDuplicateRate)}</strong>
+                      <strong>{hasMetricValue(nearDuplicateRateRaw) ? normalizePercent(nearDuplicateRate) : '—'}</strong>
                     </div>
                   </div>
 
@@ -1116,11 +1137,11 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                     <p className="panel-description">Concentration</p>
                     <div className="dataset-v2-indicator-row">
                       <span>Top-k concentration</span>
-                      <strong>{normalizePercent(topKConcentration)}</strong>
+                      <strong>{hasMetricValue(topKConcentrationRaw) ? normalizePercent(topKConcentration) : '—'}</strong>
                     </div>
                     <div className="dataset-v2-indicator-row">
                       <span>Rare tail mass</span>
-                      <strong>{normalizePercent(rareTailMass)}</strong>
+                      <strong>{hasMetricValue(rareTailMassRaw) ? normalizePercent(rareTailMass) : '—'}</strong>
                     </div>
                   </div>
                 </div>
