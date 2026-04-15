@@ -82,6 +82,7 @@
   overflow-x: auto;
   scrollbar-width: thin;
   z-index: 1090;
+  overscroll-behavior-x: contain;
 }
 
 .app-tab {
@@ -302,7 +303,7 @@
   grid-template-columns: 2fr auto 3fr;
   gap: 18px;
   align-items: stretch;
-  min-height: 360px;
+  min-height: clamp(220px, 24vh, 360px);
 }
 
 .dataset-intro-panel,
@@ -529,6 +530,7 @@
   z-index: 200;
   padding: 24px;
   overflow-y: auto;
+  z-index: 1300;
 }
 
 .modal-card {
@@ -542,6 +544,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  z-index: 1301;
 }
 
 .dataset-modal {
@@ -854,7 +857,7 @@
   grid-template-columns: 2fr auto 3fr;
   gap: 18px;
   align-items: stretch;
-  min-height: 340px;
+  min-height: clamp(220px, 24vh, 340px);
 }
 
 .tokenizer-intro-panel,
@@ -1274,6 +1277,19 @@
   max-width: 220px;
   color: var(--color-muted);
   font-weight: 600;
+}
+
+.tokenizer-meta-table a {
+  color: #8bd3ff;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  text-decoration-color: rgba(139, 211, 255, 0.55);
+  text-underline-offset: 2px;
+}
+
+.tokenizer-meta-table a:hover {
+  color: #c6ecff;
+  text-decoration-color: currentColor;
 }
 
 .tokenizer-meta-table-compact th {
@@ -1877,6 +1893,13 @@
 
 .benchmark-wizard-tokenizer-option--disabled {
   opacity: 0.55;
+}
+
+.benchmark-wizard-validation-message {
+  margin: -4px 0 0;
+  color: #f5de8c;
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .benchmark-wizard-tokenizer-pill {
@@ -2829,11 +2852,46 @@ select:focus-visible {
   }
 
   .app-tab {
-    flex-basis: 150px;
-    min-width: 140px;
-    font-size: 12px;
-    padding: 0 10px;
-    gap: 6px;
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: 11px;
+    padding: 0 6px;
+    gap: 5px;
+  }
+
+  .app-tab-nav {
+    padding: 0 8px;
+    overflow-x: hidden;
+  }
+
+  .app-tab-icon svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .modal-overlay {
+    align-items: flex-start;
+    padding: 12px;
+  }
+
+  .modal-card {
+    width: min(100%, calc(100vw - 24px));
+    max-height: calc(100vh - 24px);
+    padding: 16px;
+  }
+
+  .dataset-modal {
+    height: calc(100vh - 24px);
+  }
+
+  .dataset-modal-header {
+    position: relative;
+    z-index: 1;
+    flex-wrap: wrap;
+  }
+
+  .dataset-modal-actions {
+    margin-left: 0;
   }
 
   .app-main {

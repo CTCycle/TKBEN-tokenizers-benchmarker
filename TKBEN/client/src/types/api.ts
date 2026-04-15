@@ -103,7 +103,7 @@ export interface JobStatusResponse {
     job_type: string;
     status: string;
     progress: number;
-    result?: Record<string, unknown> | null;
+    result?: unknown | null;
     error?: string | null;
 }
 

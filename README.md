@@ -111,21 +111,18 @@ Scan available tokenizer IDs, download selected tokenizers, optionally upload a 
 **Cross Benchmark (`/cross-benchmark`)**
 
 Create benchmark runs by selecting dataset, tokenizers, and metric categories, then compare persisted results across tokenizer candidates.
-### 3.5 End-to-End Activity Snapshots
+### 3.5 Product Snapshots (Release 3.1.0)
 
-The following snapshots were captured from a full interactive E2E run in local webapp mode:
+The following snapshots were captured in local webapp mode with backend and frontend running:
 
-- Dataset dashboard after completed validation (5,000 sampled documents)
-![Dataset dashboard complete](assets/figures/e2e-dataset-dashboard-complete.png)
+- Dataset workspace showing dataset preview and dashboard panels before loading a persisted validation report.
+![Dataset workspace](assets/figures/release-2026-04-dataset.png)
 
-- Tokenizer dashboard with loaded report (`bert-base-uncased`)
-![Tokenizer dashboard](assets/figures/e2e-tokenizer-dashboard.png)
+- Tokenizers workspace showing tokenizer selection, preview list, and dashboard placeholders.
+![Tokenizers workspace](assets/figures/release-2026-04-tokenizers.png)
 
-- Cross-benchmark run #1 report (`bert-base-uncased`, `gpt2`, `roberta-base`, full metric set)
-![Benchmark report config 1](assets/figures/e2e-benchmark-report-config1.png)
-
-- Cross-benchmark run #2 (`bert-base-uncased`, `roberta-base`, reduced metric set without per-document stats)
-![Benchmark report config 2](assets/figures/e2e-benchmark-report-config2.png)
+- Cross-benchmark dashboard with a loaded persisted report and metric comparison panels.
+![Cross-benchmark dashboard](assets/figures/release-2026-04-cross-benchmark.png)
 
 ## 4. Setup and Maintenance
 

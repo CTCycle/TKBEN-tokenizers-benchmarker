@@ -1,5 +1,4 @@
 import type {
-    JobStartResponse,
     JobStatusResponse,
     TokenizerDownloadRequest,
     TokenizerDownloadResponse,
@@ -14,6 +13,7 @@ import type {
 
 import { API_ENDPOINTS } from '../constants';
 import { waitForJobResult } from './jobsApi';
+import { parseJobStartResponse, parseRecordPayload } from './responseGuards';
 
 /**
  * Get tokenizer configuration settings from the server.
@@ -91,8 +91,11 @@ export async function downloadTokenizers(
         throw new Error(errorData.detail || `Failed to download tokenizers: ${response.status}`);
     }
 
-    const job = await response.json() as JobStartResponse;
-    return waitForJobResult<TokenizerDownloadResponse>(job, { onUpdate });
+    const job = parseJobStartResponse(await response.json());
+    return waitForJobResult<TokenizerDownloadResponse>(job, {
+        onUpdate,
+        parseResult: (result) => parseRecordPayload<TokenizerDownloadResponse>(result, 'tokenizer download job result'),
+    });
 }
 
 /**
@@ -151,8 +154,11 @@ export async function generateTokenizerReport(
         throw new Error(errorData.detail || `Failed to generate tokenizer report: ${response.status}`);
     }
 
-    const job = await response.json() as JobStartResponse;
-    return waitForJobResult<TokenizerReportResponse>(job, { onUpdate });
+    const job = parseJobStartResponse(await response.json());
+    return waitForJobResult<TokenizerReportResponse>(job, {
+        onUpdate,
+        parseResult: (result) => parseRecordPayload<TokenizerReportResponse>(result, 'tokenizer report job result'),
+    });
 }
 
 /**

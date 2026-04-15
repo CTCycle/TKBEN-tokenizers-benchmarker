@@ -28,7 +28,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from TKBEN.server.repositories.database.backend import database
 from TKBEN.server.repositories.schemas.models import DatasetDocument
 from TKBEN.server.repositories.serialization.data import DatasetSerializer
-from TKBEN.server.configurations import server_settings
+from TKBEN.server.configurations import get_server_settings
 from TKBEN.server.common.constants import DATASETS_PATH
 from TKBEN.server.common.utils.logger import logger
 from TKBEN.server.common.utils.security import (
@@ -248,7 +248,7 @@ class DatasetService:
     def __init__(self) -> None:
         self.key_service = HFAccessKeyService()
         # Load settings from centralized configuration
-        self.settings = server_settings.datasets
+        self.settings = get_server_settings().datasets
         self.histogram_bins = self.settings.histogram_bins
         self.streaming_batch_size = self.settings.streaming_batch_size
         self.log_interval = self.settings.log_interval
@@ -499,6 +499,28 @@ class DatasetService:
             progress_callback(progress_value)
 
     # -------------------------------------------------------------------------
+    @staticmethod
+    def _load_dataset_worker(
+        result_holder: dict[str, Dataset | DatasetDict],
+        error_holder: dict[str, Exception],
+        hf_dataset_id: str,
+        hf_config: str | None,
+        cache_path: str,
+        hf_access_token: str | None,
+        load_kwargs: dict[str, str],
+    ) -> None:
+        try:
+            result_holder["dataset"] = load_dataset(
+                hf_dataset_id,
+                hf_config,
+                cache_dir=cache_path,
+                token=hf_access_token,
+                **load_kwargs,
+            )
+        except Exception as exc:  # noqa: BLE001
+            error_holder["error"] = exc
+
+    # -------------------------------------------------------------------------
     def load_dataset_with_progress(
         self,
         hf_dataset_id: str,
@@ -521,26 +543,26 @@ class DatasetService:
             heartbeat_thread.start()
 
         try:
-            load_kwargs: dict[str, Any] = {}
+            load_kwargs: dict[str, str] = {}
             if split is not None:
                 load_kwargs["split"] = split
 
             result_holder: dict[str, Dataset | DatasetDict] = {}
             error_holder: dict[str, Exception] = {}
 
-            def _load_worker() -> None:
-                try:
-                    result_holder["dataset"] = load_dataset(
-                        hf_dataset_id,
-                        hf_config,
-                        cache_dir=cache_path,
-                        token=hf_access_token,
-                        **load_kwargs,
-                    )
-                except Exception as exc:  # noqa: BLE001
-                    error_holder["error"] = exc
-
-            worker_thread = threading.Thread(target=_load_worker, daemon=True)
+            worker_thread = threading.Thread(
+                target=self._load_dataset_worker,
+                args=(
+                    result_holder,
+                    error_holder,
+                    hf_dataset_id,
+                    hf_config,
+                    cache_path,
+                    hf_access_token,
+                    load_kwargs,
+                ),
+                daemon=True,
+            )
             worker_thread.start()
             worker_thread.join(timeout=float(self.download_timeout_seconds))
 

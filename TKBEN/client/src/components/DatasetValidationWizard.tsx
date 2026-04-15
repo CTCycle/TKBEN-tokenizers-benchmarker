@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { DatasetAnalysisRequest, DatasetMetricCatalogCategory } from '../types/api';
+import MetricSelectionTree from './MetricSelectionTree';
+import { useMetricSelection } from '../hooks/useMetricSelection';
 
 type DatasetValidationWizardProps = {
   isOpen: boolean;
@@ -27,11 +29,12 @@ const DatasetValidationWizard = ({
   onRun,
 }: DatasetValidationWizardProps) => {
   const [step, setStep] = useState(0);
-  const allMetricKeys = useMemo(
-    () => categories.flatMap((category) => category.metrics.map((metric) => metric.key)),
-    [categories],
-  );
-  const [selectedMetricKeys, setSelectedMetricKeys] = useState<string[]>([]);
+  const {
+    selectedMetricKeys,
+    ensureSelectionInitialized,
+    toggleMetric,
+    toggleCategoryByKeys,
+  } = useMetricSelection(categories);
   const [samplingMode, setSamplingMode] = useState<SamplingMode>('fraction');
   const [samplingFraction, setSamplingFraction] = useState(1);
   const [samplingCount, setSamplingCount] = useState(1000);
@@ -47,33 +50,9 @@ const DatasetValidationWizard = ({
     }
     /* eslint-disable react-hooks/set-state-in-effect */
     setStep(0);
-    if (allMetricKeys.length > 0) {
-      setSelectedMetricKeys((current) => (current.length > 0 ? current : allMetricKeys));
-    }
+    ensureSelectionInitialized();
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [allMetricKeys, isOpen]);
-
-  const toggleMetric = (metricKey: string, enabled: boolean) => {
-    setSelectedMetricKeys((current) => {
-      if (enabled) {
-        if (current.includes(metricKey)) {
-          return current;
-        }
-        return [...current, metricKey];
-      }
-      return current.filter((item) => item !== metricKey);
-    });
-  };
-
-  const toggleCategory = (category: DatasetMetricCatalogCategory, enabled: boolean) => {
-    const keys = category.metrics.map((metric) => metric.key);
-    setSelectedMetricKeys((current) => {
-      if (enabled) {
-        return Array.from(new Set([...current, ...keys]));
-      }
-      return current.filter((item) => !keys.includes(item));
-    });
-  };
+  }, [ensureSelectionInitialized, isOpen]);
 
   const runPipeline = async () => {
     if (!datasetName) return;
@@ -150,37 +129,14 @@ const DatasetValidationWizard = ({
                   )}
                 </div>
               ) : (
-                categories.map((category) => {
-                  const categoryKeys = category.metrics.map((metric) => metric.key);
-                  const selectedCount = categoryKeys.filter((key) => selectedMetricKeys.includes(key)).length;
-                  const categoryChecked = selectedCount === categoryKeys.length && categoryKeys.length > 0;
-                  return (
-                    <div key={category.category_key} className="validation-tree-category">
-                      <label className="checkbox">
-                        <input
-                          type="checkbox"
-                          checked={categoryChecked}
-                          onChange={(event) => toggleCategory(category, event.target.checked)}
-                        />
-                        <span>
-                          {category.category_label} ({selectedCount}/{categoryKeys.length})
-                        </span>
-                      </label>
-                      <div className="validation-tree-children">
-                        {category.metrics.map((metric) => (
-                          <label key={metric.key} className="checkbox">
-                            <input
-                              type="checkbox"
-                              checked={selectedMetricKeys.includes(metric.key)}
-                              onChange={(event) => toggleMetric(metric.key, event.target.checked)}
-                            />
-                            <span>{metric.label}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })
+                <MetricSelectionTree
+                  categories={categories}
+                  selectedMetricKeys={selectedMetricKeys}
+                  onToggleMetric={toggleMetric}
+                  onToggleCategory={toggleCategoryByKeys}
+                  categoryClassName="validation-tree-category"
+                  childrenClassName="validation-tree-children"
+                />
               )}
             </div>
           )}
