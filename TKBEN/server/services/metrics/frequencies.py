@@ -20,6 +20,8 @@ class FrequencyEntry(Base):
 
 ###############################################################################
 class DiskBackedFrequencyStore:
+    SQLITE_MAX_VARIABLES = 900
+
     def __init__(self, memory_limit: int = 250_000) -> None:
         self.memory_limit = max(10_000, int(memory_limit))
         self.memory: Counter[str] = Counter()
@@ -36,6 +38,10 @@ class DiskBackedFrequencyStore:
     # -------------------------------------------------------------------------
     def _session(self) -> Session:
         return self._session_factory()
+
+    # -------------------------------------------------------------------------
+    def _token_lookup_batch_size(self) -> int:
+        return max(1, self.SQLITE_MAX_VARIABLES)
 
     # -------------------------------------------------------------------------
     def add(self, token: str, count: int = 1) -> None:
@@ -56,9 +62,19 @@ class DiskBackedFrequencyStore:
             return
         with self._session() as session:
             tokens = list(self.memory.keys())
-            existing_rows = session.execute(
-                select(FrequencyEntry).where(FrequencyEntry.token.in_(tokens))
-            ).scalars().all()
+            existing_rows: list[FrequencyEntry] = []
+            batch_size = self._token_lookup_batch_size()
+            for start in range(0, len(tokens), batch_size):
+                token_batch = tokens[start : start + batch_size]
+                if not token_batch:
+                    continue
+                existing_rows.extend(
+                    session.execute(
+                        select(FrequencyEntry).where(FrequencyEntry.token.in_(token_batch))
+                    )
+                    .scalars()
+                    .all()
+                )
             existing = {row.token: row for row in existing_rows}
             for token, count in self.memory.items():
                 row = existing.get(token)
