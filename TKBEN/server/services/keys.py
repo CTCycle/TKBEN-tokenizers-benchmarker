@@ -79,27 +79,6 @@ class HFAccessKeyService:
             "Set a valid active key again using the current HF_KEYS_ENCRYPTION_KEY."
         )
 
-    # -------------------------------------------------------------------------
-    def is_legacy_plaintext_key(self, key_value: str) -> bool:
-        normalized = key_value.strip()
-        if not normalized.startswith("hf_"):
-            return False
-        if len(normalized) < 10:
-            return False
-        return " " not in normalized
-
-    # -------------------------------------------------------------------------
-    def migrate_plaintext_key(self, key_id: int, raw_key: str) -> None:
-        encrypted_value = self.cipher.encrypt(raw_key)
-        with self._session() as session:
-            session.execute(
-                update(HFAccessKey)
-                .where(HFAccessKey.id == int(key_id))
-                .values(key_value=encrypted_value)
-            )
-            session.commit()
-
-    # -------------------------------------------------------------------------
     def list_keys(self) -> list[dict[str, Any]]:
         stmt = select(HFAccessKey).order_by(
             HFAccessKey.created_at.desc(),
@@ -132,12 +111,6 @@ class HFAccessKeyService:
                 try:
                     decrypted_value = self.cipher.decrypt(stored_text)
                 except ValueError:
-                    if self.is_legacy_plaintext_key(stored_text):
-                        if stored_text.strip() == normalized_key:
-                            raise HFAccessKeyConflictError(
-                                "This Hugging Face key is already stored."
-                            )
-                        continue
                     logger.warning(
                         "Skipping undecryptable Hugging Face key while checking duplicates."
                     )
@@ -260,7 +233,6 @@ class HFAccessKeyService:
             raise HFAccessKeyValidationError(
                 "No active Hugging Face access key is configured."
             )
-        key_id = row.id
         encrypted_value = row.key_value
         if not encrypted_value:
             raise HFAccessKeyValidationError(
@@ -270,27 +242,6 @@ class HFAccessKeyService:
         try:
             return self.cipher.decrypt(encrypted_text)
         except ValueError as exc:
-            if self.is_legacy_plaintext_key(encrypted_text):
-                logger.warning(
-                    "Active Hugging Face key is stored as plaintext legacy format; "
-                    "migrating to encrypted storage."
-                )
-                try:
-                    normalized_key_id = int(key_id)
-                except (TypeError, ValueError):
-                    normalized_key_id = None
-                if normalized_key_id is not None:
-                    try:
-                        self.migrate_plaintext_key(
-                            normalized_key_id, encrypted_text.strip()
-                        )
-                    except Exception:
-                        logger.warning(
-                            "Failed to migrate plaintext Hugging Face key for id=%s",
-                            key_id,
-                            exc_info=True,
-                        )
-                return encrypted_text.strip()
             raise HFAccessKeyValidationError(
                 self.get_decryption_error_message()
             ) from exc

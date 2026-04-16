@@ -33,9 +33,9 @@ Tests read these variables (direct URL vars take priority):
 - `FASTAPI_HOST`, `FASTAPI_PORT`
 
 ## 5. Async Job API Testing
-For async operations (`/datasets/*`, `/tokenizers/*`, `/benchmarks/run`):
+For async operations (`/api/datasets/*`, `/api/tokenizers/*`, `/api/benchmarks/run`):
 - assert `202` + `job_id` on start
-- poll `/jobs/{job_id}` until terminal state
+- poll `/api/jobs/{job_id}` until terminal state
 - assert final payload shape and required fields
 
 Terminal states:

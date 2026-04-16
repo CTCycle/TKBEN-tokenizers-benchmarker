@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 from TKBEN.server.repositories.database.backend import database
 from TKBEN.server.repositories.schemas.models import Base, HFAccessKey
 from TKBEN.server.services.keys import (
-    HFAccessKeyConflictError,
     HFAccessKeyNotFoundError,
     HFAccessKeyService,
     HFAccessKeyValidationError,
@@ -96,16 +95,13 @@ def test_add_key_skips_undecryptable_rows_during_duplicate_check(
 
 
 ###############################################################################
-def test_get_active_key_migrates_legacy_plaintext_key(
+def test_get_active_key_rejects_plaintext_legacy_value(
     isolated_engine,
 ) -> None:
     del isolated_engine
     service = HFAccessKeyService()
 
-    class LegacyAwareCipher:
-        def encrypt(self, plaintext: str) -> str:
-            return f"enc:{plaintext}"
-
+    class StrictCipher:
         def decrypt(self, encrypted_value: str) -> str:
             if encrypted_value.startswith("enc:"):
                 return encrypted_value[4:]
@@ -121,46 +117,9 @@ def test_get_active_key_migrates_legacy_plaintext_key(
         )
         session.commit()
 
-    service._cipher = LegacyAwareCipher()  # type: ignore[assignment]
-    key = service.get_active_key()
-    assert key == "hf_legacy_token_123"
-
-    with Session(bind=database.backend.engine) as session:
-        stored = session.execute(
-            select(HFAccessKey).where(HFAccessKey.is_active.is_(True)).limit(1)
-        ).scalar_one()
-    assert stored.key_value == "enc:hf_legacy_token_123"
-
-
-###############################################################################
-def test_add_key_detects_duplicate_for_legacy_plaintext_row(
-    isolated_engine,
-) -> None:
-    del isolated_engine
-    service = HFAccessKeyService()
-
-    class LegacyAwareCipher:
-        def encrypt(self, plaintext: str) -> str:
-            return f"enc:{plaintext}"
-
-        def decrypt(self, encrypted_value: str) -> str:
-            if encrypted_value.startswith("enc:"):
-                return encrypted_value[4:]
-            raise ValueError("invalid token")
-
-    with Session(bind=database.backend.engine) as session:
-        session.add(
-            HFAccessKey(
-                key_value="hf_legacy_token_123",
-                created_at=datetime.now(timezone.utc),
-                is_active=False,
-            )
-        )
-        session.commit()
-
-    service._cipher = LegacyAwareCipher()  # type: ignore[assignment]
-    with pytest.raises(HFAccessKeyConflictError, match="already stored"):
-        service.add_key("hf_legacy_token_123")
+    service._cipher = StrictCipher()  # type: ignore[assignment]
+    with pytest.raises(HFAccessKeyValidationError, match="cannot be decrypted"):
+        service.get_active_key()
 
 
 ###############################################################################

@@ -9,6 +9,7 @@ TKBEN/client/node_modules/
 TKBEN/client/dist/
 TKBEN/client/dist-ssr/
 TKBEN/client/logs/
+TKBEN/client/.angular/
 TKBEN/client/*.local
 
 # Python

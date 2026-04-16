@@ -78,7 +78,7 @@ def wait_for_job_completion(
 ) -> dict[str, Any]:
     deadline = time.time() + timeout_seconds
     while True:
-        response = api_context.get(f"/jobs/{job_id}")
+        response = api_context.get(f"/api/jobs/{job_id}")
         assert response.ok, f"Failed to poll job {job_id}: {response.status}"
         payload = response.json()
         status = payload.get("status")
@@ -128,7 +128,7 @@ def uploaded_dataset(
     """
     filename, dataset_name, csv_bytes = sample_dataset_payload
     response = api_context.post(
-        "/datasets/upload",
+        "/api/datasets/upload",
         multipart={
             "file": {
                 "name": filename,

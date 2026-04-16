@@ -38,7 +38,7 @@ def test_dataset_download_request_accepts_configuration() -> None:
     assert request.configs.configuration == "wikitext-2-v1"
 
 
-def test_datasets_dill_dump_works_without_compatibility_patch() -> None:
+def test_datasets_dill_dump_baseline_serialization() -> None:
     from datasets.utils import _dill as datasets_dill
 
     payload = datasets_dill.dumps({"a": 1, "b": 2})

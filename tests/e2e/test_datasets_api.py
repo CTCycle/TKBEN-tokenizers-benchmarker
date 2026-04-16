@@ -1,14 +1,14 @@
 """
 E2E tests for dataset API endpoints.
-Covers /datasets/list, /datasets/upload, and /datasets/analyze.
+Covers /api/datasets/list, /api/datasets/upload, and /api/datasets/analyze.
 """
 
 from playwright.sync_api import APIRequestContext
 
 
 def test_list_datasets_returns_list(api_context: APIRequestContext) -> None:
-    """GET /datasets/list should return a list container."""
-    response = api_context.get("/datasets/list")
+    """GET /api/datasets/list should return a list container."""
+    response = api_context.get("/api/datasets/list")
     assert response.ok, f"Expected 200, got {response.status}"
 
     data = response.json()
@@ -21,7 +21,7 @@ def test_list_datasets_includes_uploaded_dataset(
     uploaded_dataset: dict,
 ) -> None:
     """Uploaded datasets should appear in the list."""
-    response = api_context.get("/datasets/list")
+    response = api_context.get("/api/datasets/list")
     assert response.ok
     data = response.json()
     previews = data.get("datasets", [])
@@ -33,15 +33,15 @@ def test_list_datasets_includes_uploaded_dataset(
 
 
 def test_upload_requires_file(api_context: APIRequestContext) -> None:
-    """POST /datasets/upload without a file should return 422."""
-    response = api_context.post("/datasets/upload")
+    """POST /api/datasets/upload without a file should return 422."""
+    response = api_context.post("/api/datasets/upload")
     assert response.status == 422
 
 
 def test_upload_rejects_invalid_extension(api_context: APIRequestContext) -> None:
-    """POST /datasets/upload with a non-CSV/XLSX file should return 400."""
+    """POST /api/datasets/upload with a non-CSV/XLSX file should return 400."""
     response = api_context.post(
-        "/datasets/upload",
+        "/api/datasets/upload",
         multipart={
             "file": {
                 "name": "invalid.txt",
@@ -73,9 +73,9 @@ def test_upload_accepts_csv_and_returns_histogram(
 def test_analyze_missing_dataset_returns_404(
     api_context: APIRequestContext,
 ) -> None:
-    """POST /datasets/analyze should return 404 for missing datasets."""
+    """POST /api/datasets/analyze should return 404 for missing datasets."""
     response = api_context.post(
-        "/datasets/analyze",
+        "/api/datasets/analyze",
         data={"dataset_name": "missing_dataset"},
     )
     assert response.status == 404
@@ -86,9 +86,9 @@ def test_analyze_uploaded_dataset_returns_stats(
     uploaded_dataset: dict,
     job_waiter,
 ) -> None:
-    """POST /datasets/analyze should return stats for a known dataset."""
+    """POST /api/datasets/analyze should return stats for a known dataset."""
     response = api_context.post(
-        "/datasets/analyze",
+        "/api/datasets/analyze",
         data={"dataset_name": uploaded_dataset["dataset_name"]},
     )
     assert response.ok
