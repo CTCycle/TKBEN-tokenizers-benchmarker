@@ -39,7 +39,7 @@ Execution preference:
 - Validate inputs early and return explicit `HTTPException` messages.
 - For long-running operations, preserve job-based flow:
   - return `JobStartResponse`
-  - poll via `/jobs/{job_id}`
+  - poll via `/api/jobs/{job_id}`
 - Use `asyncio.to_thread(...)` when sync service code is called from async routes.
 
 ## 6. Data and Persistence

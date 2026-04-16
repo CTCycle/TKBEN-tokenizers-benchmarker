@@ -45,11 +45,7 @@ TKBEN is a tokenizer benchmarking application that supports:
   - `TKBEN/server/repositories/schemas/models.py`
 
 ## 5. Routing Model
-Every API router is registered twice:
-- direct path (for example `/datasets/list`)
-- `/api`-prefixed alias (for example `/api/datasets/list`)
-
-This keeps compatibility across local web mode, tests, and packaged desktop mode.
+All backend API routes are exposed only under `/api`.
 
 ## 6. API Surface
 
@@ -59,32 +55,32 @@ Root behavior:
   - packaged Tauri mode with built frontend: serves SPA entrypoint
 
 Datasets:
-- `GET /datasets/list`
-- `GET /datasets/metrics/catalog`
-- `POST /datasets/download` (async job start)
-- `POST /datasets/upload` (async job start)
-- `POST /datasets/analyze` (async job start)
-- `GET /datasets/reports/latest`
-- `GET /datasets/reports/{report_id}`
-- `DELETE /datasets/delete`
+- `GET /api/datasets/list`
+- `GET /api/datasets/metrics/catalog`
+- `POST /api/datasets/download` (async job start)
+- `POST /api/datasets/upload` (async job start)
+- `POST /api/datasets/analyze` (async job start)
+- `GET /api/datasets/reports/latest`
+- `GET /api/datasets/reports/{report_id}`
+- `DELETE /api/datasets/delete`
 
 Tokenizers:
-- `GET /tokenizers/settings`
-- `GET /tokenizers/scan`
-- `GET /tokenizers/list`
-- `POST /tokenizers/download` (async job start)
-- `POST /tokenizers/reports/generate` (async job start)
-- `GET /tokenizers/reports/latest`
-- `GET /tokenizers/reports/{report_id}`
-- `GET /tokenizers/reports/{report_id}/vocabulary`
-- `POST /tokenizers/upload`
-- `DELETE /tokenizers/custom`
+- `GET /api/tokenizers/settings`
+- `GET /api/tokenizers/scan`
+- `GET /api/tokenizers/list`
+- `POST /api/tokenizers/download` (async job start)
+- `POST /api/tokenizers/reports/generate` (async job start)
+- `GET /api/tokenizers/reports/latest`
+- `GET /api/tokenizers/reports/{report_id}`
+- `GET /api/tokenizers/reports/{report_id}/vocabulary`
+- `POST /api/tokenizers/upload`
+- `DELETE /api/tokenizers/custom`
 
 Benchmarks:
-- `POST /benchmarks/run` (async job start)
-- `GET /benchmarks/reports`
-- `GET /benchmarks/reports/{report_id}`
-- `GET /benchmarks/metrics/catalog`
+- `POST /api/benchmarks/run` (async job start)
+- `GET /api/benchmarks/reports`
+- `GET /api/benchmarks/reports/{report_id}`
+- `GET /api/benchmarks/metrics/catalog`
 
 Benchmark payload contract:
 - benchmark API responses use `report_version=2` payload fields.
@@ -97,23 +93,23 @@ Benchmark payload contract:
   - `chart_data` with V2 series groups for efficiency/fidelity/vocabulary/fragmentation/distribution
 
 Exports:
-- `POST /exports/dashboard/pdf` (returns generated PDF bytes)
+- `POST /api/exports/dashboard/pdf` (returns generated PDF bytes)
 
 Jobs:
-- `GET /jobs`
-- `GET /jobs/{job_id}`
-- `DELETE /jobs/{job_id}`
+- `GET /api/jobs`
+- `GET /api/jobs/{job_id}`
+- `DELETE /api/jobs/{job_id}`
 
 HF Keys:
-- `POST /keys`
-- `GET /keys`
-- `DELETE /keys/{key_id}`
-- `POST /keys/{key_id}/activate`
-- `POST /keys/{key_id}/deactivate`
-- `POST /keys/{key_id}/reveal` (guarded by `ALLOW_KEY_REVEAL`)
+- `POST /api/keys`
+- `GET /api/keys`
+- `DELETE /api/keys/{key_id}`
+- `POST /api/keys/{key_id}/activate`
+- `POST /api/keys/{key_id}/deactivate`
+- `POST /api/keys/{key_id}/reveal` (guarded by `ALLOW_KEY_REVEAL`)
 
 ## 7. Async Job Pattern
-Long-running operations return `JobStartResponse` and are polled via `/jobs/{job_id}`.
+Long-running operations return `JobStartResponse` and are polled via `/api/jobs/{job_id}`.
 
 Job terminal states:
 - `completed`

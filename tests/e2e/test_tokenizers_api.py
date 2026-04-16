@@ -1,6 +1,6 @@
 """
 E2E tests for tokenizer API endpoints.
-Covers /tokenizers/settings, /tokenizers/scan, /tokenizers/upload, /tokenizers/custom.
+Covers /api/tokenizers/settings, /api/tokenizers/scan, /api/tokenizers/upload, /api/tokenizers/custom.
 """
 
 import json
@@ -38,8 +38,8 @@ def _build_wordlevel_tokenizer_json() -> bytes:
 
 
 def test_get_tokenizer_settings(api_context: APIRequestContext) -> None:
-    """GET /tokenizers/settings should return configured scan limits."""
-    response = api_context.get("/tokenizers/settings")
+    """GET /api/tokenizers/settings should return configured scan limits."""
+    response = api_context.get("/api/tokenizers/settings")
     assert response.ok
     data = response.json()
     assert "default_scan_limit" in data
@@ -54,8 +54,8 @@ def test_get_tokenizer_settings(api_context: APIRequestContext) -> None:
 def test_scan_tokenizers_returns_identifiers(
     api_context: APIRequestContext,
 ) -> None:
-    """GET /tokenizers/scan should return at least one tokenizer identifier."""
-    response = api_context.get("/tokenizers/scan?limit=1")
+    """GET /api/tokenizers/scan should return at least one tokenizer identifier."""
+    response = api_context.get("/api/tokenizers/scan?limit=1")
     assert response.ok
     data = response.json()
     assert data.get("status") == "success"
@@ -64,9 +64,9 @@ def test_scan_tokenizers_returns_identifiers(
 
 
 def test_upload_rejects_invalid_extension(api_context: APIRequestContext) -> None:
-    """POST /tokenizers/upload should reject non-json files."""
+    """POST /api/tokenizers/upload should reject non-json files."""
     response = api_context.post(
-        "/tokenizers/upload",
+        "/api/tokenizers/upload",
         multipart={
             "file": {
                 "name": "tokenizer.txt",
@@ -81,9 +81,9 @@ def test_upload_rejects_invalid_extension(api_context: APIRequestContext) -> Non
 
 
 def test_upload_rejects_invalid_json(api_context: APIRequestContext) -> None:
-    """POST /tokenizers/upload should reject invalid tokenizer JSON."""
+    """POST /api/tokenizers/upload should reject invalid tokenizer JSON."""
     response = api_context.post(
-        "/tokenizers/upload",
+        "/api/tokenizers/upload",
         multipart={
             "file": {
                 "name": "tokenizer.json",
@@ -98,10 +98,10 @@ def test_upload_rejects_invalid_json(api_context: APIRequestContext) -> None:
 
 
 def test_upload_accepts_valid_tokenizer_json(api_context: APIRequestContext) -> None:
-    """POST /tokenizers/upload should accept a valid tokenizer.json file."""
+    """POST /api/tokenizers/upload should accept a valid tokenizer.json file."""
     payload = _build_wordlevel_tokenizer_json()
     response = api_context.post(
-        "/tokenizers/upload",
+        "/api/tokenizers/upload",
         multipart={
             "file": {
                 "name": "tokenizer.json",
@@ -116,13 +116,13 @@ def test_upload_accepts_valid_tokenizer_json(api_context: APIRequestContext) -> 
     assert data.get("tokenizer_name", "").startswith("CUSTOM_")
     assert data.get("is_compatible") is True
 
-    cleanup = api_context.delete("/tokenizers/custom")
+    cleanup = api_context.delete("/api/tokenizers/custom")
     assert cleanup.ok
 
 
 def test_clear_custom_tokenizers(api_context: APIRequestContext) -> None:
-    """DELETE /tokenizers/custom should return a success message."""
-    response = api_context.delete("/tokenizers/custom")
+    """DELETE /api/tokenizers/custom should return a success message."""
+    response = api_context.delete("/api/tokenizers/custom")
     assert response.ok
     data = response.json()
     assert data.get("status") == "success"
@@ -136,7 +136,7 @@ def test_tokenizer_report_flow_supports_paged_vocabulary(
     api_context: APIRequestContext,
     job_waiter,
 ) -> None:
-    list_response = api_context.get("/tokenizers/list")
+    list_response = api_context.get("/api/tokenizers/list")
     assert list_response.ok
     list_payload = list_response.json()
     tokenizers = list_payload.get("tokenizers", [])
@@ -145,14 +145,14 @@ def test_tokenizer_report_flow_supports_paged_vocabulary(
 
     tokenizer_name = str(tokenizers[0].get("tokenizer_name", "")).strip()
     if not tokenizer_name:
-        pytest.skip("No valid tokenizer_name found in /tokenizers/list response.")
+        pytest.skip("No valid tokenizer_name found in /api/tokenizers/list response.")
 
     latest_response = api_context.get(
-        f"/tokenizers/reports/latest?tokenizer_name={tokenizer_name}"
+        f"/api/tokenizers/reports/latest?tokenizer_name={tokenizer_name}"
     )
     if latest_response.status == 404:
         generate_response = api_context.post(
-            "/tokenizers/reports/generate",
+            "/api/tokenizers/reports/generate",
             data={"tokenizer_name": tokenizer_name},
         )
         assert generate_response.ok, generate_response.text()
@@ -173,7 +173,7 @@ def test_tokenizer_report_flow_supports_paged_vocabulary(
     report_id = int(report_payload.get("report_id"))
 
     page_one_response = api_context.get(
-        f"/tokenizers/reports/{report_id}/vocabulary?offset=0&limit=200"
+        f"/api/tokenizers/reports/{report_id}/vocabulary?offset=0&limit=200"
     )
     assert page_one_response.ok, page_one_response.text()
     page_one = page_one_response.json()
@@ -187,7 +187,7 @@ def test_tokenizer_report_flow_supports_paged_vocabulary(
 
     second_offset = int(page_one.get("limit", 200))
     page_two_response = api_context.get(
-        f"/tokenizers/reports/{report_id}/vocabulary?offset={second_offset}&limit=200"
+        f"/api/tokenizers/reports/{report_id}/vocabulary?offset={second_offset}&limit=200"
     )
     assert page_two_response.ok, page_two_response.text()
     page_two = page_two_response.json()

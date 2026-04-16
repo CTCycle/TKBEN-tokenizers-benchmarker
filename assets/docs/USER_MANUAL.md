@@ -109,7 +109,7 @@ npm run preview -- --host 127.0.0.1 --port 8000 --strictPort
 - Ingest once, analyze many times: load a dataset, then run validation with different metric selections.
 - Cache tokenizers before reporting: scan/download in batches, then generate per-tokenizer reports on demand.
 - Compare benchmark runs by report ID over time to validate tokenizer choices under different metric sets.
-- Use async job status as source of truth for long-running operations (`/jobs`, `/jobs/{job_id}`).
+- Use async job status as source of truth for long-running operations (`/api/jobs`, `/api/jobs/{job_id}`).
 
 ## 7. Key Features Summary
 - Dataset ingestion from Hugging Face and local file upload.
@@ -118,5 +118,5 @@ npm run preview -- --host 127.0.0.1 --port 8000 --strictPort
 - Support for uploaded custom tokenizer JSON files (session-scoped).
 - Cross-tokenizer benchmark execution with persisted reports.
 - PDF export endpoint for dashboard reports.
-- Dual API routing (`/` and `/api` aliases) for compatibility across runtime modes.
+- Backend APIs are exposed only under `/api/*`.
 

@@ -56,8 +56,7 @@ routers = [
 ]
 
 for router in routers:
-    app.include_router(router)
-    app.include_router(router, prefix="/api", include_in_schema=False)
+    app.include_router(router, prefix="/api")
 
 if packaged_client_available():
     client_dist_path = get_client_dist_path()

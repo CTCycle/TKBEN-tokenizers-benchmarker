@@ -5,8 +5,8 @@ from collections.abc import Iterator
 from typing import Any
 
 import pandas as pd
-from sqlalchemy import MetaData, Table, and_, delete, func, select, update
-from sqlalchemy.exc import IntegrityError, NoSuchTableError
+from sqlalchemy import and_, delete, func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from TKBEN.server.repositories.queries.data import DataRepositoryQueries
@@ -15,14 +15,12 @@ from TKBEN.server.repositories.schemas.models import (
     BenchmarkReport,
     Dataset,
     DatasetDocument,
-    DatasetValidationReport,
     HistogramArtifact,
     MetricType,
     MetricValue,
     Tokenizer,
     TokenizerReport,
     TokenizerVocabulary,
-    TokenizationDocumentStats,
 )
 
 K_ERROR = "k error"
@@ -33,14 +31,8 @@ class DatasetSerializer:
     def __init__(self, queries: DataRepositoryQueries | None = None) -> None:
         self.queries = queries or DataRepositoryQueries()
         self.dataset_dimension_table = Dataset.__tablename__
-        self.dataset_table = DatasetDocument.__tablename__
-        self.stats_table = "dataset_document_statistics"
-        self.validation_reports_table = "dataset_validation_report"
-        self.analysis_session_table = AnalysisSession.__tablename__
-        self.metric_type_table = MetricType.__tablename__
         self.metric_value_table = MetricValue.__tablename__
         self.histogram_table = HistogramArtifact.__tablename__
-        self.local_stats_table = TokenizationDocumentStats.__tablename__
 
     # -------------------------------------------------------------------------
     def _session(self) -> Session:
@@ -229,170 +221,6 @@ class DatasetSerializer:
             session.execute(stmt)
             session.commit()
 
-    # -------------------------------------------------------------------------
-    def delete_dataset_statistics(self, dataset_name: str) -> None:
-        metadata = MetaData()
-        try:
-            stats_table = Table(
-                self.stats_table,
-                metadata,
-                autoload_with=self.queries.engine,
-            )
-        except NoSuchTableError:
-            return
-        doc_ids = (
-            select(DatasetDocument.id)
-            .join(Dataset, Dataset.id == DatasetDocument.dataset_id)
-            .where(Dataset.name == dataset_name)
-        )
-        stmt = delete(stats_table).where(stats_table.c.document_id.in_(doc_ids))
-        with self._session() as session:
-            session.execute(stmt)
-            session.commit()
-
-    # -------------------------------------------------------------------------
-    def save_dataset_statistics_batch(self, batch: list[dict[str, Any]]) -> None:
-        if not batch:
-            return
-        df = pd.DataFrame(batch)
-        self.queries.insert_table(df, self.stats_table)
-
-    # -------------------------------------------------------------------------
-    def _coerce_datetime(self, value: Any) -> Any:
-        if value is None:
-            return pd.Timestamp.utcnow().to_pydatetime()
-        parsed = pd.to_datetime(value, utc=True, errors="coerce")
-        if pd.isna(parsed):
-            return pd.Timestamp.utcnow().to_pydatetime()
-        return parsed.to_pydatetime()
-
-    # -------------------------------------------------------------------------
-    def _normalize_histogram(self, storage: Any) -> dict[str, Any]:
-        histogram = self.parse_json(storage, default={})
-        return {
-            "bins": self.parse_json(histogram.get("bins"), default=[]),
-            "counts": self.parse_json(histogram.get("counts"), default=[]),
-            "bin_edges": self.parse_json(histogram.get("bin_edges"), default=[]),
-            "min_length": int(histogram.get("min_length", 0) or 0),
-            "max_length": int(histogram.get("max_length", 0) or 0),
-            "mean_length": float(histogram.get("mean_length", 0.0) or 0.0),
-            "median_length": float(histogram.get("median_length", 0.0) or 0.0),
-        }
-
-    # -------------------------------------------------------------------------
-    def build_validation_report_storage(self, report: dict[str, Any]) -> dict[str, Any]:
-        return {
-            "dataset_name": report.get("dataset_name", ""),
-            "report_version": int(report.get("report_version", 1) or 1),
-            "created_at": report.get("created_at"),
-            "aggregate_statistics": report.get("aggregate_statistics", {}),
-            "document_histogram": report.get("document_length_histogram", {}),
-            "word_histogram": report.get("word_length_histogram", {}),
-            "most_common_words": report.get("most_common_words", []),
-            "least_common_words": report.get("least_common_words", []),
-            "longest_words": report.get("longest_words", []),
-            "shortest_words": report.get("shortest_words", []),
-            "word_cloud_terms": report.get("word_cloud_terms", []),
-            "per_document_stats": report.get("per_document_stats", {}),
-        }
-
-    # -------------------------------------------------------------------------
-    def save_dataset_validation_report(self, report: dict[str, Any]) -> int:
-        storage = self.build_validation_report_storage(report)
-        dataset_name = str(storage.get("dataset_name") or "")
-        dataset_id = self.get_dataset_id(dataset_name)
-        if dataset_id is None:
-            raise ValueError(f"Dataset '{dataset_name}' not found while saving report.")
-        validation_report = DatasetValidationReport(
-            dataset_id=int(dataset_id),
-            report_version=int(storage.get("report_version", 1) or 1),
-            created_at=self._coerce_datetime(storage.get("created_at")),
-            aggregate_statistics=storage.get("aggregate_statistics", {}),
-            document_histogram=storage.get("document_histogram", {}),
-            word_histogram=storage.get("word_histogram", {}),
-            most_common_words=storage.get("most_common_words", []),
-            least_common_words=storage.get("least_common_words", []),
-            longest_words=storage.get("longest_words", []),
-            shortest_words=storage.get("shortest_words", []),
-            word_cloud_terms=storage.get("word_cloud_terms", []),
-            per_document_stats=storage.get("per_document_stats", {}),
-        )
-        with self._session() as session:
-            session.add(validation_report)
-            session.commit()
-            session.refresh(validation_report)
-        return int(validation_report.id)
-
-    # -------------------------------------------------------------------------
-    def save_dataset_report(self, report: dict[str, Any]) -> int:
-        return self.save_dataset_validation_report(report)
-
-    # -------------------------------------------------------------------------
-    def build_validation_report_response(
-        self, storage: dict[str, Any]
-    ) -> dict[str, Any]:
-        aggregate_statistics = self.parse_json(
-            storage.get("aggregate_statistics"), default={}
-        )
-        document_histogram = self._normalize_histogram(
-            storage.get("document_histogram")
-        )
-        word_histogram = self._normalize_histogram(storage.get("word_histogram"))
-        created_at_raw = storage.get("created_at")
-        created_at = pd.to_datetime(created_at_raw, utc=True, errors="coerce")
-        created_at_iso = (
-            created_at.isoformat().replace("+00:00", "Z")
-            if not pd.isna(created_at)
-            else ""
-        )
-        return {
-            "report_id": int(storage.get("id") or 0),
-            "report_version": int(storage.get("report_version", 1) or 1),
-            "created_at": created_at_iso,
-            "dataset_name": storage.get("dataset_name", ""),
-            "document_count": int(aggregate_statistics.get("document_count", 0) or 0),
-            "document_length_histogram": document_histogram,
-            "word_length_histogram": word_histogram,
-            "min_document_length": document_histogram["min_length"],
-            "max_document_length": document_histogram["max_length"],
-            "most_common_words": self.parse_json(
-                storage.get("most_common_words"), default=[]
-            ),
-            "least_common_words": self.parse_json(
-                storage.get("least_common_words"), default=[]
-            ),
-            "longest_words": self.parse_json(storage.get("longest_words"), default=[]),
-            "shortest_words": self.parse_json(
-                storage.get("shortest_words"), default=[]
-            ),
-            "word_cloud_terms": self.parse_json(
-                storage.get("word_cloud_terms"), default=[]
-            ),
-            "aggregate_statistics": aggregate_statistics,
-            "per_document_stats": self.parse_json(
-                storage.get("per_document_stats"), default={}
-            ),
-        }
-
-    # -------------------------------------------------------------------------
-    def load_latest_dataset_validation_report(
-        self,
-        dataset_name: str,
-    ) -> dict[str, Any] | None:
-        return self.load_latest_analysis_report(dataset_name)
-
-    # -------------------------------------------------------------------------
-    def load_dataset_validation_report_by_id(
-        self,
-        report_id: int,
-    ) -> dict[str, Any] | None:
-        return self.load_analysis_report_by_session_id(report_id)
-
-    # -------------------------------------------------------------------------
-    def load_dataset_report(self, dataset_name: str) -> dict[str, Any] | None:
-        return self.load_latest_analysis_report(dataset_name)
-
-    # -------------------------------------------------------------------------
     def ensure_metric_types_seeded(self, metric_catalog: list[dict[str, Any]]) -> None:
         entries: list[dict[str, str]] = []
         for category in metric_catalog:

@@ -26,9 +26,9 @@ Terminal states:
 
 ## 4. API Contract
 Jobs API (`TKBEN/server/api/jobs.py`):
-- `GET /jobs` list jobs (optional `job_type`)
-- `GET /jobs/{job_id}` fetch current status
-- `DELETE /jobs/{job_id}` request cancellation
+- `GET /api/jobs` list jobs (optional `job_type`)
+- `GET /api/jobs/{job_id}` fetch current status
+- `DELETE /api/jobs/{job_id}` request cancellation
 
 Long-running routes return `JobStartResponse` with:
 - `job_id`

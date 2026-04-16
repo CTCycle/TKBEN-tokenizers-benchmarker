@@ -1,6 +1,6 @@
 """
 E2E tests for benchmark API endpoints.
-Covers /benchmarks/run validation and optional happy-path execution.
+Covers /api/benchmarks/run validation and optional happy-path execution.
 """
 
 import os
@@ -13,9 +13,9 @@ RUN_BENCHMARKS = os.getenv("E2E_RUN_BENCHMARKS", "").lower() in ("1", "true", "y
 
 
 def test_run_benchmarks_requires_tokenizers(api_context: APIRequestContext) -> None:
-    """POST /benchmarks/run should reject empty tokenizer lists."""
+    """POST /api/benchmarks/run should reject empty tokenizer lists."""
     response = api_context.post(
-        "/benchmarks/run",
+        "/api/benchmarks/run",
         data={"tokenizers": [], "dataset_name": "custom/e2e_sample"},
     )
     assert response.status == 400
@@ -24,9 +24,9 @@ def test_run_benchmarks_requires_tokenizers(api_context: APIRequestContext) -> N
 
 
 def test_run_benchmarks_requires_dataset(api_context: APIRequestContext) -> None:
-    """POST /benchmarks/run should reject missing dataset names."""
+    """POST /api/benchmarks/run should reject missing dataset names."""
     response = api_context.post(
-        "/benchmarks/run",
+        "/api/benchmarks/run",
         data={
             "tokenizers": ["hf-internal-testing/tiny-random-bert"],
             "dataset_name": "",
@@ -40,9 +40,9 @@ def test_run_benchmarks_requires_dataset(api_context: APIRequestContext) -> None
 def test_run_benchmarks_missing_dataset_returns_400(
     api_context: APIRequestContext,
 ) -> None:
-    """POST /benchmarks/run should reject unknown datasets before loading tokenizers."""
+    """POST /api/benchmarks/run should reject unknown datasets before loading tokenizers."""
     response = api_context.post(
-        "/benchmarks/run",
+        "/api/benchmarks/run",
         data={
             "tokenizers": ["hf-internal-testing/tiny-random-bert"],
             "dataset_name": "missing_dataset",
@@ -56,8 +56,8 @@ def test_run_benchmarks_missing_dataset_returns_400(
 def test_get_benchmark_metrics_catalog_returns_categories(
     api_context: APIRequestContext,
 ) -> None:
-    """GET /benchmarks/metrics/catalog should return a non-empty catalog."""
-    response = api_context.get("/benchmarks/metrics/catalog")
+    """GET /api/benchmarks/metrics/catalog should return a non-empty catalog."""
+    response = api_context.get("/api/benchmarks/metrics/catalog")
     assert response.ok, response.text()
     data = response.json()
     categories = data.get("categories", [])
@@ -71,8 +71,8 @@ def test_get_benchmark_metrics_catalog_returns_categories(
 def test_list_benchmark_reports_returns_payload(
     api_context: APIRequestContext,
 ) -> None:
-    """GET /benchmarks/reports should always return the reports array."""
-    response = api_context.get("/benchmarks/reports")
+    """GET /api/benchmarks/reports should always return the reports array."""
+    response = api_context.get("/api/benchmarks/reports")
     assert response.ok, response.text()
     data = response.json()
     assert isinstance(data.get("reports", []), list)
@@ -87,9 +87,9 @@ def test_run_benchmarks_with_sample_dataset(
     uploaded_dataset: dict,
     job_waiter,
 ) -> None:
-    """POST /benchmarks/run should return chart data for a small dataset."""
+    """POST /api/benchmarks/run should return chart data for a small dataset."""
     response = api_context.post(
-        "/benchmarks/run",
+        "/api/benchmarks/run",
         data={
             "tokenizers": ["hf-internal-testing/tiny-random-bert"],
             "dataset_name": uploaded_dataset["dataset_name"],
@@ -124,12 +124,12 @@ def test_run_benchmarks_with_sample_dataset(
     assert data.get("run_name") == "e2e benchmark report"
     assert isinstance(data.get("selected_metric_keys"), list)
 
-    list_response = api_context.get("/benchmarks/reports")
+    list_response = api_context.get("/api/benchmarks/reports")
     assert list_response.ok, list_response.text()
     report_list = list_response.json().get("reports", [])
     assert any(int(item.get("report_id", 0)) == report_id for item in report_list)
 
-    by_id_response = api_context.get(f"/benchmarks/reports/{report_id}")
+    by_id_response = api_context.get(f"/api/benchmarks/reports/{report_id}")
     assert by_id_response.ok, by_id_response.text()
     by_id_data = by_id_response.json()
     assert int(by_id_data.get("report_id", 0)) == report_id
