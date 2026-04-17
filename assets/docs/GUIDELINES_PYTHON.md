@@ -27,6 +27,8 @@ Execution preference:
 - Prefer pure helper functions for metric/transform logic.
 - Use classes when methods share state/scope.
 - Preserve existing separator/comment conventions where already used.
+- Do not use global variables (`global name` or mutable module-level state).
+- Pass state explicitly via function parameters, class instances, or dependency injection.
 
 ## 4. Typing
 - Keep type hints on public functions and non-trivial internals.
