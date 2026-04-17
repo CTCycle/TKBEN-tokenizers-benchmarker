@@ -20,6 +20,8 @@ Last updated: 2026-04-08
 - Prefer explicit domain types from `types/api.ts`.
 - For uncertain payloads, use `unknown` and narrow safely.
 - Keep parsing/normalization helpers deterministic and side-effect free.
+- Do not introduce global variables or cross-module mutable singleton state.
+- Keep state local to components/hooks/services and pass dependencies explicitly.
 
 ## 4. API Integration
 - Use endpoint constants from `TKBEN/client/src/constants.ts`.

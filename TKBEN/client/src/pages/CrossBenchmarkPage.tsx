@@ -253,20 +253,20 @@ const CrossBenchmarkPage = () => {
     if (!activeReport) {
       return [];
     }
-    const global = activeReport.tokenizer_results ?? [];
-    const bestSpeed = global.reduce<BenchmarkTokenizerResult | null>((best, item) => {
+    const tokenizerResults = activeReport.tokenizer_results ?? [];
+    const bestSpeed = tokenizerResults.reduce<BenchmarkTokenizerResult | null>((best, item) => {
       if (!best) return item;
       return toNumber(item.efficiency.encode_tokens_per_second_mean) > toNumber(best.efficiency.encode_tokens_per_second_mean) ? item : best;
     }, null);
-    const bestUnknown = global.reduce<BenchmarkTokenizerResult | null>((best, item) => {
+    const bestUnknown = tokenizerResults.reduce<BenchmarkTokenizerResult | null>((best, item) => {
       if (!best) return item;
       return toNumber(item.fidelity.unknown_token_rate) < toNumber(best.fidelity.unknown_token_rate) ? item : best;
     }, null);
-    const bestRoundTrip = global.reduce<BenchmarkTokenizerResult | null>((best, item) => {
+    const bestRoundTrip = tokenizerResults.reduce<BenchmarkTokenizerResult | null>((best, item) => {
       if (!best) return item;
       return toNumber(item.fidelity.exact_round_trip_rate) > toNumber(best.fidelity.exact_round_trip_rate) ? item : best;
     }, null);
-    const lowestMemory = global.reduce<BenchmarkTokenizerResult | null>((best, item) => {
+    const lowestMemory = tokenizerResults.reduce<BenchmarkTokenizerResult | null>((best, item) => {
       if (!best) return item;
       return toNumber(item.resources.peak_rss_mb) < toNumber(best.resources.peak_rss_mb) ? item : best;
     }, null);
