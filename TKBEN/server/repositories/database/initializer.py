@@ -8,9 +8,10 @@ from sqlalchemy.sql.elements import TextClause
 from TKBEN.server.configurations import DatabaseSettings, get_server_settings
 from TKBEN.server.repositories.database.postgres import PostgresRepository
 from TKBEN.server.repositories.database.sqlite import SQLiteRepository
-from TKBEN.server.repositories.database.utils import normalize_postgres_engine
 from TKBEN.server.repositories.schemas.models import Base
 from TKBEN.server.common.utils.logger import logger
+
+SUPPORTED_POSTGRES_ENGINE = "postgresql+psycopg"
 
 
 ###############################################################################
@@ -26,7 +27,7 @@ def build_postgres_connect_args(settings: DatabaseSettings) -> dict[str, str | i
 # -----------------------------------------------------------------------------
 def build_postgres_url(settings: DatabaseSettings, database_name: str) -> str:
     port = settings.port or 5432
-    engine_name = normalize_postgres_engine(settings.engine)
+    engine_name = _resolve_postgres_engine(settings.engine)
     safe_username = urllib.parse.quote_plus(settings.username or "")
     safe_password = urllib.parse.quote_plus(settings.password or "")
     return (
@@ -118,16 +119,16 @@ def run_database_initialization() -> None:
         initialize_sqlite_database(settings)
         return
 
-    engine_name = normalize_postgres_engine(settings.engine).lower()
-    if engine_name not in {
-        "postgres",
-        "postgresql",
-        "postgresql+psycopg",
-        "postgresql+psycopg2",
-    }:
-        raise ValueError(f"Unsupported database engine: {settings.engine}")
-
+    _resolve_postgres_engine(settings.engine)
     ensure_postgres_database(settings)
+
+
+# -----------------------------------------------------------------------------
+def _resolve_postgres_engine(engine: str | None) -> str:
+    normalized = (engine or "").strip().lower()
+    if normalized == SUPPORTED_POSTGRES_ENGINE:
+        return SUPPORTED_POSTGRES_ENGINE
+    raise ValueError(f"Unsupported database engine: {engine}")
 
 
 # -----------------------------------------------------------------------------

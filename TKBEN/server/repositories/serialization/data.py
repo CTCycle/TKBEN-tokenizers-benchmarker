@@ -9,6 +9,7 @@ from sqlalchemy import and_, delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from TKBEN.server.domain.benchmarks import BenchmarkReportSummary, BenchmarkRunResponse
 from TKBEN.server.repositories.queries.data import DataRepositoryQueries
 from TKBEN.server.repositories.benchmarks import BenchmarkRepository
 from TKBEN.server.repositories.schemas.models import (
@@ -23,7 +24,6 @@ from TKBEN.server.repositories.schemas.models import (
     TokenizerReport,
     TokenizerVocabulary,
 )
-from TKBEN.server.services.benchmark_payloads import BenchmarkPayloadBuilder
 
 K_ERROR = "k error"
 
@@ -902,7 +902,6 @@ class BenchmarkReportSerializer:
         self.queries = queries or DataRepositoryQueries()
         self.benchmark_report_table = BenchmarkReport.__tablename__
         self.repository = BenchmarkRepository()
-        self.payload_builder = BenchmarkPayloadBuilder()
 
     # -------------------------------------------------------------------------
     def save_benchmark_report(self, report_payload: dict[str, Any]) -> int:
@@ -956,6 +955,8 @@ class BenchmarkReportSerializer:
     # -------------------------------------------------------------------------
     def _normalize_report_row(self, row: dict[str, Any]) -> dict[str, Any]:
         payload = self._parse_json(row.get("payload"), {})
+        if not isinstance(payload, dict):
+            payload = {}
         created_at = pd.to_datetime(row.get("created_at"), utc=True, errors="coerce")
         created_at_iso = (
             created_at.isoformat().replace("+00:00", "Z")
@@ -973,11 +974,19 @@ class BenchmarkReportSerializer:
             str(key) for key in selected_metric_keys if isinstance(key, str) and key
         ]
 
-        normalized_row = dict(row)
-        normalized_row["created_at"] = created_at_iso
-        normalized_row["selected_metric_keys"] = selected_metric_keys
-        normalized_row["payload"] = payload if isinstance(payload, dict) else {}
-        return self.payload_builder.normalize_persisted_report_row(normalized_row)
+        normalized_payload = dict(payload)
+        normalized_payload["report_id"] = int(row.get("id") or normalized_payload.get("report_id") or 0)
+        normalized_payload["report_version"] = int(
+            row.get("report_version") or normalized_payload.get("report_version") or 2
+        )
+        normalized_payload["created_at"] = created_at_iso
+        normalized_payload["run_name"] = row.get("run_name") or normalized_payload.get("run_name")
+        normalized_payload["selected_metric_keys"] = selected_metric_keys
+        normalized_payload["dataset_name"] = str(
+            normalized_payload.get("dataset_name") or row.get("dataset_name") or ""
+        )
+
+        return BenchmarkRunResponse.model_validate(normalized_payload).model_dump(mode="json")
 
     # -------------------------------------------------------------------------
     def list_benchmark_reports(self, limit: int = 200) -> list[dict[str, Any]]:
@@ -995,7 +1004,7 @@ class BenchmarkReportSerializer:
                 "dataset_name": dataset_name,
             }
             normalized = self._normalize_report_row(row)
-            summaries.append(self.payload_builder.build_report_summary(normalized))
+            summaries.append(BenchmarkReportSummary.model_validate(normalized).model_dump(mode="json"))
         return summaries
 
     # -------------------------------------------------------------------------

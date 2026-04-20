@@ -10,10 +10,7 @@ from TKBEN.server.common.constants import DATABASE_FILENAME, RESOURCES_PATH
 from TKBEN.server.configurations import DatabaseSettings, get_server_settings
 from TKBEN.server.repositories.database.postgres import PostgresRepository
 from TKBEN.server.repositories.database.sqlite import SQLiteRepository
-from TKBEN.server.repositories.database.utils import (
-    normalize_postgres_engine,
-    normalize_sqlite_path,
-)
+from TKBEN.server.repositories.database.utils import normalize_sqlite_path
 from TKBEN.server.common.utils.logger import logger
 
 
@@ -66,12 +63,10 @@ class TKBENDatabase:
         if is_embedded:
             backend_name = "sqlite"
         else:
-            normalized_engine = normalize_postgres_engine(self.settings.engine).lower()
-            backend_name = (
-                "postgres"
-                if normalized_engine.startswith("postgresql")
-                else normalized_engine
-            )
+            engine_name = (self.settings.engine or "").lower()
+            if engine_name != "postgresql+psycopg":
+                raise ValueError(f"Unsupported database engine: {self.settings.engine}")
+            backend_name = "postgres"
         normalized_name = backend_name.lower()
         logger.info("Initializing %s database backend", backend_name)
         if normalized_name not in BACKEND_FACTORIES:

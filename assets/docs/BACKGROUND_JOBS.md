@@ -43,6 +43,7 @@ Long-running routes return `JobStartResponse` with:
 - Runners can report progress via `JobProgressReporter` (0 to 100).
 - Result payload is stored in `state.result`.
 - On failure, a truncated error string is stored in `state.error`.
+- Benchmark jobs (`benchmark_run`) generate the current `BenchmarkRunResponse` contract directly and persist that payload in `benchmark_report.payload` without compatibility reshaping.
 
 ## 6. Cancellation Model
 - `cancel_job` marks `stop_requested=true` and status `cancelled`.

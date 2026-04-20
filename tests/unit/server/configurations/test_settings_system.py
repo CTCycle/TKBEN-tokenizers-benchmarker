@@ -16,6 +16,7 @@ from TKBEN.server.configurations.startup import (
     get_server_settings,
     reload_settings_for_tests,
 )
+from TKBEN.server.repositories.database.initializer import _resolve_postgres_engine
 
 
 ###############################################################################
@@ -43,7 +44,6 @@ def _minimal_config_json() -> dict[str, object]:
     return {
         "database": {"embedded_database": True},
         "datasets": {},
-        "fitting": {},
         "tokenizers": {},
         "benchmarks": {},
         "jobs": {"polling_interval": 1.0},
@@ -162,7 +162,6 @@ def test_external_database_requires_host_name_and_user(
         {
             "database": {"embedded_database": False, "engine": "postgresql+psycopg"},
             "datasets": {},
-            "fitting": {},
             "tokenizers": {},
             "benchmarks": {},
             "jobs": {},
@@ -202,7 +201,6 @@ def test_get_server_settings_path_scoped_loading_is_deterministic(
                 "insert_batch_size": 1000,
             },
             "datasets": {"histogram_bins": 30},
-            "fitting": {"default_max_iterations": 2000},
             "tokenizers": {"default_scan_limit": 150},
             "benchmarks": {"streaming_batch_size": 2000},
             "jobs": {"polling_interval": 2.5},
@@ -220,7 +218,6 @@ def test_get_server_settings_path_scoped_loading_is_deterministic(
     assert settings_a.database.embedded_database is False
     assert settings_a.database.engine == "postgresql+psycopg"
     assert settings_a.datasets.histogram_bins == 30
-    assert settings_a.fitting.default_max_iterations == 2000
     assert settings_a.tokenizers.default_scan_limit == 150
     assert settings_a.benchmarks.streaming_batch_size == 2000
     assert settings_a.jobs.polling_interval == 2.5
@@ -282,6 +279,55 @@ def test_configuration_manager_reload_reflects_file_changes(
     manager.reload()
     assert manager.server_settings.datasets.histogram_bins == 45
     assert manager.get_value("datasets", "histogram_bins") == 45
+
+
+# -----------------------------------------------------------------------------
+def test_configuration_payload_omits_fitting_block(tmp_path: Path) -> None:
+    config_path = tmp_path / "configurations.json"
+    _write_json(config_path, _minimal_config_json())
+
+    manager = get_configuration_manager(config_path=str(config_path))
+
+    assert manager.get_block("fitting") == {}
+    assert not hasattr(manager.server_settings, "fitting")
+
+
+# -----------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    "engine",
+    ["postgres", "postgresql", "postgresql+psycopg2"],
+)
+def test_external_database_rejects_legacy_engine_aliases(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    engine: str,
+) -> None:
+    config_path = tmp_path / "configurations.json"
+    _write_json(
+        config_path,
+        {
+            "database": {
+                "embedded_database": False,
+                "engine": engine,
+                "host": "127.0.0.1",
+                "port": 5432,
+                "database_name": "tkben",
+                "username": "postgres",
+                "password": "secret",
+            },
+            "datasets": {},
+            "tokenizers": {},
+            "benchmarks": {},
+            "jobs": {},
+        },
+    )
+    env_path = tmp_path / ".env"
+    _write_env(env_path, ["FASTAPI_HOST=127.0.0.1"])
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", str(env_path))
+
+    settings = get_server_settings(config_path=str(config_path))
+    with pytest.raises(ValueError, match="Unsupported database engine"):
+        _resolve_postgres_engine(settings.database.engine)
 
 
 # -----------------------------------------------------------------------------

@@ -13,7 +13,7 @@ from TKBEN.server.common.constants import (
 )
 from TKBEN.server.api.datasets import router as datasets_router
 from TKBEN.server.api.tokenizers import router as tokenizers_router
-from TKBEN.server.api.benchmarks import router as fit_router
+from TKBEN.server.api.benchmarks import router as benchmarks_router
 from TKBEN.server.api.jobs import router as jobs_router
 from TKBEN.server.api.keys import router as keys_router
 from TKBEN.server.api.exports import router as exports_router
@@ -45,7 +45,7 @@ app.state.job_manager = JobManager()
 routers = [
     datasets_router,
     tokenizers_router,
-    fit_router,
+    benchmarks_router,
     jobs_router,
     keys_router,
     exports_router,

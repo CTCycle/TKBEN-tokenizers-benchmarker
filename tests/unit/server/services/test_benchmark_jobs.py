@@ -20,11 +20,36 @@ def test_run_benchmark_job_builds_and_saves_report(monkeypatch) -> None:
         def run_benchmarks(self, **kwargs):
             del kwargs
             return {
+                "status": "success",
                 "dataset_name": "custom/sample",
                 "documents_processed": 2,
                 "tokenizers_processed": ["bert-base-uncased"],
                 "tokenizers_count": 1,
-                "global_metrics": [],
+                "config": {
+                    "max_documents": 0,
+                    "warmup_trials": 2,
+                    "timed_trials": 8,
+                    "batch_size": 16,
+                    "seed": 42,
+                    "parallelism": 1,
+                    "include_lm_metrics": False,
+                },
+                "hardware_profile": {
+                    "runtime": "3.14",
+                    "os": "test",
+                    "cpu_model": None,
+                    "cpu_logical_cores": None,
+                    "memory_total_mb": None,
+                },
+                "trial_summary": {"warmup_trials": 2, "timed_trials": 8},
+                "tokenizer_results": [],
+                "chart_data": {
+                    "efficiency": [],
+                    "fidelity": [],
+                    "vocabulary": [],
+                    "fragmentation": [],
+                    "latency_or_memory_distribution": [],
+                },
                 "per_document_stats": [],
             }
 
