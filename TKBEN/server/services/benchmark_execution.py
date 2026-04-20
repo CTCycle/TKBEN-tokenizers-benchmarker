@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from TKBEN.server.repositories.database.backend import database
 from TKBEN.server.repositories.schemas.models import (
@@ -28,12 +29,15 @@ class BenchmarkServiceExecutionMixin:
     # Concrete host class provides these members; annotate for static analyzers.
     tools: Any
     log_interval: int
-    _session: Callable[[], Any]
     resolve_selected_metric_keys: Callable[[list[str] | None], list[str]]
     get_dataset_document_count: Callable[[str], int]
     load_tokenizers: Callable[[list[str]], dict[str, Any]]
     stream_dataset_rows_from_database: Callable[[str], Any]
     build_per_document_stats: Callable[[pd.DataFrame], list[dict[str, Any]]]
+
+    # -------------------------------------------------------------------------
+    def _session(self) -> Session:
+        return Session(bind=database.backend.engine)
 
     def tokenize_document(
         self,

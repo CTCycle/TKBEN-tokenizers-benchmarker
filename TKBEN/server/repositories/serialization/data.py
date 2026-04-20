@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from TKBEN.server.repositories.queries.data import DataRepositoryQueries
+from TKBEN.server.repositories.benchmarks import BenchmarkRepository
 from TKBEN.server.repositories.schemas.models import (
     AnalysisSession,
     BenchmarkReport,
@@ -22,6 +23,7 @@ from TKBEN.server.repositories.schemas.models import (
     TokenizerReport,
     TokenizerVocabulary,
 )
+from TKBEN.server.services.benchmark_payloads import BenchmarkPayloadBuilder
 
 K_ERROR = "k error"
 
@@ -213,6 +215,22 @@ class DatasetSerializer:
             if batch:
                 yield batch
             offset += len(rows)
+
+    # -------------------------------------------------------------------------
+    def iterate_dataset_rows_for_benchmarks(
+        self,
+        dataset_name: str,
+        batch_size: int,
+    ) -> Iterator[tuple[int, str]]:
+        for batch in self.iterate_dataset_rows(
+            dataset_name=dataset_name,
+            batch_size=batch_size,
+        ):
+            for item in batch:
+                row_id = item.get("id")
+                text = item.get("text")
+                if isinstance(row_id, int) and isinstance(text, str) and text:
+                    yield row_id, text
 
     # -------------------------------------------------------------------------
     def delete_dataset(self, dataset_name: str) -> None:
@@ -883,22 +901,13 @@ class BenchmarkReportSerializer:
     def __init__(self, queries: DataRepositoryQueries | None = None) -> None:
         self.queries = queries or DataRepositoryQueries()
         self.benchmark_report_table = BenchmarkReport.__tablename__
-
-    # -------------------------------------------------------------------------
-    def _session(self) -> Session:
-        return Session(bind=self.queries.engine)
-
-    # -------------------------------------------------------------------------
-    def get_dataset_id(self, dataset_name: str) -> int | None:
-        stmt = select(Dataset.id).where(Dataset.name == dataset_name).limit(1)
-        with self._session() as session:
-            dataset_id = session.execute(stmt).scalar_one_or_none()
-        return int(dataset_id) if dataset_id is not None else None
+        self.repository = BenchmarkRepository()
+        self.payload_builder = BenchmarkPayloadBuilder()
 
     # -------------------------------------------------------------------------
     def save_benchmark_report(self, report_payload: dict[str, Any]) -> int:
         dataset_name = str(report_payload.get("dataset_name") or "")
-        dataset_id = self.get_dataset_id(dataset_name)
+        dataset_id = self.repository.get_dataset_id(dataset_name)
         if dataset_id is None:
             raise ValueError(
                 f"Dataset '{dataset_name}' not found while saving benchmark report."
@@ -924,21 +933,14 @@ class BenchmarkReportSerializer:
         else:
             run_name = None
 
-        report_row = BenchmarkReport(
+        return self.repository.save_benchmark_report(
             dataset_id=int(dataset_id),
-            report_version=int(report_payload.get("report_version", 1) or 1),
+            report_version=int(report_payload.get("report_version", 2) or 2),
             created_at=created_at_value,
             run_name=run_name,
             selected_metric_keys=selected_metric_keys,
             payload=report_payload,
         )
-        with self._session() as session:
-            session.add(report_row)
-            session.commit()
-            session.refresh(report_row)
-        if report_row.id is None:
-            raise ValueError("Failed to resolve saved benchmark report id.")
-        return int(report_row.id)
 
     # -------------------------------------------------------------------------
     def _parse_json(self, payload: Any, default: Any) -> Any:
@@ -954,9 +956,6 @@ class BenchmarkReportSerializer:
     # -------------------------------------------------------------------------
     def _normalize_report_row(self, row: dict[str, Any]) -> dict[str, Any]:
         payload = self._parse_json(row.get("payload"), {})
-        if not isinstance(payload, dict):
-            payload = {}
-
         created_at = pd.to_datetime(row.get("created_at"), utc=True, errors="coerce")
         created_at_iso = (
             created_at.isoformat().replace("+00:00", "Z")
@@ -974,49 +973,15 @@ class BenchmarkReportSerializer:
             str(key) for key in selected_metric_keys if isinstance(key, str) and key
         ]
 
-        payload["status"] = str(payload.get("status") or "success")
-        payload["report_id"] = int(row.get("id") or payload.get("report_id") or 0)
-        payload["report_version"] = int(
-            row.get("report_version") or payload.get("report_version") or 1
-        )
-        payload["created_at"] = created_at_iso
-        payload["run_name"] = row.get("run_name") or payload.get("run_name")
-        payload["selected_metric_keys"] = selected_metric_keys
-        payload["dataset_name"] = str(
-            payload.get("dataset_name") or row.get("dataset_name") or ""
-        )
-        payload["documents_processed"] = int(payload.get("documents_processed", 0) or 0)
-        payload["tokenizers_count"] = int(payload.get("tokenizers_count", 0) or 0)
-        tokenizers_processed = payload.get("tokenizers_processed", [])
-        if not isinstance(tokenizers_processed, list):
-            tokenizers_processed = []
-        payload["tokenizers_processed"] = [
-            str(item) for item in tokenizers_processed if isinstance(item, str) and item
-        ]
-        payload["global_metrics"] = (
-            payload.get("global_metrics")
-            if isinstance(payload.get("global_metrics"), list)
-            else []
-        )
-        chart_data = payload.get("chart_data")
-        payload["chart_data"] = chart_data if isinstance(chart_data, dict) else {}
-        per_document_stats = payload.get("per_document_stats")
-        payload["per_document_stats"] = (
-            per_document_stats if isinstance(per_document_stats, list) else []
-        )
-        return payload
+        normalized_row = dict(row)
+        normalized_row["created_at"] = created_at_iso
+        normalized_row["selected_metric_keys"] = selected_metric_keys
+        normalized_row["payload"] = payload if isinstance(payload, dict) else {}
+        return self.payload_builder.normalize_persisted_report_row(normalized_row)
 
     # -------------------------------------------------------------------------
     def list_benchmark_reports(self, limit: int = 200) -> list[dict[str, Any]]:
-        capped_limit = max(1, min(1000, int(limit or 200)))
-        stmt = (
-            select(BenchmarkReport, Dataset.name.label("dataset_name"))
-            .join(Dataset, Dataset.id == BenchmarkReport.dataset_id)
-            .order_by(BenchmarkReport.id.desc())
-            .limit(capped_limit)
-        )
-        with self._session() as session:
-            rows = session.execute(stmt).all()
+        rows = self.repository.list_benchmark_reports(limit)
 
         summaries: list[dict[str, Any]] = []
         for report_row, dataset_name in rows:
@@ -1030,35 +995,15 @@ class BenchmarkReportSerializer:
                 "dataset_name": dataset_name,
             }
             normalized = self._normalize_report_row(row)
-            summaries.append(
-                {
-                    "report_id": int(normalized.get("report_id", 0) or 0),
-                    "report_version": int(normalized.get("report_version", 1) or 1),
-                    "created_at": normalized.get("created_at"),
-                    "run_name": normalized.get("run_name"),
-                    "dataset_name": normalized.get("dataset_name", ""),
-                    "documents_processed": int(
-                        normalized.get("documents_processed", 0) or 0
-                    ),
-                    "tokenizers_count": int(normalized.get("tokenizers_count", 0) or 0),
-                    "tokenizers_processed": normalized.get("tokenizers_processed", []),
-                    "selected_metric_keys": normalized.get("selected_metric_keys", []),
-                }
-            )
+            summaries.append(self.payload_builder.build_report_summary(normalized))
         return summaries
 
     # -------------------------------------------------------------------------
     def load_benchmark_report_by_id(self, report_id: int) -> dict[str, Any] | None:
-        stmt = (
-            select(BenchmarkReport, Dataset.name.label("dataset_name"))
-            .join(Dataset, Dataset.id == BenchmarkReport.dataset_id)
-            .where(BenchmarkReport.id == int(report_id))
-            .limit(1)
-        )
-        with self._session() as session:
-            row = session.execute(stmt).first()
-        if row is None or row[0] is None:
+        row = self.repository.get_benchmark_report_by_id(report_id)
+        if row is None:
             return None
+
         report_row, dataset_name = row
         mapped = {
             "id": report_row.id,
