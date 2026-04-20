@@ -9,6 +9,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from TKBEN.server.domain.dataset import (
     DatasetAnalysisRequest,
     DatasetAnalysisResponse,
+    DatasetDeleteResponse,
     DatasetDownloadRequest,
     DatasetListResponse,
     DatasetMetricCatalogResponse,
@@ -469,9 +470,10 @@ async def get_dataset_report_by_id(report_id: int) -> DatasetAnalysisResponse:
 ###############################################################################
 @router.delete(
     API_ROUTE_DATASETS_DELETE,
+    response_model=DatasetDeleteResponse,
     status_code=status.HTTP_200_OK,
 )
-async def delete_dataset(dataset_name: str) -> dict[str, Any]:
+async def delete_dataset(dataset_name: str) -> DatasetDeleteResponse:
     try:
         dataset_name = normalize_identifier(
             dataset_name, "Dataset name", max_length=200
@@ -488,8 +490,8 @@ async def delete_dataset(dataset_name: str) -> dict[str, Any]:
             detail=f"Dataset '{dataset_name}' not found.",
         )
     await asyncio.to_thread(service.remove_dataset, dataset_name)
-    return {
-        "status": "success",
-        "dataset_name": dataset_name,
-        "message": "Dataset removed.",
-    }
+    return DatasetDeleteResponse(
+        status="success",
+        dataset_name=dataset_name,
+        message="Dataset removed.",
+    )

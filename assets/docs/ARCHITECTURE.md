@@ -1,5 +1,5 @@
 # TKBEN Architecture
-Last updated: 2026-04-08
+Last updated: 2026-04-20
 
 ## 1. Purpose
 TKBEN is a tokenizer benchmarking application that supports:
@@ -40,6 +40,14 @@ TKBEN is a tokenizer benchmarking application that supports:
   - `exports.py`
 - Domain models: `TKBEN/server/domain`
 - Services: `TKBEN/server/services`
+  - dataset service split:
+    - `datasets.py` (download resolution, stream/stat helpers)
+    - `dataset_operations.py` (persist/upload/analysis workflows)
+  - benchmark service split:
+    - `benchmarks.py` (tokenizer tools + core service wiring)
+    - `benchmark_execution.py` (benchmark execution/persistence)
+    - `benchmark_plotting.py` (plot generation helpers)
+  - `custom_tokenizers.py` (thread-safe in-memory registry used by tokenizer upload + benchmark run flows)
 - Persistence:
   - `TKBEN/server/repositories/database`
   - `TKBEN/server/repositories/schemas/models.py`

@@ -152,3 +152,9 @@ class TokenizerVocabularyPageResponse(BaseModel):
     limit: int
     total: int
     items: list[TokenizerVocabularyItem] = Field(default_factory=list)
+
+
+###############################################################################
+class CustomTokenizersDeleteResponse(BaseModel):
+    status: str = Field(default="success")
+    message: str
