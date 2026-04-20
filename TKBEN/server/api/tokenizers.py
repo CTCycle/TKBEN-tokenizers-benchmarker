@@ -3,13 +3,13 @@ from __future__ import annotations
 import asyncio
 import os
 import tempfile
-from typing import Any
+from typing import Annotated, Any
 
 import anyio
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from tokenizers import Tokenizer
-
 from TKBEN.server.domain.tokenizers import (
+    CustomTokenizersDeleteResponse,
     TokenizerDownloadRequest,
     TokenizerListItem,
     TokenizerListResponse,
@@ -42,6 +42,7 @@ from TKBEN.server.common.utils.security import (
 )
 from TKBEN.server.services.jobs import JobProgressReporter, JobStopChecker, job_manager
 from TKBEN.server.services.benchmarks import BenchmarkTools
+from TKBEN.server.services.custom_tokenizers import get_custom_tokenizer_registry
 from TKBEN.server.services.tokenizers import TokenizersService
 from TKBEN.server.services.keys import (
     HFAccessKeyService,
@@ -54,7 +55,6 @@ router = APIRouter(prefix=API_ROUTER_PREFIX_TOKENIZERS, tags=["tokenizers"])
 ###############################################################################
 @router.get(
     API_ROUTE_TOKENIZERS_SETTINGS,
-    response_model=TokenizerSettingsResponse,
     status_code=status.HTTP_200_OK,
 )
 async def get_tokenizer_settings() -> TokenizerSettingsResponse:
@@ -74,11 +74,10 @@ async def get_tokenizer_settings() -> TokenizerSettingsResponse:
 ###############################################################################
 @router.get(
     API_ROUTE_TOKENIZERS_SCAN,
-    response_model=TokenizerScanResponse,
     status_code=status.HTTP_200_OK,
 )
 async def scan_tokenizers(
-    limit: int = Query(default=None),
+    limit: Annotated[int | None, Query()] = None,
 ) -> TokenizerScanResponse:
     """
     Scan HuggingFace for the most popular tokenizer identifiers.
@@ -127,7 +126,6 @@ async def scan_tokenizers(
 ###############################################################################
 @router.get(
     API_ROUTE_TOKENIZERS_LIST,
-    response_model=TokenizerListResponse,
     status_code=status.HTTP_200_OK,
 )
 async def list_tokenizers() -> TokenizerListResponse:
@@ -163,7 +161,6 @@ def run_tokenizer_download_job(
 ###############################################################################
 @router.post(
     API_ROUTE_TOKENIZERS_DOWNLOAD,
-    response_model=JobStartResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def download_tokenizers(request: TokenizerDownloadRequest) -> JobStartResponse:
@@ -233,7 +230,6 @@ def run_tokenizer_report_job(
 ###############################################################################
 @router.post(
     API_ROUTE_TOKENIZERS_REPORT_GENERATE,
-    response_model=JobStartResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def generate_tokenizer_report(
@@ -287,7 +283,6 @@ async def generate_tokenizer_report(
 ###############################################################################
 @router.get(
     API_ROUTE_TOKENIZERS_REPORT_LATEST,
-    response_model=TokenizerReportResponse,
     status_code=status.HTTP_200_OK,
 )
 async def get_latest_tokenizer_report(tokenizer_name: str) -> TokenizerReportResponse:
@@ -317,7 +312,6 @@ async def get_latest_tokenizer_report(tokenizer_name: str) -> TokenizerReportRes
 ###############################################################################
 @router.get(
     API_ROUTE_TOKENIZERS_REPORT_BY_ID,
-    response_model=TokenizerReportResponse,
     status_code=status.HTTP_200_OK,
 )
 async def get_tokenizer_report_by_id(report_id: int) -> TokenizerReportResponse:
@@ -334,13 +328,12 @@ async def get_tokenizer_report_by_id(report_id: int) -> TokenizerReportResponse:
 ###############################################################################
 @router.get(
     API_ROUTE_TOKENIZERS_REPORT_VOCABULARY,
-    response_model=TokenizerVocabularyPageResponse,
     status_code=status.HTTP_200_OK,
 )
 async def get_tokenizer_report_vocabulary(
     report_id: int,
-    offset: int = Query(default=0, ge=0),
-    limit: int = Query(default=500, ge=1, le=5000),
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=5000)] = 500,
 ) -> TokenizerVocabularyPageResponse:
     service = TokenizersService()
     page = await asyncio.to_thread(
@@ -358,26 +351,12 @@ async def get_tokenizer_report_vocabulary(
 
 
 ###############################################################################
-# Store uploaded custom tokenizers in memory for the session
-custom_tokenizers: dict[str, Tokenizer] = {}
-
-
-def get_custom_tokenizers() -> dict[str, Tokenizer]:
-    """Get the currently loaded custom tokenizers."""
-    return custom_tokenizers
-
-
-def clear_custom_tokenizers() -> None:
-    """Clear all custom tokenizers."""
-    custom_tokenizers.clear()
-
-
 def _create_temp_tokenizer_path() -> str:
     fd, path = tempfile.mkstemp(suffix=".json")
     os.close(fd)
     return path
 
-
+###############################################################################
 def _unlink_temp_tokenizer_path(path: str) -> None:
     try:
         os.unlink(path)
@@ -388,11 +367,10 @@ def _unlink_temp_tokenizer_path(path: str) -> None:
 ###############################################################################
 @router.post(
     API_ROUTE_TOKENIZERS_UPLOAD,
-    response_model=TokenizerUploadResponse,
     status_code=status.HTTP_200_OK,
 )
 async def upload_custom_tokenizer(
-    file: UploadFile = File(...),
+    file: Annotated[UploadFile, File(...)],
 ) -> TokenizerUploadResponse:
     """
     Upload a custom tokenizer.json file.
@@ -447,11 +425,11 @@ async def upload_custom_tokenizer(
     # Save to temp file and load
     tmp_path = None
     try:
-        tmp_path = await anyio.to_thread.run_sync(_create_temp_tokenizer_path)
+        tmp_path = await asyncio.to_thread(_create_temp_tokenizer_path)
         async with await anyio.open_file(tmp_path, "wb") as tmp:
             await tmp.write(content)
 
-        tokenizer = await anyio.to_thread.run_sync(Tokenizer.from_file, tmp_path)
+        tokenizer = await asyncio.to_thread(Tokenizer.from_file, tmp_path)
     except Exception as exc:
         logger.warning("Failed to load tokenizer from uploaded file: %s", exc)
         raise HTTPException(
@@ -460,7 +438,7 @@ async def upload_custom_tokenizer(
         ) from exc
     finally:
         if tmp_path:
-            await anyio.to_thread.run_sync(_unlink_temp_tokenizer_path, tmp_path)
+            await asyncio.to_thread(_unlink_temp_tokenizer_path, tmp_path)
 
     # Check compatibility
     tools = BenchmarkTools()
@@ -468,9 +446,10 @@ async def upload_custom_tokenizer(
 
     # Generate name from filename
     tokenizer_name = f"CUSTOM_{safe_stem}"
+    registry = get_custom_tokenizer_registry()
 
     if is_compatible:
-        custom_tokenizers[tokenizer_name] = tokenizer
+        registry.set(tokenizer_name, tokenizer)
         logger.info("Loaded custom tokenizer: %s", tokenizer_name)
     else:
         logger.warning("Custom tokenizer %s is not compatible", tokenizer_name)
@@ -487,12 +466,15 @@ async def upload_custom_tokenizer(
     API_ROUTE_TOKENIZERS_CUSTOM,
     status_code=status.HTTP_200_OK,
 )
-async def delete_custom_tokenizers() -> dict:
+async def delete_custom_tokenizers() -> CustomTokenizersDeleteResponse:
     """
     Clear all uploaded custom tokenizers.
 
     Returns:
         Status message.
     """
-    clear_custom_tokenizers()
-    return {"status": "success", "message": "Custom tokenizers cleared"}
+    get_custom_tokenizer_registry().clear()
+    return CustomTokenizersDeleteResponse(
+        status="success",
+        message="Custom tokenizers cleared",
+    )

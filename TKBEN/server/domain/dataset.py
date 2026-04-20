@@ -10,6 +10,9 @@ from TKBEN.server.common.utils.security import (
     normalize_optional_identifier,
 )
 
+WORD_TOKEN_DESCRIPTION = "Word token"
+FREQUENCY_COUNT_DESCRIPTION = "Frequency count"
+
 
 ###############################################################################
 class DatasetPayload(BaseModel):
@@ -164,21 +167,21 @@ class DatasetAnalysisRequest(BaseModel):
 
 ###############################################################################
 class WordFrequency(BaseModel):
-    word: str = Field(..., description="Word token")
-    count: int = Field(..., description="Frequency count")
+    word: str = Field(..., description=WORD_TOKEN_DESCRIPTION)
+    count: int = Field(..., description=FREQUENCY_COUNT_DESCRIPTION)
 
 
 ###############################################################################
 class WordLengthItem(BaseModel):
-    word: str = Field(..., description="Word token")
+    word: str = Field(..., description=WORD_TOKEN_DESCRIPTION)
     length: int = Field(..., description="Character length of word")
-    count: int = Field(..., description="Frequency count")
+    count: int = Field(..., description=FREQUENCY_COUNT_DESCRIPTION)
 
 
 ###############################################################################
 class WordCloudTerm(BaseModel):
-    word: str = Field(..., description="Word token")
-    count: int = Field(..., description="Frequency count")
+    word: str = Field(..., description=WORD_TOKEN_DESCRIPTION)
+    count: int = Field(..., description=FREQUENCY_COUNT_DESCRIPTION)
     weight: int = Field(..., description="Relative display weight (1-100)")
 
 
@@ -308,3 +311,10 @@ class DatasetListResponse(BaseModel):
     datasets: list[DatasetPreview] = Field(
         default_factory=list, description="List of dataset names in the database"
     )
+
+
+###############################################################################
+class DatasetDeleteResponse(BaseModel):
+    status: str = Field(default="success")
+    dataset_name: str
+    message: str
