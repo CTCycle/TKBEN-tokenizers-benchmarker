@@ -3,11 +3,6 @@ from __future__ import annotations
 import os
 import warnings
 
-warnings.filterwarnings("ignore", category=FutureWarning)
-warnings.filterwarnings(
-    "ignore", category=SyntaxWarning, module=r"multiprocess\.connection"
-)
-
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -24,17 +19,17 @@ from TKBEN.server.api.jobs import router as jobs_router
 from TKBEN.server.api.keys import router as keys_router
 from TKBEN.server.api.exports import router as exports_router
 
-
+###############################################################################
 def tauri_mode_enabled() -> bool:
     value = os.getenv("TKBEN_TAURI_MODE", "false").strip().lower()
     return value in {"1", "true", "yes", "on"}
 
-
+###############################################################################
 def get_client_dist_path() -> str:
     project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     return os.path.join(project_path, "client", "dist")
 
-
+###############################################################################
 def packaged_client_available() -> bool:
     return tauri_mode_enabled() and os.path.isdir(get_client_dist_path())
 
@@ -77,7 +72,6 @@ if packaged_client_available():
         return FileResponse(os.path.join(client_dist_path, "index.html"))
 
 else:
-
     @app.get("/")
     def redirect_to_docs() -> RedirectResponse:
         return RedirectResponse(url="/docs")
