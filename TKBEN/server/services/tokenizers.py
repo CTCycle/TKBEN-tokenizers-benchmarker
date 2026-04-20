@@ -4,14 +4,13 @@ import json
 import math
 import os
 import re
+import tempfile
 from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
 
 from huggingface_hub import HfApi, ModelCard
-from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from tokenizers import Tokenizer as FastTokenizer
 from transformers import AutoTokenizer
 
 from TKBEN.server.common.constants import TOKENIZERS_PATH
@@ -21,9 +20,10 @@ from TKBEN.server.common.utils.security import (
     normalize_identifier,
 )
 from TKBEN.server.configurations import get_server_settings
-from TKBEN.server.repositories.database.backend import database
-from TKBEN.server.repositories.schemas.models import Tokenizer
+from TKBEN.server.repositories.tokenizers import TokenizerRepository
 from TKBEN.server.repositories.serialization.data import TokenizerReportSerializer
+from TKBEN.server.services.benchmarks import BenchmarkTools
+from TKBEN.server.services.custom_tokenizers import get_custom_tokenizer_registry
 from TKBEN.server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
 
 
@@ -54,17 +54,16 @@ class TokenizersService:
     TOKENIZER_ID_MAX_LENGTH = 160
 
     def __init__(self) -> None:
+        self.repository = TokenizerRepository()
         self.key_service = HFAccessKeyService()
         self.report_serializer = TokenizerReportSerializer()
+        self.benchmark_tools = BenchmarkTools()
+        self.custom_tokenizer_registry = get_custom_tokenizer_registry()
         self.histogram_bins = max(5, int(get_server_settings().datasets.histogram_bins))
         self.special_token_pattern = re.compile(
             r"^(?:\[[^\]]{0,200}\]|<[^>]{0,200}>|\{[^}]{0,200}\}|</?s>|</?pad>|UNK|PAD)$",
             re.IGNORECASE,
         )
-
-    # -------------------------------------------------------------------------
-    def _session(self) -> Session:
-        return Session(bind=database.backend.engine)
 
     # -------------------------------------------------------------------------
     def validate_tokenizer_identifier(self, value: str) -> str:
@@ -117,33 +116,82 @@ class TokenizersService:
         return False
 
     # -------------------------------------------------------------------------
+    def resolve_cached_tokenizer_existence(self, tokenizer_id: str) -> bool:
+        return self.has_cached_tokenizer(tokenizer_id)
+
+    # -------------------------------------------------------------------------
+    def register_custom_tokenizer_from_upload(
+        self,
+        file_content: bytes,
+        normalized_filename: str,
+        safe_stem: str,
+    ) -> dict[str, Any]:
+        if not file_content:
+            raise ValueError("Uploaded file is empty.")
+
+        temp_path = ""
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="wb",
+                suffix=".json",
+                delete=False,
+            ) as temp_file:
+                temp_file.write(file_content)
+                temp_path = temp_file.name
+
+            tokenizer = FastTokenizer.from_file(temp_path)
+        except Exception as exc:
+            logger.warning("Failed to load tokenizer from uploaded file: %s", exc)
+            raise ValueError(f"Failed to load tokenizer: {exc}") from exc
+        finally:
+            if temp_path:
+                try:
+                    os.unlink(temp_path)
+                except FileNotFoundError:
+                    pass
+
+        is_compatible = self.benchmark_tools.is_tokenizer_compatible(tokenizer)
+        tokenizer_name = f"CUSTOM_{safe_stem}"
+        if is_compatible:
+            self.custom_tokenizer_registry.set(tokenizer_name, tokenizer)
+            logger.info(
+                "Loaded custom tokenizer: %s (source=%s)",
+                tokenizer_name,
+                normalized_filename,
+            )
+        else:
+            logger.warning(
+                "Custom tokenizer %s is not compatible (source=%s)",
+                tokenizer_name,
+                normalized_filename,
+            )
+
+        return {
+            "status": "success",
+            "tokenizer_name": tokenizer_name,
+            "is_compatible": is_compatible,
+        }
+
+    # -------------------------------------------------------------------------
+    def clear_custom_tokenizers(self) -> None:
+        self.custom_tokenizer_registry.clear()
+
+    # -------------------------------------------------------------------------
     def is_tokenizer_persisted(self, tokenizer_id: str) -> bool:
-        stmt = select(Tokenizer.id).where(Tokenizer.name == tokenizer_id).limit(1)
-        with self._session() as session:
-            row = session.execute(stmt).first()
-        return row is not None
+        return self.repository.tokenizer_exists(tokenizer_id)
 
     # -------------------------------------------------------------------------
     def insert_tokenizer_if_missing(self, tokenizer_id: str) -> None:
-        with self._session() as session:
-            existing = session.execute(
-                select(Tokenizer.id).where(Tokenizer.name == tokenizer_id).limit(1)
-            ).scalar_one_or_none()
-            if existing is None:
-                session.add(Tokenizer(name=tokenizer_id))
-                try:
-                    session.commit()
-                except IntegrityError:
-                    session.rollback()
+        self.repository.insert_if_missing(tokenizer_id)
+
+    # -------------------------------------------------------------------------
+    def resolve_missing_tokenizer_names(self, tokenizer_ids: list[str]) -> list[str]:
+        return self.repository.get_missing_tokenizers(tokenizer_ids)
 
     # -------------------------------------------------------------------------
     def list_downloaded_tokenizers(self) -> list[str]:
-        stmt = select(Tokenizer.name).order_by(Tokenizer.name.asc())
-        with self._session() as session:
-            rows = session.execute(stmt).all()
         names: list[str] = []
-        for (tokenizer_name,) in rows:
-            name = str(tokenizer_name)
+        for name in self.repository.list_downloaded_tokenizers():
             if self.has_cached_tokenizer(name):
                 names.append(name)
         return names
@@ -960,10 +1008,14 @@ class TokenizersService:
 
     # -------------------------------------------------------------------------
     def get_latest_tokenizer_report(self, tokenizer_name: str) -> dict[str, Any] | None:
+        if self.repository.get_latest_tokenizer_report(tokenizer_name) is None:
+            return None
         return self.report_serializer.load_latest_tokenizer_report(tokenizer_name)
 
     # -------------------------------------------------------------------------
     def get_tokenizer_report_by_id(self, report_id: int) -> dict[str, Any] | None:
+        if self.repository.get_tokenizer_report_by_id(report_id) is None:
+            return None
         return self.report_serializer.load_tokenizer_report_by_id(report_id)
 
     # -------------------------------------------------------------------------
@@ -973,6 +1025,8 @@ class TokenizersService:
         offset: int,
         limit: int,
     ) -> dict[str, Any] | None:
+        if self.repository.get_tokenizer_report_by_id(report_id) is None:
+            return None
         return self.report_serializer.load_tokenizer_vocabulary_page(
             report_id=report_id,
             offset=offset,

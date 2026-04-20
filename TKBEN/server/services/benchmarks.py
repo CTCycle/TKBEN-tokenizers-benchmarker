@@ -8,18 +8,14 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
 from transformers import AutoTokenizer
 from transformers.utils.logging import set_verbosity_error
 
-from TKBEN.server.repositories.database.backend import database
-from TKBEN.server.repositories.schemas.models import (
-    Dataset,
-    DatasetDocument,
-    Tokenizer,
+from TKBEN.server.repositories.benchmarks import BenchmarkRepository
+from TKBEN.server.repositories.serialization.data import (
+    BenchmarkReportSerializer,
+    DatasetSerializer,
 )
-from TKBEN.server.repositories.serialization.data import BenchmarkReportSerializer
 from TKBEN.server.services.metrics.catalog import BENCHMARK_METRIC_CATALOG
 from TKBEN.server.configurations import get_server_settings
 from TKBEN.server.common.constants import TOKENIZERS_PATH
@@ -30,6 +26,7 @@ from TKBEN.server.common.utils.security import (
 )
 from TKBEN.server.services.benchmark_execution import BenchmarkServiceExecutionMixin
 from TKBEN.server.services.benchmark_plotting import BenchmarkPlottingMixin
+from TKBEN.server.services.custom_tokenizers import get_custom_tokenizer_registry
 
 
 ###############################################################################
@@ -268,17 +265,14 @@ class BenchmarkService(BenchmarkServiceExecutionMixin, BenchmarkPlottingMixin):
         self.max_documents = max_documents
         self.reduce_data_size = True  # Always true for webapp
         self.tools = BenchmarkTools()
+        self.repository = BenchmarkRepository()
         self.report_serializer = BenchmarkReportSerializer()
+        self.dataset_serializer = DatasetSerializer()
 
         # Load settings from config
         self.streaming_batch_size = get_server_settings().benchmarks.streaming_batch_size
         self.log_interval = get_server_settings().benchmarks.log_interval
 
-    # -------------------------------------------------------------------------
-    def _session(self) -> Session:
-        return Session(bind=database.backend.engine)
-
-    # -------------------------------------------------------------------------
     def get_tokenizer_cache_dir(self, tokenizer_id: str) -> str:
         safe_id = normalize_identifier(
             tokenizer_id,
@@ -316,14 +310,13 @@ class BenchmarkService(BenchmarkServiceExecutionMixin, BenchmarkPlottingMixin):
             return []
 
         unique_requested = list(dict.fromkeys(requested))
-        with self._session() as session:
-            persisted_names = set(
-                session.execute(
-                    select(Tokenizer.name).where(Tokenizer.name.in_(unique_requested))
-                ).scalars()
-            )
+        missing = set(self.repository.get_missing_persisted_tokenizers(unique_requested))
+
         missing: list[str] = []
         for tokenizer_name in unique_requested:
+            if tokenizer_name in missing:
+                missing.append(tokenizer_name)
+                continue
             cache_dir = self.get_tokenizer_cache_dir(tokenizer_name)
             has_cached_files = False
             if os.path.isdir(cache_dir):
@@ -331,9 +324,22 @@ class BenchmarkService(BenchmarkServiceExecutionMixin, BenchmarkPlottingMixin):
                     if files:
                         has_cached_files = True
                         break
-            if tokenizer_name not in persisted_names or not has_cached_files:
+            if not has_cached_files:
                 missing.append(tokenizer_name)
         return missing
+
+    # -------------------------------------------------------------------------
+    def resolve_custom_tokenizer_selection(
+        self,
+        custom_tokenizer_name: str | None,
+    ) -> dict[str, Any]:
+        if not isinstance(custom_tokenizer_name, str) or not custom_tokenizer_name.strip():
+            return {}
+        selected_name = custom_tokenizer_name.strip()
+        tokenizer = get_custom_tokenizer_registry().get(selected_name)
+        if tokenizer is None or not self.tools.is_tokenizer_compatible(tokenizer):
+            return {}
+        return {selected_name: tokenizer}
 
     # -------------------------------------------------------------------------
     def load_tokenizers(self, tokenizer_ids: list[str]) -> dict[str, Any]:
@@ -365,37 +371,18 @@ class BenchmarkService(BenchmarkServiceExecutionMixin, BenchmarkPlottingMixin):
         self, dataset_name: str
     ) -> Generator[tuple[int, str], None, None]:
         count = 0
-        stmt = (
-            select(DatasetDocument.id, DatasetDocument.text)
-            .join(Dataset, Dataset.id == DatasetDocument.dataset_id)
-            .where(Dataset.name == dataset_name)
-            .order_by(DatasetDocument.id.asc())
-        )
-        with self._session() as session:
-            result = session.execute(stmt.execution_options(stream_results=True))
-            while True:
-                rows = result.fetchmany(self.streaming_batch_size)
-                if not rows:
-                    break
-                for row_id, text in rows:
-                    if row_id is None:
-                        continue
-                    if text and isinstance(text, str):
-                        yield int(row_id), text
-                        count += 1
-                        if self.max_documents > 0 and count >= self.max_documents:
-                            return
+        for row_id, text in self.dataset_serializer.iterate_dataset_rows_for_benchmarks(
+            dataset_name=dataset_name,
+            batch_size=self.streaming_batch_size,
+        ):
+            yield row_id, text
+            count += 1
+            if self.max_documents > 0 and count >= self.max_documents:
+                return
 
     # -------------------------------------------------------------------------
     def get_dataset_document_count(self, dataset_name: str) -> int:
-        stmt = (
-            select(func.count(DatasetDocument.id))
-            .join(Dataset, Dataset.id == DatasetDocument.dataset_id)
-            .where(Dataset.name == dataset_name)
-        )
-        with self._session() as session:
-            value = session.execute(stmt).scalar_one_or_none() or 0
-        return int(value)
+        return self.repository.get_dataset_document_count(dataset_name)
 
     # -------------------------------------------------------------------------
     def get_metric_catalog(self) -> list[dict[str, Any]]:

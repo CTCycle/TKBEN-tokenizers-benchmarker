@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import os
-import tempfile
-from typing import Annotated, Any
+from typing import Annotated
 
-import anyio
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
-from tokenizers import Tokenizer
+from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile, status
+
+from TKBEN.server.domain.jobs import JobStartResponse
 from TKBEN.server.domain.tokenizers import (
     CustomTokenizersDeleteResponse,
     TokenizerDownloadRequest,
@@ -17,10 +16,9 @@ from TKBEN.server.domain.tokenizers import (
     TokenizerReportResponse,
     TokenizerScanResponse,
     TokenizerSettingsResponse,
-    TokenizerVocabularyPageResponse,
     TokenizerUploadResponse,
+    TokenizerVocabularyPageResponse,
 )
-from TKBEN.server.domain.jobs import JobStartResponse
 from TKBEN.server.configurations import get_server_settings
 from TKBEN.server.common.constants import (
     API_ROUTE_TOKENIZERS_CUSTOM,
@@ -40,30 +38,25 @@ from TKBEN.server.common.utils.security import (
     normalize_identifier,
     normalize_upload_stem,
 )
-from TKBEN.server.services.jobs import JobProgressReporter, JobStopChecker, job_manager
-from TKBEN.server.services.benchmarks import BenchmarkTools
-from TKBEN.server.services.custom_tokenizers import get_custom_tokenizer_registry
-from TKBEN.server.services.tokenizers import TokenizersService
 from TKBEN.server.services.keys import (
     HFAccessKeyService,
     HFAccessKeyValidationError,
 )
+from TKBEN.server.services.tokenizer_jobs import TokenizerJobService
+from TKBEN.server.services.tokenizers import TokenizersService
+
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_TOKENIZERS, tags=["tokenizers"])
+tokenizer_job_service = TokenizerJobService()
 
 
 ###############################################################################
 @router.get(
     API_ROUTE_TOKENIZERS_SETTINGS,
+    response_model=TokenizerSettingsResponse,
     status_code=status.HTTP_200_OK,
 )
 async def get_tokenizer_settings() -> TokenizerSettingsResponse:
-    """
-    Get tokenizer configuration settings.
-
-    Returns:
-        TokenizerSettingsResponse with default, min, and max scan limits.
-    """
     return TokenizerSettingsResponse(
         default_scan_limit=get_server_settings().tokenizers.default_scan_limit,
         max_scan_limit=get_server_settings().tokenizers.max_scan_limit,
@@ -74,20 +67,12 @@ async def get_tokenizer_settings() -> TokenizerSettingsResponse:
 ###############################################################################
 @router.get(
     API_ROUTE_TOKENIZERS_SCAN,
+    response_model=TokenizerScanResponse,
     status_code=status.HTTP_200_OK,
 )
 async def scan_tokenizers(
     limit: Annotated[int | None, Query()] = None,
 ) -> TokenizerScanResponse:
-    """
-    Scan HuggingFace for the most popular tokenizer identifiers.
-
-    Args:
-        limit: Maximum number of tokenizers to fetch. Defaults to configured value.
-    Returns:
-        TokenizerScanResponse containing the list of tokenizer identifiers.
-    """
-    # Use configured defaults if limit not provided, and clamp to configured bounds
     min_limit = get_server_settings().tokenizers.min_scan_limit
     max_limit = get_server_settings().tokenizers.max_scan_limit
     default_limit = get_server_settings().tokenizers.default_scan_limit
@@ -100,7 +85,6 @@ async def scan_tokenizers(
     logger.info("Scanning HuggingFace for tokenizers (limit=%s)", limit)
 
     service = TokenizersService()
-
     try:
         identifiers = await asyncio.to_thread(service.get_tokenizer_identifiers, limit)
     except HFAccessKeyValidationError as exc:
@@ -115,7 +99,6 @@ async def scan_tokenizers(
             detail="Failed to retrieve tokenizers from HuggingFace.",
         ) from exc
 
-    logger.info("Successfully fetched %s tokenizer identifiers", len(identifiers))
     return TokenizerScanResponse(
         status="success",
         identifiers=identifiers,
@@ -126,6 +109,7 @@ async def scan_tokenizers(
 ###############################################################################
 @router.get(
     API_ROUTE_TOKENIZERS_LIST,
+    response_model=TokenizerListResponse,
     status_code=status.HTTP_200_OK,
 )
 async def list_tokenizers() -> TokenizerListResponse:
@@ -138,33 +122,16 @@ async def list_tokenizers() -> TokenizerListResponse:
 
 
 ###############################################################################
-def run_tokenizer_download_job(
-    request_payload: dict[str, Any],
-    job_id: str,
-) -> dict[str, Any]:
-    service = TokenizersService()
-    progress_callback = JobProgressReporter(job_manager, job_id)
-    should_stop = JobStopChecker(job_manager, job_id)
-    tokenizers = request_payload.get("tokenizers", [])
-    if not isinstance(tokenizers, list):
-        tokenizers = []
-    result = service.download_and_persist(
-        tokenizers=tokenizers,
-        progress_callback=progress_callback,
-        should_stop=should_stop,
-    )
-    if job_manager.should_stop(job_id):
-        return {}
-    return result
-
-
-###############################################################################
 @router.post(
     API_ROUTE_TOKENIZERS_DOWNLOAD,
+    response_model=JobStartResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
-async def download_tokenizers(request: TokenizerDownloadRequest) -> JobStartResponse:
-    if not request.tokenizers:
+async def download_tokenizers(
+    request: Request,
+    payload: TokenizerDownloadRequest,
+) -> JobStartResponse:
+    if not payload.tokenizers:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="At least one tokenizer must be specified.",
@@ -179,17 +146,21 @@ async def download_tokenizers(request: TokenizerDownloadRequest) -> JobStartResp
             detail=str(exc),
         ) from exc
 
+    job_manager = request.app.state.job_manager
     if job_manager.is_job_running("tokenizer_download"):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Tokenizer download is already in progress.",
         )
 
-    request_payload = request.model_dump()
+    request_payload = payload.model_dump()
     job_id = job_manager.start_job(
         job_type="tokenizer_download",
-        runner=run_tokenizer_download_job,
-        kwargs={"request_payload": request_payload},
+        runner=tokenizer_job_service.run_download_job,
+        kwargs={
+            "request_payload": request_payload,
+            "job_manager": job_manager,
+        },
     )
 
     job_status = job_manager.get_job_status(job_id)
@@ -209,33 +180,16 @@ async def download_tokenizers(request: TokenizerDownloadRequest) -> JobStartResp
 
 
 ###############################################################################
-def run_tokenizer_report_job(
-    request_payload: dict[str, Any],
-    job_id: str,
-) -> dict[str, Any]:
-    service = TokenizersService()
-    progress_callback = JobProgressReporter(job_manager, job_id)
-    should_stop = JobStopChecker(job_manager, job_id)
-    tokenizer_name = str(request_payload.get("tokenizer_name", "")).strip()
-    result = service.generate_and_store_report(
-        tokenizer_name=tokenizer_name,
-        progress_callback=progress_callback,
-        should_stop=should_stop,
-    )
-    if job_manager.should_stop(job_id):
-        return {}
-    return {"status": "success", **result}
-
-
-###############################################################################
 @router.post(
     API_ROUTE_TOKENIZERS_REPORT_GENERATE,
+    response_model=JobStartResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def generate_tokenizer_report(
-    request: TokenizerReportGenerateRequest,
+    request: Request,
+    payload: TokenizerReportGenerateRequest,
 ) -> JobStartResponse:
-    tokenizer_name = request.tokenizer_name.strip()
+    tokenizer_name = payload.tokenizer_name.strip()
     if not tokenizer_name:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -243,7 +197,7 @@ async def generate_tokenizer_report(
         )
 
     service = TokenizersService()
-    if not service.has_cached_tokenizer(tokenizer_name):
+    if not service.resolve_cached_tokenizer_existence(tokenizer_name):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=(
@@ -252,18 +206,23 @@ async def generate_tokenizer_report(
             ),
         )
 
+    job_manager = request.app.state.job_manager
     if job_manager.is_job_running("tokenizer_report"):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Tokenizer report generation is already in progress.",
         )
 
-    request_payload = request.model_dump()
+    request_payload = payload.model_dump()
     job_id = job_manager.start_job(
         job_type="tokenizer_report",
-        runner=run_tokenizer_report_job,
-        kwargs={"request_payload": request_payload},
+        runner=tokenizer_job_service.run_report_job,
+        kwargs={
+            "request_payload": request_payload,
+            "job_manager": job_manager,
+        },
     )
+
     job_status = job_manager.get_job_status(job_id)
     if job_status is None:
         raise HTTPException(
@@ -283,6 +242,7 @@ async def generate_tokenizer_report(
 ###############################################################################
 @router.get(
     API_ROUTE_TOKENIZERS_REPORT_LATEST,
+    response_model=TokenizerReportResponse,
     status_code=status.HTTP_200_OK,
 )
 async def get_latest_tokenizer_report(tokenizer_name: str) -> TokenizerReportResponse:
@@ -297,10 +257,9 @@ async def get_latest_tokenizer_report(tokenizer_name: str) -> TokenizerReportRes
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
+
     service = TokenizersService()
-    report = await asyncio.to_thread(
-        service.get_latest_tokenizer_report, tokenizer_name
-    )
+    report = await asyncio.to_thread(service.get_latest_tokenizer_report, tokenizer_name)
     if report is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -312,6 +271,7 @@ async def get_latest_tokenizer_report(tokenizer_name: str) -> TokenizerReportRes
 ###############################################################################
 @router.get(
     API_ROUTE_TOKENIZERS_REPORT_BY_ID,
+    response_model=TokenizerReportResponse,
     status_code=status.HTTP_200_OK,
 )
 async def get_tokenizer_report_by_id(report_id: int) -> TokenizerReportResponse:
@@ -328,6 +288,7 @@ async def get_tokenizer_report_by_id(report_id: int) -> TokenizerReportResponse:
 ###############################################################################
 @router.get(
     API_ROUTE_TOKENIZERS_REPORT_VOCABULARY,
+    response_model=TokenizerVocabularyPageResponse,
     status_code=status.HTTP_200_OK,
 )
 async def get_tokenizer_report_vocabulary(
@@ -351,44 +312,20 @@ async def get_tokenizer_report_vocabulary(
 
 
 ###############################################################################
-def _create_temp_tokenizer_path() -> str:
-    fd, path = tempfile.mkstemp(suffix=".json")
-    os.close(fd)
-    return path
-
-###############################################################################
-def _unlink_temp_tokenizer_path(path: str) -> None:
-    try:
-        os.unlink(path)
-    except FileNotFoundError:
-        pass
-
-
-###############################################################################
 @router.post(
     API_ROUTE_TOKENIZERS_UPLOAD,
+    response_model=TokenizerUploadResponse,
     status_code=status.HTTP_200_OK,
 )
 async def upload_custom_tokenizer(
     file: Annotated[UploadFile, File(...)],
 ) -> TokenizerUploadResponse:
-    """
-    Upload a custom tokenizer.json file.
-
-    The tokenizer will be loaded and validated for compatibility.
-    If valid, it will be stored and can be used in benchmark runs.
-
-    Args:
-        file: The tokenizer.json file to upload.
-
-    Returns:
-        TokenizerUploadResponse with the assigned tokenizer name.
-    """
     if not file.filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No filename provided.",
         )
+
     normalized_filename = os.path.basename(file.filename.strip().replace("\\", "/"))
     if not normalized_filename:
         raise HTTPException(
@@ -400,6 +337,7 @@ async def upload_custom_tokenizer(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="File must be a .json file (tokenizer.json)",
         )
+
     try:
         safe_stem = normalize_upload_stem(normalized_filename)
     except ValueError as exc:
@@ -408,13 +346,13 @@ async def upload_custom_tokenizer(
             detail=str(exc),
         ) from exc
 
-    # Read file content
     content = await file.read()
     if not content:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Uploaded file is empty.",
         )
+
     max_upload_bytes = int(get_server_settings().tokenizers.max_upload_bytes)
     if len(content) > max_upload_bytes:
         raise HTTPException(
@@ -422,58 +360,30 @@ async def upload_custom_tokenizer(
             detail=f"Uploaded file exceeds max allowed size ({max_upload_bytes} bytes).",
         )
 
-    # Save to temp file and load
-    tmp_path = None
     try:
-        tmp_path = await asyncio.to_thread(_create_temp_tokenizer_path)
-        async with await anyio.open_file(tmp_path, "wb") as tmp:
-            await tmp.write(content)
-
-        tokenizer = await asyncio.to_thread(Tokenizer.from_file, tmp_path)
-    except Exception as exc:
-        logger.warning("Failed to load tokenizer from uploaded file: %s", exc)
+        result = await asyncio.to_thread(
+            tokenizer_job_service.upload_custom_tokenizer,
+            content,
+            normalized_filename,
+            safe_stem,
+        )
+    except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to load tokenizer: {exc}",
+            detail=str(exc),
         ) from exc
-    finally:
-        if tmp_path:
-            await asyncio.to_thread(_unlink_temp_tokenizer_path, tmp_path)
 
-    # Check compatibility
-    tools = BenchmarkTools()
-    is_compatible = tools.is_tokenizer_compatible(tokenizer)
-
-    # Generate name from filename
-    tokenizer_name = f"CUSTOM_{safe_stem}"
-    registry = get_custom_tokenizer_registry()
-
-    if is_compatible:
-        registry.set(tokenizer_name, tokenizer)
-        logger.info("Loaded custom tokenizer: %s", tokenizer_name)
-    else:
-        logger.warning("Custom tokenizer %s is not compatible", tokenizer_name)
-
-    return TokenizerUploadResponse(
-        status="success",
-        tokenizer_name=tokenizer_name,
-        is_compatible=is_compatible,
-    )
+    return TokenizerUploadResponse(**result)
 
 
 ###############################################################################
 @router.delete(
     API_ROUTE_TOKENIZERS_CUSTOM,
+    response_model=CustomTokenizersDeleteResponse,
     status_code=status.HTTP_200_OK,
 )
 async def delete_custom_tokenizers() -> CustomTokenizersDeleteResponse:
-    """
-    Clear all uploaded custom tokenizers.
-
-    Returns:
-        Status message.
-    """
-    get_custom_tokenizer_registry().clear()
+    await asyncio.to_thread(tokenizer_job_service.clear_custom_tokenizers)
     return CustomTokenizersDeleteResponse(
         status="success",
         message="Custom tokenizers cleared",

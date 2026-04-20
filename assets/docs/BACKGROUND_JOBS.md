@@ -11,6 +11,9 @@ TKBEN uses an in-process job manager for long-running operations so API calls ca
   - `JobState`
   - `JobProgressReporter`
   - `JobStopChecker`
+- `TKBEN/server/app.py`
+  - creates one in-process `JobManager` and stores it at `app.state.job_manager`
+- API routers resolve `JobManager` from `request.app.state` (no module-level global manager imports).
 
 ## 3. Job Lifecycle
 `JobManager.start_job(...)`:

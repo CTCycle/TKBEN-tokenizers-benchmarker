@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import warnings
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, RedirectResponse
@@ -18,6 +17,7 @@ from TKBEN.server.api.benchmarks import router as fit_router
 from TKBEN.server.api.jobs import router as jobs_router
 from TKBEN.server.api.keys import router as keys_router
 from TKBEN.server.api.exports import router as exports_router
+from TKBEN.server.services.jobs import JobManager
 
 ###############################################################################
 def tauri_mode_enabled() -> bool:
@@ -40,6 +40,7 @@ app = FastAPI(
     version=FASTAPI_VERSION,
     description=FASTAPI_DESCRIPTION,
 )
+app.state.job_manager = JobManager()
 
 routers = [
     datasets_router,

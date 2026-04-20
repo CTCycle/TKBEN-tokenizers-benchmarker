@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import os
-from typing import Any
 
-from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, File, HTTPException, Request, UploadFile, status
 
 from TKBEN.server.domain.dataset import (
     DatasetAnalysisRequest,
@@ -32,150 +31,11 @@ from TKBEN.server.common.constants import (
     API_ROUTE_DATASETS_UPLOAD,
     API_ROUTER_PREFIX_DATASETS,
 )
-from TKBEN.server.services.jobs import JobProgressReporter, JobStopChecker, job_manager
+from TKBEN.server.services.dataset_jobs import DatasetJobService
 from TKBEN.server.services.datasets import DatasetService
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_DATASETS, tags=["datasets"])
-
-
-###############################################################################
-class DatasetJobHandler:
-    def build_histogram_payload(self, histogram_data: dict[str, Any]) -> dict[str, Any]:
-        return {
-            "bins": histogram_data.get("bins", []),
-            "counts": histogram_data.get("counts", []),
-            "bin_edges": histogram_data.get("bin_edges", []),
-            "min_length": histogram_data.get("min_length", 0),
-            "max_length": histogram_data.get("max_length", 0),
-            "mean_length": histogram_data.get("mean_length", 0.0),
-            "median_length": histogram_data.get("median_length", 0.0),
-        }
-
-    # -------------------------------------------------------------------------
-    def build_dataset_mutation_payload(self, result: dict[str, Any]) -> dict[str, Any]:
-        return {
-            "status": "success",
-            "dataset_name": result.get("dataset_name", ""),
-            "text_column": result.get("text_column", ""),
-            "document_count": result.get("document_count", 0),
-            "saved_count": result.get("saved_count", 0),
-            "histogram": self.build_histogram_payload(result.get("histogram", {})),
-        }
-
-    # -------------------------------------------------------------------------
-    def build_download_payload(self, result: dict[str, Any]) -> dict[str, Any]:
-        return self.build_dataset_mutation_payload(result)
-
-    # -------------------------------------------------------------------------
-    def build_upload_payload(self, result: dict[str, Any]) -> dict[str, Any]:
-        return self.build_dataset_mutation_payload(result)
-
-    # -------------------------------------------------------------------------
-    def extract_configuration(self, request_payload: dict[str, Any]) -> str | None:
-        configs = request_payload.get("configs")
-        if isinstance(configs, dict):
-            value = configs.get("configuration")
-            if isinstance(value, str) and value.strip():
-                return value.strip()
-            return None
-        return None
-
-    # -------------------------------------------------------------------------
-    def build_analysis_payload(self, result: dict[str, Any]) -> dict[str, Any]:
-        return {
-            "status": "success",
-            "report_id": result.get("report_id"),
-            "report_version": result.get("report_version", 2),
-            "created_at": result.get("created_at"),
-            "dataset_name": result.get("dataset_name", ""),
-            "session_name": result.get("session_name"),
-            "selected_metric_keys": result.get("selected_metric_keys", []),
-            "session_parameters": result.get("session_parameters", {}),
-            "document_count": result.get("document_count", 0),
-            "document_length_histogram": self.build_histogram_payload(
-                result.get("document_length_histogram", {})
-            ),
-            "word_length_histogram": self.build_histogram_payload(
-                result.get("word_length_histogram", {})
-            ),
-            "min_document_length": result.get("min_document_length", 0),
-            "max_document_length": result.get("max_document_length", 0),
-            "most_common_words": result.get("most_common_words", []),
-            "least_common_words": result.get("least_common_words", []),
-            "longest_words": result.get("longest_words", []),
-            "shortest_words": result.get("shortest_words", []),
-            "word_cloud_terms": result.get("word_cloud_terms", []),
-            "aggregate_statistics": result.get("aggregate_statistics", {}),
-            "per_document_stats": result.get("per_document_stats", {}),
-        }
-
-    # -------------------------------------------------------------------------
-    def run_download_job(
-        self,
-        request_payload: dict[str, Any],
-        job_id: str,
-    ) -> dict[str, Any]:
-        service = DatasetService()
-        progress_callback = JobProgressReporter(job_manager, job_id)
-        should_stop = JobStopChecker(job_manager, job_id)
-        result = service.download_and_persist(
-            corpus=request_payload.get("corpus", ""),
-            config=self.extract_configuration(request_payload),
-            remove_invalid=True,
-            progress_callback=progress_callback,
-            should_stop=should_stop,
-            job_id=job_id,
-        )
-        if job_manager.should_stop(job_id):
-            return {}
-        return self.build_download_payload(result)
-
-    # -------------------------------------------------------------------------
-    def run_upload_job(
-        self,
-        file_content: bytes,
-        filename: str,
-        job_id: str,
-    ) -> dict[str, Any]:
-        service = DatasetService()
-        progress_callback = JobProgressReporter(job_manager, job_id)
-        should_stop = JobStopChecker(job_manager, job_id)
-        result = service.upload_and_persist(
-            file_content=file_content,
-            filename=filename,
-            remove_invalid=True,
-            progress_callback=progress_callback,
-            should_stop=should_stop,
-        )
-        if job_manager.should_stop(job_id):
-            return {}
-        return self.build_upload_payload(result)
-
-    # -------------------------------------------------------------------------
-    def run_analysis_job(
-        self,
-        request_payload: dict[str, Any],
-        job_id: str,
-    ) -> dict[str, Any]:
-        service = DatasetService()
-        progress_callback = JobProgressReporter(job_manager, job_id)
-        should_stop = JobStopChecker(job_manager, job_id)
-        result = service.analyze_dataset(
-            dataset_name=str(request_payload.get("dataset_name", "")),
-            session_name=request_payload.get("session_name"),
-            selected_metric_keys=request_payload.get("selected_metric_keys"),
-            sampling=request_payload.get("sampling"),
-            filters=request_payload.get("filters"),
-            metric_parameters=request_payload.get("metric_parameters"),
-            progress_callback=progress_callback,
-            should_stop=should_stop,
-        )
-        if job_manager.should_stop(job_id):
-            return {}
-        return self.build_analysis_payload(result)
-
-
-dataset_job_handler = DatasetJobHandler()
+dataset_job_service = DatasetJobService()
 
 
 ###############################################################################
@@ -185,12 +45,6 @@ dataset_job_handler = DatasetJobHandler()
     status_code=status.HTTP_200_OK,
 )
 async def list_datasets() -> DatasetListResponse:
-    """
-    List all available datasets in the database.
-
-    Returns:
-        DatasetListResponse with list of dataset names.
-    """
     service = DatasetService()
     datasets = await asyncio.to_thread(service.get_dataset_previews)
     return DatasetListResponse(datasets=datasets)
@@ -214,38 +68,30 @@ async def get_dataset_metrics_catalog() -> DatasetMetricCatalogResponse:
     response_model=JobStartResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
-async def download_dataset(request: DatasetDownloadRequest) -> JobStartResponse:
-    """
-    Download a text dataset from HuggingFace and save it to the database.
-
-    This endpoint fetches the specified dataset, removes empty or invalid
-    documents, computes document-length statistics, and persists the cleaned
-    texts to the database for tokenizer benchmarking.
-
-    Args:
-        request: DatasetDownloadRequest containing the corpus, config, and options.
-
-    Returns:
-        DatasetDownloadResponse with download statistics and histogram data.
-    """
+async def download_dataset(
+    request: Request,
+    payload: DatasetDownloadRequest,
+) -> JobStartResponse:
     logger.info(
         "Dataset download requested: corpus=%s, config=%s",
-        request.corpus,
-        request.configs.configuration,
+        payload.corpus,
+        payload.configs.configuration,
     )
 
+    job_manager = request.app.state.job_manager
     if job_manager.is_job_running("dataset_download"):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Dataset download is already in progress.",
         )
 
-    request_payload = request.model_dump()
+    request_payload = payload.model_dump()
     job_id = job_manager.start_job(
         job_type="dataset_download",
-        runner=dataset_job_handler.run_download_job,
+        runner=dataset_job_service.run_download_job,
         kwargs={
             "request_payload": request_payload,
+            "job_manager": job_manager,
         },
     )
 
@@ -272,21 +118,9 @@ async def download_dataset(request: DatasetDownloadRequest) -> JobStartResponse:
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def upload_custom_dataset(
+    request: Request,
     file: UploadFile = File(..., description="CSV or Excel file to upload"),
 ) -> JobStartResponse:
-    """
-    Upload a CSV or Excel file and save it to the database as a custom dataset.
-
-    This endpoint reads the uploaded file, extracts text from a suitable column,
-    computes document-length statistics, and persists the cleaned texts to the
-    database for tokenizer benchmarking.
-
-    Args:
-        file: Uploaded CSV (.csv) or Excel (.xlsx, .xls) file.
-
-    Returns:
-        CustomDatasetUploadResponse with upload statistics and histogram data.
-    """
     if not file.filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -317,7 +151,6 @@ async def upload_custom_dataset(
 
     logger.info("Custom dataset upload requested: filename=%s", normalized_filename)
 
-    # Read file content
     try:
         file_content = await file.read()
     except Exception as exc:
@@ -331,6 +164,7 @@ async def upload_custom_dataset(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Uploaded file is empty.",
         )
+
     max_upload_bytes = int(get_server_settings().datasets.max_upload_bytes)
     if len(file_content) > max_upload_bytes:
         raise HTTPException(
@@ -340,6 +174,7 @@ async def upload_custom_dataset(
             ),
         )
 
+    job_manager = request.app.state.job_manager
     if job_manager.is_job_running("dataset_upload"):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -348,10 +183,11 @@ async def upload_custom_dataset(
 
     job_id = job_manager.start_job(
         job_type="dataset_upload",
-        runner=dataset_job_handler.run_upload_job,
+        runner=dataset_job_service.run_upload_job,
         kwargs={
             "file_content": file_content,
             "filename": normalized_filename,
+            "job_manager": job_manager,
         },
     )
 
@@ -377,12 +213,13 @@ async def upload_custom_dataset(
     response_model=JobStartResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
-async def analyze_dataset(request: DatasetAnalysisRequest) -> JobStartResponse:
-    """
-    Validate a loaded dataset and compute document + word-level statistics.
-    """
-    logger.info("Dataset validation requested: dataset=%s", request.dataset_name)
+async def analyze_dataset(
+    request: Request,
+    payload: DatasetAnalysisRequest,
+) -> JobStartResponse:
+    logger.info("Dataset validation requested: dataset=%s", payload.dataset_name)
 
+    job_manager = request.app.state.job_manager
     if job_manager.is_job_running("dataset_validation"):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -390,21 +227,20 @@ async def analyze_dataset(request: DatasetAnalysisRequest) -> JobStartResponse:
         )
 
     service = DatasetService()
-
-    # Check if dataset exists
-    if not service.is_dataset_in_database(request.dataset_name):
-        logger.warning("Dataset not found: %s", request.dataset_name)
+    if not service.is_dataset_in_database(payload.dataset_name):
+        logger.warning("Dataset not found: %s", payload.dataset_name)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Dataset '{request.dataset_name}' not found. Please load it first.",
+            detail=f"Dataset '{payload.dataset_name}' not found. Please load it first.",
         )
 
-    request_payload = request.model_dump()
+    request_payload = payload.model_dump()
     job_id = job_manager.start_job(
         job_type="dataset_validation",
-        runner=dataset_job_handler.run_analysis_job,
+        runner=dataset_job_service.run_analysis_job,
         kwargs={
             "request_payload": request_payload,
+            "job_manager": job_manager,
         },
     )
 
@@ -440,6 +276,7 @@ async def get_latest_dataset_report(dataset_name: str) -> DatasetAnalysisRespons
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
+
     service = DatasetService()
     report = await asyncio.to_thread(service.get_latest_validation_report, dataset_name)
     if report is None:
@@ -483,12 +320,14 @@ async def delete_dataset(dataset_name: str) -> DatasetDeleteResponse:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
+
     service = DatasetService()
     if not service.is_dataset_in_database(dataset_name):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Dataset '{dataset_name}' not found.",
         )
+
     await asyncio.to_thread(service.remove_dataset, dataset_name)
     return DatasetDeleteResponse(
         status="success",
