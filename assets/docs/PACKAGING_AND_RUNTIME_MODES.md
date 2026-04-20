@@ -55,7 +55,7 @@ Rust prerequisite:
 Packaged behavior:
 - Tauri app starts at `about:blank`, then loads splash/UI in-window.
 - Backend serves packaged SPA from `TKBEN/client/dist`.
-- API routes remain available both as original paths and `/api/*` aliases.
+- API routes are exposed under `/api/*` only.
 - Exported artifacts land in `release/windows/installers` and `release/windows/portable`.
 
 ## 4. Database Modes

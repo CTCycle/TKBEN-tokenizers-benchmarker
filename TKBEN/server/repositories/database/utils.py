@@ -10,12 +10,3 @@ def normalize_sqlite_path(path: str) -> str:
         return path[len(WINDOWS_EXTENDED_PATH_PREFIX) :]
     return path
 
-
-# -----------------------------------------------------------------------------
-def normalize_postgres_engine(engine: str | None) -> str:
-    if not engine:
-        return "postgresql+psycopg"
-    lowered = engine.lower()
-    if lowered in {"postgres", "postgresql"}:
-        return "postgresql+psycopg"
-    return engine

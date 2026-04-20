@@ -47,22 +47,6 @@ class Tokenizer(Base):
     vocabularies = relationship(
         "TokenizerVocabulary", back_populates="tokenizer", cascade="all, delete-orphan"
     )
-    vocabulary_statistics = relationship(
-        "TokenizerVocabularyStatistics",
-        back_populates="tokenizer",
-        uselist=False,
-        cascade="all, delete-orphan",
-    )
-    document_stats = relationship(
-        "TokenizationDocumentStats",
-        back_populates="tokenizer",
-        cascade="all, delete-orphan",
-    )
-    dataset_stats = relationship(
-        "TokenizationDatasetStats",
-        back_populates="tokenizer",
-        cascade="all, delete-orphan",
-    )
 
 
 ###############################################################################
@@ -88,9 +72,6 @@ class DatasetDocument(Base):
     __table_args__ = (Index("ix_dataset_document_dataset_id_id", "dataset_id", "id"),)
     dataset = relationship("Dataset", back_populates="documents")
     metric_values = relationship("MetricValue", back_populates="document")
-    tokenization_stats = relationship(
-        "TokenizationDocumentStats", back_populates="document"
-    )
 
 
 ###############################################################################
@@ -202,117 +183,6 @@ class HistogramArtifact(Base):
     metric_type = relationship("MetricType", back_populates="histograms")
 
 
-###############################################################################
-class TokenizationDocumentStats(Base):
-    __tablename__ = "tokenization_document_stats"
-    id = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    tokenizer_id = mapped_column(
-        Integer,
-        ForeignKey("tokenizer.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    document_id = mapped_column(
-        Integer,
-        ForeignKey("dataset_document.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    tokens_count = mapped_column(Integer)
-    tokens_to_words_ratio = mapped_column(Float)
-    bytes_per_token = mapped_column(Float)
-    boundary_preservation_rate = mapped_column(Float)
-    round_trip_token_fidelity = mapped_column(Float)
-    round_trip_text_fidelity = mapped_column(Float)
-    determinism_stability = mapped_column(Float)
-    bytes_per_character = mapped_column(Float)
-    __table_args__ = (
-        UniqueConstraint("tokenizer_id", "document_id"),
-        Index("ix_tokenization_document_stats_tokenizer_id", "tokenizer_id"),
-        Index("ix_tokenization_document_stats_document_id", "document_id"),
-    )
-    tokenizer = relationship("Tokenizer", back_populates="document_stats")
-    document = relationship("DatasetDocument", back_populates="tokenization_stats")
-
-
-###############################################################################
-class TokenizationDatasetStats(Base):
-    __tablename__ = "tokenization_dataset_stats"
-    id = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    tokenizer_id = mapped_column(
-        Integer,
-        ForeignKey("tokenizer.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    dataset_id = mapped_column(
-        Integer,
-        ForeignKey("dataset.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    tokenization_speed_tps = mapped_column(Float)
-    throughput_chars_per_sec = mapped_column(Float)
-    model_size_mb = mapped_column(Float)
-    vocabulary_size = mapped_column(Integer)
-    subword_fertility = mapped_column(Float)
-    oov_rate = mapped_column(Float)
-    word_recovery_rate = mapped_column(Float)
-    __table_args__ = (
-        UniqueConstraint("tokenizer_id", "dataset_id"),
-        Index("ix_tokenization_dataset_stats_tokenizer_id", "tokenizer_id"),
-        Index("ix_tokenization_dataset_stats_dataset_id", "dataset_id"),
-    )
-    tokenizer = relationship("Tokenizer", back_populates="dataset_stats")
-    dataset = relationship("Dataset")
-    detail = relationship(
-        "TokenizationDatasetStatsDetail",
-        back_populates="global_stats",
-        uselist=False,
-        cascade="all, delete-orphan",
-    )
-
-
-###############################################################################
-class TokenizationDatasetStatsDetail(Base):
-    __tablename__ = "tokenization_dataset_stats_detail"
-    global_stats_id = mapped_column(
-        Integer,
-        ForeignKey("tokenization_dataset_stats.id", ondelete="CASCADE"),
-        primary_key=True,
-        nullable=False,
-    )
-    character_coverage = mapped_column(Float)
-    segmentation_consistency = mapped_column(Float)
-    determinism_rate = mapped_column(Float)
-    token_distribution_entropy = mapped_column(Float)
-    rare_token_tail_1 = mapped_column(Integer)
-    rare_token_tail_2 = mapped_column(Integer)
-    boundary_preservation_rate = mapped_column(Float)
-    compression_chars_per_token = mapped_column(Float)
-    compression_bytes_per_character = mapped_column(Float)
-    round_trip_fidelity_rate = mapped_column(Float)
-    round_trip_text_fidelity_rate = mapped_column(Float)
-    token_id_ordering_monotonicity = mapped_column(Float)
-    token_unigram_coverage = mapped_column(Float)
-    global_stats = relationship("TokenizationDatasetStats", back_populates="detail")
-
-
-###############################################################################
-class TokenizerVocabularyStatistics(Base):
-    __tablename__ = "tokenizer_vocabulary_statistics"
-    tokenizer_id = mapped_column(
-        Integer,
-        ForeignKey("tokenizer.id", ondelete="CASCADE"),
-        primary_key=True,
-        nullable=False,
-    )
-    vocabulary_size = mapped_column(Integer)
-    decoded_tokens = mapped_column(Integer)
-    number_shared_tokens = mapped_column(Integer)
-    number_unshared_tokens = mapped_column(Integer)
-    percentage_subwords = mapped_column(Float)
-    percentage_true_words = mapped_column(Float)
-    tokenizer = relationship("Tokenizer", back_populates="vocabulary_statistics")
-
-
-###############################################################################
 class TokenizerVocabulary(Base):
     __tablename__ = "tokenizer_vocabulary"
     id = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)

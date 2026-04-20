@@ -87,7 +87,6 @@ def run_deterministic_benchmark() -> dict[str, Any]:
     service.load_tokenizers = lambda tokenizer_ids: {
         "dummy/tokenizer": DummyTokenizer()
     }  # type: ignore[method-assign]
-    service.persist_results = lambda **kwargs: None  # type: ignore[method-assign]
     service.calculate_morphological_consistency = (  # type: ignore[method-assign]
         lambda tokenizer, base_words: 0.5
     )
@@ -101,25 +100,32 @@ def run_deterministic_benchmark() -> dict[str, Any]:
 
     benchmarks_module.time.perf_counter = fake_perf_counter
     try:
-        return service.run_benchmarks(
+        result = service.run_benchmarks(
             dataset_name="custom/ds",
             tokenizer_ids=["dummy/tokenizer"],
             selected_metric_keys=None,
         )
+        if hasattr(result, "model_dump"):
+            return result.model_dump(mode="json")
+        return result
     finally:
         benchmarks_module.time.perf_counter = original_perf_counter
 
 
 def build_benchmark_metric_value_map(result: dict[str, Any]) -> dict[str, Any]:
-    global_metrics = result["global_metrics"][0]
-    speed_metrics = result["speed_metrics"][0]
+    tokenizer_result = result["tokenizer_results"][0]
+    efficiency_metrics = result["chart_data"]["efficiency"][0]
 
-    encode_tps = float(speed_metrics["tokens_per_second"])
-    encode_cps = float(speed_metrics["chars_per_second"])
-    wall_time_s = float(speed_metrics["processing_time_seconds"])
-    exact_round_trip_rate = float(global_metrics["round_trip_fidelity_rate"])
-    normalized_round_trip_rate = float(global_metrics["round_trip_text_fidelity_rate"])
-    unknown_token_rate = float(global_metrics["oov_rate"])
+    encode_tps = float(efficiency_metrics["value"])
+    encode_cps = float(
+        tokenizer_result["efficiency"]["encode_chars_per_second_mean"]
+    )
+    wall_time_s = float(tokenizer_result["efficiency"]["end_to_end_wall_time_seconds"])
+    exact_round_trip_rate = float(tokenizer_result["fidelity"]["exact_round_trip_rate"])
+    normalized_round_trip_rate = float(
+        tokenizer_result["fidelity"]["normalized_round_trip_rate"]
+    )
+    unknown_token_rate = float(tokenizer_result["fidelity"]["unknown_token_rate"])
 
     return {
         "eff.encode_tokens_per_second_mean": encode_tps,

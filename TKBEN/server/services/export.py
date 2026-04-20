@@ -435,12 +435,11 @@ class DashboardExportService:
     ) -> int:
         report = self._extract_nested(payload, "report")
         source = report if report else payload
-        global_metrics = source.get("global_metrics")
-        if not isinstance(global_metrics, list):
-            global_metrics = []
-        chart_data = source.get("chart_data")
-        if not isinstance(chart_data, dict):
-            chart_data = {}
+        tokenizer_results = source.get("tokenizer_results")
+        if not isinstance(tokenizer_results, list):
+            tokenizer_results = []
+        global_metrics = self._benchmark_global_metrics(source, tokenizer_results)
+        chart_data = self._benchmark_chart_data(source, tokenizer_results)
 
         fig = plt.figure(figsize=(11.69, 8.27), constrained_layout=True)
         grid = fig.add_gridspec(3, 2, height_ratios=[0.28, 0.36, 0.36])
@@ -807,6 +806,152 @@ class DashboardExportService:
         if not rows:
             return [["N/A", "N/A", "N/A", "N/A", "N/A"]]
         return rows
+
+    # -------------------------------------------------------------------------
+    def _benchmark_global_metrics(
+        self,
+        source: dict[str, Any],
+        tokenizer_results: list[Any],
+    ) -> list[dict[str, Any]]:
+        global_metrics = source.get("global_metrics")
+        if isinstance(global_metrics, list):
+            return [item for item in global_metrics if isinstance(item, dict)]
+
+        converted: list[dict[str, Any]] = []
+        for result in tokenizer_results:
+            if not isinstance(result, dict):
+                continue
+            fidelity = result.get("fidelity")
+            if not isinstance(fidelity, dict):
+                fidelity = {}
+            fragmentation = result.get("fragmentation")
+            if not isinstance(fragmentation, dict):
+                fragmentation = {}
+            converted.append(
+                {
+                    "tokenizer": str(result.get("tokenizer") or ""),
+                    "oov_rate": self._to_number(fidelity.get("unknown_token_rate")),
+                    "round_trip_fidelity_rate": self._to_number(
+                        fidelity.get("exact_round_trip_rate")
+                    ),
+                    "word_recovery_rate": 0.0,
+                    "character_coverage": self._to_number(
+                        fidelity.get("lossless_encodability_rate")
+                    ),
+                    "subword_fertility": self._to_number(
+                        fragmentation.get("pieces_per_word_mean")
+                    ),
+                    "token_distribution_entropy": 0.0,
+                }
+            )
+        return converted
+
+    # -------------------------------------------------------------------------
+    def _benchmark_chart_data(
+        self,
+        source: dict[str, Any],
+        tokenizer_results: list[Any],
+    ) -> dict[str, Any]:
+        chart_data = source.get("chart_data")
+        if not isinstance(chart_data, dict):
+            chart_data = {}
+        if {
+            "speed_metrics",
+            "vocabulary_stats",
+            "token_length_distributions",
+        }.issubset(chart_data.keys()):
+            return chart_data
+
+        by_tokenizer = {
+            str(item.get("tokenizer") or ""): item
+            for item in tokenizer_results
+            if isinstance(item, dict)
+        }
+        efficiency = chart_data.get("efficiency")
+        vocabulary = chart_data.get("vocabulary")
+        fragmentation = chart_data.get("fragmentation")
+        if not isinstance(efficiency, list):
+            efficiency = []
+        if not isinstance(vocabulary, list):
+            vocabulary = []
+        if not isinstance(fragmentation, list):
+            fragmentation = []
+
+        speed_metrics: list[dict[str, Any]] = []
+        for item in efficiency:
+            if not isinstance(item, dict):
+                continue
+            tokenizer_name = str(item.get("tokenizer") or "")
+            result = by_tokenizer.get(tokenizer_name, {})
+            efficiency_metrics = result.get("efficiency") if isinstance(result, dict) else {}
+            if not isinstance(efficiency_metrics, dict):
+                efficiency_metrics = {}
+            speed_metrics.append(
+                {
+                    "tokenizer": tokenizer_name,
+                    "tokens_per_second": self._to_number(item.get("value")),
+                    "chars_per_second": self._to_number(
+                        efficiency_metrics.get("encode_chars_per_second_mean")
+                    ),
+                    "processing_time_seconds": self._to_number(
+                        efficiency_metrics.get("end_to_end_wall_time_seconds")
+                    ),
+                }
+            )
+
+        vocabulary_stats: list[dict[str, Any]] = []
+        for item in vocabulary:
+            if not isinstance(item, dict):
+                continue
+            vocabulary_stats.append(
+                {
+                    "tokenizer": str(item.get("tokenizer") or ""),
+                    "vocabulary_size": int(round(self._to_number(item.get("value")))),
+                }
+            )
+
+        token_length_distributions: list[dict[str, Any]] = []
+        for item in fragmentation:
+            if not isinstance(item, dict):
+                continue
+            tokenizer_name = str(item.get("tokenizer") or "")
+            result = by_tokenizer.get(tokenizer_name, {})
+            fragmentation_metrics = (
+                result.get("fragmentation") if isinstance(result, dict) else {}
+            )
+            if not isinstance(fragmentation_metrics, dict):
+                fragmentation_metrics = {}
+            buckets = fragmentation_metrics.get("fragmentation_by_word_length_bucket")
+            if not isinstance(buckets, list):
+                buckets = []
+            bins = []
+            for index, bucket in enumerate(buckets):
+                if not isinstance(bucket, dict):
+                    continue
+                bins.append(
+                    {
+                        "bin_start": int(index * 4 + 1),
+                        "bin_end": int(index * 4 + 4),
+                        "count": int(
+                            round(
+                                self._to_number(bucket.get("pieces_per_word_mean"), 0.0)
+                                * 100.0
+                            )
+                        ),
+                    }
+                )
+            token_length_distributions.append(
+                {
+                    "tokenizer": tokenizer_name,
+                    "bins": bins,
+                }
+            )
+
+        return {
+            "speed_metrics": speed_metrics,
+            "vocabulary_stats": vocabulary_stats,
+            "token_length_distributions": token_length_distributions,
+        }
 
     # -------------------------------------------------------------------------
     def _extract_nested(self, payload: dict[str, Any], key: str) -> dict[str, Any]:

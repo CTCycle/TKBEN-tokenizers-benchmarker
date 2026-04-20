@@ -3,17 +3,13 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from TKBEN.server.domain.benchmarks import BenchmarkRunResponse
 from TKBEN.server.services.benchmarks import BenchmarkService
-from TKBEN.server.services.benchmark_payloads import BenchmarkPayloadBuilder
 from TKBEN.server.services.jobs import JobManager, JobProgressReporter, JobStopChecker
 
 
 ###############################################################################
 class BenchmarkJobService:
-    def __init__(self) -> None:
-        self.payload_builder = BenchmarkPayloadBuilder()
-
-    # -------------------------------------------------------------------------
     def run_benchmark_job(
         self,
         request_payload: dict[str, Any],
@@ -34,17 +30,15 @@ class BenchmarkJobService:
             custom_tokenizers=request_payload.get("custom_tokenizers", {}),
             run_name=request_payload.get("run_name"),
             selected_metric_keys=request_payload.get("selected_metric_keys"),
+            benchmark_config=config,
             progress_callback=progress_callback,
             should_stop=should_stop,
         )
         if job_manager.should_stop(job_id):
             return {}
 
-        payload = self.payload_builder.build_benchmark_payload(
-            result,
-            request_payload.get("dataset_name", ""),
-            config_payload=config,
-        )
+        benchmark_response = BenchmarkRunResponse.model_validate(result)
+        payload = benchmark_response.model_dump(mode="json")
         payload["created_at"] = (
             datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         )

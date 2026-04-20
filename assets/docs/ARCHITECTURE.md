@@ -47,10 +47,9 @@ TKBEN is a tokenizer benchmarking application that supports:
     - `dataset_jobs.py` (dataset background job orchestration + payload shaping)
   - benchmark service split:
     - `benchmarks.py` (tokenizer tools + core service wiring)
-    - `benchmark_execution.py` (benchmark execution/persistence)
+    - `benchmark_execution.py` (benchmark execution and direct `BenchmarkRunResponse` construction)
     - `benchmark_plotting.py` (plot generation helpers)
     - `benchmark_jobs.py` (benchmark background job orchestration)
-    - `benchmark_payloads.py` (single source of truth for benchmark V2 payload shaping)
   - tokenizer service split:
     - `tokenizers.py` (tokenizer catalog/report/custom registration logic)
     - `tokenizer_jobs.py` (tokenizer background job orchestration)
@@ -103,7 +102,7 @@ Benchmarks:
 
 Benchmark payload contract:
 - benchmark API responses use `report_version=2` payload fields.
-- benchmark payload shaping is centralized in `BenchmarkPayloadBuilder` (`TKBEN/server/services/benchmark_payloads.py`) and reused by service + repository serialization paths.
+- benchmark execution emits `BenchmarkRunResponse` directly; persisted `benchmark_report.payload` rows are validated directly against the same schema on load.
 - active payload centers on:
   - `config` (warmup/timed trials, batch size, seed, parallelism)
   - `hardware_profile`
@@ -145,8 +144,7 @@ Main ORM tables in `TKBEN/server/repositories/schemas/models.py`:
 - `dataset`, `dataset_document`
 - `analysis_session`, `metric_type`, `metric_value`, `histogram_artifact`
 - `dataset_validation_report`
-- `tokenizer`, `tokenizer_report`, `tokenizer_vocabulary`, `tokenizer_vocabulary_statistics`
-- `tokenization_document_stats`, `tokenization_dataset_stats`, `tokenization_dataset_stats_detail`
+- `tokenizer`, `tokenizer_report`, `tokenizer_vocabulary`
 - `benchmark_report`
 - `hf_access_keys`
 

@@ -39,19 +39,6 @@ class DatasetSettings:
     download_retry_backoff_seconds: float
 
 
-###############################################################################
-@dataclass(frozen=True)
-class FittingSettings:
-    default_max_iterations: int
-    max_iterations_upper_bound: int
-    save_best_default: bool
-    parameter_initial_default: float
-    parameter_min_default: float
-    parameter_max_default: float
-    preview_row_limit: int
-
-
-###############################################################################
 @dataclass(frozen=True)
 class TokenizerSettings:
     default_scan_limit: int
@@ -78,7 +65,6 @@ class JobsSettings:
 class ServerSettings:
     database: DatabaseSettings
     datasets: DatasetSettings
-    fitting: FittingSettings
     tokenizers: TokenizerSettings
     benchmarks: BenchmarkSettings
     jobs: JobsSettings
@@ -87,7 +73,7 @@ class ServerSettings:
 ###############################################################################
 class JsonDatabaseSettings(BaseModel):
     embedded_database: bool = True
-    engine: str = "postgres"
+    engine: str = "postgresql+psycopg"
     host: str | None = None
     port: int = Field(default=5432, ge=1, le=65535)
     database_name: str | None = None
@@ -149,29 +135,6 @@ class JsonDatasetSettings(BaseModel):
 
 
 ###############################################################################
-class JsonFittingSettings(BaseModel):
-    default_max_iterations: int = Field(default=1000, ge=1)
-    max_iterations_upper_bound: int = Field(default=1_000_000, ge=1)
-    save_best_default: bool = True
-    parameter_initial_default: float = Field(default=1.0, ge=0.0)
-    parameter_min_default: float = Field(default=0.0, ge=0.0)
-    parameter_max_default: float = Field(default=100.0, ge=0.0)
-    preview_row_limit: int = Field(default=5, ge=1)
-
-    @model_validator(mode="after")
-    def validate_ranges(self) -> "JsonFittingSettings":
-        if self.max_iterations_upper_bound < self.default_max_iterations:
-            raise ValueError(
-                "fitting.max_iterations_upper_bound must be >= fitting.default_max_iterations"
-            )
-        if self.parameter_max_default < self.parameter_min_default:
-            raise ValueError(
-                "fitting.parameter_max_default must be >= fitting.parameter_min_default"
-            )
-        return self
-
-
-###############################################################################
 class JsonTokenizerSettings(BaseModel):
     default_scan_limit: int = Field(default=100, ge=1)
     max_scan_limit: int = Field(default=1000, ge=1)
@@ -208,7 +171,6 @@ class JsonJobsSettings(BaseModel):
 class JsonConfiguration(BaseModel):
     database: JsonDatabaseSettings = Field(default_factory=JsonDatabaseSettings)
     datasets: JsonDatasetSettings = Field(default_factory=JsonDatasetSettings)
-    fitting: JsonFittingSettings = Field(default_factory=JsonFittingSettings)
     tokenizers: JsonTokenizerSettings = Field(default_factory=JsonTokenizerSettings)
     benchmarks: JsonBenchmarkSettings = Field(default_factory=JsonBenchmarkSettings)
     jobs: JsonJobsSettings = Field(default_factory=JsonJobsSettings)
@@ -219,7 +181,6 @@ class JsonConfiguration(BaseModel):
         return cls(
             database=payload.get("database", {}),
             datasets=payload.get("datasets", {}),
-            fitting=payload.get("fitting", {}),
             tokenizers=payload.get("tokenizers", {}),
             benchmarks=payload.get("benchmarks", {}),
             jobs=payload.get("jobs", {}),
@@ -259,7 +220,7 @@ class JsonConfiguration(BaseModel):
         else:
             database_settings = DatabaseSettings(
                 embedded_database=False,
-                engine=db.engine.lower() if db.engine else "postgres",
+                engine=db.engine.lower() if db.engine else "postgresql+psycopg",
                 host=db.host,
                 port=db.port,
                 database_name=db.database_name,
@@ -284,15 +245,6 @@ class JsonConfiguration(BaseModel):
                 download_timeout_seconds=self.datasets.download_timeout_seconds,
                 download_retry_attempts=self.datasets.download_retry_attempts,
                 download_retry_backoff_seconds=self.datasets.download_retry_backoff_seconds,
-            ),
-            fitting=FittingSettings(
-                default_max_iterations=self.fitting.default_max_iterations,
-                max_iterations_upper_bound=self.fitting.max_iterations_upper_bound,
-                save_best_default=self.fitting.save_best_default,
-                parameter_initial_default=self.fitting.parameter_initial_default,
-                parameter_min_default=self.fitting.parameter_min_default,
-                parameter_max_default=self.fitting.parameter_max_default,
-                preview_row_limit=self.fitting.preview_row_limit,
             ),
             tokenizers=TokenizerSettings(
                 default_scan_limit=self.tokenizers.default_scan_limit,
