@@ -14,7 +14,6 @@ from TKBEN.server.domain.benchmarks import (
     BenchmarkRunResponse,
 )
 from TKBEN.server.domain.jobs import JobStartResponse
-from TKBEN.server.configurations import get_server_settings
 from TKBEN.server.common.constants import (
     API_ROUTE_BENCHMARKS_METRICS_CATALOG,
     API_ROUTE_BENCHMARKS_REPORT_BY_ID,
@@ -22,6 +21,7 @@ from TKBEN.server.common.constants import (
     API_ROUTE_BENCHMARKS_RUN,
     API_ROUTER_PREFIX_BENCHMARKS,
 )
+from TKBEN.server.api.helpers import start_managed_job
 from TKBEN.server.common.utils.logger import logger
 from TKBEN.server.services.benchmark_jobs import BenchmarkJobService
 from TKBEN.server.services.benchmarks import BenchmarkService
@@ -102,28 +102,17 @@ async def run_benchmarks(
     request_payload = payload.model_dump()
     request_payload["custom_tokenizers"] = custom_tokenizers
 
-    job_id = job_manager.start_job(
+    return start_managed_job(
+        request,
         job_type="benchmark_run",
         runner=benchmark_job_service.run_benchmark_job,
         kwargs={
             "request_payload": request_payload,
-            "job_manager": job_manager,
         },
-    )
-
-    job_status = job_manager.get_job_status(job_id)
-    if job_status is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to initialize benchmark job.",
-        )
-
-    return JobStartResponse(
-        job_id=job_id,
-        job_type=job_status["job_type"],
-        status=job_status["status"],
+        conflict_detail="Benchmark run is already in progress.",
+        init_failure_detail="Failed to initialize benchmark job.",
         message="Benchmark job started.",
-        poll_interval=get_server_settings().jobs.polling_interval,
+        check_conflict=False,
     )
 
 

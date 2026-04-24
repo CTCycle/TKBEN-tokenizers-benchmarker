@@ -335,7 +335,7 @@ const CrossBenchmarkPage = () => {
             <div className="cross-benchmark-dashboard-intro">
               <p className="panel-label">Tokenizer Benchmark Dashboard</p>
               <p className="panel-description">
-                Run, reopen, and analyze persisted tokenizer benchmark reports through a metric-level dashboard.
+                Run, reopen, and analyze persisted reports through a metric-level dashboard.
               </p>
               {activeReport && (
                 <p className="panel-description cross-benchmark-dashboard-meta">

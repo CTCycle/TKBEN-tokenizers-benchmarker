@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
 from typing import Annotated
 
 from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile, status
@@ -36,7 +35,11 @@ from TKBEN.server.common.constants import (
 from TKBEN.server.common.utils.logger import logger
 from TKBEN.server.common.utils.security import (
     normalize_identifier,
-    normalize_upload_stem,
+)
+from TKBEN.server.api.helpers import (
+    start_managed_job,
+    validate_upload_filename,
+    validate_upload_size,
 )
 from TKBEN.server.services.keys import (
     HFAccessKeyService,
@@ -146,36 +149,16 @@ async def download_tokenizers(
             detail=str(exc),
         ) from exc
 
-    job_manager = request.app.state.job_manager
-    if job_manager.is_job_running("tokenizer_download"):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Tokenizer download is already in progress.",
-        )
-
-    request_payload = payload.model_dump()
-    job_id = job_manager.start_job(
+    return start_managed_job(
+        request,
         job_type="tokenizer_download",
         runner=tokenizer_job_service.run_download_job,
         kwargs={
-            "request_payload": request_payload,
-            "job_manager": job_manager,
+            "request_payload": payload.model_dump(),
         },
-    )
-
-    job_status = job_manager.get_job_status(job_id)
-    if job_status is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to initialize tokenizer download job.",
-        )
-
-    return JobStartResponse(
-        job_id=job_id,
-        job_type=job_status["job_type"],
-        status=job_status["status"],
+        conflict_detail="Tokenizer download is already in progress.",
+        init_failure_detail="Failed to initialize tokenizer download job.",
         message="Tokenizer download job started.",
-        poll_interval=get_server_settings().jobs.polling_interval,
     )
 
 
@@ -206,36 +189,16 @@ async def generate_tokenizer_report(
             ),
         )
 
-    job_manager = request.app.state.job_manager
-    if job_manager.is_job_running("tokenizer_report"):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Tokenizer report generation is already in progress.",
-        )
-
-    request_payload = payload.model_dump()
-    job_id = job_manager.start_job(
+    return start_managed_job(
+        request,
         job_type="tokenizer_report",
         runner=tokenizer_job_service.run_report_job,
         kwargs={
-            "request_payload": request_payload,
-            "job_manager": job_manager,
+            "request_payload": payload.model_dump(),
         },
-    )
-
-    job_status = job_manager.get_job_status(job_id)
-    if job_status is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to initialize tokenizer report job.",
-        )
-
-    return JobStartResponse(
-        job_id=job_id,
-        job_type=job_status["job_type"],
-        status=job_status["status"],
+        conflict_detail="Tokenizer report generation is already in progress.",
+        init_failure_detail="Failed to initialize tokenizer report job.",
         message="Tokenizer report job started.",
-        poll_interval=get_server_settings().jobs.polling_interval,
     )
 
 
@@ -320,31 +283,11 @@ async def get_tokenizer_report_vocabulary(
 async def upload_custom_tokenizer(
     file: Annotated[UploadFile, File(...)],
 ) -> TokenizerUploadResponse:
-    if not file.filename:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No filename provided.",
-        )
-
-    normalized_filename = os.path.basename(file.filename.strip().replace("\\", "/"))
-    if not normalized_filename:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid filename.",
-        )
-    if not normalized_filename.lower().endswith(".json"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File must be a .json file (tokenizer.json)",
-        )
-
-    try:
-        safe_stem = normalize_upload_stem(normalized_filename)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+    normalized_filename, safe_stem = validate_upload_filename(
+        file,
+        extension_allowed=lambda extension: extension == ".json",
+        unsupported_detail=lambda _extension: "File must be a .json file (tokenizer.json)",
+    )
 
     content = await file.read()
     if not content:
@@ -354,11 +297,7 @@ async def upload_custom_tokenizer(
         )
 
     max_upload_bytes = int(get_server_settings().tokenizers.max_upload_bytes)
-    if len(content) > max_upload_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"Uploaded file exceeds max allowed size ({max_upload_bytes} bytes).",
-        )
+    validate_upload_size(content, max_upload_bytes)
 
     try:
         result = await asyncio.to_thread(

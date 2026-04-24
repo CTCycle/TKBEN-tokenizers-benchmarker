@@ -695,7 +695,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
     return (
       <div className="chart-placeholder">
         <p>No persisted validation session loaded.</p>
-        <span>Run validation from the dataset preview list.</span>
+        <span>Run validation from the preview list.</span>
       </div>
     );
   };

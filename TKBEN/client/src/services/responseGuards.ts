@@ -15,6 +15,34 @@ const readNumber = (record: JsonRecord, key: string): number | null => {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 };
 
+const readErrorDetail = async (response: Response, fallback: string): Promise<string> => {
+  const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+  const detail = isRecord(errorData) ? errorData.detail : null;
+  return detail ? String(detail) : fallback;
+};
+
+export const readJsonResponse = async <T>(
+  response: Response,
+  fallback: string,
+): Promise<T> => {
+  await ensureOkResponse(response, fallback);
+  return response.json();
+};
+
+export const ensureOkResponse = async (
+  response: Response,
+  fallback: string,
+): Promise<void> => {
+  if (!response.ok) {
+    throw new Error(await readErrorDetail(response, `${fallback}: ${response.status}`));
+  }
+};
+
+export const readJobStartResponse = async (
+  response: Response,
+  fallback: string,
+): Promise<JobStartResponse> => parseJobStartResponse(await readJsonResponse(response, fallback));
+
 export const parseJobStartResponse = (value: unknown): JobStartResponse => {
   if (!isRecord(value)) {
     throw new Error('Invalid job start response payload.');

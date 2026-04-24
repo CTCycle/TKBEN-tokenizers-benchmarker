@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
 
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile, status
 
@@ -18,7 +17,6 @@ from TKBEN.server.configurations import get_server_settings
 from TKBEN.server.common.utils.logger import logger
 from TKBEN.server.common.utils.security import (
     normalize_identifier,
-    normalize_upload_stem,
 )
 from TKBEN.server.common.constants import (
     API_ROUTE_DATASETS_ANALYZE,
@@ -30,6 +28,11 @@ from TKBEN.server.common.constants import (
     API_ROUTE_DATASETS_REPORT_LATEST,
     API_ROUTE_DATASETS_UPLOAD,
     API_ROUTER_PREFIX_DATASETS,
+)
+from TKBEN.server.api.helpers import (
+    start_managed_job,
+    validate_upload_filename,
+    validate_upload_size,
 )
 from TKBEN.server.services.dataset_jobs import DatasetJobService
 from TKBEN.server.services.datasets import DatasetService
@@ -78,36 +81,16 @@ async def download_dataset(
         payload.configs.configuration,
     )
 
-    job_manager = request.app.state.job_manager
-    if job_manager.is_job_running("dataset_download"):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Dataset download is already in progress.",
-        )
-
-    request_payload = payload.model_dump()
-    job_id = job_manager.start_job(
+    return start_managed_job(
+        request,
         job_type="dataset_download",
         runner=dataset_job_service.run_download_job,
         kwargs={
-            "request_payload": request_payload,
-            "job_manager": job_manager,
+            "request_payload": payload.model_dump(),
         },
-    )
-
-    job_status = job_manager.get_job_status(job_id)
-    if job_status is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to initialize dataset download job.",
-        )
-
-    return JobStartResponse(
-        job_id=job_id,
-        job_type=job_status["job_type"],
-        status=job_status["status"],
+        conflict_detail="Dataset download is already in progress.",
+        init_failure_detail="Failed to initialize dataset download job.",
         message="Dataset download job started.",
-        poll_interval=get_server_settings().jobs.polling_interval,
     )
 
 
@@ -121,33 +104,15 @@ async def upload_custom_dataset(
     request: Request,
     file: UploadFile = File(..., description="CSV or Excel file to upload"),
 ) -> JobStartResponse:
-    if not file.filename:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No filename provided.",
-        )
-
-    normalized_filename = os.path.basename(file.filename.strip().replace("\\", "/"))
-    if not normalized_filename:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid filename.",
-        )
-    try:
-        normalize_upload_stem(normalized_filename)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
-
-    extension = os.path.splitext(normalized_filename)[1].lower()
     allowed_extensions = set(get_server_settings().datasets.allowed_extensions)
-    if extension not in allowed_extensions:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported file type: {extension}. Use .csv, .xlsx, or .xls",
-        )
+    normalized_filename, _ = validate_upload_filename(
+        file,
+        extension_allowed=allowed_extensions.__contains__,
+        unsupported_detail=lambda extension: (
+            f"Unsupported file type: {extension}. Use .csv, .xlsx, or .xls"
+        ),
+        validate_stem_before_extension=True,
+    )
 
     logger.info("Custom dataset upload requested: filename=%s", normalized_filename)
 
@@ -166,44 +131,19 @@ async def upload_custom_dataset(
         )
 
     max_upload_bytes = int(get_server_settings().datasets.max_upload_bytes)
-    if len(file_content) > max_upload_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=(
-                f"Uploaded file exceeds max allowed size ({max_upload_bytes} bytes)."
-            ),
-        )
+    validate_upload_size(file_content, max_upload_bytes)
 
-    job_manager = request.app.state.job_manager
-    if job_manager.is_job_running("dataset_upload"):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Dataset upload is already in progress.",
-        )
-
-    job_id = job_manager.start_job(
+    return start_managed_job(
+        request,
         job_type="dataset_upload",
         runner=dataset_job_service.run_upload_job,
         kwargs={
             "file_content": file_content,
             "filename": normalized_filename,
-            "job_manager": job_manager,
         },
-    )
-
-    job_status = job_manager.get_job_status(job_id)
-    if job_status is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to initialize dataset upload job.",
-        )
-
-    return JobStartResponse(
-        job_id=job_id,
-        job_type=job_status["job_type"],
-        status=job_status["status"],
+        conflict_detail="Dataset upload is already in progress.",
+        init_failure_detail="Failed to initialize dataset upload job.",
         message="Custom dataset upload job started.",
-        poll_interval=get_server_settings().jobs.polling_interval,
     )
 
 
@@ -234,29 +174,17 @@ async def analyze_dataset(
             detail=f"Dataset '{payload.dataset_name}' not found. Please load it first.",
         )
 
-    request_payload = payload.model_dump()
-    job_id = job_manager.start_job(
+    return start_managed_job(
+        request,
         job_type="dataset_validation",
         runner=dataset_job_service.run_analysis_job,
         kwargs={
-            "request_payload": request_payload,
-            "job_manager": job_manager,
+            "request_payload": payload.model_dump(),
         },
-    )
-
-    job_status = job_manager.get_job_status(job_id)
-    if job_status is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to initialize dataset validation job.",
-        )
-
-    return JobStartResponse(
-        job_id=job_id,
-        job_type=job_status["job_type"],
-        status=job_status["status"],
+        conflict_detail="Dataset validation is already in progress.",
+        init_failure_detail="Failed to initialize dataset validation job.",
         message="Dataset validation job started.",
-        poll_interval=get_server_settings().jobs.polling_interval,
+        check_conflict=False,
     )
 
 
