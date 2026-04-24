@@ -1,160 +1,193 @@
-# TKBEN Architecture
-Last updated: 2026-04-20
+# ARCHITECTURE
+Last updated: 2026-04-24
 
-## 1. Purpose
-TKBEN is a tokenizer benchmarking application that supports:
-- dataset ingestion (Hugging Face download + local upload)
-- dataset validation/analysis and persisted reports
-- tokenizer discovery/download/reporting
-- cross-tokenizer benchmark execution with persisted results
-- dashboard PDF export for benchmark/report views
+## System Summary
+TKBEN is a tokenizer benchmarking platform with:
+- FastAPI backend (`TKBEN/server`)
+- React + Vite frontend (`TKBEN/client`)
+- Optional Tauri desktop packaging (`TKBEN/client/src-tauri`)
+- Shared local resources and settings (`TKBEN/resources`, `TKBEN/settings`)
 
-## 2. High-Level System
-- Frontend: React + TypeScript SPA in `TKBEN/client`
-- Backend: FastAPI service in `TKBEN/server`
-- Persistence:
-  - default embedded SQLite (`TKBEN/resources/database.db`)
-  - optional PostgreSQL (`TKBEN/settings/configurations.json` -> `database.embedded_database=false`)
-- External services: Hugging Face datasets/tokenizers APIs
+Backend APIs are mounted under `/api/*`. Frontend calls `/api` and relies on Vite proxy in dev/preview.
 
-## 3. Frontend Structure
-- App shell and routing:
-  - `TKBEN/client/src/App.tsx`
-  - `TKBEN/client/src/components/AppShell.tsx`
-  - routes: `/dataset`, `/tokenizers`, `/cross-benchmark`
-- State contexts:
-  - `TKBEN/client/src/contexts/DatasetContext.tsx`
-  - `TKBEN/client/src/contexts/TokenizersContext.tsx`
-- API client modules:
-  - `TKBEN/client/src/services/*`
-  - default API base: `/api`
+## Repository Structure
+Source-level structure (generated folders like `node_modules`, `dist`, caches omitted):
 
-## 4. Backend Structure
-- App entrypoint: `TKBEN/server/app.py`
-  - owns a single in-process `JobManager` at `app.state.job_manager`
-- API routers: `TKBEN/server/api`
-  - `datasets.py`
-  - `tokenizers.py`
-  - `benchmarks.py`
-  - `jobs.py`
-  - `keys.py`
-  - `exports.py`
-- Domain models: `TKBEN/server/domain`
-- Services: `TKBEN/server/services`
-  - dataset service split:
-    - `datasets.py` (download resolution, stream/stat helpers)
-    - `dataset_operations.py` (persist/upload/analysis workflows)
-    - `dataset_jobs.py` (dataset background job orchestration + payload shaping)
-  - benchmark service split:
-    - `benchmarks.py` (tokenizer tools + core service wiring)
-    - `benchmark_execution.py` (benchmark execution and direct `BenchmarkRunResponse` construction)
-    - `benchmark_plotting.py` (plot generation helpers)
-    - `benchmark_jobs.py` (benchmark background job orchestration)
-  - tokenizer service split:
-    - `tokenizers.py` (tokenizer catalog/report/custom registration logic)
-    - `tokenizer_jobs.py` (tokenizer background job orchestration)
-  - `custom_tokenizers.py` (thread-safe in-memory registry used by tokenizer upload + benchmark run flows)
-- Persistence:
-  - `TKBEN/server/repositories/database`
-  - `TKBEN/server/repositories/schemas/models.py`
-  - service-facing repositories:
-    - `TKBEN/server/repositories/hf_access_keys.py`
-    - `TKBEN/server/repositories/tokenizers.py`
-    - `TKBEN/server/repositories/benchmarks.py`
+```text
+.
+├─ pyproject.toml
+├─ runtimes/
+│  ├─ .venv/                # Runtime virtualenv used by scripts
+│  └─ uv.lock               # Runtime lockfile used by launcher/packaging
+├─ assets/
+│  ├─ docs/
+│  └─ figures/
+├─ TKBEN/
+│  ├─ start_on_windows.bat
+│  ├─ setup_and_maintenance.bat
+│  ├─ client/
+│  │  ├─ package.json
+│  │  ├─ vite.config.ts
+│  │  ├─ src/
+│  │  │  ├─ main.tsx
+│  │  │  ├─ App.tsx
+│  │  │  ├─ App.css
+│  │  │  ├─ index.css
+│  │  │  ├─ components/
+│  │  │  ├─ contexts/
+│  │  │  ├─ hooks/
+│  │  │  ├─ pages/
+│  │  │  ├─ services/
+│  │  │  ├─ types/
+│  │  │  └─ workers/
+│  │  └─ src-tauri/
+│  │     ├─ tauri.conf.json
+│  │     └─ src/main.rs
+│  ├─ server/
+│  │  ├─ app.py
+│  │  ├─ api/
+│  │  ├─ configurations/
+│  │  ├─ domain/
+│  │  ├─ services/
+│  │  ├─ repositories/
+│  │  │  ├─ database/
+│  │  │  ├─ schemas/
+│  │  │  └─ serialization/
+│  │  └─ common/
+│  ├─ scripts/
+│  │  └─ initialize_database.py
+│  ├─ settings/
+│  │  ├─ .env
+│  │  ├─ .env.example
+│  │  └─ configurations.json
+│  └─ resources/
+│     ├─ database.db
+│     ├─ logs/
+│     ├─ templates/
+│     └─ sources/
+├─ release/
+│  ├─ tauri/
+│  │  ├─ build_with_tauri.bat
+│  │  └─ scripts/
+│  └─ windows/
+└─ tests/
+   ├─ run_tests.bat
+   ├─ conftest.py
+   ├─ unit/
+   └─ e2e/
+```
 
-## 5. Routing Model
-All backend API routes are exposed only under `/api`.
+## Application Entry Points
+- Backend app factory/module:
+  - `TKBEN.server.app:app` in [app.py](/G:/Projects/Repositories/Active%20projects/TKBEN%20Benchmarker/TKBEN/server/app.py)
+- Frontend entry:
+  - [main.tsx](/G:/Projects/Repositories/Active%20projects/TKBEN%20Benchmarker/TKBEN/client/src/main.tsx)
+- Frontend routing root:
+  - [App.tsx](/G:/Projects/Repositories/Active%20projects/TKBEN%20Benchmarker/TKBEN/client/src/App.tsx)
+- Desktop runtime entry:
+  - [main.rs](/G:/Projects/Repositories/Active%20projects/TKBEN%20Benchmarker/TKBEN/client/src-tauri/src/main.rs)
+- Windows local launcher:
+  - [start_on_windows.bat](/G:/Projects/Repositories/Active%20projects/TKBEN%20Benchmarker/TKBEN/start_on_windows.bat)
 
-## 6. API Surface
+## Backend API Endpoints
+All routers are included with `prefix="/api"` in backend app startup.
 
-Root behavior:
-- `GET /`
-  - local mode: redirects to `/docs`
-  - packaged Tauri mode with built frontend: serves SPA entrypoint
-
-Datasets:
+### Datasets
 - `GET /api/datasets/list`
 - `GET /api/datasets/metrics/catalog`
-- `POST /api/datasets/download` (async job start)
-- `POST /api/datasets/upload` (async job start)
-- `POST /api/datasets/analyze` (async job start)
+- `POST /api/datasets/download`
+- `POST /api/datasets/upload`
+- `POST /api/datasets/analyze`
 - `GET /api/datasets/reports/latest`
 - `GET /api/datasets/reports/{report_id}`
 - `DELETE /api/datasets/delete`
 
-Tokenizers:
+### Tokenizers
 - `GET /api/tokenizers/settings`
 - `GET /api/tokenizers/scan`
 - `GET /api/tokenizers/list`
-- `POST /api/tokenizers/download` (async job start)
-- `POST /api/tokenizers/reports/generate` (async job start)
+- `POST /api/tokenizers/download`
+- `POST /api/tokenizers/reports/generate`
 - `GET /api/tokenizers/reports/latest`
 - `GET /api/tokenizers/reports/{report_id}`
 - `GET /api/tokenizers/reports/{report_id}/vocabulary`
 - `POST /api/tokenizers/upload`
 - `DELETE /api/tokenizers/custom`
 
-Benchmarks:
-- `POST /api/benchmarks/run` (async job start)
+### Benchmarks
+- `POST /api/benchmarks/run`
 - `GET /api/benchmarks/reports`
 - `GET /api/benchmarks/reports/{report_id}`
 - `GET /api/benchmarks/metrics/catalog`
 
-Benchmark payload contract:
-- benchmark API responses use `report_version=2` payload fields.
-- benchmark execution emits `BenchmarkRunResponse` directly; persisted `benchmark_report.payload` rows are validated directly against the same schema on load.
-- active payload centers on:
-  - `config` (warmup/timed trials, batch size, seed, parallelism)
-  - `hardware_profile`
-  - `trial_summary`
-  - `tokenizer_results` grouped by efficiency/latency/fidelity/fragmentation/resources
-  - `chart_data` with V2 series groups for efficiency/fidelity/vocabulary/fragmentation/distribution
-
-Exports:
-- `POST /api/exports/dashboard/pdf` (returns generated PDF bytes)
-
-Jobs:
+### Jobs
 - `GET /api/jobs`
 - `GET /api/jobs/{job_id}`
 - `DELETE /api/jobs/{job_id}`
 
-HF Keys:
+### Hugging Face Keys
 - `POST /api/keys`
 - `GET /api/keys`
 - `DELETE /api/keys/{key_id}`
 - `POST /api/keys/{key_id}/activate`
 - `POST /api/keys/{key_id}/deactivate`
-- `POST /api/keys/{key_id}/reveal` (guarded by `ALLOW_KEY_REVEAL`)
+- `POST /api/keys/{key_id}/reveal`
 
-## 7. Async Job Pattern
-Long-running operations return `JobStartResponse` and are polled via `/api/jobs/{job_id}`.
+### Exports
+- `POST /api/exports/dashboard/pdf`
 
-Job terminal states:
-- `completed`
-- `failed`
-- `cancelled`
+## Layered Architecture
+Primary backend flow:
+`endpoint (api/*) -> service (services/*) -> repository/serializer (repositories/*) -> DB/filesystem`
 
-Covered workflows:
-- dataset download/upload/analyze
-- tokenizer download/report generation
-- benchmark run
+Examples:
+- Dataset flow:
+  - `api/datasets.py` validates request and starts jobs
+  - `services/dataset_jobs.py` + `services/datasets.py` handle orchestration/analysis/download
+  - `repositories/serialization/data.py` persists and retrieves dataset/report records
+- Benchmark flow:
+  - `api/benchmarks.py` receives run/list/report requests
+  - `services/benchmarks.py` coordinates tokenizer loading + metrics
+  - `repositories/benchmarks.py` handles SQL reads/writes
 
-## 8. Database Tables (Current)
-Main ORM tables in `TKBEN/server/repositories/schemas/models.py`:
-- `dataset`, `dataset_document`
-- `analysis_session`, `metric_type`, `metric_value`, `histogram_artifact`
-- `dataset_validation_report`
-- `tokenizer`, `tokenizer_report`, `tokenizer_vocabulary`
-- `benchmark_report`
-- `hf_access_keys`
+### Key Module Responsibilities
+- `server/app.py`: FastAPI app construction, router registration, SPA serving in Tauri mode.
+- `server/api/*`: HTTP contracts, status codes, request/response models, job dispatch.
+- `server/domain/*`: Pydantic/dataclass domain models and settings schemas.
+- `server/services/*`: Business logic, long-running operations, orchestration.
+- `server/repositories/database/*`: Backend selection and DB adapter implementations.
+- `server/repositories/schemas/*`: SQLAlchemy models and types.
+- `server/repositories/serialization/*`: Persistence serialization and report materialization.
+- `server/common/*`: constants, logging, type/util/security helpers.
 
-## 9. Runtime and Packaging Anchors
-- Local bootstrap/launcher: `TKBEN/start_on_windows.bat`
-- Maintenance utility: `TKBEN/setup_and_maintenance.bat`
-- Desktop build entrypoint: `release/tauri/build_with_tauri.bat`
-- Packaged artifacts output: `release/windows/installers`, `release/windows/portable`
+Frontend structure:
+- `src/pages/*`: page-level flows (`/dataset`, `/tokenizers`, `/cross-benchmark`)
+- `src/components/*`: reusable UI blocks (wizards, banners, export modal, shell)
+- `src/contexts/*`: state and operations for dataset/tokenizer workspaces
+- `src/services/*`: API calls and response guards
+- `src/workers/*`: background client-side word cloud layout worker
 
-## 10. Known Constraints
-- API endpoints do not implement user/session auth.
-- HF keys are encrypted at rest but API access itself is not user-authenticated.
-- Uploaded custom tokenizers are in-memory only and are not persisted across backend restart.
+## Data Persistence
+- Default embedded persistence:
+  - SQLite file: `TKBEN/resources/database.db`
+- Optional external persistence:
+  - PostgreSQL via `postgresql+psycopg` when `embedded_database=false` in `settings/configurations.json`
+- Non-DB persisted artifacts:
+  - `TKBEN/resources/sources/datasets` (download caches/uploads)
+  - `TKBEN/resources/sources/tokenizers` (tokenizer caches/custom uploads)
+  - `TKBEN/resources/logs` (runtime logs)
+
+## Async vs Sync Behavior
+- FastAPI endpoints are mostly `async def`.
+- Blocking logic is intentionally offloaded with `await asyncio.to_thread(...)`.
+- Long-running operations (download/analysis/benchmark/report generation) run in background threads via `JobManager`.
+- Job polling/cancel operations are synchronous handler functions over in-memory job state.
+- Repository/DB operations are synchronous SQLAlchemy session usage.
+- Constraint:
+  - Async handlers must not execute CPU-heavy or blocking I/O inline; they should offload to threads or job system.
+
+## Runtime Interaction Topology
+- Local webapp mode:
+  - Browser -> Vite preview (`UI_HOST:UI_PORT`) -> proxied `/api` -> FastAPI (`FASTAPI_HOST:FASTAPI_PORT`)
+- Desktop mode:
+  - Tauri webview boots local backend process and loads the local app URL; backend can serve packaged SPA when `TKBEN_TAURI_MODE=true`.
