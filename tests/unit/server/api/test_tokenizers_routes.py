@@ -101,7 +101,7 @@ def test_tokenizer_job_routes_return_202(monkeypatch) -> None:
     monkeypatch.setattr(HFAccessKeyService, "get_active_key", lambda self: "token")
     monkeypatch.setattr(
         TokenizersService,
-        "resolve_cached_tokenizer_existence",
+        "has_cached_tokenizer",
         lambda self, tokenizer_name: tokenizer_name == "bert-base-uncased",
     )
 

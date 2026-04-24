@@ -197,7 +197,7 @@ async def generate_tokenizer_report(
         )
 
     service = TokenizersService()
-    if not service.resolve_cached_tokenizer_existence(tokenizer_name):
+    if not service.has_cached_tokenizer(tokenizer_name):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=(

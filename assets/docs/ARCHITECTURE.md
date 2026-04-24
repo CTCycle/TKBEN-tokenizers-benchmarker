@@ -155,9 +155,12 @@ Examples:
 - `server/api/*`: HTTP contracts, status codes, request/response models, job dispatch.
 - `server/domain/*`: Pydantic/dataclass domain models and settings schemas.
 - `server/services/*`: Business logic, long-running operations, orchestration.
+  - `services/tokenizer_storage.py`: tokenizer identifier validation, cache path resolution, and Hugging Face URL construction shared by tokenizer workflows.
+  - `services/dashboard_export_helpers.py`: dashboard export payload parsing and value formatting helpers used by the PDF export service.
 - `server/repositories/database/*`: Backend selection and DB adapter implementations.
 - `server/repositories/schemas/*`: SQLAlchemy models and types.
 - `server/repositories/serialization/*`: Persistence serialization and report materialization.
+  - `repositories/serialization/benchmark_reports.py`: benchmark report persistence serialization and Pydantic response normalization.
 - `server/common/*`: constants, logging, type/util/security helpers.
 
 Frontend structure:
