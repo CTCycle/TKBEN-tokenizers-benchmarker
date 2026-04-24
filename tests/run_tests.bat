@@ -175,8 +175,8 @@ if "%FRONTEND_RUNNING%"=="0" (
         )
     )
 
-    echo [INFO] Starting frontend server...
-    start "" /B /D "%FRONTEND_DIST%" "%PYTHON_CMD%" -m http.server %UI_PORT% --bind %UI_HOST%
+    echo [INFO] Starting frontend preview server...
+    start "" /B /D "%FRONTEND_DIR%" "%NPM_RUN%" run preview -- --host %UI_HOST% --port %UI_PORT% --strictPort
     set "STARTED_FRONTEND=1"
     timeout /t 3 /nobreak >nul
 )

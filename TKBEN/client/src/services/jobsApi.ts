@@ -1,6 +1,6 @@
 import type { JobCancelResponse, JobStartResponse, JobStatusResponse } from '../types/api';
 import { API_ENDPOINTS } from '../constants';
-import { parseJobStatusResponse } from './responseGuards';
+import { parseJobStatusResponse, readJsonResponse } from './responseGuards';
 
 const MIN_POLL_INTERVAL_MS = 250;
 
@@ -8,24 +8,12 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function fetchJobStatus(jobId: string): Promise<JobStatusResponse> {
     const response = await fetch(`${API_ENDPOINTS.JOBS}/${jobId}`);
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to fetch job status: ${response.status}`);
-    }
-
-    return parseJobStatusResponse(await response.json());
+    return parseJobStatusResponse(await readJsonResponse(response, 'Failed to fetch job status'));
 }
 
 export async function cancelJob(jobId: string): Promise<JobCancelResponse> {
     const response = await fetch(`${API_ENDPOINTS.JOBS}/${jobId}`, { method: 'DELETE' });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to cancel job: ${response.status}`);
-    }
-
-    return response.json();
+    return readJsonResponse(response, 'Failed to cancel job');
 }
 
 interface JobPollOptions<T> {

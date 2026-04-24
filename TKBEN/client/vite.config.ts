@@ -15,9 +15,6 @@ export default defineConfig(({ mode }) => {
   const uiPort = Number(env.UI_PORT || 8000)
   const apiBase = env.VITE_API_BASE_URL || '/api'
   const apiBasePath = apiBase.startsWith('/') ? apiBase : `/${apiBase}`
-  const apiBaseRegex = new RegExp(
-    `^${apiBasePath.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}`,
-  )
 
   const proxyTarget = `http://${fastapiHost}:${fastapiPort}`
 
@@ -32,7 +29,6 @@ export default defineConfig(({ mode }) => {
         [apiBasePath]: {
           target: proxyTarget,
           changeOrigin: true,
-          rewrite: (path) => path.replace(apiBaseRegex, ''),
           // 10 minute timeout for large dataset downloads
           timeout: 600000,
         },
@@ -46,7 +42,6 @@ export default defineConfig(({ mode }) => {
         [apiBasePath]: {
           target: proxyTarget,
           changeOrigin: true,
-          rewrite: (path) => path.replace(apiBaseRegex, ''),
           // 10 minute timeout for large dataset downloads
           timeout: 600000,
         },

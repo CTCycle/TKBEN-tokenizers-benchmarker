@@ -1,5 +1,6 @@
 import { API_ENDPOINTS } from '../constants';
 import type { DashboardType } from '../types/api';
+import { ensureOkResponse } from './responseGuards';
 
 export interface ExportDashboardRequest {
     dashboardType: DashboardType;
@@ -30,10 +31,7 @@ export async function exportDashboardPdf(
         }),
     });
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to export dashboard: ${response.status}`);
-    }
+    await ensureOkResponse(response, 'Failed to export dashboard');
 
     const disposition = response.headers.get('content-disposition') ?? '';
     const fileNameMatch = disposition.match(/filename="([^"]+)"/i);

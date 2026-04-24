@@ -10,9 +10,7 @@ import type {
 } from '../types/api';
 import { API_ENDPOINTS, DOWNLOAD_TIMEOUT_MS } from '../constants';
 import { waitForJobResult } from './jobsApi';
-import { parseJobStartResponse, parseRecordPayload } from './responseGuards';
-
-// 10 minute timeout for large dataset downloads
+import { parseRecordPayload, readJobStartResponse, readJsonResponse } from './responseGuards';
 
 const sanitizeDatasetJobErrorMessage = (error: unknown, fallback: string): string => {
     const message = error instanceof Error ? error.message : fallback;
@@ -40,13 +38,7 @@ export async function fetchAvailableDatasets(): Promise<DatasetListResponse> {
             'Content-Type': 'application/json',
         },
     });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to fetch datasets: ${response.status}`);
-    }
-
-    return response.json();
+    return readJsonResponse(response, 'Failed to fetch datasets');
 }
 
 /**
@@ -66,12 +58,7 @@ export async function downloadDataset(
         body: JSON.stringify(request),
     });
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to download dataset: ${response.status}`);
-    }
-
-    const job = parseJobStartResponse(await response.json());
+    const job = await readJobStartResponse(response, 'Failed to download dataset');
     return waitForJobResult<DatasetDownloadResponse>(job, {
         onUpdate,
         timeoutMs: DOWNLOAD_TIMEOUT_MS,
@@ -88,7 +75,6 @@ export async function uploadCustomDataset(
     file: File,
     onUpdate?: (status: JobStatusResponse) => void,
 ): Promise<CustomDatasetUploadResponse> {
-
     const formData = new FormData();
     formData.append('file', file);
 
@@ -97,12 +83,7 @@ export async function uploadCustomDataset(
         body: formData,
     });
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to upload dataset: ${response.status}`);
-    }
-
-    const job = parseJobStartResponse(await response.json());
+    const job = await readJobStartResponse(response, 'Failed to upload dataset');
     return waitForJobResult<CustomDatasetUploadResponse>(job, {
         onUpdate,
         timeoutMs: DOWNLOAD_TIMEOUT_MS,
@@ -127,12 +108,7 @@ export async function validateDataset(
         body: JSON.stringify(request),
     });
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to analyze dataset: ${response.status}`);
-    }
-
-    const job = parseJobStartResponse(await response.json());
+    const job = await readJobStartResponse(response, 'Failed to analyze dataset');
     try {
         return await waitForJobResult<DatasetAnalysisResponse>(job, {
             onUpdate,
@@ -155,12 +131,7 @@ export async function fetchDatasetMetricsCatalog(): Promise<DatasetMetricCatalog
         },
     });
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to fetch metrics catalog: ${response.status}`);
-    }
-
-    return response.json();
+    return readJsonResponse(response, 'Failed to fetch metrics catalog');
 }
 
 /**
@@ -179,12 +150,7 @@ export async function fetchLatestDatasetReport(
         },
     );
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to load latest dataset report: ${response.status}`);
-    }
-
-    return response.json();
+    return readJsonResponse(response, 'Failed to load latest dataset report');
 }
 
 /**
@@ -200,12 +166,7 @@ export async function fetchDatasetReportById(
         },
     });
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to fetch dataset report: ${response.status}`);
-    }
-
-    return response.json();
+    return readJsonResponse(response, 'Failed to fetch dataset report');
 }
 
 /**
@@ -217,10 +178,5 @@ export async function deleteDataset(datasetName: string): Promise<{ status: stri
         method: 'DELETE',
     });
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to delete dataset: ${response.status}`);
-    }
-
-    return response.json();
+    return readJsonResponse(response, 'Failed to delete dataset');
 }

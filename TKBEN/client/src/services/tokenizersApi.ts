@@ -13,7 +13,7 @@ import type {
 
 import { API_ENDPOINTS } from '../constants';
 import { waitForJobResult } from './jobsApi';
-import { parseJobStartResponse, parseRecordPayload } from './responseGuards';
+import { ensureOkResponse, parseRecordPayload, readJobStartResponse, readJsonResponse } from './responseGuards';
 
 /**
  * Get tokenizer configuration settings from the server.
@@ -21,13 +21,7 @@ import { parseJobStartResponse, parseRecordPayload } from './responseGuards';
  */
 export async function getTokenizerSettings(): Promise<TokenizerSettingsResponse> {
     const response = await fetch(API_ENDPOINTS.TOKENIZERS_SETTINGS);
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to fetch settings: ${response.status}`);
-    }
-
-    return response.json();
+    return readJsonResponse(response, 'Failed to fetch settings');
 }
 
 /**
@@ -49,12 +43,7 @@ export async function scanTokenizers(limit?: number): Promise<TokenizerScanRespo
 
     const response = await fetch(url);
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to scan tokenizers: ${response.status}`);
-    }
-
-    return response.json();
+    return readJsonResponse(response, 'Failed to scan tokenizers');
 }
 
 /**
@@ -62,13 +51,7 @@ export async function scanTokenizers(limit?: number): Promise<TokenizerScanRespo
  */
 export async function fetchDownloadedTokenizers(): Promise<TokenizerListResponse> {
     const response = await fetch(API_ENDPOINTS.TOKENIZERS_LIST);
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to list tokenizers: ${response.status}`);
-    }
-
-    return response.json();
+    return readJsonResponse(response, 'Failed to list tokenizers');
 }
 
 /**
@@ -86,12 +69,7 @@ export async function downloadTokenizers(
         body: JSON.stringify(request),
     });
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to download tokenizers: ${response.status}`);
-    }
-
-    const job = parseJobStartResponse(await response.json());
+    const job = await readJobStartResponse(response, 'Failed to download tokenizers');
     return waitForJobResult<TokenizerDownloadResponse>(job, {
         onUpdate,
         parseResult: (result) => parseRecordPayload<TokenizerDownloadResponse>(result, 'tokenizer download job result'),
@@ -112,12 +90,7 @@ export async function uploadCustomTokenizer(file: File): Promise<TokenizerUpload
         body: formData,
     });
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to upload tokenizer: ${response.status}`);
-    }
-
-    return response.json();
+    return readJsonResponse(response, 'Failed to upload tokenizer');
 }
 
 /**
@@ -128,10 +101,7 @@ export async function clearCustomTokenizers(): Promise<void> {
         method: 'DELETE',
     });
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to clear tokenizers: ${response.status}`);
-    }
+    await ensureOkResponse(response, 'Failed to clear tokenizers');
 }
 
 /**
@@ -149,12 +119,7 @@ export async function generateTokenizerReport(
         body: JSON.stringify(request),
     });
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to generate tokenizer report: ${response.status}`);
-    }
-
-    const job = parseJobStartResponse(await response.json());
+    const job = await readJobStartResponse(response, 'Failed to generate tokenizer report');
     return waitForJobResult<TokenizerReportResponse>(job, {
         onUpdate,
         parseResult: (result) => parseRecordPayload<TokenizerReportResponse>(result, 'tokenizer report job result'),
@@ -171,12 +136,7 @@ export async function fetchLatestTokenizerReport(
         `${API_ENDPOINTS.TOKENIZERS_REPORT_LATEST}?tokenizer_name=${encodeURIComponent(tokenizerName)}`,
     );
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to load latest tokenizer report: ${response.status}`);
-    }
-
-    return response.json();
+    return readJsonResponse(response, 'Failed to load latest tokenizer report');
 }
 
 /**
@@ -192,12 +152,7 @@ export async function fetchLatestTokenizerReportOrNull(
     if (response.status === 404) {
         return null;
     }
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to load latest tokenizer report: ${response.status}`);
-    }
-
-    return response.json();
+    return readJsonResponse(response, 'Failed to load latest tokenizer report');
 }
 
 /**
@@ -208,12 +163,7 @@ export async function fetchTokenizerReportById(
 ): Promise<TokenizerReportResponse> {
     const response = await fetch(`${API_ENDPOINTS.TOKENIZERS_REPORT_BY_ID}/${reportId}`);
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to load tokenizer report: ${response.status}`);
-    }
-
-    return response.json();
+    return readJsonResponse(response, 'Failed to load tokenizer report');
 }
 
 /**
@@ -232,10 +182,5 @@ export async function fetchTokenizerReportVocabularyPage(
         `${API_ENDPOINTS.TOKENIZERS_REPORT_BY_ID}/${reportId}/vocabulary?${params.toString()}`,
     );
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to load tokenizer vocabulary: ${response.status}`);
-    }
-
-    return response.json();
+    return readJsonResponse(response, 'Failed to load tokenizer vocabulary');
 }

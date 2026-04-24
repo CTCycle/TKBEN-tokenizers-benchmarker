@@ -135,6 +135,8 @@ class BenchmarkRunRequest(BaseModel):
     @field_validator("dataset_name")
     @classmethod
     def validate_dataset_name(cls, value: str) -> str:
+        if not value.strip():
+            return ""
         return normalize_identifier(value, "Dataset name", max_length=200)
 
     @field_validator("custom_tokenizer_name")

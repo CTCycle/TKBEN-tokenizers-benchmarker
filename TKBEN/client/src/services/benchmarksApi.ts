@@ -8,7 +8,7 @@ import type {
 
 import { API_ENDPOINTS } from '../constants';
 import { waitForJobResult } from './jobsApi';
-import { parseJobStartResponse, parseRecordPayload } from './responseGuards';
+import { parseRecordPayload, readJobStartResponse, readJsonResponse } from './responseGuards';
 
 // 30 minute timeout for benchmark runs (can be very long-running)
 const BENCHMARK_TIMEOUT_MS = 30 * 60 * 1000;
@@ -30,12 +30,7 @@ export async function runBenchmarks(
         body: JSON.stringify(request),
     });
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to run benchmarks: ${response.status}`);
-    }
-
-    const job = parseJobStartResponse(await response.json());
+    const job = await readJobStartResponse(response, 'Failed to run benchmarks');
     return waitForJobResult<BenchmarkRunResponse>(job, {
         onUpdate,
         timeoutMs: BENCHMARK_TIMEOUT_MS,
@@ -54,12 +49,7 @@ export async function fetchBenchmarkMetricsCatalog(): Promise<BenchmarkMetricCat
         },
     });
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to fetch benchmark metrics catalog: ${response.status}`);
-    }
-
-    return response.json();
+    return readJsonResponse(response, 'Failed to fetch benchmark metrics catalog');
 }
 
 /**
@@ -76,12 +66,7 @@ export async function fetchBenchmarkReports(limit = 200): Promise<BenchmarkRepor
         },
     });
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to fetch benchmark reports: ${response.status}`);
-    }
-
-    return response.json();
+    return readJsonResponse(response, 'Failed to fetch benchmark reports');
 }
 
 /**
@@ -95,10 +80,5 @@ export async function fetchBenchmarkReportById(reportId: number): Promise<Benchm
         },
     });
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `Failed to fetch benchmark report: ${response.status}`);
-    }
-
-    return response.json();
+    return readJsonResponse(response, 'Failed to fetch benchmark report');
 }
