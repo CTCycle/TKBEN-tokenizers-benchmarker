@@ -7,15 +7,14 @@ from collections.abc import Generator, Iterable, Mapping, Sequence
 from typing import Any
 
 import numpy as np
-import pandas as pd
 from transformers import AutoTokenizer
 from transformers.utils.logging import set_verbosity_error
 
 from TKBEN.server.repositories.benchmarks import BenchmarkRepository
-from TKBEN.server.repositories.serialization.data import (
+from TKBEN.server.repositories.serialization.benchmark_reports import (
     BenchmarkReportSerializer,
-    DatasetSerializer,
 )
+from TKBEN.server.repositories.serialization.data import DatasetSerializer
 from TKBEN.server.services.metrics.catalog import BENCHMARK_METRIC_CATALOG
 from TKBEN.server.configurations import get_server_settings
 from TKBEN.server.common.constants import TOKENIZERS_PATH

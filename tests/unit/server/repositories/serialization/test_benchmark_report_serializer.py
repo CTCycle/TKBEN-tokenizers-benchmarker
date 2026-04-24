@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 
 from TKBEN.server.repositories.database.backend import database
 from TKBEN.server.repositories.schemas.models import Base, Dataset
-from TKBEN.server.repositories.serialization.data import BenchmarkReportSerializer
+from TKBEN.server.repositories.serialization.benchmark_reports import (
+    BenchmarkReportSerializer,
+)
 
 
 def _build_payload(dataset_name: str) -> dict:

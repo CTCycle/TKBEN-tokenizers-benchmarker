@@ -13,22 +13,18 @@ from huggingface_hub import HfApi, ModelCard
 from tokenizers import Tokenizer as FastTokenizer
 from transformers import AutoTokenizer
 
-from TKBEN.server.common.constants import TOKENIZERS_PATH
 from TKBEN.server.common.utils.logger import logger
-from TKBEN.server.common.utils.security import (
-    ensure_path_is_within,
-    normalize_identifier,
-)
 from TKBEN.server.configurations import get_server_settings
 from TKBEN.server.repositories.tokenizers import TokenizerRepository
 from TKBEN.server.repositories.serialization.data import TokenizerReportSerializer
 from TKBEN.server.services.benchmarks import BenchmarkTools
 from TKBEN.server.services.custom_tokenizers import get_custom_tokenizer_registry
 from TKBEN.server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
+from TKBEN.server.services.tokenizer_storage import TokenizerStorageMixin
 
 
 ###############################################################################
-class TokenizersService:
+class TokenizersService(TokenizerStorageMixin):
     """
     Service for fetching tokenizer information from HuggingFace.
 
@@ -51,8 +47,6 @@ class TokenizersService:
     ]
 
     REPORT_VERSION = 1
-    TOKENIZER_ID_MAX_LENGTH = 160
-
     def __init__(self) -> None:
         self.repository = TokenizerRepository()
         self.key_service = HFAccessKeyService()
@@ -64,60 +58,6 @@ class TokenizersService:
             r"^(?:\[[^\]]{0,200}\]|<[^>]{0,200}>|\{[^}]{0,200}\}|</?s>|</?pad>|UNK|PAD)$",
             re.IGNORECASE,
         )
-
-    # -------------------------------------------------------------------------
-    def validate_tokenizer_identifier(self, value: str) -> str:
-        return normalize_identifier(
-            value,
-            "Tokenizer identifier",
-            max_length=self.TOKENIZER_ID_MAX_LENGTH,
-        )
-
-    # -------------------------------------------------------------------------
-    def normalize_tokenizer_identifiers(self, tokenizers: list[str]) -> list[str]:
-        normalized: list[str] = []
-        seen: set[str] = set()
-        invalid: list[str] = []
-        for value in tokenizers:
-            name = str(value).strip()
-            if not name:
-                continue
-            try:
-                safe_name = self.validate_tokenizer_identifier(name)
-            except ValueError:
-                invalid.append(name)
-                continue
-            if safe_name in seen:
-                continue
-            seen.add(safe_name)
-            normalized.append(safe_name)
-        if invalid:
-            preview = ", ".join(invalid[:3])
-            if len(invalid) > 3:
-                preview = f"{preview}, ..."
-            raise ValueError(f"Invalid tokenizer identifier(s): {preview}")
-        return normalized
-
-    # -------------------------------------------------------------------------
-    def get_tokenizer_cache_dir(self, tokenizer_id: str) -> str:
-        safe_id = self.validate_tokenizer_identifier(tokenizer_id)
-        safe_name = safe_id.replace("/", "__")
-        candidate = os.path.join(TOKENIZERS_PATH, safe_name)
-        return ensure_path_is_within(TOKENIZERS_PATH, candidate)
-
-    # -------------------------------------------------------------------------
-    def has_cached_tokenizer(self, tokenizer_id: str) -> bool:
-        cache_dir = self.get_tokenizer_cache_dir(tokenizer_id)
-        if not os.path.isdir(cache_dir):
-            return False
-        for _, _, files in os.walk(cache_dir):
-            if files:
-                return True
-        return False
-
-    # -------------------------------------------------------------------------
-    def resolve_cached_tokenizer_existence(self, tokenizer_id: str) -> bool:
-        return self.has_cached_tokenizer(tokenizer_id)
 
     # -------------------------------------------------------------------------
     def register_custom_tokenizer_from_upload(
@@ -302,17 +242,6 @@ class TokenizersService:
             "already_downloaded_count": len(already_downloaded),
             "failed_count": len(failed),
         }
-
-    # -------------------------------------------------------------------------
-    def build_huggingface_url(self, tokenizer_name: str) -> str | None:
-        normalized = str(tokenizer_name).strip()
-        if not normalized:
-            return None
-        if normalized.upper().startswith("CUSTOM_"):
-            return None
-        if " " in normalized:
-            return None
-        return f"https://huggingface.co/{normalized}"
 
     # -------------------------------------------------------------------------
     def extract_model_card_summary(
