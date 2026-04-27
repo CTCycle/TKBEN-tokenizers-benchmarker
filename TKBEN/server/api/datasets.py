@@ -38,7 +38,6 @@ from TKBEN.server.services.dataset_jobs import DatasetJobService
 from TKBEN.server.services.datasets import DatasetService
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_DATASETS, tags=["datasets"])
-dataset_job_service = DatasetJobService()
 
 
 ###############################################################################
@@ -84,7 +83,7 @@ async def download_dataset(
     return start_managed_job(
         request,
         job_type="dataset_download",
-        runner=dataset_job_service.run_download_job,
+        runner=DatasetJobService().run_download_job,
         kwargs={
             "request_payload": payload.model_dump(),
         },
@@ -136,7 +135,7 @@ async def upload_custom_dataset(
     return start_managed_job(
         request,
         job_type="dataset_upload",
-        runner=dataset_job_service.run_upload_job,
+        runner=DatasetJobService().run_upload_job,
         kwargs={
             "file_content": file_content,
             "filename": normalized_filename,
@@ -177,7 +176,7 @@ async def analyze_dataset(
     return start_managed_job(
         request,
         job_type="dataset_validation",
-        runner=dataset_job_service.run_analysis_job,
+        runner=DatasetJobService().run_analysis_job,
         kwargs={
             "request_payload": payload.model_dump(),
         },

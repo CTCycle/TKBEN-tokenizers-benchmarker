@@ -35,44 +35,80 @@ def packaged_client_available() -> bool:
 
 
 ###############################################################################
-app = FastAPI(
-    title=FASTAPI_TITLE,
-    version=FASTAPI_VERSION,
-    description=FASTAPI_DESCRIPTION,
-)
-app.state.job_manager = JobManager()
+def serve_spa_root() -> FileResponse:
+    client_dist_path = get_client_dist_path()
+    return FileResponse(os.path.join(client_dist_path, "index.html"))
 
-routers = [
-    datasets_router,
-    tokenizers_router,
-    benchmarks_router,
-    jobs_router,
-    keys_router,
-    exports_router,
-]
 
-for router in routers:
-    app.include_router(router, prefix="/api")
+###############################################################################
+def serve_spa_entrypoint(full_path: str) -> FileResponse:
+    client_dist_path = get_client_dist_path()
+    requested_path = os.path.join(client_dist_path, full_path)
+    if os.path.isfile(requested_path):
+        return FileResponse(requested_path)
+    return FileResponse(os.path.join(client_dist_path, "index.html"))
 
-if packaged_client_available():
+
+###############################################################################
+def redirect_to_docs() -> RedirectResponse:
+    return RedirectResponse(url="/docs")
+
+
+###############################################################################
+def register_api_routers(application: FastAPI) -> None:
+    for router in (
+        datasets_router,
+        tokenizers_router,
+        benchmarks_router,
+        jobs_router,
+        keys_router,
+        exports_router,
+    ):
+        application.include_router(router, prefix="/api")
+
+
+###############################################################################
+def register_frontend_routes(application: FastAPI) -> None:
+    if not packaged_client_available():
+        application.add_api_route("/", redirect_to_docs, methods=["GET"])
+        return
+
     client_dist_path = get_client_dist_path()
     assets_path = os.path.join(client_dist_path, "assets")
 
     if os.path.isdir(assets_path):
-        app.mount("/assets", StaticFiles(directory=assets_path), name="spa-assets")
+        application.mount(
+            "/assets",
+            StaticFiles(directory=assets_path),
+            name="spa-assets",
+        )
 
-    @app.get("/", include_in_schema=False)
-    def serve_spa_root() -> FileResponse:
-        return FileResponse(os.path.join(client_dist_path, "index.html"))
+    application.add_api_route(
+        "/",
+        serve_spa_root,
+        methods=["GET"],
+        include_in_schema=False,
+    )
+    application.add_api_route(
+        "/{full_path:path}",
+        serve_spa_entrypoint,
+        methods=["GET"],
+        include_in_schema=False,
+    )
 
-    @app.get("/{full_path:path}", include_in_schema=False)
-    def serve_spa_entrypoint(full_path: str) -> FileResponse:
-        requested_path = os.path.join(client_dist_path, full_path)
-        if os.path.isfile(requested_path):
-            return FileResponse(requested_path)
-        return FileResponse(os.path.join(client_dist_path, "index.html"))
 
-else:
-    @app.get("/")
-    def redirect_to_docs() -> RedirectResponse:
-        return RedirectResponse(url="/docs")
+###############################################################################
+def create_app() -> FastAPI:
+    application = FastAPI(
+        title=FASTAPI_TITLE,
+        version=FASTAPI_VERSION,
+        description=FASTAPI_DESCRIPTION,
+    )
+    application.state.job_manager = JobManager()
+    register_api_routers(application)
+    register_frontend_routes(application)
+    return application
+
+
+###############################################################################
+app = create_app()

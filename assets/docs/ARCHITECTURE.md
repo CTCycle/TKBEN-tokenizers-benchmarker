@@ -1,5 +1,5 @@
 # ARCHITECTURE
-Last updated: 2026-04-24
+Last updated: 2026-04-27
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
@@ -79,7 +79,8 @@ Source-level structure (generated folders like `node_modules`, `dist`, caches om
 
 ## Application Entry Points
 - Backend app factory/module:
-  - `TKBEN.server.app:app` in [app.py](/G:/Projects/Repositories/Active%20projects/TKBEN%20Benchmarker/TKBEN/server/app.py)
+  - `TKBEN.server.app:create_app` constructs the FastAPI app and registers API/frontend routes.
+  - `TKBEN.server.app:app` remains the ASGI entry point in [app.py](/G:/Projects/Repositories/Active%20projects/TKBEN%20Benchmarker/TKBEN/server/app.py).
 - Frontend entry:
   - [main.tsx](/G:/Projects/Repositories/Active%20projects/TKBEN%20Benchmarker/TKBEN/client/src/main.tsx)
 - Frontend routing root:
@@ -151,7 +152,7 @@ Examples:
   - `repositories/benchmarks.py` handles SQL reads/writes
 
 ### Key Module Responsibilities
-- `server/app.py`: FastAPI app construction, router registration, SPA serving in Tauri mode.
+- `server/app.py`: FastAPI app factory, router registration, SPA serving in Tauri mode.
 - `server/api/*`: HTTP contracts, status codes, request/response models, job dispatch.
 - `server/domain/*`: Pydantic/dataclass domain models and settings schemas.
 - `server/services/*`: Business logic, long-running operations, orchestration.
