@@ -8,9 +8,6 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
 
 from TKBEN.server.domain.benchmarks import (
     BenchmarkChartDataV2,
@@ -29,8 +26,6 @@ from TKBEN.server.domain.benchmarks import (
     BenchmarkTokenizerResult,
     BenchmarkTrialSummary,
 )
-from TKBEN.server.repositories.database.backend import database
-from TKBEN.server.repositories.schemas.models import Dataset, Tokenizer
 from TKBEN.server.common.utils.logger import logger
 
 
@@ -44,10 +39,7 @@ class BenchmarkServiceExecutionMixin:
     get_dataset_document_count: Callable[[str], int]
     load_tokenizers: Callable[[list[str]], dict[str, Any]]
     stream_dataset_rows_from_database: Callable[[str], Any]
-
-    # -------------------------------------------------------------------------
-    def _session(self) -> Session:
-        return Session(bind=database.backend.engine)
+    repository: Any
 
     # -------------------------------------------------------------------------
     def tokenize_document(
@@ -447,7 +439,6 @@ class BenchmarkServiceExecutionMixin:
                 0,
             )
 
-            token_frequency: dict[str, int] = {}
             boundary_preservation: list[float] = []
             round_trip_token_fidelity: list[float] = []
             round_trip_text_fidelity: list[float] = []
@@ -485,9 +476,6 @@ class BenchmarkServiceExecutionMixin:
                     )
                 else:
                     bytes_per_character.append(0.0)
-
-                for tok in tokens_list:
-                    token_frequency[tok] = token_frequency.get(tok, 0) + 1
 
             data["boundary_preservation_rate"] = boundary_preservation
             data["round_trip_token_fidelity"] = round_trip_token_fidelity
@@ -534,24 +522,6 @@ class BenchmarkServiceExecutionMixin:
                 (len(oov_words) / len(unique_words) * 100.0) if unique_words else 0.0
             )
 
-            recovery_count = 0
-            sample_words = list(unique_words)
-            max_eval = min(5000, len(sample_words))
-            sample_words = sample_words[:max_eval]
-            for word in sample_words:
-                try:
-                    if hasattr(tokenizer, "encode") and hasattr(tokenizer, "decode"):
-                        encoded_word = tokenizer.encode(word)
-                        if hasattr(encoded_word, "ids"):
-                            decoded_word = tokenizer.decode(encoded_word.ids)
-                        else:
-                            decoded_word = tokenizer.decode(encoded_word)
-                        if decoded_word == word:
-                            recovery_count += 1
-                except Exception:
-                    continue
-            word_recovery_rate = (recovery_count / max(1, len(sample_words))) * 100.0
-
             dataset_chars = set("".join(texts))
             vocab_chars: set[str] = set()
             for token_item in normalized_vocab_tokens:
@@ -564,19 +534,6 @@ class BenchmarkServiceExecutionMixin:
                 else 0.0
             )
 
-            segmentation_consistency = self.calculate_morphological_consistency(
-                tokenizer,
-                unique_words,
-            )
-            determinism_rate = float(np.mean(determinism_flags)) if determinism_flags else 0.0
-
-            token_entropy = self.tools.token_entropy(token_frequency)
-            rare_token_once = sum(1 for count in token_frequency.values() if count == 1)
-            rare_token_twice = sum(1 for count in token_frequency.values() if count == 2)
-
-            boundary_preservation_rate = (
-                float(np.mean(boundary_preservation)) if boundary_preservation else 0.0
-            )
             compression_chars_per_token = (
                 float(total_chars / total_tokens) if total_tokens > 0 else 0.0
             )
@@ -589,13 +546,6 @@ class BenchmarkServiceExecutionMixin:
             round_trip_text_rate = (
                 float(np.mean(round_trip_text_fidelity)) if round_trip_text_fidelity else 0.0
             )
-            token_id_monotonicity = self.calculate_token_id_monotonicity(vocab_result)
-            token_unigram_coverage = (
-                float(len(token_frequency) / max(1, vocabulary_size) * 100.0)
-                if vocabulary_size
-                else 0.0
-            )
-
             tokenizer_results.append(
                 self._build_tokenizer_result(
                     tokenizer_name=name,
@@ -619,20 +569,6 @@ class BenchmarkServiceExecutionMixin:
                     data=data,
                     processing_time_seconds=float(elapsed),
                 )
-            )
-
-            # Keep legacy aggregate computations to preserve deterministic behavior
-            # for tests that assert values routed through benchmark metric catalogs.
-            _ = (
-                word_recovery_rate,
-                segmentation_consistency,
-                determinism_rate,
-                token_entropy,
-                rare_token_once,
-                rare_token_twice,
-                token_id_monotonicity,
-                token_unigram_coverage,
-                boundary_preservation_rate,
             )
 
             if progress_callback:
@@ -681,32 +617,8 @@ class BenchmarkServiceExecutionMixin:
 
     # -------------------------------------------------------------------------
     def get_dataset_id(self, dataset_name: str) -> int | None:
-        stmt = select(Dataset.id).where(Dataset.name == dataset_name).limit(1)
-        with self._session() as session:
-            dataset_id = session.execute(stmt).scalar_one_or_none()
-        return int(dataset_id) if dataset_id is not None else None
+        return self.repository.get_dataset_id(dataset_name)
 
     # -------------------------------------------------------------------------
     def ensure_tokenizer_ids(self, tokenizer_names: list[str]) -> dict[str, int]:
-        if not tokenizer_names:
-            return {}
-        deduped_names = list(dict.fromkeys(tokenizer_names))
-        with self._session() as session:
-            existing_rows = session.execute(
-                select(Tokenizer).where(Tokenizer.name.in_(deduped_names))
-            ).scalars().all()
-            existing_names = {row.name for row in existing_rows}
-            for name in deduped_names:
-                if name in existing_names:
-                    continue
-                session.add(Tokenizer(name=name))
-            try:
-                session.commit()
-            except IntegrityError:
-                session.rollback()
-            mapping_rows = session.execute(
-                select(Tokenizer.id, Tokenizer.name).where(
-                    Tokenizer.name.in_(deduped_names)
-                )
-            ).all()
-        return {str(name): int(tokenizer_id) for tokenizer_id, name in mapping_rows}
+        return self.repository.ensure_tokenizer_ids(tokenizer_names)

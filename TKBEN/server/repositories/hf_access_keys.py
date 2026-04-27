@@ -5,14 +5,18 @@ from datetime import datetime
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from TKBEN.server.repositories.database.backend import database
+from TKBEN.server.repositories.database.backend import TKBENDatabase, get_database
 from TKBEN.server.repositories.schemas.models import HFAccessKey
 
 
 ###############################################################################
 class HFAccessKeyRepository:
+    def __init__(self, database: TKBENDatabase | None = None) -> None:
+        self.database = database or get_database()
+
+    # -------------------------------------------------------------------------
     def _session(self) -> Session:
-        return Session(bind=database.backend.engine)
+        return Session(bind=self.database.backend.engine)
 
     # -------------------------------------------------------------------------
     def list_all(self) -> list[HFAccessKey]:

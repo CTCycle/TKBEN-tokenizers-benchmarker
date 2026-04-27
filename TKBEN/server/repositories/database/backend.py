@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Callable
+from functools import cache
 from typing import Any, Protocol
 
 import pandas as pd
@@ -95,4 +96,7 @@ class TKBENDatabase:
         self.backend.insert_dataframe(df, table_name, ignore_duplicates)
 
 
-database = TKBENDatabase()
+# -----------------------------------------------------------------------------
+@cache
+def get_database() -> TKBENDatabase:
+    return TKBENDatabase()

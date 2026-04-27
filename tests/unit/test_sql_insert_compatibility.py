@@ -8,7 +8,7 @@ import sqlalchemy
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from TKBEN.server.repositories.database.backend import database
+from TKBEN.server.repositories.database.backend import get_database
 from TKBEN.server.repositories.database.postgres import PostgresRepository
 from TKBEN.server.repositories.database.sqlite import SQLiteRepository
 from TKBEN.server.repositories.serialization.data import DatasetSerializer
@@ -112,6 +112,7 @@ def test_tokenizers_service_insert_if_missing_is_idempotent(
 ) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     Base.metadata.create_all(engine, checkfirst=True)
+    database = get_database()
     monkeypatch.setattr(database.backend, "engine", engine)
     service = TokenizersService()
 
@@ -130,6 +131,7 @@ def test_benchmark_service_ensure_tokenizer_ids_returns_mapping(
 ) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     Base.metadata.create_all(engine, checkfirst=True)
+    database = get_database()
     monkeypatch.setattr(database.backend, "engine", engine)
     service = BenchmarkService()
 

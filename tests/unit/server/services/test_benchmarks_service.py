@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from TKBEN.server.services.benchmarks import BenchmarkService
 
 
@@ -22,6 +24,23 @@ def test_benchmark_service_uses_repository_for_dataset_and_tokenizer_checks() ->
         ["bert-base-uncased", "missing"]
     )
     assert "missing" in missing
+
+
+def test_benchmark_service_preserves_repository_missing_with_cached_files(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr("TKBEN.server.services.benchmarks.TOKENIZERS_PATH", str(tmp_path))
+    cached_dir = tmp_path / "missing"
+    cached_dir.mkdir()
+    (cached_dir / "tokenizer.json").write_text("{}", encoding="utf-8")
+
+    service = BenchmarkService()
+    service.repository = FakeBenchmarkRepository()  # type: ignore[assignment]
+
+    missing = service.get_missing_persisted_tokenizers(["missing"])
+
+    assert missing == ["missing"]
 
 
 def test_resolve_custom_tokenizer_selection(monkeypatch) -> None:

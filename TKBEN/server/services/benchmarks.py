@@ -309,11 +309,11 @@ class BenchmarkService(BenchmarkServiceExecutionMixin, BenchmarkPlottingMixin):
             return []
 
         unique_requested = list(dict.fromkeys(requested))
-        missing = set(self.repository.get_missing_persisted_tokenizers(unique_requested))
+        missing_names = set(self.repository.get_missing_persisted_tokenizers(unique_requested))
 
         missing: list[str] = []
         for tokenizer_name in unique_requested:
-            if tokenizer_name in missing:
+            if tokenizer_name in missing_names:
                 missing.append(tokenizer_name)
                 continue
             cache_dir = self.get_tokenizer_cache_dir(tokenizer_name)
