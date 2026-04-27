@@ -28,7 +28,6 @@ from TKBEN.server.services.benchmarks import BenchmarkService
 
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_BENCHMARKS, tags=["benchmarks"])
-benchmark_job_service = BenchmarkJobService()
 
 
 ###############################################################################
@@ -105,7 +104,7 @@ async def run_benchmarks(
     return start_managed_job(
         request,
         job_type="benchmark_run",
-        runner=benchmark_job_service.run_benchmark_job,
+        runner=BenchmarkJobService().run_benchmark_job,
         kwargs={
             "request_payload": request_payload,
         },

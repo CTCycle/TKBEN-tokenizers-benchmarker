@@ -10,7 +10,7 @@ from TKBEN.server.common.utils.security import normalize_upload_stem
 from TKBEN.server.configurations import get_server_settings
 from TKBEN.server.domain.jobs import JobStartResponse
 
-
+###############################################################################
 def start_managed_job(
     request: Request,
     *,
@@ -46,7 +46,7 @@ def start_managed_job(
         poll_interval=get_server_settings().jobs.polling_interval,
     )
 
-
+###############################################################################
 def validate_upload_filename(
     file: UploadFile,
     *,
@@ -95,10 +95,10 @@ def validate_upload_filename(
 
     return normalized_filename, safe_stem
 
-
+###############################################################################
 def validate_upload_size(content: bytes, max_upload_bytes: int) -> None:
     if len(content) > max_upload_bytes:
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail=f"Uploaded file exceeds max allowed size ({max_upload_bytes} bytes).",
         )

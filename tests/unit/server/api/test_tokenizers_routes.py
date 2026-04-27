@@ -62,15 +62,19 @@ def test_tokenizer_upload_validation_and_custom_clear(monkeypatch) -> None:
         },
     )())
 
-    def fake_upload(content: bytes, normalized_filename: str, safe_stem: str):
-        del content, normalized_filename, safe_stem
+    def fake_upload(self, content: bytes, normalized_filename: str, safe_stem: str):
+        del self, content, normalized_filename, safe_stem
         return {
             "status": "success",
             "tokenizer_name": "CUSTOM_demo",
             "is_compatible": True,
         }
 
-    monkeypatch.setattr(tokenizers_api.tokenizer_job_service, "upload_custom_tokenizer", fake_upload)
+    monkeypatch.setattr(
+        tokenizers_api.TokenizerJobService,
+        "upload_custom_tokenizer",
+        fake_upload,
+    )
 
     ok_upload = client.post(
         "/api/tokenizers/upload",
@@ -81,10 +85,15 @@ def test_tokenizer_upload_validation_and_custom_clear(monkeypatch) -> None:
 
     called = {"value": False}
 
-    def fake_clear() -> None:
+    def fake_clear(self) -> None:
+        del self
         called["value"] = True
 
-    monkeypatch.setattr(tokenizers_api.tokenizer_job_service, "clear_custom_tokenizers", fake_clear)
+    monkeypatch.setattr(
+        tokenizers_api.TokenizerJobService,
+        "clear_custom_tokenizers",
+        fake_clear,
+    )
 
     cleared = client.delete("/api/tokenizers/custom")
     assert cleared.status_code == 200

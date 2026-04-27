@@ -50,7 +50,6 @@ from TKBEN.server.services.tokenizers import TokenizersService
 
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_TOKENIZERS, tags=["tokenizers"])
-tokenizer_job_service = TokenizerJobService()
 
 
 ###############################################################################
@@ -152,7 +151,7 @@ async def download_tokenizers(
     return start_managed_job(
         request,
         job_type="tokenizer_download",
-        runner=tokenizer_job_service.run_download_job,
+        runner=TokenizerJobService().run_download_job,
         kwargs={
             "request_payload": payload.model_dump(),
         },
@@ -192,7 +191,7 @@ async def generate_tokenizer_report(
     return start_managed_job(
         request,
         job_type="tokenizer_report",
-        runner=tokenizer_job_service.run_report_job,
+        runner=TokenizerJobService().run_report_job,
         kwargs={
             "request_payload": payload.model_dump(),
         },
@@ -301,7 +300,7 @@ async def upload_custom_tokenizer(
 
     try:
         result = await asyncio.to_thread(
-            tokenizer_job_service.upload_custom_tokenizer,
+            TokenizerJobService().upload_custom_tokenizer,
             content,
             normalized_filename,
             safe_stem,
@@ -322,7 +321,7 @@ async def upload_custom_tokenizer(
     status_code=status.HTTP_200_OK,
 )
 async def delete_custom_tokenizers() -> CustomTokenizersDeleteResponse:
-    await asyncio.to_thread(tokenizer_job_service.clear_custom_tokenizers)
+    await asyncio.to_thread(TokenizerJobService().clear_custom_tokenizers)
     return CustomTokenizersDeleteResponse(
         status="success",
         message="Custom tokenizers cleared",
