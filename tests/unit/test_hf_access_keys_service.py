@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from TKBEN.server.repositories.database.backend import database
+from TKBEN.server.repositories.database.backend import get_database
 from TKBEN.server.repositories.schemas.models import Base, HFAccessKey
 from TKBEN.server.services.keys import (
     HFAccessKeyNotFoundError,
@@ -20,6 +20,7 @@ from TKBEN.server.services.keys import (
 def isolated_engine(monkeypatch: pytest.MonkeyPatch):
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     Base.metadata.create_all(engine, checkfirst=True)
+    database = get_database()
     monkeypatch.setattr(database.backend, "engine", engine)
     try:
         yield engine
@@ -39,7 +40,7 @@ def test_get_active_key_raises_validation_error_on_invalid_decryption(
             del encrypted_value
             raise ValueError("invalid token")
 
-    with Session(bind=database.backend.engine) as session:
+    with Session(bind=get_database().backend.engine) as session:
         session.add(
             HFAccessKey(
                 key_value="encrypted-value",
@@ -72,7 +73,7 @@ def test_add_key_skips_undecryptable_rows_during_duplicate_check(
                 return encrypted_value[4:]
             return encrypted_value
 
-    with Session(bind=database.backend.engine) as session:
+    with Session(bind=get_database().backend.engine) as session:
         session.add(
             HFAccessKey(
                 key_value="stale-encrypted",
@@ -86,7 +87,7 @@ def test_add_key_skips_undecryptable_rows_during_duplicate_check(
     result = service.add_key("hf_test_key")
     assert result["is_active"] is False
 
-    with Session(bind=database.backend.engine) as session:
+    with Session(bind=get_database().backend.engine) as session:
         rows = session.execute(
             select(HFAccessKey).order_by(HFAccessKey.id.asc())
         ).scalars().all()
@@ -107,7 +108,7 @@ def test_get_active_key_rejects_plaintext_legacy_value(
                 return encrypted_value[4:]
             raise ValueError("invalid token")
 
-    with Session(bind=database.backend.engine) as session:
+    with Session(bind=get_database().backend.engine) as session:
         session.add(
             HFAccessKey(
                 key_value="hf_legacy_token_123",
@@ -129,7 +130,7 @@ def test_set_active_key_is_idempotent_for_already_active_key(
     del isolated_engine
     service = HFAccessKeyService()
 
-    with Session(bind=database.backend.engine) as session:
+    with Session(bind=get_database().backend.engine) as session:
         session.add_all(
             [
                 HFAccessKey(
@@ -153,7 +154,7 @@ def test_set_active_key_is_idempotent_for_already_active_key(
 
     service.set_active_key(key_id)
 
-    with Session(bind=database.backend.engine) as session:
+    with Session(bind=get_database().backend.engine) as session:
         rows = session.execute(select(HFAccessKey).order_by(HFAccessKey.id.asc())).scalars().all()
     assert any(row.id == key_id and row.is_active for row in rows)
     assert all(row.is_active is (row.id == key_id) for row in rows)

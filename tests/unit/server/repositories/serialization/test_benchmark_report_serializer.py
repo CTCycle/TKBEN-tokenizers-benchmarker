@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from TKBEN.server.repositories.database.backend import database
+from TKBEN.server.repositories.database.backend import get_database
 from TKBEN.server.repositories.schemas.models import Base, Dataset
 from TKBEN.server.repositories.serialization.benchmark_reports import (
     BenchmarkReportSerializer,
@@ -55,6 +55,7 @@ def _build_payload(dataset_name: str) -> dict:
 def test_benchmark_report_serializer_round_trip(monkeypatch) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     Base.metadata.create_all(engine, checkfirst=True)
+    database = get_database()
     monkeypatch.setattr(database.backend, "engine", engine)
 
     dataset_name = "custom/serializer_ds"

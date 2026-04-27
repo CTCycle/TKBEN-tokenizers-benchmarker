@@ -1,16 +1,21 @@
 from __future__ import annotations
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from TKBEN.server.repositories.database.backend import database
+from TKBEN.server.repositories.database.backend import TKBENDatabase, get_database
 from TKBEN.server.repositories.schemas.models import BenchmarkReport, Dataset, DatasetDocument, Tokenizer
 
 
 ###############################################################################
 class BenchmarkRepository:
+    def __init__(self, database: TKBENDatabase | None = None) -> None:
+        self.database = database or get_database()
+
+    # -------------------------------------------------------------------------
     def _session(self) -> Session:
-        return Session(bind=database.backend.engine)
+        return Session(bind=self.database.backend.engine)
 
     # -------------------------------------------------------------------------
     def get_dataset_document_count(self, dataset_name: str) -> int:
@@ -68,6 +73,30 @@ class BenchmarkRepository:
         with self._session() as session:
             dataset_id = session.execute(stmt).scalar_one_or_none()
         return int(dataset_id) if dataset_id is not None else None
+
+    # -------------------------------------------------------------------------
+    def ensure_tokenizer_ids(self, tokenizer_names: list[str]) -> dict[str, int]:
+        if not tokenizer_names:
+            return {}
+        deduped_names = list(dict.fromkeys(tokenizer_names))
+        with self._session() as session:
+            existing_rows = session.execute(
+                select(Tokenizer).where(Tokenizer.name.in_(deduped_names))
+            ).scalars().all()
+            existing_names = {row.name for row in existing_rows}
+            for name in deduped_names:
+                if name not in existing_names:
+                    session.add(Tokenizer(name=name))
+            try:
+                session.commit()
+            except IntegrityError:
+                session.rollback()
+            mapping_rows = session.execute(
+                select(Tokenizer.id, Tokenizer.name).where(
+                    Tokenizer.name.in_(deduped_names)
+                )
+            ).all()
+        return {str(name): int(tokenizer_id) for tokenizer_id, name in mapping_rows}
 
     # -------------------------------------------------------------------------
     def save_benchmark_report(

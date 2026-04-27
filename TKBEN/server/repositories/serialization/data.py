@@ -127,6 +127,13 @@ class DatasetSerializer:
         return int(dataset_id)
 
     # -------------------------------------------------------------------------
+    def save_document_batch(self, batch: list[dict[str, Any]]) -> None:
+        if not batch:
+            return
+        frame = pd.DataFrame(batch)
+        self.queries.insert_table(frame, DatasetDocument.__tablename__)
+
+    # -------------------------------------------------------------------------
     def dataset_exists(self, dataset_name: str) -> bool:
         stmt = select(Dataset.id).where(Dataset.name == dataset_name).limit(1)
         with self._session() as session:

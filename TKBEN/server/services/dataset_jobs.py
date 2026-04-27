@@ -131,7 +131,7 @@ class DatasetJobService:
         service = DatasetService()
         progress_callback = JobProgressReporter(job_manager, job_id)
         should_stop = JobStopChecker(job_manager, job_id)
-        result = service.analyze_dataset(
+        result = service.validate_dataset(
             dataset_name=str(request_payload.get("dataset_name", "")),
             session_name=request_payload.get("session_name"),
             selected_metric_keys=request_payload.get("selected_metric_keys"),

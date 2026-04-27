@@ -11,8 +11,6 @@ from typing import Any
 import pandas as pd
 from datasets import Dataset, DatasetDict
 
-from TKBEN.server.repositories.database.backend import database
-from TKBEN.server.repositories.schemas.models import DatasetDocument
 from TKBEN.server.common.constants import DATASETS_PATH
 from TKBEN.server.common.utils.logger import logger
 from TKBEN.server.common.utils.security import normalize_upload_stem
@@ -50,8 +48,7 @@ class DatasetServiceOperationsMixin:
             batch.append({"dataset_id": dataset_id, "text": text})
 
             if len(batch) >= batch_size:
-                df = pd.DataFrame(batch)
-                database.insert_dataframe(df, DatasetDocument.__tablename__)
+                self.dataset_serializer.save_document_batch(batch)
                 saved_count += len(batch)
                 if saved_count - last_logged >= self.log_interval:
                     logger.info("Saved %d documents so far...", saved_count)
@@ -64,8 +61,7 @@ class DatasetServiceOperationsMixin:
                 batch.clear()
 
         if batch:
-            df = pd.DataFrame(batch)
-            database.insert_dataframe(df, DatasetDocument.__tablename__)
+            self.dataset_serializer.save_document_batch(batch)
             saved_count += len(batch)
             if progress_callback:
                 progress_value = (
@@ -343,8 +339,7 @@ class DatasetServiceOperationsMixin:
             batch.append({"dataset_id": dataset_id, "text": text})
 
             if len(batch) >= batch_size:
-                batch_df = pd.DataFrame(batch)
-                database.insert_dataframe(batch_df, DatasetDocument.__tablename__)
+                self.dataset_serializer.save_document_batch(batch)
                 saved_count += len(batch)
                 if saved_count - last_logged >= self.log_interval:
                     logger.info("Saved %d documents so far...", saved_count)
@@ -357,8 +352,7 @@ class DatasetServiceOperationsMixin:
                 batch.clear()
 
         if batch:
-            batch_df = pd.DataFrame(batch)
-            database.insert_dataframe(batch_df, DatasetDocument.__tablename__)
+            self.dataset_serializer.save_document_batch(batch)
             saved_count += len(batch)
             if progress_callback:
                 progress_value = (
@@ -394,31 +388,6 @@ class DatasetServiceOperationsMixin:
                 return col
 
         return columns[0] if columns else None
-
-    # -------------------------------------------------------------------------
-    def analyze_dataset(
-        self,
-        dataset_name: str,
-        session_name: str | None = None,
-        selected_metric_keys: list[str] | None = None,
-        sampling: dict[str, Any] | None = None,
-        filters: dict[str, Any] | None = None,
-        metric_parameters: dict[str, Any] | None = None,
-        progress_callback: Callable[[float], None] | None = None,
-        should_stop: Callable[[], bool] | None = None,
-        use_cached: bool = True,
-    ) -> dict[str, Any]:
-        return self.validate_dataset(
-            dataset_name=dataset_name,
-            session_name=session_name,
-            selected_metric_keys=selected_metric_keys,
-            sampling=sampling,
-            filters=filters,
-            metric_parameters=metric_parameters,
-            progress_callback=progress_callback,
-            should_stop=should_stop,
-            use_cached=use_cached,
-        )
 
     # -------------------------------------------------------------------------
     def validate_dataset(

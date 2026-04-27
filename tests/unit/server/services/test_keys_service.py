@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import pytest
 from sqlalchemy import create_engine
 
-from TKBEN.server.repositories.database.backend import database
+from TKBEN.server.repositories.database.backend import get_database
 from TKBEN.server.repositories.schemas.models import Base
 from TKBEN.server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
 
@@ -14,6 +14,7 @@ from TKBEN.server.services.keys import HFAccessKeyService, HFAccessKeyValidation
 def isolated_engine(monkeypatch):
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     Base.metadata.create_all(engine, checkfirst=True)
+    database = get_database()
     monkeypatch.setattr(database.backend, "engine", engine)
     try:
         yield engine

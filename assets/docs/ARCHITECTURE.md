@@ -161,6 +161,7 @@ Examples:
   - `services/tokenizer_storage.py`: tokenizer identifier validation, cache path resolution, and Hugging Face URL construction shared by tokenizer workflows.
   - `services/dashboard_export_helpers.py`: dashboard export payload parsing and value formatting helpers used by the PDF export service.
 - `server/repositories/database/*`: Backend selection and DB adapter implementations.
+  - `repositories/database/backend.py`: `get_database()` is the single cached accessor for the configured backend; repositories receive or resolve this dependency instead of importing module-level database state.
 - `server/repositories/schemas/*`: SQLAlchemy models and types.
 - `server/repositories/serialization/*`: Persistence serialization and report materialization.
   - `repositories/serialization/benchmark_reports.py`: benchmark report persistence serialization and Pydantic response normalization.
