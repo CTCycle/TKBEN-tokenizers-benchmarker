@@ -1,4 +1,4 @@
-import { API_ENDPOINTS } from '../constants';
+import { API_ENDPOINTS } from '../common/constants/api';
 import type { DashboardType } from '../types/api';
 import { ensureOkResponse } from './responseGuards';
 

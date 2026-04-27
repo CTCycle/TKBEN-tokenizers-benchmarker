@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
   Cell,
   Line,
@@ -17,7 +15,9 @@ import {
 import DatasetValidationWizard from '../components/DatasetValidationWizard';
 import DashboardExportButton from '../components/DashboardExportButton';
 import DismissibleBanner from '../components/DismissibleBanner';
+import HistogramChartCard from '../components/HistogramChartCard';
 import { useDataset } from '../contexts/DatasetContext';
+import { useWordCloudLayout } from '../hooks/useWordCloudLayout';
 import type {
   DatasetAnalysisRequest,
   HistogramData,
@@ -40,20 +40,6 @@ type DatasetGroup = {
 type DatasetPageProps = {
   showDashboard?: boolean;
   embedded?: boolean;
-};
-
-type WordCloudLayoutTerm = {
-  word: string;
-  count: number;
-  weight: number;
-  x: number;
-  y: number;
-  rotate: number;
-  fontSize: number;
-};
-
-type WordCloudWorkerOutput = {
-  terms: WordCloudLayoutTerm[];
 };
 
 const PREDEFINED_DATASETS: DatasetGroup[] = [
@@ -531,10 +517,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
   const [isInsertByNameOpen, setIsInsertByNameOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardDatasetName, setWizardDatasetName] = useState<string | null>(null);
-  const [wordCloudLayout, setWordCloudLayout] = useState<WordCloudLayoutTerm[]>([]);
-  const [wordCloudSize, setWordCloudSize] = useState({ width: 0, height: 0 });
   const manualDatasetInputRef = useRef<HTMLInputElement | null>(null);
-  const wordCloudRef = useRef<HTMLDivElement | null>(null);
 
   const corpusInputId = 'corpus-input';
   const configInputId = 'config-input';
@@ -644,6 +627,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
     }
     return buildWordCloudFromWordFrequencies(mostCommonWords);
   }, [aggregate, hasPersistedReport, mostCommonWords, validationReport]);
+  const { wordCloudLayout, wordCloudRef } = useWordCloudLayout(wordCloudTerms);
   const datasetExportReportName = useMemo(() => {
     if (!validationReport?.dataset_name) {
       return 'dataset-dashboard-report';
@@ -710,47 +694,6 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
       manualDatasetInputRef.current?.focus();
     }
   }, [isInsertByNameOpen, isModalOpen]);
-
-  useEffect(() => {
-    const node = wordCloudRef.current;
-    if (!node) {
-      return;
-    }
-    const observer = new ResizeObserver((entries) => {
-      const first = entries[0];
-      if (!first) {
-        return;
-      }
-      setWordCloudSize({
-        width: Math.max(260, Math.round(first.contentRect.width)),
-        height: Math.max(240, Math.round(first.contentRect.height)),
-      });
-    });
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!wordCloudTerms.length || wordCloudSize.width <= 0 || wordCloudSize.height <= 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setWordCloudLayout((current) => (current.length > 0 ? [] : current));
-      return;
-    }
-
-    const worker = new Worker(new URL('../workers/wordCloudWorker.ts', import.meta.url), {
-      type: 'module',
-    });
-    worker.onmessage = (event: MessageEvent<WordCloudWorkerOutput>) => {
-      setWordCloudLayout(event.data?.terms ?? []);
-      worker.terminate();
-    };
-    worker.postMessage({
-      terms: wordCloudTerms,
-      width: wordCloudSize.width,
-      height: wordCloudSize.height,
-    });
-    return () => worker.terminate();
-  }, [wordCloudSize.height, wordCloudSize.width, wordCloudTerms]);
 
   const pageContent = (
     <>
@@ -992,75 +935,21 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
             </div>
 
             <div className="dataset-v2-row dataset-v2-row-two">
-              <div className="dataset-v2-card dataset-v2-chart-card">
-                <div className="dataset-v2-card-header">
-                  <p className="panel-label">Document Length Histogram</p>
-                </div>
-                {documentHistogramSeries.length === 0 ? (
-                  <div className="chart-placeholder">
-                    <p>No persisted document-length histogram found.</p>
-                  </div>
-                ) : (
-                  <div className="dataset-v2-chart-body">
-                    <ResponsiveContainer width="100%" height={260}>
-                      <BarChart
-                        data={documentHistogramSeries}
-                        margin={{ top: 8, right: 8, bottom: 0, left: 18 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
-                        <XAxis dataKey="bin" hide />
-                        <YAxis
-                          stroke="#94a3b8"
-                          width={62}
-                          tick={{ fill: '#dbe5f1', fontSize: 12 }}
-                          axisLine={{ stroke: '#94a3b8' }}
-                          tickLine={{ stroke: '#94a3b8' }}
-                        />
-                        <Tooltip
-                          contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }}
-                          formatter={tooltipCountFormatter}
-                        />
-                        <Bar dataKey="count" fill="#facc15" radius={[2, 2, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-              </div>
+              <HistogramChartCard
+                title="Document Length Histogram"
+                data={documentHistogramSeries}
+                emptyMessage="No persisted document-length histogram found."
+                barFill="#facc15"
+                tooltipFormatter={tooltipCountFormatter}
+              />
 
-              <div className="dataset-v2-card dataset-v2-chart-card">
-                <div className="dataset-v2-card-header">
-                  <p className="panel-label">Word Length Histogram</p>
-                </div>
-                {wordHistogramSeries.length === 0 ? (
-                  <div className="chart-placeholder">
-                    <p>No persisted word-length histogram found.</p>
-                  </div>
-                ) : (
-                  <div className="dataset-v2-chart-body">
-                    <ResponsiveContainer width="100%" height={260}>
-                      <BarChart
-                        data={wordHistogramSeries}
-                        margin={{ top: 8, right: 8, bottom: 0, left: 18 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
-                        <XAxis dataKey="bin" hide />
-                        <YAxis
-                          stroke="#94a3b8"
-                          width={62}
-                          tick={{ fill: '#dbe5f1', fontSize: 12 }}
-                          axisLine={{ stroke: '#94a3b8' }}
-                          tickLine={{ stroke: '#94a3b8' }}
-                        />
-                        <Tooltip
-                          contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }}
-                          formatter={tooltipCountFormatter}
-                        />
-                        <Bar dataKey="count" fill="#38bdf8" radius={[2, 2, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-              </div>
+              <HistogramChartCard
+                title="Word Length Histogram"
+                data={wordHistogramSeries}
+                emptyMessage="No persisted word-length histogram found."
+                barFill="#38bdf8"
+                tooltipFormatter={tooltipCountFormatter}
+              />
             </div>
 
             <div className="dataset-v2-row dataset-v2-row-three">

@@ -34,6 +34,8 @@ Source-level structure (generated folders like `node_modules`, `dist`, caches om
 │  │  │  ├─ App.css
 │  │  │  ├─ index.css
 │  │  │  ├─ components/
+│  │  │  ├─ common/
+│  │  │  │  └─ constants/
 │  │  │  ├─ contexts/
 │  │  │  ├─ hooks/
 │  │  │  ├─ pages/
@@ -167,6 +169,7 @@ Examples:
 Frontend structure:
 - `src/pages/*`: page-level flows (`/dataset`, `/tokenizers`, `/cross-benchmark`)
 - `src/components/*`: reusable UI blocks (wizards, banners, export modal, shell)
+- `src/common/constants/*`: shared frontend constants (API endpoints, timeouts)
 - `src/contexts/*`: state and operations for dataset/tokenizer workspaces
 - `src/services/*`: API calls and response guards
 - `src/workers/*`: background client-side word cloud layout worker

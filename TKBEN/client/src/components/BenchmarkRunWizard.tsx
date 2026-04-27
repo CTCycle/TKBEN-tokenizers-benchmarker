@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { BenchmarkMetricCatalogCategory } from '../types/api';
+import type { BenchmarkMetricCatalogCategory, BenchmarkRunRequest } from '../types/api';
 import MetricSelectionTree from './MetricSelectionTree';
 import { useMetricSelection } from '../hooks/useMetricSelection';
+
+type BenchmarkRunWizardPayload = Omit<BenchmarkRunRequest, 'custom_tokenizer_name'> & {
+  run_name: string;
+  selected_metric_keys: string[];
+};
 
 type BenchmarkRunWizardProps = {
   isOpen: boolean;
@@ -12,21 +17,7 @@ type BenchmarkRunWizardProps = {
   defaultMaxDocuments: number;
   running: boolean;
   onClose: () => void;
-  onRun: (payload: {
-    tokenizers: string[];
-    dataset_name: string;
-    config: {
-      max_documents?: number;
-      warmup_trials: number;
-      timed_trials: number;
-      batch_size: number;
-      seed: number;
-      parallelism: number;
-      include_lm_metrics: boolean;
-    };
-    run_name: string;
-    selected_metric_keys: string[];
-  }) => Promise<void>;
+  onRun: (payload: BenchmarkRunWizardPayload) => Promise<void>;
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));

@@ -8,7 +8,7 @@ import type {
     DatasetMetricCatalogResponse,
     JobStatusResponse,
 } from '../types/api';
-import { API_ENDPOINTS, DOWNLOAD_TIMEOUT_MS } from '../constants';
+import { API_ENDPOINTS, DOWNLOAD_TIMEOUT_MS } from '../common/constants/api';
 import { waitForJobResult } from './jobsApi';
 import { parseRecordPayload, readJobStartResponse, readJsonResponse } from './responseGuards';
 
