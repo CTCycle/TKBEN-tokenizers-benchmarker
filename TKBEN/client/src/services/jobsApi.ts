@@ -1,5 +1,5 @@
 import type { JobCancelResponse, JobStartResponse, JobStatusResponse } from '../types/api';
-import { API_ENDPOINTS } from '../constants';
+import { API_ENDPOINTS } from '../common/constants/api';
 import { parseJobStatusResponse, readJsonResponse } from './responseGuards';
 
 const MIN_POLL_INTERVAL_MS = 250;

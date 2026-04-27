@@ -11,7 +11,7 @@ import type {
     TokenizerUploadResponse,
 } from '../types/api';
 
-import { API_ENDPOINTS } from '../constants';
+import { API_ENDPOINTS } from '../common/constants/api';
 import { waitForJobResult } from './jobsApi';
 import { ensureOkResponse, parseRecordPayload, readJobStartResponse, readJsonResponse } from './responseGuards';
 
