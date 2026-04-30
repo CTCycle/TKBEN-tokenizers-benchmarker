@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from TKBEN.server.repositories.database.initializer import _resolve_postgres_engine
+from server.repositories.database.initializer import _resolve_postgres_engine
 
 
 def test_resolve_postgres_engine_accepts_psycopg() -> None:

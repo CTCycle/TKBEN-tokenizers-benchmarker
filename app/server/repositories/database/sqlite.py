@@ -11,11 +11,11 @@ from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from TKBEN.server.configurations import DatabaseSettings
-from TKBEN.server.repositories.schemas.models import Base
-from TKBEN.server.common.constants import RESOURCES_PATH, DATABASE_FILENAME
-from TKBEN.server.repositories.database.utils import normalize_sqlite_path
-from TKBEN.server.common.utils.logger import logger
+from server.configurations import DatabaseSettings
+from server.repositories.schemas.models import Base
+from server.common.constants import RESOURCES_PATH, DATABASE_FILENAME
+from server.repositories.database.utils import normalize_sqlite_path
+from server.common.utils.logger import logger
 
 
 ###############################################################################

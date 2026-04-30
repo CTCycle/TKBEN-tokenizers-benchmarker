@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from TKBEN.server.app import app
+from server.app import app
 
 
 def test_openapi_generation_and_response_models() -> None:

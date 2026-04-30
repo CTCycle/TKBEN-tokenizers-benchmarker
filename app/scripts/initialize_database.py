@@ -4,9 +4,9 @@ from dataclasses import asdict
 import json
 import time
 
-from TKBEN.server.configurations import server_settings
-from TKBEN.server.repositories.database.initializer import initialize_database
-from TKBEN.server.common.utils.logger import logger
+from server.configurations import server_settings
+from server.repositories.database.initializer import initialize_database
+from server.common.utils.logger import logger
 
 
 ###############################################################################

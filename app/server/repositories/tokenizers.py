@@ -4,8 +4,8 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from TKBEN.server.repositories.database.backend import TKBENDatabase, get_database
-from TKBEN.server.repositories.schemas.models import (
+from server.repositories.database.backend import TKBENDatabase, get_database
+from server.repositories.schemas.models import (
     Tokenizer, 
     TokenizerReport, 
     TokenizerVocabulary

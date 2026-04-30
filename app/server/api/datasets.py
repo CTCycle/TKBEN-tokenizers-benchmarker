@@ -4,7 +4,7 @@ import asyncio
 
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile, status
 
-from TKBEN.server.domain.dataset import (
+from server.domain.dataset import (
     DatasetAnalysisRequest,
     DatasetAnalysisResponse,
     DatasetDeleteResponse,
@@ -12,13 +12,13 @@ from TKBEN.server.domain.dataset import (
     DatasetListResponse,
     DatasetMetricCatalogResponse,
 )
-from TKBEN.server.domain.jobs import JobStartResponse
-from TKBEN.server.configurations import get_server_settings
-from TKBEN.server.common.utils.logger import logger
-from TKBEN.server.common.utils.security import (
+from server.domain.jobs import JobStartResponse
+from server.configurations import get_server_settings
+from server.common.utils.logger import logger
+from server.common.utils.security import (
     normalize_identifier,
 )
-from TKBEN.server.common.constants import (
+from server.common.constants import (
     API_ROUTE_DATASETS_ANALYZE,
     API_ROUTE_DATASETS_DELETE,
     API_ROUTE_DATASETS_DOWNLOAD,
@@ -29,13 +29,13 @@ from TKBEN.server.common.constants import (
     API_ROUTE_DATASETS_UPLOAD,
     API_ROUTER_PREFIX_DATASETS,
 )
-from TKBEN.server.api.helpers import (
+from server.api.helpers import (
     start_managed_job,
     validate_upload_filename,
     validate_upload_size,
 )
-from TKBEN.server.services.dataset_jobs import DatasetJobService
-from TKBEN.server.services.datasets import DatasetService
+from server.services.dataset_jobs import DatasetJobService
+from server.services.datasets import DatasetService
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_DATASETS, tags=["datasets"])
 

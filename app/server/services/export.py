@@ -11,8 +11,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
-from TKBEN.server.common.utils.security import contains_control_chars
-from TKBEN.server.services.dashboard_export_helpers import DashboardExportFormatting
+from server.common.utils.security import contains_control_chars
+from server.services.dashboard_export_helpers import DashboardExportFormatting
 
 
 DashboardType = Literal["dataset", "tokenizer", "benchmark"]

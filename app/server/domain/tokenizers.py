@@ -4,7 +4,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
-from TKBEN.server.common.utils.security import normalize_identifier
+from server.common.utils.security import normalize_identifier
 
 
 ###############################################################################

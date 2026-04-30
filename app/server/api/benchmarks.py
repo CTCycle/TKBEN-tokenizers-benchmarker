@@ -5,7 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 
-from TKBEN.server.domain.benchmarks import (
+from server.domain.benchmarks import (
     BenchmarkMetricCatalogCategory,
     BenchmarkMetricCatalogResponse,
     BenchmarkReportListResponse,
@@ -13,18 +13,18 @@ from TKBEN.server.domain.benchmarks import (
     BenchmarkRunRequest,
     BenchmarkRunResponse,
 )
-from TKBEN.server.domain.jobs import JobStartResponse
-from TKBEN.server.common.constants import (
+from server.domain.jobs import JobStartResponse
+from server.common.constants import (
     API_ROUTE_BENCHMARKS_METRICS_CATALOG,
     API_ROUTE_BENCHMARKS_REPORT_BY_ID,
     API_ROUTE_BENCHMARKS_REPORTS,
     API_ROUTE_BENCHMARKS_RUN,
     API_ROUTER_PREFIX_BENCHMARKS,
 )
-from TKBEN.server.api.helpers import start_managed_job
-from TKBEN.server.common.utils.logger import logger
-from TKBEN.server.services.benchmark_jobs import BenchmarkJobService
-from TKBEN.server.services.benchmarks import BenchmarkService
+from server.api.helpers import start_managed_job
+from server.common.utils.logger import logger
+from server.services.benchmark_jobs import BenchmarkJobService
+from server.services.benchmarks import BenchmarkService
 
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_BENCHMARKS, tags=["benchmarks"])

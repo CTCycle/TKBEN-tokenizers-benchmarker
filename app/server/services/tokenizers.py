@@ -13,14 +13,14 @@ from huggingface_hub import HfApi, ModelCard
 from tokenizers import Tokenizer as FastTokenizer
 from transformers import AutoTokenizer
 
-from TKBEN.server.common.utils.logger import logger
-from TKBEN.server.configurations import get_server_settings
-from TKBEN.server.repositories.tokenizers import TokenizerRepository
-from TKBEN.server.repositories.serialization.data import TokenizerReportSerializer
-from TKBEN.server.services.benchmarks import BenchmarkTools
-from TKBEN.server.services.custom_tokenizers import get_custom_tokenizer_registry
-from TKBEN.server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
-from TKBEN.server.services.tokenizer_storage import TokenizerStorageMixin
+from server.common.utils.logger import logger
+from server.configurations import get_server_settings
+from server.repositories.tokenizers import TokenizerRepository
+from server.repositories.serialization.data import TokenizerReportSerializer
+from server.services.benchmarks import BenchmarkTools
+from server.services.custom_tokenizers import get_custom_tokenizer_registry
+from server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
+from server.services.tokenizer_storage import TokenizerStorageMixin
 
 
 ###############################################################################

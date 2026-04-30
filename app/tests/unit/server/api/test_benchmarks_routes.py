@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from TKBEN.server.app import app
+from server.app import app
 
 
 class DummyJobManager:
@@ -26,7 +26,7 @@ def test_benchmark_run_route_returns_202(monkeypatch) -> None:
     manager = DummyJobManager()
     monkeypatch.setattr(app.state, "job_manager", manager)
 
-    from TKBEN.server.services.benchmarks import BenchmarkService
+    from server.services.benchmarks import BenchmarkService
 
     monkeypatch.setattr(BenchmarkService, "resolve_custom_tokenizer_selection", lambda self, name: {})
     monkeypatch.setattr(BenchmarkService, "get_dataset_document_count", lambda self, dataset_name: 3)
@@ -47,7 +47,7 @@ def test_benchmark_run_route_returns_202(monkeypatch) -> None:
 
 
 def test_benchmark_list_and_by_id(monkeypatch) -> None:
-    from TKBEN.server.services.benchmarks import BenchmarkService
+    from server.services.benchmarks import BenchmarkService
 
     monkeypatch.setattr(
         BenchmarkService,

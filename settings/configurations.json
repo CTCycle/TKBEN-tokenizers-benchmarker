@@ -4,7 +4,7 @@
     "engine": "postgresql+psycopg",
     "host": "127.0.0.1",
     "port": 5432,
-    "database_name": "TKBEN",
+    "database_name": "app",
     "username": "postgres",
     "password": "change-me",
     "ssl": false,

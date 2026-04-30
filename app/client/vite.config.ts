@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  const envDir = path.resolve(__dirname, '../settings')
+  const envDir = path.resolve(__dirname, '../../settings')
   const settingsEnv = loadEnv(mode, envDir, '')
   const localEnv = loadEnv(mode, __dirname, '')
   const env = { ...localEnv, ...settingsEnv }

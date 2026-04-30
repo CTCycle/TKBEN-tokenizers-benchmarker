@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from TKBEN.server.app import app
+from server.app import app
 
 
 class DummyJobManager:
@@ -37,7 +37,7 @@ def test_tokenizer_upload_validation_and_custom_clear(monkeypatch) -> None:
     )
     assert empty.status_code == 400
 
-    from TKBEN.server.api import tokenizers as tokenizers_api
+    from server.api import tokenizers as tokenizers_api
 
     class _TokenizerCfg:
         max_upload_bytes = 1
@@ -104,8 +104,8 @@ def test_tokenizer_job_routes_return_202(monkeypatch) -> None:
     manager = DummyJobManager()
     monkeypatch.setattr(app.state, "job_manager", manager)
 
-    from TKBEN.server.services.keys import HFAccessKeyService
-    from TKBEN.server.services.tokenizers import TokenizersService
+    from server.services.keys import HFAccessKeyService
+    from server.services.tokenizers import TokenizersService
 
     monkeypatch.setattr(HFAccessKeyService, "get_active_key", lambda self: "token")
     monkeypatch.setattr(

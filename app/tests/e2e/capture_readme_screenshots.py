@@ -14,7 +14,7 @@ from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError, sy
 
 
 ROOT = Path(__file__).resolve().parents[2]
-ENV_PATH = ROOT / "TKBEN" / "settings" / ".env"
+ENV_PATH = ROOT / "app" / "settings" / ".env"
 FIGURES_DIR = ROOT / "assets" / "figures"
 MANIFEST_PATH = FIGURES_DIR / "manifest.json"
 

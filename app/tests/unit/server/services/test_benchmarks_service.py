@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from TKBEN.server.services.benchmarks import BenchmarkService
+from server.services.benchmarks import BenchmarkService
 
 
 class FakeBenchmarkRepository:
@@ -30,7 +30,7 @@ def test_benchmark_service_preserves_repository_missing_with_cached_files(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
-    monkeypatch.setattr("TKBEN.server.services.benchmarks.TOKENIZERS_PATH", str(tmp_path))
+    monkeypatch.setattr("server.services.benchmarks.TOKENIZERS_PATH", str(tmp_path))
     cached_dir = tmp_path / "missing"
     cached_dir.mkdir()
     (cached_dir / "tokenizer.json").write_text("{}", encoding="utf-8")
@@ -51,7 +51,7 @@ def test_resolve_custom_tokenizer_selection(monkeypatch) -> None:
             return object() if name == "CUSTOM_demo" else None
 
     monkeypatch.setattr(
-        "TKBEN.server.services.benchmarks.get_custom_tokenizer_registry",
+        "server.services.benchmarks.get_custom_tokenizer_registry",
         lambda: DummyRegistry(),
     )
     monkeypatch.setattr(service.tools, "is_tokenizer_compatible", lambda tokenizer: True)

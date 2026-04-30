@@ -9,7 +9,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from TKBEN.server.domain.benchmarks import (
+from server.domain.benchmarks import (
     BenchmarkChartDataV2,
     BenchmarkDistributionPoint,
     BenchmarkEfficiencyMetrics,
@@ -26,7 +26,7 @@ from TKBEN.server.domain.benchmarks import (
     BenchmarkTokenizerResult,
     BenchmarkTrialSummary,
 )
-from TKBEN.server.common.utils.logger import logger
+from server.common.utils.logger import logger
 
 
 ###############################################################################

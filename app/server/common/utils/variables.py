@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 
-from TKBEN.server.configurations.environment import ensure_environment_loaded
+from server.configurations.environment import ensure_environment_loaded
 
 
 ###############################################################################

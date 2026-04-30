@@ -24,18 +24,18 @@ from requests.exceptions import ConnectionError as RequestsConnectionError
 from requests.exceptions import RequestException, Timeout
 from sqlalchemy.exc import SQLAlchemyError
 
-from TKBEN.server.repositories.serialization.data import DatasetSerializer
-from TKBEN.server.configurations import get_server_settings
-from TKBEN.server.common.constants import DATASETS_PATH
-from TKBEN.server.common.utils.logger import logger
-from TKBEN.server.common.utils.security import (
+from server.repositories.serialization.data import DatasetSerializer
+from server.configurations import get_server_settings
+from server.common.constants import DATASETS_PATH
+from server.common.utils.logger import logger
+from server.common.utils.security import (
     ensure_path_is_within,
     normalize_identifier,
     normalize_optional_identifier,
 )
-from TKBEN.server.services.metrics.catalog import DATASET_METRIC_CATALOG
-from TKBEN.server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
-from TKBEN.server.services.dataset_operations import DatasetServiceOperationsMixin
+from server.services.metrics.catalog import DATASET_METRIC_CATALOG
+from server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
+from server.services.dataset_operations import DatasetServiceOperationsMixin
 
 
 ###############################################################################

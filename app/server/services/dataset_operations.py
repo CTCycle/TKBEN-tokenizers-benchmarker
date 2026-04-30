@@ -11,11 +11,11 @@ from typing import Any
 import pandas as pd
 from datasets import Dataset, DatasetDict
 
-from TKBEN.server.common.constants import DATASETS_PATH
-from TKBEN.server.common.utils.logger import logger
-from TKBEN.server.common.utils.security import normalize_upload_stem
-from TKBEN.server.services.metrics.catalog import default_selected_metric_keys
-from TKBEN.server.services.metrics.engine import DatasetMetricsEngine
+from server.common.constants import DATASETS_PATH
+from server.common.utils.logger import logger
+from server.common.utils.security import normalize_upload_stem
+from server.services.metrics.catalog import default_selected_metric_keys
+from server.services.metrics.engine import DatasetMetricsEngine
 
 
 ###############################################################################

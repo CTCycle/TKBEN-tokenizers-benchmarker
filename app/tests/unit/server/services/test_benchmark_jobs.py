@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from TKBEN.server.services.benchmark_jobs import BenchmarkJobService
+from server.services.benchmark_jobs import BenchmarkJobService
 
 
 class DummyJobManager:
@@ -57,7 +57,7 @@ def test_run_benchmark_job_builds_and_saves_report(monkeypatch) -> None:
             assert payload["dataset_name"] == "custom/sample"
             return 11
 
-    monkeypatch.setattr("TKBEN.server.services.benchmark_jobs.BenchmarkService", FakeBenchmarkService)
+    monkeypatch.setattr("server.services.benchmark_jobs.BenchmarkService", FakeBenchmarkService)
 
     service = BenchmarkJobService()
     result = service.run_benchmark_job(

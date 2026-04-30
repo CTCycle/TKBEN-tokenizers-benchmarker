@@ -36,7 +36,7 @@ test = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["TKBEN"] 
+packages = ["server"] 
 
 [tool.ruff]
-extend-exclude = ["TKBEN/client/src-tauri/target"]
+extend-exclude = ["app/client/src-tauri/target"]

@@ -10,22 +10,22 @@ import numpy as np
 from transformers import AutoTokenizer
 from transformers.utils.logging import set_verbosity_error
 
-from TKBEN.server.repositories.benchmarks import BenchmarkRepository
-from TKBEN.server.repositories.serialization.benchmark_reports import (
+from server.repositories.benchmarks import BenchmarkRepository
+from server.repositories.serialization.benchmark_reports import (
     BenchmarkReportSerializer,
 )
-from TKBEN.server.repositories.serialization.data import DatasetSerializer
-from TKBEN.server.services.metrics.catalog import BENCHMARK_METRIC_CATALOG
-from TKBEN.server.configurations import get_server_settings
-from TKBEN.server.common.constants import TOKENIZERS_PATH
-from TKBEN.server.common.utils.logger import logger
-from TKBEN.server.common.utils.security import (
+from server.repositories.serialization.data import DatasetSerializer
+from server.services.metrics.catalog import BENCHMARK_METRIC_CATALOG
+from server.configurations import get_server_settings
+from server.common.constants import TOKENIZERS_PATH
+from server.common.utils.logger import logger
+from server.common.utils.security import (
     ensure_path_is_within,
     normalize_identifier,
 )
-from TKBEN.server.services.benchmark_execution import BenchmarkServiceExecutionMixin
-from TKBEN.server.services.benchmark_plotting import BenchmarkPlottingMixin
-from TKBEN.server.services.custom_tokenizers import get_custom_tokenizer_registry
+from server.services.benchmark_execution import BenchmarkServiceExecutionMixin
+from server.services.benchmark_plotting import BenchmarkPlottingMixin
+from server.services.custom_tokenizers import get_custom_tokenizer_registry
 
 
 ###############################################################################

@@ -5,9 +5,9 @@ from datetime import datetime, timezone
 import pytest
 from sqlalchemy import create_engine
 
-from TKBEN.server.repositories.database.backend import get_database
-from TKBEN.server.repositories.schemas.models import Base
-from TKBEN.server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
+from server.repositories.database.backend import get_database
+from server.repositories.schemas.models import Base
+from server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
 
 
 @pytest.fixture

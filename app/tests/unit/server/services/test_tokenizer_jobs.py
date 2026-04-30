@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from TKBEN.server.services.tokenizer_jobs import TokenizerJobService
+from server.services.tokenizer_jobs import TokenizerJobService
 
 
 class DummyJobManager:
@@ -18,7 +18,7 @@ def test_run_download_job_delegates_to_service(monkeypatch) -> None:
             assert kwargs["tokenizers"] == ["bert-base-uncased"]
             return {"status": "success", "downloaded": ["bert-base-uncased"]}
 
-    monkeypatch.setattr("TKBEN.server.services.tokenizer_jobs.TokenizersService", FakeTokenizersService)
+    monkeypatch.setattr("server.services.tokenizer_jobs.TokenizersService", FakeTokenizersService)
 
     service = TokenizerJobService()
     result = service.run_download_job(
@@ -44,7 +44,7 @@ def test_upload_and_clear_custom_tokenizers(monkeypatch) -> None:
         def clear_custom_tokenizers(self):
             state["cleared"] = True
 
-    monkeypatch.setattr("TKBEN.server.services.tokenizer_jobs.TokenizersService", FakeTokenizersService)
+    monkeypatch.setattr("server.services.tokenizer_jobs.TokenizersService", FakeTokenizersService)
 
     service = TokenizerJobService()
     uploaded = service.upload_custom_tokenizer(b"{}", "demo.json", "demo")

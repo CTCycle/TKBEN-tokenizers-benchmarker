@@ -5,8 +5,8 @@ from os.path import abspath, join
 # [PATHS]
 ###############################################################################
 ROOT_DIR = abspath(join(__file__, "../../../.."))
-PROJECT_DIR = join(ROOT_DIR, "TKBEN")
-SETTING_PATH = join(PROJECT_DIR, "settings")
+PROJECT_DIR = join(ROOT_DIR, "app")
+SETTING_PATH = join(ROOT_DIR, "settings")
 RESOURCES_PATH = join(PROJECT_DIR, "resources")
 SOURCES_PATH = join(RESOURCES_PATH, "sources")
 DATASETS_PATH = join(SOURCES_PATH, "datasets")

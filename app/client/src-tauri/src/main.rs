@@ -161,13 +161,14 @@ fn render_startup_error(app_handle: &tauri::AppHandle, message: &str) {
 }
 
 fn is_workspace_root(candidate: &Path) -> bool {
-    candidate.join("pyproject.toml").is_file()
-        && candidate.join("TKBEN").join("server").join("app.py").is_file()
+    candidate.join("app").join("server").join("pyproject.toml").is_file()
+        && candidate.join("app").join("server").join("app.py").is_file()
 }
 
 fn has_workspace_venv(candidate: &Path) -> bool {
     candidate
-        .join("runtimes")
+        .join("app")
+        .join("server")
         .join(".venv")
         .join("Scripts")
         .join("python.exe")
@@ -308,12 +309,12 @@ fn spawn_backend(app_handle: &tauri::AppHandle, state: &BackendChildState) -> Re
     {
         let workspace_root = find_workspace_root(app_handle).ok_or_else(|| {
             String::from(
-                "Cannot resolve packaged backend workspace (missing pyproject.toml/TKBEN).",
+                "Cannot resolve packaged backend workspace (missing app/server layout).",
             )
         })?;
         let runtime_root = resolve_runtime_root(app_handle, &workspace_root)?;
-        let project_dir = workspace_root.join("TKBEN");
-        let env_path = project_dir.join("settings").join(".env");
+        let app_dir = workspace_root.join("app");
+        let env_path = workspace_root.join("settings").join(".env");
         let backend_config = resolve_backend_launch_config(&env_path);
         let uv_exe = workspace_root.join("runtimes").join("uv").join("uv.exe");
         let python_exe = workspace_root
@@ -321,7 +322,7 @@ fn spawn_backend(app_handle: &tauri::AppHandle, state: &BackendChildState) -> Re
             .join("python")
             .join("python.exe");
         let runtime_runtimes_dir = runtime_root.join("runtimes");
-        let venv_dir = runtime_runtimes_dir.join(".venv");
+        let venv_dir = app_dir.join("server").join(".venv");
         let venv_python_exe = venv_dir.join("Scripts").join("python.exe");
         let uv_cache_dir = runtime_runtimes_dir.join(".uv-cache");
 
@@ -374,7 +375,7 @@ fn spawn_backend(app_handle: &tauri::AppHandle, state: &BackendChildState) -> Re
             configure_background_command(&mut embedded_sync_command);
             embedded_sync_command
                 .args(sync_with_embedded_args.iter().map(|s| s.as_str()))
-                .current_dir(&workspace_root)
+                .current_dir(app_dir.join("server"))
                 .env("UV_PROJECT_ENVIRONMENT", &venv_dir_str)
                 .env("UV_CACHE_DIR", &uv_cache_dir_str)
                 .stdout(Stdio::null())
@@ -391,7 +392,7 @@ fn spawn_backend(app_handle: &tauri::AppHandle, state: &BackendChildState) -> Re
                 configure_background_command(&mut fallback_sync_command);
                 fallback_sync_command
                     .args(sync_args.iter().map(|s| s.as_str()))
-                    .current_dir(&workspace_root)
+                    .current_dir(app_dir.join("server"))
                     .env("UV_PROJECT_ENVIRONMENT", &venv_dir_str)
                     .env("UV_CACHE_DIR", &uv_cache_dir_str)
                     .stdout(Stdio::null())
@@ -425,7 +426,7 @@ fn spawn_backend(app_handle: &tauri::AppHandle, state: &BackendChildState) -> Re
         configure_background_command(&mut child_command);
         child_command.arg("-m").arg("uvicorn");
         child_command
-            .arg("TKBEN.server.app:app")
+            .arg("server.app:app")
             .arg("--host")
             .arg(&backend_host)
             .arg("--port")
@@ -437,7 +438,8 @@ fn spawn_backend(app_handle: &tauri::AppHandle, state: &BackendChildState) -> Re
         }
 
         let child = child_command
-            .current_dir(&workspace_root)
+            .current_dir(app_dir.join("server"))
+            .env("PYTHONPATH", workspace_root.join("app"))
             .env("TKBEN_TAURI_MODE", "true")
             .stdin(Stdio::null())
             .stdout(Stdio::null())

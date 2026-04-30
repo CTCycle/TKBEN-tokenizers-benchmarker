@@ -6,9 +6,9 @@ import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from TKBEN.server.repositories.database.backend import get_database
-from TKBEN.server.repositories.schemas.models import Base, HFAccessKey
-from TKBEN.server.services.keys import (
+from server.repositories.database.backend import get_database
+from server.repositories.schemas.models import Base, HFAccessKey
+from server.services.keys import (
     HFAccessKeyNotFoundError,
     HFAccessKeyService,
     HFAccessKeyValidationError,

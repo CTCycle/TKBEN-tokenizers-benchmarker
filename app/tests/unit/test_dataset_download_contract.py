@@ -10,13 +10,13 @@ from pydantic import ValidationError
 from requests import Response
 from requests.exceptions import ConnectionError as RequestsConnectionError
 
-from TKBEN.server.domain.dataset import DatasetDownloadRequest
-from TKBEN.server.services.datasets import (
+from server.domain.dataset import DatasetDownloadRequest
+from server.services.datasets import (
     HF_DATASET_ALIASES,
     DatasetService,
     LengthStatistics,
 )
-from TKBEN.server.services.keys import HFAccessKeyValidationError
+from server.services.keys import HFAccessKeyValidationError
 
 
 def test_dataset_download_request_requires_configs() -> None:
@@ -190,7 +190,7 @@ def test_download_and_persist_keeps_wikitext_working(
         return object()
 
     monkeypatch.setattr(
-        "TKBEN.server.services.datasets.load_dataset", fake_load_dataset
+        "server.services.datasets.load_dataset", fake_load_dataset
     )
 
     result = service.download_and_persist(
@@ -225,7 +225,7 @@ def test_download_and_persist_maps_c4_friendly_name(
         return object()
 
     monkeypatch.setattr(
-        "TKBEN.server.services.datasets.load_dataset", fake_load_dataset
+        "server.services.datasets.load_dataset", fake_load_dataset
     )
 
     result = service.download_and_persist(
@@ -258,7 +258,7 @@ def test_download_and_persist_maps_arxiv_to_canonical_hf_repo(
         return object()
 
     monkeypatch.setattr(
-        "TKBEN.server.services.datasets.load_dataset", fake_load_dataset
+        "server.services.datasets.load_dataset", fake_load_dataset
     )
 
     result = service.download_and_persist(
@@ -297,7 +297,7 @@ def test_download_and_persist_success_triggers_source_cleanup(
         return object()
 
     monkeypatch.setattr(
-        "TKBEN.server.services.datasets.load_dataset", fake_load_dataset
+        "server.services.datasets.load_dataset", fake_load_dataset
     )
 
     result = service.download_and_persist(
@@ -353,7 +353,7 @@ def test_download_and_persist_failed_import_does_not_cleanup_sources(
         return object()
 
     monkeypatch.setattr(
-        "TKBEN.server.services.datasets.load_dataset", fake_load_dataset
+        "server.services.datasets.load_dataset", fake_load_dataset
     )
 
     with pytest.raises(RuntimeError, match="persist failed"):
@@ -396,7 +396,7 @@ def test_download_and_persist_uses_database_for_existence_not_filesystem(
         return object()
 
     monkeypatch.setattr(
-        "TKBEN.server.services.datasets.load_dataset", fake_load_dataset
+        "server.services.datasets.load_dataset", fake_load_dataset
     )
 
     result = service.download_and_persist(
@@ -420,7 +420,7 @@ def test_download_and_persist_classifies_invalid_dataset_or_config(
     def raise_not_found(*args, **kwargs):
         raise DataFilesNotFoundError("No (supported) data files found.")
 
-    monkeypatch.setattr("TKBEN.server.services.datasets.load_dataset", raise_not_found)
+    monkeypatch.setattr("server.services.datasets.load_dataset", raise_not_found)
 
     with pytest.raises(RuntimeError) as exc_info:
         service.download_and_persist(
@@ -445,7 +445,7 @@ def test_download_and_persist_classifies_unsupported_dataset_script(
         raise RuntimeError("Dataset scripts are no longer supported, but found pile.py")
 
     monkeypatch.setattr(
-        "TKBEN.server.services.datasets.load_dataset", raise_script_error
+        "server.services.datasets.load_dataset", raise_script_error
     )
 
     with pytest.raises(RuntimeError) as exc_info:
@@ -473,7 +473,7 @@ def test_download_and_persist_classifies_gated_or_auth_errors(
         response.url = "https://huggingface.co/datasets/oscar-corpus/oscar"
         raise GatedRepoError("Access to this dataset is restricted.", response=response)
 
-    monkeypatch.setattr("TKBEN.server.services.datasets.load_dataset", raise_gated)
+    monkeypatch.setattr("server.services.datasets.load_dataset", raise_gated)
 
     with pytest.raises(RuntimeError) as exc_info:
         service.download_and_persist(
@@ -505,7 +505,7 @@ def test_load_dataset_with_progress_reports_stage_progress(
         return object()
 
     monkeypatch.setattr(
-        "TKBEN.server.services.datasets.load_dataset", fake_load_dataset
+        "server.services.datasets.load_dataset", fake_load_dataset
     )
 
     service.load_dataset_with_progress(
@@ -533,7 +533,7 @@ def test_download_and_persist_classifies_network_errors(
     def raise_network(*args, **kwargs):
         raise RequestsConnectionError("Connection reset by peer")
 
-    monkeypatch.setattr("TKBEN.server.services.datasets.load_dataset", raise_network)
+    monkeypatch.setattr("server.services.datasets.load_dataset", raise_network)
 
     with pytest.raises(RuntimeError) as exc_info:
         service.download_and_persist(
@@ -561,8 +561,8 @@ def test_download_and_persist_retries_transient_failures_with_backoff(
             raise RequestsConnectionError("Connection reset by peer")
         return object()
 
-    monkeypatch.setattr("TKBEN.server.services.datasets.load_dataset", fake_load_dataset)
-    monkeypatch.setattr("TKBEN.server.services.datasets.time.sleep", sleep_calls.append)
+    monkeypatch.setattr("server.services.datasets.load_dataset", fake_load_dataset)
+    monkeypatch.setattr("server.services.datasets.time.sleep", sleep_calls.append)
 
     result = service.download_and_persist(
         corpus="wikitext",
@@ -590,8 +590,8 @@ def test_download_and_persist_does_not_retry_non_transient_failures(
         attempts["count"] += 1
         raise DataFilesNotFoundError("No (supported) data files found.")
 
-    monkeypatch.setattr("TKBEN.server.services.datasets.load_dataset", raise_not_found)
-    monkeypatch.setattr("TKBEN.server.services.datasets.time.sleep", sleep_calls.append)
+    monkeypatch.setattr("server.services.datasets.load_dataset", raise_not_found)
+    monkeypatch.setattr("server.services.datasets.time.sleep", sleep_calls.append)
 
     with pytest.raises(RuntimeError) as exc_info:
         service.download_and_persist(
@@ -617,7 +617,7 @@ def test_download_and_persist_timeout_is_reported_as_transient_failure(
         time.sleep(0.05)
         return object()
 
-    monkeypatch.setattr("TKBEN.server.services.datasets.load_dataset", slow_load_dataset)
+    monkeypatch.setattr("server.services.datasets.load_dataset", slow_load_dataset)
 
     with pytest.raises(RuntimeError) as exc_info:
         service.download_and_persist(
@@ -640,7 +640,7 @@ def test_upload_and_persist_hides_internal_parser_errors(
     def raise_parser_error(*args, **kwargs):
         raise pd.errors.ParserError("internal parser stack details")
 
-    monkeypatch.setattr("TKBEN.server.services.datasets.pd.read_csv", raise_parser_error)
+    monkeypatch.setattr("server.services.datasets.pd.read_csv", raise_parser_error)
 
     with pytest.raises(ValueError) as exc_info:
         service.upload_and_persist(file_content=b"text\nx", filename="sample.csv")
