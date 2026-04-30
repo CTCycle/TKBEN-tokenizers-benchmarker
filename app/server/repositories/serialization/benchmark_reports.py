@@ -5,10 +5,10 @@ from typing import Any
 
 import pandas as pd
 
-from TKBEN.server.domain.benchmarks import BenchmarkReportSummary, BenchmarkRunResponse
-from TKBEN.server.repositories.benchmarks import BenchmarkRepository
-from TKBEN.server.repositories.queries.data import DataRepositoryQueries
-from TKBEN.server.repositories.schemas.models import BenchmarkReport
+from server.domain.benchmarks import BenchmarkReportSummary, BenchmarkRunResponse
+from server.repositories.benchmarks import BenchmarkRepository
+from server.repositories.queries.data import DataRepositoryQueries
+from server.repositories.schemas.models import BenchmarkReport
 
 
 ###############################################################################

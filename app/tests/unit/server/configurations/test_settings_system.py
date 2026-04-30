@@ -8,15 +8,15 @@ from pathlib import Path
 import pytest
 from cryptography.fernet import Fernet
 
-from TKBEN.server.api.keys import is_key_reveal_enabled
-from TKBEN.server.common.utils.encryption import get_hf_key_cipher
-from TKBEN.server.configurations import environment as bootstrap
-from TKBEN.server.configurations.startup import (
+from server.api.keys import is_key_reveal_enabled
+from server.common.utils.encryption import get_hf_key_cipher
+from server.configurations import environment as bootstrap
+from server.configurations.startup import (
     get_configuration_manager,
     get_server_settings,
     reload_settings_for_tests,
 )
-from TKBEN.server.repositories.database.initializer import _resolve_postgres_engine
+from server.repositories.database.initializer import _resolve_postgres_engine
 
 
 ###############################################################################
@@ -91,7 +91,7 @@ def test_server_package_import_bootstraps_env_early(
     monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", str(env_path))
     monkeypatch.setenv("TKBEN_TAURI_MODE", "false")
 
-    import TKBEN.server as server_package
+    import server as server_package
 
     importlib.reload(server_package)
 
@@ -192,7 +192,7 @@ def test_get_server_settings_path_scoped_loading_is_deterministic(
                 "engine": "postgresql+psycopg",
                 "host": "127.0.0.1",
                 "port": 5432,
-                "database_name": "tkben",
+                "database_name": "app",
                 "username": "postgres",
                 "password": "secret",
                 "ssl": False,
@@ -311,7 +311,7 @@ def test_external_database_rejects_legacy_engine_aliases(
                 "engine": engine,
                 "host": "127.0.0.1",
                 "port": 5432,
-                "database_name": "tkben",
+                "database_name": "app",
                 "username": "postgres",
                 "password": "secret",
             },

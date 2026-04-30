@@ -6,9 +6,9 @@ from typing import Any
 
 from fastapi import HTTPException, Request, UploadFile, status
 
-from TKBEN.server.common.utils.security import normalize_upload_stem
-from TKBEN.server.configurations import get_server_settings
-from TKBEN.server.domain.jobs import JobStartResponse
+from server.common.utils.security import normalize_upload_stem
+from server.configurations import get_server_settings
+from server.domain.jobs import JobStartResponse
 
 ###############################################################################
 def start_managed_job(

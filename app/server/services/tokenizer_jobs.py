@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from TKBEN.server.services.jobs import JobManager, JobProgressReporter, JobStopChecker
-from TKBEN.server.services.tokenizers import TokenizersService
+from server.services.jobs import JobManager, JobProgressReporter, JobStopChecker
+from server.services.tokenizers import TokenizersService
 
 
 ###############################################################################

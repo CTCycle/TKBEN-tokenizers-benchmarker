@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 
-from TKBEN.server.domain.jobs import (
+from server.domain.jobs import (
     JobCancelResponse,
     JobListResponse,
     JobStatusResponse,
 )
-from TKBEN.server.common.constants import API_ROUTE_JOBS_STATUS, API_ROUTER_PREFIX_JOBS
+from server.common.constants import API_ROUTE_JOBS_STATUS, API_ROUTER_PREFIX_JOBS
 router = APIRouter(prefix=API_ROUTER_PREFIX_JOBS, tags=["jobs"])
 
 

@@ -4,8 +4,8 @@ from typing import Any
 
 import pytest
 
-import TKBEN.server.services.benchmarks as benchmarks_module
-from TKBEN.server.services.benchmarks import BENCHMARK_METRIC_CATALOG, BenchmarkService
+import server.services.benchmarks as benchmarks_module
+from server.services.benchmarks import BENCHMARK_METRIC_CATALOG, BenchmarkService
 
 
 BENCHMARK_METRIC_KEYS: set[str] = {

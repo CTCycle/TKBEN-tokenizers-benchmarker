@@ -8,13 +8,13 @@ import sqlalchemy
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from TKBEN.server.repositories.database.backend import get_database
-from TKBEN.server.repositories.database.postgres import PostgresRepository
-from TKBEN.server.repositories.database.sqlite import SQLiteRepository
-from TKBEN.server.repositories.serialization.data import DatasetSerializer
-from TKBEN.server.repositories.schemas.models import Base, Dataset, Tokenizer
-from TKBEN.server.services.benchmarks import BenchmarkService
-from TKBEN.server.services.tokenizers import TokenizersService
+from server.repositories.database.backend import get_database
+from server.repositories.database.postgres import PostgresRepository
+from server.repositories.database.sqlite import SQLiteRepository
+from server.repositories.serialization.data import DatasetSerializer
+from server.repositories.schemas.models import Base, Dataset, Tokenizer
+from server.services.benchmarks import BenchmarkService
+from server.services.tokenizers import TokenizersService
 
 
 ###############################################################################

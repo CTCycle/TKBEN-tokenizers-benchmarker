@@ -6,18 +6,18 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from TKBEN.server.common.constants import (
+from server.common.constants import (
     FASTAPI_DESCRIPTION,
     FASTAPI_TITLE,
     FASTAPI_VERSION,
 )
-from TKBEN.server.api.datasets import router as datasets_router
-from TKBEN.server.api.tokenizers import router as tokenizers_router
-from TKBEN.server.api.benchmarks import router as benchmarks_router
-from TKBEN.server.api.jobs import router as jobs_router
-from TKBEN.server.api.keys import router as keys_router
-from TKBEN.server.api.exports import router as exports_router
-from TKBEN.server.services.jobs import JobManager
+from server.api.datasets import router as datasets_router
+from server.api.tokenizers import router as tokenizers_router
+from server.api.benchmarks import router as benchmarks_router
+from server.api.jobs import router as jobs_router
+from server.api.keys import router as keys_router
+from server.api.exports import router as exports_router
+from server.services.jobs import JobManager
 
 ###############################################################################
 def tauri_mode_enabled() -> bool:

@@ -1,4 +1,4 @@
-from TKBEN.server.repositories.queries.data import (
+from server.repositories.queries.data import (
     DataRepositoryQueries as DataRepositoryQueries,
 )
 

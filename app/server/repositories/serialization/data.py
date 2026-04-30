@@ -9,8 +9,8 @@ from sqlalchemy import and_, delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from TKBEN.server.repositories.queries.data import DataRepositoryQueries
-from TKBEN.server.repositories.schemas.models import (
+from server.repositories.queries.data import DataRepositoryQueries
+from server.repositories.schemas.models import (
     AnalysisSession,
     Dataset,
     DatasetDocument,

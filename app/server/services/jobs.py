@@ -9,7 +9,7 @@ from typing import Any
 
 from collections.abc import Callable
 
-from TKBEN.server.common.utils.logger import logger
+from server.common.utils.logger import logger
 
 
 @dataclass

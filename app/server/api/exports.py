@@ -4,12 +4,12 @@ import asyncio
 
 from fastapi import APIRouter, HTTPException, Response, status
 
-from TKBEN.server.common.constants import (
+from server.common.constants import (
     API_ROUTE_EXPORTS_DASHBOARD_PDF,
     API_ROUTER_PREFIX_EXPORTS,
 )
-from TKBEN.server.domain.exports import DashboardExportRequest
-from TKBEN.server.services.export import DashboardExportService
+from server.domain.exports import DashboardExportRequest
+from server.services.export import DashboardExportService
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_EXPORTS, tags=["exports"])
 

@@ -1,16 +1,16 @@
 # Project-specific generated/runtime artifacts
-TKBEN/resources/sources/datasets/**
-TKBEN/resources/sources/tokenizers/**
+app/resources/sources/datasets/**
+app/resources/sources/tokenizers/**
 runtimes/**
 runtimes/.uv-cache/**
-!runtimes/uv.lock
-TKBEN/resources/logs/**
-TKBEN/client/node_modules/
-TKBEN/client/dist/
-TKBEN/client/dist-ssr/
-TKBEN/client/logs/
-TKBEN/client/.angular/
-TKBEN/client/*.local
+app/resources/logs/**
+app/client/node_modules/
+app/client/dist/
+app/client/dist-ssr/
+app/client/logs/
+app/client/.angular/
+app/client/*.local
+app/server/.venv/
 
 # Python
 __pycache__/
@@ -57,6 +57,6 @@ Cargo.toml
 !.gitkeep
 
 # Tauri
-TKBEN/client/src-tauri/target/
-TKBEN/client/src-tauri/gen/
+app/client/src-tauri/target/
+app/client/src-tauri/gen/
 release/windows/

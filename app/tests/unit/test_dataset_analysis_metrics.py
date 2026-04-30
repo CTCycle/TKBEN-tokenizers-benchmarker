@@ -5,8 +5,8 @@ from typing import Any
 
 import pytest
 
-from TKBEN.server.services.metrics.catalog import DATASET_METRIC_CATALOG
-from TKBEN.server.services.metrics.engine import DatasetMetricsEngine
+from server.services.metrics.catalog import DATASET_METRIC_CATALOG
+from server.services.metrics.engine import DatasetMetricsEngine
 
 
 DATASET_DOCUMENTS = [

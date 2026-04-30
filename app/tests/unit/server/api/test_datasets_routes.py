@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from TKBEN.server.app import app
+from server.app import app
 
 
 class DummyJobManager:
@@ -26,7 +26,7 @@ def test_dataset_job_start_routes_return_202(monkeypatch) -> None:
     manager = DummyJobManager()
     monkeypatch.setattr(app.state, "job_manager", manager)
 
-    from TKBEN.server.services.datasets import DatasetService
+    from server.services.datasets import DatasetService
 
     monkeypatch.setattr(
         DatasetService,

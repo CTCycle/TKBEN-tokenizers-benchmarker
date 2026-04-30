@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import os
 
-from TKBEN.server.common.constants import TOKENIZERS_PATH
-from TKBEN.server.common.utils.security import (
+from server.common.constants import TOKENIZERS_PATH
+from server.common.utils.security import (
     ensure_path_is_within,
     normalize_identifier,
 )

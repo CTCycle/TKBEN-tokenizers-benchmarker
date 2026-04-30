@@ -5,9 +5,9 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from TKBEN.server.common.constants import ENV_FILE_PATH
-from TKBEN.server.common.utils.logger import logger
-from TKBEN.server.domain.bootstrap import EnvironmentBootstrapState
+from server.common.constants import ENV_FILE_PATH
+from server.common.utils.logger import logger
+from server.domain.bootstrap import EnvironmentBootstrapState
 
 
 # -----------------------------------------------------------------------------

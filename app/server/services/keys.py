@@ -4,9 +4,9 @@ from datetime import datetime, timezone
 
 from sqlalchemy.exc import IntegrityError
 
-from TKBEN.server.common.utils.encryption import SymmetricCipher, get_hf_key_cipher
-from TKBEN.server.common.utils.logger import logger
-from TKBEN.server.repositories.hf_access_keys import HFAccessKeyRepository
+from server.common.utils.encryption import SymmetricCipher, get_hf_key_cipher
+from server.common.utils.logger import logger
+from server.repositories.hf_access_keys import HFAccessKeyRepository
 
 
 ###############################################################################

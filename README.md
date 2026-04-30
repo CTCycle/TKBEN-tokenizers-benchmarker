@@ -15,11 +15,11 @@ Main workflow routes:
 - `/cross-benchmark`
 
 Runtime model:
-- **Local webapp mode (default)**: run directly on host via `TKBEN/start_on_windows.bat`.
+- **Local webapp mode (default)**: run directly on host via `start_on_windows.bat`.
 - **Packaged desktop mode**: build and run the local Tauri package.
-- **Single runtime env file**: edit `TKBEN/settings/.env` (seed from `TKBEN/settings/.env.example`).
+- **Single runtime env file**: edit `settings/.env` (seed from `settings/.env.example`).
 
-Default embedded storage is the SQLite file at `TKBEN/resources/database.db`.
+Default embedded storage is the SQLite file at `app/resources/database.db`.
 
 ## 2. Installation
 
@@ -28,7 +28,7 @@ Default embedded storage is the SQLite file at `TKBEN/resources/database.db`.
 Run the launcher from repository root:
 
 ```bat
-.\TKBEN\start_on_windows.bat
+.\start_on_windows.bat
 ```
 
 The launcher will:
@@ -43,7 +43,7 @@ Prerequisites:
 - Rust toolchain (`cargo`) with a default toolchain configured.
 
 ```bat
-copy /Y TKBEN\settings\.env.example TKBEN\settings\.env
+copy /Y settings\.env.example settings\.env
 .\release\tauri\build_with_tauri.bat
 ```
 
@@ -61,11 +61,11 @@ copy /Y TKBEN\settings\.env.example TKBEN\settings\.env
    ```
 2. Start backend
    ```bash
-   uv run python -m uvicorn TKBEN.server.app:app --host 127.0.0.1 --port 5000
+   uv run python -m uvicorn server.app:app --host 127.0.0.1 --port 5000
    ```
 3. Start frontend (new terminal)
    ```bash
-   cd TKBEN/client
+   cd app/client
    npm ci
    npm run preview -- --host 127.0.0.1 --port 8000 --strictPort
    ```
@@ -74,20 +74,20 @@ copy /Y TKBEN\settings\.env.example TKBEN\settings\.env
 
 ### 3.1 Runtime Configuration (`.env`)
 
-Use `TKBEN/settings/.env` as the active runtime file for both local webapp mode and packaged desktop mode.
+Use `settings/.env` as the active runtime file for both local webapp mode and packaged desktop mode.
 
 Initialize from the single template:
 ```bat
-copy /Y TKBEN\settings\.env.example TKBEN\settings\.env
+copy /Y settings\.env.example settings\.env
 ```
 
 ### 3.2 Local Webapp Mode (Default)
 
 ```bat
-.\TKBEN\start_on_windows.bat
+.\start_on_windows.bat
 ```
 
-Runtime addresses are taken from `TKBEN/settings/.env`:
+Runtime addresses are taken from `settings/.env`:
 - **Web UI**: `http://<UI_HOST>:<UI_PORT>`
 - **Backend API**: `http://<FASTAPI_HOST>:<FASTAPI_PORT>`
 - **API Docs**: `http://<FASTAPI_HOST>:<FASTAPI_PORT>/docs`
@@ -95,7 +95,7 @@ Runtime addresses are taken from `TKBEN/settings/.env`:
 ### 3.3 Packaged Desktop Mode (Tauri)
 
 ```bat
-copy /Y TKBEN\settings\.env.example TKBEN\settings\.env
+copy /Y settings\.env.example settings\.env
 .\release\tauri\build_with_tauri.bat
 ```
 
@@ -134,21 +134,21 @@ The following snapshots were captured in local webapp mode with backend and fron
 Run:
 
 ```bat
-.\TKBEN\setup_and_maintenance.bat
+.\setup_and_maintenance.bat
 ```
 
 Available actions:
-- **Remove logs**: Deletes `*.log` files under `TKBEN/resources/logs`.
-- **Uninstall app**: Removes local runtime artifacts under `runtimes\` (including `runtimes\.venv` and `runtimes\uv.lock`), frontend `node_modules`, frontend `dist`, and related local artifacts.
-- **Initialize database**: Executes `TKBEN/scripts/initialize_database.py` using local `uv` + portable Python runtime.
+- **Remove logs**: Deletes `*.log` files under `app/resources/logs`.
+- **Uninstall app**: Removes local runtime artifacts under `runtimes\` (including `app\\server\\.venv` and `app\\server\\uv.lock`), frontend `node_modules`, frontend `dist`, and related local artifacts.
+- **Initialize database**: Executes `app/scripts/initialize_database.py` using local `uv` + portable Python runtime.
 
 ## 5. Resources
 
 Key paths:
-- `TKBEN/resources/database.db`: Embedded SQLite database path.
-- `TKBEN/resources/sources/datasets`: Dataset source/download artifacts.
-- `TKBEN/resources/sources/tokenizers`: Tokenizer source/download artifacts.
-- `TKBEN/resources/logs`: Launcher and backend logs.
+- `app/resources/database.db`: Embedded SQLite database path.
+- `app/resources/sources/datasets`: Dataset source/download artifacts.
+- `app/resources/sources/tokenizers`: Tokenizer source/download artifacts.
+- `app/resources/logs`: Launcher and backend logs.
 - `runtimes`: Portable Windows runtimes.
 - `assets/docs/PACKAGING_AND_RUNTIME_MODES.md`: Runtime packaging and mode details.
 - `assets/docs/USER_MANUAL.md`: End-user journeys, commands, and feature usage.
@@ -156,9 +156,9 @@ Key paths:
 ## 6. Configuration
 
 Configuration is split between:
-- `TKBEN/settings/.env`: Active runtime/process configuration used by launcher, tests, frontend dev/preview, and desktop startup.
-- `TKBEN/settings/.env.example`: Single template for `.env`.
-- `TKBEN/settings/configurations.json`: Backend structured settings, including all database mode/connection/tuning values.
+- `settings/.env`: Active runtime/process configuration used by launcher, tests, frontend dev/preview, and desktop startup.
+- `settings/.env.example`: Single template for `.env`.
+- `settings/configurations.json`: Backend structured settings, including all database mode/connection/tuning values.
 
 Core runtime keys you will commonly edit:
 - `FASTAPI_HOST`, `FASTAPI_PORT`
@@ -168,8 +168,8 @@ Core runtime keys you will commonly edit:
 - `HF_KEYS_ENCRYPTION_KEY`
 
 Determinism:
-- Backend lockfile: `runtimes/uv.lock` (copied to root `uv.lock` before `uv sync --frozen`, then copied back).
-- Frontend lockfile: committed `TKBEN/client/package-lock.json` + `npm ci` in local runtime/bootstrap flow.
+- Backend lockfile: `app/server/uv.lock` (generated/updated directly by running `uv sync` from `app/server`).
+- Frontend lockfile: committed `app/client/package-lock.json` + `npm ci` in local runtime/bootstrap flow.
 
 ## 7. License
 

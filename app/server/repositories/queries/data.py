@@ -5,7 +5,7 @@ from typing import Any
 import pandas as pd
 from sqlalchemy.engine import Engine
 
-from TKBEN.server.repositories.database.backend import TKBENDatabase, get_database
+from server.repositories.database.backend import TKBENDatabase, get_database
 
 
 ###############################################################################

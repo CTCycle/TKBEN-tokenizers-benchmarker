@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from TKBEN.server.services.datasets import DatasetService
-from TKBEN.server.services.jobs import JobManager, JobProgressReporter, JobStopChecker
+from server.services.datasets import DatasetService
+from server.services.jobs import JobManager, JobProgressReporter, JobStopChecker
 
 
 ###############################################################################

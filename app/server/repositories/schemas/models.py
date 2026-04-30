@@ -12,7 +12,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import declarative_base, mapped_column, relationship
 
-from TKBEN.server.repositories.schemas.types import JSONMapping, JSONSequence
+from server.repositories.schemas.types import JSONMapping, JSONSequence
 
 Base = declarative_base()
 

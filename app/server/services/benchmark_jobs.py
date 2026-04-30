@@ -3,9 +3,9 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from TKBEN.server.domain.benchmarks import BenchmarkRunResponse
-from TKBEN.server.services.benchmarks import BenchmarkService
-from TKBEN.server.services.jobs import JobManager, JobProgressReporter, JobStopChecker
+from server.domain.benchmarks import BenchmarkRunResponse
+from server.services.benchmarks import BenchmarkService
+from server.services.jobs import JobManager, JobProgressReporter, JobStopChecker
 
 
 ###############################################################################

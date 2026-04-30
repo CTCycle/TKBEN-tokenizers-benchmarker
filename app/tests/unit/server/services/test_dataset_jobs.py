@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from TKBEN.server.services.dataset_jobs import DatasetJobService
+from server.services.dataset_jobs import DatasetJobService
 
 
 class DummyJobManager:
@@ -47,7 +47,7 @@ def test_run_download_job_returns_service_payload(monkeypatch) -> None:
                 "histogram": {"bins": ["1-2"], "counts": [2]},
             }
 
-    monkeypatch.setattr("TKBEN.server.services.dataset_jobs.DatasetService", FakeDatasetService)
+    monkeypatch.setattr("server.services.dataset_jobs.DatasetService", FakeDatasetService)
 
     result = service.run_download_job(
         request_payload={"corpus": "wikitext", "configs": {}},

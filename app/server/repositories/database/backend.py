@@ -7,12 +7,12 @@ from typing import Any, Protocol
 
 import pandas as pd
 
-from TKBEN.server.common.constants import DATABASE_FILENAME, RESOURCES_PATH
-from TKBEN.server.configurations import DatabaseSettings, get_server_settings
-from TKBEN.server.repositories.database.postgres import PostgresRepository
-from TKBEN.server.repositories.database.sqlite import SQLiteRepository
-from TKBEN.server.repositories.database.utils import normalize_sqlite_path
-from TKBEN.server.common.utils.logger import logger
+from server.common.constants import DATABASE_FILENAME, RESOURCES_PATH
+from server.configurations import DatabaseSettings, get_server_settings
+from server.repositories.database.postgres import PostgresRepository
+from server.repositories.database.sqlite import SQLiteRepository
+from server.repositories.database.utils import normalize_sqlite_path
+from server.common.utils.logger import logger
 
 
 ###############################################################################

@@ -4,7 +4,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
 
-from TKBEN.server.common.utils.security import contains_control_chars
+from server.common.utils.security import contains_control_chars
 
 
 ###############################################################################

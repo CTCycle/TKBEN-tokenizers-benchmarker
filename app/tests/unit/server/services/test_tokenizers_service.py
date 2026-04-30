@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from TKBEN.server.services.tokenizers import TokenizersService
+from server.services.tokenizers import TokenizersService
 
 
 class FakeTokenizerRepository:

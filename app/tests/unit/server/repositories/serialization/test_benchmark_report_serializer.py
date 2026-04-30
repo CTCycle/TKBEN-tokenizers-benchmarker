@@ -5,9 +5,9 @@ from datetime import datetime, timezone
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from TKBEN.server.repositories.database.backend import get_database
-from TKBEN.server.repositories.schemas.models import Base, Dataset
-from TKBEN.server.repositories.serialization.benchmark_reports import (
+from server.repositories.database.backend import get_database
+from server.repositories.schemas.models import Base, Dataset
+from server.repositories.serialization.benchmark_reports import (
     BenchmarkReportSerializer,
 )
 

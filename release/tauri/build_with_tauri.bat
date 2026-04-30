@@ -4,11 +4,11 @@ setlocal enabledelayedexpansion
 set "script_dir=%~dp0"
 for %%I in ("%script_dir%..\..") do set "repo_root=%%~fI"
 set "actual_repo_root=%repo_root%"
-set "actual_project_folder=%actual_repo_root%\TKBEN\"
+set "actual_project_folder=%actual_repo_root%\app\"
 set "actual_client_dir=%actual_project_folder%client"
 set "actual_runtime_python_exe=%actual_repo_root%\runtimes\python\python.exe"
 set "actual_runtime_uv_exe=%actual_repo_root%\runtimes\uv\uv.exe"
-set "actual_runtime_uv_lock=%actual_repo_root%\runtimes\uv.lock"
+set "actual_runtime_uv_lock=%actual_repo_root%\app\server\uv.lock"
 set "actual_runtime_node_dir=%actual_repo_root%\runtimes\nodejs"
 set "actual_node_cmd=%actual_runtime_node_dir%\node.exe"
 set "actual_npm_cmd=%actual_runtime_node_dir%\npm.cmd"
@@ -25,7 +25,7 @@ if errorlevel 1 (
 )
 
 set "repo_root=%short_drive%\"
-set "project_folder=%repo_root%TKBEN\"
+set "project_folder=%repo_root%app\"
 set "client_dir=%project_folder%client"
 set "tauri_dir=%client_dir%\src-tauri"
 set "bundle_source_dir=%tauri_dir%\r"
@@ -120,14 +120,21 @@ popd >nul
 
 echo [STEP 3/3] Building Tauri application
 pushd "%client_dir%" >nul
-echo [CMD] "%actual_npm_cmd%" run tauri:build:release
-call "%actual_npm_cmd%" run tauri:build:release
+echo [CMD] "%actual_npm_cmd%" run tauri:build -- --bundles msi
+call "%actual_npm_cmd%" run tauri:build -- --bundles msi
 if errorlevel 1 (
   popd >nul
   echo [FATAL] Tauri build failed.
   goto build_error
 )
 popd >nul
+
+echo [STEP] Exporting Tauri artifacts
+powershell -NoProfile -ExecutionPolicy Bypass -File "%actual_repo_root%\release\tauri\scripts\export-windows-artifacts.ps1"
+if errorlevel 1 (
+  echo [FATAL] Exporting Tauri artifacts failed.
+  goto build_error
+)
 
 call :cleanup_bundle_sources
 
@@ -153,7 +160,7 @@ if exist "%~1" (
   exit /b 0
 )
 echo [FATAL] Missing %~2 at "%~1"
-echo         Run TKBEN\start_on_windows.bat first to install the portable runtimes.
+echo         Run start_on_windows.bat first to install the portable runtimes.
 exit /b 1
 
 :prepare_bundle_sources
@@ -165,17 +172,17 @@ if errorlevel 1 (
   exit /b 1
 )
 
-copy /y "%repo_root%pyproject.toml" "%bundle_source_dir%\p.toml" >nul
+copy /y "%repo_root%app\server\pyproject.toml" "%bundle_source_dir%\p.toml" >nul
 if errorlevel 1 (
   echo [FATAL] Failed to stage pyproject.toml for Tauri bundling.
   exit /b 1
 )
-if not exist "%repo_root%runtimes\uv.lock" (
-  echo [FATAL] Missing runtime lockfile at "%repo_root%runtimes\uv.lock".
-  echo         Run TKBEN\start_on_windows.bat to generate runtimes\uv.lock before packaging.
+if not exist "%repo_root%app\server\uv.lock" (
+  echo [FATAL] Missing runtime lockfile at "%repo_root%app\server\uv.lock".
+  echo         Run start_on_windows.bat to generate app\server\uv.lock before packaging.
   exit /b 1
 )
-copy /y "%repo_root%runtimes\uv.lock" "%bundle_source_dir%\u.lock" >nul
+copy /y "%repo_root%app\server\uv.lock" "%bundle_source_dir%\u.lock" >nul
 if errorlevel 1 (
   echo [FATAL] Failed to stage runtime lockfile for Tauri bundling.
   exit /b 1
@@ -193,7 +200,7 @@ if exist "%project_folder%resources\database.db" (
 
 call :make_junction "%bundle_source_dir%\srv" "%project_folder%server" || exit /b 1
 call :make_junction "%bundle_source_dir%\sc" "%project_folder%scripts" || exit /b 1
-call :make_junction "%bundle_source_dir%\set" "%project_folder%settings" || exit /b 1
+call :make_junction "%bundle_source_dir%\set" "%repo_root%settings" || exit /b 1
 call :make_junction "%bundle_source_dir%\d" "%project_folder%client\dist" || exit /b 1
 call :make_junction "%bundle_source_dir%\tpl" "%project_folder%resources\templates" || exit /b 1
 call :make_junction "%bundle_source_dir%\src" "%project_folder%resources\sources" || exit /b 1

@@ -6,7 +6,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\..\.."))
-$clientDir = Join-Path $repoRoot "TKBEN\client"
+$clientDir = Join-Path $repoRoot "app\client"
 $releaseDir = Join-Path $clientDir "src-tauri\target\release"
 $bundleDir = Join-Path $releaseDir "bundle"
 
@@ -58,7 +58,7 @@ foreach ($file in $portableExeCandidates) {
 }
 
 $portableRequiredEntries = @(
-  "TKBEN",
+  "app",
   "pyproject.toml",
   "uv.lock",
   "runtimes"

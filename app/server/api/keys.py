@@ -4,7 +4,7 @@ import os
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from TKBEN.server.common.constants import (
+from server.common.constants import (
     API_ROUTE_KEYS_ACTIVATE,
     API_ROUTE_KEYS_CREATE,
     API_ROUTE_KEYS_DEACTIVATE,
@@ -13,8 +13,8 @@ from TKBEN.server.common.constants import (
     API_ROUTE_KEYS_REVEAL,
     API_ROUTER_PREFIX_KEYS,
 )
-from TKBEN.server.common.utils.types import coerce_bool
-from TKBEN.server.domain.keys import (
+from server.common.utils.types import coerce_bool
+from server.domain.keys import (
     HFAccessKeyActivateResponse,
     HFAccessKeyCreateRequest,
     HFAccessKeyDeleteResponse,
@@ -22,7 +22,7 @@ from TKBEN.server.domain.keys import (
     HFAccessKeyListResponse,
     HFAccessKeyRevealResponse,
 )
-from TKBEN.server.services.keys import (
+from server.services.keys import (
     HFAccessKeyConflictError,
     HFAccessKeyNotFoundError,
     HFAccessKeyService,

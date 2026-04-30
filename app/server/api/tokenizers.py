@@ -5,8 +5,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile, status
 
-from TKBEN.server.domain.jobs import JobStartResponse
-from TKBEN.server.domain.tokenizers import (
+from server.domain.jobs import JobStartResponse
+from server.domain.tokenizers import (
     CustomTokenizersDeleteResponse,
     TokenizerDownloadRequest,
     TokenizerListItem,
@@ -18,8 +18,8 @@ from TKBEN.server.domain.tokenizers import (
     TokenizerUploadResponse,
     TokenizerVocabularyPageResponse,
 )
-from TKBEN.server.configurations import get_server_settings
-from TKBEN.server.common.constants import (
+from server.configurations import get_server_settings
+from server.common.constants import (
     API_ROUTE_TOKENIZERS_CUSTOM,
     API_ROUTE_TOKENIZERS_DOWNLOAD,
     API_ROUTE_TOKENIZERS_LIST,
@@ -32,21 +32,21 @@ from TKBEN.server.common.constants import (
     API_ROUTE_TOKENIZERS_UPLOAD,
     API_ROUTER_PREFIX_TOKENIZERS,
 )
-from TKBEN.server.common.utils.logger import logger
-from TKBEN.server.common.utils.security import (
+from server.common.utils.logger import logger
+from server.common.utils.security import (
     normalize_identifier,
 )
-from TKBEN.server.api.helpers import (
+from server.api.helpers import (
     start_managed_job,
     validate_upload_filename,
     validate_upload_size,
 )
-from TKBEN.server.services.keys import (
+from server.services.keys import (
     HFAccessKeyService,
     HFAccessKeyValidationError,
 )
-from TKBEN.server.services.tokenizer_jobs import TokenizerJobService
-from TKBEN.server.services.tokenizers import TokenizersService
+from server.services.tokenizer_jobs import TokenizerJobService
+from server.services.tokenizers import TokenizersService
 
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_TOKENIZERS, tags=["tokenizers"])

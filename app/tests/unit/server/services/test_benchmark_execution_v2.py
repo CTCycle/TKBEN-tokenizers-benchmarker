@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-import TKBEN.server.services.benchmarks as benchmarks_module
-from TKBEN.server.domain.benchmarks import BenchmarkRunResponse
-from TKBEN.server.services.benchmarks import BenchmarkService
+import server.services.benchmarks as benchmarks_module
+from server.domain.benchmarks import BenchmarkRunResponse
+from server.services.benchmarks import BenchmarkService
 
 
 class DummyTokenizer:

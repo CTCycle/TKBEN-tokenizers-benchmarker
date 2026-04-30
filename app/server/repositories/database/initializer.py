@@ -5,11 +5,11 @@ import sqlalchemy
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql.elements import TextClause
 
-from TKBEN.server.configurations import DatabaseSettings, get_server_settings
-from TKBEN.server.repositories.database.postgres import PostgresRepository
-from TKBEN.server.repositories.database.sqlite import SQLiteRepository
-from TKBEN.server.repositories.schemas.models import Base
-from TKBEN.server.common.utils.logger import logger
+from server.configurations import DatabaseSettings, get_server_settings
+from server.repositories.database.postgres import PostgresRepository
+from server.repositories.database.sqlite import SQLiteRepository
+from server.repositories.schemas.models import Base
+from server.common.utils.logger import logger
 
 SUPPORTED_POSTGRES_ENGINE = "postgresql+psycopg"
 
