@@ -1,4 +1,4 @@
-from server.services.metrics.frequencies import DiskBackedFrequencyStore
+from server.repositories.frequencies import DiskBackedFrequencyStore
 
 
 def test_frequency_store_flush_batches_large_token_lookups() -> None:

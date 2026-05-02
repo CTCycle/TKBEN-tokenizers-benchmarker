@@ -116,18 +116,18 @@ Scan available tokenizer IDs, download selected tokenizers, optionally upload a 
 **Cross Benchmark (`/cross-benchmark`)**
 
 Create benchmark runs by selecting dataset, tokenizers, and metric categories, then compare persisted results across tokenizer candidates.
-### 3.5 Product Snapshots (Release 3.2.0)
+### 3.5 Product Snapshots (Release 3.3.0)
 
 The following snapshots were captured in local webapp mode with backend and frontend running:
 
-- Dataset workspace showing dataset preview and dashboard panels before loading a persisted validation report.
-![Dataset workspace](assets/figures/release-2026-04-dataset.png)
+- Dataset workspace showing available datasets, validation actions, and dashboard metric placeholders before loading a persisted report.
+![Dataset workspace](assets/figures/release-2026-05-dataset.png)
 
-- Tokenizers workspace showing tokenizer selection, preview list, and dashboard placeholders.
-![Tokenizers workspace](assets/figures/release-2026-04-tokenizers.png)
+- Tokenizers workspace showing selection controls, preview panel, and empty dashboard state before report loading.
+![Tokenizers workspace](assets/figures/release-2026-05-tokenizers.png)
 
-- Cross-benchmark dashboard with a loaded persisted report and metric comparison panels.
-![Cross-benchmark dashboard](assets/figures/release-2026-04-cross-benchmark.png)
+- Cross-benchmark workspace showing benchmark start controls and report selector in initial state.
+![Cross-benchmark dashboard](assets/figures/release-2026-05-cross-benchmark.png)
 
 ## 4. Setup and Maintenance
 
@@ -150,7 +150,7 @@ Key paths:
 - `app/resources/sources/tokenizers`: Tokenizer source/download artifacts.
 - `app/resources/logs`: Launcher and backend logs.
 - `runtimes`: Portable Windows runtimes.
-- `assets/docs/PACKAGING_AND_RUNTIME_MODES.md`: Runtime packaging and mode details.
+- `assets/docs/RUNTIME_MODES.md`: Runtime packaging and mode details.
 - `assets/docs/USER_MANUAL.md`: End-user journeys, commands, and feature usage.
 
 ## 6. Configuration

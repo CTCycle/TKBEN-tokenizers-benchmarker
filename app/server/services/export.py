@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from io import BytesIO
 import re
-from typing import Any, Literal
+from typing import Any, get_args
 
 import matplotlib
 
@@ -12,15 +12,14 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 from server.common.utils.security import contains_control_chars
+from server.domain.exports import DashboardType
 from server.services.dashboard_export_helpers import DashboardExportFormatting
 
-
-DashboardType = Literal["dataset", "tokenizer", "benchmark"]
 
 SAFE_FILE_CHARS_PATTERN = re.compile(r"[^A-Za-z0-9._ ()-]+")
 MAX_FILE_STEM_LENGTH = 120
 MAX_PDF_BYTES = 80 * 1024 * 1024
-ALLOWED_DASHBOARD_TYPES = {"dataset", "tokenizer", "benchmark"}
+ALLOWED_DASHBOARD_TYPES = set(get_args(DashboardType))
 
 PRIMARY_COLOR = "#facc15"
 SECONDARY_COLOR = "#38bdf8"

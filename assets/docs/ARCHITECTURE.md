@@ -1,12 +1,12 @@
 # ARCHITECTURE
-Last updated: 2026-04-27
+Last updated: 2026-05-01
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
-- FastAPI backend (`TKBEN/server`)
-- React + Vite frontend (`TKBEN/client`)
-- Optional Tauri desktop packaging (`TKBEN/client/src-tauri`)
-- Shared local resources and settings (`TKBEN/resources`, `TKBEN/settings`)
+- FastAPI backend (`app/server`)
+- React + Vite frontend (`app/client`)
+- Optional Tauri desktop packaging (`app/client/src-tauri`)
+- Shared local resources and settings (`app/resources`, `settings`)
 
 Backend APIs are mounted under `/api/*`. Frontend calls `/api` and relies on Vite proxy in dev/preview.
 
@@ -22,9 +22,13 @@ Source-level structure (generated folders like `node_modules`, `dist`, caches om
 ├─ assets/
 │  ├─ docs/
 │  └─ figures/
-├─ TKBEN/
-│  ├─ start_on_windows.bat
-│  ├─ setup_and_maintenance.bat
+├─ start_on_windows.bat
+├─ setup_and_maintenance.bat
+├─ settings/
+│  ├─ .env
+│  ├─ .env.example
+│  └─ configurations.json
+├─ app/
 │  ├─ client/
 │  │  ├─ package.json
 │  │  ├─ vite.config.ts
@@ -54,14 +58,11 @@ Source-level structure (generated folders like `node_modules`, `dist`, caches om
 │  │  ├─ repositories/
 │  │  │  ├─ database/
 │  │  │  ├─ schemas/
-│  │  │  └─ serialization/
+│  │  │  ├─ serialization/
+│  │  │  └─ frequencies.py
 │  │  └─ common/
 │  ├─ scripts/
 │  │  └─ initialize_database.py
-│  ├─ settings/
-│  │  ├─ .env
-│  │  ├─ .env.example
-│  │  └─ configurations.json
 │  └─ resources/
 │     ├─ database.db
 │     ├─ logs/
@@ -81,16 +82,17 @@ Source-level structure (generated folders like `node_modules`, `dist`, caches om
 
 ## Application Entry Points
 - Backend app factory/module:
-  - `TKBEN.server.app:create_app` constructs the FastAPI app and registers API/frontend routes.
-  - `TKBEN.server.app:app` remains the ASGI entry point in [app.py](/G:/Projects/Repositories/Active%20projects/TKBEN%20Benchmarker/TKBEN/server/app.py).
+  - `server.app:create_app` constructs the FastAPI app and registers API/frontend routes when running from `app/`.
+  - `app.server.app:create_app` is used by launchers that run from the repository root.
+  - `server.app:app` and `app.server.app:app` remain ASGI entry points depending on working directory and `PYTHONPATH`.
 - Frontend entry:
-  - [main.tsx](/G:/Projects/Repositories/Active%20projects/TKBEN%20Benchmarker/TKBEN/client/src/main.tsx)
+  - `app/client/src/main.tsx`
 - Frontend routing root:
-  - [App.tsx](/G:/Projects/Repositories/Active%20projects/TKBEN%20Benchmarker/TKBEN/client/src/App.tsx)
+  - `app/client/src/App.tsx`
 - Desktop runtime entry:
-  - [main.rs](/G:/Projects/Repositories/Active%20projects/TKBEN%20Benchmarker/TKBEN/client/src-tauri/src/main.rs)
+  - `app/client/src-tauri/src/main.rs`
 - Windows local launcher:
-  - [start_on_windows.bat](/G:/Projects/Repositories/Active%20projects/TKBEN%20Benchmarker/TKBEN/start_on_windows.bat)
+  - `start_on_windows.bat`
 
 ## Backend API Endpoints
 All routers are included with `prefix="/api"` in backend app startup.
@@ -165,6 +167,7 @@ Examples:
 - `server/repositories/schemas/*`: SQLAlchemy models and types.
 - `server/repositories/serialization/*`: Persistence serialization and report materialization.
   - `repositories/serialization/benchmark_reports.py`: benchmark report persistence serialization and Pydantic response normalization.
+- `server/repositories/frequencies.py`: temporary SQLite-backed frequency persistence used by metrics services for large vocabularies.
 - `server/common/*`: constants, logging, type/util/security helpers.
 
 Frontend structure:
@@ -177,13 +180,13 @@ Frontend structure:
 
 ## Data Persistence
 - Default embedded persistence:
-  - SQLite file: `TKBEN/resources/database.db`
+  - SQLite file: `app/resources/database.db`
 - Optional external persistence:
   - PostgreSQL via `postgresql+psycopg` when `embedded_database=false` in `settings/configurations.json`
 - Non-DB persisted artifacts:
-  - `TKBEN/resources/sources/datasets` (download caches/uploads)
-  - `TKBEN/resources/sources/tokenizers` (tokenizer caches/custom uploads)
-  - `TKBEN/resources/logs` (runtime logs)
+  - `app/resources/sources/datasets` (download caches/uploads)
+  - `app/resources/sources/tokenizers` (tokenizer caches/custom uploads)
+  - `app/resources/logs` (runtime logs)
 
 ## Async vs Sync Behavior
 - FastAPI endpoints are mostly `async def`.
