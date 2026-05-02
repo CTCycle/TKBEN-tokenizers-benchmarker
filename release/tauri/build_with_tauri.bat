@@ -119,6 +119,10 @@ if errorlevel 1 (
 popd >nul
 
 echo [STEP 3/3] Building Tauri application
+if not exist "%bundle_source_dir%\d" (
+  echo [WARN] Missing dist junction at "%bundle_source_dir%\d". Recreating...
+  call :make_junction "%bundle_source_dir%\d" "%project_folder%client\dist" || goto build_error
+)
 pushd "%client_dir%" >nul
 echo [CMD] "%actual_npm_cmd%" run tauri:build -- --bundles msi
 call "%actual_npm_cmd%" run tauri:build -- --bundles msi
@@ -202,7 +206,15 @@ call :make_junction "%bundle_source_dir%\srv" "%project_folder%server" || exit /
 call :make_junction "%bundle_source_dir%\sc" "%project_folder%scripts" || exit /b 1
 call :make_junction "%bundle_source_dir%\set" "%repo_root%settings" || exit /b 1
 call :make_junction "%bundle_source_dir%\d" "%project_folder%client\dist" || exit /b 1
-call :make_junction "%bundle_source_dir%\tpl" "%project_folder%resources\templates" || exit /b 1
+if exist "%project_folder%resources\templates" (
+  call :make_junction "%bundle_source_dir%\tpl" "%project_folder%resources\templates" || exit /b 1
+) else (
+  md "%bundle_source_dir%\tpl" >nul 2>&1
+  if errorlevel 1 (
+    echo [FATAL] Failed to create placeholder templates directory at "%bundle_source_dir%\tpl".
+    exit /b 1
+  )
+)
 call :make_junction "%bundle_source_dir%\src" "%project_folder%resources\sources" || exit /b 1
 call :make_junction "%bundle_source_dir%\py" "%repo_root%runtimes\python" || exit /b 1
 call :make_junction "%bundle_source_dir%\uv" "%repo_root%runtimes\uv" || exit /b 1
