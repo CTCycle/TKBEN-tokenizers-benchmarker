@@ -9,8 +9,8 @@ from collections import Counter, deque
 from dataclasses import dataclass
 from typing import Any
 
+from server.repositories.frequencies import DiskBackedFrequencyStore
 from server.services.metrics.duplicates import SimHashNearDuplicateAnalyzer
-from server.services.metrics.frequencies import DiskBackedFrequencyStore
 
 URL_PATTERN = re.compile(r"https?://\S+|www\.\S+", re.IGNORECASE)
 EMAIL_PATTERN = re.compile(r"[\w\.-]+@[\w\.-]+\.\w+")

@@ -5,7 +5,6 @@ from server.services.metrics.catalog import (
 )
 from server.services.metrics.engine import DatasetMetricsEngine
 from server.services.metrics.duplicates import SimHashNearDuplicateAnalyzer
-from server.services.metrics.frequencies import DiskBackedFrequencyStore
 
 __all__ = [
     "DATASET_METRIC_CATALOG",
@@ -13,5 +12,4 @@ __all__ = [
     "flatten_metric_keys",
     "DatasetMetricsEngine",
     "SimHashNearDuplicateAnalyzer",
-    "DiskBackedFrequencyStore",
 ]
