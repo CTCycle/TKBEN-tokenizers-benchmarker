@@ -1,5 +1,5 @@
 # ARCHITECTURE
-Last updated: 2026-05-01
+Last updated: 2026-05-03
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
@@ -15,7 +15,6 @@ Source-level structure (generated folders like `node_modules`, `dist`, caches om
 
 ```text
 .
-├─ pyproject.toml
 ├─ runtimes/
 │  ├─ .venv/                # Runtime virtualenv used by scripts
 │  └─ uv.lock               # Runtime lockfile used by launcher/packaging
@@ -50,6 +49,7 @@ Source-level structure (generated folders like `node_modules`, `dist`, caches om
 │  │     ├─ tauri.conf.json
 │  │     └─ src/main.rs
 │  ├─ server/
+│  │  ├─ pyproject.toml
 │  │  ├─ app.py
 │  │  ├─ api/
 │  │  ├─ configurations/
@@ -63,6 +63,11 @@ Source-level structure (generated folders like `node_modules`, `dist`, caches om
 │  │  └─ common/
 │  ├─ scripts/
 │  │  └─ initialize_database.py
+│  ├─ tests/
+│  │  ├─ run_tests.bat
+│  │  ├─ conftest.py
+│  │  ├─ unit/
+│  │  └─ e2e/
 │  └─ resources/
 │     ├─ database.db
 │     ├─ logs/
@@ -73,11 +78,6 @@ Source-level structure (generated folders like `node_modules`, `dist`, caches om
 │  │  ├─ build_with_tauri.bat
 │  │  └─ scripts/
 │  └─ windows/
-└─ tests/
-   ├─ run_tests.bat
-   ├─ conftest.py
-   ├─ unit/
-   └─ e2e/
 ```
 
 ## Application Entry Points

@@ -60,8 +60,8 @@ async def run_benchmarks(
     )
 
     service = BenchmarkService(max_documents=payload.config.max_documents)
-    custom_tokenizers = service.resolve_custom_tokenizer_selection(
-        payload.custom_tokenizer_name
+    custom_tokenizers = await asyncio.to_thread(
+        service.resolve_custom_tokenizer_selection, payload.custom_tokenizer_name
     )
 
     job_manager = request.app.state.job_manager
@@ -71,7 +71,10 @@ async def run_benchmarks(
             detail="Benchmark run is already in progress.",
         )
 
-    doc_count = service.get_dataset_document_count(payload.dataset_name)
+    doc_count = await asyncio.to_thread(
+        service.get_dataset_document_count,
+        payload.dataset_name,
+    )
     if doc_count == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -79,7 +82,10 @@ async def run_benchmarks(
         )
 
     try:
-        missing_tokenizers = service.get_missing_persisted_tokenizers(payload.tokenizers)
+        missing_tokenizers = await asyncio.to_thread(
+            service.get_missing_persisted_tokenizers,
+            payload.tokenizers,
+        )
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
