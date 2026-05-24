@@ -654,7 +654,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
 
   const selectDatasetAndLoadReport = (targetDataset: string) => {
     handleSelectDataset(targetDataset);
-    void handleLoadLatestDatasetReport(targetDataset);
+    void handleLoadLatestDatasetReport(targetDataset, { suppressNotFoundError: true });
   };
 
   const runValidationFromWizard = async (requestOverrides: Partial<DatasetAnalysisRequest>) => {
