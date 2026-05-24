@@ -652,6 +652,11 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
     setWizardOpen(true);
   };
 
+  const selectDatasetAndLoadReport = (targetDataset: string) => {
+    handleSelectDataset(targetDataset);
+    void handleLoadLatestDatasetReport(targetDataset);
+  };
+
   const runValidationFromWizard = async (requestOverrides: Partial<DatasetAnalysisRequest>) => {
     const targetDataset = wizardDatasetName ?? datasetName;
     if (!targetDataset) {
@@ -749,11 +754,17 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                           tabIndex={0}
                           aria-pressed={isSelectedDataset}
                           className={`dataset-preview-row${isSelectedDataset ? ' selected' : ''}`}
-                          onClick={() => handleSelectDataset(dataset.dataset_name)}
+                          onClick={() => {
+                            if (!isValidating && !isLoadingReport && !isRemoving) {
+                              selectDatasetAndLoadReport(dataset.dataset_name);
+                            }
+                          }}
                           onKeyDown={(event) => {
                             if (event.key === 'Enter' || event.key === ' ') {
                               event.preventDefault();
-                              handleSelectDataset(dataset.dataset_name);
+                              if (!isValidating && !isLoadingReport && !isRemoving) {
+                                selectDatasetAndLoadReport(dataset.dataset_name);
+                              }
                             }
                           }}
                         >
