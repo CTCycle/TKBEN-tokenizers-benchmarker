@@ -4,7 +4,42 @@ Targets datasets, tokenizers, and cross benchmark workflows.
 """
 
 import re
+from urllib.parse import quote
+from uuid import uuid4
+
 from playwright.sync_api import Page, expect
+from playwright.sync_api import APIRequestContext
+
+
+def _upload_dataset_for_ui_test(
+    api_context: APIRequestContext,
+    job_waiter,
+    stem: str,
+) -> str:
+    filename = f"{stem}.csv"
+    dataset_name = f"custom/{stem}"
+    csv_content = "text\nhello world\nqa row\n"
+    response = api_context.post(
+        "/api/datasets/upload",
+        multipart={
+            "file": {
+                "name": filename,
+                "mimeType": "text/csv",
+                "buffer": csv_content.encode("utf-8"),
+            }
+        },
+    )
+    assert response.ok, f"Dataset upload failed: {response.status} {response.text()}"
+    job = response.json()
+    job_id = job.get("job_id")
+    assert job_id, "Missing job_id in upload response"
+    job_status = job_waiter(
+        job_id,
+        poll_interval=job.get("poll_interval", 1.0),
+        timeout_seconds=300.0,
+    )
+    assert job_status.get("status") == "completed", job_status.get("error")
+    return dataset_name
 
 
 class TestAppShell:
@@ -40,6 +75,103 @@ class TestDatasetPage:
         expect(page.get_by_text("Dataset Usage")).to_be_visible()
         expect(page.get_by_text("Dataset Preview")).to_be_visible()
         expect(page.get_by_role("button", name="Add dataset")).to_be_visible()
+
+    def test_row_click_loads_latest_report_for_selected_dataset(
+        self,
+        page: Page,
+        base_url: str,
+        api_context: APIRequestContext,
+        job_waiter,
+    ) -> None:
+        """Clicking a dataset row should fetch latest report and update dashboard state."""
+        with_report = f"qa_row_report_{uuid4().hex[:8]}"
+        without_report = f"qa_row_noreport_{uuid4().hex[:8]}"
+        with_report_dataset = _upload_dataset_for_ui_test(
+            api_context=api_context,
+            job_waiter=job_waiter,
+            stem=with_report,
+        )
+        without_report_dataset = _upload_dataset_for_ui_test(
+            api_context=api_context,
+            job_waiter=job_waiter,
+            stem=without_report,
+        )
+
+        analyze_response = api_context.post(
+            "/api/datasets/analyze",
+            data={"dataset_name": with_report_dataset},
+        )
+        assert analyze_response.ok, (
+            f"Analyze request failed: {analyze_response.status} {analyze_response.text()}"
+        )
+        analyze_job = analyze_response.json()
+        analyze_job_id = analyze_job.get("job_id")
+        assert analyze_job_id, "Missing job_id in analyze response"
+        analyze_status = job_waiter(
+            analyze_job_id,
+            poll_interval=analyze_job.get("poll_interval", 1.0),
+            timeout_seconds=300.0,
+        )
+        assert analyze_status.get("status") == "completed", analyze_status.get("error")
+
+        page.goto(f"{base_url}/dataset")
+        no_report_row = page.locator(".dataset-preview-row").filter(
+            has_text=without_report_dataset
+        ).first
+        with_report_row = page.locator(".dataset-preview-row").filter(
+            has_text=with_report_dataset
+        ).first
+
+        no_report_encoded = quote(without_report_dataset, safe="")
+        with page.expect_response(
+            lambda response: "/api/datasets/reports/latest" in response.url
+            and f"dataset_name={no_report_encoded}" in response.url
+        ):
+            no_report_row.click(position={"x": 20, "y": 20})
+        expect(
+            page.locator(".dashboard-panel .panel-description").first
+        ).to_contain_text("Load a saved report or run validation")
+
+        with_report_encoded = quote(with_report_dataset, safe="")
+        with page.expect_response(
+            lambda response: "/api/datasets/reports/latest" in response.url
+            and f"dataset_name={with_report_encoded}" in response.url
+        ):
+            with_report_row.click(position={"x": 20, "y": 20})
+        expect(
+            page.locator(".dashboard-panel .panel-description").first
+        ).to_contain_text(f"Latest persisted session for {with_report_dataset}")
+
+    def test_row_click_suppresses_not_found_banner_but_explicit_load_keeps_it(
+        self,
+        page: Page,
+        base_url: str,
+        api_context: APIRequestContext,
+        job_waiter,
+    ) -> None:
+        """
+        Selecting a dataset row with no report should not show a not-found banner,
+        while explicit load action should still show it.
+        """
+        without_report = f"qa_row_noreport_only_{uuid4().hex[:8]}"
+        without_report_dataset = _upload_dataset_for_ui_test(
+            api_context=api_context,
+            job_waiter=job_waiter,
+            stem=without_report,
+        )
+
+        page.goto(f"{base_url}/dataset")
+        row = page.locator(".dataset-preview-row").filter(
+            has_text=without_report_dataset
+        ).first
+
+        row.click(position={"x": 20, "y": 20})
+        expect(page.locator(".dismissible-banner,[role='alert']")).to_have_count(0)
+
+        row.locator("button[aria-label='Load latest saved report']").click()
+        expect(page.locator(".dismissible-banner,[role='alert']")).to_contain_text(
+            "No validation report found"
+        )
 
 
 class TestTokenizersPage:
