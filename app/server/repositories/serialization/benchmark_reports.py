@@ -6,6 +6,7 @@ from typing import Any
 import pandas as pd
 
 from server.domain.benchmarks import BenchmarkReportSummary, BenchmarkRunResponse
+from server.common.utils.logger import logger
 from server.repositories.benchmarks import BenchmarkRepository
 from server.repositories.queries.data import DataRepositoryQueries
 from server.repositories.schemas.models import BenchmarkReport
@@ -124,7 +125,14 @@ class BenchmarkReportSerializer:
                 "payload": report_row.payload,
                 "dataset_name": dataset_name,
             }
-            normalized = self._normalize_report_row(row)
+            try:
+                normalized = self._normalize_report_row(row)
+            except ValueError:
+                logger.warning(
+                    "Skipping incompatible benchmark report row id=%s",
+                    report_row.id,
+                )
+                continue
             summaries.append(
                 BenchmarkReportSummary.model_validate(normalized).model_dump(mode="json")
             )
@@ -146,4 +154,11 @@ class BenchmarkReportSerializer:
             "payload": report_row.payload,
             "dataset_name": dataset_name,
         }
-        return self._normalize_report_row(mapped)
+        try:
+            return self._normalize_report_row(mapped)
+        except ValueError:
+            logger.warning(
+                "Benchmark report id=%s is incompatible with current schema",
+                report_id,
+            )
+            return None
