@@ -45,6 +45,12 @@ const BenchmarkRunWizard = ({
   const [seed, setSeed] = useState(42);
   const [parallelism, setParallelism] = useState(1);
   const [includeLmMetrics, setIncludeLmMetrics] = useState(false);
+  const [addSpecialTokens, setAddSpecialTokens] = useState(false);
+  const [padding, setPadding] = useState(false);
+  const [truncation, setTruncation] = useState(false);
+  const [maxLength, setMaxLength] = useState<number | null>(null);
+  const [storePerDocumentStats, setStorePerDocumentStats] = useState(true);
+  const [perDocumentSampleSize, setPerDocumentSampleSize] = useState(500);
   const [tokenizerQuery, setTokenizerQuery] = useState('');
 
   const {
@@ -75,6 +81,12 @@ const BenchmarkRunWizard = ({
     setSeed(42);
     setParallelism(1);
     setIncludeLmMetrics(false);
+    setAddSpecialTokens(false);
+    setPadding(false);
+    setTruncation(false);
+    setMaxLength(null);
+    setStorePerDocumentStats(true);
+    setPerDocumentSampleSize(500);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [availableDatasets, defaultDatasetName, defaultMaxDocuments, isOpen, resetSelectionToAll]);
 
@@ -105,6 +117,12 @@ const BenchmarkRunWizard = ({
         seed: Math.floor(seed),
         parallelism: clamp(Math.floor(parallelism), 1, 128),
         include_lm_metrics: includeLmMetrics,
+        add_special_tokens: addSpecialTokens,
+        padding,
+        truncation,
+        max_length: maxLength,
+        store_per_document_stats: storePerDocumentStats,
+        per_document_sample_size: clamp(Math.floor(perDocumentSampleSize), 1, 10000),
       },
       run_name: runName.trim(),
       selected_metric_keys: selectedMetricKeys,
@@ -288,6 +306,12 @@ const BenchmarkRunWizard = ({
               <p className="panel-description">seed: <strong>{Math.floor(seed)}</strong></p>
               <p className="panel-description">parallelism: <strong>{clamp(Math.floor(parallelism), 1, 128)}</strong></p>
               <p className="panel-description">lm_metrics: <strong>{includeLmMetrics ? 'enabled' : 'disabled'}</strong></p>
+              <p className="panel-description">add_special_tokens: <strong>{addSpecialTokens ? 'enabled' : 'disabled'}</strong></p>
+              <p className="panel-description">padding: <strong>{padding ? 'enabled' : 'disabled'}</strong></p>
+              <p className="panel-description">truncation: <strong>{truncation ? 'enabled' : 'disabled'}</strong></p>
+              <p className="panel-description">max_length: <strong>{maxLength ?? 'none'}</strong></p>
+              <p className="panel-description">store_per_document_stats: <strong>{storePerDocumentStats ? 'enabled' : 'disabled'}</strong></p>
+              <p className="panel-description">per_document_sample_size: <strong>{clamp(Math.floor(perDocumentSampleSize), 1, 10000)}</strong></p>
               <div className="benchmark-wizard-tokenizer-summary-wrap">
                 <p className="panel-description">tokenizers_processed:</p>
                 <ul className="benchmark-wizard-tokenizer-summary">
@@ -328,6 +352,59 @@ const BenchmarkRunWizard = ({
                   <input type="checkbox" checked={includeLmMetrics} onChange={(event) => setIncludeLmMetrics(event.target.checked)} />
                   <span>Enable LM-backed metrics</span>
                 </label>
+                <label className="checkbox">
+                  <input type="checkbox" checked={addSpecialTokens} onChange={(event) => setAddSpecialTokens(event.target.checked)} />
+                  <span>Add special tokens</span>
+                </label>
+                <label className="checkbox">
+                  <input type="checkbox" checked={padding} onChange={(event) => setPadding(event.target.checked)} />
+                  <span>Enable padding</span>
+                </label>
+                <label className="checkbox">
+                  <input type="checkbox" checked={truncation} onChange={(event) => setTruncation(event.target.checked)} />
+                  <span>Enable truncation</span>
+                </label>
+                <div className="input-stack">
+                  <label className="field-label" htmlFor="benchmark-wizard-max-length">Max length (optional)</label>
+                  <input
+                    id="benchmark-wizard-max-length"
+                    className="text-input"
+                    type="number"
+                    min={1}
+                    value={maxLength ?? ''}
+                    onChange={(event) => {
+                      const value = event.target.value.trim();
+                      if (!value) {
+                        setMaxLength(null);
+                        return;
+                      }
+                      setMaxLength(Math.max(1, Math.floor(Number(value) || 1)));
+                    }}
+                    placeholder="none"
+                  />
+                </div>
+                <label className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={storePerDocumentStats}
+                    onChange={(event) => setStorePerDocumentStats(event.target.checked)}
+                  />
+                  <span>Store per-document stats</span>
+                </label>
+                <div className="input-stack">
+                  <label className="field-label" htmlFor="benchmark-wizard-per-doc-sample">
+                    Per-document sample size
+                  </label>
+                  <input
+                    id="benchmark-wizard-per-doc-sample"
+                    className="text-input"
+                    type="number"
+                    min={1}
+                    max={10000}
+                    value={perDocumentSampleSize}
+                    onChange={(event) => setPerDocumentSampleSize(Number(event.target.value) || 1)}
+                  />
+                </div>
               </div>
             </div>
           )}

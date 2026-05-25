@@ -8,6 +8,7 @@ from typing import Any, Protocol, Sequence
 class EncodedBatch:
     token_counts: list[int]
     unknown_counts: list[int | None]
+    input_ids_by_doc: list[list[int]]
 
 
 class TokenizerAdapter(Protocol):
@@ -51,22 +52,33 @@ class UniversalTokenizerAdapter:
                 max_length=max_length,
             )
             input_ids = encoded["input_ids"] if isinstance(encoded, dict) else []
-            token_counts = [len(ids) for ids in input_ids]
+            normalized_ids = [[int(value) for value in ids] for ids in input_ids]
+            token_counts = [len(ids) for ids in normalized_ids]
             unknown_counts = [
                 (None if unk_id is None else sum(1 for value in ids if value == unk_id))
-                for ids in input_ids
+                for ids in normalized_ids
             ]
-            return EncodedBatch(token_counts=token_counts, unknown_counts=unknown_counts)
+            return EncodedBatch(
+                token_counts=token_counts,
+                unknown_counts=unknown_counts,
+                input_ids_by_doc=normalized_ids,
+            )
 
         token_counts: list[int] = []
         unknown_counts: list[int | None] = []
+        input_ids_by_doc: list[list[int]] = []
         for text in as_list:
             ids = self._tokenizer.encode(text)
             ids_list = [int(value) for value in ids]
+            input_ids_by_doc.append(ids_list)
             token_counts.append(len(ids_list))
             if unk_id is None:
                 unknown_counts.append(None)
             else:
                 unknown_counts.append(sum(1 for value in ids_list if value == unk_id))
 
-        return EncodedBatch(token_counts=token_counts, unknown_counts=unknown_counts)
+        return EncodedBatch(
+            token_counts=token_counts,
+            unknown_counts=unknown_counts,
+            input_ids_by_doc=input_ids_by_doc,
+        )

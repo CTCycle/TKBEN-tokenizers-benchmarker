@@ -3,7 +3,7 @@ from __future__ import annotations
 import gc
 import statistics
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 
 import numpy as np
 import psutil
@@ -31,10 +31,11 @@ def ci95_bounds(values: list[float]) -> tuple[float, float]:
 def run_tokenizer_trials(
     *,
     tokenizer: TokenizerAdapter,
-    text_batches_factory: Callable[[], list[list[str]]],
+    text_batches_factory: Callable[[], Iterable[list[str]]],
     config: TokenizerRunConfig,
     warmup_trials: int,
     timed_trials: int,
+    should_stop: Callable[[], bool] | None = None,
 ) -> list[BatchObservation]:
     if warmup_trials < 0:
         raise ValueError("warmup_trials must be non-negative")
@@ -44,7 +45,11 @@ def run_tokenizer_trials(
         raise ValueError("batch_size must be positive")
 
     for _ in range(warmup_trials):
+        if should_stop and should_stop():
+            return []
         for texts in text_batches_factory():
+            if should_stop and should_stop():
+                return []
             tokenizer.encode_batch(
                 texts,
                 add_special_tokens=config.add_special_tokens,
@@ -55,8 +60,12 @@ def run_tokenizer_trials(
 
     observations: list[BatchObservation] = []
     for trial_index in range(timed_trials):
+        if should_stop and should_stop():
+            break
         gc.collect()
         for batch_index, texts in enumerate(text_batches_factory()):
+            if should_stop and should_stop():
+                break
             input_bytes = sum(len(text.encode("utf-8")) for text in texts)
             process = psutil.Process()
             rss_before = process.memory_info().rss
