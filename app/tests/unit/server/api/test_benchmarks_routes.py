@@ -71,6 +71,8 @@ def test_benchmark_list_and_by_id(monkeypatch) -> None:
         "load_benchmark_report_by_id",
         lambda self, report_id: {
             "status": "success",
+            "schema_version": 1,
+            "methodology_version": "v1_observed_trials",
             "report_id": report_id,
             "report_version": 2,
             "created_at": "2026-01-01T00:00:00Z",
@@ -99,6 +101,8 @@ def test_benchmark_list_and_by_id(monkeypatch) -> None:
                 "latency_or_memory_distribution": [],
             },
             "per_document_stats": [],
+            "runtime_metadata": {},
+            "raw_observations": {},
         },
     )
 

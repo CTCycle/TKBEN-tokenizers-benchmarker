@@ -71,7 +71,7 @@ class BenchmarkReportSerializer:
     def _normalize_report_row(self, row: dict[str, Any]) -> dict[str, Any]:
         payload = self._parse_json(row.get("payload"), {})
         if not isinstance(payload, dict):
-            payload = {}
+            raise ValueError("Benchmark report payload must be a JSON object.")
         created_at = pd.to_datetime(row.get("created_at"), utc=True, errors="coerce")
         created_at_iso = (
             created_at.isoformat().replace("+00:00", "Z")
@@ -90,12 +90,12 @@ class BenchmarkReportSerializer:
         ]
 
         normalized_payload = dict(payload)
-        normalized_payload["report_id"] = int(
-            row.get("id") or normalized_payload.get("report_id") or 0
-        )
-        normalized_payload["report_version"] = int(
-            row.get("report_version") or normalized_payload.get("report_version") or 2
-        )
+        if "schema_version" not in normalized_payload:
+            raise ValueError("Benchmark report is missing required schema_version.")
+        if "methodology_version" not in normalized_payload:
+            raise ValueError("Benchmark report is missing required methodology_version.")
+        normalized_payload["report_id"] = int(row.get("id") or normalized_payload.get("report_id") or 0)
+        normalized_payload["report_version"] = int(row.get("report_version") or normalized_payload.get("report_version") or 2)
         normalized_payload["created_at"] = created_at_iso
         normalized_payload["run_name"] = row.get("run_name") or normalized_payload.get(
             "run_name"

@@ -522,6 +522,8 @@ export interface TokenizerVocabularyPageResponse {
  */
 export interface BenchmarkRunResponse {
     status: string;
+    schema_version: number;
+    methodology_version: string;
     report_id: number | null;
     report_version: number;
     created_at: string | null;
@@ -537,6 +539,8 @@ export interface BenchmarkRunResponse {
     tokenizer_results: BenchmarkTokenizerResult[];
     chart_data: BenchmarkChartDataV2;
     per_document_stats: BenchmarkPerDocumentTokenizerStats[];
+    runtime_metadata: Record<string, unknown>;
+    raw_observations: Record<string, Array<Record<string, unknown>>>;
 }
 
 export type DashboardType = 'dataset' | 'tokenizer' | 'benchmark';

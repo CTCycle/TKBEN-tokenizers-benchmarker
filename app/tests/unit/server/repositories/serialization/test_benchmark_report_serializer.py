@@ -15,6 +15,8 @@ from server.repositories.serialization.benchmark_reports import (
 def _build_payload(dataset_name: str) -> dict:
     return {
         "status": "success",
+        "schema_version": 1,
+        "methodology_version": "v1_observed_trials",
         "report_version": 2,
         "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "run_name": "serializer test",
@@ -49,6 +51,8 @@ def _build_payload(dataset_name: str) -> dict:
             "latency_or_memory_distribution": [],
         },
         "per_document_stats": [],
+        "runtime_metadata": {"python_version": "x"},
+        "raw_observations": {},
     }
 
 

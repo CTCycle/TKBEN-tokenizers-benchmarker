@@ -468,10 +468,7 @@ BENCHMARK_METRIC_CATALOG: list[dict[str, Any]] = [
     {
         "category_key": "resources",
         "category_label": "Resource Usage",
-        "metrics": [
-            {"key": "res.peak_rss_mb", "label": "Peak RSS (MB)", "description": "Peak resident set size during benchmark.", "scope": "tokenizer_global", "value_kind": "number", "core": True},
-            {"key": "res.memory_delta_mb", "label": "Memory delta (MB)", "description": "Memory delta between baseline and peak.", "scope": "tokenizer_global", "value_kind": "number", "core": True},
-        ],
+        "metrics": [],
     },
 ]
 

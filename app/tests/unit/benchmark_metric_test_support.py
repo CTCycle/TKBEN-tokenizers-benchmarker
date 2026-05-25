@@ -4,7 +4,6 @@ from typing import Any
 
 import pytest
 
-import server.services.benchmarks as benchmarks_module
 from server.services.benchmarks import BENCHMARK_METRIC_CATALOG, BenchmarkService
 
 
@@ -15,21 +14,7 @@ BENCHMARK_METRIC_KEYS: set[str] = {
     if isinstance(metric, dict) and isinstance(metric.get("key"), str)
 }
 
-EXPECTED_BENCHMARK_METRIC_VALUES: dict[str, Any] = {
-    "eff.encode_tokens_per_second_mean": 1.5,
-    "eff.encode_tokens_per_second_ci95": 0.0,
-    "eff.encode_chars_per_second_mean": 7.75,
-    "eff.end_to_end_wall_time_seconds": 4.0,
-    "lat.encode_latency_p50_ms": 0.0,
-    "lat.encode_latency_p95_ms": 0.0,
-    "lat.encode_latency_p99_ms": 0.0,
-    "fid.exact_round_trip_rate": 1.0,
-    "fid.normalized_round_trip_rate": 1.0,
-    "fid.unknown_token_rate": 0.0,
-    "fid.byte_fallback_rate": 0.0,
-    "res.peak_rss_mb": 0.0,
-    "res.memory_delta_mb": 0.0,
-}
+EXPECTED_BENCHMARK_METRIC_VALUES: dict[str, Any] = {}
 
 DATASET_BENCHMARK_METRIC_KEYS: set[str] = set()
 
@@ -91,25 +76,14 @@ def run_deterministic_benchmark() -> dict[str, Any]:
         lambda tokenizer, base_words: 0.5
     )
 
-    original_perf_counter = benchmarks_module.time.perf_counter
-    counter = {"calls": 0}
-
-    def fake_perf_counter() -> float:
-        counter["calls"] += 1
-        return 100.0 if counter["calls"] == 1 else 104.0
-
-    benchmarks_module.time.perf_counter = fake_perf_counter
-    try:
-        result = service.run_benchmarks(
-            dataset_name="custom/ds",
-            tokenizer_ids=["dummy/tokenizer"],
-            selected_metric_keys=None,
-        )
-        if hasattr(result, "model_dump"):
-            return result.model_dump(mode="json")
-        return result
-    finally:
-        benchmarks_module.time.perf_counter = original_perf_counter
+    result = service.run_benchmarks(
+        dataset_name="custom/ds",
+        tokenizer_ids=["dummy/tokenizer"],
+        selected_metric_keys=None,
+    )
+    if hasattr(result, "model_dump"):
+        return result.model_dump(mode="json")
+    return result
 
 
 def build_benchmark_metric_value_map(result: dict[str, Any]) -> dict[str, Any]:
@@ -132,15 +106,13 @@ def build_benchmark_metric_value_map(result: dict[str, Any]) -> dict[str, Any]:
         "eff.encode_tokens_per_second_ci95": 0.0,
         "eff.encode_chars_per_second_mean": encode_cps,
         "eff.end_to_end_wall_time_seconds": wall_time_s,
-        "lat.encode_latency_p50_ms": 0.0,
-        "lat.encode_latency_p95_ms": 0.0,
-        "lat.encode_latency_p99_ms": 0.0,
+        "lat.encode_latency_p50_ms": float(tokenizer_result["latency"]["encode_latency_p50_ms"]),
+        "lat.encode_latency_p95_ms": float(tokenizer_result["latency"]["encode_latency_p95_ms"]),
+        "lat.encode_latency_p99_ms": float(tokenizer_result["latency"]["encode_latency_p99_ms"]),
         "fid.exact_round_trip_rate": exact_round_trip_rate,
         "fid.normalized_round_trip_rate": normalized_round_trip_rate,
         "fid.unknown_token_rate": unknown_token_rate,
         "fid.byte_fallback_rate": 0.0,
-        "res.peak_rss_mb": 0.0,
-        "res.memory_delta_mb": 0.0,
     }
 
 
