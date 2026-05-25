@@ -1,5 +1,5 @@
 # ARCHITECTURE
-Last updated: 2026-05-03
+Last updated: 2026-05-25
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
@@ -154,6 +154,10 @@ Examples:
   - `api/benchmarks.py` receives run/list/report requests
   - `services/benchmarks.py` coordinates tokenizer loading + metrics
   - `repositories/benchmarks.py` handles SQL reads/writes
+  - `services/benchmark_execution.py` performs trial execution, metric computation, and response assembly
+  - `services/benchmark_metric_plan.py` maps selected metric keys to execution-time compute dependencies
+  - `services/benchmark_streams.py` normalizes and limits row streams and builds benchmark batches
+  - `services/benchmark_spool.py` provides replayable on-disk row spooling for multi-trial/tokenizer runs without full in-memory dataset materialization
 
 ### Key Module Responsibilities
 - `server/app.py`: FastAPI app factory, router registration, SPA serving in Tauri mode.
@@ -162,6 +166,7 @@ Examples:
 - `server/services/*`: Business logic, long-running operations, orchestration.
   - `services/tokenizer_storage.py`: tokenizer identifier validation, cache path resolution, and Hugging Face URL construction shared by tokenizer workflows.
   - `services/dashboard_export_helpers.py`: dashboard export payload parsing and value formatting helpers used by the PDF export service.
+  - `services/benchmark_engine.py`: warmup/timed trial batch runner with per-batch observations and cancellation checks.
 - `server/repositories/database/*`: Backend selection and DB adapter implementations.
   - `repositories/database/backend.py`: `get_database()` is the single cached accessor for the configured backend; repositories receive or resolve this dependency instead of importing module-level database state.
 - `server/repositories/schemas/*`: SQLAlchemy models and types.
@@ -202,3 +207,18 @@ Frontend structure:
   - Browser -> Vite preview (`UI_HOST:UI_PORT`) -> proxied `/api` -> FastAPI (`FASTAPI_HOST:FASTAPI_PORT`)
 - Desktop mode:
   - Tauri webview boots local backend process and loads the local app URL; backend can serve packaged SPA when `TKBEN_TAURI_MODE=true`.
+
+## Benchmark Contract Notes
+- Benchmark run request config now includes tokenizer behavior flags and per-document controls:
+  - `add_special_tokens`, `padding`, `truncation`, `max_length`
+  - `store_per_document_stats`, `per_document_sample_size`
+- Each tokenizer result includes status and optional error details for failure isolation:
+  - `status`, `error_type`, `error_message`
+- Runtime metadata includes benchmark config echo and dataset scope details:
+  - `dataset_total_documents_available`, `dataset_documents_benchmarked`, `benchmark_config`
+  - `metric_availability` indicates whether metric families are measured/available for this run payload
+- Benchmark efficiency payload includes boundary-separated timing fields:
+  - `encode_only_wall_time_seconds`
+  - `dataset_stream_wall_time_seconds`
+  - `postprocess_wall_time_seconds`
+- Chart aggregations are derived from successful tokenizer results only (`status="success"`), so failed tokenizers do not appear as misleading zero-value bars.

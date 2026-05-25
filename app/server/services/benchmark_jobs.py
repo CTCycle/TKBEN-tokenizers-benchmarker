@@ -34,11 +34,17 @@ class BenchmarkJobService:
             progress_callback=progress_callback,
             should_stop=should_stop,
         )
-        if job_manager.should_stop(job_id):
-            return {}
-
         benchmark_response = BenchmarkRunResponse.model_validate(result)
         payload = benchmark_response.model_dump(mode="json")
+        if job_manager.should_stop(job_id) or payload.get("status") == "cancelled":
+            payload["status"] = "cancelled"
+            payload["created_at"] = (
+                datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            )
+            payload["report_version"] = 2
+            payload["report_id"] = None
+            return payload
+
         payload["created_at"] = (
             datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         )

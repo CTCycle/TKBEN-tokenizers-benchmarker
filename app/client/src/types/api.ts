@@ -285,6 +285,12 @@ export interface BenchmarkRunConfig {
     seed: number;
     parallelism: number;
     include_lm_metrics: boolean;
+    add_special_tokens?: boolean;
+    padding?: boolean;
+    truncation?: boolean;
+    max_length?: number | null;
+    store_per_document_stats?: boolean;
+    per_document_sample_size?: number;
 }
 
 export interface BenchmarkHardwareProfile {
@@ -306,6 +312,9 @@ export interface BenchmarkEfficiencyMetrics {
     encode_tokens_per_second_ci95_high: number;
     encode_chars_per_second_mean: number;
     encode_bytes_per_second_mean: number;
+    encode_only_wall_time_seconds: number;
+    dataset_stream_wall_time_seconds: number;
+    postprocess_wall_time_seconds: number;
     end_to_end_wall_time_seconds: number;
     load_time_seconds: number;
 }
@@ -345,6 +354,9 @@ export interface BenchmarkResourceMetrics {
 
 export interface BenchmarkTokenizerResult {
     tokenizer: string;
+    status: string;
+    error_type?: string | null;
+    error_message?: string | null;
     tokenizer_family: string;
     runtime_backend: string;
     vocabulary_size: number;
