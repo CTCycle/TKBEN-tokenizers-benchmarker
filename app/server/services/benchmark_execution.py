@@ -617,7 +617,7 @@ class BenchmarkServiceExecutionMixin:
             ]
 
             if progress_callback:
-                progress_callback(tokenizer_progress_base + per_tokenizer_span)
+                progress_callback(progress_base + ((index + 1) * per_tokenizer_span))
 
         config = BenchmarkRunConfig.model_validate(
             {
