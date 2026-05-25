@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import platform
 import re
+import statistics
 import time
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
@@ -27,6 +28,10 @@ from server.domain.benchmarks import (
     BenchmarkTrialSummary,
 )
 from server.common.utils.logger import logger
+from server.domain.benchmark_observations import TokenizerRunConfig
+from server.services.benchmark_engine import run_tokenizer_trials, summarize_observations
+from server.services.benchmark_metadata import collect_runtime_environment
+from server.services.tokenizer_adapters import UniversalTokenizerAdapter
 
 
 ###############################################################################
@@ -40,6 +45,20 @@ class BenchmarkServiceExecutionMixin:
     load_tokenizers: Callable[[list[str]], dict[str, Any]]
     stream_dataset_rows_from_database: Callable[[str], Any]
     repository: Any
+
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+    def _percentile(self, values: Sequence[float], percentile: float) -> float:
+        if not values:
+            return 0.0
+        return float(np.percentile(np.asarray(values, dtype=float), percentile))
+
+    # -------------------------------------------------------------------------
+    def _ci95_half_width(self, values: Sequence[float]) -> float:
+        if len(values) < 2:
+            return 0.0
+        sample_std = statistics.stdev(values)
+        return float(1.96 * (sample_std / (len(values) ** 0.5)))
 
     # -------------------------------------------------------------------------
     def tokenize_document(
@@ -156,9 +175,10 @@ class BenchmarkServiceExecutionMixin:
         self,
         *,
         tokenizer_name: str,
-        tokenization_speed_tps: float,
+        trial_tokenization_speeds_tps: list[float],
         throughput_chars_per_sec: float,
-        processing_time_seconds: float,
+        total_processing_time_seconds: float,
+        observed_latency_ms: list[float],
         vocabulary_size: int,
         oov_rate: float,
         character_coverage: float,
@@ -171,9 +191,15 @@ class BenchmarkServiceExecutionMixin:
         chars_per_token = float(compression_chars_per_token)
         tokens_per_character = (1.0 / chars_per_token) if chars_per_token > 0 else 0.0
         tokens_per_byte = float(compression_bytes_per_character)
-        latency_p50 = float(processing_time_seconds * 1000.0)
-        latency_p95 = float(processing_time_seconds * 1200.0)
-        latency_p99 = float(processing_time_seconds * 1400.0)
+        tokenization_speed_tps = (
+            float(np.mean(trial_tokenization_speeds_tps))
+            if trial_tokenization_speeds_tps
+            else 0.0
+        )
+        ci95_half_width = self._ci95_half_width(trial_tokenization_speeds_tps)
+        latency_p50 = self._percentile(observed_latency_ms, 50.0)
+        latency_p95 = self._percentile(observed_latency_ms, 95.0)
+        latency_p99 = self._percentile(observed_latency_ms, 99.0)
 
         return BenchmarkTokenizerResult(
             tokenizer=tokenizer_name,
@@ -184,11 +210,15 @@ class BenchmarkServiceExecutionMixin:
             special_token_share=0.0,
             efficiency=BenchmarkEfficiencyMetrics(
                 encode_tokens_per_second_mean=float(tokenization_speed_tps),
-                encode_tokens_per_second_ci95_low=float(tokenization_speed_tps * 0.97),
-                encode_tokens_per_second_ci95_high=float(tokenization_speed_tps * 1.03),
+                encode_tokens_per_second_ci95_low=float(
+                    max(0.0, tokenization_speed_tps - ci95_half_width)
+                ),
+                encode_tokens_per_second_ci95_high=float(
+                    tokenization_speed_tps + ci95_half_width
+                ),
                 encode_chars_per_second_mean=float(throughput_chars_per_sec),
                 encode_bytes_per_second_mean=float(throughput_chars_per_sec),
-                end_to_end_wall_time_seconds=float(processing_time_seconds),
+                end_to_end_wall_time_seconds=float(total_processing_time_seconds),
                 load_time_seconds=0.0,
             ),
             latency=BenchmarkLatencyMetrics(
@@ -235,7 +265,7 @@ class BenchmarkServiceExecutionMixin:
         self,
         tokenizer_name: str,
         data: pd.DataFrame,
-        processing_time_seconds: float,
+        per_document_latency_ms: list[float],
     ) -> BenchmarkPerDocumentTokenizerStats:
         sorted_data = data.copy()
         if "text_id" in sorted_data.columns:
@@ -244,7 +274,7 @@ class BenchmarkServiceExecutionMixin:
 
         tokens_count = pd.to_numeric(sorted_data["tokens_count"], errors="coerce").fillna(0)
         bytes_per_token = pd.to_numeric(sorted_data["bytes_per_token"], errors="coerce").fillna(0)
-        per_doc_latency_ms = [float(processing_time_seconds * 1000.0)] * len(sorted_data)
+        per_doc_latency_ms = list(per_document_latency_ms)
         per_doc_peak_rss = [0.0] * len(sorted_data)
 
         return BenchmarkPerDocumentTokenizerStats(
@@ -347,18 +377,32 @@ class BenchmarkServiceExecutionMixin:
         if progress_callback:
             progress_callback(10.0)
 
-        logger.info("Loading texts from database...")
-        dataset_rows: list[tuple[int, str]] = []
+        logger.info("Preparing streamed dataset batches from database...")
+        config_payload = benchmark_config or {}
+        warmup_trials = int(config_payload.get("warmup_trials", 2))
+        timed_trials = int(config_payload.get("timed_trials", 8))
+        batch_size = int(config_payload.get("batch_size", 16))
+        if warmup_trials < 0:
+            raise ValueError("warmup_trials must be non-negative")
+        if timed_trials <= 0:
+            raise ValueError("timed_trials must be positive")
+        if batch_size <= 0:
+            raise ValueError("batch_size must be positive")
+
+        text_batches_for_first_trial: list[list[tuple[int, str]]] = []
+        total_docs = 0
+        current_batch: list[tuple[int, str]] = []
         for row_id, text in self.stream_dataset_rows_from_database(dataset_name):
             if should_stop and should_stop():
                 return {}
-            dataset_rows.append((row_id, text))
-            if len(dataset_rows) % self.log_interval == 0:
-                logger.info("Loaded %d texts...", len(dataset_rows))
-
-        text_ids = [row[0] for row in dataset_rows]
-        texts = [row[1] for row in dataset_rows]
-        num_docs = len(texts)
+            current_batch.append((int(row_id), str(text)))
+            total_docs += 1
+            if len(current_batch) >= batch_size:
+                text_batches_for_first_trial.append(current_batch)
+                current_batch = []
+        if current_batch:
+            text_batches_for_first_trial.append(current_batch)
+        num_docs = total_docs
         if progress_callback:
             progress_callback(20.0)
 
@@ -376,53 +420,39 @@ class BenchmarkServiceExecutionMixin:
                 return {}
 
             logger.info("Processing tokenizer: %s", name)
-            data = pd.DataFrame(
-                {
-                    "tokenizer": [name] * num_docs,
-                    "name": [dataset_name] * num_docs,
-                    "text_id": text_ids,
-                    "text": texts,
-                }
-            )
+            trial_rows = [row for batch in text_batches_for_first_trial for row in batch]
+            text_ids = [row[0] for row in trial_rows]
+            texts = [row[1] for row in trial_rows]
+            data = pd.DataFrame({"tokenizer": [name] * len(texts), "name": [dataset_name] * len(texts), "text_id": text_ids, "text": texts})
             data["num_characters"] = pd.Series(texts).str.len()
             data["words_split"] = pd.Series(texts).str.split()
             data["words_count"] = data["words_split"].apply(len)
 
-            t0 = time.perf_counter()
-            tokenize_method = getattr(tokenizer, "tokenize", None)
-            uses_tokenize = callable(tokenize_method)
-            if "CUSTOM" in name:
-                uses_tokenize = False
-                tokenize_method = None
+            adapter = UniversalTokenizerAdapter(tokenizer_id=name, tokenizer=tokenizer)
 
-            decoded_tokens: list[str] = []
-            split_tokens: list[list[str]] = []
-            progress_interval = max(1, num_docs // 20)
-            processed_docs = 0
-            tokenizer_progress_base = progress_base + (index * per_tokenizer_span)
+            def _text_batches_factory() -> list[list[str]]:
+                return [[text for _, text in batch] for batch in text_batches_for_first_trial]
 
+            observations = run_tokenizer_trials(
+                tokenizer=adapter,
+                text_batches_factory=_text_batches_factory,
+                config=TokenizerRunConfig(
+                    add_special_tokens=False,
+                    padding=False,
+                    truncation=False,
+                    max_length=None,
+                    batch_size=batch_size,
+                ),
+                warmup_trials=warmup_trials,
+                timed_trials=timed_trials,
+            )
+            observation_summary = summarize_observations(observations)
+            first_trial_batches = [obs for obs in observations if obs.trial_index == 0]
+            encoded_once = []
             for text_value in texts:
-                if should_stop and should_stop():
-                    return {}
-                decoded, tokens_list = self.tokenize_document(
-                    tokenizer,
-                    text_value,
-                    uses_tokenize,
-                    tokenize_method,
-                )
-                decoded_tokens.append(decoded)
-                split_tokens.append(tokens_list)
-                processed_docs += 1
-                if progress_callback and processed_docs % progress_interval == 0:
-                    progress_value = (
-                        tokenizer_progress_base
-                        + (processed_docs / max(num_docs, 1)) * per_tokenizer_span
-                    )
-                    progress_callback(progress_value)
-
-            t1 = time.perf_counter()
-            data["tokens"] = decoded_tokens
-            data["tokens_split"] = split_tokens
+                encoded_once.append(self.tools.process_tokens(text_value, tokenizer)[1])
+            data["tokens"] = [" ".join(tokens) for tokens in encoded_once]
+            data["tokens_split"] = encoded_once
 
             data["tokens_count"] = [
                 len(toks) if isinstance(toks, (list, tuple)) else 0
@@ -447,7 +477,7 @@ class BenchmarkServiceExecutionMixin:
             total_bytes = 0
 
             for text_value, decoded_text, tokens_list in zip(
-                texts, decoded_tokens, split_tokens
+                texts, data["tokens"].tolist(), data["tokens_split"].tolist()
             ):
                 if should_stop and should_stop():
                     return {}
@@ -457,12 +487,7 @@ class BenchmarkServiceExecutionMixin:
                     self.tools.boundary_preservation_score(text_value, decoded_text)
                 )
 
-                determinism_tokens = self.tokenize_document(
-                    tokenizer,
-                    text_value,
-                    uses_tokenize,
-                    tokenize_method,
-                )[1]
+                determinism_tokens = self.tools.process_tokens(text_value, tokenizer)[1]
                 determinism_flags.append(float(determinism_tokens == tokens_list))
 
                 rt_decoded, rt_tokens = self.tools.process_tokens(decoded_text, tokenizer)
@@ -483,11 +508,12 @@ class BenchmarkServiceExecutionMixin:
             data["determinism_stability"] = determinism_flags
             data["bytes_per_character"] = bytes_per_character
 
-            elapsed = max(t1 - t0, 1e-9)
+            elapsed = max(float(observation_summary["total_time_seconds"]), 1e-9)
             total_tokens = int(data["tokens_count"].sum())
             total_chars = int(data["num_characters"].sum())
-            tokenization_speed_tps = total_tokens / elapsed
-            throughput_chars_per_sec = total_chars / elapsed
+            throughput_chars_per_sec = float(observation_summary["documents_per_second"]) * (
+                (total_chars / len(texts)) if texts else 0.0
+            )
 
             vocab_result = self._extract_vocab_result(tokenizer)
             if isinstance(vocab_result, (Mapping, Sequence)):
@@ -549,9 +575,15 @@ class BenchmarkServiceExecutionMixin:
             tokenizer_results.append(
                 self._build_tokenizer_result(
                     tokenizer_name=name,
-                    tokenization_speed_tps=float(tokenization_speed_tps),
+                    trial_tokenization_speeds_tps=[
+                        float(observation_summary["tokens_per_second"])
+                    ],
                     throughput_chars_per_sec=float(throughput_chars_per_sec),
-                    processing_time_seconds=float(elapsed),
+                    total_processing_time_seconds=float(elapsed),
+                    observed_latency_ms=[
+                        (obs.elapsed_ns / 1_000_000.0) / max(1, obs.documents)
+                        for obs in first_trial_batches
+                    ],
                     vocabulary_size=int(vocabulary_size),
                     oov_rate=float(oov_rate),
                     character_coverage=float(character_coverage),
@@ -567,9 +599,22 @@ class BenchmarkServiceExecutionMixin:
                 self._build_per_document_stats(
                     tokenizer_name=name,
                     data=data,
-                    processing_time_seconds=float(elapsed),
+                    per_document_latency_ms=[0.0 for _ in texts],
                 )
             )
+            if not hasattr(self, "_raw_observations"):
+                self._raw_observations = {}
+            self._raw_observations[name] = [
+                {
+                    "trial_index": int(obs.trial_index),
+                    "batch_index": int(obs.batch_index),
+                    "documents": int(obs.documents),
+                    "elapsed_ns": int(obs.elapsed_ns),
+                    "token_count": int(obs.token_count),
+                    "input_utf8_bytes": int(obs.input_utf8_bytes),
+                }
+                for obs in observations
+            ]
 
             if progress_callback:
                 progress_callback(tokenizer_progress_base + per_tokenizer_span)
@@ -598,6 +643,8 @@ class BenchmarkServiceExecutionMixin:
 
         return BenchmarkRunResponse(
             status="success",
+            schema_version=1,
+            methodology_version="v1_observed_trials",
             run_name=normalized_run_name or None,
             selected_metric_keys=resolved_metric_keys,
             dataset_name=dataset_name,
@@ -613,6 +660,8 @@ class BenchmarkServiceExecutionMixin:
             tokenizer_results=tokenizer_results,
             chart_data=chart_data,
             per_document_stats=per_document_stats,
+            runtime_metadata=collect_runtime_environment(),
+            raw_observations=getattr(self, "_raw_observations", {}),
         )
 
     # -------------------------------------------------------------------------

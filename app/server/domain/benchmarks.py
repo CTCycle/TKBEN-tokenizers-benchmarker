@@ -167,6 +167,7 @@ class BenchmarkMetricCatalogMetric(BaseModel):
     description: str
     scope: str
     value_kind: str
+    source: str = Field(default="observed")
     core: bool = Field(default=False)
 
 
@@ -206,6 +207,8 @@ class BenchmarkPerDocumentTokenizerStats(BaseModel):
 
 class BenchmarkRunResponse(BaseModel):
     status: str = Field(default="success")
+    schema_version: int = Field(default=1)
+    methodology_version: str = Field(default="v1_observed_trials")
     report_id: int | None = Field(default=None)
     report_version: int = Field(default=2)
     created_at: str | None = Field(default=None)
@@ -221,3 +224,5 @@ class BenchmarkRunResponse(BaseModel):
     tokenizer_results: list[BenchmarkTokenizerResult] = Field(default_factory=list)
     chart_data: BenchmarkChartDataV2 = Field(default_factory=BenchmarkChartDataV2)
     per_document_stats: list[BenchmarkPerDocumentTokenizerStats] = Field(default_factory=list)
+    runtime_metadata: dict[str, object] = Field(default_factory=dict)
+    raw_observations: dict[str, list[dict[str, object]]] = Field(default_factory=dict)

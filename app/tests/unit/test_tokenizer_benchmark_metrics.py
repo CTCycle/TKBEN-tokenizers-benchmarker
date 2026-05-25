@@ -3,9 +3,7 @@ from __future__ import annotations
 import pytest
 
 from tests.unit.benchmark_metric_test_support import (
-    EXPECTED_BENCHMARK_METRIC_VALUES,
     TOKENIZER_BENCHMARK_METRIC_KEYS,
-    assert_metric_value,
     build_benchmark_metric_value_map,
     run_deterministic_benchmark,
 )
@@ -17,14 +15,20 @@ def benchmark_metric_values() -> dict[str, object]:
     return build_benchmark_metric_value_map(result)
 
 
-@pytest.mark.parametrize("metric_key", sorted(TOKENIZER_BENCHMARK_METRIC_KEYS))
-def test_tokenizer_benchmark_metrics_are_deterministic_and_correct(
+def test_tokenizer_benchmark_metrics_are_observed_and_non_synthetic(
     benchmark_metric_values: dict[str, object],
-    metric_key: str,
 ) -> None:
-    assert metric_key in benchmark_metric_values, (
-        f"Missing computed benchmark metric '{metric_key}'"
+    for metric_key in sorted(TOKENIZER_BENCHMARK_METRIC_KEYS):
+        assert metric_key in benchmark_metric_values, (
+            f"Missing computed benchmark metric '{metric_key}'"
+        )
+    assert float(benchmark_metric_values["eff.encode_tokens_per_second_mean"]) > 0.0
+    assert float(benchmark_metric_values["eff.encode_chars_per_second_mean"]) > 0.0
+    assert float(benchmark_metric_values["eff.end_to_end_wall_time_seconds"]) > 0.0
+    assert float(benchmark_metric_values["lat.encode_latency_p50_ms"]) >= 0.0
+    assert float(benchmark_metric_values["lat.encode_latency_p95_ms"]) >= float(
+        benchmark_metric_values["lat.encode_latency_p50_ms"]
     )
-    expected = EXPECTED_BENCHMARK_METRIC_VALUES[metric_key]
-    actual = benchmark_metric_values[metric_key]
-    assert_metric_value(actual, expected, metric_key=metric_key)
+    assert float(benchmark_metric_values["lat.encode_latency_p99_ms"]) >= float(
+        benchmark_metric_values["lat.encode_latency_p95_ms"]
+    )

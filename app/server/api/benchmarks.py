@@ -51,6 +51,16 @@ async def run_benchmarks(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Dataset name must be specified.",
         )
+    if payload.config.parallelism != 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="parallelism is not supported yet; only parallelism=1 is accepted.",
+        )
+    if payload.config.seed != 42:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="seed control is not supported yet; only seed=42 is accepted.",
+        )
 
     logger.info(
         "Benchmark run requested: dataset=%s, tokenizers=%s, max_docs=%s",

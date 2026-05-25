@@ -78,8 +78,7 @@ type AdditionalMetricKey =
   | 'pieces_per_word_mean'
   | 'encode_latency_p50_ms'
   | 'encode_latency_p95_ms'
-  | 'encode_latency_p99_ms'
-  | 'memory_delta_mb';
+  | 'encode_latency_p99_ms';
 
 const metricLabelOverrides: Partial<Record<AdditionalMetricKey, string>> = {
   tokens_per_character: 'Tokens / Character',
@@ -90,7 +89,6 @@ const metricLabelOverrides: Partial<Record<AdditionalMetricKey, string>> = {
   encode_latency_p50_ms: 'Latency p50 (ms)',
   encode_latency_p95_ms: 'Latency p95 (ms)',
   encode_latency_p99_ms: 'Latency p99 (ms)',
-  memory_delta_mb: 'Memory Delta (MB)',
 };
 const toMetricLabel = (key: AdditionalMetricKey): string =>
   metricLabelOverrides[key] ?? key.replace(/_/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase());
@@ -132,7 +130,6 @@ const preferredAdditionalMetricOrder: AdditionalMetricKey[] = [
   'encode_latency_p50_ms',
   'encode_latency_p95_ms',
   'encode_latency_p99_ms',
-  'memory_delta_mb',
 ];
 const CrossBenchmarkPage = () => {
   const {
@@ -266,10 +263,6 @@ const CrossBenchmarkPage = () => {
       if (!best) return item;
       return toNumber(item.fidelity.exact_round_trip_rate) > toNumber(best.fidelity.exact_round_trip_rate) ? item : best;
     }, null);
-    const lowestMemory = tokenizerResults.reduce<BenchmarkTokenizerResult | null>((best, item) => {
-      if (!best) return item;
-      return toNumber(item.resources.peak_rss_mb) < toNumber(best.resources.peak_rss_mb) ? item : best;
-    }, null);
     return [
       { label: 'Dataset', value: activeReport.dataset_name || 'N/A' },
       { label: 'Run Name', value: activeReport.run_name || 'N/A' },
@@ -289,11 +282,6 @@ const CrossBenchmarkPage = () => {
         label: 'Best Exact Round-Trip Rate',
         value: bestRoundTrip ? formatRate(toNumber(bestRoundTrip.fidelity.exact_round_trip_rate)) : 'N/A',
         detail: bestRoundTrip ? formatTokenizerLabel(bestRoundTrip.tokenizer) : 'N/A',
-      },
-      {
-        label: 'Lowest Peak Memory',
-        value: lowestMemory ? `${toNumber(lowestMemory.resources.peak_rss_mb).toFixed(2)} MB` : 'N/A',
-        detail: lowestMemory ? formatTokenizerLabel(lowestMemory.tokenizer) : 'N/A',
       },
     ];
   }, [activeReport]);
@@ -615,7 +603,7 @@ const CrossBenchmarkPage = () => {
 
                 <article className="cross-benchmark-chart-card cross-benchmark-chart-card--boxplot">
                   <div className="cross-benchmark-chart-header">
-                    <p className="panel-label">Latency/Memory Distribution (Box Plot)</p>
+                    <p className="panel-label">Latency Distribution (Box Plot)</p>
                   </div>
                   {bytesPerTokenBoxData.length === 0 ? (
                     renderUnavailable('Per-document bytes per token unavailable')
@@ -709,7 +697,6 @@ const CrossBenchmarkPage = () => {
                                     encode_latency_p50_ms: metric.latency.encode_latency_p50_ms,
                                     encode_latency_p95_ms: metric.latency.encode_latency_p95_ms,
                                     encode_latency_p99_ms: metric.latency.encode_latency_p99_ms,
-                                    memory_delta_mb: metric.resources.memory_delta_mb,
                                   }[metricKey])}
                                 </td>
                               ))}

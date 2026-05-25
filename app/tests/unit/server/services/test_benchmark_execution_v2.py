@@ -57,7 +57,7 @@ def test_run_benchmarks_returns_v2_contract() -> None:
 
     def fake_perf_counter() -> float:
         counter["calls"] += 1
-        return 100.0 if counter["calls"] == 1 else 104.0
+        return 100.0 + (counter["calls"] * 0.01)
 
     benchmarks_module.time.perf_counter = fake_perf_counter
     try:
