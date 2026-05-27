@@ -116,18 +116,18 @@ Scan available tokenizer IDs, download selected tokenizers, optionally upload a 
 **Cross Benchmark (`/cross-benchmark`)**
 
 Create benchmark runs by selecting dataset, tokenizers, and metric categories, then compare persisted results across tokenizer candidates.
-### 3.5 Product Snapshots (Release 3.3.0)
+### 3.5 Product Snapshots (Release 3.4.0)
 
 The following snapshots were captured in local webapp mode with backend and frontend running:
 
-- Dataset workspace showing available datasets, validation actions, and dashboard metric placeholders before loading a persisted report.
-![Dataset workspace](assets/figures/release-2026-05-dataset.png)
+- Dataset dashboard with a loaded persisted validation session, aggregate statistics, histograms, and word-cloud analytics.
+![Dataset workspace](assets/figures/release-v3.4.0-dataset.png)
 
-- Tokenizers workspace showing selection controls, preview panel, and empty dashboard state before report loading.
-![Tokenizers workspace](assets/figures/release-2026-05-tokenizers.png)
+- Tokenizers dashboard with an opened tokenizer report, vocabulary statistics, and populated token preview table.
+![Tokenizers workspace](assets/figures/release-v3.4.0-tokenizers.png)
 
-- Cross-benchmark workspace showing benchmark start controls and report selector in initial state.
-![Cross-benchmark dashboard](assets/figures/release-2026-05-cross-benchmark.png)
+- Cross-benchmark dashboard with a loaded run summary and comparative metric panels.
+![Cross-benchmark dashboard](assets/figures/release-v3.4.0-cross-benchmark.png)
 
 ## 4. Setup and Maintenance
 
