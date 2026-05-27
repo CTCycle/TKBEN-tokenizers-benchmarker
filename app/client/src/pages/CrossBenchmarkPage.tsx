@@ -78,8 +78,7 @@ type AdditionalMetricKey =
   | 'pieces_per_word_mean'
   | 'encode_latency_p50_ms'
   | 'encode_latency_p95_ms'
-  | 'encode_latency_p99_ms'
-  | 'memory_delta_mb';
+  | 'encode_latency_p99_ms';
 
 const metricLabelOverrides: Partial<Record<AdditionalMetricKey, string>> = {
   tokens_per_character: 'Tokens / Character',
@@ -90,7 +89,6 @@ const metricLabelOverrides: Partial<Record<AdditionalMetricKey, string>> = {
   encode_latency_p50_ms: 'Latency p50 (ms)',
   encode_latency_p95_ms: 'Latency p95 (ms)',
   encode_latency_p99_ms: 'Latency p99 (ms)',
-  memory_delta_mb: 'Memory Delta (MB)',
 };
 const toMetricLabel = (key: AdditionalMetricKey): string =>
   metricLabelOverrides[key] ?? key.replace(/_/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase());
@@ -132,7 +130,6 @@ const preferredAdditionalMetricOrder: AdditionalMetricKey[] = [
   'encode_latency_p50_ms',
   'encode_latency_p95_ms',
   'encode_latency_p99_ms',
-  'memory_delta_mb',
 ];
 const CrossBenchmarkPage = () => {
   const {
@@ -156,6 +153,13 @@ const CrossBenchmarkPage = () => {
   const selectedDistributionTokenizer = selectedDistributionTokenizers[distributionSelectionKey]
     ?? activeReport?.chart_data.fragmentation?.[0]?.tokenizer
     ?? '';
+  const failedTokenizers = useMemo(
+    () => (activeReport?.tokenizer_results ?? []).filter((row) => row.status === 'failed'),
+    [activeReport],
+  );
+  const metricAvailability = (activeReport?.runtime_metadata?.metric_availability ?? {}) as Record<string, unknown>;
+  const latencyDistributionAvailable = metricAvailability.latency_distribution !== false;
+  const perDocStatsAvailable = metricAvailability.per_document_stats !== false;
 
   const handleRunFromWizard = async (payload: BenchmarkRunPayload) => {
     const completed = await runFromWizard(payload);
@@ -253,7 +257,7 @@ const CrossBenchmarkPage = () => {
     if (!activeReport) {
       return [];
     }
-    const tokenizerResults = activeReport.tokenizer_results ?? [];
+    const tokenizerResults = (activeReport.tokenizer_results ?? []).filter((item) => item.status !== 'failed');
     const bestSpeed = tokenizerResults.reduce<BenchmarkTokenizerResult | null>((best, item) => {
       if (!best) return item;
       return toNumber(item.efficiency.encode_tokens_per_second_mean) > toNumber(best.efficiency.encode_tokens_per_second_mean) ? item : best;
@@ -266,15 +270,12 @@ const CrossBenchmarkPage = () => {
       if (!best) return item;
       return toNumber(item.fidelity.exact_round_trip_rate) > toNumber(best.fidelity.exact_round_trip_rate) ? item : best;
     }, null);
-    const lowestMemory = tokenizerResults.reduce<BenchmarkTokenizerResult | null>((best, item) => {
-      if (!best) return item;
-      return toNumber(item.resources.peak_rss_mb) < toNumber(best.resources.peak_rss_mb) ? item : best;
-    }, null);
     return [
       { label: 'Dataset', value: activeReport.dataset_name || 'N/A' },
       { label: 'Run Name', value: activeReport.run_name || 'N/A' },
       { label: 'Documents', value: activeReport.documents_processed.toLocaleString() },
       { label: 'Tokenizers', value: activeReport.tokenizers_count.toLocaleString() },
+      { label: 'Failed Tokenizers', value: failedTokenizers.length.toLocaleString() },
       {
         label: 'Best Encode Throughput',
         value: bestSpeed ? `${Math.round(toNumber(bestSpeed.efficiency.encode_tokens_per_second_mean)).toLocaleString()} tok/s` : 'N/A',
@@ -290,13 +291,30 @@ const CrossBenchmarkPage = () => {
         value: bestRoundTrip ? formatRate(toNumber(bestRoundTrip.fidelity.exact_round_trip_rate)) : 'N/A',
         detail: bestRoundTrip ? formatTokenizerLabel(bestRoundTrip.tokenizer) : 'N/A',
       },
-      {
-        label: 'Lowest Peak Memory',
-        value: lowestMemory ? `${toNumber(lowestMemory.resources.peak_rss_mb).toFixed(2)} MB` : 'N/A',
-        detail: lowestMemory ? formatTokenizerLabel(lowestMemory.tokenizer) : 'N/A',
-      },
     ];
-  }, [activeReport]);
+  }, [activeReport, failedTokenizers.length]);
+
+  const benchmarkTimingBoundaries = (activeReport?.runtime_metadata?.benchmark_timing_boundaries ?? {}) as Record<string, unknown>;
+  const benchmarkTimingRows = [
+    {
+      label: 'Encode-only timing',
+      detail: typeof benchmarkTimingBoundaries.encode_only_definition === 'string'
+        ? benchmarkTimingBoundaries.encode_only_definition
+        : 'Timed tokenizer encode trials only; warmup excluded.',
+    },
+    {
+      label: 'Dataset stream timing',
+      detail: typeof benchmarkTimingBoundaries.dataset_stream_definition === 'string'
+        ? benchmarkTimingBoundaries.dataset_stream_definition
+        : 'Streaming/spooling before timed tokenizer trials.',
+    },
+    {
+      label: 'Postprocess timing',
+      detail: typeof benchmarkTimingBoundaries.postprocess_definition === 'string'
+        ? benchmarkTimingBoundaries.postprocess_definition
+        : 'Post-trial metric computation over replayed rows.',
+    },
+  ];
 
   const additionalMetricColumns = useMemo(() => {
     if (!activeReport?.tokenizer_results?.length) {
@@ -615,10 +633,10 @@ const CrossBenchmarkPage = () => {
 
                 <article className="cross-benchmark-chart-card cross-benchmark-chart-card--boxplot">
                   <div className="cross-benchmark-chart-header">
-                    <p className="panel-label">Latency/Memory Distribution (Box Plot)</p>
+                    <p className="panel-label">Latency Distribution (Box Plot)</p>
                   </div>
-                  {bytesPerTokenBoxData.length === 0 ? (
-                    renderUnavailable('Per-document bytes per token unavailable')
+                  {!latencyDistributionAvailable || bytesPerTokenBoxData.length === 0 ? (
+                    renderUnavailable('Latency distribution unavailable')
                   ) : (
                     <>
                       <div className="cross-benchmark-boxplot-scale" aria-hidden="true">
@@ -709,7 +727,6 @@ const CrossBenchmarkPage = () => {
                                     encode_latency_p50_ms: metric.latency.encode_latency_p50_ms,
                                     encode_latency_p95_ms: metric.latency.encode_latency_p95_ms,
                                     encode_latency_p99_ms: metric.latency.encode_latency_p99_ms,
-                                    memory_delta_mb: metric.resources.memory_delta_mb,
                                   }[metricKey])}
                                 </td>
                               ))}
@@ -718,6 +735,60 @@ const CrossBenchmarkPage = () => {
                         </tbody>
                       </table>
                     </div>
+                  )}
+                </article>
+                <article className="cross-benchmark-drilldown-card">
+                  <div className="cross-benchmark-chart-header">
+                    <p className="panel-label">Run Diagnostics</p>
+                  </div>
+                  <div className="cross-benchmark-diagnostics-grid">
+                    <p className="cross-benchmark-chart-note">
+                      Resource metrics: <strong>{metricAvailability.resource_metrics === false ? 'unavailable' : 'available'}</strong>
+                    </p>
+                    <p className="cross-benchmark-chart-note">
+                      Latency distribution: <strong>{latencyDistributionAvailable ? 'available' : 'unavailable'}</strong>
+                    </p>
+                    <p className="cross-benchmark-chart-note">
+                      Per-document stats: <strong>{perDocStatsAvailable ? 'available' : 'unavailable'}</strong>
+                    </p>
+                  </div>
+                  <div className="cross-benchmark-diagnostics-grid">
+                    {benchmarkTimingRows.map((entry) => (
+                      <p key={entry.label} className="cross-benchmark-chart-note">
+                        <strong>{entry.label}:</strong> {entry.detail}
+                      </p>
+                    ))}
+                  </div>
+                  {failedTokenizers.length === 0 ? (
+                    <p className="cross-benchmark-chart-note">No tokenizer failures recorded for this run.</p>
+                  ) : (
+                    <div className="cross-benchmark-table-wrap">
+                      <table className="tokenizer-meta-table tokenizer-meta-table-compact">
+                        <thead>
+                          <tr>
+                            <th>Tokenizer</th>
+                            <th>Status</th>
+                            <th>Error Type</th>
+                            <th>Error Message</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {failedTokenizers.map((row) => (
+                            <tr key={`failed-${row.tokenizer}`}>
+                              <td>{row.tokenizer}</td>
+                              <td>{row.status}</td>
+                              <td>{row.error_type ?? 'N/A'}</td>
+                              <td>{row.error_message ?? 'N/A'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {!perDocStatsAvailable && (
+                    <p className="cross-benchmark-chart-note">
+                      Per-document statistics are unavailable for this run configuration.
+                    </p>
                   )}
                 </article>
               </div>

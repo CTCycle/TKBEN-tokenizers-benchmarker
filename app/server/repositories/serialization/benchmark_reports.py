@@ -6,6 +6,7 @@ from typing import Any
 import pandas as pd
 
 from server.domain.benchmarks import BenchmarkReportSummary, BenchmarkRunResponse
+from server.common.utils.logger import logger
 from server.repositories.benchmarks import BenchmarkRepository
 from server.repositories.queries.data import DataRepositoryQueries
 from server.repositories.schemas.models import BenchmarkReport
@@ -71,7 +72,7 @@ class BenchmarkReportSerializer:
     def _normalize_report_row(self, row: dict[str, Any]) -> dict[str, Any]:
         payload = self._parse_json(row.get("payload"), {})
         if not isinstance(payload, dict):
-            payload = {}
+            raise ValueError("Benchmark report payload must be a JSON object.")
         created_at = pd.to_datetime(row.get("created_at"), utc=True, errors="coerce")
         created_at_iso = (
             created_at.isoformat().replace("+00:00", "Z")
@@ -90,12 +91,12 @@ class BenchmarkReportSerializer:
         ]
 
         normalized_payload = dict(payload)
-        normalized_payload["report_id"] = int(
-            row.get("id") or normalized_payload.get("report_id") or 0
-        )
-        normalized_payload["report_version"] = int(
-            row.get("report_version") or normalized_payload.get("report_version") or 2
-        )
+        if "schema_version" not in normalized_payload:
+            raise ValueError("Benchmark report is missing required schema_version.")
+        if "methodology_version" not in normalized_payload:
+            raise ValueError("Benchmark report is missing required methodology_version.")
+        normalized_payload["report_id"] = int(row.get("id") or normalized_payload.get("report_id") or 0)
+        normalized_payload["report_version"] = int(row.get("report_version") or normalized_payload.get("report_version") or 2)
         normalized_payload["created_at"] = created_at_iso
         normalized_payload["run_name"] = row.get("run_name") or normalized_payload.get(
             "run_name"
@@ -124,7 +125,14 @@ class BenchmarkReportSerializer:
                 "payload": report_row.payload,
                 "dataset_name": dataset_name,
             }
-            normalized = self._normalize_report_row(row)
+            try:
+                normalized = self._normalize_report_row(row)
+            except ValueError:
+                logger.warning(
+                    "Skipping incompatible benchmark report row id=%s",
+                    report_row.id,
+                )
+                continue
             summaries.append(
                 BenchmarkReportSummary.model_validate(normalized).model_dump(mode="json")
             )
@@ -146,4 +154,11 @@ class BenchmarkReportSerializer:
             "payload": report_row.payload,
             "dataset_name": dataset_name,
         }
-        return self._normalize_report_row(mapped)
+        try:
+            return self._normalize_report_row(mapped)
+        except ValueError:
+            logger.warning(
+                "Benchmark report id=%s is incompatible with current schema",
+                report_id,
+            )
+            return None

@@ -156,15 +156,17 @@ class DatasetSerializer:
         dataset_name: str,
         batch_size: int,
     ) -> Iterator[list[str]]:
-        offset = 0
+        last_seen_id = 0
         while True:
             stmt = (
-                select(DatasetDocument.text)
+                select(DatasetDocument.id, DatasetDocument.text)
                 .join(Dataset, Dataset.id == DatasetDocument.dataset_id)
-                .where(Dataset.name == dataset_name)
+                .where(
+                    Dataset.name == dataset_name,
+                    DatasetDocument.id > int(last_seen_id),
+                )
                 .order_by(DatasetDocument.id.asc())
                 .limit(int(batch_size))
-                .offset(int(offset))
             )
             with self._session() as session:
                 rows = session.execute(stmt).all()
@@ -172,11 +174,16 @@ class DatasetSerializer:
             if not rows:
                 break
 
-            texts = [str(text_value) for (text_value,) in rows if text_value is not None]
+            texts: list[str] = []
+            for row_id, text_value in rows:
+                if row_id is None:
+                    continue
+                last_seen_id = int(row_id)
+                if text_value is not None:
+                    texts.append(str(text_value))
 
             if texts:
                 yield texts
-            offset += len(rows)
 
     # -------------------------------------------------------------------------
     def iterate_dataset_rows(
@@ -187,7 +194,7 @@ class DatasetSerializer:
         max_length: int | None = None,
         exclude_empty: bool = False,
     ) -> Iterator[list[dict[str, Any]]]:
-        offset = 0
+        last_seen_id = 0
         conditions = [Dataset.name == dataset_name]
         if isinstance(min_length, int):
             conditions.append(func.length(DatasetDocument.text) >= int(min_length))
@@ -199,10 +206,9 @@ class DatasetSerializer:
             stmt = (
                 select(DatasetDocument.id, DatasetDocument.text)
                 .join(Dataset, Dataset.id == DatasetDocument.dataset_id)
-                .where(and_(*conditions))
+                .where(and_(*conditions), DatasetDocument.id > int(last_seen_id))
                 .order_by(DatasetDocument.id.asc())
                 .limit(int(batch_size))
-                .offset(int(offset))
             )
             with self._session() as session:
                 rows = session.execute(stmt).all()
@@ -214,11 +220,11 @@ class DatasetSerializer:
             for row_id, text_value in rows:
                 if row_id is None or text_value is None:
                     continue
+                last_seen_id = int(row_id)
                 batch.append({"id": int(row_id), "text": str(text_value)})
 
             if batch:
                 yield batch
-            offset += len(rows)
 
     # -------------------------------------------------------------------------
     def iterate_dataset_rows_for_benchmarks(
@@ -233,7 +239,7 @@ class DatasetSerializer:
             for item in batch:
                 row_id = item.get("id")
                 text = item.get("text")
-                if isinstance(row_id, int) and isinstance(text, str) and text:
+                if isinstance(row_id, int) and isinstance(text, str):
                     yield row_id, text
 
     # -------------------------------------------------------------------------
