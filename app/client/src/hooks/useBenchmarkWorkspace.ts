@@ -24,6 +24,12 @@ export type BenchmarkRunPayload = {
     seed: number;
     parallelism: number;
     include_lm_metrics: boolean;
+    add_special_tokens?: boolean;
+    padding?: boolean;
+    truncation?: boolean;
+    max_length?: number | null;
+    store_per_document_stats?: boolean;
+    per_document_sample_size?: number;
   };
   run_name: string;
   selected_metric_keys: string[];

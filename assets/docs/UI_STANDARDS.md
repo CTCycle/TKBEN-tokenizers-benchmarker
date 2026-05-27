@@ -1,5 +1,5 @@
 # UI_STANDARDS
-Last updated: 2026-04-24
+Last updated: 2026-05-25
 
 ## Scope
 This standard reflects the implemented UI in `TKBEN/client/src` and `App.css`. New UI must conform to these tokens/patterns unless a planned design-system migration is approved.
@@ -115,6 +115,10 @@ Navigation hierarchy:
 - Keep interaction language consistent with existing labels/panel semantics.
 - Use dismissible errors for recoverable issues.
 - Preserve dashboard-first workflows (load persisted report before deep visual analysis).
+- Benchmark report diagnostics must explicitly surface:
+  - tokenizer failure rows with `status/error_type/error_message`
+  - metric availability state (resource metrics, latency distribution, per-document stats)
+  - timing boundary definitions (encode-only, dataset stream, postprocess)
 
 ## Responsiveness
 Current breakpoints in CSS:

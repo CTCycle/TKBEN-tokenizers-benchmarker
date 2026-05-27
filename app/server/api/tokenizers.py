@@ -141,7 +141,7 @@ async def download_tokenizers(
 
     key_service = HFAccessKeyService()
     try:
-        key_service.get_active_key()
+        await asyncio.to_thread(key_service.get_active_key)
     except HFAccessKeyValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -179,7 +179,11 @@ async def generate_tokenizer_report(
         )
 
     service = TokenizersService()
-    if not service.has_cached_tokenizer(tokenizer_name):
+    tokenizer_cached = await asyncio.to_thread(
+        service.has_cached_tokenizer,
+        tokenizer_name,
+    )
+    if not tokenizer_cached:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=(
@@ -221,7 +225,9 @@ async def get_latest_tokenizer_report(tokenizer_name: str) -> TokenizerReportRes
         ) from exc
 
     service = TokenizersService()
-    report = await asyncio.to_thread(service.get_latest_tokenizer_report, tokenizer_name)
+    report = await asyncio.to_thread(
+        service.get_latest_tokenizer_report, tokenizer_name
+    )
     if report is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -285,7 +291,9 @@ async def upload_custom_tokenizer(
     normalized_filename, safe_stem = validate_upload_filename(
         file,
         extension_allowed=lambda extension: extension == ".json",
-        unsupported_detail=lambda _extension: "File must be a .json file (tokenizer.json)",
+        unsupported_detail=lambda _extension: (
+            "File must be a .json file (tokenizer.json)"
+        ),
     )
 
     content = await file.read()

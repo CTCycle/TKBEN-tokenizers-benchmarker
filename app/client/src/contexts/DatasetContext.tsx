@@ -68,7 +68,10 @@ interface DatasetContextType {
         datasetName: string,
         requestOverrides?: Partial<DatasetAnalysisRequest>,
     ) => Promise<void>;
-    handleLoadLatestDatasetReport: (datasetName: string) => Promise<void>;
+    handleLoadLatestDatasetReport: (
+        datasetName: string,
+        options?: { suppressNotFoundError?: boolean },
+    ) => Promise<void>;
     handleDeleteDataset: (datasetName: string) => Promise<void>;
     refreshAvailableDatasets: () => Promise<void>;
     loadMetricsCatalog: () => Promise<void>;
@@ -268,7 +271,10 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
         }
     }, []);
 
-    const handleLoadLatestDatasetReport = useCallback(async (targetDataset: string) => {
+    const handleLoadLatestDatasetReport = useCallback(async (
+        targetDataset: string,
+        options?: { suppressNotFoundError?: boolean },
+    ) => {
         if (!targetDataset) return;
 
         setError(null);
@@ -280,7 +286,14 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             setDatasetName(response.dataset_name);
             setDatasetLoaded(true);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load latest dataset report');
+            const message = err instanceof Error ? err.message : 'Failed to load latest dataset report';
+            const isNoReportFound = message.toLowerCase().includes('no validation report found');
+            if (!(options?.suppressNotFoundError && isNoReportFound)) {
+                setError(message);
+            }
+            if (options?.suppressNotFoundError && isNoReportFound) {
+                setValidationReport(null);
+            }
         } finally {
             setActiveReportLoadDataset(null);
         }

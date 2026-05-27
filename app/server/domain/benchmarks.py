@@ -13,6 +13,12 @@ class BenchmarkRunConfig(BaseModel):
     seed: int = Field(default=42)
     parallelism: int = Field(default=1, ge=1, le=128)
     include_lm_metrics: bool = Field(default=False)
+    add_special_tokens: bool = Field(default=False)
+    padding: bool = Field(default=False)
+    truncation: bool = Field(default=False)
+    max_length: int | None = Field(default=None, ge=1)
+    store_per_document_stats: bool = Field(default=True)
+    per_document_sample_size: int = Field(default=500, ge=1, le=10000)
 
 
 class BenchmarkHardwareProfile(BaseModel):
@@ -34,6 +40,9 @@ class BenchmarkEfficiencyMetrics(BaseModel):
     encode_tokens_per_second_ci95_high: float = Field(default=0.0)
     encode_chars_per_second_mean: float = Field(default=0.0)
     encode_bytes_per_second_mean: float = Field(default=0.0)
+    encode_only_wall_time_seconds: float = Field(default=0.0)
+    dataset_stream_wall_time_seconds: float = Field(default=0.0)
+    postprocess_wall_time_seconds: float = Field(default=0.0)
     end_to_end_wall_time_seconds: float = Field(default=0.0)
     load_time_seconds: float = Field(default=0.0)
 
@@ -73,6 +82,9 @@ class BenchmarkResourceMetrics(BaseModel):
 
 class BenchmarkTokenizerResult(BaseModel):
     tokenizer: str
+    status: str = Field(default="success")
+    error_type: str | None = Field(default=None)
+    error_message: str | None = Field(default=None)
     tokenizer_family: str = Field(default="unknown")
     runtime_backend: str = Field(default="unknown")
     vocabulary_size: int = Field(default=0)
@@ -167,6 +179,7 @@ class BenchmarkMetricCatalogMetric(BaseModel):
     description: str
     scope: str
     value_kind: str
+    source: str = Field(default="observed")
     core: bool = Field(default=False)
 
 
@@ -206,6 +219,8 @@ class BenchmarkPerDocumentTokenizerStats(BaseModel):
 
 class BenchmarkRunResponse(BaseModel):
     status: str = Field(default="success")
+    schema_version: int = Field(default=1)
+    methodology_version: str = Field(default="v1_observed_trials")
     report_id: int | None = Field(default=None)
     report_version: int = Field(default=2)
     created_at: str | None = Field(default=None)
@@ -221,3 +236,5 @@ class BenchmarkRunResponse(BaseModel):
     tokenizer_results: list[BenchmarkTokenizerResult] = Field(default_factory=list)
     chart_data: BenchmarkChartDataV2 = Field(default_factory=BenchmarkChartDataV2)
     per_document_stats: list[BenchmarkPerDocumentTokenizerStats] = Field(default_factory=list)
+    runtime_metadata: dict[str, object] = Field(default_factory=dict)
+    raw_observations: dict[str, list[dict[str, object]]] = Field(default_factory=dict)

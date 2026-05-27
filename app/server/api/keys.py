@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -52,7 +53,7 @@ def is_key_reveal_enabled() -> bool:
 async def create_key(request: HFAccessKeyCreateRequest) -> HFAccessKeyListItem:
     service = HFAccessKeyService()
     try:
-        created_key = service.add_key(request.key_value)
+        created_key = await asyncio.to_thread(service.add_key, request.key_value)
     except HFAccessKeyValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
@@ -72,9 +73,8 @@ async def create_key(request: HFAccessKeyCreateRequest) -> HFAccessKeyListItem:
 )
 async def list_keys() -> HFAccessKeyListResponse:
     service = HFAccessKeyService()
-    return HFAccessKeyListResponse(
-        keys=[HFAccessKeyListItem(**key) for key in service.list_keys()]
-    )
+    keys = await asyncio.to_thread(service.list_keys)
+    return HFAccessKeyListResponse(keys=[HFAccessKeyListItem(**key) for key in keys])
 
 
 ###############################################################################
@@ -89,7 +89,7 @@ async def delete_key(
 ) -> HFAccessKeyDeleteResponse:
     service = HFAccessKeyService()
     try:
-        service.delete_key(key_id=key_id, confirm=confirm)
+        await asyncio.to_thread(service.delete_key, key_id=key_id, confirm=confirm)
     except HFAccessKeyValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
@@ -110,7 +110,7 @@ async def delete_key(
 async def activate_key(key_id: int) -> HFAccessKeyActivateResponse:
     service = HFAccessKeyService()
     try:
-        service.set_active_key(key_id)
+        await asyncio.to_thread(service.set_active_key, key_id)
     except HFAccessKeyNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
@@ -127,7 +127,7 @@ async def activate_key(key_id: int) -> HFAccessKeyActivateResponse:
 async def deactivate_key(key_id: int) -> HFAccessKeyActivateResponse:
     service = HFAccessKeyService()
     try:
-        service.clear_active_key(key_id)
+        await asyncio.to_thread(service.clear_active_key, key_id)
     except HFAccessKeyNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
@@ -149,7 +149,7 @@ async def reveal_key(key_id: int) -> HFAccessKeyRevealResponse:
         )
     service = HFAccessKeyService()
     try:
-        revealed_key = service.get_revealed_key(key_id)
+        revealed_key = await asyncio.to_thread(service.get_revealed_key, key_id)
     except HFAccessKeyValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)

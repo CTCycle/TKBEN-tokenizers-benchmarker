@@ -166,7 +166,11 @@ async def analyze_dataset(
         )
 
     service = DatasetService()
-    if not service.is_dataset_in_database(payload.dataset_name):
+    dataset_exists = await asyncio.to_thread(
+        service.is_dataset_in_database,
+        payload.dataset_name,
+    )
+    if not dataset_exists:
         logger.warning("Dataset not found: %s", payload.dataset_name)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -249,7 +253,10 @@ async def delete_dataset(dataset_name: str) -> DatasetDeleteResponse:
         ) from exc
 
     service = DatasetService()
-    if not service.is_dataset_in_database(dataset_name):
+    dataset_exists = await asyncio.to_thread(
+        service.is_dataset_in_database, dataset_name
+    )
+    if not dataset_exists:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Dataset '{dataset_name}' not found.",

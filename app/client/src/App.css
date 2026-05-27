@@ -1616,6 +1616,11 @@
   font-size: 12px;
   line-height: 1.3;
 }
+.cross-benchmark-diagnostics-grid {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
 
 .cross-benchmark-inline-select {
   width: 100%;
