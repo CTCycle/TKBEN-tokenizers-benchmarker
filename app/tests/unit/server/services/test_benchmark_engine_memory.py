@@ -10,7 +10,11 @@ class MemoryAdapter:
 
     def encode_batch(self, texts, **kwargs) -> EncodedBatch:  # type: ignore[no-untyped-def]
         del kwargs
-        return EncodedBatch(token_counts=[len(text) for text in texts], unknown_counts=[0 for _ in texts])
+        return EncodedBatch(
+            token_counts=[len(text) for text in texts],
+            unknown_counts=[0 for _ in texts],
+            input_ids_by_doc=[[ord(character) for character in text] for text in texts],
+        )
 
 
 def test_memory_peak_is_measured_not_placeholder() -> None:
