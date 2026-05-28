@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pytest
-
 from tests.unit.benchmark_metric_test_support import (
     BENCHMARK_METRIC_KEYS,
     DATASET_BENCHMARK_METRIC_KEYS,

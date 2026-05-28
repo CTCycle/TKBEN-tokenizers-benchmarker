@@ -6,6 +6,7 @@ import statistics
 import time
 import unicodedata
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -43,6 +44,15 @@ class BenchmarkCancelledError(RuntimeError):
     pass
 
 
+@dataclass(frozen=True)
+class SpooledTextBatchFactory:
+    spool: BenchmarkTextSpool
+    batch_size: int
+
+    def __call__(self) -> Any:
+        return self.spool.iter_text_batches(self.batch_size)
+
+
 ###############################################################################
 class BenchmarkServiceExecutionMixin:
     # Concrete host class provides these members; annotate for static analyzers.
@@ -55,7 +65,6 @@ class BenchmarkServiceExecutionMixin:
     stream_dataset_rows_from_database: Callable[[str], Any]
     repository: Any
 
-    # -------------------------------------------------------------------------
     # -------------------------------------------------------------------------
     def _percentile(self, values: Sequence[float], percentile: float) -> float:
         if not values:
@@ -500,12 +509,9 @@ class BenchmarkServiceExecutionMixin:
             try:
                 tokenizer_started_at = time.perf_counter()
                 adapter = UniversalTokenizerAdapter(tokenizer_id=name, tokenizer=tokenizer)
-                def _text_batches_factory():
-                    return spool.iter_text_batches(batch_size)
-
                 observations = run_tokenizer_trials(
                     tokenizer=adapter,
-                    text_batches_factory=_text_batches_factory,
+                    text_batches_factory=SpooledTextBatchFactory(spool, batch_size),
                     config=TokenizerRunConfig(
                         add_special_tokens=add_special_tokens,
                         padding=padding,
