@@ -1,5 +1,5 @@
 # ARCHITECTURE
-Last updated: 2026-05-25
+Last updated: 2026-05-29
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
@@ -82,9 +82,8 @@ Source-level structure (generated folders like `node_modules`, `dist`, caches om
 
 ## Application Entry Points
 - Backend app factory/module:
-  - `server.app:create_app` constructs the FastAPI app and registers API/frontend routes when running from `app/`.
-  - `app.server.app:create_app` is used by launchers that run from the repository root.
-  - `server.app:app` and `app.server.app:app` remain ASGI entry points depending on working directory and `PYTHONPATH`.
+  - `server.app:create_app` constructs the FastAPI app and registers API/frontend routes.
+  - `server.app:app` is the canonical ASGI entry point. Repository-root tooling must provide `app/` on `PYTHONPATH` rather than using alternate module paths.
 - Frontend entry:
   - `app/client/src/main.tsx`
 - Frontend routing root:
