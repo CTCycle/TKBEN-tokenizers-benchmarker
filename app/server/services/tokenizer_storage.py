@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import os
+from pathlib import Path
 
 from server.common.constants import TOKENIZERS_PATH
 from server.common.utils.security import (
@@ -50,18 +50,15 @@ class TokenizerStorageMixin:
     def get_tokenizer_cache_dir(self, tokenizer_id: str) -> str:
         safe_id = self.validate_tokenizer_identifier(tokenizer_id)
         safe_name = safe_id.replace("/", "__")
-        candidate = os.path.join(TOKENIZERS_PATH, safe_name)
+        candidate = Path(TOKENIZERS_PATH) / safe_name
         return ensure_path_is_within(TOKENIZERS_PATH, candidate)
 
     # -------------------------------------------------------------------------
     def has_cached_tokenizer(self, tokenizer_id: str) -> bool:
-        cache_dir = self.get_tokenizer_cache_dir(tokenizer_id)
-        if not os.path.isdir(cache_dir):
+        cache_dir = Path(self.get_tokenizer_cache_dir(tokenizer_id))
+        if not cache_dir.is_dir():
             return False
-        for _, _, files in os.walk(cache_dir):
-            if files:
-                return True
-        return False
+        return any(path.is_file() for path in cache_dir.rglob("*"))
 
     # -------------------------------------------------------------------------
     def build_huggingface_url(self, tokenizer_name: str) -> str | None:

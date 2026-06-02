@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import os
 import re
+from pathlib import Path, PurePosixPath
 
 IDENTIFIER_PATTERN = re.compile(
     r"^[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*$"
@@ -58,8 +58,8 @@ def normalize_upload_stem(filename: str, *, max_length: int = 120) -> str:
     normalized_name = filename.strip().replace("\\", "/")
     if not normalized_name:
         raise ValueError("Uploaded filename must not be empty.")
-    base_name = os.path.basename(normalized_name)
-    stem = os.path.splitext(base_name)[0].strip()
+    base_name = PurePosixPath(normalized_name).name
+    stem = Path(base_name).stem.strip()
     if not stem:
         raise ValueError("Uploaded filename is missing a valid stem.")
     cleaned = SAFE_FILENAME_CHARS_PATTERN.sub("_", stem).strip("._-")
@@ -69,13 +69,14 @@ def normalize_upload_stem(filename: str, *, max_length: int = 120) -> str:
 
 
 # ---------------------------------------------------------------------------
-def ensure_path_is_within(base_path: str, candidate_path: str) -> str:
-    base_abs = os.path.abspath(base_path)
-    candidate_abs = os.path.abspath(candidate_path)
+def ensure_path_is_within(base_path: str | Path, candidate_path: str | Path) -> str:
+    base_abs = Path(base_path).resolve()
+    candidate_abs = Path(candidate_path).resolve()
     try:
-        common = os.path.commonpath([base_abs, candidate_abs])
+        candidate_abs.relative_to(base_abs)
     except ValueError as exc:
-        raise ValueError("Path validation failed across different roots.") from exc
-    if common != base_abs:
-        raise ValueError("Resolved path escapes the allowed base directory.")
-    return candidate_abs
+        message = "Resolved path escapes the allowed base directory."
+        if getattr(exc, "args", ()) and "different anchors" in str(exc):
+            message = "Path validation failed across different roots."
+        raise ValueError(message) from exc
+    return str(candidate_abs)

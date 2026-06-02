@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import io
 import math
-import os
 import time
 from collections.abc import Callable
 from functools import partial
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 import pandas as pd
@@ -107,8 +107,8 @@ class DatasetServiceOperationsMixin:
             target.split if target.split is not None else "all",
         )
 
-        os.makedirs(DATASETS_PATH, exist_ok=True)
-        os.makedirs(cache_path, exist_ok=True)
+        Path(DATASETS_PATH).mkdir(parents=True, exist_ok=True)
+        Path(cache_path).mkdir(parents=True, exist_ok=True)
 
         if self.is_dataset_in_database(dataset_name):
             logger.info(
@@ -255,10 +255,10 @@ class DatasetServiceOperationsMixin:
         Returns:
             Dictionary with dataset_name, text_column, document_count, saved_count, histogram.
         """
-        normalized_name = os.path.basename(filename.strip().replace("\\", "/"))
+        normalized_name = PurePosixPath(filename.strip().replace("\\", "/")).name
         safe_stem = normalize_upload_stem(normalized_name)
         dataset_name = f"custom/{safe_stem}"
-        extension = os.path.splitext(normalized_name)[1].lower()
+        extension = Path(normalized_name).suffix.lower()
 
         logger.info(
             "Processing uploaded file: %s (type: %s)", normalized_name, extension

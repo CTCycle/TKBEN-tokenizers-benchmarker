@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import os
 from collections.abc import Callable
 from functools import cache
+from pathlib import Path
 from typing import Any, Protocol
 
 import pandas as pd
@@ -37,8 +37,8 @@ BackendFactory = Callable[[DatabaseSettings], DatabaseBackend]
 
 # -----------------------------------------------------------------------------
 def build_sqlite_backend(settings: DatabaseSettings) -> DatabaseBackend:
-    db_path = normalize_sqlite_path(os.path.join(RESOURCES_PATH, DATABASE_FILENAME))
-    should_initialize_schema = not os.path.exists(db_path)
+    db_path = normalize_sqlite_path(Path(RESOURCES_PATH) / DATABASE_FILENAME)
+    should_initialize_schema = not Path(db_path).exists()
     return SQLiteRepository(settings, initialize_schema=should_initialize_schema)
 
 

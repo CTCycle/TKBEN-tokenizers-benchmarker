@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import os
 import re
 import time  # noqa: F401
 from collections.abc import Generator, Iterable, Mapping, Sequence
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -279,7 +279,7 @@ class BenchmarkService(BenchmarkServiceExecutionMixin, BenchmarkPlottingMixin):
             max_length=self.TOKENIZER_ID_MAX_LENGTH,
         )
         safe_name = safe_id.replace("/", "__")
-        candidate = os.path.join(TOKENIZERS_PATH, safe_name)
+        candidate = Path(TOKENIZERS_PATH) / safe_name
         return ensure_path_is_within(TOKENIZERS_PATH, candidate)
 
     # -------------------------------------------------------------------------
@@ -316,13 +316,10 @@ class BenchmarkService(BenchmarkServiceExecutionMixin, BenchmarkPlottingMixin):
             if tokenizer_name in missing_names:
                 missing.append(tokenizer_name)
                 continue
-            cache_dir = self.get_tokenizer_cache_dir(tokenizer_name)
-            has_cached_files = False
-            if os.path.isdir(cache_dir):
-                for _, _, files in os.walk(cache_dir):
-                    if files:
-                        has_cached_files = True
-                        break
+            cache_dir = Path(self.get_tokenizer_cache_dir(tokenizer_name))
+            has_cached_files = cache_dir.is_dir() and any(
+                path.is_file() for path in cache_dir.rglob("*")
+            )
             if not has_cached_files:
                 missing.append(tokenizer_name)
         return missing

@@ -5,6 +5,7 @@ Provides fixtures for Playwright page objects and API client.
 
 import os
 import time
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -112,7 +113,7 @@ def sample_dataset_payload() -> tuple[str, str, bytes]:
     Returns a small CSV payload used across dataset-related tests.
     """
     filename = os.getenv("E2E_SAMPLE_DATASET_FILE", "e2e_sample.csv")
-    dataset_name = f"custom/{os.path.splitext(filename)[0]}"
+    dataset_name = f"custom/{Path(filename).stem}"
     csv_content = "text\nHello world\nThis is a sample document\nAnother sample\n"
     return filename, dataset_name, csv_content.encode("utf-8")
 
