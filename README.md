@@ -158,13 +158,18 @@ Key paths:
 Configuration is split between:
 - `settings/.env`: Active runtime/process configuration used by launcher, tests, frontend dev/preview, and desktop startup.
 - `settings/.env.example`: Single template for `.env`.
-- `settings/configurations.json`: Backend structured settings, including all database mode/connection/tuning values.
+- `settings/configurations.json`: Backend structured settings for datasets, tokenizers, benchmarks, and jobs.
 
 Core runtime keys you will commonly edit:
 - `FASTAPI_HOST`, `FASTAPI_PORT`
 - `UI_HOST`, `UI_PORT`
 - `VITE_API_BASE_URL` (normally `/api`)
 - `RELOAD`
+- `DATABASE_EMBEDDED`
+- `DATABASE_URL`
+- `DATABASE_HOST`, `DATABASE_PORT`
+- `DATABASE_NAME`
+- `DATABASE_USERNAME`, `DATABASE_PASSWORD`
 - `HF_KEYS_ENCRYPTION_KEY`
 
 Determinism:
