@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import os
+import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 
 ###############################################################################
@@ -71,53 +73,142 @@ class ServerSettings:
 
 
 ###############################################################################
-class JsonDatabaseSettings(BaseModel):
-    embedded_database: bool = True
-    engine: str = "postgresql+psycopg"
-    host: str | None = None
-    port: int = Field(default=5432, ge=1, le=65535)
-    database_name: str | None = None
-    username: str | None = None
-    password: str | None = None
-    ssl: bool = False
-    ssl_ca: str | None = None
-    connect_timeout: int = Field(default=10, ge=1)
-    insert_batch_size: int = Field(default=1000, ge=1)
+def _normalize_optional_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if text == "":
+        return None
+    return text
 
-    @field_validator(
-        "engine",
-        "host",
-        "database_name",
-        "username",
-        "password",
-        "ssl_ca",
-        mode="before",
+
+# -----------------------------------------------------------------------------
+def _read_env_bool(name: str, default: bool) -> bool:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+
+    normalized = raw_value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise RuntimeError(f"{name} must be a boolean value, got: {raw_value}")
+
+
+# -----------------------------------------------------------------------------
+def _read_env_int(
+    name: str,
+    default: int,
+    *,
+    minimum: int | None = None,
+    maximum: int | None = None,
+) -> int:
+    raw_value = os.getenv(name)
+    if raw_value is None or raw_value.strip() == "":
+        value = default
+    else:
+        try:
+            value = int(raw_value.strip())
+        except ValueError as exc:
+            raise RuntimeError(f"{name} must be a valid integer, got: {raw_value}") from exc
+
+    if minimum is not None and value < minimum:
+        raise RuntimeError(f"{name} must be >= {minimum}, got: {value}")
+    if maximum is not None and value > maximum:
+        raise RuntimeError(f"{name} must be <= {maximum}, got: {value}")
+    return value
+
+
+# -----------------------------------------------------------------------------
+def _parse_database_url(database_url: str | None) -> dict[str, Any]:
+    if not database_url:
+        return {}
+
+    parsed = urllib.parse.urlparse(database_url)
+    database_name = parsed.path.lstrip("/") or None
+    return {
+        "engine": _normalize_optional_text(parsed.scheme),
+        "host": _normalize_optional_text(parsed.hostname),
+        "port": parsed.port,
+        "database_name": _normalize_optional_text(database_name),
+        "username": _normalize_optional_text(parsed.username),
+        "password": _normalize_optional_text(parsed.password),
+    }
+
+
+# -----------------------------------------------------------------------------
+def load_database_settings_from_env() -> DatabaseSettings:
+    embedded_database = _read_env_bool("DATABASE_EMBEDDED", True)
+    connect_timeout = _read_env_int("DATABASE_CONNECT_TIMEOUT", 30, minimum=1)
+    insert_batch_size = _read_env_int("DATABASE_INSERT_BATCH_SIZE", 1000, minimum=1)
+
+    if embedded_database:
+        return DatabaseSettings(
+            embedded_database=True,
+            engine=None,
+            host=None,
+            port=None,
+            database_name=None,
+            username=None,
+            password=None,
+            ssl=False,
+            ssl_ca=None,
+            connect_timeout=connect_timeout,
+            insert_batch_size=insert_batch_size,
+        )
+
+    database_url = _normalize_optional_text(os.getenv("DATABASE_URL"))
+    database_url_parts = _parse_database_url(database_url)
+
+    engine = _normalize_optional_text(os.getenv("DATABASE_ENGINE")) or database_url_parts.get(
+        "engine"
     )
-    @classmethod
-    def normalize_optional_text(cls, value: Any) -> str | None:
-        if value is None:
-            return None
-        text = str(value).strip()
-        if text == "":
-            return None
-        return text
+    host = _normalize_optional_text(os.getenv("DATABASE_HOST")) or database_url_parts.get("host")
+    username = _normalize_optional_text(os.getenv("DATABASE_USERNAME")) or database_url_parts.get(
+        "username"
+    )
+    password = _normalize_optional_text(os.getenv("DATABASE_PASSWORD")) or database_url_parts.get(
+        "password"
+    )
+    database_name = _normalize_optional_text(
+        os.getenv("DATABASE_NAME")
+    ) or database_url_parts.get("database_name")
+    port = _read_env_int(
+        "DATABASE_PORT",
+        database_url_parts.get("port") or 5432,
+        minimum=1,
+        maximum=65535,
+    )
+    ssl = _read_env_bool("DATABASE_SSL", False)
+    ssl_ca = _normalize_optional_text(os.getenv("DATABASE_SSL_CA"))
 
-    @model_validator(mode="after")
-    def validate_external_database_requirements(self) -> "JsonDatabaseSettings":
-        if self.embedded_database:
-            return self
+    missing: list[str] = []
+    if not engine:
+        missing.append("DATABASE_ENGINE")
+    if not host:
+        missing.append("DATABASE_HOST")
+    if not database_name:
+        missing.append("DATABASE_NAME")
+    if not username:
+        missing.append("DATABASE_USERNAME")
+    if missing:
+        joined = ", ".join(missing)
+        raise RuntimeError(f"External database mode requires environment variables: {joined}")
 
-        missing: list[str] = []
-        if not self.host:
-            missing.append("database.host")
-        if not self.database_name:
-            missing.append("database.database_name")
-        if not self.username:
-            missing.append("database.username")
-        if missing:
-            joined = ", ".join(missing)
-            raise ValueError(f"External database mode requires configuration keys: {joined}")
-        return self
+    return DatabaseSettings(
+        embedded_database=False,
+        engine=engine.lower(),
+        host=host,
+        port=port,
+        database_name=database_name,
+        username=username,
+        password=password,
+        ssl=ssl,
+        ssl_ca=ssl_ca,
+        connect_timeout=connect_timeout,
+        insert_batch_size=insert_batch_size,
+    )
 
 
 ###############################################################################
@@ -169,7 +260,6 @@ class JsonJobsSettings(BaseModel):
 
 ###############################################################################
 class JsonConfiguration(BaseModel):
-    database: JsonDatabaseSettings = Field(default_factory=JsonDatabaseSettings)
     datasets: JsonDatasetSettings = Field(default_factory=JsonDatasetSettings)
     tokenizers: JsonTokenizerSettings = Field(default_factory=JsonTokenizerSettings)
     benchmarks: JsonBenchmarkSettings = Field(default_factory=JsonBenchmarkSettings)
@@ -179,7 +269,6 @@ class JsonConfiguration(BaseModel):
     @classmethod
     def from_payload(cls, payload: dict[str, Any]) -> "JsonConfiguration":
         return cls(
-            database=payload.get("database", {}),
             datasets=payload.get("datasets", {}),
             tokenizers=payload.get("tokenizers", {}),
             benchmarks=payload.get("benchmarks", {}),
@@ -202,38 +291,8 @@ class JsonConfiguration(BaseModel):
 
     # -------------------------------------------------------------------------
     def to_server_settings(self) -> ServerSettings:
-        db = self.database
-        if db.embedded_database:
-            database_settings = DatabaseSettings(
-                embedded_database=True,
-                engine=None,
-                host=None,
-                port=None,
-                database_name=None,
-                username=None,
-                password=None,
-                ssl=False,
-                ssl_ca=None,
-                connect_timeout=db.connect_timeout,
-                insert_batch_size=db.insert_batch_size,
-            )
-        else:
-            database_settings = DatabaseSettings(
-                embedded_database=False,
-                engine=db.engine.lower() if db.engine else "postgresql+psycopg",
-                host=db.host,
-                port=db.port,
-                database_name=db.database_name,
-                username=db.username,
-                password=db.password,
-                ssl=db.ssl,
-                ssl_ca=db.ssl_ca,
-                connect_timeout=db.connect_timeout,
-                insert_batch_size=db.insert_batch_size,
-            )
-
         return ServerSettings(
-            database=database_settings,
+            database=load_database_settings_from_env(),
             datasets=DatasetSettings(
                 allowed_extensions=tuple(self.datasets.allowed_extensions),
                 column_detection_cutoff=self.datasets.column_detection_cutoff,

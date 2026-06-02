@@ -29,7 +29,7 @@ class ConfigurationManager:
 
     # -------------------------------------------------------------------------
     def load(self) -> "ConfigurationManager":
-        payload = self._read_payload()
+        payload = self._normalize_payload(self._read_payload())
         self._configuration = self._validate_configuration(payload)
         self._payload = payload
         return self
@@ -42,10 +42,14 @@ class ConfigurationManager:
     def update(self, payload: dict[str, Any], *, persist: bool = True) -> "ConfigurationManager":
         if not isinstance(payload, dict):
             raise RuntimeError("Configuration must be a JSON object.")
-        self._configuration = self._validate_configuration(payload)
-        self._payload = payload
+        normalized_payload = self._normalize_payload(payload)
+        self._configuration = self._validate_configuration(normalized_payload)
+        self._payload = normalized_payload
         if persist:
-            self.config_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            self.config_path.write_text(
+                json.dumps(normalized_payload, indent=2),
+                encoding="utf-8",
+            )
         return self
 
     # -------------------------------------------------------------------------
@@ -72,6 +76,12 @@ class ConfigurationManager:
         if not isinstance(payload, dict):
             raise RuntimeError("Configuration must be a JSON object.")
         return payload
+
+    # -------------------------------------------------------------------------
+    def _normalize_payload(self, payload: dict[str, Any]) -> dict[str, Any]:
+        normalized_payload = dict(payload)
+        normalized_payload.pop("database", None)
+        return normalized_payload
 
     # -------------------------------------------------------------------------
     def _validate_configuration(self, payload: dict[str, Any]) -> JsonConfiguration:

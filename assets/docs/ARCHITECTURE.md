@@ -1,5 +1,5 @@
 # ARCHITECTURE
-Last updated: 2026-05-29
+Last updated: 2026-06-02
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
@@ -186,7 +186,7 @@ Frontend structure:
 - Default embedded persistence:
   - SQLite file: `app/resources/database.db`
 - Optional external persistence:
-  - PostgreSQL via `postgresql+psycopg` when `embedded_database=false` in `settings/configurations.json`
+  - PostgreSQL via `postgresql+psycopg` when `DATABASE_EMBEDDED=false` in `settings/.env`
 - Non-DB persisted artifacts:
   - `app/resources/sources/datasets` (download caches/uploads)
   - `app/resources/sources/tokenizers` (tokenizer caches/custom uploads)

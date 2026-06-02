@@ -1,5 +1,5 @@
 # RUNTIME_MODES
-Last updated: 2026-04-24
+Last updated: 2026-06-02
 
 ## Supported Modes
 ### 1. Local webapp mode (default)
@@ -64,10 +64,21 @@ Core variables:
 - `OPTIONAL_DEPENDENCIES`
 - `ALLOW_KEY_REVEAL`
 - `HF_KEYS_ENCRYPTION_KEY`
+- `DATABASE_EMBEDDED`
+- `DATABASE_URL`
+- `DATABASE_ENGINE`
+- `DATABASE_HOST`
+- `DATABASE_PORT`
+- `DATABASE_NAME`
+- `DATABASE_USERNAME`
+- `DATABASE_PASSWORD`
+- `DATABASE_SSL`
+- `DATABASE_SSL_CA`
+- `DATABASE_CONNECT_TIMEOUT`
+- `DATABASE_INSERT_BATCH_SIZE`
 
 Structured settings:
 - `TKBEN/settings/configurations.json`
-  - `database` (embedded SQLite vs PostgreSQL)
   - `datasets`, `tokenizers`, `benchmarks`, `jobs` tunables
 
 ## Dependency Prerequisites
@@ -88,9 +99,10 @@ From project/runtime scripts and metadata:
 - Runtime environment may be prepared into writable runtime path for packaged execution.
 
 ### Persistence mode toggle
-- `configurations.json`:
-  - `database.embedded_database=true` -> SQLite (`resources/database.db`)
-  - `database.embedded_database=false` + `engine=postgresql+psycopg` -> PostgreSQL
+- `.env`:
+  - `DATABASE_EMBEDDED=true` -> SQLite (`resources/database.db`)
+  - `DATABASE_EMBEDDED=false` + `DATABASE_ENGINE=postgresql+psycopg` -> PostgreSQL
+  - `DATABASE_URL` may be used as a seed for engine/host/port/name/user/password, with explicit `DATABASE_*` values taking precedence
 
 ## Interoperability
 - Frontend and backend communicate through HTTP JSON APIs under `/api/*`.
