@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import os
 from collections.abc import Callable
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from fastapi import HTTPException, Request, UploadFile, status
@@ -60,7 +60,9 @@ def validate_upload_filename(
             detail="No filename provided.",
         )
 
-    normalized_filename = os.path.basename(file.filename.strip().replace("\\", "/"))
+    normalized_filename = PurePosixPath(
+        file.filename.strip().replace("\\", "/")
+    ).name
     if not normalized_filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -77,7 +79,7 @@ def validate_upload_filename(
                 detail=str(exc),
             ) from exc
 
-    extension = os.path.splitext(normalized_filename)[1].lower()
+    extension = Path(normalized_filename).suffix.lower()
     if not extension_allowed(extension):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

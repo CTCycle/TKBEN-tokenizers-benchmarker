@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import os
 import re
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -29,9 +29,9 @@ class SQLiteRepository:
         self, settings: DatabaseSettings, initialize_schema: bool = False
     ) -> None:
         self.db_path: str | None = normalize_sqlite_path(
-            os.path.join(RESOURCES_PATH, DATABASE_FILENAME)
+            Path(RESOURCES_PATH) / DATABASE_FILENAME
         )
-        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+        Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         self.engine: Engine = sqlalchemy.create_engine(
             f"sqlite:///{self.db_path}", echo=False, future=True
         )

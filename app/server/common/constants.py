@@ -1,24 +1,24 @@
 from __future__ import annotations
 
-from os.path import abspath, join
+from pathlib import Path
 
 # [PATHS]
 ###############################################################################
-ROOT_DIR = abspath(join(__file__, "../../../.."))
-PROJECT_DIR = join(ROOT_DIR, "app")
-SETTING_PATH = join(ROOT_DIR, "settings")
-RESOURCES_PATH = join(PROJECT_DIR, "resources")
-SOURCES_PATH = join(RESOURCES_PATH, "sources")
-DATASETS_PATH = join(SOURCES_PATH, "datasets")
-TOKENIZERS_PATH = join(SOURCES_PATH, "tokenizers")
-LOGS_PATH = join(RESOURCES_PATH, "logs")
-TEMPLATES_PATH = join(RESOURCES_PATH, "templates")
-ENV_FILE_PATH = join(SETTING_PATH, ".env")
+ROOT_DIR = Path(__file__).resolve().parents[3]
+PROJECT_DIR = ROOT_DIR / "app"
+SETTING_PATH = ROOT_DIR / "settings"
+RESOURCES_PATH = PROJECT_DIR / "resources"
+SOURCES_PATH = RESOURCES_PATH / "sources"
+DATASETS_PATH = SOURCES_PATH / "datasets"
+TOKENIZERS_PATH = SOURCES_PATH / "tokenizers"
+LOGS_PATH = RESOURCES_PATH / "logs"
+TEMPLATES_PATH = RESOURCES_PATH / "templates"
+ENV_FILE_PATH = SETTING_PATH / ".env"
 DATABASE_FILENAME = "database.db"
 
 
 ###############################################################################
-CONFIGURATIONS_FILE = join(SETTING_PATH, "configurations.json")
+CONFIGURATIONS_FILE = SETTING_PATH / "configurations.json"
 
 
 ###############################################################################

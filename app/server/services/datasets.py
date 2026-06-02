@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-import os
 import shutil
 import threading
 import time  # noqa: F401
@@ -9,6 +8,7 @@ from collections import Counter
 from collections.abc import Callable, Generator, Iterator
 from dataclasses import dataclass
 from functools import partial
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -635,7 +635,7 @@ class DatasetService(DatasetServiceOperationsMixin):
         folder_name = safe_corpus.replace("/", "__")
         if safe_config:
             folder_name = f"{folder_name}__{safe_config.replace('/', '__')}"
-        candidate = os.path.join(DATASETS_PATH, folder_name)
+        candidate = Path(DATASETS_PATH) / folder_name
         return ensure_path_is_within(DATASETS_PATH, candidate)
 
     # -------------------------------------------------------------------------
@@ -659,11 +659,12 @@ class DatasetService(DatasetServiceOperationsMixin):
     def maybe_cleanup_downloaded_source(
         self, cache_path: str, dataset_name: str
     ) -> None:
+        path = Path(cache_path)
         try:
-            if os.path.isdir(cache_path):
-                shutil.rmtree(cache_path)
-            elif os.path.exists(cache_path):
-                os.remove(cache_path)
+            if path.is_dir():
+                shutil.rmtree(path)
+            elif path.exists():
+                path.unlink()
             else:
                 logger.info(
                     "Downloaded source already missing for %s, skipping cleanup: %s",
@@ -767,16 +768,10 @@ class DatasetService(DatasetServiceOperationsMixin):
 
     # -------------------------------------------------------------------------
     def dataset_cached_on_disk(self, cache_path: str) -> bool:
-        if not os.path.isdir(cache_path):
+        path = Path(cache_path)
+        if not path.is_dir():
             return False
-        iterator = os.scandir(cache_path)
-        try:
-            next(iterator)
-        except StopIteration:
-            return False
-        finally:
-            iterator.close()
-        return True
+        return any(path.iterdir())
 
     # -------------------------------------------------------------------------
     def is_dataset_in_database(self, dataset_name: str) -> bool:

@@ -4,6 +4,7 @@ import os
 import tempfile
 from collections import Counter
 from collections.abc import Iterator
+from pathlib import Path
 
 from sqlalchemy import Integer, String, create_engine, func, select
 from sqlalchemy.orm import Session, declarative_base, mapped_column, sessionmaker
@@ -25,7 +26,8 @@ class DiskBackedFrequencyStore:
     def __init__(self, memory_limit: int = 250_000) -> None:
         self.memory_limit = max(10_000, int(memory_limit))
         self.memory: Counter[str] = Counter()
-        fd, self.path = tempfile.mkstemp(prefix="tkben_freq_", suffix=".sqlite3")
+        fd, raw_path = tempfile.mkstemp(prefix="tkben_freq_", suffix=".sqlite3")
+        self.path = Path(raw_path)
         os.close(fd)
         self.engine = create_engine(f"sqlite:///{self.path}", future=True)
         self._session_factory = sessionmaker(bind=self.engine, future=True)
@@ -235,6 +237,6 @@ class DiskBackedFrequencyStore:
             self.engine.dispose()
         finally:
             try:
-                os.remove(self.path)
+                self.path.unlink()
             except OSError:
                 pass

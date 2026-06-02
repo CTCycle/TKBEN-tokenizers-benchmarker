@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import json
 import math
-import os
 import re
 import tempfile
 from collections.abc import Callable
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from huggingface_hub import HfApi, ModelCard
@@ -86,7 +86,7 @@ class TokenizersService(TokenizerStorageMixin):
         finally:
             if temp_path:
                 try:
-                    os.unlink(temp_path)
+                    Path(temp_path).unlink()
                 except FileNotFoundError:
                     pass
 
@@ -212,7 +212,7 @@ class TokenizersService(TokenizerStorageMixin):
                     already_downloaded.append(tokenizer_id)
                 else:
                     cache_dir = self.get_tokenizer_cache_dir(tokenizer_id)
-                    os.makedirs(cache_dir, exist_ok=True)
+                    Path(cache_dir).mkdir(parents=True, exist_ok=True)
                     AutoTokenizer.from_pretrained(
                         tokenizer_id,
                         cache_dir=cache_dir,
@@ -351,24 +351,21 @@ class TokenizersService(TokenizerStorageMixin):
     # -------------------------------------------------------------------------
     def find_cached_file(
         self,
-        cache_dir: str,
+        cache_dir: str | Path,
         candidate_names: tuple[str, ...],
     ) -> str | None:
         candidate_set = {name.lower() for name in candidate_names}
-        for root, dirs, files in os.walk(cache_dir):
-            dirs.sort()
-            files_sorted = sorted(files)
-            for filename in files_sorted:
-                if filename.lower() in candidate_set:
-                    return os.path.join(root, filename)
+        for path in sorted(Path(cache_dir).rglob("*")):
+            if path.is_file() and path.name.lower() in candidate_set:
+                return str(path)
         return None
 
     # -------------------------------------------------------------------------
-    def load_json_if_present(self, path: str | None) -> dict[str, Any]:
+    def load_json_if_present(self, path: str | Path | None) -> dict[str, Any]:
         if path is None:
             return {}
         try:
-            with open(path, "r", encoding="utf-8") as file_obj:
+            with Path(path).open("r", encoding="utf-8") as file_obj:
                 payload = json.load(file_obj)
             if isinstance(payload, dict):
                 return payload
