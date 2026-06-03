@@ -43,6 +43,9 @@ set "FRONTEND_DIR=%root_folder%app\client"
 set "FRONTEND_DIST=%FRONTEND_DIR%\dist"
 set "FRONTEND_LOCKFILE=%FRONTEND_DIR%\package-lock.json"
 set "FRONTEND_STRICT_PORT=--strictPort"
+set "QA_DIR=%root_folder%QA"
+set "BACKEND_STDOUT_LOG=%QA_DIR%\backend-startup.stdout.log"
+set "BACKEND_STDERR_LOG=%QA_DIR%\backend-startup.stderr.log"
 
 set "DOTENV=%settings_dir%\.env"
 set "TMPDL=%TEMP%\app_dl.ps1"
@@ -67,6 +70,7 @@ REM ============================================================================
 if not exist "%runtimes_dir%" md "%runtimes_dir%" >nul 2>&1
 if not exist "%python_dir%" md "%python_dir%" >nul 2>&1
 if not exist "%nodejs_dir%" md "%nodejs_dir%" >nul 2>&1
+if not exist "%QA_DIR%" md "%QA_DIR%" >nul 2>&1
 
 REM ============================================================================
 REM == Prepare helper PowerShell scripts
@@ -304,7 +308,9 @@ if not exist "%venv_dir%\Scripts\python.exe" (
   echo [FATAL] virtual environment python not found at "%venv_dir%\Scripts\python.exe"
   goto error
 )
-start "" /b "%venv_dir%\Scripts\python.exe" -m uvicorn %UVICORN_MODULE% --app-dir "%root_folder%app" --host !FASTAPI_HOST! --port !FASTAPI_PORT! !RELOAD_FLAG! --log-level info
+del /q "%BACKEND_STDOUT_LOG%" "%BACKEND_STDERR_LOG%" >nul 2>&1
+echo [INFO] Backend logs: "%BACKEND_STDOUT_LOG%" and "%BACKEND_STDERR_LOG%"
+start "" /b cmd /d /c ""%venv_dir%\Scripts\python.exe" -m uvicorn %UVICORN_MODULE% --app-dir "%root_folder%app" --host !FASTAPI_HOST! --port !FASTAPI_PORT! !RELOAD_FLAG! --log-level info 1>>"%BACKEND_STDOUT_LOG%" 2>>"%BACKEND_STDERR_LOG%""
 
 REM ============================================================================
 REM Wait for backend
@@ -317,6 +323,14 @@ for /L %%i in (1,1,60) do (
   timeout /t 1 /nobreak >nul 2>&1
 )
 echo [FATAL] Backend did not become ready at !BACKEND_BASE_URL! (checked /api/health, /health, /docs, /).
+if exist "%BACKEND_STDERR_LOG%" (
+  echo [INFO] Backend stderr:
+  type "%BACKEND_STDERR_LOG%"
+)
+if exist "%BACKEND_STDOUT_LOG%" (
+  echo [INFO] Backend stdout:
+  type "%BACKEND_STDOUT_LOG%"
+)
 goto error
 :backend_ready_check
 
