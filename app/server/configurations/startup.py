@@ -15,7 +15,7 @@ def _resolve_config_path(config_path: str | None = None) -> str:
 
 ###############################################################################
 def get_configuration_manager(config_path: str | None = None) -> ConfigurationManager:
-    ensure_environment_loaded()
+    ensure_environment_loaded(force=True)
     return ConfigurationManager(config_path=_resolve_config_path(config_path)).load()
 
 

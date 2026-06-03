@@ -159,7 +159,7 @@ Key paths:
 Configuration is split between:
 - `settings/.env`: Active runtime/process configuration used by launcher, tests, frontend dev/preview, and desktop startup.
 - `settings/.env.example`: Single template for `.env`.
-- `settings/configurations.json`: Backend structured settings for datasets, tokenizers, benchmarks, and jobs.
+- `settings/configurations.json`: Backend structured settings for datasets, tokenizers, benchmarks, jobs, and optional database overrides.
 
 Core runtime keys you will commonly edit:
 - `FASTAPI_HOST`, `FASTAPI_PORT`

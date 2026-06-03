@@ -82,6 +82,21 @@ def _normalize_optional_text(value: Any) -> str | None:
     return text
 
 
+###############################################################################
+class JsonDatabaseSettings(BaseModel):
+    embedded_database: bool = True
+    engine: str | None = None
+    host: str | None = None
+    port: int | None = Field(default=None, ge=1, le=65535)
+    database_name: str | None = None
+    username: str | None = None
+    password: str | None = None
+    ssl: bool | None = None
+    ssl_ca: str | None = None
+    connect_timeout: int | None = Field(default=None, ge=1)
+    insert_batch_size: int | None = Field(default=None, ge=1)
+
+
 # -----------------------------------------------------------------------------
 def _read_env_bool(name: str, default: bool) -> bool:
     raw_value = os.getenv(name)
@@ -138,7 +153,65 @@ def _parse_database_url(database_url: str | None) -> dict[str, Any]:
 
 
 # -----------------------------------------------------------------------------
-def load_database_settings_from_env() -> DatabaseSettings:
+def _load_database_settings_from_sources(
+    database_config: JsonDatabaseSettings | None = None,
+) -> DatabaseSettings:
+    if database_config is not None:
+        embedded_database = database_config.embedded_database
+        connect_timeout = database_config.connect_timeout or 30
+        insert_batch_size = database_config.insert_batch_size or 1000
+
+        if embedded_database:
+            return DatabaseSettings(
+                embedded_database=True,
+                engine=None,
+                host=None,
+                port=None,
+                database_name=None,
+                username=None,
+                password=None,
+                ssl=False,
+                ssl_ca=None,
+                connect_timeout=connect_timeout,
+                insert_batch_size=insert_batch_size,
+            )
+
+        engine = _normalize_optional_text(database_config.engine)
+        host = _normalize_optional_text(database_config.host)
+        username = _normalize_optional_text(database_config.username)
+        password = _normalize_optional_text(database_config.password)
+        database_name = _normalize_optional_text(database_config.database_name)
+        port = database_config.port or 5432
+        ssl = database_config.ssl if database_config.ssl is not None else False
+        ssl_ca = _normalize_optional_text(database_config.ssl_ca)
+
+        missing: list[str] = []
+        if not engine:
+            missing.append("database.engine")
+        if not host:
+            missing.append("database.host")
+        if not database_name:
+            missing.append("database.database_name")
+        if not username:
+            missing.append("database.username")
+        if missing:
+            joined = ", ".join(missing)
+            raise RuntimeError(f"External database configuration requires: {joined}")
+
+        return DatabaseSettings(
+            embedded_database=False,
+            engine=engine.lower(),
+            host=host,
+            port=port,
+            database_name=database_name,
+            username=username,
+            password=password,
+            ssl=ssl,
+            ssl_ca=ssl_ca,
+            connect_timeout=connect_timeout,
+            insert_batch_size=insert_batch_size,
+        )
+
     embedded_database = _read_env_bool("DATABASE_EMBEDDED", True)
     connect_timeout = _read_env_int("DATABASE_CONNECT_TIMEOUT", 30, minimum=1)
     insert_batch_size = _read_env_int("DATABASE_INSERT_BATCH_SIZE", 1000, minimum=1)
@@ -185,16 +258,16 @@ def load_database_settings_from_env() -> DatabaseSettings:
 
     missing: list[str] = []
     if not engine:
-        missing.append("DATABASE_ENGINE")
+        missing.append("database.engine")
     if not host:
-        missing.append("DATABASE_HOST")
+        missing.append("database.host")
     if not database_name:
-        missing.append("DATABASE_NAME")
+        missing.append("database.database_name")
     if not username:
-        missing.append("DATABASE_USERNAME")
+        missing.append("database.username")
     if missing:
         joined = ", ".join(missing)
-        raise RuntimeError(f"External database mode requires environment variables: {joined}")
+        raise RuntimeError(f"External database configuration requires: {joined}")
 
     return DatabaseSettings(
         embedded_database=False,
@@ -260,6 +333,7 @@ class JsonJobsSettings(BaseModel):
 
 ###############################################################################
 class JsonConfiguration(BaseModel):
+    database: JsonDatabaseSettings | None = Field(default=None)
     datasets: JsonDatasetSettings = Field(default_factory=JsonDatasetSettings)
     tokenizers: JsonTokenizerSettings = Field(default_factory=JsonTokenizerSettings)
     benchmarks: JsonBenchmarkSettings = Field(default_factory=JsonBenchmarkSettings)
@@ -269,6 +343,7 @@ class JsonConfiguration(BaseModel):
     @classmethod
     def from_payload(cls, payload: dict[str, Any]) -> "JsonConfiguration":
         return cls(
+            database=payload.get("database", {}),
             datasets=payload.get("datasets", {}),
             tokenizers=payload.get("tokenizers", {}),
             benchmarks=payload.get("benchmarks", {}),
@@ -292,7 +367,7 @@ class JsonConfiguration(BaseModel):
     # -------------------------------------------------------------------------
     def to_server_settings(self) -> ServerSettings:
         return ServerSettings(
-            database=load_database_settings_from_env(),
+            database=_load_database_settings_from_sources(self.database),
             datasets=DatasetSettings(
                 allowed_extensions=tuple(self.datasets.allowed_extensions),
                 column_detection_cutoff=self.datasets.column_detection_cutoff,

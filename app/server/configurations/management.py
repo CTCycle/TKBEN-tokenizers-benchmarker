@@ -79,9 +79,7 @@ class ConfigurationManager:
 
     # -------------------------------------------------------------------------
     def _normalize_payload(self, payload: dict[str, Any]) -> dict[str, Any]:
-        normalized_payload = dict(payload)
-        normalized_payload.pop("database", None)
-        return normalized_payload
+        return dict(payload)
 
     # -------------------------------------------------------------------------
     def _validate_configuration(self, payload: dict[str, Any]) -> JsonConfiguration:
