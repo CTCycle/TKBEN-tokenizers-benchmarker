@@ -33,16 +33,12 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "r/pyproject.toml": "pyproject.toml",
-      "r/uv.lock": "uv.lock",
       "r/app/server": "app/server",
-      "r/app/scripts": "app/scripts",
       "r/settings": "settings",
       "r/app/client/dist": "app/client/dist",
       "r/app/resources": "app/resources",
       "r/runtimes/python": "runtimes/python",
-      "r/runtimes/uv": "runtimes/uv",
-      "r/runtimes/nodejs": "runtimes/nodejs"
+      "r/runtimes/uv": "runtimes/uv"
     }
   }
 }

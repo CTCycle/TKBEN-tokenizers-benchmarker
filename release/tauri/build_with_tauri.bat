@@ -1,5 +1,5 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal EnableExtensions EnableDelayedExpansion
 
 set "script_dir=%~dp0"
 for %%I in ("%script_dir%..\..") do set "repo_root=%%~fI"
@@ -23,10 +23,8 @@ echo [TAURI] Release build helper
 echo [CHECK] Validating bundled runtimes...
 call :require_file "%runtime_python_exe%" "embedded Python runtime" || goto build_error
 call :require_file "%runtime_uv_exe%" "embedded uv runtime" || goto build_error
-call :require_file "%runtime_uv_lock%" "backend uv lockfile" || goto build_error
 call :require_file "%node_cmd%" "embedded Node.js runtime" || goto build_error
 call :require_file "%npm_cmd%" "embedded npm runtime" || goto build_error
-call :require_file "%app_dir%\server\pyproject.toml" "backend pyproject.toml" || goto build_error
 call :require_file "%runtime_database_file%" "runtime sqlite database" || goto build_error
 
 echo [CHECK] Preparing Tauri bundle sources...
@@ -71,6 +69,15 @@ if not exist "%client_dir%\package.json" (
 
 set "RUST_BACKTRACE=1"
 set "CARGO_TERM_PROGRESS_WHEN=auto"
+if /I "%CI%"=="1" set "CI=true"
+if /I "%CI%"=="0" set "CI=false"
+
+echo [CHECK] Clearing stale project Node.js packaging processes...
+call :cleanup_stale_node_processes
+
+echo [CHECK] Cleaning previous Tauri release output...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%repo_root%\release\tauri\scripts\clean-tauri-build.ps1"
+if errorlevel 1 goto build_error
 
 echo [STEP 1/2] Installing frontend dependencies
 pushd "%client_dir%" >nul
@@ -93,12 +100,26 @@ call :prepare_bundle_sources || (
   goto build_error
 )
 
+set "tauri_cmd=%client_dir%\node_modules\.bin\tauri.cmd"
+call :require_file "%tauri_cmd%" "Tauri CLI shim" || (
+  popd >nul
+  goto build_error
+)
+
 echo [STEP 2/2] Building Tauri application
-echo [CMD] "%npm_cmd%" run tauri:build:release
-call "%npm_cmd%" run tauri:build:release
+echo [CMD] "%tauri_cmd%" build --config src-tauri/tauri.conf.json
+call "%tauri_cmd%" build --config src-tauri/tauri.conf.json
 if errorlevel 1 (
   popd >nul
   echo [FATAL] Tauri build failed.
+  goto build_error
+)
+
+echo [CMD] powershell -NoProfile -ExecutionPolicy Bypass -File "%repo_root%\release\tauri\scripts\export-windows-artifacts.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%repo_root%\release\tauri\scripts\export-windows-artifacts.ps1"
+if errorlevel 1 (
+  popd >nul
+  echo [FATAL] Windows artifact export failed.
   goto build_error
 )
 popd >nul
@@ -109,13 +130,15 @@ echo [OK] Build completed successfully.
 if exist "%release_export_dir%" (
   echo [INFO] User-facing release artifacts:
   echo        %release_export_dir%
-) else if exist "%bundle_dir%" (
-  echo [INFO] Release artifacts:
-  echo        %bundle_dir%
 ) else (
-  echo [WARN] Build finished but release directories were not found.
-  echo        %release_export_dir%
-  echo        %bundle_dir%
+  if exist "%bundle_dir%" (
+    echo [INFO] Release artifacts:
+    echo        %bundle_dir%
+  ) else (
+    echo [WARN] Build finished but release directories were not found.
+    echo        %release_export_dir%
+    echo        %bundle_dir%
+  )
 )
 
 endlocal & exit /b 0
@@ -139,29 +162,18 @@ if errorlevel 1 (
 )
 md "%bundle_source_dir%\app" >nul 2>&1
 md "%bundle_source_dir%\app\client" >nul 2>&1
+md "%bundle_source_dir%\app\server" >nul 2>&1
+md "%bundle_source_dir%\app\resources" >nul 2>&1
 md "%bundle_source_dir%\runtimes" >nul 2>&1
-
-copy /y "%app_dir%\server\pyproject.toml" "%bundle_source_dir%\pyproject.toml" >nul
-if errorlevel 1 (
-  echo [FATAL] Failed to stage pyproject.toml for Tauri bundling.
-  exit /b 1
-)
-copy /y "%runtime_uv_lock%" "%bundle_source_dir%\uv.lock" >nul
-if errorlevel 1 (
-  echo [FATAL] Failed to stage uv.lock for Tauri bundling.
-  exit /b 1
-)
 
 if not exist "%client_dir%\dist" md "%client_dir%\dist" >nul 2>&1
 
-call :make_junction "%bundle_source_dir%\app\server" "%app_dir%\server" || exit /b 1
-call :make_junction "%bundle_source_dir%\app\scripts" "%app_dir%\scripts" || exit /b 1
+call :copy_server_sources "%app_dir%\server" "%bundle_source_dir%\app\server" || exit /b 1
+call :copy_resources "%app_dir%\resources" "%bundle_source_dir%\app\resources" || exit /b 1
 call :make_junction "%bundle_source_dir%\settings" "%repo_root%\settings" || exit /b 1
 call :make_junction "%bundle_source_dir%\app\client\dist" "%client_dir%\dist" || exit /b 1
-call :make_junction "%bundle_source_dir%\app\resources" "%app_dir%\resources" || exit /b 1
 call :make_junction "%bundle_source_dir%\runtimes\python" "%repo_root%\runtimes\python" || exit /b 1
 call :make_junction "%bundle_source_dir%\runtimes\uv" "%repo_root%\runtimes\uv" || exit /b 1
-call :make_junction "%bundle_source_dir%\runtimes\nodejs" "%repo_root%\runtimes\nodejs" || exit /b 1
 exit /b 0
 
 :check_rust_toolchain
@@ -225,6 +237,28 @@ if errorlevel 1 (
   echo [FATAL] Failed to create junction "%~1" -> "%~2".
   exit /b 1
 )
+exit /b 0
+
+:copy_server_sources
+robocopy "%~1" "%~2" /E /NFL /NDL /NJH /NJS /NC /NS /XD ".venv" "__pycache__" ".pytest_cache" ".ruff_cache" /XF "*.pyc" "*.pyo" >nul
+if errorlevel 8 (
+  echo [FATAL] Failed to copy filtered server sources from "%~1" to "%~2".
+  exit /b 1
+)
+exit /b 0
+
+:copy_resources
+robocopy "%~1" "%~2" /E /NFL /NDL /NJH /NJS /NC /NS /XF "*.log" >nul
+if errorlevel 8 (
+  echo [FATAL] Failed to copy filtered resources from "%~1" to "%~2".
+  exit /b 1
+)
+exit /b 0
+
+:cleanup_stale_node_processes
+set "TKBEN_NODE_CMD=%node_cmd%"
+set "TKBEN_CLIENT_DIR=%client_dir%"
+powershell -NoProfile -Command "$nodePath=$env:TKBEN_NODE_CMD; $clientDir=$env:TKBEN_CLIENT_DIR; Get-CimInstance Win32_Process -Filter \"name = 'node.exe'\" | Where-Object { $_.ExecutablePath -eq $nodePath -and $_.CommandLine -like \"*$clientDir*\" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }" >nul 2>&1
 exit /b 0
 
 :cleanup_bundle_sources

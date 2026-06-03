@@ -183,22 +183,30 @@ fn push_with_ancestors(base: &Path, candidates: &mut Vec<PathBuf>) {
     }
 }
 
+fn push_runtime_layout_candidates(base: &Path, candidates: &mut Vec<PathBuf>) {
+    candidates.push(base.join("runtime"));
+    candidates.push(base.join("resources").join("runtime"));
+}
+
 fn find_workspace_root(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
     let mut candidates: Vec<PathBuf> = Vec::new();
 
     if let Ok(resource_dir) = app_handle.path().resource_dir() {
         push_with_ancestors(&resource_dir, &mut candidates);
+        push_runtime_layout_candidates(&resource_dir, &mut candidates);
     }
 
     if let Ok(exe_path) = std::env::current_exe() {
         if let Some(exe_dir) = exe_path.parent() {
             push_with_ancestors(exe_dir, &mut candidates);
             push_with_ancestors(&exe_dir.join("resources"), &mut candidates);
+            push_runtime_layout_candidates(exe_dir, &mut candidates);
         }
     }
 
     if let Ok(current_dir) = std::env::current_dir() {
         push_with_ancestors(&current_dir, &mut candidates);
+        push_runtime_layout_candidates(&current_dir, &mut candidates);
     }
 
     let mut seen: HashSet<PathBuf> = HashSet::new();

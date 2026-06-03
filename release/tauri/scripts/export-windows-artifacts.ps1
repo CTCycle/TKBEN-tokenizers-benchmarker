@@ -7,8 +7,10 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\..\.."))
 $clientDir = Join-Path $repoRoot "app\client"
+$tauriConfigPath = Join-Path $clientDir "src-tauri\tauri.conf.json"
 $releaseDir = Join-Path $clientDir "src-tauri\target\release"
 $bundleDir = Join-Path $releaseDir "bundle"
+$appVersion = (Get-Content -Path $tauriConfigPath -Raw | ConvertFrom-Json).version
 
 if ([string]::IsNullOrWhiteSpace($OutputPath)) {
   $outputDir = Join-Path $repoRoot "release\windows"
@@ -18,6 +20,7 @@ if ([string]::IsNullOrWhiteSpace($OutputPath)) {
 
 $installersDir = Join-Path $outputDir "installers"
 $portableDir = Join-Path $outputDir "portable"
+$portableRuntimeDir = Join-Path $portableDir "runtime"
 
 if (-not (Test-Path $bundleDir)) {
   throw "Bundle directory not found. Run 'npm run tauri:build' first. Missing: $bundleDir"
@@ -29,12 +32,14 @@ if (Test-Path $outputDir) {
 
 New-Item -ItemType Directory -Path $installersDir -Force | Out-Null
 New-Item -ItemType Directory -Path $portableDir -Force | Out-Null
+New-Item -ItemType Directory -Path $portableRuntimeDir -Force | Out-Null
 
 $installerArtifacts = @()
 
 $nsisDir = Join-Path $bundleDir "nsis"
 if (Test-Path $nsisDir) {
-  $nsisFiles = Get-ChildItem -Path $nsisDir -Filter "*.exe" -File
+  $nsisFiles = Get-ChildItem -Path $nsisDir -Filter "*.exe" -File |
+    Where-Object { $_.Name -like "*_$appVersion-*" -or $_.Name -like "*_$appVersion_*" }
   foreach ($file in $nsisFiles) {
     Copy-Item -Path $file.FullName -Destination $installersDir -Force
     $installerArtifacts += Join-Path $installersDir $file.Name
@@ -43,7 +48,8 @@ if (Test-Path $nsisDir) {
 
 $msiDir = Join-Path $bundleDir "msi"
 if (Test-Path $msiDir) {
-  $msiFiles = Get-ChildItem -Path $msiDir -Filter "*.msi" -File
+  $msiFiles = Get-ChildItem -Path $msiDir -Filter "*.msi" -File |
+    Where-Object { $_.Name -like "*_$appVersion_*" }
   foreach ($file in $msiFiles) {
     Copy-Item -Path $file.FullName -Destination $installersDir -Force
     $installerArtifacts += Join-Path $installersDir $file.Name
@@ -59,13 +65,11 @@ foreach ($file in $portableExeCandidates) {
 
 $portableRequiredEntries = @(
   "app",
-  "pyproject.toml",
-  "uv.lock",
+  "settings",
   "runtimes"
 )
 
 $portableOptionalEntries = @(
-  "_up_"
   "resources"
 )
 
@@ -74,20 +78,20 @@ foreach ($entry in $portableRequiredEntries) {
   if (-not (Test-Path $sourcePath)) {
     throw "Required portable payload is missing from release output: $sourcePath"
   }
-  $destinationPath = Join-Path $portableDir $entry
+  $destinationPath = Join-Path $portableRuntimeDir $entry
   Copy-Item -Path $sourcePath -Destination $destinationPath -Recurse -Force
 }
 
 foreach ($entry in $portableOptionalEntries) {
   $sourcePath = Join-Path $releaseDir $entry
   if (Test-Path $sourcePath) {
-    $destinationPath = Join-Path $portableDir $entry
+    $destinationPath = Join-Path $portableRuntimeDir $entry
     Copy-Item -Path $sourcePath -Destination $destinationPath -Recurse -Force
   }
 }
 
-$portableUvExe = Join-Path $portableDir "runtimes\uv\uv.exe"
-$portablePythonExe = Join-Path $portableDir "runtimes\python\python.exe"
+$portableUvExe = Join-Path $portableRuntimeDir "runtimes\uv\uv.exe"
+$portablePythonExe = Join-Path $portableRuntimeDir "runtimes\python\python.exe"
 if (-not (Test-Path $portableUvExe)) {
   throw "Portable export is missing bundled uv runtime: $portableUvExe"
 }
@@ -102,8 +106,8 @@ TKBEN desktop build output
    Open installers\ and run the setup executable (.exe) or .msi.
 
 2) Portable executable:
-   portable\ contains the app .exe and the required runtime resource payload.
-   Keep the exported contents together in the same directory.
+   portable\ contains the app .exe and a sibling runtime\ folder.
+   Keep the .exe and runtime\ folder together.
 
 Generated from:
 $bundleDir
