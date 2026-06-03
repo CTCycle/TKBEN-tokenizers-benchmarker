@@ -1,5 +1,5 @@
 # Configuration
-Last updated: 2026-06-02
+Last updated: 2026-06-03
 
 ## Environment File
 Primary runtime env file:
@@ -31,7 +31,7 @@ Primary runtime env file:
 
 ## Structured Settings
 - `TKBEN/settings/configurations.json`
-  - `datasets`, `tokenizers`, `benchmarks`, and `jobs` tunables
+  - `datasets`, `tokenizers`, `benchmarks`, `jobs`, and optional `database` overrides
 
 ## Configuration Differences
 ### Dev and Local Webapp
@@ -44,6 +44,8 @@ Primary runtime env file:
 - Runtime environment may be prepared into a writable runtime path for packaged execution.
 
 ### Persistence Toggle
+- If `database` is present in `settings/configurations.json`, that block is authoritative for database mode and connection fields.
+- Otherwise the backend falls back to `DATABASE_*` environment variables.
 - `DATABASE_EMBEDDED=true` uses SQLite (`resources/database.db`).
 - `DATABASE_EMBEDDED=false` with `DATABASE_ENGINE=postgresql+psycopg` uses PostgreSQL.
-- `DATABASE_URL` may seed engine, host, port, name, user, and password values, with explicit `DATABASE_*` values taking precedence.
+- `DATABASE_URL` may seed engine, host, port, name, user, and password values when no structured database block is supplied.
