@@ -1,5 +1,5 @@
 # Startup
-Last updated: 2026-06-02
+Last updated: 2026-06-03
 
 ## Local Webapp Mode
 Windows recommended:
@@ -13,6 +13,7 @@ What it does:
 - syncs Python dependencies with `uv sync` using `runtimes/uv.lock`
 - installs frontend dependencies and builds the frontend
 - starts backend and frontend
+- saves backend startup logs to `QA/backend-startup.stdout.log` and `QA/backend-startup.stderr.log` when the backend exits during readiness checks
 
 ## Manual Local Mode
 Cross-platform manual startup:

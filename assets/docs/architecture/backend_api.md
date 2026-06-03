@@ -1,8 +1,11 @@
 # Backend API
-Last updated: 2026-06-02
+Last updated: 2026-06-03
 
 ## API Prefix
 All routers are included with `prefix="/api"` during backend startup.
+
+## Health
+- `GET /api/health`
 
 ## Datasets
 - `GET /api/datasets/list`

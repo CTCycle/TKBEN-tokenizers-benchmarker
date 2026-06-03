@@ -62,7 +62,12 @@ def redirect_to_docs() -> RedirectResponse:
     return RedirectResponse(url="/docs")
 
 
+def backend_healthcheck() -> dict[str, str]:
+    return {"status": "ok"}
+
+
 def register_api_routers(application: FastAPI) -> None:
+    application.add_api_route("/api/health", backend_healthcheck, methods=["GET"])
     for router in (
         datasets_router,
         tokenizers_router,
