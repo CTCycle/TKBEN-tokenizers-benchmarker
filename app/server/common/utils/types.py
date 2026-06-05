@@ -20,7 +20,7 @@ def coerce_bool(value: Any, default: bool) -> bool:
     return default
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def coerce_int(
     value: Any, default: int, minimum: int | None = None, maximum: int | None = None
 ) -> int:
@@ -30,7 +30,7 @@ def coerce_int(
     else:
         try:
             candidate = int(value)
-        except TypeError, ValueError:
+        except (TypeError, ValueError):
             candidate = default
     if minimum is not None and candidate < minimum:
         candidate = minimum
@@ -39,7 +39,7 @@ def coerce_int(
     return candidate
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def coerce_float(
     value: Any,
     default: float,
@@ -48,7 +48,7 @@ def coerce_float(
 ) -> float:
     try:
         candidate = float(value)
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         candidate = default
     if minimum is not None and candidate < minimum:
         candidate = minimum
@@ -57,7 +57,7 @@ def coerce_float(
     return candidate
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def coerce_str(value: Any, default: str) -> str:
     if isinstance(value, str):
         stripped = value.strip()
@@ -67,7 +67,7 @@ def coerce_str(value: Any, default: str) -> str:
     return str(value).strip() or default
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def coerce_str_or_none(value: Any) -> str | None:
     if isinstance(value, str):
         stripped = value.strip()
@@ -75,7 +75,7 @@ def coerce_str_or_none(value: Any) -> str | None:
     return None
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def coerce_str_sequence(value: Any, default: Iterable[str]) -> tuple[str, ...]:
     items: list[str] = []
     if isinstance(value, str):

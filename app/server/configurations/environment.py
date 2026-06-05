@@ -10,7 +10,7 @@ from server.common.utils.logger import logger
 from server.domain.bootstrap import EnvironmentBootstrapState
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 @lru_cache(maxsize=1)
 def _bootstrap_state() -> EnvironmentBootstrapState:
     return EnvironmentBootstrapState()

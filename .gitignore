@@ -44,10 +44,10 @@ yarn.lock
 .DS_Store
 Thumbs.db
 
-
 # Misc
 Cargo.toml
 .sonarlint/
+QA/**
 *.lock
 *.log
 *.db

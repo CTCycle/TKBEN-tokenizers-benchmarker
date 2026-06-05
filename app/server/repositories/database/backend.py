@@ -35,14 +35,14 @@ class DatabaseBackend(Protocol):
 BackendFactory = Callable[[DatabaseSettings], DatabaseBackend]
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def build_sqlite_backend(settings: DatabaseSettings) -> DatabaseBackend:
     db_path = normalize_sqlite_path(DATABASE_PATH)
     should_initialize_schema = not Path(db_path).exists()
     return SQLiteRepository(settings, initialize_schema=should_initialize_schema)
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def build_postgres_backend(settings: DatabaseSettings) -> DatabaseBackend:
     return PostgresRepository(settings)
 
@@ -96,7 +96,7 @@ class TKBENDatabase:
         self.backend.insert_dataframe(df, table_name, ignore_duplicates)
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 @cache
 def get_database() -> TKBENDatabase:
     return TKBENDatabase()

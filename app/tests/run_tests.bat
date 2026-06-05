@@ -91,11 +91,9 @@ echo.
 set "PYTEST_TARGET=%TESTS_DIR%"
 if not "%STANDARD_TEST_PYTEST_TARGET%"=="" set "PYTEST_TARGET=%STANDARD_TEST_PYTEST_TARGET%"
 set "QA_DIR=%PROJECT_ROOT%\QA"
-set "PYTEST_BASETEMP=%QA_DIR%\pytest-temp"
 set "HAS_E2E=0"
 if exist "%TESTS_DIR%\e2e" set "HAS_E2E=1"
 if not exist "%QA_DIR%" mkdir "%QA_DIR%" >nul 2>&1
-if not exist "%PYTEST_BASETEMP%" mkdir "%PYTEST_BASETEMP%" >nul 2>&1
 
 if /i "%STANDARD_TEST_SKIP_LIVE_SERVERS%"=="false" if "%HAS_E2E%"=="1" (
   set "LIVE_SERVER_PHASE=PASS"
@@ -168,7 +166,7 @@ if /i "%STANDARD_TEST_SKIP_LIVE_SERVERS%"=="false" if "%HAS_E2E%"=="1" (
 )
 
 echo [STEP] Running Python tests...
-"%PYTHON_CMD%" -m pytest "%PYTEST_TARGET%" -v --tb=short --basetemp "%PYTEST_BASETEMP%" %*
+"%PYTHON_CMD%" -m pytest "%PYTEST_TARGET%" -v --tb=short %*
 set "PYTEST_RC=%ERRORLEVEL%"
 if "%PYTEST_RC%"=="0" (
   set "PYTEST_PHASE=PASS"
