@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,6 +20,11 @@ from server.common.constants import (
     FASTAPI_TITLE,
     FASTAPI_VERSION,
 )
+from server.common.path import (
+    CLIENT_ASSETS_PATH,
+    CLIENT_DIST_PATH,
+    CLIENT_INDEX_FILE_PATH,
+)
 from server.configurations import get_server_settings
 from server.repositories.database.initializer import initialize_database
 from server.services.jobs import JobManager
@@ -28,11 +32,6 @@ from server.services.startup_validation import (
     build_cors_origins,
     run_startup_validations,
 )
-
-
-CLIENT_DIST_PATH = Path(__file__).resolve().parents[1] / "client" / "dist"
-CLIENT_ASSETS_PATH = CLIENT_DIST_PATH / "assets"
-CLIENT_INDEX_FILE_PATH = CLIENT_DIST_PATH / "index.html"
 
 
 def tauri_mode_enabled() -> bool:
@@ -111,7 +110,7 @@ async def app_lifespan(application: FastAPI) -> AsyncIterator[None]:
 
     run_startup_validations(
         tauri_mode_enabled=tauri_mode_enabled(),
-        client_index_file_path=str(CLIENT_INDEX_FILE_PATH),
+        client_index_file_path=CLIENT_INDEX_FILE_PATH,
     )
     initialize_database()
 

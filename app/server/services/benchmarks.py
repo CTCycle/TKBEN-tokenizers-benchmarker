@@ -17,7 +17,7 @@ from server.repositories.serialization.benchmark_reports import (
 from server.repositories.serialization.data import DatasetSerializer
 from server.services.metrics.catalog import BENCHMARK_METRIC_CATALOG
 from server.configurations import get_server_settings
-from server.common.constants import TOKENIZERS_PATH
+from server.common.path import TOKENIZERS_PATH
 from server.common.utils.logger import logger
 from server.common.utils.security import (
     ensure_path_is_within,
@@ -279,7 +279,7 @@ class BenchmarkService(BenchmarkServiceExecutionMixin, BenchmarkPlottingMixin):
             max_length=self.TOKENIZER_ID_MAX_LENGTH,
         )
         safe_name = safe_id.replace("/", "__")
-        candidate = Path(TOKENIZERS_PATH) / safe_name
+        candidate = TOKENIZERS_PATH / safe_name
         return ensure_path_is_within(TOKENIZERS_PATH, candidate)
 
     # -------------------------------------------------------------------------

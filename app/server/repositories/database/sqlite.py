@@ -11,11 +11,11 @@ from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
+from server.common.path import DATABASE_PATH
+from server.common.utils.logger import logger
 from server.configurations import DatabaseSettings
 from server.repositories.schemas.models import Base
-from server.common.constants import RESOURCES_PATH, DATABASE_FILENAME
 from server.repositories.database.utils import normalize_sqlite_path
-from server.common.utils.logger import logger
 
 
 ###############################################################################
@@ -28,9 +28,7 @@ class SQLiteRepository:
     def __init__(
         self, settings: DatabaseSettings, initialize_schema: bool = False
     ) -> None:
-        self.db_path: str | None = normalize_sqlite_path(
-            Path(RESOURCES_PATH) / DATABASE_FILENAME
-        )
+        self.db_path: str | None = normalize_sqlite_path(DATABASE_PATH)
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         self.engine: Engine = sqlalchemy.create_engine(
             f"sqlite:///{self.db_path}", echo=False, future=True

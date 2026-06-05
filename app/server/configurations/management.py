@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from server.common.constants import CONFIGURATIONS_FILE
+from server.common.path import CONFIGURATIONS_FILE
 from server.domain.settings import JsonConfiguration, ServerSettings
 
 

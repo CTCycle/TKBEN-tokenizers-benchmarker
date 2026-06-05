@@ -7,7 +7,7 @@ from typing import Any, Protocol
 
 import pandas as pd
 
-from server.common.constants import DATABASE_FILENAME, RESOURCES_PATH
+from server.common.path import DATABASE_PATH
 from server.configurations import DatabaseSettings, get_server_settings
 from server.repositories.database.postgres import PostgresRepository
 from server.repositories.database.sqlite import SQLiteRepository
@@ -37,7 +37,7 @@ BackendFactory = Callable[[DatabaseSettings], DatabaseBackend]
 
 # -----------------------------------------------------------------------------
 def build_sqlite_backend(settings: DatabaseSettings) -> DatabaseBackend:
-    db_path = normalize_sqlite_path(Path(RESOURCES_PATH) / DATABASE_FILENAME)
+    db_path = normalize_sqlite_path(DATABASE_PATH)
     should_initialize_schema = not Path(db_path).exists()
     return SQLiteRepository(settings, initialize_schema=should_initialize_schema)
 

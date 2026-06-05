@@ -3,15 +3,14 @@ from __future__ import annotations
 import logging
 import logging.config
 from datetime import datetime
-from pathlib import Path
 
-from server.common.constants import LOGS_PATH
+from server.common.path import LOGS_PATH
 
 
 ###############################################################################
-Path(LOGS_PATH).mkdir(parents=True, exist_ok=True)
+LOGS_PATH.mkdir(parents=True, exist_ok=True)
 current_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-log_filename = str(Path(LOGS_PATH) / f"TKBEN_{current_timestamp}.log")
+log_filename = str(LOGS_PATH / f"TKBEN_{current_timestamp}.log")
 
 LOG_CONFIG = {
     "version": 1,

@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from server.common.constants import (
+from server.common.path import (
     DATASETS_PATH,
     ENV_FILE_PATH,
     LOGS_PATH,
@@ -31,7 +31,7 @@ def validate_runtime_files() -> None:
 def validate_tauri_client_bundle(
     *,
     tauri_mode_enabled: bool,
-    client_index_file_path: str,
+    client_index_file_path: str | Path,
 ) -> None:
     if tauri_mode_enabled and not Path(client_index_file_path).is_file():
         raise RuntimeError(
@@ -56,7 +56,7 @@ def build_cors_origins() -> list[str]:
 def run_startup_validations(
     *,
     tauri_mode_enabled: bool,
-    client_index_file_path: str,
+    client_index_file_path: str | Path,
 ) -> None:
     validate_runtime_files()
     ensure_runtime_directories()

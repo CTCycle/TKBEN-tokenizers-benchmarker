@@ -30,7 +30,7 @@ def test_benchmark_service_preserves_repository_missing_with_cached_files(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
-    monkeypatch.setattr("server.services.benchmarks.TOKENIZERS_PATH", str(tmp_path))
+    monkeypatch.setattr("server.services.benchmarks.TOKENIZERS_PATH", tmp_path)
     cached_dir = tmp_path / "missing"
     cached_dir.mkdir()
     (cached_dir / "tokenizer.json").write_text("{}", encoding="utf-8")

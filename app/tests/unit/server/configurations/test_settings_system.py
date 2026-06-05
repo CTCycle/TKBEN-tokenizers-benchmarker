@@ -57,7 +57,7 @@ def test_bootstrap_environment_overrides_existing_process_values(
     env_path = tmp_path / ".env"
     _write_env(env_path, ["FASTAPI_HOST=from_dotenv"])
 
-    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", str(env_path))
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
     monkeypatch.setenv("FASTAPI_HOST", "from_process")
 
     bootstrap.ensure_environment_loaded()
@@ -72,7 +72,7 @@ def test_bootstrap_is_idempotent_without_force(
     env_path = tmp_path / ".env"
     _write_env(env_path, ["FASTAPI_HOST=first"])
 
-    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", str(env_path))
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
 
     bootstrap.ensure_environment_loaded()
     _write_env(env_path, ["FASTAPI_HOST=second"])
@@ -88,7 +88,7 @@ def test_server_package_import_bootstraps_env_early(
     env_path = tmp_path / ".env"
     _write_env(env_path, ["TKBEN_TAURI_MODE=true"])
 
-    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", str(env_path))
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
     monkeypatch.setenv("TKBEN_TAURI_MODE", "false")
 
     import server as server_package
@@ -104,10 +104,10 @@ def test_missing_configuration_file_fails_fast(
 ) -> None:
     env_path = tmp_path / ".env"
     _write_env(env_path, ["FASTAPI_HOST=127.0.0.1"])
-    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", str(env_path))
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
 
     with pytest.raises(RuntimeError, match="Configuration file not found"):
-        _ = get_server_settings(config_path=str(tmp_path / "missing.json"))
+        _ = get_server_settings(config_path=tmp_path / "missing.json")
 
 
 # -----------------------------------------------------------------------------
@@ -119,10 +119,10 @@ def test_invalid_configuration_file_fails_fast(
 
     env_path = tmp_path / ".env"
     _write_env(env_path, ["FASTAPI_HOST=127.0.0.1"])
-    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", str(env_path))
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
 
     with pytest.raises(RuntimeError, match="Unable to load configuration"):
-        _ = get_server_settings(config_path=str(config_path))
+        _ = get_server_settings(config_path=config_path)
 
 
 # -----------------------------------------------------------------------------
@@ -143,9 +143,9 @@ def test_json_owned_db_embedded_ignores_environment_overlap(
             "DB_USER=remote_user",
         ],
     )
-    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", str(env_path))
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
 
-    settings = get_server_settings(config_path=str(config_path))
+    settings = get_server_settings(config_path=config_path)
 
     assert settings.database.embedded_database is True
     assert settings.database.engine is None
@@ -170,13 +170,13 @@ def test_external_database_requires_host_name_and_user(
 
     env_path = tmp_path / ".env"
     _write_env(env_path, ["FASTAPI_HOST=127.0.0.1"])
-    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", str(env_path))
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
 
     with pytest.raises(
         RuntimeError,
         match="database.host, database.database_name, database.username",
     ):
-        _ = get_server_settings(config_path=str(config_path))
+        _ = get_server_settings(config_path=config_path)
 
 
 # -----------------------------------------------------------------------------
@@ -209,10 +209,10 @@ def test_get_server_settings_path_scoped_loading_is_deterministic(
 
     env_path = tmp_path / ".env"
     _write_env(env_path, ["FASTAPI_HOST=0.0.0.0"])
-    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", str(env_path))
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
 
-    settings_a = get_server_settings(config_path=str(config_path))
-    settings_b = get_server_settings(config_path=str(config_path))
+    settings_a = get_server_settings(config_path=config_path)
+    settings_b = get_server_settings(config_path=config_path)
 
     assert settings_a == settings_b
     assert settings_a.database.embedded_database is False
@@ -238,9 +238,9 @@ def test_configuration_manager_get_block_and_get_value(
 
     env_path = tmp_path / ".env"
     _write_env(env_path, ["FASTAPI_HOST=127.0.0.1"])
-    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", str(env_path))
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
 
-    manager = get_configuration_manager(config_path=str(config_path))
+    manager = get_configuration_manager(config_path=config_path)
 
     assert manager.get_block("datasets") == {"histogram_bins": 25}
     assert manager.get_value("datasets", "histogram_bins") == 25
@@ -263,9 +263,9 @@ def test_configuration_manager_reload_reflects_file_changes(
 
     env_path = tmp_path / ".env"
     _write_env(env_path, ["FASTAPI_HOST=127.0.0.1"])
-    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", str(env_path))
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
 
-    manager = get_configuration_manager(config_path=str(config_path))
+    manager = get_configuration_manager(config_path=config_path)
     assert manager.server_settings.datasets.histogram_bins == 20
 
     _write_json(
@@ -286,7 +286,7 @@ def test_configuration_payload_omits_fitting_block(tmp_path: Path) -> None:
     config_path = tmp_path / "configurations.json"
     _write_json(config_path, _minimal_config_json())
 
-    manager = get_configuration_manager(config_path=str(config_path))
+    manager = get_configuration_manager(config_path=config_path)
 
     assert manager.get_block("fitting") == {}
     assert not hasattr(manager.server_settings, "fitting")
@@ -323,9 +323,9 @@ def test_external_database_rejects_legacy_engine_aliases(
     )
     env_path = tmp_path / ".env"
     _write_env(env_path, ["FASTAPI_HOST=127.0.0.1"])
-    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", str(env_path))
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
 
-    settings = get_server_settings(config_path=str(config_path))
+    settings = get_server_settings(config_path=config_path)
     with pytest.raises(ValueError, match="Unsupported database engine"):
         _resolve_postgres_engine(settings.database.engine)
 

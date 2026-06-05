@@ -5,7 +5,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from server.common.constants import ENV_FILE_PATH
+from server.common.path import ENV_FILE_PATH
 from server.common.utils.logger import logger
 from server.domain.bootstrap import EnvironmentBootstrapState
 

@@ -11,7 +11,7 @@ from typing import Any
 import pandas as pd
 from datasets import Dataset, DatasetDict
 
-from server.common.constants import DATASETS_PATH
+from server.common.path import DATASETS_PATH
 from server.common.utils.logger import logger
 from server.common.utils.security import normalize_upload_stem
 from server.services.metrics.catalog import default_selected_metric_keys
@@ -107,7 +107,7 @@ class DatasetServiceOperationsMixin:
             target.split if target.split is not None else "all",
         )
 
-        Path(DATASETS_PATH).mkdir(parents=True, exist_ok=True)
+        DATASETS_PATH.mkdir(parents=True, exist_ok=True)
         Path(cache_path).mkdir(parents=True, exist_ok=True)
 
         if self.is_dataset_in_database(dataset_name):
