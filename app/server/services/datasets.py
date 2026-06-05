@@ -26,7 +26,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from server.repositories.serialization.data import DatasetSerializer
 from server.configurations import get_server_settings
-from server.common.constants import DATASETS_PATH
+from server.common.path import DATASETS_PATH
 from server.common.utils.logger import logger
 from server.common.utils.security import (
     ensure_path_is_within,
@@ -635,7 +635,7 @@ class DatasetService(DatasetServiceOperationsMixin):
         folder_name = safe_corpus.replace("/", "__")
         if safe_config:
             folder_name = f"{folder_name}__{safe_config.replace('/', '__')}"
-        candidate = Path(DATASETS_PATH) / folder_name
+        candidate = DATASETS_PATH / folder_name
         return ensure_path_is_within(DATASETS_PATH, candidate)
 
     # -------------------------------------------------------------------------

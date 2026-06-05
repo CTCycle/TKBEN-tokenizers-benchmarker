@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from server.common.constants import TOKENIZERS_PATH
+from server.common.path import TOKENIZERS_PATH
 from server.common.utils.security import (
     ensure_path_is_within,
     normalize_identifier,
@@ -50,7 +50,7 @@ class TokenizerStorageMixin:
     def get_tokenizer_cache_dir(self, tokenizer_id: str) -> str:
         safe_id = self.validate_tokenizer_identifier(tokenizer_id)
         safe_name = safe_id.replace("/", "__")
-        candidate = Path(TOKENIZERS_PATH) / safe_name
+        candidate = TOKENIZERS_PATH / safe_name
         return ensure_path_is_within(TOKENIZERS_PATH, candidate)
 
     # -------------------------------------------------------------------------

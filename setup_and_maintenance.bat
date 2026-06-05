@@ -60,9 +60,10 @@ echo 3. Uninstall application
 echo 4. Remove desktop packages
 echo 5. Run test suite
 echo 6. Remove logs
-echo 7. Exit
+echo 7. Clear cache
+echo 8. Exit
 echo.
-set /p sub_choice="Select an option (1-7): "
+set /p sub_choice="Select an option (1-8): "
 set "sub_choice=%sub_choice: =%"
 
 if "%sub_choice%"=="1" goto :install_app
@@ -71,7 +72,8 @@ if "%sub_choice%"=="3" goto :uninstall
 if "%sub_choice%"=="4" goto :remove_desktop
 if "%sub_choice%"=="5" goto :run_tests
 if "%sub_choice%"=="6" goto :remove_logs
-if "%sub_choice%"=="7" goto :exit
+if "%sub_choice%"=="7" goto :clear_python_cache
+if "%sub_choice%"=="8" goto :exit
 
 echo [ERROR] Invalid option.
 pause
@@ -290,6 +292,13 @@ echo [UNINSTALL] Removing virtual environments...
 if exist "%repo_root%\app\server\.venv" rd /s /q "%repo_root%\app\server\.venv"
 if exist "%repo_root%\.venv" rd /s /q "%repo_root%\.venv"
 
+call :remove_python_cache
+if errorlevel 1 (
+  echo [WARN] Some Python cache folders could not be removed.
+) else (
+  echo [UNINSTALL] Python cache folders removed.
+)
+
 echo [UNINSTALL] Removing frontend artifacts...
 if exist "%client_dir%\node_modules" rd /s /q "%client_dir%\node_modules"
 if exist "%client_dir%\.angular" rd /s /q "%client_dir%\.angular"
@@ -348,6 +357,30 @@ if exist "%log_dir%\*.log" (
 )
 pause
 goto :menu
+
+:clear_python_cache
+call :remove_python_cache
+if errorlevel 1 (
+  echo [ERROR] Python cache cleanup completed with errors.
+) else (
+  echo [SUCCESS] Python cache folders removed.
+)
+pause
+goto :menu
+
+:remove_python_cache
+set "cache_cleanup_failed=0"
+echo [CACHE] Removing __pycache__ folders...
+for /d /r "%repo_root%" %%D in (__pycache__) do (
+  if exist "%%~fD" (
+    rd /s /q "%%~fD" >nul 2>&1
+    if exist "%%~fD" (
+      set "cache_cleanup_failed=1"
+      echo [WARN] Failed to remove "%%~fD"
+    )
+  )
+)
+exit /b %cache_cleanup_failed%
 
 :promote_node_runtime
 set "node_source_dir=%~1"

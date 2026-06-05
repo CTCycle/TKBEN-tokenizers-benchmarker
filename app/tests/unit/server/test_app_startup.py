@@ -45,15 +45,15 @@ def test_run_startup_validations_creates_runtime_directories(
     index_path.parent.mkdir(parents=True, exist_ok=True)
     index_path.write_text("<html></html>", encoding="utf-8")
 
-    monkeypatch.setattr(startup_validation, "ENV_FILE_PATH", str(env_path))
-    monkeypatch.setattr(startup_validation, "LOGS_PATH", str(logs_path))
-    monkeypatch.setattr(startup_validation, "DATASETS_PATH", str(datasets_path))
-    monkeypatch.setattr(startup_validation, "TOKENIZERS_PATH", str(tokenizers_path))
-    monkeypatch.setattr(startup_validation, "TEMPLATES_PATH", str(templates_path))
+    monkeypatch.setattr(startup_validation, "ENV_FILE_PATH", env_path)
+    monkeypatch.setattr(startup_validation, "LOGS_PATH", logs_path)
+    monkeypatch.setattr(startup_validation, "DATASETS_PATH", datasets_path)
+    monkeypatch.setattr(startup_validation, "TOKENIZERS_PATH", tokenizers_path)
+    monkeypatch.setattr(startup_validation, "TEMPLATES_PATH", templates_path)
 
     startup_validation.run_startup_validations(
         tauri_mode_enabled=True,
-        client_index_file_path=str(index_path),
+        client_index_file_path=index_path,
     )
 
     assert logs_path.is_dir()
@@ -66,12 +66,12 @@ def test_run_startup_validations_requires_env_file(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(startup_validation, "ENV_FILE_PATH", str(tmp_path / ".env"))
+    monkeypatch.setattr(startup_validation, "ENV_FILE_PATH", tmp_path / ".env")
 
     with pytest.raises(RuntimeError, match="Environment file not found"):
         startup_validation.run_startup_validations(
             tauri_mode_enabled=False,
-            client_index_file_path=str(tmp_path / "index.html"),
+            client_index_file_path=tmp_path / "index.html",
         )
 
 
