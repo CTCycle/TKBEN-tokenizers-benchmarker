@@ -193,7 +193,7 @@ class PostgresRepository:
         finally:
             session.close()
 
-    # -----------------------------------------------------------------------------
+    ###############################################################################
     def get_distinct_values(self, table_name: str, column: str) -> list[str]:
         """Get distinct values from a column in the specified table."""
         safe_name = self.sanitize_identifier(table_name)

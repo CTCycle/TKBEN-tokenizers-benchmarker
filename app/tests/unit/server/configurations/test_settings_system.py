@@ -29,17 +29,17 @@ def reset_configuration_state() -> None:
     bootstrap.reset_environment_bootstrap_for_tests()
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def _write_env(path: Path, lines: list[str]) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def _write_json(path: Path, payload: dict[str, object]) -> None:
     path.write_text(json.dumps(payload), encoding="utf-8")
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def _minimal_config_json() -> dict[str, object]:
     return {
         "database": {"embedded_database": True},
@@ -50,7 +50,7 @@ def _minimal_config_json() -> dict[str, object]:
     }
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def test_bootstrap_environment_overrides_existing_process_values(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -65,7 +65,7 @@ def test_bootstrap_environment_overrides_existing_process_values(
     assert os.getenv("FASTAPI_HOST") == "from_dotenv"
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def test_bootstrap_is_idempotent_without_force(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -81,7 +81,7 @@ def test_bootstrap_is_idempotent_without_force(
     assert os.getenv("FASTAPI_HOST") == "first"
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def test_server_package_import_bootstraps_env_early(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -98,7 +98,7 @@ def test_server_package_import_bootstraps_env_early(
     assert os.getenv("TKBEN_TAURI_MODE") == "true"
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def test_missing_configuration_file_fails_fast(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -110,7 +110,7 @@ def test_missing_configuration_file_fails_fast(
         _ = get_server_settings(config_path=tmp_path / "missing.json")
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def test_invalid_configuration_file_fails_fast(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -125,7 +125,7 @@ def test_invalid_configuration_file_fails_fast(
         _ = get_server_settings(config_path=config_path)
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def test_json_owned_db_embedded_ignores_environment_overlap(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -152,7 +152,7 @@ def test_json_owned_db_embedded_ignores_environment_overlap(
     assert settings.database.host is None
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def test_external_database_requires_host_name_and_user(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -179,7 +179,7 @@ def test_external_database_requires_host_name_and_user(
         _ = get_server_settings(config_path=config_path)
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def test_get_server_settings_path_scoped_loading_is_deterministic(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -223,7 +223,7 @@ def test_get_server_settings_path_scoped_loading_is_deterministic(
     assert settings_a.jobs.polling_interval == 2.5
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def test_configuration_manager_get_block_and_get_value(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -248,7 +248,7 @@ def test_configuration_manager_get_block_and_get_value(
     assert manager.get_block("missing") == {}
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def test_configuration_manager_reload_reflects_file_changes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -281,7 +281,7 @@ def test_configuration_manager_reload_reflects_file_changes(
     assert manager.get_value("datasets", "histogram_bins") == 45
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def test_configuration_payload_omits_fitting_block(tmp_path: Path) -> None:
     config_path = tmp_path / "configurations.json"
     _write_json(config_path, _minimal_config_json())
@@ -292,7 +292,7 @@ def test_configuration_payload_omits_fitting_block(tmp_path: Path) -> None:
     assert not hasattr(manager.server_settings, "fitting")
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 @pytest.mark.parametrize(
     "engine",
     ["postgres", "postgresql", "postgresql+psycopg2"],
@@ -330,7 +330,7 @@ def test_external_database_rejects_legacy_engine_aliases(
         _resolve_postgres_engine(settings.database.engine)
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def test_allow_key_reveal_reads_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ALLOW_KEY_REVEAL", "true")
     assert is_key_reveal_enabled() is True
@@ -339,7 +339,7 @@ def test_allow_key_reveal_reads_environment(monkeypatch: pytest.MonkeyPatch) -> 
     assert is_key_reveal_enabled() is False
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def test_hf_key_cipher_reads_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     key = Fernet.generate_key().decode("utf-8")
     monkeypatch.setenv("HF_KEYS_ENCRYPTION_KEY", key)

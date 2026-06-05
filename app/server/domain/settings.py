@@ -97,7 +97,7 @@ class JsonDatabaseSettings(BaseModel):
     insert_batch_size: int | None = Field(default=None, ge=1)
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def _read_env_bool(name: str, default: bool) -> bool:
     raw_value = os.getenv(name)
     if raw_value is None:
@@ -111,7 +111,7 @@ def _read_env_bool(name: str, default: bool) -> bool:
     raise RuntimeError(f"{name} must be a boolean value, got: {raw_value}")
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def _read_env_int(
     name: str,
     default: int,
@@ -135,7 +135,7 @@ def _read_env_int(
     return value
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def _parse_database_url(database_url: str | None) -> dict[str, Any]:
     if not database_url:
         return {}
@@ -152,7 +152,7 @@ def _parse_database_url(database_url: str | None) -> dict[str, Any]:
     }
 
 
-# -----------------------------------------------------------------------------
+###############################################################################
 def _load_database_settings_from_sources(
     database_config: JsonDatabaseSettings | None = None,
 ) -> DatabaseSettings:

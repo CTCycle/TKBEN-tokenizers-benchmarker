@@ -157,7 +157,7 @@ class SQLiteRepository:
         table_cls = self.get_table_class(table_name)
         self.upsert_dataframe(df, table_cls)
 
-    # -----------------------------------------------------------------------------
+    ###############################################################################
     def insert_dataframe(
         self, df: pd.DataFrame, table_name: str, ignore_duplicates: bool = True
     ) -> None:
@@ -199,7 +199,7 @@ class SQLiteRepository:
         finally:
             session.close()
 
-    # -----------------------------------------------------------------------------
+    ###############################################################################
     def get_distinct_values(self, table_name: str, column: str) -> list[str]:
         """Get distinct values from a column in the specified table."""
         safe_name = self.sanitize_identifier(table_name)
