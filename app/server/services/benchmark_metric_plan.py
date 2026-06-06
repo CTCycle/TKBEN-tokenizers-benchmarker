@@ -13,6 +13,7 @@ class BenchmarkMetricPlan:
     needs_fragmentation: bool
     needs_per_document_stats: bool
 
+
 ###############################################################################
 def build_metric_plan(
     selected_metric_keys: list[str],

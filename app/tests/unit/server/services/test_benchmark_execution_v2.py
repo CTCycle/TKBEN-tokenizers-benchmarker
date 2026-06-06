@@ -347,7 +347,9 @@ def test_run_benchmarks_computes_real_fragmentation_buckets() -> None:
 
     buckets = {
         bucket.bucket: bucket.pieces_per_word_mean
-        for bucket in result.tokenizer_results[0].fragmentation.fragmentation_by_word_length_bucket
+        for bucket in result.tokenizer_results[
+            0
+        ].fragmentation.fragmentation_by_word_length_bucket
     }
     assert set(buckets) == {"short_1_4", "medium_5_8", "long_9_plus"}
     assert len(set(round(value, 6) for value in buckets.values())) > 1

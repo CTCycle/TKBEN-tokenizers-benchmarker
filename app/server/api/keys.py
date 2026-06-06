@@ -6,6 +6,7 @@ import os
 from fastapi import APIRouter, HTTPException, Query, status
 
 from server.common.constants import (
+    ALLOW_KEY_REVEAL_DEFAULT,
     API_ROUTE_KEYS_ACTIVATE,
     API_ROUTE_KEYS_CREATE,
     API_ROUTE_KEYS_DEACTIVATE,
@@ -32,8 +33,6 @@ from server.services.keys import (
 
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_KEYS, tags=["keys"])
-
-ALLOW_KEY_REVEAL_DEFAULT = False
 
 
 ###############################################################################
@@ -90,6 +89,7 @@ async def delete_key(
     service = HFAccessKeyService()
     try:
         await asyncio.to_thread(service.delete_key, key_id=key_id, confirm=confirm)
+
     except HFAccessKeyValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
@@ -150,6 +150,7 @@ async def reveal_key(key_id: int) -> HFAccessKeyRevealResponse:
     service = HFAccessKeyService()
     try:
         revealed_key = await asyncio.to_thread(service.get_revealed_key, key_id)
+
     except HFAccessKeyValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
