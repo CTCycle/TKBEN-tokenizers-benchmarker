@@ -5,7 +5,7 @@ set "script_dir=%~dp0"
 for %%I in ("%script_dir%..\..") do set "repo_root=%%~fI"
 set "app_dir=%repo_root%\app"
 set "client_dir=%app_dir%\client"
-set "tauri_dir=%client_dir%\src-tauri"
+set "tauri_dir=%app_dir%\src-tauri"
 set "bundle_source_dir=%tauri_dir%\r"
 set "bundle_dir=%tauri_dir%\target\release\bundle"
 set "release_export_dir=%repo_root%\release\windows"
@@ -107,9 +107,12 @@ call :require_file "%tauri_cmd%" "Tauri CLI shim" || (
 )
 
 echo [STEP 2/2] Building Tauri application
+pushd "%app_dir%" >nul
 echo [CMD] "%tauri_cmd%" build --config src-tauri/tauri.conf.json
 call "%tauri_cmd%" build --config src-tauri/tauri.conf.json
-if errorlevel 1 (
+set "tauri_build_ec=%ERRORLEVEL%"
+popd >nul
+if not "%tauri_build_ec%"=="0" (
   popd >nul
   echo [FATAL] Tauri build failed.
   goto build_error

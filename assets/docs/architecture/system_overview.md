@@ -1,11 +1,11 @@
 # System Overview
-Last updated: 2026-06-02
+Last updated: 2026-06-06
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
 - FastAPI backend (`app/server`)
 - React + Vite frontend (`app/client`)
-- Optional Tauri desktop packaging (`app/client/src-tauri`)
+- Optional Tauri desktop packaging (`app/src-tauri`)
 - Shared local resources and settings (`app/resources`, `settings`)
 
 Backend APIs are mounted under `/api/*`. Frontend calls `/api` and relies on the Vite proxy in dev and preview modes.
@@ -32,7 +32,8 @@ Source-level structure, with generated folders omitted:
 │  │  ├─ package.json
 │  │  ├─ vite.config.ts
 │  │  ├─ src/
-│  │  └─ src-tauri/
+│  │  └─ dist/
+│  ├─ src-tauri/
 │  ├─ server/
 │  │  ├─ pyproject.toml
 │  │  ├─ app.py
@@ -59,7 +60,7 @@ Source-level structure, with generated folders omitted:
 - Frontend routing root:
   - `app/client/src/App.tsx`
 - Desktop runtime entry:
-  - `app/client/src-tauri/src/main.rs`
+  - `app/src-tauri/src/main.rs`
 - Windows local launcher:
   - `start_on_windows.bat`
 

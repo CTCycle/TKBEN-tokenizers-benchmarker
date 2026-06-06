@@ -6,9 +6,9 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\..\.."))
-$clientDir = Join-Path $repoRoot "app\client"
-$tauriConfigPath = Join-Path $clientDir "src-tauri\tauri.conf.json"
-$releaseDir = Join-Path $clientDir "src-tauri\target\release"
+$appDir = Join-Path $repoRoot "app"
+$tauriConfigPath = Join-Path $appDir "src-tauri\tauri.conf.json"
+$releaseDir = Join-Path $appDir "src-tauri\target\release"
 $bundleDir = Join-Path $releaseDir "bundle"
 $appVersion = (Get-Content -Path $tauriConfigPath -Raw | ConvertFrom-Json).version
 
