@@ -78,6 +78,7 @@ interface DatasetContextType {
 }
 
 const DatasetContext = createContext<DatasetContextType | null>(null);
+const LAST_DATASET_REPORT_STORAGE_KEY = 'tkben:last-dataset-report';
 
 export const DatasetProvider = ({ children }: { children: ReactNode }) => {
     const {
@@ -100,6 +101,7 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
     const {
         availableDatasets,
         datasetsLoading,
+        datasetsInitialized,
         refreshAvailableDatasets: refreshAvailableDatasetsInternal,
     } = useAvailableDatasets();
     const [activeValidationDataset, setActiveValidationDataset] = useState<string | null>(null);
@@ -262,6 +264,10 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             setValidationReport(response);
             setDatasetName(response.dataset_name);
             setDatasetLoaded(true);
+            window.localStorage.setItem(
+                LAST_DATASET_REPORT_STORAGE_KEY,
+                response.dataset_name,
+            );
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to validate dataset');
         } finally {
@@ -285,6 +291,10 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             setValidationReport(response);
             setDatasetName(response.dataset_name);
             setDatasetLoaded(true);
+            window.localStorage.setItem(
+                LAST_DATASET_REPORT_STORAGE_KEY,
+                response.dataset_name,
+            );
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Failed to load latest dataset report';
             const isNoReportFound = message.toLowerCase().includes('no validation report found');
@@ -293,11 +303,43 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             }
             if (options?.suppressNotFoundError && isNoReportFound) {
                 setValidationReport(null);
+                const savedDataset = window.localStorage.getItem(LAST_DATASET_REPORT_STORAGE_KEY);
+                if (savedDataset === targetDataset) {
+                    window.localStorage.removeItem(LAST_DATASET_REPORT_STORAGE_KEY);
+                }
             }
         } finally {
             setActiveReportLoadDataset(null);
         }
     }, []);
+
+    useEffect(() => {
+        if (!datasetsInitialized || datasetsLoading || validationReport || activeReportLoadDataset) {
+            return;
+        }
+
+        const savedDataset = window.localStorage.getItem(LAST_DATASET_REPORT_STORAGE_KEY)?.trim();
+        if (!savedDataset) {
+            return;
+        }
+
+        const datasetExists = availableDatasets.some(
+            (dataset) => dataset.dataset_name === savedDataset,
+        );
+        if (!datasetExists) {
+            window.localStorage.removeItem(LAST_DATASET_REPORT_STORAGE_KEY);
+            return;
+        }
+
+        void handleLoadLatestDatasetReport(savedDataset, { suppressNotFoundError: true });
+    }, [
+        activeReportLoadDataset,
+        availableDatasets,
+        datasetsInitialized,
+        datasetsLoading,
+        handleLoadLatestDatasetReport,
+        validationReport,
+    ]);
 
     const handleDeleteDataset = useCallback(
         async (targetDataset: string) => {
@@ -316,6 +358,9 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
                     setDatasetLoaded(false);
                     setStats(null);
                     setHistogram(null);
+                }
+                if (window.localStorage.getItem(LAST_DATASET_REPORT_STORAGE_KEY) === targetDataset) {
+                    window.localStorage.removeItem(LAST_DATASET_REPORT_STORAGE_KEY);
                 }
                 await refreshAvailableDatasets();
             } catch (err) {
@@ -344,6 +389,7 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             fileInputRef,
             availableDatasets,
             datasetsLoading,
+            datasetsInitialized,
             activeValidationDataset,
             activeReportLoadDataset,
             removingDataset,
@@ -380,6 +426,7 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             fileInputRef,
             availableDatasets,
             datasetsLoading,
+            datasetsInitialized,
             activeValidationDataset,
             activeReportLoadDataset,
             removingDataset,
