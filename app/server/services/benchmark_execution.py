@@ -82,6 +82,14 @@ class BenchmarkServiceExecutionMixin:
         return float(1.96 * (sample_std / (len(values) ** 0.5)))
 
     # -------------------------------------------------------------------------
+    def _fragmentation_bucket_label(self, word_length: int) -> str:
+        if word_length <= 4:
+            return "short_1_4"
+        if word_length <= 8:
+            return "medium_5_8"
+        return "long_9_plus"
+
+    # -------------------------------------------------------------------------
     def tokenize_document(
         self,
         tokenizer: Any,
@@ -206,14 +214,16 @@ class BenchmarkServiceExecutionMixin:
         postprocess_wall_time_seconds: float,
         total_processing_time_seconds: float,
         observed_latency_ms: list[float],
+        latency_sample_count: int,
         vocabulary_size: int,
-        oov_rate: float,
-        character_coverage: float,
+        oov_rate: float | None,
+        character_coverage: float | None,
         round_trip_fidelity_rate: float,
         round_trip_text_fidelity_rate: float,
         subword_fertility: float,
         compression_chars_per_token: float,
         compression_bytes_per_character: float,
+        fragmentation_buckets: list[BenchmarkFragmentationBucket],
         peak_rss_mb: float = 0.0,
         memory_delta_mb: float = 0.0,
     ) -> BenchmarkTokenizerResult:
@@ -263,13 +273,20 @@ class BenchmarkServiceExecutionMixin:
                 encode_latency_p50_ms=latency_p50,
                 encode_latency_p95_ms=latency_p95,
                 encode_latency_p99_ms=latency_p99,
+                sample_count=int(latency_sample_count),
             ),
             fidelity=BenchmarkFidelityMetrics(
                 exact_round_trip_rate=float(round_trip_fidelity_rate),
                 normalized_round_trip_rate=float(round_trip_text_fidelity_rate),
-                unknown_token_rate=float(oov_rate),
-                byte_fallback_rate=0.0,
-                lossless_encodability_rate=float(character_coverage),
+                unknown_token_rate=(
+                    float(oov_rate) if isinstance(oov_rate, int | float) else None
+                ),
+                byte_fallback_rate=None,
+                lossless_encodability_rate=(
+                    float(character_coverage)
+                    if isinstance(character_coverage, int | float)
+                    else None
+                ),
             ),
             fragmentation=BenchmarkFragmentationMetrics(
                 tokens_per_character=float(tokens_per_character),
@@ -277,20 +294,7 @@ class BenchmarkServiceExecutionMixin:
                 tokens_per_byte=tokens_per_byte,
                 bytes_per_token=float(bytes_per_token),
                 pieces_per_word_mean=float(subword_fertility),
-                fragmentation_by_word_length_bucket=[
-                    BenchmarkFragmentationBucket(
-                        bucket="short_1_4",
-                        pieces_per_word_mean=float(subword_fertility),
-                    ),
-                    BenchmarkFragmentationBucket(
-                        bucket="medium_5_8",
-                        pieces_per_word_mean=float(subword_fertility),
-                    ),
-                    BenchmarkFragmentationBucket(
-                        bucket="long_9_plus",
-                        pieces_per_word_mean=float(subword_fertility),
-                    ),
-                ],
+                fragmentation_by_word_length_bucket=fragmentation_buckets,
             ),
             resources=BenchmarkResourceMetrics(
                 peak_rss_mb=float(peak_rss_mb),
@@ -303,7 +307,7 @@ class BenchmarkServiceExecutionMixin:
         self,
         tokenizer_name: str,
         data: pd.DataFrame,
-        per_document_latency_ms: list[float],
+        per_document_latency_ms: list[float | None],
     ) -> BenchmarkPerDocumentTokenizerStats:
         sorted_data = data.copy()
         if "text_id" in sorted_data.columns:
@@ -319,12 +323,23 @@ class BenchmarkServiceExecutionMixin:
             sorted_data["bytes_per_token"], errors="coerce"
         ).fillna(0)
         per_doc_latency_ms = list(per_document_latency_ms)
-        per_doc_peak_rss = [0.0] * len(sorted_data)
+        per_doc_peak_rss: list[float | None] = [None] * len(sorted_data)
+        if "pieces_per_word" in sorted_data.columns:
+            pieces_series = pd.to_numeric(
+                sorted_data["pieces_per_word"], errors="coerce"
+            )
+            pieces_per_word = [
+                None if pd.isna(value) else float(value)
+                for value in pieces_series.tolist()
+            ]
+        else:
+            pieces_per_word = [None] * len(sorted_data)
 
         return BenchmarkPerDocumentTokenizerStats(
             tokenizer=tokenizer_name,
             tokens_count=[int(value) for value in tokens_count.tolist()],
             bytes_per_token=[float(value) for value in bytes_per_token.tolist()],
+            pieces_per_word=pieces_per_word,
             encode_latency_ms=per_doc_latency_ms,
             peak_rss_mb=per_doc_peak_rss,
         )
@@ -391,6 +406,7 @@ class BenchmarkServiceExecutionMixin:
                     median=float(np.percentile(arr, 50)),
                     q3=float(np.percentile(arr, 75)),
                     max=float(np.max(arr)),
+                    sample_count=len(latencies_ms),
                 )
             )
 
@@ -557,9 +573,6 @@ class BenchmarkServiceExecutionMixin:
                         raise BenchmarkCancelledError("Benchmark run cancelled.")
                     raise RuntimeError("No observations collected for tokenizer run.")
                 observation_summary = summarize_observations(observations)
-                first_trial_batches = [
-                    obs for obs in observations if obs.trial_index == 0
-                ]
                 trial_tokenization_speeds_tps: list[float] = []
                 for trial_index in sorted({obs.trial_index for obs in observations}):
                     trial_obs = [
@@ -575,11 +588,17 @@ class BenchmarkServiceExecutionMixin:
                 postprocess_started_at = time.perf_counter()
                 sample_rows: list[dict[str, Any]] = []
                 unknown_token_count_total = 0
+                unknown_token_count_measurable = False
                 total_tokens = 0
                 total_chars = 0
                 total_bytes = 0
-                words_count_values: list[int] = []
-                tokens_count_values: list[int] = []
+                fragmentation_token_total = 0
+                fragmentation_word_piece_counts: list[int] = []
+                fragmentation_bucket_values: dict[str, list[float]] = {
+                    "short_1_4": [],
+                    "medium_5_8": [],
+                    "long_9_plus": [],
+                }
                 round_trip_token_fidelity: list[float] = []
                 round_trip_text_fidelity: list[float] = []
                 for row_id, text_value in spool.iter_rows():
@@ -601,21 +620,49 @@ class BenchmarkServiceExecutionMixin:
                     total_tokens += token_count
                     total_chars += len(text_value)
                     total_bytes += len(text_value.encode("utf-8"))
-                    tokens_count_values.append(token_count)
                     if (
                         encoded_batch.unknown_counts
                         and encoded_batch.unknown_counts[0] is not None
                     ):
+                        unknown_token_count_measurable = True
                         unknown_token_count_total += int(
                             encoded_batch.unknown_counts[0] or 0
                         )
-                    words_count = (
-                        len(text_value.split())
-                        if metric_plan.needs_fragmentation
-                        else 0
-                    )
+                    pieces_per_word: float | None = None
                     if metric_plan.needs_fragmentation:
-                        words_count_values.append(words_count)
+                        fragmentation_encoded = adapter.encode_batch(
+                            [text_value],
+                            add_special_tokens=False,
+                            padding=False,
+                            truncation=False,
+                            max_length=None,
+                        )
+                        fragmentation_token_total += (
+                            fragmentation_encoded.token_counts[0]
+                            if fragmentation_encoded.token_counts
+                            else 0
+                        )
+                        words = re.findall(r"\b\w+\b", text_value, flags=re.UNICODE)
+                        if words:
+                            encoded_words = adapter.encode_batch(
+                                words,
+                                add_special_tokens=False,
+                                padding=False,
+                                truncation=False,
+                                max_length=None,
+                            )
+                            word_piece_counts = [
+                                int(value)
+                                for value in encoded_words.token_counts[: len(words)]
+                            ]
+                            fragmentation_word_piece_counts.extend(word_piece_counts)
+                            for word, piece_count in zip(
+                                words, word_piece_counts, strict=False
+                            ):
+                                fragmentation_bucket_values[
+                                    self._fragmentation_bucket_label(len(word))
+                                ].append(float(piece_count))
+                            pieces_per_word = float(np.mean(word_piece_counts))
                     decoded_text = self.tools.safe_decode(tokenizer, encoded_ids)
                     if metric_plan.needs_round_trip:
                         rt_token_ids = self.tools.extract_token_ids(
@@ -643,6 +690,7 @@ class BenchmarkServiceExecutionMixin:
                                 )
                                 if token_count > 0
                                 else 0.0,
+                                "pieces_per_word": pieces_per_word,
                             }
                         )
 
@@ -660,24 +708,28 @@ class BenchmarkServiceExecutionMixin:
                 else:
                     vocabulary_size = 0
 
+                fragmentation_buckets: list[BenchmarkFragmentationBucket] = []
                 if metric_plan.needs_fragmentation:
-                    fertility_values: list[float] = []
-                    for token_count, words_count in zip(
-                        tokens_count_values, words_count_values
-                    ):
-                        if words_count > 0:
-                            fertility_values.append(token_count / words_count)
                     subword_fertility = (
-                        float(np.mean(fertility_values)) if fertility_values else 0.0
+                        float(np.mean(fragmentation_word_piece_counts))
+                        if fragmentation_word_piece_counts
+                        else 0.0
                     )
+                    fragmentation_buckets = [
+                        BenchmarkFragmentationBucket(
+                            bucket=bucket,
+                            pieces_per_word_mean=float(np.mean(values)),
+                        )
+                        for bucket, values in fragmentation_bucket_values.items()
+                        if values
+                    ]
                 else:
                     subword_fertility = 0.0
 
-                oov_rate = (
-                    (unknown_token_count_total / total_tokens)
-                    if metric_plan.needs_unknown_rate and total_tokens > 0
-                    else 0.0
-                )
+                oov_rate: float | None = None
+                if metric_plan.needs_unknown_rate and total_tokens > 0:
+                    if unknown_token_count_measurable:
+                        oov_rate = unknown_token_count_total / total_tokens
 
                 if metric_plan.needs_character_coverage:
                     vocab_tokens: set[str] = set()
@@ -698,19 +750,23 @@ class BenchmarkServiceExecutionMixin:
                         for ch in token_item:
                             vocab_chars.add(ch)
                     intersection = dataset_chars.intersection(vocab_chars)
-                    character_coverage = (
+                    character_coverage: float | None = (
                         (len(intersection) / max(1, len(dataset_chars)) * 100.0)
                         if dataset_chars
                         else 0.0
                     )
                 else:
-                    character_coverage = 0.0
+                    character_coverage = None
 
                 compression_chars_per_token = (
-                    float(total_chars / total_tokens) if total_tokens > 0 else 0.0
+                    float(total_chars / fragmentation_token_total)
+                    if fragmentation_token_total > 0
+                    else 0.0
                 )
                 compression_bytes_per_character = (
-                    float(total_tokens / total_bytes) if total_bytes > 0 else 0.0
+                    float(fragmentation_token_total / total_bytes)
+                    if total_bytes > 0
+                    else 0.0
                 )
                 round_trip_fidelity_rate = (
                     float(np.mean(round_trip_token_fidelity))
@@ -751,13 +807,16 @@ class BenchmarkServiceExecutionMixin:
                         ),
                         observed_latency_ms=[
                             (obs.elapsed_ns / 1_000_000.0) / max(1, obs.documents)
-                            for obs in first_trial_batches
+                            for obs in observations
                         ]
                         if metric_plan.needs_latency
                         else [],
+                        latency_sample_count=(
+                            len(observations) if metric_plan.needs_latency else 0
+                        ),
                         vocabulary_size=int(vocabulary_size),
-                        oov_rate=float(oov_rate),
-                        character_coverage=float(character_coverage),
+                        oov_rate=oov_rate,
+                        character_coverage=character_coverage,
                         round_trip_fidelity_rate=float(round_trip_fidelity_rate),
                         round_trip_text_fidelity_rate=float(round_trip_text_rate),
                         subword_fertility=float(subword_fertility),
@@ -765,6 +824,7 @@ class BenchmarkServiceExecutionMixin:
                         compression_bytes_per_character=float(
                             compression_bytes_per_character
                         ),
+                        fragmentation_buckets=fragmentation_buckets,
                         peak_rss_mb=max(
                             (float(obs.peak_rss_mb or 0.0) for obs in observations),
                             default=0.0,
@@ -793,7 +853,7 @@ class BenchmarkServiceExecutionMixin:
                             tokenizer_name=name,
                             data=sampled_data,
                             per_document_latency_ms=[
-                                0.0 for _ in range(len(sampled_data))
+                                None for _ in range(len(sampled_data))
                             ],
                         )
                     )
@@ -828,14 +888,16 @@ class BenchmarkServiceExecutionMixin:
                         postprocess_wall_time_seconds=0.0,
                         total_processing_time_seconds=0.0,
                         observed_latency_ms=[],
+                        latency_sample_count=0,
                         vocabulary_size=0,
-                        oov_rate=0.0,
-                        character_coverage=0.0,
+                        oov_rate=None,
+                        character_coverage=None,
                         round_trip_fidelity_rate=0.0,
                         round_trip_text_fidelity_rate=0.0,
                         subword_fertility=0.0,
                         compression_chars_per_token=0.0,
                         compression_bytes_per_character=0.0,
+                        fragmentation_buckets=[],
                         peak_rss_mb=0.0,
                         memory_delta_mb=0.0,
                     )
@@ -916,6 +978,7 @@ class BenchmarkServiceExecutionMixin:
             "encode_only_definition": "Timed tokenizer encode trials only; warmup excluded.",
             "dataset_stream_definition": "Time spent streaming and spooling dataset rows before tokenizer trials.",
             "postprocess_definition": "Time spent computing post-trial metrics from replayed rows.",
+            "latency_summary_definition": "Latency percentiles and distributions are computed from all timed batch observations, normalized by documents per batch.",
         }
         successful_results = [
             result for result in tokenizer_results if result.status == "success"
@@ -932,6 +995,19 @@ class BenchmarkServiceExecutionMixin:
             "latency_distribution": bool(
                 metric_plan.needs_latency and len(successful_results) > 0
             ),
+            "byte_fallback_rate": False,
+            "unknown_token_rate": any(
+                result.fidelity.unknown_token_rate is not None
+                for result in successful_results
+            ),
+            "vocab_character_overlap": any(
+                result.fidelity.lossless_encodability_rate is not None
+                for result in successful_results
+            ),
+            "fragmentation_word_length_bucket": any(
+                bool(result.fragmentation.fragmentation_by_word_length_bucket)
+                for result in successful_results
+            ),
             "per_document_stats": bool(
                 metric_plan.needs_per_document_stats and len(per_document_stats) > 0
             ),
@@ -944,7 +1020,7 @@ class BenchmarkServiceExecutionMixin:
         return BenchmarkRunResponse(
             status="cancelled" if cancelled else "success",
             schema_version=1,
-            methodology_version="v1_observed_trials",
+            methodology_version="v2_semantic_honesty",
             run_name=normalized_run_name or None,
             selected_metric_keys=resolved_metric_keys,
             dataset_name=dataset_name,

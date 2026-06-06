@@ -123,14 +123,12 @@ class DashboardExportFormatting:
             converted.append(
                 {
                     "tokenizer": str(result.get("tokenizer") or ""),
-                    "oov_rate": self._to_number(fidelity.get("unknown_token_rate")),
+                    "oov_rate": fidelity.get("unknown_token_rate"),
                     "round_trip_fidelity_rate": self._to_number(
                         fidelity.get("exact_round_trip_rate")
                     ),
                     "word_recovery_rate": 0.0,
-                    "character_coverage": self._to_number(
-                        fidelity.get("lossless_encodability_rate")
-                    ),
+                    "character_coverage": fidelity.get("lossless_encodability_rate"),
                     "subword_fertility": self._to_number(
                         fragmentation.get("pieces_per_word_mean")
                     ),
@@ -280,10 +278,14 @@ class DashboardExportFormatting:
 
     # -------------------------------------------------------------------------
     def _format_number(self, value: Any, decimals: int) -> str:
+        if value is None:
+            return "N/A"
         return f"{self._to_number(value, 0.0):.{decimals}f}"
 
     # -------------------------------------------------------------------------
     def _format_percent(self, value: Any) -> str:
+        if value is None:
+            return "N/A"
         numeric = self._to_number(value, 0.0)
         if numeric <= 1.0:
             numeric *= 100.0

@@ -116,7 +116,15 @@ def build_benchmark_metric_value_map(result: dict[str, Any]) -> dict[str, Any]:
         "fid.exact_round_trip_rate": exact_round_trip_rate,
         "fid.normalized_round_trip_rate": normalized_round_trip_rate,
         "fid.unknown_token_rate": unknown_token_rate,
-        "fid.byte_fallback_rate": 0.0,
+        "fid.lossless_encodability_rate": tokenizer_result["fidelity"][
+            "lossless_encodability_rate"
+        ],
+        "frag.pieces_per_word_mean": tokenizer_result["fragmentation"][
+            "pieces_per_word_mean"
+        ],
+        "frag.tokens_per_character": tokenizer_result["fragmentation"][
+            "tokens_per_character"
+        ],
     }
 
 

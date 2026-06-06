@@ -13,7 +13,7 @@ class BenchmarkMetricPlan:
     needs_fragmentation: bool
     needs_per_document_stats: bool
 
-
+###############################################################################
 def build_metric_plan(
     selected_metric_keys: list[str],
     *,
@@ -26,7 +26,7 @@ def build_metric_plan(
         {"fid.exact_round_trip_rate", "fid.normalized_round_trip_rate"} & selected
     )
     needs_unknown_rate = "fid.unknown_token_rate" in selected
-    needs_character_coverage = "fid.byte_fallback_rate" in selected
+    needs_character_coverage = "fid.lossless_encodability_rate" in selected
     needs_fragmentation = any(
         key.startswith("frag.") or key.startswith("compression.") for key in selected
     )
