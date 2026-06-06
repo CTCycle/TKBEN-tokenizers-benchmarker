@@ -70,11 +70,17 @@ def test_run_benchmark_job_builds_and_saves_report(monkeypatch) -> None:
             assert payload["dataset_name"] == "custom/sample"
             return 11
 
-    monkeypatch.setattr("server.services.benchmark_jobs.BenchmarkService", FakeBenchmarkService)
+    monkeypatch.setattr(
+        "server.services.benchmark_jobs.BenchmarkService", FakeBenchmarkService
+    )
 
     service = BenchmarkJobService()
     result = service.run_benchmark_job(
-        request_payload={"dataset_name": "custom/sample", "tokenizers": ["bert-base-uncased"], "config": {}},
+        request_payload={
+            "dataset_name": "custom/sample",
+            "tokenizers": ["bert-base-uncased"],
+            "config": {},
+        },
         job_manager=DummyJobManager(),
         job_id="job1",
     )
@@ -83,7 +89,9 @@ def test_run_benchmark_job_builds_and_saves_report(monkeypatch) -> None:
     assert result["report_version"] == 2
 
 
-def test_run_benchmark_job_returns_cancelled_payload_without_persist(monkeypatch) -> None:
+def test_run_benchmark_job_returns_cancelled_payload_without_persist(
+    monkeypatch,
+) -> None:
     class FakeBenchmarkService:
         def __init__(self, max_documents: int = 0):
             self.max_documents = max_documents
@@ -135,13 +143,21 @@ def test_run_benchmark_job_returns_cancelled_payload_without_persist(monkeypatch
             }
 
         def save_benchmark_report(self, payload):
-            raise AssertionError("save_benchmark_report must not be called for cancelled runs")
+            raise AssertionError(
+                "save_benchmark_report must not be called for cancelled runs"
+            )
 
-    monkeypatch.setattr("server.services.benchmark_jobs.BenchmarkService", FakeBenchmarkService)
+    monkeypatch.setattr(
+        "server.services.benchmark_jobs.BenchmarkService", FakeBenchmarkService
+    )
 
     service = BenchmarkJobService()
     result = service.run_benchmark_job(
-        request_payload={"dataset_name": "custom/sample", "tokenizers": ["bert-base-uncased"], "config": {}},
+        request_payload={
+            "dataset_name": "custom/sample",
+            "tokenizers": ["bert-base-uncased"],
+            "config": {},
+        },
         job_manager=DummyJobManager(stopped=True),
         job_id="job1",
     )

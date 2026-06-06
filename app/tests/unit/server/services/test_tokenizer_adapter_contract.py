@@ -13,6 +13,12 @@ class DummyTokenizer:
 
 def test_adapter_returns_normalized_structure() -> None:
     adapter = UniversalTokenizerAdapter("x", DummyTokenizer())
-    encoded = adapter.encode_batch(["a", "b"], add_special_tokens=False, padding=False, truncation=False, max_length=None)
+    encoded = adapter.encode_batch(
+        ["a", "b"],
+        add_special_tokens=False,
+        padding=False,
+        truncation=False,
+        max_length=None,
+    )
     assert encoded.token_counts == [2, 1]
     assert encoded.unknown_counts == [0, 1]

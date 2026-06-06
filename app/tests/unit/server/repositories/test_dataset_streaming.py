@@ -29,5 +29,7 @@ def test_streaming_preserves_empty_and_unicode_rows(monkeypatch) -> None:
         session.commit()
 
     serializer = DatasetSerializer()
-    rows = list(serializer.iterate_dataset_rows_for_benchmarks("custom/stream", batch_size=2))
+    rows = list(
+        serializer.iterate_dataset_rows_for_benchmarks("custom/stream", batch_size=2)
+    )
     assert [text for _, text in rows] == ["", " ", "emoji 😀", "CJK 漢字"]

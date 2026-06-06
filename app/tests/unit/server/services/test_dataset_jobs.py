@@ -30,7 +30,9 @@ def test_build_analysis_payload_preserves_contract() -> None:
 def test_extract_configuration_handles_missing() -> None:
     service = DatasetJobService()
     assert service.extract_configuration({}) is None
-    assert service.extract_configuration({"configs": {"configuration": " abc "}}) == "abc"
+    assert (
+        service.extract_configuration({"configs": {"configuration": " abc "}}) == "abc"
+    )
 
 
 def test_run_download_job_returns_service_payload(monkeypatch) -> None:
@@ -47,7 +49,9 @@ def test_run_download_job_returns_service_payload(monkeypatch) -> None:
                 "histogram": {"bins": ["1-2"], "counts": [2]},
             }
 
-    monkeypatch.setattr("server.services.dataset_jobs.DatasetService", FakeDatasetService)
+    monkeypatch.setattr(
+        "server.services.dataset_jobs.DatasetService", FakeDatasetService
+    )
 
     result = service.run_download_job(
         request_payload={"corpus": "wikitext", "configs": {}},

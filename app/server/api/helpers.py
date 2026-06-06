@@ -10,6 +10,7 @@ from server.common.utils.security import normalize_upload_stem
 from server.configurations import get_server_settings
 from server.domain.jobs import JobStartResponse
 
+
 ###############################################################################
 def start_managed_job(
     request: Request,
@@ -24,7 +25,9 @@ def start_managed_job(
 ) -> JobStartResponse:
     job_manager = request.app.state.job_manager
     if check_conflict and job_manager.is_job_running(job_type):
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=conflict_detail)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=conflict_detail
+        )
 
     job_id = job_manager.start_job(
         job_type=job_type,
@@ -46,6 +49,7 @@ def start_managed_job(
         poll_interval=get_server_settings().jobs.polling_interval,
     )
 
+
 ###############################################################################
 def validate_upload_filename(
     file: UploadFile,
@@ -60,9 +64,7 @@ def validate_upload_filename(
             detail="No filename provided.",
         )
 
-    normalized_filename = PurePosixPath(
-        file.filename.strip().replace("\\", "/")
-    ).name
+    normalized_filename = PurePosixPath(file.filename.strip().replace("\\", "/")).name
     if not normalized_filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -96,6 +98,7 @@ def validate_upload_filename(
             ) from exc
 
     return normalized_filename, safe_stem
+
 
 ###############################################################################
 def validate_upload_size(content: bytes, max_upload_bytes: int) -> None:

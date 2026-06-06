@@ -115,17 +115,23 @@ class TestDatasetPage:
         assert analyze_status.get("status") == "completed", analyze_status.get("error")
 
         page.goto(f"{base_url}/dataset")
-        no_report_row = page.locator(".dataset-preview-row").filter(
-            has_text=without_report_dataset
-        ).first
-        with_report_row = page.locator(".dataset-preview-row").filter(
-            has_text=with_report_dataset
-        ).first
+        no_report_row = (
+            page.locator(".dataset-preview-row")
+            .filter(has_text=without_report_dataset)
+            .first
+        )
+        with_report_row = (
+            page.locator(".dataset-preview-row")
+            .filter(has_text=with_report_dataset)
+            .first
+        )
 
         no_report_encoded = quote(without_report_dataset, safe="")
         with page.expect_response(
-            lambda response: "/api/datasets/reports/latest" in response.url
-            and f"dataset_name={no_report_encoded}" in response.url
+            lambda response: (
+                "/api/datasets/reports/latest" in response.url
+                and f"dataset_name={no_report_encoded}" in response.url
+            )
         ):
             no_report_row.click(position={"x": 20, "y": 20})
         expect(
@@ -134,8 +140,10 @@ class TestDatasetPage:
 
         with_report_encoded = quote(with_report_dataset, safe="")
         with page.expect_response(
-            lambda response: "/api/datasets/reports/latest" in response.url
-            and f"dataset_name={with_report_encoded}" in response.url
+            lambda response: (
+                "/api/datasets/reports/latest" in response.url
+                and f"dataset_name={with_report_encoded}" in response.url
+            )
         ):
             with_report_row.click(position={"x": 20, "y": 20})
         expect(
@@ -161,9 +169,11 @@ class TestDatasetPage:
         )
 
         page.goto(f"{base_url}/dataset")
-        row = page.locator(".dataset-preview-row").filter(
-            has_text=without_report_dataset
-        ).first
+        row = (
+            page.locator(".dataset-preview-row")
+            .filter(has_text=without_report_dataset)
+            .first
+        )
 
         row.click(position={"x": 20, "y": 20})
         expect(page.locator(".dismissible-banner,[role='alert']")).to_have_count(0)

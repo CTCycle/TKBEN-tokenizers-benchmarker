@@ -5,7 +5,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from server.repositories.database.backend import TKBENDatabase, get_database
-from server.repositories.schemas.models import BenchmarkReport, Dataset, DatasetDocument, Tokenizer
+from server.repositories.schemas.models import (
+    BenchmarkReport,
+    Dataset,
+    DatasetDocument,
+    Tokenizer,
+)
 
 
 ###############################################################################
@@ -42,7 +47,9 @@ class BenchmarkRepository:
         return [name for name in unique_requested if name not in persisted_names]
 
     # -------------------------------------------------------------------------
-    def list_benchmark_reports(self, limit: int = 200) -> list[tuple[BenchmarkReport, str]]:
+    def list_benchmark_reports(
+        self, limit: int = 200
+    ) -> list[tuple[BenchmarkReport, str]]:
         capped_limit = max(1, min(1000, int(limit or 200)))
         stmt = (
             select(BenchmarkReport, Dataset.name.label("dataset_name"))
@@ -54,7 +61,9 @@ class BenchmarkRepository:
             return list(session.execute(stmt).all())
 
     # -------------------------------------------------------------------------
-    def get_benchmark_report_by_id(self, report_id: int) -> tuple[BenchmarkReport, str] | None:
+    def get_benchmark_report_by_id(
+        self, report_id: int
+    ) -> tuple[BenchmarkReport, str] | None:
         stmt = (
             select(BenchmarkReport, Dataset.name.label("dataset_name"))
             .join(Dataset, Dataset.id == BenchmarkReport.dataset_id)
@@ -80,9 +89,13 @@ class BenchmarkRepository:
             return {}
         deduped_names = list(dict.fromkeys(tokenizer_names))
         with self._session() as session:
-            existing_rows = session.execute(
-                select(Tokenizer).where(Tokenizer.name.in_(deduped_names))
-            ).scalars().all()
+            existing_rows = (
+                session.execute(
+                    select(Tokenizer).where(Tokenizer.name.in_(deduped_names))
+                )
+                .scalars()
+                .all()
+            )
             existing_names = {row.name for row in existing_rows}
             for name in deduped_names:
                 if name not in existing_names:

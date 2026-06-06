@@ -53,14 +53,20 @@ def test_tokenizer_upload_validation_and_custom_clear(monkeypatch) -> None:
         files={"file": ("tokenizer.json", b"{}", "application/json")},
     )
     assert oversized.status_code == 413
-    monkeypatch.setattr(tokenizers_api, "get_server_settings", lambda: type(
-        "Settings",
-        (),
-        {
-            "tokenizers": type("TokenizerCfg", (), {"max_upload_bytes": 10_000_000})(),
-            "jobs": type("JobsCfg", (), {"polling_interval": 1.0})(),
-        },
-    )())
+    monkeypatch.setattr(
+        tokenizers_api,
+        "get_server_settings",
+        lambda: type(
+            "Settings",
+            (),
+            {
+                "tokenizers": type(
+                    "TokenizerCfg", (), {"max_upload_bytes": 10_000_000}
+                )(),
+                "jobs": type("JobsCfg", (), {"polling_interval": 1.0})(),
+            },
+        )(),
+    )
 
     def fake_upload(self, content: bytes, normalized_filename: str, safe_stem: str):
         del self, content, normalized_filename, safe_stem

@@ -13,7 +13,9 @@ from server.domain.settings import JsonConfiguration, ServerSettings
 ###############################################################################
 class ConfigurationManager:
     def __init__(self, config_path: str | Path = CONFIGURATIONS_FILE) -> None:
-        self.config_path = Path(config_path)
+        self.config_path = (
+            config_path if isinstance(config_path, Path) else Path(config_path)
+        )
         self._payload: dict[str, Any] = {}
         self._configuration = JsonConfiguration()
 
@@ -39,7 +41,9 @@ class ConfigurationManager:
         return self.load()
 
     # -------------------------------------------------------------------------
-    def update(self, payload: dict[str, Any], *, persist: bool = True) -> "ConfigurationManager":
+    def update(
+        self, payload: dict[str, Any], *, persist: bool = True
+    ) -> "ConfigurationManager":
         if not isinstance(payload, dict):
             raise RuntimeError("Configuration must be a JSON object.")
         normalized_payload = self._normalize_payload(payload)
@@ -71,7 +75,9 @@ class ConfigurationManager:
         try:
             payload = json.loads(self.config_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
-            raise RuntimeError(f"Unable to load configuration from {self.config_path}") from exc
+            raise RuntimeError(
+                f"Unable to load configuration from {self.config_path}"
+            ) from exc
 
         if not isinstance(payload, dict):
             raise RuntimeError("Configuration must be a JSON object.")

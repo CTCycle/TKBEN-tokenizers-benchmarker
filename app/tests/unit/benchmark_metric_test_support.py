@@ -91,9 +91,7 @@ def build_benchmark_metric_value_map(result: dict[str, Any]) -> dict[str, Any]:
     efficiency_metrics = result["chart_data"]["efficiency"][0]
 
     encode_tps = float(efficiency_metrics["value"])
-    encode_cps = float(
-        tokenizer_result["efficiency"]["encode_chars_per_second_mean"]
-    )
+    encode_cps = float(tokenizer_result["efficiency"]["encode_chars_per_second_mean"])
     wall_time_s = float(tokenizer_result["efficiency"]["end_to_end_wall_time_seconds"])
     exact_round_trip_rate = float(tokenizer_result["fidelity"]["exact_round_trip_rate"])
     normalized_round_trip_rate = float(
@@ -106,9 +104,15 @@ def build_benchmark_metric_value_map(result: dict[str, Any]) -> dict[str, Any]:
         "eff.encode_tokens_per_second_ci95": 0.0,
         "eff.encode_chars_per_second_mean": encode_cps,
         "eff.end_to_end_wall_time_seconds": wall_time_s,
-        "lat.encode_latency_p50_ms": float(tokenizer_result["latency"]["encode_latency_p50_ms"]),
-        "lat.encode_latency_p95_ms": float(tokenizer_result["latency"]["encode_latency_p95_ms"]),
-        "lat.encode_latency_p99_ms": float(tokenizer_result["latency"]["encode_latency_p99_ms"]),
+        "lat.encode_latency_p50_ms": float(
+            tokenizer_result["latency"]["encode_latency_p50_ms"]
+        ),
+        "lat.encode_latency_p95_ms": float(
+            tokenizer_result["latency"]["encode_latency_p95_ms"]
+        ),
+        "lat.encode_latency_p99_ms": float(
+            tokenizer_result["latency"]["encode_latency_p99_ms"]
+        ),
         "fid.exact_round_trip_rate": exact_round_trip_rate,
         "fid.normalized_round_trip_rate": normalized_round_trip_rate,
         "fid.unknown_token_rate": unknown_token_rate,

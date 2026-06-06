@@ -30,7 +30,9 @@ class DummyTokenizer:
 
     def decode(self, token_ids: Any) -> str:
         ids = token_ids.ids if hasattr(token_ids, "ids") else token_ids
-        return " ".join(self._id_to_token.get(int(token_id), "[UNK]") for token_id in ids)
+        return " ".join(
+            self._id_to_token.get(int(token_id), "[UNK]") for token_id in ids
+        )
 
     def convert_ids_to_tokens(self, token_ids: list[int]) -> list[str]:
         return [self._id_to_token.get(int(token_id), "[UNK]") for token_id in token_ids]
@@ -58,7 +60,9 @@ def test_run_benchmarks_returns_v2_contract() -> None:
 
     service.get_dataset_document_count = lambda dataset_name: len(rows)  # type: ignore[method-assign]
     service.stream_dataset_rows_from_database = lambda dataset_name: iter(rows)  # type: ignore[method-assign]
-    service.load_tokenizers = lambda tokenizer_ids: {"dummy/tokenizer": DummyTokenizer()}  # type: ignore[method-assign]
+    service.load_tokenizers = lambda tokenizer_ids: {
+        "dummy/tokenizer": DummyTokenizer()
+    }  # type: ignore[method-assign]
     service.calculate_morphological_consistency = (  # type: ignore[method-assign]
         lambda tokenizer, base_words: 0.5
     )
@@ -100,11 +104,15 @@ def test_run_benchmarks_returns_v2_contract() -> None:
     assert "benchmark_timing_boundaries" in result.runtime_metadata
     assert "metric_availability" in result.runtime_metadata
     assert result.runtime_metadata["metric_availability"]["resource_metrics"] is True
-    assert result.runtime_metadata["metric_availability"]["latency_distribution"] is True
+    assert (
+        result.runtime_metadata["metric_availability"]["latency_distribution"] is True
+    )
     assert result.runtime_metadata["metric_availability"]["per_document_stats"] is True
     assert result.runtime_metadata["end_to_end_benchmark_seconds"] >= 0.0
     assert result.tokenizer_results[0].efficiency.encode_only_wall_time_seconds >= 0.0
-    assert result.tokenizer_results[0].efficiency.dataset_stream_wall_time_seconds >= 0.0
+    assert (
+        result.tokenizer_results[0].efficiency.dataset_stream_wall_time_seconds >= 0.0
+    )
     assert result.tokenizer_results[0].efficiency.postprocess_wall_time_seconds >= 0.0
 
 
@@ -118,7 +126,9 @@ def test_run_benchmarks_enforces_max_documents_limit() -> None:
 
     service.get_dataset_document_count = lambda dataset_name: len(rows)  # type: ignore[method-assign]
     service.stream_dataset_rows_from_database = lambda dataset_name: iter(rows)  # type: ignore[method-assign]
-    service.load_tokenizers = lambda tokenizer_ids: {"dummy/tokenizer": DummyTokenizer()}  # type: ignore[method-assign]
+    service.load_tokenizers = lambda tokenizer_ids: {
+        "dummy/tokenizer": DummyTokenizer()
+    }  # type: ignore[method-assign]
 
     result = service.run_benchmarks(
         dataset_name="custom/ds",
@@ -174,7 +184,9 @@ def test_run_benchmarks_uses_trial_level_speeds_for_ci() -> None:
 
     service.get_dataset_document_count = lambda dataset_name: len(rows)  # type: ignore[method-assign]
     service.stream_dataset_rows_from_database = lambda dataset_name: iter(rows)  # type: ignore[method-assign]
-    service.load_tokenizers = lambda tokenizer_ids: {"dummy/tokenizer": DummyTokenizer()}  # type: ignore[method-assign]
+    service.load_tokenizers = lambda tokenizer_ids: {
+        "dummy/tokenizer": DummyTokenizer()
+    }  # type: ignore[method-assign]
 
     original_run_trials = benchmark_execution_module.run_tokenizer_trials
 
@@ -195,7 +207,10 @@ def test_run_benchmarks_uses_trial_level_speeds_for_ci() -> None:
         benchmark_execution_module.run_tokenizer_trials = original_run_trials  # type: ignore[assignment]
 
     metrics = result.tokenizer_results[0].efficiency
-    assert metrics.encode_tokens_per_second_ci95_high > metrics.encode_tokens_per_second_ci95_low
+    assert (
+        metrics.encode_tokens_per_second_ci95_high
+        > metrics.encode_tokens_per_second_ci95_low
+    )
 
 
 def test_run_benchmarks_uses_true_latency_distribution_five_number_summary() -> None:
@@ -204,15 +219,23 @@ def test_run_benchmarks_uses_true_latency_distribution_five_number_summary() -> 
 
     service.get_dataset_document_count = lambda dataset_name: len(rows)  # type: ignore[method-assign]
     service.stream_dataset_rows_from_database = lambda dataset_name: iter(rows)  # type: ignore[method-assign]
-    service.load_tokenizers = lambda tokenizer_ids: {"dummy/tokenizer": DummyTokenizer()}  # type: ignore[method-assign]
+    service.load_tokenizers = lambda tokenizer_ids: {
+        "dummy/tokenizer": DummyTokenizer()
+    }  # type: ignore[method-assign]
 
     original_run_trials = benchmark_execution_module.run_tokenizer_trials
 
     def fake_run_trials(**kwargs: Any) -> list[BatchObservation]:
         return [
-            BatchObservation("dummy/tokenizer", 0, 0, 1, 5, 10, 0, 1_000_000, 10.0),  # 1.0 ms
-            BatchObservation("dummy/tokenizer", 0, 1, 1, 5, 10, 0, 3_000_000, 10.0),  # 3.0 ms
-            BatchObservation("dummy/tokenizer", 0, 2, 1, 5, 10, 0, 5_000_000, 10.0),  # 5.0 ms
+            BatchObservation(
+                "dummy/tokenizer", 0, 0, 1, 5, 10, 0, 1_000_000, 10.0
+            ),  # 1.0 ms
+            BatchObservation(
+                "dummy/tokenizer", 0, 1, 1, 5, 10, 0, 3_000_000, 10.0
+            ),  # 3.0 ms
+            BatchObservation(
+                "dummy/tokenizer", 0, 2, 1, 5, 10, 0, 5_000_000, 10.0
+            ),  # 5.0 ms
         ]
 
     benchmark_execution_module.run_tokenizer_trials = fake_run_trials  # type: ignore[assignment]
@@ -239,7 +262,9 @@ def test_run_benchmarks_reports_utf8_bytes_throughput_and_unknown_rate() -> None
 
     service.get_dataset_document_count = lambda dataset_name: len(rows)  # type: ignore[method-assign]
     service.stream_dataset_rows_from_database = lambda dataset_name: iter(rows)  # type: ignore[method-assign]
-    service.load_tokenizers = lambda tokenizer_ids: {"ua/tokenizer": UnknownAwareTokenizer()}  # type: ignore[method-assign]
+    service.load_tokenizers = lambda tokenizer_ids: {
+        "ua/tokenizer": UnknownAwareTokenizer()
+    }  # type: ignore[method-assign]
 
     result = service.run_benchmarks(
         dataset_name="custom/ds",
@@ -249,7 +274,10 @@ def test_run_benchmarks_reports_utf8_bytes_throughput_and_unknown_rate() -> None
     tokenizer_result = result.tokenizer_results[0]
     assert tokenizer_result.efficiency.encode_bytes_per_second_mean > 0.0
     assert tokenizer_result.fidelity.unknown_token_rate > 0.0
-    assert tokenizer_result.fragmentation.bytes_per_token >= tokenizer_result.fragmentation.characters_per_token
+    assert (
+        tokenizer_result.fragmentation.bytes_per_token
+        >= tokenizer_result.fragmentation.characters_per_token
+    )
     assert tokenizer_result.resources.peak_rss_mb > 0.0
 
 
@@ -258,7 +286,9 @@ def test_run_benchmarks_uses_utf8_bytes_per_token_for_per_doc_stats() -> None:
     rows = [(1, "known é")]
     service.get_dataset_document_count = lambda dataset_name: len(rows)  # type: ignore[method-assign]
     service.stream_dataset_rows_from_database = lambda dataset_name: iter(rows)  # type: ignore[method-assign]
-    service.load_tokenizers = lambda tokenizer_ids: {"ua/tokenizer": UnknownAwareTokenizer()}  # type: ignore[method-assign]
+    service.load_tokenizers = lambda tokenizer_ids: {
+        "ua/tokenizer": UnknownAwareTokenizer()
+    }  # type: ignore[method-assign]
 
     result = service.run_benchmarks(
         dataset_name="custom/ds",
@@ -274,7 +304,9 @@ def test_run_benchmarks_can_disable_per_document_stats_and_persist_config() -> N
 
     service.get_dataset_document_count = lambda dataset_name: len(rows)  # type: ignore[method-assign]
     service.stream_dataset_rows_from_database = lambda dataset_name: iter(rows)  # type: ignore[method-assign]
-    service.load_tokenizers = lambda tokenizer_ids: {"dummy/tokenizer": DummyTokenizer()}  # type: ignore[method-assign]
+    service.load_tokenizers = lambda tokenizer_ids: {
+        "dummy/tokenizer": DummyTokenizer()
+    }  # type: ignore[method-assign]
 
     result = service.run_benchmarks(
         dataset_name="custom/ds",
@@ -303,7 +335,9 @@ def test_run_benchmarks_returns_cancelled_status_when_stopped() -> None:
 
     service.get_dataset_document_count = lambda dataset_name: len(rows)  # type: ignore[method-assign]
     service.stream_dataset_rows_from_database = lambda dataset_name: iter(rows)  # type: ignore[method-assign]
-    service.load_tokenizers = lambda tokenizer_ids: {"dummy/tokenizer": DummyTokenizer()}  # type: ignore[method-assign]
+    service.load_tokenizers = lambda tokenizer_ids: {
+        "dummy/tokenizer": DummyTokenizer()
+    }  # type: ignore[method-assign]
 
     calls = {"count": 0}
 
@@ -330,7 +364,9 @@ def test_run_benchmarks_all_failed_tokenizers_report_unavailable_metrics() -> No
 
     service.get_dataset_document_count = lambda dataset_name: len(rows)  # type: ignore[method-assign]
     service.stream_dataset_rows_from_database = lambda dataset_name: iter(rows)  # type: ignore[method-assign]
-    service.load_tokenizers = lambda tokenizer_ids: {"broken/tokenizer": BrokenTokenizer()}  # type: ignore[method-assign]
+    service.load_tokenizers = lambda tokenizer_ids: {
+        "broken/tokenizer": BrokenTokenizer()
+    }  # type: ignore[method-assign]
 
     result = service.run_benchmarks(
         dataset_name="custom/ds",
@@ -343,5 +379,7 @@ def test_run_benchmarks_all_failed_tokenizers_report_unavailable_metrics() -> No
     assert result.chart_data.efficiency == []
     assert result.chart_data.fidelity == []
     assert result.runtime_metadata["metric_availability"]["resource_metrics"] is False
-    assert result.runtime_metadata["metric_availability"]["latency_distribution"] is False
+    assert (
+        result.runtime_metadata["metric_availability"]["latency_distribution"] is False
+    )
     assert result.runtime_metadata["metric_availability"]["per_document_stats"] is False

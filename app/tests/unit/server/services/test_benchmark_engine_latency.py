@@ -13,4 +13,6 @@ def test_latency_percentiles_come_from_samples() -> None:
     summary = summarize_observations(observations)
     assert float(summary["latency_batch_p50_ms"]) == 20.0
     assert float(summary["latency_batch_p95_ms"]) >= 20.0
-    assert float(summary["latency_batch_p99_ms"]) >= float(summary["latency_batch_p95_ms"])
+    assert float(summary["latency_batch_p99_ms"]) >= float(
+        summary["latency_batch_p95_ms"]
+    )

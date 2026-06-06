@@ -140,7 +140,9 @@ def test_benchmark_service_ensure_tokenizer_ids_returns_mapping(
     assert set(mapping.keys()) == {"tok/a", "tok/b"}
     assert mapping["tok/a"] != mapping["tok/b"]
     with Session(bind=engine) as session:
-        count = session.execute(select(sqlalchemy.func.count(Tokenizer.id))).scalar_one()
+        count = session.execute(
+            select(sqlalchemy.func.count(Tokenizer.id))
+        ).scalar_one()
     assert int(count) == 2
 
 

@@ -10,7 +10,9 @@ from server.domain.settings import ServerSettings
 
 ###############################################################################
 def _resolve_config_path(config_path: str | Path | None = None) -> Path:
-    return Path(config_path or CONFIGURATIONS_FILE)
+    if config_path is None:
+        return CONFIGURATIONS_FILE
+    return Path(config_path)
 
 
 ###############################################################################

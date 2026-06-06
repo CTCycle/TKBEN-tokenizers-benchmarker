@@ -6,9 +6,9 @@ from sqlalchemy.orm import Session
 
 from server.repositories.database.backend import TKBENDatabase, get_database
 from server.repositories.schemas.models import (
-    Tokenizer, 
-    TokenizerReport, 
-    TokenizerVocabulary
+    Tokenizer,
+    TokenizerReport,
+    TokenizerVocabulary,
 )
 
 
@@ -72,7 +72,9 @@ class TokenizerRepository:
             ).scalar_one_or_none()
 
     # -------------------------------------------------------------------------
-    def get_latest_tokenizer_report(self, tokenizer_name: str) -> TokenizerReport | None:
+    def get_latest_tokenizer_report(
+        self, tokenizer_name: str
+    ) -> TokenizerReport | None:
         stmt = (
             select(TokenizerReport)
             .join(Tokenizer, Tokenizer.id == TokenizerReport.tokenizer_id)
@@ -119,5 +121,7 @@ class TokenizerRepository:
         with self._session() as session:
             total = int(session.execute(count_stmt).scalar_one_or_none() or 0)
             rows = list(session.execute(page_stmt).all())
-        items = [(int(token_id), str(token_value or "")) for token_id, token_value in rows]
+        items = [
+            (int(token_id), str(token_value or "")) for token_id, token_value in rows
+        ]
         return total, items

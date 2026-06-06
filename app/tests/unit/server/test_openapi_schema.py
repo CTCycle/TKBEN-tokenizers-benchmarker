@@ -29,26 +29,40 @@ def test_openapi_generation_and_response_models() -> None:
         "/api/benchmarks/metrics/catalog": "BenchmarkMetricCatalogResponse",
     }
 
-    for path, model_name in {**tokenizer_expectations, **benchmark_expectations}.items():
+    for path, model_name in {
+        **tokenizer_expectations,
+        **benchmark_expectations,
+    }.items():
         assert path in paths
 
         methods = paths[path]
-        status_code = "202" if model_name == "JobStartResponse" and path in {
-            "/api/tokenizers/download",
-            "/api/tokenizers/reports/generate",
-            "/api/benchmarks/run",
-        } else "200"
-
-        method_key = "post" if path in {
-            "/api/tokenizers/download",
-            "/api/tokenizers/reports/generate",
-            "/api/tokenizers/upload",
-            "/api/benchmarks/run",
-        } else "delete" if path == "/api/tokenizers/custom" else "get"
-
-        content = (
-            methods[method_key]["responses"][status_code]["content"]["application/json"][
-                "schema"
-            ]
+        status_code = (
+            "202"
+            if model_name == "JobStartResponse"
+            and path
+            in {
+                "/api/tokenizers/download",
+                "/api/tokenizers/reports/generate",
+                "/api/benchmarks/run",
+            }
+            else "200"
         )
+
+        method_key = (
+            "post"
+            if path
+            in {
+                "/api/tokenizers/download",
+                "/api/tokenizers/reports/generate",
+                "/api/tokenizers/upload",
+                "/api/benchmarks/run",
+            }
+            else "delete"
+            if path == "/api/tokenizers/custom"
+            else "get"
+        )
+
+        content = methods[method_key]["responses"][status_code]["content"][
+            "application/json"
+        ]["schema"]
         assert content.get("$ref", "").endswith(f"/{model_name}")

@@ -32,7 +32,9 @@ class Dataset(Base):
         "BenchmarkReport", back_populates="dataset", cascade="all, delete-orphan"
     )
     validation_reports = relationship(
-        "DatasetValidationReport", back_populates="dataset", cascade="all, delete-orphan"
+        "DatasetValidationReport",
+        back_populates="dataset",
+        cascade="all, delete-orphan",
     )
 
 
@@ -273,4 +275,3 @@ class DatasetValidationReport(Base):
         ),
     )
     dataset = relationship("Dataset", back_populates="validation_reports")
-

@@ -72,7 +72,9 @@ class BenchmarkFragmentationMetrics(BaseModel):
     tokens_per_byte: float = Field(default=0.0)
     bytes_per_token: float = Field(default=0.0)
     pieces_per_word_mean: float = Field(default=0.0)
-    fragmentation_by_word_length_bucket: list[BenchmarkFragmentationBucket] = Field(default_factory=list)
+    fragmentation_by_word_length_bucket: list[BenchmarkFragmentationBucket] = Field(
+        default_factory=list
+    )
 
 
 class BenchmarkResourceMetrics(BaseModel):
@@ -90,11 +92,17 @@ class BenchmarkTokenizerResult(BaseModel):
     vocabulary_size: int = Field(default=0)
     added_tokens: int = Field(default=0)
     special_token_share: float = Field(default=0.0)
-    efficiency: BenchmarkEfficiencyMetrics = Field(default_factory=BenchmarkEfficiencyMetrics)
+    efficiency: BenchmarkEfficiencyMetrics = Field(
+        default_factory=BenchmarkEfficiencyMetrics
+    )
     latency: BenchmarkLatencyMetrics = Field(default_factory=BenchmarkLatencyMetrics)
     fidelity: BenchmarkFidelityMetrics = Field(default_factory=BenchmarkFidelityMetrics)
-    fragmentation: BenchmarkFragmentationMetrics = Field(default_factory=BenchmarkFragmentationMetrics)
-    resources: BenchmarkResourceMetrics = Field(default_factory=BenchmarkResourceMetrics)
+    fragmentation: BenchmarkFragmentationMetrics = Field(
+        default_factory=BenchmarkFragmentationMetrics
+    )
+    resources: BenchmarkResourceMetrics = Field(
+        default_factory=BenchmarkResourceMetrics
+    )
 
 
 class BenchmarkSeriesPoint(BaseModel):
@@ -118,7 +126,9 @@ class BenchmarkChartDataV2(BaseModel):
     fidelity: list[BenchmarkSeriesPoint] = Field(default_factory=list)
     vocabulary: list[BenchmarkSeriesPoint] = Field(default_factory=list)
     fragmentation: list[BenchmarkSeriesPoint] = Field(default_factory=list)
-    latency_or_memory_distribution: list[BenchmarkDistributionPoint] = Field(default_factory=list)
+    latency_or_memory_distribution: list[BenchmarkDistributionPoint] = Field(
+        default_factory=list
+    )
 
 
 class BenchmarkRunRequest(BaseModel):
@@ -135,7 +145,9 @@ class BenchmarkRunRequest(BaseModel):
         normalized: list[str] = []
         seen: set[str] = set()
         for tokenizer in value:
-            cleaned = normalize_identifier(tokenizer, "Tokenizer identifier", max_length=160)
+            cleaned = normalize_identifier(
+                tokenizer, "Tokenizer identifier", max_length=160
+            )
             if cleaned in seen:
                 continue
             seen.add(cleaned)
@@ -231,10 +243,14 @@ class BenchmarkRunResponse(BaseModel):
     tokenizers_processed: list[str] = Field(default_factory=list)
     tokenizers_count: int = Field(default=0)
     config: BenchmarkRunConfig = Field(default_factory=BenchmarkRunConfig)
-    hardware_profile: BenchmarkHardwareProfile = Field(default_factory=BenchmarkHardwareProfile)
+    hardware_profile: BenchmarkHardwareProfile = Field(
+        default_factory=BenchmarkHardwareProfile
+    )
     trial_summary: BenchmarkTrialSummary = Field(default_factory=BenchmarkTrialSummary)
     tokenizer_results: list[BenchmarkTokenizerResult] = Field(default_factory=list)
     chart_data: BenchmarkChartDataV2 = Field(default_factory=BenchmarkChartDataV2)
-    per_document_stats: list[BenchmarkPerDocumentTokenizerStats] = Field(default_factory=list)
+    per_document_stats: list[BenchmarkPerDocumentTokenizerStats] = Field(
+        default_factory=list
+    )
     runtime_metadata: dict[str, object] = Field(default_factory=dict)
     raw_observations: dict[str, list[dict[str, object]]] = Field(default_factory=dict)

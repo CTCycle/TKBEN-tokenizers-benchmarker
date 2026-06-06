@@ -47,6 +47,7 @@ class TokenizersService(TokenizerStorageMixin):
     ]
 
     REPORT_VERSION = 1
+
     def __init__(self) -> None:
         self.repository = TokenizerRepository()
         self.key_service = HFAccessKeyService()

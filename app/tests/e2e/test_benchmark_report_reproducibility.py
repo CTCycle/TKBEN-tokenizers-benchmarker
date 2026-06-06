@@ -9,7 +9,9 @@ from playwright.sync_api import APIRequestContext
 RUN_BENCHMARKS = os.getenv("E2E_RUN_BENCHMARKS", "").lower() in ("1", "true", "yes")
 
 
-@pytest.mark.skipif(not RUN_BENCHMARKS, reason="Set E2E_RUN_BENCHMARKS=1 to enable benchmark execution.")
+@pytest.mark.skipif(
+    not RUN_BENCHMARKS, reason="Set E2E_RUN_BENCHMARKS=1 to enable benchmark execution."
+)
 def test_benchmark_report_contains_reproducibility_metadata(
     api_context: APIRequestContext,
     uploaded_dataset: dict,
@@ -24,7 +26,11 @@ def test_benchmark_report_contains_reproducibility_metadata(
     )
     assert response.ok, response.text()
     job = response.json()
-    status = job_waiter(job["job_id"], poll_interval=job.get("poll_interval", 1.0), timeout_seconds=1800.0)
+    status = job_waiter(
+        job["job_id"],
+        poll_interval=job.get("poll_interval", 1.0),
+        timeout_seconds=1800.0,
+    )
     assert status.get("status") == "completed", status.get("error")
     result = status.get("result", {})
     assert result.get("schema_version") == 1

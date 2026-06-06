@@ -88,9 +88,11 @@ def test_add_key_skips_undecryptable_rows_during_duplicate_check(
     assert result["is_active"] is False
 
     with Session(bind=get_database().backend.engine) as session:
-        rows = session.execute(
-            select(HFAccessKey).order_by(HFAccessKey.id.asc())
-        ).scalars().all()
+        rows = (
+            session.execute(select(HFAccessKey).order_by(HFAccessKey.id.asc()))
+            .scalars()
+            .all()
+        )
     assert len(rows) == 2
     assert rows[1].key_value == "enc:hf_test_key"
 
@@ -155,7 +157,11 @@ def test_set_active_key_is_idempotent_for_already_active_key(
     service.set_active_key(key_id)
 
     with Session(bind=get_database().backend.engine) as session:
-        rows = session.execute(select(HFAccessKey).order_by(HFAccessKey.id.asc())).scalars().all()
+        rows = (
+            session.execute(select(HFAccessKey).order_by(HFAccessKey.id.asc()))
+            .scalars()
+            .all()
+        )
     assert any(row.id == key_id and row.is_active for row in rows)
     assert all(row.is_active is (row.id == key_id) for row in rows)
 

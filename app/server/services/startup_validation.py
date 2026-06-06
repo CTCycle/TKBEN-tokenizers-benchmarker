@@ -6,6 +6,7 @@ from pathlib import Path
 from server.common.path import (
     DATASETS_PATH,
     ENV_FILE_PATH,
+    CLIENT_INDEX_FILE_PATH,
     LOGS_PATH,
     TEMPLATES_PATH,
     TOKENIZERS_PATH,
@@ -14,29 +15,29 @@ from server.common.path import (
 
 def ensure_runtime_directories() -> None:
     for directory in (
-        Path(LOGS_PATH),
-        Path(DATASETS_PATH),
-        Path(TOKENIZERS_PATH),
-        Path(TEMPLATES_PATH),
+        LOGS_PATH,
+        DATASETS_PATH,
+        TOKENIZERS_PATH,
+        TEMPLATES_PATH,
     ):
         directory.mkdir(parents=True, exist_ok=True)
 
 
 def validate_runtime_files() -> None:
-    env_path = Path(ENV_FILE_PATH)
-    if not env_path.is_file():
-        raise RuntimeError(f"Environment file not found: {env_path}")
+    if not ENV_FILE_PATH.is_file():
+        raise RuntimeError(f"Environment file not found: {ENV_FILE_PATH}")
 
 
 def validate_tauri_client_bundle(
     *,
     tauri_mode_enabled: bool,
-    client_index_file_path: str | Path,
+    client_index_file_path: os.PathLike[str] | str = CLIENT_INDEX_FILE_PATH,
 ) -> None:
-    if tauri_mode_enabled and not Path(client_index_file_path).is_file():
+    client_index_path = Path(client_index_file_path)
+    if tauri_mode_enabled and not client_index_path.is_file():
         raise RuntimeError(
             "TKBEN_TAURI_MODE is enabled but the packaged frontend build is missing. "
-            f"Expected file: {client_index_file_path}"
+            f"Expected file: {client_index_path}"
         )
 
 
@@ -56,7 +57,7 @@ def build_cors_origins() -> list[str]:
 def run_startup_validations(
     *,
     tauri_mode_enabled: bool,
-    client_index_file_path: str | Path,
+    client_index_file_path: os.PathLike[str] | str = CLIENT_INDEX_FILE_PATH,
 ) -> None:
     validate_runtime_files()
     ensure_runtime_directories()

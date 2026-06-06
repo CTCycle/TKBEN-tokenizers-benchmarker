@@ -254,7 +254,9 @@ class DatasetService(DatasetServiceOperationsMixin):
         self.log_interval = self.settings.log_interval
         self.download_timeout_seconds = self.settings.download_timeout_seconds
         self.download_retry_attempts = self.settings.download_retry_attempts
-        self.download_retry_backoff_seconds = self.settings.download_retry_backoff_seconds
+        self.download_retry_backoff_seconds = (
+            self.settings.download_retry_backoff_seconds
+        )
         self.dataset_serializer = DatasetSerializer()
 
     # -------------------------------------------------------------------------
@@ -460,7 +462,9 @@ class DatasetService(DatasetServiceOperationsMixin):
         )
 
     # -------------------------------------------------------------------------
-    def should_retry_download(self, category: str, attempt: int, max_attempts: int) -> bool:
+    def should_retry_download(
+        self, category: str, attempt: int, max_attempts: int
+    ) -> bool:
         return category == "network_or_transient" and attempt < max_attempts
 
     # -------------------------------------------------------------------------
@@ -600,7 +604,7 @@ class DatasetService(DatasetServiceOperationsMixin):
                 "Removed partially persisted dataset after cancellation: %s",
                 dataset_name,
             )
-        except (SQLAlchemyError, OSError, ValueError, RuntimeError):
+        except SQLAlchemyError, OSError, ValueError, RuntimeError:
             logger.warning(
                 "Failed to cleanup partially persisted dataset after cancellation: %s",
                 dataset_name,

@@ -11,10 +11,7 @@ from matplotlib.figure import Figure
 
 ###############################################################################
 class BenchmarkPlottingMixin:
-    def generate_plots(
-        self,
-        vocabularies: list[pd.DataFrame]        
-    ) -> list[dict[str, str]]:
+    def generate_plots(self, vocabularies: list[pd.DataFrame]) -> list[dict[str, str]]:
         plots: list[dict[str, str]] = []
 
         # Plot vocabulary size

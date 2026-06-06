@@ -28,9 +28,17 @@ def test_benchmark_run_route_returns_202(monkeypatch) -> None:
 
     from server.services.benchmarks import BenchmarkService
 
-    monkeypatch.setattr(BenchmarkService, "resolve_custom_tokenizer_selection", lambda self, name: {})
-    monkeypatch.setattr(BenchmarkService, "get_dataset_document_count", lambda self, dataset_name: 3)
-    monkeypatch.setattr(BenchmarkService, "get_missing_persisted_tokenizers", lambda self, tokenizers: [])
+    monkeypatch.setattr(
+        BenchmarkService, "resolve_custom_tokenizer_selection", lambda self, name: {}
+    )
+    monkeypatch.setattr(
+        BenchmarkService, "get_dataset_document_count", lambda self, dataset_name: 3
+    )
+    monkeypatch.setattr(
+        BenchmarkService,
+        "get_missing_persisted_tokenizers",
+        lambda self, tokenizers: [],
+    )
 
     client = TestClient(app)
     resp = client.post(
@@ -104,7 +112,13 @@ def test_benchmark_list_and_by_id(monkeypatch) -> None:
                 "store_per_document_stats": True,
                 "per_document_sample_size": 500,
             },
-            "hardware_profile": {"runtime": "", "os": "", "cpu_model": None, "cpu_logical_cores": None, "memory_total_mb": None},
+            "hardware_profile": {
+                "runtime": "",
+                "os": "",
+                "cpu_model": None,
+                "cpu_logical_cores": None,
+                "memory_total_mb": None,
+            },
             "trial_summary": {"warmup_trials": 2, "timed_trials": 8},
             "tokenizer_results": [],
             "chart_data": {
@@ -198,4 +212,6 @@ def test_benchmark_by_id_accepts_cancelled_contract(monkeypatch) -> None:
     payload = by_id.json()
     assert payload["status"] == "cancelled"
     assert payload["report_id"] == 9
-    assert payload["runtime_metadata"]["metric_availability"]["resource_metrics"] is False
+    assert (
+        payload["runtime_metadata"]["metric_availability"]["resource_metrics"] is False
+    )

@@ -8,6 +8,7 @@ from server.domain.jobs import (
     JobStatusResponse,
 )
 from server.common.constants import API_ROUTE_JOBS_STATUS, API_ROUTER_PREFIX_JOBS
+
 router = APIRouter(prefix=API_ROUTER_PREFIX_JOBS, tags=["jobs"])
 
 

@@ -100,7 +100,9 @@ def run_tokenizer_trials(
     return observations
 
 
-def summarize_observations(observations: list[BatchObservation]) -> dict[str, float | int | None]:
+def summarize_observations(
+    observations: list[BatchObservation],
+) -> dict[str, float | int | None]:
     if not observations:
         raise ValueError("No benchmark observations collected")
 
@@ -115,15 +117,21 @@ def summarize_observations(observations: list[BatchObservation]) -> dict[str, fl
         trial_rows = [obs for obs in observations if obs.trial_index == trial_index]
         trial_elapsed = sum(obs.elapsed_ns for obs in trial_rows) / 1_000_000_000
         trial_tokens = sum(obs.token_count for obs in trial_rows)
-        per_trial_tps.append(float(trial_tokens / trial_elapsed) if trial_elapsed > 0 else 0.0)
+        per_trial_tps.append(
+            float(trial_tokens / trial_elapsed) if trial_elapsed > 0 else 0.0
+        )
     ci_low, ci_high = ci95_bounds(per_trial_tps)
     return {
         "documents_processed": total_docs,
         "total_tokens": total_tokens,
         "input_utf8_bytes": total_bytes,
         "total_time_seconds": total_elapsed_seconds,
-        "documents_per_second": total_docs / total_elapsed_seconds if total_elapsed_seconds else 0.0,
-        "tokens_per_second": total_tokens / total_elapsed_seconds if total_elapsed_seconds else 0.0,
+        "documents_per_second": total_docs / total_elapsed_seconds
+        if total_elapsed_seconds
+        else 0.0,
+        "tokens_per_second": total_tokens / total_elapsed_seconds
+        if total_elapsed_seconds
+        else 0.0,
         "tokens_per_second_ci95_low": ci_low,
         "tokens_per_second_ci95_high": ci_high,
         "bytes_per_token": total_bytes / total_tokens if total_tokens else None,

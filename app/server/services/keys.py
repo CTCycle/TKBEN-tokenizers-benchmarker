@@ -92,7 +92,9 @@ class HFAccessKeyService:
                 )
                 continue
             if decrypted_value == normalized_key:
-                raise HFAccessKeyConflictError("This Hugging Face key is already stored.")
+                raise HFAccessKeyConflictError(
+                    "This Hugging Face key is already stored."
+                )
 
         try:
             key_row = self.repository.insert_key(encrypted_value, created_at)

@@ -44,7 +44,7 @@ class DatasetSerializer:
         if isinstance(value, str):
             try:
                 return json.loads(value)
-            except (json.JSONDecodeError, TypeError):
+            except json.JSONDecodeError, TypeError:
                 return default
         if isinstance(value, (dict, list)):
             return value
@@ -91,7 +91,10 @@ class DatasetSerializer:
         with self._session() as session:
             rows = session.execute(stmt).all()
         return [
-            {"dataset_name": str(dataset_name), "document_count": int(document_count or 0)}
+            {
+                "dataset_name": str(dataset_name),
+                "document_count": int(document_count or 0),
+            }
             for dataset_name, document_count in rows
             if dataset_name is not None
         ]
@@ -465,7 +468,16 @@ class DatasetSerializer:
         with self._session() as session:
             rows = session.execute(stmt).all()
         result: dict[str, Any] = {}
-        for key, bins_value, counts_value, edges_value, min_value, max_value, mean_value, median_value in rows:
+        for (
+            key,
+            bins_value,
+            counts_value,
+            edges_value,
+            min_value,
+            max_value,
+            mean_value,
+            median_value,
+        ) in rows:
             key = str(key or "")
             bins = self.parse_json(bins_value, default=[])
             counts = self.parse_json(counts_value, default=[])
@@ -706,7 +718,9 @@ class TokenizerReportSerializer:
                 except IntegrityError:
                     session.rollback()
                 tokenizer_id = session.execute(
-                    select(Tokenizer.id).where(Tokenizer.name == tokenizer_name).limit(1)
+                    select(Tokenizer.id)
+                    .where(Tokenizer.name == tokenizer_name)
+                    .limit(1)
                 ).scalar_one_or_none()
         if tokenizer_id is None:
             raise ValueError(f"Failed to resolve tokenizer id for '{tokenizer_name}'")
@@ -904,4 +918,3 @@ class TokenizerReportSerializer:
             "total": total,
             "items": items,
         }
-
