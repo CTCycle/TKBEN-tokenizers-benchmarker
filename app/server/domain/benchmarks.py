@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from server.common.utils.security import contains_control_chars, normalize_identifier
 
-
+###############################################################################
 class BenchmarkRunConfig(BaseModel):
     max_documents: int = Field(default=0, ge=0)
     warmup_trials: int = Field(default=2, ge=0, le=100)
@@ -20,7 +20,7 @@ class BenchmarkRunConfig(BaseModel):
     store_per_document_stats: bool = Field(default=True)
     per_document_sample_size: int = Field(default=500, ge=1, le=10000)
 
-
+###############################################################################
 class BenchmarkHardwareProfile(BaseModel):
     runtime: str = Field(default="")
     os: str = Field(default="")
@@ -28,12 +28,12 @@ class BenchmarkHardwareProfile(BaseModel):
     cpu_logical_cores: int | None = Field(default=None)
     memory_total_mb: float | None = Field(default=None)
 
-
+###############################################################################
 class BenchmarkTrialSummary(BaseModel):
     warmup_trials: int = Field(default=0)
     timed_trials: int = Field(default=0)
 
-
+###############################################################################
 class BenchmarkEfficiencyMetrics(BaseModel):
     encode_tokens_per_second_mean: float = Field(default=0.0)
     encode_tokens_per_second_ci95_low: float = Field(default=0.0)
@@ -46,26 +46,27 @@ class BenchmarkEfficiencyMetrics(BaseModel):
     end_to_end_wall_time_seconds: float = Field(default=0.0)
     load_time_seconds: float = Field(default=0.0)
 
-
+###############################################################################
 class BenchmarkLatencyMetrics(BaseModel):
     encode_latency_p50_ms: float = Field(default=0.0)
     encode_latency_p95_ms: float = Field(default=0.0)
     encode_latency_p99_ms: float = Field(default=0.0)
+    sample_count: int = Field(default=0)
 
-
+###############################################################################
 class BenchmarkFidelityMetrics(BaseModel):
     exact_round_trip_rate: float = Field(default=0.0)
     normalized_round_trip_rate: float = Field(default=0.0)
-    unknown_token_rate: float = Field(default=0.0)
-    byte_fallback_rate: float = Field(default=0.0)
-    lossless_encodability_rate: float = Field(default=0.0)
+    unknown_token_rate: float | None = Field(default=None)
+    byte_fallback_rate: float | None = Field(default=None)
+    lossless_encodability_rate: float | None = Field(default=None)
 
-
+###############################################################################
 class BenchmarkFragmentationBucket(BaseModel):
     bucket: str
     pieces_per_word_mean: float = Field(default=0.0)
 
-
+###############################################################################
 class BenchmarkFragmentationMetrics(BaseModel):
     tokens_per_character: float = Field(default=0.0)
     characters_per_token: float = Field(default=0.0)
@@ -76,12 +77,12 @@ class BenchmarkFragmentationMetrics(BaseModel):
         default_factory=list
     )
 
-
+###############################################################################
 class BenchmarkResourceMetrics(BaseModel):
     peak_rss_mb: float = Field(default=0.0)
     memory_delta_mb: float = Field(default=0.0)
 
-
+###############################################################################
 class BenchmarkTokenizerResult(BaseModel):
     tokenizer: str
     status: str = Field(default="success")
@@ -104,14 +105,14 @@ class BenchmarkTokenizerResult(BaseModel):
         default_factory=BenchmarkResourceMetrics
     )
 
-
+###############################################################################
 class BenchmarkSeriesPoint(BaseModel):
     tokenizer: str
     value: float = Field(default=0.0)
     ci95_low: float | None = Field(default=None)
     ci95_high: float | None = Field(default=None)
 
-
+###############################################################################
 class BenchmarkDistributionPoint(BaseModel):
     tokenizer: str
     min: float = Field(default=0.0)
@@ -119,8 +120,9 @@ class BenchmarkDistributionPoint(BaseModel):
     median: float = Field(default=0.0)
     q3: float = Field(default=0.0)
     max: float = Field(default=0.0)
+    sample_count: int = Field(default=0)
 
-
+###############################################################################
 class BenchmarkChartDataV2(BaseModel):
     efficiency: list[BenchmarkSeriesPoint] = Field(default_factory=list)
     fidelity: list[BenchmarkSeriesPoint] = Field(default_factory=list)
@@ -130,7 +132,7 @@ class BenchmarkChartDataV2(BaseModel):
         default_factory=list
     )
 
-
+###############################################################################
 class BenchmarkRunRequest(BaseModel):
     tokenizers: list[str] = Field(..., description="List of tokenizer IDs to benchmark")
     dataset_name: str = Field(..., description="Name of the dataset to use")
@@ -156,6 +158,7 @@ class BenchmarkRunRequest(BaseModel):
             raise ValueError("Too many tokenizers requested (max 200).")
         return normalized
 
+    # -------------------------------------------------------------------------
     @field_validator("dataset_name")
     @classmethod
     def validate_dataset_name(cls, value: str) -> str:
@@ -163,6 +166,7 @@ class BenchmarkRunRequest(BaseModel):
             return ""
         return normalize_identifier(value, "Dataset name", max_length=200)
 
+    # -------------------------------------------------------------------------
     @field_validator("custom_tokenizer_name")
     @classmethod
     def validate_custom_tokenizer_name(cls, value: str | None) -> str | None:
@@ -170,6 +174,7 @@ class BenchmarkRunRequest(BaseModel):
             return None
         return normalize_identifier(value, "Custom tokenizer name", max_length=160)
 
+    # -
     @field_validator("run_name")
     @classmethod
     def validate_run_name(cls, value: str | None) -> str | None:
@@ -184,7 +189,7 @@ class BenchmarkRunRequest(BaseModel):
             raise ValueError("Run name contains unsupported control characters.")
         return normalized
 
-
+###############################################################################
 class BenchmarkMetricCatalogMetric(BaseModel):
     key: str
     label: str
@@ -194,17 +199,17 @@ class BenchmarkMetricCatalogMetric(BaseModel):
     source: str = Field(default="observed")
     core: bool = Field(default=False)
 
-
+###############################################################################
 class BenchmarkMetricCatalogCategory(BaseModel):
     category_key: str
     category_label: str
     metrics: list[BenchmarkMetricCatalogMetric] = Field(default_factory=list)
 
-
+###############################################################################
 class BenchmarkMetricCatalogResponse(BaseModel):
     categories: list[BenchmarkMetricCatalogCategory] = Field(default_factory=list)
 
-
+###############################################################################
 class BenchmarkReportSummary(BaseModel):
     report_id: int
     report_version: int
@@ -216,19 +221,20 @@ class BenchmarkReportSummary(BaseModel):
     tokenizers_processed: list[str] = Field(default_factory=list)
     selected_metric_keys: list[str] = Field(default_factory=list)
 
-
+###############################################################################
 class BenchmarkReportListResponse(BaseModel):
     reports: list[BenchmarkReportSummary] = Field(default_factory=list)
 
-
+###############################################################################
 class BenchmarkPerDocumentTokenizerStats(BaseModel):
     tokenizer: str
     tokens_count: list[int] = Field(default_factory=list)
     bytes_per_token: list[float] = Field(default_factory=list)
-    encode_latency_ms: list[float] = Field(default_factory=list)
-    peak_rss_mb: list[float] = Field(default_factory=list)
+    pieces_per_word: list[float | None] = Field(default_factory=list)
+    encode_latency_ms: list[float | None] = Field(default_factory=list)
+    peak_rss_mb: list[float | None] = Field(default_factory=list)
 
-
+###############################################################################
 class BenchmarkRunResponse(BaseModel):
     status: str = Field(default="success")
     schema_version: int = Field(default=1)

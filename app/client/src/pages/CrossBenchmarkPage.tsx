@@ -36,6 +36,19 @@ const toNumber = (value: unknown): number => {
   return 0;
 };
 
+const toNumberOrNull = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return null;
+};
+
 const normalizeRate = (value: number): number => {
   if (!Number.isFinite(value)) {
     return 0;
@@ -44,6 +57,10 @@ const normalizeRate = (value: number): number => {
 };
 
 const formatRate = (value: number): string => `${normalizeRate(value).toFixed(2)}%`;
+const formatNullableRate = (value: unknown): string => {
+  const numeric = toNumberOrNull(value);
+  return numeric === null ? 'N/A' : formatRate(numeric);
+};
 const truncateText = (value: string, maxLength: number): string => {
   if (value.length <= maxLength) {
     return value;
@@ -160,6 +177,7 @@ const CrossBenchmarkPage = () => {
   const metricAvailability = (activeReport?.runtime_metadata?.metric_availability ?? {}) as Record<string, unknown>;
   const latencyDistributionAvailable = metricAvailability.latency_distribution !== false;
   const perDocStatsAvailable = metricAvailability.per_document_stats !== false;
+  const fragmentationBucketsAvailable = metricAvailability.fragmentation_word_length_bucket !== false;
 
   const handleRunFromWizard = async (payload: BenchmarkRunPayload) => {
     const completed = await runFromWizard(payload);
@@ -187,11 +205,16 @@ const CrossBenchmarkPage = () => {
     }
     return activeReport.chart_data.fidelity.map((item) => ({
       tokenizer: item.tokenizer,
-      unknown_token_rate: Number(normalizeRate(toNumber(activeReport.tokenizer_results.find((r) => r.tokenizer === item.tokenizer)?.fidelity.unknown_token_rate)).toFixed(4)),
-      byte_fallback_rate: Number(normalizeRate(toNumber(activeReport.tokenizer_results.find((r) => r.tokenizer === item.tokenizer)?.fidelity.byte_fallback_rate)).toFixed(4)),
-      exact_round_trip_rate: Number(normalizeRate(toNumber(activeReport.tokenizer_results.find((r) => r.tokenizer === item.tokenizer)?.fidelity.exact_round_trip_rate)).toFixed(4)),
-      normalized_round_trip_rate: Number(normalizeRate(toNumber(activeReport.tokenizer_results.find((r) => r.tokenizer === item.tokenizer)?.fidelity.normalized_round_trip_rate)).toFixed(4)),
-    }));
+      unknown_token_rate: toNumberOrNull(activeReport.tokenizer_results.find((r) => r.tokenizer === item.tokenizer)?.fidelity.unknown_token_rate),
+      decode_reencode_id_stability_rate: Number(normalizeRate(toNumber(activeReport.tokenizer_results.find((r) => r.tokenizer === item.tokenizer)?.fidelity.exact_round_trip_rate)).toFixed(4)),
+      nfc_text_round_trip_rate: Number(normalizeRate(toNumber(activeReport.tokenizer_results.find((r) => r.tokenizer === item.tokenizer)?.fidelity.normalized_round_trip_rate)).toFixed(4)),
+      vocab_character_overlap_percent: toNumberOrNull(activeReport.tokenizer_results.find((r) => r.tokenizer === item.tokenizer)?.fidelity.lossless_encodability_rate),
+    })).filter((row) => (
+      row.unknown_token_rate !== null
+      || row.vocab_character_overlap_percent !== null
+      || Number.isFinite(row.decode_reencode_id_stability_rate)
+      || Number.isFinite(row.nfc_text_round_trip_rate)
+    ));
   }, [activeReport]);
 
   const vocabularyChartData = useMemo(() => {
@@ -262,7 +285,8 @@ const CrossBenchmarkPage = () => {
       if (!best) return item;
       return toNumber(item.efficiency.encode_tokens_per_second_mean) > toNumber(best.efficiency.encode_tokens_per_second_mean) ? item : best;
     }, null);
-    const bestUnknown = tokenizerResults.reduce<BenchmarkTokenizerResult | null>((best, item) => {
+    const measurableUnknownResults = tokenizerResults.filter((item) => item.fidelity.unknown_token_rate != null);
+    const bestUnknown = measurableUnknownResults.reduce<BenchmarkTokenizerResult | null>((best, item) => {
       if (!best) return item;
       return toNumber(item.fidelity.unknown_token_rate) < toNumber(best.fidelity.unknown_token_rate) ? item : best;
     }, null);
@@ -283,11 +307,11 @@ const CrossBenchmarkPage = () => {
       },
       {
         label: 'Lowest Unknown-Token Rate',
-        value: bestUnknown ? formatRate(toNumber(bestUnknown.fidelity.unknown_token_rate)) : 'N/A',
+        value: bestUnknown ? formatNullableRate(bestUnknown.fidelity.unknown_token_rate) : 'N/A',
         detail: bestUnknown ? formatTokenizerLabel(bestUnknown.tokenizer) : 'N/A',
       },
       {
-        label: 'Best Exact Round-Trip Rate',
+        label: 'Best Decode/Re-encode Stability',
         value: bestRoundTrip ? formatRate(toNumber(bestRoundTrip.fidelity.exact_round_trip_rate)) : 'N/A',
         detail: bestRoundTrip ? formatTokenizerLabel(bestRoundTrip.tokenizer) : 'N/A',
       },
@@ -513,7 +537,7 @@ const CrossBenchmarkPage = () => {
 
                 <article className="cross-benchmark-chart-card">
                   <div className="cross-benchmark-chart-header">
-                    <p className="panel-label">Fidelity and Fallback Rates</p>
+                    <p className="panel-label">Fidelity and Heuristic Coverage</p>
                   </div>
                   {qualityChartData.length === 0 ? (
                     renderUnavailable('Global rate metrics unavailable')
@@ -536,14 +560,17 @@ const CrossBenchmarkPage = () => {
                         />
                         <YAxis stroke="#9ea7b3" width={78} tick={{ fontSize: 11 }} />
                         <Tooltip
-                          formatter={(value: unknown) => `${toNumber(value).toFixed(2)}%`}
+                          formatter={(value: unknown) => {
+                            const numeric = toNumberOrNull(value);
+                            return numeric === null ? 'N/A' : `${normalizeRate(numeric).toFixed(2)}%`;
+                          }}
                           contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }}
                         />
                         <Legend {...chartLegendProps} />
                         <Bar dataKey="unknown_token_rate" fill="#f87171" name="Unknown Token Rate (%)" />
-                        <Bar dataKey="byte_fallback_rate" fill="#22c55e" name="Byte Fallback Rate (%)" />
-                        <Bar dataKey="exact_round_trip_rate" fill="#38bdf8" name="Exact Round-Trip Rate (%)" />
-                        <Bar dataKey="normalized_round_trip_rate" fill="#facc15" name="Normalized Round-Trip Rate (%)" />
+                        <Bar dataKey="decode_reencode_id_stability_rate" fill="#38bdf8" name="Decode/Re-encode ID Stability (%)" />
+                        <Bar dataKey="nfc_text_round_trip_rate" fill="#facc15" name="NFC Text Round-Trip Rate (%)" />
+                        <Bar dataKey="vocab_character_overlap_percent" fill="#22c55e" name="Vocabulary Character Overlap (%)" />
                       </BarChart>
                     </ResponsiveContainer>
                   )}
@@ -609,7 +636,7 @@ const CrossBenchmarkPage = () => {
                       ))}
                     </select>
                   </div>
-                  {distributionSeries.length === 0 ? (
+                  {!fragmentationBucketsAvailable || distributionSeries.length === 0 ? (
                     renderUnavailable('Fragmentation distribution unavailable')
                   ) : (
                     <ResponsiveContainer width="100%" height={SECONDARY_CHART_HEIGHT}>

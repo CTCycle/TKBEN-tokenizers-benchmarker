@@ -323,14 +323,15 @@ export interface BenchmarkLatencyMetrics {
     encode_latency_p50_ms: number;
     encode_latency_p95_ms: number;
     encode_latency_p99_ms: number;
+    sample_count: number;
 }
 
 export interface BenchmarkFidelityMetrics {
     exact_round_trip_rate: number;
     normalized_round_trip_rate: number;
-    unknown_token_rate: number;
-    byte_fallback_rate: number;
-    lossless_encodability_rate: number;
+    unknown_token_rate: number | null;
+    byte_fallback_rate: number | null;
+    lossless_encodability_rate: number | null;
 }
 
 export interface BenchmarkFragmentationBucket {
@@ -383,6 +384,7 @@ export interface BenchmarkDistributionPoint {
     median: number;
     q3: number;
     max: number;
+    sample_count: number;
 }
 
 export interface BenchmarkChartDataV2 {
@@ -408,10 +410,10 @@ export interface BenchmarkRunRequest {
 export interface BenchmarkPerDocumentTokenizerStats {
     tokenizer: string;
     tokens_count?: number[];
-    pieces_per_word?: number[];
+    pieces_per_word?: Array<number | null>;
     bytes_per_token: number[];
-    encode_latency_ms?: number[];
-    peak_rss_mb?: number[];
+    encode_latency_ms?: Array<number | null>;
+    peak_rss_mb?: Array<number | null>;
 }
 
 export interface BenchmarkMetricCatalogMetric {

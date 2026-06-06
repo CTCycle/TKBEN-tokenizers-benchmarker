@@ -16,7 +16,7 @@ def _build_payload(dataset_name: str) -> dict:
     return {
         "status": "success",
         "schema_version": 1,
-        "methodology_version": "v1_observed_trials",
+        "methodology_version": "v2_semantic_honesty",
         "report_version": 2,
         "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "run_name": "serializer test",
@@ -75,12 +75,13 @@ def _build_payload(dataset_name: str) -> dict:
                     "encode_latency_p50_ms": 1.0,
                     "encode_latency_p95_ms": 2.0,
                     "encode_latency_p99_ms": 3.0,
+                    "sample_count": 8,
                 },
                 "fidelity": {
                     "exact_round_trip_rate": 1.0,
                     "normalized_round_trip_rate": 1.0,
                     "unknown_token_rate": 0.0,
-                    "byte_fallback_rate": 0.0,
+                    "byte_fallback_rate": None,
                     "lossless_encodability_rate": 100.0,
                 },
                 "fragmentation": {

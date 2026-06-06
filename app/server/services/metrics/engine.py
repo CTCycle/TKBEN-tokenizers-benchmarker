@@ -207,6 +207,7 @@ class DatasetMetricsEngine:
         self.uppercase_chars = 0
         self.non_ascii_chars = 0
         self.control_chars = 0
+        self.other_chars = 0
 
     # -------------------------------------------------------------------------
     def _detect_language_tag(self, tokens: list[str], text: str) -> str:
@@ -310,19 +311,21 @@ class DatasetMetricsEngine:
 
         for char in content:
             self.char_frequency[char] += 1
-            if char.isspace():
-                self.whitespace_chars += 1
-            if char.isdigit():
-                self.digit_chars += 1
-            if char.isupper():
-                self.uppercase_chars += 1
-            if ord(char) > 127:
-                self.non_ascii_chars += 1
             category = unicodedata.category(char)
-            if category.startswith("P"):
-                self.punctuation_chars += 1
             if category.startswith("C"):
                 self.control_chars += 1
+            elif char.isspace():
+                self.whitespace_chars += 1
+            elif category.startswith("P"):
+                self.punctuation_chars += 1
+            elif char.isdigit():
+                self.digit_chars += 1
+            elif ord(char) > 127:
+                self.non_ascii_chars += 1
+            elif char.isupper():
+                self.uppercase_chars += 1
+            else:
+                self.other_chars += 1
 
         language_tag = self._detect_language_tag(words, content)
         self.language_tag_counts[language_tag] += 1
@@ -692,16 +695,7 @@ class DatasetMetricsEngine:
         uppercase_ratio = self.uppercase_chars / denominator_chars
         non_ascii_ratio = self.non_ascii_chars / denominator_chars
         control_ratio = self.control_chars / denominator_chars
-        other_ratio = max(
-            0.0,
-            1.0
-            - whitespace_ratio
-            - punctuation_ratio
-            - digit_ratio
-            - uppercase_ratio
-            - non_ascii_ratio
-            - control_ratio,
-        )
+        other_ratio = self.other_chars / denominator_chars
 
         metric_rows: list[dict[str, Any]] = [
             {

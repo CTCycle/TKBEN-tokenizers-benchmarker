@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import io
 import math
 import time
@@ -506,7 +507,16 @@ class DatasetServiceOperationsMixin:
                 if text_id is None or not isinstance(text, str):
                     continue
                 if normalized_fraction is not None:
-                    gate = (int(text_id) % 1_000_000) / 1_000_000.0
+                    sample_key = f"{dataset_name}:{text_id}".encode(
+                        "utf-8", errors="ignore"
+                    )
+                    gate = (
+                        int.from_bytes(
+                            hashlib.blake2b(sample_key, digest_size=8).digest(),
+                            byteorder="big",
+                        )
+                        / float(2**64)
+                    )
                     if gate > normalized_fraction:
                         continue
                 per_doc_metrics = engine.process_document(int(text_id), text)

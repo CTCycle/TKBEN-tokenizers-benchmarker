@@ -95,6 +95,7 @@ def test_run_benchmarks_returns_v2_contract() -> None:
     assert len(result.per_document_stats) == 1
     assert result.tokenizer_results[0].tokenizer == "dummy/tokenizer"
     assert result.per_document_stats[0].tokenizer == "dummy/tokenizer"
+    assert result.methodology_version == "v2_semantic_honesty"
     assert "benchmark_config" in result.runtime_metadata
     assert result.runtime_metadata["dataset_total_documents_available"] == 3
     assert result.runtime_metadata["dataset_documents_benchmarked"] == 3
@@ -107,6 +108,7 @@ def test_run_benchmarks_returns_v2_contract() -> None:
     assert (
         result.runtime_metadata["metric_availability"]["latency_distribution"] is True
     )
+    assert result.runtime_metadata["metric_availability"]["byte_fallback_rate"] is False
     assert result.runtime_metadata["metric_availability"]["per_document_stats"] is True
     assert result.runtime_metadata["end_to_end_benchmark_seconds"] >= 0.0
     assert result.tokenizer_results[0].efficiency.encode_only_wall_time_seconds >= 0.0
@@ -114,6 +116,8 @@ def test_run_benchmarks_returns_v2_contract() -> None:
         result.tokenizer_results[0].efficiency.dataset_stream_wall_time_seconds >= 0.0
     )
     assert result.tokenizer_results[0].efficiency.postprocess_wall_time_seconds >= 0.0
+    assert result.tokenizer_results[0].fidelity.unknown_token_rate is None
+    assert result.per_document_stats[0].encode_latency_ms[0] is None
 
 
 def test_run_benchmarks_enforces_max_documents_limit() -> None:
@@ -251,6 +255,8 @@ def test_run_benchmarks_uses_true_latency_distribution_five_number_summary() -> 
     assert dist.min == 1.0
     assert dist.max == 5.0
     assert dist.median == 3.0
+    assert dist.sample_count == 3
+    assert result.tokenizer_results[0].latency.sample_count == 3
 
 
 def test_run_benchmarks_reports_utf8_bytes_throughput_and_unknown_rate() -> None:
@@ -279,6 +285,72 @@ def test_run_benchmarks_reports_utf8_bytes_throughput_and_unknown_rate() -> None
         >= tokenizer_result.fragmentation.characters_per_token
     )
     assert tokenizer_result.resources.peak_rss_mb > 0.0
+
+
+def test_run_benchmarks_uses_all_timed_trials_for_latency_summary() -> None:
+    service = BenchmarkService()
+    rows = [(1, "alpha beta")]
+
+    service.get_dataset_document_count = lambda dataset_name: len(rows)  # type: ignore[method-assign]
+    service.stream_dataset_rows_from_database = lambda dataset_name: iter(rows)  # type: ignore[method-assign]
+    service.load_tokenizers = lambda tokenizer_ids: {
+        "dummy/tokenizer": DummyTokenizer()
+    }  # type: ignore[method-assign]
+
+    original_run_trials = benchmark_execution_module.run_tokenizer_trials
+
+    def fake_run_trials(**kwargs: Any) -> list[BatchObservation]:
+        return [
+            BatchObservation("dummy/tokenizer", 0, 0, 1, 5, 10, 0, 1_000_000, 10.0),
+            BatchObservation("dummy/tokenizer", 1, 0, 1, 5, 10, 0, 9_000_000, 10.0),
+        ]
+
+    benchmark_execution_module.run_tokenizer_trials = fake_run_trials  # type: ignore[assignment]
+    try:
+        result = service.run_benchmarks(
+            dataset_name="custom/ds",
+            tokenizer_ids=["dummy/tokenizer"],
+        )
+    finally:
+        benchmark_execution_module.run_tokenizer_trials = original_run_trials  # type: ignore[assignment]
+
+    latency = result.tokenizer_results[0].latency
+    assert latency.encode_latency_p95_ms > 1.0
+    assert latency.sample_count == 2
+
+
+def test_run_benchmarks_computes_real_fragmentation_buckets() -> None:
+    service = BenchmarkService()
+    rows = [(1, "a alpha alphabetic")]
+
+    class LengthSensitiveTokenizer(DummyTokenizer):
+        def encode(self, text: str) -> list[int]:
+            token = str(text)
+            if " " in token:
+                return [value for part in token.split() for value in self.encode(part)]
+            if len(token) <= 4:
+                return [1]
+            if len(token) <= 8:
+                return [1, 2]
+            return [1, 2, 3]
+
+    service.get_dataset_document_count = lambda dataset_name: len(rows)  # type: ignore[method-assign]
+    service.stream_dataset_rows_from_database = lambda dataset_name: iter(rows)  # type: ignore[method-assign]
+    service.load_tokenizers = lambda tokenizer_ids: {
+        "dummy/tokenizer": LengthSensitiveTokenizer()
+    }  # type: ignore[method-assign]
+
+    result = service.run_benchmarks(
+        dataset_name="custom/ds",
+        tokenizer_ids=["dummy/tokenizer"],
+    )
+
+    buckets = {
+        bucket.bucket: bucket.pieces_per_word_mean
+        for bucket in result.tokenizer_results[0].fragmentation.fragmentation_by_word_length_bucket
+    }
+    assert set(buckets) == {"short_1_4", "medium_5_8", "long_9_plus"}
+    assert len(set(round(value, 6) for value in buckets.values())) > 1
 
 
 def test_run_benchmarks_uses_utf8_bytes_per_token_for_per_doc_stats() -> None:

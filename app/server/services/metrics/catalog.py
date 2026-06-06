@@ -295,7 +295,7 @@ DATASET_METRIC_CATALOG: list[dict[str, Any]] = [
             },
             {
                 "key": "chars.other_ratio",
-                "label": "Other character ratio",
+                "label": "Residual character ratio",
                 "scope": "aggregate",
             },
         ],
@@ -322,7 +322,7 @@ DATASET_METRIC_CATALOG: list[dict[str, Any]] = [
             },
             {
                 "key": "quality.duplicate_rate",
-                "label": "Duplicate rate",
+                "label": "Duplicate rate (exact)",
                 "scope": "aggregate",
                 "core": True,
             },
@@ -333,7 +333,7 @@ DATASET_METRIC_CATALOG: list[dict[str, Any]] = [
             },
             {
                 "key": "quality.language_consistency",
-                "label": "Language consistency score",
+                "label": "Heuristic dominant-language share",
                 "scope": "aggregate",
             },
             {
@@ -450,8 +450,8 @@ BENCHMARK_METRIC_CATALOG: list[dict[str, Any]] = [
             },
             {
                 "key": "eff.encode_tokens_per_second_ci95",
-                "label": "Encode tokens/sec CI95",
-                "description": "95% confidence interval for encode throughput.",
+                "label": "Encode tokens/sec repeatability interval",
+                "description": "Normal-approximation repeatability interval across timed trials.",
                 "scope": "tokenizer_global",
                 "value_kind": "number",
                 "core": True,
@@ -510,16 +510,16 @@ BENCHMARK_METRIC_CATALOG: list[dict[str, Any]] = [
         "metrics": [
             {
                 "key": "fid.exact_round_trip_rate",
-                "label": "Exact round-trip rate",
-                "description": "Exact decode(encode(x)) preservation rate.",
+                "label": "Decode/re-encode ID stability rate",
+                "description": "Rate at which decode(encode(x)) re-encodes to the same token IDs.",
                 "scope": "tokenizer_global",
                 "value_kind": "number",
                 "core": True,
             },
             {
                 "key": "fid.normalized_round_trip_rate",
-                "label": "Normalized round-trip rate",
-                "description": "Round-trip rate under normalization policy.",
+                "label": "NFC text round-trip rate",
+                "description": "Rate at which NFC-normalized decoded text matches NFC-normalized input text.",
                 "scope": "tokenizer_global",
                 "value_kind": "number",
                 "core": True,
@@ -533,9 +533,31 @@ BENCHMARK_METRIC_CATALOG: list[dict[str, Any]] = [
                 "core": True,
             },
             {
-                "key": "fid.byte_fallback_rate",
-                "label": "Byte-fallback rate",
-                "description": "Byte fallback usage rate.",
+                "key": "fid.lossless_encodability_rate",
+                "label": "Vocabulary character overlap percent",
+                "description": "Heuristic overlap between dataset characters and characters observed in vocabulary token strings.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": False,
+            },
+        ],
+    },
+    {
+        "category_key": "fragmentation",
+        "category_label": "Fragmentation and Compression",
+        "metrics": [
+            {
+                "key": "frag.pieces_per_word_mean",
+                "label": "Pieces per word mean",
+                "description": "Mean token pieces per regex-tokenized word with padding, truncation, and special tokens disabled.",
+                "scope": "tokenizer_global",
+                "value_kind": "number",
+                "core": True,
+            },
+            {
+                "key": "frag.tokens_per_character",
+                "label": "Tokens per character",
+                "description": "Token count per character with padding, truncation, and special tokens disabled.",
                 "scope": "tokenizer_global",
                 "value_kind": "number",
                 "core": True,
