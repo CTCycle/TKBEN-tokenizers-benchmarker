@@ -153,6 +153,7 @@ Key paths:
 - `assets/docs/project_overview.md`: Documentation root index and topic map.
 - `assets/docs/runtime/modes.md`: Runtime packaging and mode details.
 - `assets/docs/runtime/startup.md`: Startup procedures and launcher commands.
+- `app/src-tauri`: Desktop shell and packaging configuration.
 
 ## 6. Configuration
 

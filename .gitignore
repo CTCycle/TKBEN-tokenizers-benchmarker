@@ -1,8 +1,7 @@
 # Project-specific generated/runtime artifacts
+runtimes/**
 app/resources/sources/datasets/**
 app/resources/sources/tokenizers/**
-runtimes/**
-runtimes/.uv-cache/**
 app/resources/logs/**
 app/client/node_modules/
 app/client/dist/
@@ -47,7 +46,6 @@ Thumbs.db
 # Misc
 Cargo.toml
 .sonarlint/
-QA/**
 *.lock
 *.log
 *.db
@@ -56,6 +54,5 @@ QA/**
 !.gitkeep
 
 # Tauri
-app/client/src-tauri/target/
-app/client/src-tauri/gen/
+app/src-tauri/**
 release/windows/

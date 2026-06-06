@@ -5,6 +5,7 @@ for %%I in ("%~dp0.") do set "repo_root=%%~fI"
 set "app_dir=%repo_root%\app"
 set "server_dir=%app_dir%\server"
 set "client_dir=%app_dir%\client"
+set "tauri_dir=%app_dir%\src-tauri"
 set "scripts_dir=%app_dir%\scripts"
 set "tests_dir=%app_dir%\tests"
 set "log_dir=%app_dir%\resources\logs"
@@ -313,8 +314,9 @@ goto :menu
 if exist "%tauri_clean_script%" (
   powershell -NoProfile -ExecutionPolicy Bypass -File "%tauri_clean_script%"
 ) else (
-  if exist "%client_dir%\src-tauri\target\release" rd /s /q "%client_dir%\src-tauri\target\release"
-  if exist "%client_dir%\src-tauri\target" rd /s /q "%client_dir%\src-tauri\target"
+  if exist "%tauri_dir%\r" rd /s /q "%tauri_dir%\r"
+  if exist "%tauri_dir%\target\release" rd /s /q "%tauri_dir%\target\release"
+  if exist "%tauri_dir%\target" rd /s /q "%tauri_dir%\target"
   if exist "%repo_root%\release\windows" rd /s /q "%repo_root%\release\windows"
   for /r "%repo_root%" %%F in (*.exe) do del /q "%%F"
 )
