@@ -20,9 +20,7 @@ def test_benchmark_service_uses_repository_for_dataset_and_tokenizer_checks() ->
     assert service.get_dataset_document_count("custom/sample") == 7
     assert service.get_dataset_document_count("missing") == 0
 
-    missing = service.get_missing_persisted_tokenizers(
-        ["bert-base-uncased", "missing"]
-    )
+    missing = service.get_missing_persisted_tokenizers(["bert-base-uncased", "missing"])
     assert "missing" in missing
 
 
@@ -54,7 +52,9 @@ def test_resolve_custom_tokenizer_selection(monkeypatch) -> None:
         "server.services.benchmarks.get_custom_tokenizer_registry",
         lambda: DummyRegistry(),
     )
-    monkeypatch.setattr(service.tools, "is_tokenizer_compatible", lambda tokenizer: True)
+    monkeypatch.setattr(
+        service.tools, "is_tokenizer_compatible", lambda tokenizer: True
+    )
 
     resolved = service.resolve_custom_tokenizer_selection("CUSTOM_demo")
     assert "CUSTOM_demo" in resolved

@@ -53,7 +53,12 @@ def test_tokenizers_service_report_prechecks(monkeypatch) -> None:
     monkeypatch.setattr(
         service.report_serializer,
         "load_tokenizer_vocabulary_page",
-        lambda report_id, offset, limit: {"report_id": report_id, "offset": offset, "limit": limit, "items": []},
+        lambda report_id, offset, limit: {
+            "report_id": report_id,
+            "offset": offset,
+            "limit": limit,
+            "items": [],
+        },
     )
 
     assert service.get_latest_tokenizer_report("exists") is not None

@@ -94,9 +94,15 @@ class BenchmarkReportSerializer:
         if "schema_version" not in normalized_payload:
             raise ValueError("Benchmark report is missing required schema_version.")
         if "methodology_version" not in normalized_payload:
-            raise ValueError("Benchmark report is missing required methodology_version.")
-        normalized_payload["report_id"] = int(row.get("id") or normalized_payload.get("report_id") or 0)
-        normalized_payload["report_version"] = int(row.get("report_version") or normalized_payload.get("report_version") or 2)
+            raise ValueError(
+                "Benchmark report is missing required methodology_version."
+            )
+        normalized_payload["report_id"] = int(
+            row.get("id") or normalized_payload.get("report_id") or 0
+        )
+        normalized_payload["report_version"] = int(
+            row.get("report_version") or normalized_payload.get("report_version") or 2
+        )
         normalized_payload["created_at"] = created_at_iso
         normalized_payload["run_name"] = row.get("run_name") or normalized_payload.get(
             "run_name"
@@ -134,7 +140,9 @@ class BenchmarkReportSerializer:
                 )
                 continue
             summaries.append(
-                BenchmarkReportSummary.model_validate(normalized).model_dump(mode="json")
+                BenchmarkReportSummary.model_validate(normalized).model_dump(
+                    mode="json"
+                )
             )
         return summaries
 

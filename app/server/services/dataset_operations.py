@@ -174,8 +174,12 @@ class DatasetServiceOperationsMixin:
                     time.sleep(delay_seconds)
 
         if dataset is None:
-            failure_exc = last_exc if last_exc is not None else RuntimeError(
-                "Dataset download failed without an exception payload."
+            failure_exc = (
+                last_exc
+                if last_exc is not None
+                else RuntimeError(
+                    "Dataset download failed without an exception payload."
+                )
             )
             raise RuntimeError(
                 self.build_download_error_message(

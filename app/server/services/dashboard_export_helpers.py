@@ -176,7 +176,9 @@ class DashboardExportFormatting:
                 continue
             tokenizer_name = str(item.get("tokenizer") or "")
             result = by_tokenizer.get(tokenizer_name, {})
-            efficiency_metrics = result.get("efficiency") if isinstance(result, dict) else {}
+            efficiency_metrics = (
+                result.get("efficiency") if isinstance(result, dict) else {}
+            )
             if not isinstance(efficiency_metrics, dict):
                 efficiency_metrics = {}
             speed_metrics.append(

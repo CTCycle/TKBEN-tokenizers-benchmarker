@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import sys
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -10,12 +11,18 @@ from typing import Callable
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError, sync_playwright
+from playwright.sync_api import (
+    Page,
+    TimeoutError as PlaywrightTimeoutError,
+    sync_playwright,
+)
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-ROOT = Path(__file__).resolve().parents[2]
-ENV_PATH = ROOT / "app" / "settings" / ".env"
-FIGURES_DIR = ROOT / "assets" / "figures"
+from server.common.path import ENV_FILE_PATH, FIGURES_DIR, ROOT_DIR
+
+ROOT = ROOT_DIR
+ENV_PATH = ENV_FILE_PATH
 MANIFEST_PATH = FIGURES_DIR / "manifest.json"
 
 
@@ -177,10 +184,14 @@ def adapt_viewport(page: Page) -> tuple[dict[str, int], list[str]]:
         target_width = min(2200, target_width + max(120, overflow_x + 48))
         page.set_viewport_size({"width": target_width, "height": target_height})
         page.wait_for_timeout(200)
-        notes.append(f"increased viewport width to reduce horizontal clipping (+{overflow_x}px overflow)")
+        notes.append(
+            f"increased viewport width to reduce horizontal clipping (+{overflow_x}px overflow)"
+        )
 
     viewport = {"width": target_width, "height": target_height}
-    notes.append(f"adaptive viewport selected ({viewport['width']}x{viewport['height']})")
+    notes.append(
+        f"adaptive viewport selected ({viewport['width']}x{viewport['height']})"
+    )
     return viewport, notes
 
 
@@ -199,7 +210,9 @@ def capture_with_strategy(
         step = max(500, viewport["height"] - 170)
         segment_count = max(2, math.ceil((doc_height - 60) / step))
         segment_count = min(segment_count, 4)
-        notes.append(f"segmented capture used ({segment_count} parts) for long page ({doc_height}px)")
+        notes.append(
+            f"segmented capture used ({segment_count} parts) for long page ({doc_height}px)"
+        )
         for index in range(segment_count):
             y = min(index * step, max(0, doc_height - viewport["height"]))
             page.evaluate("(top) => window.scrollTo(0, top)", y)
@@ -286,7 +299,9 @@ def open_dataset_dashboard(page: Page, base_url: str) -> list[str]:
             wait_for_stable_render(page)
             notes.append("loaded latest persisted dataset report")
         except Exception:  # noqa: BLE001
-            notes.append("dataset report load click failed; captured current dashboard state")
+            notes.append(
+                "dataset report load click failed; captured current dashboard state"
+            )
     else:
         notes.append("no report-load button found; captured default dashboard state")
     return notes
@@ -295,7 +310,9 @@ def open_dataset_dashboard(page: Page, base_url: str) -> list[str]:
 def open_dataset_list_modal(page: Page, base_url: str) -> list[str]:
     notes = open_dataset_page(page, base_url)
     page.get_by_role("button", name="Add dataset").click(timeout=8000)
-    page.get_by_text("Predefined Datasets").first.wait_for(state="visible", timeout=15000)
+    page.get_by_text("Predefined Datasets").first.wait_for(
+        state="visible", timeout=15000
+    )
     notes.append("captured dataset selector modal (list-style view)")
     return notes
 
@@ -303,20 +320,26 @@ def open_dataset_list_modal(page: Page, base_url: str) -> list[str]:
 def open_tokenizers_page(page: Page, base_url: str) -> list[str]:
     notes: list[str] = []
     goto_with_retry(page, f"{base_url}/tokenizers")
-    page.get_by_text("Tokenizer Selection").first.wait_for(state="visible", timeout=15000)
+    page.get_by_text("Tokenizer Selection").first.wait_for(
+        state="visible", timeout=15000
+    )
     return notes
 
 
 def open_tokenizer_detail(page: Page, base_url: str) -> list[str]:
     notes = open_tokenizers_page(page, base_url)
-    open_report_button = page.locator("button[aria-label^='Generate or open tokenizer report for']").first
+    open_report_button = page.locator(
+        "button[aria-label^='Generate or open tokenizer report for']"
+    ).first
     if open_report_button.count() == 0:
         notes.append("no tokenizer detail action was available in the preview list")
         return notes
 
     try:
         open_report_button.click(timeout=8000)
-        page.get_by_text("Latest loaded report:").first.wait_for(state="visible", timeout=60000)
+        page.get_by_text("Latest loaded report:").first.wait_for(
+            state="visible", timeout=60000
+        )
         wait_for_stable_render(page)
         notes.append("opened tokenizer report detail from preview list")
     except Exception:  # noqa: BLE001
@@ -335,7 +358,9 @@ def open_settings_modal(page: Page, base_url: str) -> list[str]:
 def open_cross_benchmark(page: Page, base_url: str) -> list[str]:
     notes: list[str] = []
     goto_with_retry(page, f"{base_url}/cross-benchmark")
-    page.get_by_text("Tokenizer Benchmark Dashboard").first.wait_for(state="visible", timeout=20000)
+    page.get_by_text("Tokenizer Benchmark Dashboard").first.wait_for(
+        state="visible", timeout=20000
+    )
     selector = page.locator("#benchmark-report-selector")
     if selector.count() > 0:
         try:
@@ -367,9 +392,15 @@ def main() -> None:
 
     capture_plan = [
         CaptureConfig("Home", "/", "home", open_dataset_page),
-        CaptureConfig("Dataset Dashboard", "/dataset", "dashboard", open_dataset_dashboard),
-        CaptureConfig("Datasets List", "/dataset", "datasets-list", open_dataset_list_modal),
-        CaptureConfig("Tokenizers List", "/tokenizers", "tokenizers-list", open_tokenizers_page),
+        CaptureConfig(
+            "Dataset Dashboard", "/dataset", "dashboard", open_dataset_dashboard
+        ),
+        CaptureConfig(
+            "Datasets List", "/dataset", "datasets-list", open_dataset_list_modal
+        ),
+        CaptureConfig(
+            "Tokenizers List", "/tokenizers", "tokenizers-list", open_tokenizers_page
+        ),
         CaptureConfig(
             "Tokenizer Detail",
             "/tokenizers",
@@ -432,7 +463,9 @@ def main() -> None:
                             }
                             for filename in files
                         ],
-                        "notes": action_notes + capture_notes + ["no authentication required"],
+                        "notes": action_notes
+                        + capture_notes
+                        + ["no authentication required"],
                     }
                     captures = manifest["captures"]
                     assert isinstance(captures, list)

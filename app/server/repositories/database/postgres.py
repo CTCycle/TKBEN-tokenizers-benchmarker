@@ -208,5 +208,7 @@ class PostgresRepository:
                 table_obj = Table(safe_name, MetaData(), autoload_with=self.engine)
             if safe_column not in table_obj.c:
                 return []
-            result = session.execute(select(table_obj.c[safe_column]).distinct()).scalars()
+            result = session.execute(
+                select(table_obj.c[safe_column]).distinct()
+            ).scalars()
             return [value for value in result if value is not None]

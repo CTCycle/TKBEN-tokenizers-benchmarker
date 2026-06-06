@@ -126,7 +126,9 @@ def _read_env_int(
         try:
             value = int(raw_value.strip())
         except ValueError as exc:
-            raise RuntimeError(f"{name} must be a valid integer, got: {raw_value}") from exc
+            raise RuntimeError(
+                f"{name} must be a valid integer, got: {raw_value}"
+            ) from exc
 
     if minimum is not None and value < minimum:
         raise RuntimeError(f"{name} must be >= {minimum}, got: {value}")
@@ -234,16 +236,18 @@ def _load_database_settings_from_sources(
     database_url = _normalize_optional_text(os.getenv("DATABASE_URL"))
     database_url_parts = _parse_database_url(database_url)
 
-    engine = _normalize_optional_text(os.getenv("DATABASE_ENGINE")) or database_url_parts.get(
-        "engine"
-    )
-    host = _normalize_optional_text(os.getenv("DATABASE_HOST")) or database_url_parts.get("host")
-    username = _normalize_optional_text(os.getenv("DATABASE_USERNAME")) or database_url_parts.get(
-        "username"
-    )
-    password = _normalize_optional_text(os.getenv("DATABASE_PASSWORD")) or database_url_parts.get(
-        "password"
-    )
+    engine = _normalize_optional_text(
+        os.getenv("DATABASE_ENGINE")
+    ) or database_url_parts.get("engine")
+    host = _normalize_optional_text(
+        os.getenv("DATABASE_HOST")
+    ) or database_url_parts.get("host")
+    username = _normalize_optional_text(
+        os.getenv("DATABASE_USERNAME")
+    ) or database_url_parts.get("username")
+    password = _normalize_optional_text(
+        os.getenv("DATABASE_PASSWORD")
+    ) or database_url_parts.get("password")
     database_name = _normalize_optional_text(
         os.getenv("DATABASE_NAME")
     ) or database_url_parts.get("database_name")
@@ -308,7 +312,9 @@ class JsonTokenizerSettings(BaseModel):
     @model_validator(mode="after")
     def validate_scan_limits(self) -> "JsonTokenizerSettings":
         if self.max_scan_limit < self.min_scan_limit:
-            raise ValueError("tokenizers.max_scan_limit must be >= tokenizers.min_scan_limit")
+            raise ValueError(
+                "tokenizers.max_scan_limit must be >= tokenizers.min_scan_limit"
+            )
         if self.default_scan_limit < self.min_scan_limit:
             raise ValueError(
                 "tokenizers.default_scan_limit must be >= tokenizers.min_scan_limit"
@@ -359,7 +365,9 @@ class JsonConfiguration(BaseModel):
         try:
             payload = json.loads(configuration_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
-            raise RuntimeError(f"Unable to load configuration from {configuration_path}") from exc
+            raise RuntimeError(
+                f"Unable to load configuration from {configuration_path}"
+            ) from exc
         if not isinstance(payload, dict):
             raise RuntimeError("Configuration must be a JSON object.")
         return cls.from_payload(payload)

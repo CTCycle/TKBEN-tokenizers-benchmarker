@@ -11,4 +11,3 @@ def normalize_sqlite_path(path: str | Path) -> str:
     if normalized.startswith(WINDOWS_EXTENDED_PATH_PREFIX):
         return normalized[len(WINDOWS_EXTENDED_PATH_PREFIX) :]
     return normalized
-

@@ -269,7 +269,9 @@ class BenchmarkService(BenchmarkServiceExecutionMixin, BenchmarkPlottingMixin):
         self.dataset_serializer = DatasetSerializer()
 
         # Load settings from config
-        self.streaming_batch_size = get_server_settings().benchmarks.streaming_batch_size
+        self.streaming_batch_size = (
+            get_server_settings().benchmarks.streaming_batch_size
+        )
         self.log_interval = get_server_settings().benchmarks.log_interval
 
     def get_tokenizer_cache_dir(self, tokenizer_id: str) -> str:
@@ -309,7 +311,9 @@ class BenchmarkService(BenchmarkServiceExecutionMixin, BenchmarkPlottingMixin):
             return []
 
         unique_requested = list(dict.fromkeys(requested))
-        missing_names = set(self.repository.get_missing_persisted_tokenizers(unique_requested))
+        missing_names = set(
+            self.repository.get_missing_persisted_tokenizers(unique_requested)
+        )
 
         missing: list[str] = []
         for tokenizer_name in unique_requested:
@@ -329,7 +333,10 @@ class BenchmarkService(BenchmarkServiceExecutionMixin, BenchmarkPlottingMixin):
         self,
         custom_tokenizer_name: str | None,
     ) -> dict[str, Any]:
-        if not isinstance(custom_tokenizer_name, str) or not custom_tokenizer_name.strip():
+        if (
+            not isinstance(custom_tokenizer_name, str)
+            or not custom_tokenizer_name.strip()
+        ):
             return {}
         selected_name = custom_tokenizer_name.strip()
         tokenizer = get_custom_tokenizer_registry().get(selected_name)
@@ -429,4 +436,3 @@ class BenchmarkService(BenchmarkServiceExecutionMixin, BenchmarkPlottingMixin):
         deduplicated = list(dict.fromkeys(requested))
         filtered = [key for key in deduplicated if key in default_key_set]
         return filtered or default_keys
-

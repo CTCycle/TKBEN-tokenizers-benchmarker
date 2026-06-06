@@ -189,9 +189,7 @@ def test_download_and_persist_keeps_wikitext_working(
         captured["token"] = token
         return object()
 
-    monkeypatch.setattr(
-        "server.services.datasets.load_dataset", fake_load_dataset
-    )
+    monkeypatch.setattr("server.services.datasets.load_dataset", fake_load_dataset)
 
     result = service.download_and_persist(
         corpus="wikitext",
@@ -224,9 +222,7 @@ def test_download_and_persist_maps_c4_friendly_name(
         captured["token"] = token
         return object()
 
-    monkeypatch.setattr(
-        "server.services.datasets.load_dataset", fake_load_dataset
-    )
+    monkeypatch.setattr("server.services.datasets.load_dataset", fake_load_dataset)
 
     result = service.download_and_persist(
         corpus="c4",
@@ -257,9 +253,7 @@ def test_download_and_persist_maps_arxiv_to_canonical_hf_repo(
         captured["config"] = config
         return object()
 
-    monkeypatch.setattr(
-        "server.services.datasets.load_dataset", fake_load_dataset
-    )
+    monkeypatch.setattr("server.services.datasets.load_dataset", fake_load_dataset)
 
     result = service.download_and_persist(
         corpus="arxiv",
@@ -296,9 +290,7 @@ def test_download_and_persist_success_triggers_source_cleanup(
     ):
         return object()
 
-    monkeypatch.setattr(
-        "server.services.datasets.load_dataset", fake_load_dataset
-    )
+    monkeypatch.setattr("server.services.datasets.load_dataset", fake_load_dataset)
 
     result = service.download_and_persist(
         corpus="wikitext",
@@ -352,9 +344,7 @@ def test_download_and_persist_failed_import_does_not_cleanup_sources(
     ):
         return object()
 
-    monkeypatch.setattr(
-        "server.services.datasets.load_dataset", fake_load_dataset
-    )
+    monkeypatch.setattr("server.services.datasets.load_dataset", fake_load_dataset)
 
     with pytest.raises(RuntimeError, match="persist failed"):
         service.download_and_persist(
@@ -395,9 +385,7 @@ def test_download_and_persist_uses_database_for_existence_not_filesystem(
     ):
         return object()
 
-    monkeypatch.setattr(
-        "server.services.datasets.load_dataset", fake_load_dataset
-    )
+    monkeypatch.setattr("server.services.datasets.load_dataset", fake_load_dataset)
 
     result = service.download_and_persist(
         corpus="wikitext",
@@ -444,9 +432,7 @@ def test_download_and_persist_classifies_unsupported_dataset_script(
     def raise_script_error(*args, **kwargs):
         raise RuntimeError("Dataset scripts are no longer supported, but found pile.py")
 
-    monkeypatch.setattr(
-        "server.services.datasets.load_dataset", raise_script_error
-    )
+    monkeypatch.setattr("server.services.datasets.load_dataset", raise_script_error)
 
     with pytest.raises(RuntimeError) as exc_info:
         service.download_and_persist(
@@ -504,9 +490,7 @@ def test_load_dataset_with_progress_reports_stage_progress(
     ):
         return object()
 
-    monkeypatch.setattr(
-        "server.services.datasets.load_dataset", fake_load_dataset
-    )
+    monkeypatch.setattr("server.services.datasets.load_dataset", fake_load_dataset)
 
     service.load_dataset_with_progress(
         hf_dataset_id="wikitext",

@@ -20,7 +20,7 @@ def _bootstrap_state() -> EnvironmentBootstrapState:
 def ensure_environment_loaded(*, force: bool = False) -> Path | None:
     state = _bootstrap_state()
     with state.lock:
-        env_path = Path(ENV_FILE_PATH)
+        env_path = ENV_FILE_PATH
         if state.bootstrapped and not force:
             return env_path if env_path.exists() else None
 

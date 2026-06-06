@@ -29,7 +29,7 @@ class SQLiteRepository:
         self, settings: DatabaseSettings, initialize_schema: bool = False
     ) -> None:
         self.db_path: str | None = normalize_sqlite_path(DATABASE_PATH)
-        Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
+        DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
         self.engine: Engine = sqlalchemy.create_engine(
             f"sqlite:///{self.db_path}", echo=False, future=True
         )
@@ -214,5 +214,7 @@ class SQLiteRepository:
                 table_obj = Table(safe_name, MetaData(), autoload_with=self.engine)
             if safe_column not in table_obj.c:
                 return []
-            result = session.execute(select(table_obj.c[safe_column]).distinct()).scalars()
+            result = session.execute(
+                select(table_obj.c[safe_column]).distinct()
+            ).scalars()
             return [value for value in result if value is not None]

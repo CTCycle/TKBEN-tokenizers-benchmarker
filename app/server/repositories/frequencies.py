@@ -72,7 +72,9 @@ class DiskBackedFrequencyStore:
                     continue
                 existing_rows.extend(
                     session.execute(
-                        select(FrequencyEntry).where(FrequencyEntry.token.in_(token_batch))
+                        select(FrequencyEntry).where(
+                            FrequencyEntry.token.in_(token_batch)
+                        )
                     )
                     .scalars()
                     .all()
@@ -131,7 +133,9 @@ class DiskBackedFrequencyStore:
         batch_size: int = 10_000,
     ) -> Iterator[tuple[str, int]]:
         self.flush()
-        order_count = FrequencyEntry.count.desc() if descending else FrequencyEntry.count.asc()
+        order_count = (
+            FrequencyEntry.count.desc() if descending else FrequencyEntry.count.asc()
+        )
         stmt = select(FrequencyEntry.token, FrequencyEntry.count).order_by(
             order_count,
             FrequencyEntry.token.asc(),
@@ -202,7 +206,9 @@ class DiskBackedFrequencyStore:
         self.flush()
         stmt = (
             select(FrequencyEntry.token, FrequencyEntry.count)
-            .order_by(func.length(FrequencyEntry.token).desc(), FrequencyEntry.token.asc())
+            .order_by(
+                func.length(FrequencyEntry.token).desc(), FrequencyEntry.token.asc()
+            )
             .limit(int(max(1, k)))
         )
         with self._session() as session:
@@ -214,7 +220,9 @@ class DiskBackedFrequencyStore:
         self.flush()
         stmt = (
             select(FrequencyEntry.token, FrequencyEntry.count)
-            .order_by(func.length(FrequencyEntry.token).asc(), FrequencyEntry.token.asc())
+            .order_by(
+                func.length(FrequencyEntry.token).asc(), FrequencyEntry.token.asc()
+            )
             .limit(int(max(1, k)))
         )
         with self._session() as session:

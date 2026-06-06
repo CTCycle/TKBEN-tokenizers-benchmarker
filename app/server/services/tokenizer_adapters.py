@@ -22,8 +22,7 @@ class TokenizerAdapter(Protocol):
         padding: bool,
         truncation: bool,
         max_length: int | None,
-    ) -> EncodedBatch:
-        ...
+    ) -> EncodedBatch: ...
 
 
 class UniversalTokenizerAdapter:
