@@ -79,16 +79,13 @@ async def scan_tokenizers(
     max_limit = get_server_settings().tokenizers.max_scan_limit
     default_limit = get_server_settings().tokenizers.default_scan_limit
 
-    if limit is None:
-        limit = default_limit
-    else:
-        limit = max(min_limit, min(limit, max_limit))
-
+    limit = default_limit if limit is None else max(min_limit, min(limit, max_limit))
     logger.info("Scanning HuggingFace for tokenizers (limit=%s)", limit)
 
     service = TokenizersService()
     try:
         identifiers = await asyncio.to_thread(service.get_tokenizer_identifiers, limit)
+
     except HFAccessKeyValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

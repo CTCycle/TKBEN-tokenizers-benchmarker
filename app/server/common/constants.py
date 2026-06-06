@@ -42,3 +42,4 @@ API_ROUTE_KEYS_DELETE = "/{key_id}"
 API_ROUTE_KEYS_ACTIVATE = "/{key_id}/activate"
 API_ROUTE_KEYS_DEACTIVATE = "/{key_id}/deactivate"
 API_ROUTE_KEYS_REVEAL = "/{key_id}/reveal"
+ALLOW_KEY_REVEAL_DEFAULT = False

@@ -39,7 +39,7 @@ async def export_dashboard_pdf(
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to export dashboard PDF.",
+            detail="Failed to export dashboard as PDF.",
         ) from exc
 
     headers = {
