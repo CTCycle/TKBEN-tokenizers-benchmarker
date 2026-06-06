@@ -198,13 +198,15 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
           </div>
         </header>
         <div className="panel-body">
-          <TokenizerStatusBanners
-            warningMode="without-warning"
-            scanError={scanError}
-            benchmarkError={benchmarkError}
-            onDismissScanError={() => setScanError(null)}
-            onDismissBenchmarkError={() => setBenchmarkError(null)}
-          />
+          {!isTokenizerModalOpen && (
+            <TokenizerStatusBanners
+              warningMode="without-warning"
+              scanError={scanError}
+              benchmarkError={benchmarkError}
+              onDismissScanError={() => setScanError(null)}
+              onDismissBenchmarkError={() => setBenchmarkError(null)}
+            />
+          )}
           <textarea
             className="text-area"
             placeholder="Paste tokenizer IDs here, one per line..."
@@ -480,13 +482,15 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
             </div>
           </div>
 
-          <TokenizerStatusBanners
-            warningMode="without-warning"
-            scanError={scanError}
-            benchmarkError={benchmarkError}
-            onDismissScanError={() => setScanError(null)}
-            onDismissBenchmarkError={() => setBenchmarkError(null)}
-          />
+          {!isTokenizerModalOpen && (
+            <TokenizerStatusBanners
+              warningMode="without-warning"
+              scanError={scanError}
+              benchmarkError={benchmarkError}
+              onDismissScanError={() => setScanError(null)}
+              onDismissBenchmarkError={() => setBenchmarkError(null)}
+            />
+          )}
           {tokenizerReport && (
             <div className="tokenizer-report-hint">
               Latest loaded report: {tokenizerReport.tokenizer_name}
