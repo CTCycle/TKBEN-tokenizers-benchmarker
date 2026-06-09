@@ -527,10 +527,10 @@ BENCHMARK_METRIC_CATALOG: list[dict[str, Any]] = [
             {
                 "key": "fid.unknown_token_rate",
                 "label": "Unknown-token rate",
-                "description": "Unknown token emission rate.",
+                "description": "Unknown token emission rate when the tokenizer exposes measurable unknown-token output.",
                 "scope": "tokenizer_global",
                 "value_kind": "number",
-                "core": True,
+                "core": False,
             },
             {
                 "key": "fid.lossless_encodability_rate",

@@ -13,6 +13,16 @@ BENCHMARK_METRIC_KEYS: set[str] = {
     for metric in category.get("metrics", [])
     if isinstance(metric, dict) and isinstance(metric.get("key"), str)
 }
+CORE_BENCHMARK_METRIC_KEYS: set[str] = {
+    metric["key"]
+    for category in BENCHMARK_METRIC_CATALOG
+    for metric in category.get("metrics", [])
+    if (
+        isinstance(metric, dict)
+        and isinstance(metric.get("key"), str)
+        and bool(metric.get("core"))
+    )
+}
 
 EXPECTED_BENCHMARK_METRIC_VALUES: dict[str, Any] = {}
 
@@ -20,6 +30,9 @@ DATASET_BENCHMARK_METRIC_KEYS: set[str] = set()
 
 TOKENIZER_BENCHMARK_METRIC_KEYS: set[str] = (
     BENCHMARK_METRIC_KEYS - DATASET_BENCHMARK_METRIC_KEYS
+)
+CORE_TOKENIZER_BENCHMARK_METRIC_KEYS: set[str] = (
+    CORE_BENCHMARK_METRIC_KEYS - DATASET_BENCHMARK_METRIC_KEYS
 )
 
 
@@ -89,6 +102,9 @@ def run_deterministic_benchmark() -> dict[str, Any]:
 def build_benchmark_metric_value_map(result: dict[str, Any]) -> dict[str, Any]:
     tokenizer_result = result["tokenizer_results"][0]
     efficiency_metrics = result["chart_data"]["efficiency"][0]
+    metric_availability = result.get("runtime_metadata", {}).get(
+        "metric_availability", {}
+    )
 
     encode_tps = float(efficiency_metrics["value"])
     encode_cps = float(tokenizer_result["efficiency"]["encode_chars_per_second_mean"])
@@ -97,9 +113,7 @@ def build_benchmark_metric_value_map(result: dict[str, Any]) -> dict[str, Any]:
     normalized_round_trip_rate = float(
         tokenizer_result["fidelity"]["normalized_round_trip_rate"]
     )
-    unknown_token_rate = float(tokenizer_result["fidelity"]["unknown_token_rate"])
-
-    return {
+    metric_values = {
         "eff.encode_tokens_per_second_mean": encode_tps,
         "eff.encode_tokens_per_second_ci95": 0.0,
         "eff.encode_chars_per_second_mean": encode_cps,
@@ -115,10 +129,6 @@ def build_benchmark_metric_value_map(result: dict[str, Any]) -> dict[str, Any]:
         ),
         "fid.exact_round_trip_rate": exact_round_trip_rate,
         "fid.normalized_round_trip_rate": normalized_round_trip_rate,
-        "fid.unknown_token_rate": unknown_token_rate,
-        "fid.lossless_encodability_rate": tokenizer_result["fidelity"][
-            "lossless_encodability_rate"
-        ],
         "frag.pieces_per_word_mean": tokenizer_result["fragmentation"][
             "pieces_per_word_mean"
         ],
@@ -126,6 +136,17 @@ def build_benchmark_metric_value_map(result: dict[str, Any]) -> dict[str, Any]:
             "tokens_per_character"
         ],
     }
+
+    if metric_availability.get("unknown_token_rate"):
+        metric_values["fid.unknown_token_rate"] = float(
+            tokenizer_result["fidelity"]["unknown_token_rate"]
+        )
+    if metric_availability.get("vocab_character_overlap"):
+        metric_values["fid.lossless_encodability_rate"] = tokenizer_result[
+            "fidelity"
+        ]["lossless_encodability_rate"]
+
+    return metric_values
 
 
 def assert_metric_value(

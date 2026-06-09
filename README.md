@@ -150,7 +150,7 @@ Key paths:
 - `app/resources/sources/tokenizers`: Tokenizer source/download artifacts.
 - `app/resources/logs`: Launcher and backend logs.
 - `runtimes`: Portable Windows runtimes.
-- `assets/docs/project_overview.md`: Documentation root index and topic map.
+- `assets/docs/project_index.md`: Documentation root index and topic map.
 - `assets/docs/runtime/modes.md`: Runtime packaging and mode details.
 - `assets/docs/runtime/startup.md`: Startup procedures and launcher commands.
 - `app/src-tauri`: Desktop shell and packaging configuration.

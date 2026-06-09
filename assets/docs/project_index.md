@@ -18,7 +18,7 @@ This file is the root index for `assets/docs`. Read it first to find the narrowe
 
 ## Documentation Ontology
 ### Root
-- `project_overview.md`
+- `project_index.md`
   - Entry point and index for the full documentation tree.
 
 ### Architecture
