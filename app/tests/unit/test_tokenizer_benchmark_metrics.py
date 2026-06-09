@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from tests.unit.benchmark_metric_test_support import (
-    TOKENIZER_BENCHMARK_METRIC_KEYS,
+    CORE_TOKENIZER_BENCHMARK_METRIC_KEYS,
     build_benchmark_metric_value_map,
     run_deterministic_benchmark,
 )
@@ -18,7 +18,7 @@ def benchmark_metric_values() -> dict[str, object]:
 def test_tokenizer_benchmark_metrics_are_observed_and_non_synthetic(
     benchmark_metric_values: dict[str, object],
 ) -> None:
-    for metric_key in sorted(TOKENIZER_BENCHMARK_METRIC_KEYS):
+    for metric_key in sorted(CORE_TOKENIZER_BENCHMARK_METRIC_KEYS):
         assert metric_key in benchmark_metric_values, (
             f"Missing computed benchmark metric '{metric_key}'"
         )
