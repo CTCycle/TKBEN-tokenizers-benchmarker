@@ -41,20 +41,20 @@ from server.services.benchmark_spool import BenchmarkTextSpool
 from server.services.benchmark_streams import iter_limited_rows
 from server.services.tokenizer_adapters import UniversalTokenizerAdapter
 
-
 ###############################################################################
 class BenchmarkCancelledError(RuntimeError):
     pass
 
 
+###############################################################################
 @dataclass(frozen=True)
 class SpooledTextBatchFactory:
     spool: BenchmarkTextSpool
     batch_size: int
 
+    # -------------------------------------------------------------------------
     def __call__(self) -> Any:
         return self.spool.iter_text_batches(self.batch_size)
-
 
 ###############################################################################
 class BenchmarkServiceExecutionMixin:

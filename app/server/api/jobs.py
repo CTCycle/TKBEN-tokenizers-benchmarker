@@ -11,7 +11,6 @@ from server.common.constants import API_ROUTE_JOBS_STATUS, API_ROUTER_PREFIX_JOB
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_JOBS, tags=["jobs"])
 
-
 ###############################################################################
 @router.get(
     "",
@@ -24,7 +23,6 @@ def list_jobs(
 ) -> JobListResponse:
     jobs = request.app.state.job_manager.list_jobs(job_type=job_type)
     return JobListResponse(jobs=[JobStatusResponse(**job) for job in jobs])
-
 
 ###############################################################################
 @router.get(
@@ -40,7 +38,6 @@ def get_job_status(request: Request, job_id: str) -> JobStatusResponse:
             detail=f"Job not found: {job_id}",
         )
     return JobStatusResponse(**job_status)
-
 
 ###############################################################################
 @router.delete(

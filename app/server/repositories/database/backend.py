@@ -14,7 +14,6 @@ from server.repositories.database.sqlite import SQLiteRepository
 from server.repositories.database.utils import normalize_sqlite_path
 from server.common.utils.logger import logger
 
-
 ###############################################################################
 class DatabaseBackend(Protocol):
     db_path: str | None
@@ -34,13 +33,11 @@ class DatabaseBackend(Protocol):
 
 BackendFactory = Callable[[DatabaseSettings], DatabaseBackend]
 
-
 ###############################################################################
 def build_sqlite_backend(settings: DatabaseSettings) -> DatabaseBackend:
     db_path = normalize_sqlite_path(DATABASE_PATH)
     should_initialize_schema = not Path(db_path).exists()
     return SQLiteRepository(settings, initialize_schema=should_initialize_schema)
-
 
 ###############################################################################
 def build_postgres_backend(settings: DatabaseSettings) -> DatabaseBackend:
@@ -52,9 +49,10 @@ BACKEND_FACTORIES: dict[str, BackendFactory] = {
     "postgres": build_postgres_backend,
 }
 
-
 ###############################################################################
 class TKBENDatabase:
+
+    # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.settings = get_server_settings().database
         self.backend = self._build_backend(self.settings.embedded_database)
@@ -94,7 +92,6 @@ class TKBENDatabase:
     ) -> None:
         """Insert DataFrame rows in batches (append mode, no delete)."""
         self.backend.insert_dataframe(df, table_name, ignore_duplicates)
-
 
 ###############################################################################
 @cache

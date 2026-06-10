@@ -27,9 +27,10 @@ from server.services.benchmark_execution import BenchmarkServiceExecutionMixin
 from server.services.benchmark_plotting import BenchmarkPlottingMixin
 from server.services.custom_tokenizers import get_custom_tokenizer_registry
 
-
 ###############################################################################
 class BenchmarkTools:
+
+    # -------------------------------------------------------------------------
     def __call__(self) -> None:
         pass
 
@@ -251,11 +252,11 @@ class BenchmarkTools:
 
         return float(-np.sum(probs * np.log2(probs)))
 
-
 ###############################################################################
 class BenchmarkService(BenchmarkServiceExecutionMixin, BenchmarkPlottingMixin):
     TOKENIZER_ID_MAX_LENGTH = 160
 
+    # -------------------------------------------------------------------------
     def __init__(
         self,
         max_documents: int = 0,
@@ -274,6 +275,7 @@ class BenchmarkService(BenchmarkServiceExecutionMixin, BenchmarkPlottingMixin):
         )
         self.log_interval = get_server_settings().benchmarks.log_interval
 
+    # -------------------------------------------------------------------------
     def get_tokenizer_cache_dir(self, tokenizer_id: str) -> str:
         safe_id = normalize_identifier(
             tokenizer_id,

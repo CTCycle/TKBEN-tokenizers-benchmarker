@@ -5,9 +5,10 @@ from typing import Any
 from server.services.datasets import DatasetService
 from server.services.jobs import JobManager, JobProgressReporter, JobStopChecker
 
-
 ###############################################################################
 class DatasetJobService:
+
+    # -------------------------------------------------------------------------
     def build_histogram_payload(self, histogram_data: dict[str, Any]) -> dict[str, Any]:
         return {
             "bins": histogram_data.get("bins", []),

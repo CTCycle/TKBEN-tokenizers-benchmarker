@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field
 
 DashboardType = Literal["dataset", "tokenizer", "benchmark"]
 
-
 ###############################################################################
 class DashboardExportRequest(BaseModel):
     dashboard_type: DashboardType

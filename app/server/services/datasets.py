@@ -37,7 +37,6 @@ from server.services.metrics.catalog import DATASET_METRIC_CATALOG
 from server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
 from server.services.dataset_operations import DatasetServiceOperationsMixin
 
-
 ###############################################################################
 @dataclass
 class LengthStatistics:
@@ -46,6 +45,7 @@ class LengthStatistics:
     min_length: int | None = None
     max_length: int | None = None
 
+    # -------------------------------------------------------------------------
     def update(self, length: int) -> None:
         self.document_count += 1
         self.total_length += length
@@ -54,17 +54,19 @@ class LengthStatistics:
         if self.max_length is None or length > self.max_length:
             self.max_length = length
 
+    # -------------------------------------------------------------------------
     def resolved_min(self) -> int:
         return self.min_length if self.min_length is not None else 0
 
+    # -------------------------------------------------------------------------
     def resolved_max(self) -> int:
         return self.max_length if self.max_length is not None else 0
 
+    # -------------------------------------------------------------------------
     def mean(self) -> float:
         if self.document_count == 0:
             return 0.0
         return self.total_length / self.document_count
-
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -72,7 +74,6 @@ class DatasetAlias:
     hf_dataset_id: str
     default_config: str | None = None
     default_split: str | None = None
-
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -126,9 +127,10 @@ HF_DATASET_ALIASES: dict[str, DatasetAlias] = {
 DATASET_CONFIGURATION_FIELD = "Dataset configuration"
 DATASET_ID_FIELD = "Dataset id"
 
-
 ###############################################################################
 class HistogramBuilder:
+
+    # -------------------------------------------------------------------------
     def __init__(self, stats: LengthStatistics, bins: int) -> None:
         self.stats = stats
         self.bin_count = bins if stats.document_count > 0 else 0
@@ -136,12 +138,14 @@ class HistogramBuilder:
         self.bin_edges = self._build_bin_edges()
         self.counts = [0] * (len(self.bin_edges) - 1) if self.bin_edges else []
 
+    # -------------------------------------------------------------------------
     def _compute_bin_width(self) -> int:
         if self.stats.document_count == 0:
             return 1
         span = (self.stats.resolved_max() - self.stats.resolved_min()) + 1
         return max(1, math.ceil(span / max(1, self.bin_count)))
 
+    # -------------------------------------------------------------------------
     def _build_bin_edges(self) -> list[int]:
         if self.stats.document_count == 0:
             return []
@@ -150,6 +154,7 @@ class HistogramBuilder:
             edges.append(edges[-1] + self.bin_width)
         return edges
 
+    # -------------------------------------------------------------------------
     def add(self, length: int) -> None:
         if not self.counts:
             return
@@ -160,6 +165,7 @@ class HistogramBuilder:
         )
         self.counts[index] += 1
 
+    # -------------------------------------------------------------------------
     def add_batch(self, length: int, count: int) -> None:
         if not self.counts or count <= 0:
             return
@@ -170,11 +176,13 @@ class HistogramBuilder:
         )
         self.counts[index] += count
 
+    # -------------------------------------------------------------------------
     def _midpoint(self, index: int) -> float:
         start = self.bin_edges[index]
         end = self.bin_edges[index + 1]
         return (start + end - 1) / 2.0
 
+    # -------------------------------------------------------------------------
     def _build_labels(self) -> list[str]:
         labels: list[str] = []
         if not self.counts:
@@ -187,12 +195,14 @@ class HistogramBuilder:
             labels.append(f"{left}-{right}" if left != right else f"{left}")
         return labels
 
+    # -------------------------------------------------------------------------
     def _median(self) -> float:
         if not self.counts or self.stats.document_count == 0:
             return 0.0
         low_value, high_value = self._resolve_median_bounds()
         return (low_value + high_value) / 2.0
 
+    # -------------------------------------------------------------------------
     def _resolve_median_bounds(self) -> tuple[float, float]:
         low_rank = (self.stats.document_count - 1) // 2
         high_rank = self.stats.document_count // 2
@@ -216,6 +226,7 @@ class HistogramBuilder:
             high_value = low_value
         return low_value, high_value
 
+    # -------------------------------------------------------------------------
     def build(self) -> dict[str, Any]:
         if self.stats.document_count == 0:
             return {
@@ -237,7 +248,6 @@ class HistogramBuilder:
             "median_length": self._median(),
         }
 
-
 ###############################################################################
 class DatasetService(DatasetServiceOperationsMixin):
     SUPPORTED_TEXT_FIELDS = ("text", "content", "sentence", "document", "tokens")
@@ -245,6 +255,7 @@ class DatasetService(DatasetServiceOperationsMixin):
     WORD_LIST_LIMIT = 15
     WORD_CLOUD_LIMIT = 60
 
+    # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.key_service = HFAccessKeyService()
         # Load settings from centralized configuration

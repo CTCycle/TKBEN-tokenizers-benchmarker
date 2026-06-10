@@ -9,12 +9,10 @@ from server.common.path import ENV_FILE_PATH
 from server.common.utils.logger import logger
 from server.domain.bootstrap import EnvironmentBootstrapState
 
-
 ###############################################################################
 @lru_cache(maxsize=1)
 def _bootstrap_state() -> EnvironmentBootstrapState:
     return EnvironmentBootstrapState()
-
 
 ###############################################################################
 def ensure_environment_loaded(*, force: bool = False) -> Path | None:
@@ -32,7 +30,6 @@ def ensure_environment_loaded(*, force: bool = False) -> Path | None:
 
         state.bootstrapped = True
         return env_path if env_path.exists() else None
-
 
 ###############################################################################
 def reset_environment_bootstrap_for_tests() -> None:

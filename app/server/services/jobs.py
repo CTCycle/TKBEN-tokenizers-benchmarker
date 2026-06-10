@@ -12,6 +12,7 @@ from collections.abc import Callable
 from server.common.utils.logger import logger
 
 
+###############################################################################
 @dataclass
 class JobState:
     job_id: str
@@ -46,9 +47,10 @@ class JobState:
                 "completed_at": self.completed_at,
             }
 
-
 ###############################################################################
 class JobProgressReporter:
+
+    # -------------------------------------------------------------------------
     def __init__(self, job_manager: JobManager, job_id: str) -> None:
         self.job_manager = job_manager
         self.job_id = job_id
@@ -57,9 +59,10 @@ class JobProgressReporter:
     def __call__(self, value: float) -> None:
         self.job_manager.update_progress(self.job_id, value)
 
-
 ###############################################################################
 class JobStopChecker:
+
+    # -------------------------------------------------------------------------
     def __init__(self, job_manager: JobManager, job_id: str) -> None:
         self.job_manager = job_manager
         self.job_id = job_id
@@ -68,9 +71,10 @@ class JobStopChecker:
     def __call__(self) -> bool:
         return self.job_manager.should_stop(self.job_id)
 
-
 ###############################################################################
 class JobManager:
+
+    # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.jobs: dict[str, JobState] = {}
         self.threads: dict[str, threading.Thread] = {}

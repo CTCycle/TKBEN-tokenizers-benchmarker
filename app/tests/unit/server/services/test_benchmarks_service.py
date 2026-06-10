@@ -5,14 +5,19 @@ from pathlib import Path
 from server.services.benchmarks import BenchmarkService
 
 
+###############################################################################
 class FakeBenchmarkRepository:
+
+    # -------------------------------------------------------------------------
     def get_dataset_document_count(self, dataset_name: str) -> int:
         return 7 if dataset_name == "custom/sample" else 0
 
+    # -------------------------------------------------------------------------
     def get_missing_persisted_tokenizers(self, tokenizer_ids: list[str]) -> list[str]:
         return [name for name in tokenizer_ids if name != "bert-base-uncased"]
 
 
+###############################################################################
 def test_benchmark_service_uses_repository_for_dataset_and_tokenizer_checks() -> None:
     service = BenchmarkService()
     service.repository = FakeBenchmarkRepository()  # type: ignore[assignment]
@@ -24,6 +29,7 @@ def test_benchmark_service_uses_repository_for_dataset_and_tokenizer_checks() ->
     assert "missing" in missing
 
 
+###############################################################################
 def test_benchmark_service_preserves_repository_missing_with_cached_files(
     monkeypatch,
     tmp_path: Path,
@@ -41,10 +47,14 @@ def test_benchmark_service_preserves_repository_missing_with_cached_files(
     assert missing == ["missing"]
 
 
+###############################################################################
 def test_resolve_custom_tokenizer_selection(monkeypatch) -> None:
     service = BenchmarkService()
 
+    ###############################################################################
     class DummyRegistry:
+
+        # -------------------------------------------------------------------------
         def get(self, name: str):
             return object() if name == "CUSTOM_demo" else None
 

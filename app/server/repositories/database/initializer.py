@@ -13,7 +13,6 @@ from server.common.utils.logger import logger
 
 SUPPORTED_POSTGRES_ENGINE = "postgresql+psycopg"
 
-
 ###############################################################################
 def build_postgres_connect_args(settings: DatabaseSettings) -> dict[str, str | int]:
     connect_args: dict[str, str | int] = {"connect_timeout": settings.connect_timeout}
@@ -22,7 +21,6 @@ def build_postgres_connect_args(settings: DatabaseSettings) -> dict[str, str | i
         if settings.ssl_ca:
             connect_args["sslrootcert"] = settings.ssl_ca
     return connect_args
-
 
 ###############################################################################
 def build_postgres_url(settings: DatabaseSettings, database_name: str) -> str:
@@ -34,7 +32,6 @@ def build_postgres_url(settings: DatabaseSettings, database_name: str) -> str:
         f"{engine_name}://{safe_username}:{safe_password}"
         f"@{settings.host}:{port}/{database_name}"
     )
-
 
 ###############################################################################
 def clone_settings_with_database(
@@ -54,7 +51,6 @@ def clone_settings_with_database(
         insert_batch_size=settings.insert_batch_size,
     )
 
-
 ###############################################################################
 def build_postgres_create_database_sql(
     database_name: str,
@@ -64,12 +60,10 @@ def build_postgres_create_database_sql(
         f"CREATE DATABASE \"{safe_database}\" WITH ENCODING 'UTF8' TEMPLATE template0"
     )
 
-
 ###############################################################################
 def initialize_sqlite_database(settings: DatabaseSettings) -> None:
     repository = SQLiteRepository(settings, initialize_schema=True)
     logger.info("Initialized SQLite database at %s", repository.db_path)
-
 
 ###############################################################################
 def ensure_postgres_database(settings: DatabaseSettings) -> str:
@@ -111,7 +105,6 @@ def ensure_postgres_database(settings: DatabaseSettings) -> str:
 
     return target_database
 
-
 ###############################################################################
 def run_database_initialization() -> None:
     settings = get_server_settings().database
@@ -122,14 +115,12 @@ def run_database_initialization() -> None:
     _resolve_postgres_engine(settings.engine)
     ensure_postgres_database(settings)
 
-
 ###############################################################################
 def _resolve_postgres_engine(engine: str | None) -> str:
     normalized = (engine or "").strip().lower()
     if normalized == SUPPORTED_POSTGRES_ENGINE:
         return SUPPORTED_POSTGRES_ENGINE
     raise ValueError(f"Unsupported database engine: {engine}")
-
 
 ###############################################################################
 def initialize_database() -> None:

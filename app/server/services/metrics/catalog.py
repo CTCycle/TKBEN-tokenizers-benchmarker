@@ -571,7 +571,6 @@ BENCHMARK_METRIC_CATALOG: list[dict[str, Any]] = [
     },
 ]
 
-
 ###############################################################################
 def flatten_metric_keys(
     metric_catalog: list[dict[str, Any]] | None = None,
@@ -589,7 +588,6 @@ def flatten_metric_keys(
             if isinstance(key, str) and key:
                 keys.append(key)
     return keys
-
 
 ###############################################################################
 def default_selected_metric_keys() -> list[str]:

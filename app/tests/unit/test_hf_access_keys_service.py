@@ -14,7 +14,6 @@ from server.services.keys import (
     HFAccessKeyValidationError,
 )
 
-
 ###############################################################################
 @pytest.fixture
 def isolated_engine(monkeypatch: pytest.MonkeyPatch):
@@ -27,7 +26,6 @@ def isolated_engine(monkeypatch: pytest.MonkeyPatch):
     finally:
         engine.dispose()
 
-
 ###############################################################################
 def test_get_active_key_raises_validation_error_on_invalid_decryption(
     isolated_engine,
@@ -35,7 +33,10 @@ def test_get_active_key_raises_validation_error_on_invalid_decryption(
     del isolated_engine
     service = HFAccessKeyService()
 
+    ###############################################################################
     class FailingCipher:
+
+        # -------------------------------------------------------------------------
         def decrypt(self, encrypted_value: str) -> str:
             del encrypted_value
             raise ValueError("invalid token")
@@ -54,7 +55,6 @@ def test_get_active_key_raises_validation_error_on_invalid_decryption(
     with pytest.raises(HFAccessKeyValidationError, match="cannot be decrypted"):
         service.get_active_key()
 
-
 ###############################################################################
 def test_add_key_skips_undecryptable_rows_during_duplicate_check(
     isolated_engine,
@@ -62,10 +62,14 @@ def test_add_key_skips_undecryptable_rows_during_duplicate_check(
     del isolated_engine
     service = HFAccessKeyService()
 
+    ###############################################################################
     class RecoveringCipher:
+
+        # -------------------------------------------------------------------------
         def encrypt(self, plaintext: str) -> str:
             return f"enc:{plaintext}"
 
+        # -------------------------------------------------------------------------
         def decrypt(self, encrypted_value: str) -> str:
             if encrypted_value == "stale-encrypted":
                 raise ValueError("invalid token")
@@ -96,7 +100,6 @@ def test_add_key_skips_undecryptable_rows_during_duplicate_check(
     assert len(rows) == 2
     assert rows[1].key_value == "enc:hf_test_key"
 
-
 ###############################################################################
 def test_get_active_key_rejects_plaintext_legacy_value(
     isolated_engine,
@@ -104,7 +107,10 @@ def test_get_active_key_rejects_plaintext_legacy_value(
     del isolated_engine
     service = HFAccessKeyService()
 
+    ###############################################################################
     class StrictCipher:
+
+        # -------------------------------------------------------------------------
         def decrypt(self, encrypted_value: str) -> str:
             if encrypted_value.startswith("enc:"):
                 return encrypted_value[4:]
@@ -123,7 +129,6 @@ def test_get_active_key_rejects_plaintext_legacy_value(
     service._cipher = StrictCipher()  # type: ignore[assignment]
     with pytest.raises(HFAccessKeyValidationError, match="cannot be decrypted"):
         service.get_active_key()
-
 
 ###############################################################################
 def test_set_active_key_is_idempotent_for_already_active_key(
@@ -164,7 +169,6 @@ def test_set_active_key_is_idempotent_for_already_active_key(
         )
     assert any(row.id == key_id and row.is_active for row in rows)
     assert all(row.is_active is (row.id == key_id) for row in rows)
-
 
 ###############################################################################
 def test_set_active_key_raises_not_found_for_unknown_key(

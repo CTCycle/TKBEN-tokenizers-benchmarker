@@ -5,9 +5,11 @@ from server.services.benchmark_engine import run_tokenizer_trials
 from server.services.tokenizer_adapters import EncodedBatch
 
 
+###############################################################################
 class MemoryAdapter:
     tokenizer_id = "dummy"
 
+    # -------------------------------------------------------------------------
     def encode_batch(self, texts, **kwargs) -> EncodedBatch:  # type: ignore[no-untyped-def]
         del kwargs
         return EncodedBatch(
@@ -17,6 +19,7 @@ class MemoryAdapter:
         )
 
 
+###############################################################################
 def test_memory_peak_is_measured_not_placeholder() -> None:
     observations = run_tokenizer_trials(
         tokenizer=MemoryAdapter(),

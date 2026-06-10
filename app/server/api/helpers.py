@@ -10,7 +10,6 @@ from server.common.utils.security import normalize_upload_stem
 from server.configurations import get_server_settings
 from server.domain.jobs import JobStartResponse
 
-
 ###############################################################################
 def start_managed_job(
     request: Request,
@@ -48,7 +47,6 @@ def start_managed_job(
         message=message,
         poll_interval=get_server_settings().jobs.polling_interval,
     )
-
 
 ###############################################################################
 def validate_upload_filename(
@@ -98,7 +96,6 @@ def validate_upload_filename(
             ) from exc
 
     return normalized_filename, safe_stem
-
 
 ###############################################################################
 def validate_upload_size(content: bytes, max_upload_bytes: int) -> None:

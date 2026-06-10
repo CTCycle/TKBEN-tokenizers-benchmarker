@@ -9,9 +9,10 @@ from pydantic import ValidationError
 from server.common.path import CONFIGURATIONS_FILE
 from server.domain.settings import JsonConfiguration, ServerSettings
 
-
 ###############################################################################
 class ConfigurationManager:
+
+    # -------------------------------------------------------------------------
     def __init__(self, config_path: str | Path = CONFIGURATIONS_FILE) -> None:
         self.config_path = (
             config_path if isinstance(config_path, Path) else Path(config_path)

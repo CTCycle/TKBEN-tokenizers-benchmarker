@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Protocol, Sequence
 
 
+###############################################################################
 @dataclass(frozen=True)
 class EncodedBatch:
     token_counts: list[int]
@@ -11,9 +12,11 @@ class EncodedBatch:
     input_ids_by_doc: list[list[int]]
 
 
+###############################################################################
 class TokenizerAdapter(Protocol):
     tokenizer_id: str
 
+    # -------------------------------------------------------------------------
     def encode_batch(
         self,
         texts: Sequence[str],
@@ -25,11 +28,15 @@ class TokenizerAdapter(Protocol):
     ) -> EncodedBatch: ...
 
 
+###############################################################################
 class UniversalTokenizerAdapter:
+
+    # -------------------------------------------------------------------------
     def __init__(self, tokenizer_id: str, tokenizer: Any) -> None:
         self.tokenizer_id = tokenizer_id
         self._tokenizer = tokenizer
 
+    # -------------------------------------------------------------------------
     def encode_batch(
         self,
         texts: Sequence[str],

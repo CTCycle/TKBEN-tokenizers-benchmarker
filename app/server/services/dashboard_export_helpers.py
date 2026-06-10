@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 from typing import Any
 
-
 ###############################################################################
 class DashboardExportFormatting:
+
     # -------------------------------------------------------------------------
     def _parse_zipf_curve(self, value: Any) -> list[dict[str, float]]:
         parsed = self._parse_json_like(value)

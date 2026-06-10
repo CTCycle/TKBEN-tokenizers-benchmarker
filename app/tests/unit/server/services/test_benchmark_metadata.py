@@ -3,6 +3,7 @@ from __future__ import annotations
 from server.services.benchmark_metadata import collect_runtime_environment
 
 
+###############################################################################
 def test_collect_runtime_environment_contains_reproducibility_fields() -> None:
     metadata = collect_runtime_environment()
     assert "python_version" in metadata

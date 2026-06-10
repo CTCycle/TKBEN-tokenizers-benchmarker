@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 from collections import defaultdict
 
-
 ###############################################################################
 def compute_simhash(features: list[str], bits: int = 64) -> int:
     if not features:
@@ -23,20 +22,19 @@ def compute_simhash(features: list[str], bits: int = 64) -> int:
             fingerprint |= 1 << bit_index
     return fingerprint
 
-
 ###############################################################################
 def hamming_distance(a: int, b: int) -> int:
     return int((a ^ b).bit_count())
-
 
 ###############################################################################
 def jaccard_like_similarity_from_hamming(a: int, b: int, bits: int = 64) -> float:
     distance = hamming_distance(a, b)
     return max(0.0, 1.0 - (distance / float(bits)))
 
-
 ###############################################################################
 class SimHashNearDuplicateAnalyzer:
+
+    # -------------------------------------------------------------------------
     def __init__(
         self, similarity_threshold: float = 0.9, bands: int = 4, bits: int = 64
     ) -> None:

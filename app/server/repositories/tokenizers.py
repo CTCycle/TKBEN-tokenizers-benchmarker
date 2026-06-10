@@ -11,9 +11,10 @@ from server.repositories.schemas.models import (
     TokenizerVocabulary,
 )
 
-
 ###############################################################################
 class TokenizerRepository:
+
+    # -------------------------------------------------------------------------
     def __init__(self, database: TKBENDatabase | None = None) -> None:
         self.database = database or get_database()
 

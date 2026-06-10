@@ -4,9 +4,10 @@ import os
 
 from cryptography.fernet import Fernet, InvalidToken
 
-
 ###############################################################################
 class SymmetricCipher:
+
+    # -------------------------------------------------------------------------
     def __init__(self, key_value: str) -> None:
         try:
             self.fernet = Fernet(key_value.encode("utf-8"))
@@ -25,7 +26,6 @@ class SymmetricCipher:
             return self.fernet.decrypt(encrypted_value.encode("utf-8")).decode("utf-8")
         except InvalidToken as exc:
             raise ValueError("Unable to decrypt stored Hugging Face key.") from exc
-
 
 ###############################################################################
 def get_hf_key_cipher() -> SymmetricCipher:

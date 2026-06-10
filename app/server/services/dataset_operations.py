@@ -18,9 +18,10 @@ from server.common.utils.security import normalize_upload_stem
 from server.services.metrics.catalog import default_selected_metric_keys
 from server.services.metrics.engine import DatasetMetricsEngine
 
-
 ###############################################################################
 class DatasetServiceOperationsMixin:
+
+    # -------------------------------------------------------------------------
     def persist_dataset(
         self,
         dataset: Dataset | DatasetDict,

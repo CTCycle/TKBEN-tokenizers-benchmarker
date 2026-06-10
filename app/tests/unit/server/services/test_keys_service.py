@@ -10,6 +10,7 @@ from server.repositories.schemas.models import Base
 from server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
 
 
+###############################################################################
 @pytest.fixture
 def isolated_engine(monkeypatch):
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
@@ -22,6 +23,7 @@ def isolated_engine(monkeypatch):
         engine.dispose()
 
 
+###############################################################################
 def test_get_revealed_key_returns_decrypted_value(isolated_engine) -> None:
     del isolated_engine
     service = HFAccessKeyService()
@@ -31,7 +33,10 @@ def test_get_revealed_key_returns_decrypted_value(isolated_engine) -> None:
         created_at=datetime.now(timezone.utc),
     )
 
+    ###############################################################################
     class FakeCipher:
+
+        # -------------------------------------------------------------------------
         def decrypt(self, encrypted_value: str) -> str:
             if encrypted_value.startswith("enc:"):
                 return encrypted_value[4:]
@@ -43,6 +48,7 @@ def test_get_revealed_key_returns_decrypted_value(isolated_engine) -> None:
     assert revealed == "secret-key"
 
 
+###############################################################################
 def test_get_revealed_key_raises_validation_on_undecryptable(isolated_engine) -> None:
     del isolated_engine
     service = HFAccessKeyService()
@@ -52,7 +58,10 @@ def test_get_revealed_key_raises_validation_on_undecryptable(isolated_engine) ->
         created_at=datetime.now(timezone.utc),
     )
 
+    ###############################################################################
     class FailingCipher:
+
+        # -------------------------------------------------------------------------
         def decrypt(self, encrypted_value: str) -> str:
             del encrypted_value
             raise ValueError("bad")

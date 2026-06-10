@@ -5,6 +5,7 @@ import pytest
 from server.services.export import DashboardExportService
 
 
+###############################################################################
 def build_dataset_payload() -> dict:
     return {
         "report": {
@@ -64,6 +65,7 @@ def build_dataset_payload() -> dict:
     }
 
 
+###############################################################################
 def build_tokenizer_payload() -> dict:
     return {
         "report": {
@@ -95,6 +97,7 @@ def build_tokenizer_payload() -> dict:
     }
 
 
+###############################################################################
 def build_benchmark_payload() -> dict:
     return {
         "report": {
@@ -146,6 +149,7 @@ def build_benchmark_payload() -> dict:
     }
 
 
+###############################################################################
 def test_export_dataset_dashboard_pdf_generates_pdf_bytes() -> None:
     service = DashboardExportService()
     result = service.export_dashboard_pdf(
@@ -161,6 +165,7 @@ def test_export_dataset_dashboard_pdf_generates_pdf_bytes() -> None:
     assert len(result.pdf_bytes) > 5000
 
 
+###############################################################################
 def test_export_tokenizer_dashboard_pdf_generates_pdf_bytes() -> None:
     service = DashboardExportService()
     result = service.export_dashboard_pdf(
@@ -176,6 +181,7 @@ def test_export_tokenizer_dashboard_pdf_generates_pdf_bytes() -> None:
     assert len(result.pdf_bytes) > 4000
 
 
+###############################################################################
 def test_export_benchmark_dashboard_pdf_generates_pdf_bytes() -> None:
     service = DashboardExportService()
     result = service.export_dashboard_pdf(
@@ -191,6 +197,7 @@ def test_export_benchmark_dashboard_pdf_generates_pdf_bytes() -> None:
     assert len(result.pdf_bytes) > 5000
 
 
+###############################################################################
 def test_export_dashboard_pdf_rejects_unsupported_dashboard_type() -> None:
     service = DashboardExportService()
     with pytest.raises(ValueError, match="Unsupported dashboard type"):

@@ -12,9 +12,10 @@ from server.repositories.schemas.models import (
     Tokenizer,
 )
 
-
 ###############################################################################
 class BenchmarkRepository:
+
+    # -------------------------------------------------------------------------
     def __init__(self, database: TKBENDatabase | None = None) -> None:
         self.database = database or get_database()
 

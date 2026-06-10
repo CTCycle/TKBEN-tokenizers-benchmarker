@@ -39,7 +39,6 @@ from server.services.datasets import DatasetService
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_DATASETS, tags=["datasets"])
 
-
 ###############################################################################
 @router.get(
     API_ROUTE_DATASETS_LIST,
@@ -51,7 +50,6 @@ async def list_datasets() -> DatasetListResponse:
     datasets = await asyncio.to_thread(service.get_dataset_previews)
     return DatasetListResponse(datasets=datasets)
 
-
 ###############################################################################
 @router.get(
     API_ROUTE_DATASETS_METRICS_CATALOG,
@@ -62,7 +60,6 @@ async def get_dataset_metrics_catalog() -> DatasetMetricCatalogResponse:
     service = DatasetService()
     categories = await asyncio.to_thread(service.get_metric_catalog)
     return DatasetMetricCatalogResponse(categories=categories)
-
 
 ###############################################################################
 @router.post(
@@ -91,7 +88,6 @@ async def download_dataset(
         init_failure_detail="Failed to initialize dataset download job.",
         message="Dataset download job started.",
     )
-
 
 ###############################################################################
 @router.post(
@@ -145,7 +141,6 @@ async def upload_custom_dataset(
         message="Custom dataset upload job started.",
     )
 
-
 ###############################################################################
 @router.post(
     API_ROUTE_DATASETS_ANALYZE,
@@ -190,7 +185,6 @@ async def analyze_dataset(
         check_conflict=False,
     )
 
-
 ###############################################################################
 @router.get(
     API_ROUTE_DATASETS_REPORT_LATEST,
@@ -217,7 +211,6 @@ async def get_latest_dataset_report(dataset_name: str) -> DatasetAnalysisRespons
         )
     return DatasetAnalysisResponse(status="success", **report)
 
-
 ###############################################################################
 @router.get(
     API_ROUTE_DATASETS_REPORT_BY_ID,
@@ -233,7 +226,6 @@ async def get_dataset_report_by_id(report_id: int) -> DatasetAnalysisResponse:
             detail=f"Dataset validation report '{report_id}' not found.",
         )
     return DatasetAnalysisResponse(status="success", **report)
-
 
 ###############################################################################
 @router.delete(

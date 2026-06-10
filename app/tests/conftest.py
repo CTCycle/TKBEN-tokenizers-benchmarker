@@ -12,6 +12,7 @@ import pytest
 from playwright.sync_api import APIRequestContext
 
 
+###############################################################################
 def _read_env(name: str, default: str | None = None) -> str | None:
     value = os.getenv(name, default)
     if value is None:
@@ -20,12 +21,14 @@ def _read_env(name: str, default: str | None = None) -> str | None:
     return normalized or default
 
 
+###############################################################################
 def _normalize_host(host: str) -> str:
     if host in {"0.0.0.0", "::"}:
         return "127.0.0.1"
     return host
 
 
+###############################################################################
 def _build_base_url(
     host_env: str, port_env: str, default_host: str, default_port: str
 ) -> str:
@@ -48,18 +51,21 @@ API_BASE_URL = (
 )
 
 
+###############################################################################
 @pytest.fixture(scope="session")
 def base_url() -> str:
     """Returns the base URL of the UI."""
     return UI_BASE_URL
 
 
+###############################################################################
 @pytest.fixture(scope="session")
 def api_base_url() -> str:
     """Returns the base URL of the API."""
     return API_BASE_URL
 
 
+###############################################################################
 @pytest.fixture(scope="session")
 def api_context(playwright) -> APIRequestContext:
     """
@@ -71,6 +77,7 @@ def api_context(playwright) -> APIRequestContext:
     context.dispose()
 
 
+###############################################################################
 def wait_for_job_completion(
     api_context: APIRequestContext,
     job_id: str,
@@ -92,6 +99,7 @@ def wait_for_job_completion(
         time.sleep(max(poll_interval, 0.1))
 
 
+###############################################################################
 @pytest.fixture(scope="session")
 def job_waiter(api_context: APIRequestContext):
     def _wait(
@@ -107,6 +115,7 @@ def job_waiter(api_context: APIRequestContext):
     return _wait
 
 
+###############################################################################
 @pytest.fixture(scope="session")
 def sample_dataset_payload() -> tuple[str, str, bytes]:
     """
@@ -118,6 +127,7 @@ def sample_dataset_payload() -> tuple[str, str, bytes]:
     return filename, dataset_name, csv_content.encode("utf-8")
 
 
+###############################################################################
 @pytest.fixture(scope="session")
 def uploaded_dataset(
     api_context: APIRequestContext,

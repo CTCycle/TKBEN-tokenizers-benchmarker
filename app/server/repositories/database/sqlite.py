@@ -16,7 +16,6 @@ from server.configurations import DatabaseSettings
 from server.repositories.schemas.models import Base
 from server.repositories.database.utils import normalize_sqlite_path
 
-
 ###############################################################################
 class SQLiteRepository:
     IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -24,6 +23,7 @@ class SQLiteRepository:
     # statements may add a few bound values beyond the raw row payload.
     SQLITE_MAX_VARIABLES = 900
 
+    # -------------------------------------------------------------------------
     def __init__(
         self, settings: DatabaseSettings, initialize_schema: bool = False
     ) -> None:
@@ -156,7 +156,7 @@ class SQLiteRepository:
         table_cls = self.get_table_class(table_name)
         self.upsert_dataframe(df, table_cls)
 
-    ###############################################################################
+    # -------------------------------------------------------------------------
     def insert_dataframe(
         self, df: pd.DataFrame, table_name: str, ignore_duplicates: bool = True
     ) -> None:
@@ -198,7 +198,7 @@ class SQLiteRepository:
         finally:
             session.close()
 
-    ###############################################################################
+    # -------------------------------------------------------------------------
     def get_distinct_values(self, table_name: str, column: str) -> list[str]:
         """Get distinct values from a column in the specified table."""
         safe_name = self.sanitize_identifier(table_name)

@@ -3,15 +3,20 @@ from __future__ import annotations
 from server.services.dataset_jobs import DatasetJobService
 
 
+###############################################################################
 class DummyJobManager:
+
+    # -------------------------------------------------------------------------
     def should_stop(self, job_id: str) -> bool:
         del job_id
         return False
 
+    # -------------------------------------------------------------------------
     def update_progress(self, job_id: str, value: float) -> None:
         del job_id, value
 
 
+###############################################################################
 def test_build_analysis_payload_preserves_contract() -> None:
     service = DatasetJobService()
     payload = service.build_analysis_payload(
@@ -27,6 +32,7 @@ def test_build_analysis_payload_preserves_contract() -> None:
     assert payload["report_id"] == 1
 
 
+###############################################################################
 def test_extract_configuration_handles_missing() -> None:
     service = DatasetJobService()
     assert service.extract_configuration({}) is None
@@ -35,10 +41,14 @@ def test_extract_configuration_handles_missing() -> None:
     )
 
 
+###############################################################################
 def test_run_download_job_returns_service_payload(monkeypatch) -> None:
     service = DatasetJobService()
 
+    ###############################################################################
     class FakeDatasetService:
+
+        # -------------------------------------------------------------------------
         def download_and_persist(self, **kwargs):
             assert kwargs["corpus"] == "wikitext"
             return {

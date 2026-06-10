@@ -13,12 +13,10 @@ from server.common.utils.security import (
 WORD_TOKEN_DESCRIPTION = "Word token"
 FREQUENCY_COUNT_DESCRIPTION = "Frequency count"
 
-
 ###############################################################################
 class DatasetPayload(BaseModel):
     columns: list[str] = Field(default_factory=list)
     records: list[dict[str, Any]] = Field(default_factory=list)
-
 
 ###############################################################################
 class HistogramData(BaseModel):
@@ -33,7 +31,6 @@ class HistogramData(BaseModel):
     max_length: int = Field(default=0, description="Maximum document length")
     mean_length: float = Field(default=0.0, description="Mean document length")
     median_length: float = Field(default=0.0, description="Median document length")
-
 
 ###############################################################################
 class DatasetDownloadConfigs(BaseModel):
@@ -51,7 +48,6 @@ class DatasetDownloadConfigs(BaseModel):
             max_length=120,
         )
 
-
 ###############################################################################
 class DatasetDownloadRequest(BaseModel):
     corpus: str = Field(..., description="HuggingFace dataset corpus identifier")
@@ -66,7 +62,6 @@ class DatasetDownloadRequest(BaseModel):
     def validate_corpus(cls, value: str) -> str:
         return normalize_identifier(value, "Dataset id", max_length=160)
 
-
 ###############################################################################
 class DatasetDownloadResponse(BaseModel):
     status: str = Field(default="success")
@@ -76,13 +71,11 @@ class DatasetDownloadResponse(BaseModel):
     saved_count: int = Field(..., description="Number of documents saved to database")
     histogram: HistogramData = Field(..., description="Document length distribution")
 
-
 ###############################################################################
 class DatasetLoadResponse(BaseModel):
     status: str = Field(default="success")
     summary: str = Field(default="")
     dataset: DatasetPayload | dict[str, Any] | None = None
-
 
 ###############################################################################
 class CustomDatasetUploadResponse(BaseModel):
@@ -94,7 +87,6 @@ class CustomDatasetUploadResponse(BaseModel):
     document_count: int = Field(..., description="Total documents in dataset")
     saved_count: int = Field(..., description="Documents saved to database")
     histogram: HistogramData = Field(..., description="Document length distribution")
-
 
 ###############################################################################
 class DatasetAnalysisRequest(BaseModel):
@@ -164,12 +156,10 @@ class DatasetAnalysisRequest(BaseModel):
             raise ValueError("Too many metric keys requested (max 256).")
         return normalized
 
-
 ###############################################################################
 class WordFrequency(BaseModel):
     word: str = Field(..., description=WORD_TOKEN_DESCRIPTION)
     count: int = Field(..., description=FREQUENCY_COUNT_DESCRIPTION)
-
 
 ###############################################################################
 class WordLengthItem(BaseModel):
@@ -177,13 +167,11 @@ class WordLengthItem(BaseModel):
     length: int = Field(..., description="Character length of word")
     count: int = Field(..., description=FREQUENCY_COUNT_DESCRIPTION)
 
-
 ###############################################################################
 class WordCloudTerm(BaseModel):
     word: str = Field(..., description=WORD_TOKEN_DESCRIPTION)
     count: int = Field(..., description=FREQUENCY_COUNT_DESCRIPTION)
     weight: int = Field(..., description="Relative display weight (1-100)")
-
 
 ###############################################################################
 class PerDocumentStats(BaseModel):
@@ -192,7 +180,6 @@ class PerDocumentStats(BaseModel):
     word_counts: list[int] = Field(default_factory=list)
     avg_word_lengths: list[float] = Field(default_factory=list)
     std_word_lengths: list[float] = Field(default_factory=list)
-
 
 ###############################################################################
 class DatasetStatisticsSummary(BaseModel):
@@ -211,7 +198,6 @@ class DatasetStatisticsSummary(BaseModel):
     mean_std_word_length: float = Field(
         default=0.0, description="Mean std deviation of word length"
     )
-
 
 ###############################################################################
 class DatasetAnalysisResponse(BaseModel):
@@ -273,7 +259,6 @@ class DatasetAnalysisResponse(BaseModel):
         description="Compact per-document statistics arrays ordered by document_id",
     )
 
-
 ###############################################################################
 class DatasetMetricCatalogMetric(BaseModel):
     key: str = Field(..., description="Stable metric key")
@@ -285,24 +270,20 @@ class DatasetMetricCatalogMetric(BaseModel):
     )
     core: bool = Field(default=False, description="High-signal core metric")
 
-
 ###############################################################################
 class DatasetMetricCatalogCategory(BaseModel):
     category_key: str = Field(..., description="Category key")
     category_label: str = Field(..., description="Category label")
     metrics: list[DatasetMetricCatalogMetric] = Field(default_factory=list)
 
-
 ###############################################################################
 class DatasetMetricCatalogResponse(BaseModel):
     categories: list[DatasetMetricCatalogCategory] = Field(default_factory=list)
-
 
 ###############################################################################
 class DatasetPreview(BaseModel):
     dataset_name: str = Field(..., description="Dataset identifier")
     document_count: int = Field(..., description="Number of documents")
-
 
 ###############################################################################
 class DatasetListResponse(BaseModel):
@@ -311,7 +292,6 @@ class DatasetListResponse(BaseModel):
     datasets: list[DatasetPreview] = Field(
         default_factory=list, description="List of dataset names in the database"
     )
-
 
 ###############################################################################
 class DatasetDeleteResponse(BaseModel):

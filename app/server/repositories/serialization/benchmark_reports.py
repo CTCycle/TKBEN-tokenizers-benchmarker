@@ -11,9 +11,10 @@ from server.repositories.benchmarks import BenchmarkRepository
 from server.repositories.queries.data import DataRepositoryQueries
 from server.repositories.schemas.models import BenchmarkReport
 
-
 ###############################################################################
 class BenchmarkReportSerializer:
+
+    # -------------------------------------------------------------------------
     def __init__(self, queries: DataRepositoryQueries | None = None) -> None:
         self.queries = queries or DataRepositoryQueries()
         self.benchmark_report_table = BenchmarkReport.__tablename__

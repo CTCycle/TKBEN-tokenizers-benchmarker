@@ -24,9 +24,10 @@ from server.repositories.schemas.models import (
 
 K_ERROR = "k error"
 
-
 ###############################################################################
 class DatasetSerializer:
+
+    # -------------------------------------------------------------------------
     def __init__(self, queries: DataRepositoryQueries | None = None) -> None:
         self.queries = queries or DataRepositoryQueries()
         self.dataset_dimension_table = Dataset.__tablename__
@@ -252,6 +253,7 @@ class DatasetSerializer:
             session.execute(stmt)
             session.commit()
 
+    # -------------------------------------------------------------------------
     def ensure_metric_types_seeded(self, metric_catalog: list[dict[str, Any]]) -> None:
         entries: list[dict[str, str]] = []
         for category in metric_catalog:
@@ -685,9 +687,10 @@ class DatasetSerializer:
         }
         return self._build_session_report_response(mapped)
 
-
 ###############################################################################
 class TokenizerReportSerializer:
+
+    # -------------------------------------------------------------------------
     def __init__(self, queries: DataRepositoryQueries | None = None) -> None:
         self.queries = queries or DataRepositoryQueries()
         self.tokenizer_table = Tokenizer.__tablename__

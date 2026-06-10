@@ -4,6 +4,7 @@ from server.domain.benchmark_observations import BatchObservation
 from server.services.benchmark_engine import summarize_observations
 
 
+###############################################################################
 def test_latency_percentiles_come_from_samples() -> None:
     observations = [
         BatchObservation("t", 0, 0, 1, 10, 1, 0, 10_000_000, 1.0),

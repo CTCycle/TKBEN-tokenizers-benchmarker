@@ -18,7 +18,6 @@ from server.configurations.startup import (
 )
 from server.repositories.database.initializer import _resolve_postgres_engine
 
-
 ###############################################################################
 @pytest.fixture(autouse=True)
 def reset_configuration_state() -> None:
@@ -28,16 +27,13 @@ def reset_configuration_state() -> None:
     reload_settings_for_tests()
     bootstrap.reset_environment_bootstrap_for_tests()
 
-
 ###############################################################################
 def _write_env(path: Path, lines: list[str]) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-
 ###############################################################################
 def _write_json(path: Path, payload: dict[str, object]) -> None:
     path.write_text(json.dumps(payload), encoding="utf-8")
-
 
 ###############################################################################
 def _minimal_config_json() -> dict[str, object]:
@@ -48,7 +44,6 @@ def _minimal_config_json() -> dict[str, object]:
         "benchmarks": {},
         "jobs": {"polling_interval": 1.0},
     }
-
 
 ###############################################################################
 def test_bootstrap_environment_overrides_existing_process_values(
@@ -64,7 +59,6 @@ def test_bootstrap_environment_overrides_existing_process_values(
 
     assert os.getenv("FASTAPI_HOST") == "from_dotenv"
 
-
 ###############################################################################
 def test_bootstrap_is_idempotent_without_force(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -79,7 +73,6 @@ def test_bootstrap_is_idempotent_without_force(
     bootstrap.ensure_environment_loaded()
 
     assert os.getenv("FASTAPI_HOST") == "first"
-
 
 ###############################################################################
 def test_server_package_import_bootstraps_env_early(
@@ -97,7 +90,6 @@ def test_server_package_import_bootstraps_env_early(
 
     assert os.getenv("TKBEN_TAURI_MODE") == "true"
 
-
 ###############################################################################
 def test_missing_configuration_file_fails_fast(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -108,7 +100,6 @@ def test_missing_configuration_file_fails_fast(
 
     with pytest.raises(RuntimeError, match="Configuration file not found"):
         _ = get_server_settings(config_path=tmp_path / "missing.json")
-
 
 ###############################################################################
 def test_invalid_configuration_file_fails_fast(
@@ -123,7 +114,6 @@ def test_invalid_configuration_file_fails_fast(
 
     with pytest.raises(RuntimeError, match="Unable to load configuration"):
         _ = get_server_settings(config_path=config_path)
-
 
 ###############################################################################
 def test_json_owned_db_embedded_ignores_environment_overlap(
@@ -151,7 +141,6 @@ def test_json_owned_db_embedded_ignores_environment_overlap(
     assert settings.database.engine is None
     assert settings.database.host is None
 
-
 ###############################################################################
 def test_external_database_requires_host_name_and_user(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -177,7 +166,6 @@ def test_external_database_requires_host_name_and_user(
         match="database.host, database.database_name, database.username",
     ):
         _ = get_server_settings(config_path=config_path)
-
 
 ###############################################################################
 def test_get_server_settings_path_scoped_loading_is_deterministic(
@@ -222,7 +210,6 @@ def test_get_server_settings_path_scoped_loading_is_deterministic(
     assert settings_a.benchmarks.streaming_batch_size == 2000
     assert settings_a.jobs.polling_interval == 2.5
 
-
 ###############################################################################
 def test_configuration_manager_get_block_and_get_value(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -246,7 +233,6 @@ def test_configuration_manager_get_block_and_get_value(
     assert manager.get_value("datasets", "histogram_bins") == 25
     assert manager.get_value("datasets", "missing", 99) == 99
     assert manager.get_block("missing") == {}
-
 
 ###############################################################################
 def test_configuration_manager_reload_reflects_file_changes(
@@ -280,7 +266,6 @@ def test_configuration_manager_reload_reflects_file_changes(
     assert manager.server_settings.datasets.histogram_bins == 45
     assert manager.get_value("datasets", "histogram_bins") == 45
 
-
 ###############################################################################
 def test_configuration_payload_omits_fitting_block(tmp_path: Path) -> None:
     config_path = tmp_path / "configurations.json"
@@ -290,7 +275,6 @@ def test_configuration_payload_omits_fitting_block(tmp_path: Path) -> None:
 
     assert manager.get_block("fitting") == {}
     assert not hasattr(manager.server_settings, "fitting")
-
 
 ###############################################################################
 @pytest.mark.parametrize(
@@ -329,7 +313,6 @@ def test_external_database_rejects_legacy_engine_aliases(
     with pytest.raises(ValueError, match="Unsupported database engine"):
         _resolve_postgres_engine(settings.database.engine)
 
-
 ###############################################################################
 def test_allow_key_reveal_reads_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ALLOW_KEY_REVEAL", "true")
@@ -337,7 +320,6 @@ def test_allow_key_reveal_reads_environment(monkeypatch: pytest.MonkeyPatch) -> 
 
     monkeypatch.delenv("ALLOW_KEY_REVEAL", raising=False)
     assert is_key_reveal_enabled() is False
-
 
 ###############################################################################
 def test_hf_key_cipher_reads_environment(monkeypatch: pytest.MonkeyPatch) -> None:

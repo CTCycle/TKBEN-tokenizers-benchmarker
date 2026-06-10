@@ -4,6 +4,7 @@ from collections.abc import Iterable, Iterator
 from itertools import islice
 
 
+###############################################################################
 def normalize_benchmark_text(value: object) -> str | None:
     if value is None:
         return None
@@ -12,6 +13,7 @@ def normalize_benchmark_text(value: object) -> str | None:
     return str(value)
 
 
+###############################################################################
 def iter_limited_rows(
     rows: Iterable[tuple[int, object]],
     max_documents: int | None,
@@ -27,6 +29,7 @@ def iter_limited_rows(
         yield int(row_id), text
 
 
+###############################################################################
 def iter_text_batches(
     rows: Iterable[tuple[int, str]],
     batch_size: int,

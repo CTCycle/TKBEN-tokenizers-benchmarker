@@ -6,6 +6,7 @@ Covers /api/datasets/list, /api/datasets/upload, and /api/datasets/analyze.
 from playwright.sync_api import APIRequestContext
 
 
+###############################################################################
 def test_list_datasets_returns_list(api_context: APIRequestContext) -> None:
     """GET /api/datasets/list should return a list container."""
     response = api_context.get("/api/datasets/list")
@@ -16,6 +17,7 @@ def test_list_datasets_returns_list(api_context: APIRequestContext) -> None:
     assert isinstance(data["datasets"], list)
 
 
+###############################################################################
 def test_list_datasets_includes_uploaded_dataset(
     api_context: APIRequestContext,
     uploaded_dataset: dict,
@@ -32,12 +34,14 @@ def test_list_datasets_includes_uploaded_dataset(
     )
 
 
+###############################################################################
 def test_upload_requires_file(api_context: APIRequestContext) -> None:
     """POST /api/datasets/upload without a file should return 422."""
     response = api_context.post("/api/datasets/upload")
     assert response.status == 422
 
 
+###############################################################################
 def test_upload_rejects_invalid_extension(api_context: APIRequestContext) -> None:
     """POST /api/datasets/upload with a non-CSV/XLSX file should return 400."""
     response = api_context.post(
@@ -55,6 +59,7 @@ def test_upload_rejects_invalid_extension(api_context: APIRequestContext) -> Non
     assert "Unsupported file type" in data.get("detail", "")
 
 
+###############################################################################
 def test_upload_accepts_csv_and_returns_histogram(
     uploaded_dataset: dict,
 ) -> None:
@@ -70,6 +75,7 @@ def test_upload_accepts_csv_and_returns_histogram(
     assert "max_length" in histogram
 
 
+###############################################################################
 def test_analyze_missing_dataset_returns_404(
     api_context: APIRequestContext,
 ) -> None:
@@ -81,6 +87,7 @@ def test_analyze_missing_dataset_returns_404(
     assert response.status == 404
 
 
+###############################################################################
 def test_analyze_uploaded_dataset_returns_stats(
     api_context: APIRequestContext,
     uploaded_dataset: dict,

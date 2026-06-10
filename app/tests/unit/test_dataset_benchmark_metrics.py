@@ -7,6 +7,7 @@ from tests.unit.benchmark_metric_test_support import (
 )
 
 
+###############################################################################
 def test_benchmark_metric_partition_covers_entire_catalog() -> None:
     overlap = DATASET_BENCHMARK_METRIC_KEYS.intersection(
         TOKENIZER_BENCHMARK_METRIC_KEYS
@@ -21,6 +22,7 @@ def test_benchmark_metric_partition_covers_entire_catalog() -> None:
     )
 
 
+###############################################################################
 def test_dataset_benchmark_expected_fixture_matches_partition() -> None:
     expected_keys = set(TOKENIZER_BENCHMARK_METRIC_KEYS).union(
         DATASET_BENCHMARK_METRIC_KEYS

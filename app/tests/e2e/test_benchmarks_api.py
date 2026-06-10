@@ -12,6 +12,7 @@ from playwright.sync_api import APIRequestContext
 RUN_BENCHMARKS = os.getenv("E2E_RUN_BENCHMARKS", "").lower() in ("1", "true", "yes")
 
 
+###############################################################################
 def test_run_benchmarks_requires_tokenizers(api_context: APIRequestContext) -> None:
     """POST /api/benchmarks/run should reject empty tokenizer lists."""
     response = api_context.post(
@@ -23,6 +24,7 @@ def test_run_benchmarks_requires_tokenizers(api_context: APIRequestContext) -> N
     assert "At least one tokenizer" in data.get("detail", "")
 
 
+###############################################################################
 def test_run_benchmarks_requires_dataset(api_context: APIRequestContext) -> None:
     """POST /api/benchmarks/run should reject missing dataset names."""
     response = api_context.post(
@@ -37,6 +39,7 @@ def test_run_benchmarks_requires_dataset(api_context: APIRequestContext) -> None
     assert "Dataset name must be specified" in data.get("detail", "")
 
 
+###############################################################################
 def test_run_benchmarks_missing_dataset_returns_400(
     api_context: APIRequestContext,
 ) -> None:
@@ -53,6 +56,7 @@ def test_run_benchmarks_missing_dataset_returns_400(
     assert "not found or empty" in data.get("detail", "").lower()
 
 
+###############################################################################
 def test_get_benchmark_metrics_catalog_returns_categories(
     api_context: APIRequestContext,
 ) -> None:
@@ -68,6 +72,7 @@ def test_get_benchmark_metrics_catalog_returns_categories(
     assert isinstance(first.get("metrics"), list)
 
 
+###############################################################################
 def test_list_benchmark_reports_returns_payload(
     api_context: APIRequestContext,
 ) -> None:
@@ -78,6 +83,7 @@ def test_list_benchmark_reports_returns_payload(
     assert isinstance(data.get("reports", []), list)
 
 
+###############################################################################
 @pytest.mark.skipif(
     not RUN_BENCHMARKS,
     reason="Set E2E_RUN_BENCHMARKS=1 to enable benchmark execution.",

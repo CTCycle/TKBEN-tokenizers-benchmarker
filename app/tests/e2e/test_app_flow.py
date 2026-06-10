@@ -11,6 +11,7 @@ from playwright.sync_api import Page, expect
 from playwright.sync_api import APIRequestContext
 
 
+###############################################################################
 def _upload_dataset_for_ui_test(
     api_context: APIRequestContext,
     job_waiter,
@@ -42,15 +43,18 @@ def _upload_dataset_for_ui_test(
     return dataset_name
 
 
+###############################################################################
 class TestAppShell:
     """Tests for core layout and routing."""
 
+    # -------------------------------------------------------------------------
     def test_root_redirects_to_dataset(self, page: Page, base_url: str) -> None:
         """The root route should redirect to the dataset page."""
         page.goto(base_url)
         expect(page).to_have_url(re.compile(r".*/dataset/?$"))
         expect(page.get_by_text("Dataset Usage")).to_be_visible()
 
+    # -------------------------------------------------------------------------
     def test_sidebar_links_are_visible(self, page: Page, base_url: str) -> None:
         """Sidebar navigation should expose primary sections."""
         page.goto(f"{base_url}/dataset")
@@ -58,6 +62,7 @@ class TestAppShell:
         expect(page.get_by_role("button", name="Tokenizers")).to_be_visible()
         expect(page.get_by_role("button", name="Cross Benchmark")).to_be_visible()
 
+    # -------------------------------------------------------------------------
     def test_unknown_route_redirects_to_dataset(
         self, page: Page, base_url: str
     ) -> None:
@@ -66,9 +71,11 @@ class TestAppShell:
         expect(page).to_have_url(re.compile(r".*/dataset/?$"))
 
 
+###############################################################################
 class TestDatasetPage:
     """Tests for dataset page UI elements."""
 
+    # -------------------------------------------------------------------------
     def test_dataset_page_panels_render(self, page: Page, base_url: str) -> None:
         """Dataset page should show the main layout panels."""
         page.goto(f"{base_url}/dataset")
@@ -76,6 +83,7 @@ class TestDatasetPage:
         expect(page.get_by_text("Dataset Preview")).to_be_visible()
         expect(page.get_by_role("button", name="Add dataset")).to_be_visible()
 
+    # -------------------------------------------------------------------------
     def test_row_click_loads_latest_report_for_selected_dataset(
         self,
         page: Page,
@@ -150,6 +158,7 @@ class TestDatasetPage:
             page.locator(".dashboard-panel .panel-description").first
         ).to_contain_text(f"Latest persisted session for {with_report_dataset}")
 
+    # -------------------------------------------------------------------------
     def test_row_click_suppresses_not_found_banner_but_explicit_load_keeps_it(
         self,
         page: Page,
@@ -184,9 +193,11 @@ class TestDatasetPage:
         )
 
 
+###############################################################################
 class TestTokenizersPage:
     """Tests for tokenizers page UI elements."""
 
+    # -------------------------------------------------------------------------
     def test_tokenizers_page_loads(self, page: Page, base_url: str) -> None:
         """Tokenizers page should render selection and report panels."""
         page.goto(f"{base_url}/tokenizers")
@@ -194,9 +205,11 @@ class TestTokenizersPage:
         expect(page.get_by_text("Tokenizers Dashboard")).to_be_visible()
 
 
+###############################################################################
 class TestCrossBenchmarkPage:
     """Tests for cross benchmark page UI elements."""
 
+    # -------------------------------------------------------------------------
     def test_cross_benchmark_page_loads_controls(
         self, page: Page, base_url: str
     ) -> None:
@@ -206,6 +219,7 @@ class TestCrossBenchmarkPage:
         expect(page.get_by_role("button", name="Start benchmark")).to_be_visible()
         expect(page.locator("#benchmark-report-selector")).to_be_visible()
 
+    # -------------------------------------------------------------------------
     def test_cross_benchmark_wizard_navigation_and_validation(
         self,
         page: Page,
@@ -221,6 +235,7 @@ class TestCrossBenchmarkPage:
         expect(page.get_by_role("button", name="Back")).to_be_enabled()
         expect(page.get_by_role("button", name="Next")).to_be_disabled()
 
+    # -------------------------------------------------------------------------
     def test_cross_benchmark_shows_diagnostics_for_failed_tokenizer_report(
         self,
         page: Page,

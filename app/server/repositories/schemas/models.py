@@ -16,7 +16,6 @@ from server.repositories.schemas.types import JSONMapping, JSONSequence
 
 Base = declarative_base()
 
-
 ###############################################################################
 class Dataset(Base):
     __tablename__ = "dataset"
@@ -37,7 +36,6 @@ class Dataset(Base):
         cascade="all, delete-orphan",
     )
 
-
 ###############################################################################
 class Tokenizer(Base):
     __tablename__ = "tokenizer"
@@ -50,7 +48,6 @@ class Tokenizer(Base):
         "TokenizerVocabulary", back_populates="tokenizer", cascade="all, delete-orphan"
     )
 
-
 ###############################################################################
 class HFAccessKey(Base):
     __tablename__ = "hf_access_keys"
@@ -59,7 +56,6 @@ class HFAccessKey(Base):
     created_at = mapped_column(DateTime, nullable=False)
     is_active = mapped_column(Boolean, nullable=False, default=False)
     __table_args__ = (Index("ix_hf_access_keys_is_active", "is_active"),)
-
 
 ###############################################################################
 class DatasetDocument(Base):
@@ -74,7 +70,6 @@ class DatasetDocument(Base):
     __table_args__ = (Index("ix_dataset_document_dataset_id_id", "dataset_id", "id"),)
     dataset = relationship("Dataset", back_populates="documents")
     metric_values = relationship("MetricValue", back_populates="document")
-
 
 ###############################################################################
 class AnalysisSession(Base):
@@ -108,7 +103,6 @@ class AnalysisSession(Base):
         "HistogramArtifact", back_populates="session", cascade="all, delete-orphan"
     )
 
-
 ###############################################################################
 class MetricType(Base):
     __tablename__ = "metric_type"
@@ -122,7 +116,6 @@ class MetricType(Base):
     __table_args__ = (Index("ix_metric_type_category", "category"),)
     metric_values = relationship("MetricValue", back_populates="metric_type")
     histograms = relationship("HistogramArtifact", back_populates="metric_type")
-
 
 ###############################################################################
 class MetricValue(Base):
@@ -155,7 +148,6 @@ class MetricValue(Base):
     metric_type = relationship("MetricType", back_populates="metric_values")
     document = relationship("DatasetDocument", back_populates="metric_values")
 
-
 ###############################################################################
 class HistogramArtifact(Base):
     __tablename__ = "histogram_artifact"
@@ -185,6 +177,7 @@ class HistogramArtifact(Base):
     metric_type = relationship("MetricType", back_populates="histograms")
 
 
+###############################################################################
 class TokenizerVocabulary(Base):
     __tablename__ = "tokenizer_vocabulary"
     id = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
@@ -201,7 +194,6 @@ class TokenizerVocabulary(Base):
         Index("ix_tokenizer_vocabulary_tokenizer_id", "tokenizer_id"),
     )
     tokenizer = relationship("Tokenizer", back_populates="vocabularies")
-
 
 ###############################################################################
 class TokenizerReport(Base):
@@ -225,7 +217,6 @@ class TokenizerReport(Base):
     )
     tokenizer = relationship("Tokenizer", back_populates="reports")
 
-
 ###############################################################################
 class BenchmarkReport(Base):
     __tablename__ = "benchmark_report"
@@ -247,6 +238,7 @@ class BenchmarkReport(Base):
     dataset = relationship("Dataset", back_populates="benchmark_reports")
 
 
+###############################################################################
 class DatasetValidationReport(Base):
     __tablename__ = "dataset_validation_report"
     id = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)

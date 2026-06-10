@@ -19,6 +19,7 @@ TRACKED_PACKAGES = [
 ]
 
 
+###############################################################################
 def collect_package_versions() -> dict[str, str]:
     versions: dict[str, str] = {}
     for package_name in TRACKED_PACKAGES:
@@ -29,6 +30,7 @@ def collect_package_versions() -> dict[str, str]:
     return versions
 
 
+###############################################################################
 def collect_runtime_environment() -> dict[str, object]:
     env_keys = [
         "TOKENIZERS_PARALLELISM",
