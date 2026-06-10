@@ -314,9 +314,7 @@ goto :menu
 if exist "%tauri_clean_script%" (
   powershell -NoProfile -ExecutionPolicy Bypass -File "%tauri_clean_script%"
 ) else (
-  if exist "%tauri_dir%\r" rd /s /q "%tauri_dir%\r"
-  if exist "%tauri_dir%\target\release" rd /s /q "%tauri_dir%\target\release"
-  if exist "%tauri_dir%\target" rd /s /q "%tauri_dir%\target"
+  if exist "%tauri_dir%" rd /s /q "%tauri_dir%"
   if exist "%repo_root%\release\windows" rd /s /q "%repo_root%\release\windows"
   for /r "%repo_root%" %%F in (*.exe) do del /q "%%F"
 )
