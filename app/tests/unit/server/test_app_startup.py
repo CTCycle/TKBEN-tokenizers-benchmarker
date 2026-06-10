@@ -10,6 +10,7 @@ from server import app as app_module
 from server.services import startup_validation
 
 
+###############################################################################
 def test_build_cors_origins_normalizes_local_hosts(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -21,6 +22,7 @@ def test_build_cors_origins_normalizes_local_hosts(
     assert origins == ["http://127.0.0.1:8000", "http://localhost:8000"]
 
 
+###############################################################################
 def test_build_cors_origins_rejects_invalid_port(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -30,6 +32,7 @@ def test_build_cors_origins_rejects_invalid_port(
         startup_validation.build_cors_origins()
 
 
+###############################################################################
 def test_run_startup_validations_creates_runtime_directories(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -62,6 +65,7 @@ def test_run_startup_validations_creates_runtime_directories(
     assert templates_path.is_dir()
 
 
+###############################################################################
 def test_run_startup_validations_requires_env_file(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -75,6 +79,7 @@ def test_run_startup_validations_requires_env_file(
         )
 
 
+###############################################################################
 def test_create_app_initializes_startup_state(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -103,6 +108,7 @@ def test_create_app_initializes_startup_state(
     assert calls == ["validated", "database"]
 
 
+###############################################################################
 def test_create_app_redirects_root_in_web_mode(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -120,6 +126,7 @@ def test_create_app_redirects_root_in_web_mode(
     assert response.headers["location"] == "/docs"
 
 
+###############################################################################
 def test_create_app_serves_spa_in_tauri_mode(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

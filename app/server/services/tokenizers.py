@@ -22,7 +22,6 @@ from server.services.custom_tokenizers import get_custom_tokenizer_registry
 from server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
 from server.services.tokenizer_storage import TokenizerStorageMixin
 
-
 ###############################################################################
 class TokenizersService(TokenizerStorageMixin):
     """
@@ -48,6 +47,7 @@ class TokenizersService(TokenizerStorageMixin):
 
     REPORT_VERSION = 1
 
+    # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.repository = TokenizerRepository()
         self.key_service = HFAccessKeyService()

@@ -3,6 +3,7 @@ from __future__ import annotations
 from server.services.benchmark_metric_plan import build_metric_plan
 
 
+###############################################################################
 def test_metric_plan_flags_selected_metrics() -> None:
     plan = build_metric_plan(
         [

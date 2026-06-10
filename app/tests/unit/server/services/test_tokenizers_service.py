@@ -3,26 +3,35 @@ from __future__ import annotations
 from server.services.tokenizers import TokenizersService
 
 
+###############################################################################
 class FakeTokenizerRepository:
+
+    # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.inserted: list[str] = []
 
+    # -------------------------------------------------------------------------
     def tokenizer_exists(self, tokenizer_id: str) -> bool:
         return tokenizer_id == "exists"
 
+    # -------------------------------------------------------------------------
     def insert_if_missing(self, tokenizer_id: str) -> None:
         self.inserted.append(tokenizer_id)
 
+    # -------------------------------------------------------------------------
     def get_missing_tokenizers(self, tokenizer_ids: list[str]) -> list[str]:
         return [name for name in tokenizer_ids if name != "exists"]
 
+    # -------------------------------------------------------------------------
     def get_latest_tokenizer_report(self, tokenizer_name: str):
         return object() if tokenizer_name == "exists" else None
 
+    # -------------------------------------------------------------------------
     def get_tokenizer_report_by_id(self, report_id: int):
         return object() if report_id == 1 else None
 
 
+###############################################################################
 def test_tokenizers_service_uses_repository_layer(monkeypatch) -> None:
     service = TokenizersService()
     fake_repo = FakeTokenizerRepository()
@@ -36,6 +45,7 @@ def test_tokenizers_service_uses_repository_layer(monkeypatch) -> None:
     assert missing == ["missing"]
 
 
+###############################################################################
 def test_tokenizers_service_report_prechecks(monkeypatch) -> None:
     service = TokenizersService()
     service.repository = FakeTokenizerRepository()  # type: ignore[assignment]

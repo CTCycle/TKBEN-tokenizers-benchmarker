@@ -34,19 +34,23 @@ from server.services.startup_validation import (
 )
 
 
+###############################################################################
 def tauri_mode_enabled() -> bool:
     value = os.getenv("TKBEN_TAURI_MODE", "false").strip().lower()
     return value in {"1", "true", "yes", "on"}
 
 
+###############################################################################
 def packaged_client_available() -> bool:
     return CLIENT_INDEX_FILE_PATH.is_file()
 
 
+###############################################################################
 def serve_spa_root() -> FileResponse:
     return FileResponse(CLIENT_INDEX_FILE_PATH)
 
 
+###############################################################################
 def serve_spa_entrypoint(full_path: str) -> FileResponse:
     client_root = CLIENT_DIST_PATH.resolve()
     requested_path = (client_root / full_path).resolve()
@@ -57,14 +61,17 @@ def serve_spa_entrypoint(full_path: str) -> FileResponse:
     return FileResponse(CLIENT_INDEX_FILE_PATH)
 
 
+###############################################################################
 def redirect_to_docs() -> RedirectResponse:
     return RedirectResponse(url="/docs")
 
 
+###############################################################################
 def backend_healthcheck() -> dict[str, str]:
     return {"status": "ok"}
 
 
+###############################################################################
 def register_api_routers(application: FastAPI) -> None:
     application.add_api_route("/api/health", backend_healthcheck, methods=["GET"])
     for router in (
@@ -78,6 +85,7 @@ def register_api_routers(application: FastAPI) -> None:
         application.include_router(router, prefix="/api")
 
 
+###############################################################################
 def register_frontend_routes(application: FastAPI) -> None:
     if not tauri_mode_enabled() or not packaged_client_available():
         application.add_api_route("/", redirect_to_docs, methods=["GET"])
@@ -104,6 +112,7 @@ def register_frontend_routes(application: FastAPI) -> None:
     )
 
 
+###############################################################################
 @asynccontextmanager
 async def app_lifespan(application: FastAPI) -> AsyncIterator[None]:
     settings = get_server_settings()
@@ -118,6 +127,7 @@ async def app_lifespan(application: FastAPI) -> AsyncIterator[None]:
     yield
 
 
+###############################################################################
 def create_app() -> FastAPI:
     application = FastAPI(
         title=FASTAPI_TITLE,

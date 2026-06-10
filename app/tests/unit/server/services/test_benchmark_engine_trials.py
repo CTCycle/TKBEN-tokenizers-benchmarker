@@ -5,12 +5,15 @@ from server.services.benchmark_engine import run_tokenizer_trials
 from server.services.tokenizer_adapters import EncodedBatch
 
 
+###############################################################################
 class CountingAdapter:
     tokenizer_id = "dummy"
 
+    # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.calls = 0
 
+    # -------------------------------------------------------------------------
     def encode_batch(self, texts, **kwargs) -> EncodedBatch:  # type: ignore[no-untyped-def]
         del kwargs
         self.calls += 1
@@ -21,6 +24,7 @@ class CountingAdapter:
         )
 
 
+###############################################################################
 def test_warmup_excluded_and_timed_trials_control_observations() -> None:
     adapter = CountingAdapter()
     batches = [["a", "bb"], ["ccc"]]
@@ -35,6 +39,7 @@ def test_warmup_excluded_and_timed_trials_control_observations() -> None:
     assert adapter.calls == (2 * 2) + (3 * 2)
 
 
+###############################################################################
 def test_run_tokenizer_trials_respects_cancellation() -> None:
     adapter = CountingAdapter()
     batches = [["a"], ["b"]]

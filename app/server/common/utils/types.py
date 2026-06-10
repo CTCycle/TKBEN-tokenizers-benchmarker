@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any
 
-
 ###############################################################################
 def coerce_bool(value: Any, default: bool) -> bool:
     if isinstance(value, bool):
@@ -18,7 +17,6 @@ def coerce_bool(value: Any, default: bool) -> bool:
     if isinstance(value, (int, float)):
         return bool(value)
     return default
-
 
 ###############################################################################
 def coerce_int(
@@ -38,7 +36,6 @@ def coerce_int(
         candidate = maximum
     return candidate
 
-
 ###############################################################################
 def coerce_float(
     value: Any,
@@ -56,7 +53,6 @@ def coerce_float(
         candidate = maximum
     return candidate
 
-
 ###############################################################################
 def coerce_str(value: Any, default: str) -> str:
     if isinstance(value, str):
@@ -66,14 +62,12 @@ def coerce_str(value: Any, default: str) -> str:
         return default
     return str(value).strip() or default
 
-
 ###############################################################################
 def coerce_str_or_none(value: Any) -> str | None:
     if isinstance(value, str):
         stripped = value.strip()
         return stripped or None
     return None
-
 
 ###############################################################################
 def coerce_str_sequence(value: Any, default: Iterable[str]) -> tuple[str, ...]:

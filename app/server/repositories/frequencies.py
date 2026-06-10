@@ -11,18 +11,17 @@ from sqlalchemy.orm import Session, declarative_base, mapped_column, sessionmake
 
 Base = declarative_base()
 
-
 ###############################################################################
 class FrequencyEntry(Base):
     __tablename__ = "frequencies"
     token = mapped_column(String, primary_key=True, nullable=False)
     count = mapped_column(Integer, nullable=False, default=0, index=True)
 
-
 ###############################################################################
 class DiskBackedFrequencyStore:
     SQLITE_MAX_VARIABLES = 900
 
+    # -------------------------------------------------------------------------
     def __init__(self, memory_limit: int = 250_000) -> None:
         self.memory_limit = max(10_000, int(memory_limit))
         self.memory: Counter[str] = Counter()

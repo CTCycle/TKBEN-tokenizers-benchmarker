@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field, field_validator
 
 from server.common.utils.security import normalize_identifier
 
-
 ###############################################################################
 class TokenizerSignature(BaseModel):
     identifier: str
@@ -18,11 +17,9 @@ class TokenizerSignature(BaseModel):
     def validate_identifier(cls, value: str) -> str:
         return normalize_identifier(value, "Tokenizer identifier", max_length=160)
 
-
 ###############################################################################
 class TokenizerScanRequest(BaseModel):
     limit: int = Field(default=100, ge=1, le=1000)
-
 
 ###############################################################################
 class TokenizerScanResponse(BaseModel):
@@ -30,17 +27,14 @@ class TokenizerScanResponse(BaseModel):
     identifiers: list[str] = Field(default_factory=list)
     count: int = Field(default=0)
 
-
 ###############################################################################
 class TokenizerListItem(BaseModel):
     tokenizer_name: str
-
 
 ###############################################################################
 class TokenizerListResponse(BaseModel):
     tokenizers: list[TokenizerListItem] = Field(default_factory=list)
     count: int = Field(default=0)
-
 
 ###############################################################################
 class TokenizerDownloadRequest(BaseModel):
@@ -69,7 +63,6 @@ class TokenizerDownloadRequest(BaseModel):
             raise ValueError("Too many tokenizers requested (max 200).")
         return normalized
 
-
 ###############################################################################
 class TokenizerDownloadResponse(BaseModel):
     status: str = Field(default="success")
@@ -81,13 +74,11 @@ class TokenizerDownloadResponse(BaseModel):
     already_downloaded_count: int = Field(default=0)
     failed_count: int = Field(default=0)
 
-
 ###############################################################################
 class TokenizerSettingsResponse(BaseModel):
     default_scan_limit: int
     max_scan_limit: int
     min_scan_limit: int
-
 
 ###############################################################################
 class TokenizerUploadResponse(BaseModel):
@@ -96,7 +87,6 @@ class TokenizerUploadResponse(BaseModel):
     status: str = Field(default="success")
     tokenizer_name: str = Field(..., description="Name assigned to uploaded tokenizer")
     is_compatible: bool = Field(..., description="Whether tokenizer is compatible")
-
 
 ###############################################################################
 class TokenizerReportGenerateRequest(BaseModel):
@@ -108,7 +98,6 @@ class TokenizerReportGenerateRequest(BaseModel):
     def validate_tokenizer_name(cls, value: str) -> str:
         return normalize_identifier(value, "Tokenizer name", max_length=160)
 
-
 ###############################################################################
 class TokenizerLengthHistogram(BaseModel):
     bins: list[str] = Field(default_factory=list)
@@ -118,7 +107,6 @@ class TokenizerLengthHistogram(BaseModel):
     max_length: int = Field(default=0)
     mean_length: float = Field(default=0.0)
     median_length: float = Field(default=0.0)
-
 
 ###############################################################################
 class TokenizerReportResponse(BaseModel):
@@ -135,13 +123,11 @@ class TokenizerReportResponse(BaseModel):
     )
     vocabulary_size: int = Field(default=0)
 
-
 ###############################################################################
 class TokenizerVocabularyItem(BaseModel):
     token_id: int
     token: str
     length: int
-
 
 ###############################################################################
 class TokenizerVocabularyPageResponse(BaseModel):
@@ -152,7 +138,6 @@ class TokenizerVocabularyPageResponse(BaseModel):
     limit: int
     total: int
     items: list[TokenizerVocabularyItem] = Field(default_factory=list)
-
 
 ###############################################################################
 class CustomTokenizersDeleteResponse(BaseModel):

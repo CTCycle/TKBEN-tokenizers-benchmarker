@@ -1,6 +1,7 @@
 from server.repositories.frequencies import DiskBackedFrequencyStore
 
 
+###############################################################################
 def test_frequency_store_flush_batches_large_token_lookups() -> None:
     store = DiskBackedFrequencyStore(memory_limit=50_000)
     try:

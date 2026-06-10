@@ -13,6 +13,7 @@ from server.common.path import (
 )
 
 
+###############################################################################
 def ensure_runtime_directories() -> None:
     for directory in (
         LOGS_PATH,
@@ -23,11 +24,13 @@ def ensure_runtime_directories() -> None:
         directory.mkdir(parents=True, exist_ok=True)
 
 
+###############################################################################
 def validate_runtime_files() -> None:
     if not ENV_FILE_PATH.is_file():
         raise RuntimeError(f"Environment file not found: {ENV_FILE_PATH}")
 
 
+###############################################################################
 def validate_tauri_client_bundle(
     *,
     tauri_mode_enabled: bool,
@@ -41,6 +44,7 @@ def validate_tauri_client_bundle(
         )
 
 
+###############################################################################
 def build_cors_origins() -> list[str]:
     ui_host = _normalized_host(os.getenv("UI_HOST", "127.0.0.1"))
     ui_port = _normalized_port(os.getenv("UI_PORT", "8000"))
@@ -54,6 +58,7 @@ def build_cors_origins() -> list[str]:
     return sorted(f"http://{host}:{ui_port}" for host in hosts)
 
 
+###############################################################################
 def run_startup_validations(
     *,
     tauri_mode_enabled: bool,
@@ -67,6 +72,7 @@ def run_startup_validations(
     )
 
 
+###############################################################################
 def _normalized_host(raw_host: str) -> str:
     host = raw_host.strip() or "127.0.0.1"
     if host in {"0.0.0.0", "::"}:
@@ -74,6 +80,7 @@ def _normalized_host(raw_host: str) -> str:
     return host
 
 
+###############################################################################
 def _normalized_port(raw_port: str) -> str:
     port = raw_port.strip() or "8000"
     try:

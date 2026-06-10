@@ -16,15 +16,17 @@ from server.repositories.schemas.models import Base, Dataset, Tokenizer
 from server.services.benchmarks import BenchmarkService
 from server.services.tokenizers import TokenizersService
 
-
 ###############################################################################
 class FakeQueries:
+
+    # -------------------------------------------------------------------------
     def __init__(self, engine: sqlalchemy.Engine) -> None:
         self.engine = engine
 
-
 ###############################################################################
 class InsertCaptureConnection:
+
+    # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.statements: list[object] = []
 
@@ -42,9 +44,10 @@ class InsertCaptureConnection:
         self.statements.append(statement)
         return object()
 
-
 ###############################################################################
 class InsertCaptureEngine:
+
+    # -------------------------------------------------------------------------
     def __init__(self, connection: InsertCaptureConnection) -> None:
         self.connection = connection
 
@@ -52,9 +55,10 @@ class InsertCaptureEngine:
     def begin(self) -> InsertCaptureConnection:
         return self.connection
 
-
 ###############################################################################
 class InsertCaptureSession:
+
+    # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.statements: list[object] = []
 
@@ -75,7 +79,6 @@ class InsertCaptureSession:
     def close(self) -> None:
         return None
 
-
 ###############################################################################
 def build_metric_value_table() -> sqlalchemy.Table:
     metadata = sqlalchemy.MetaData()
@@ -90,7 +93,6 @@ def build_metric_value_table() -> sqlalchemy.Table:
         sqlalchemy.Column("json_value", sqlalchemy.JSON, nullable=True),
     )
 
-
 ###############################################################################
 def test_dataset_serializer_ensure_dataset_id_is_idempotent() -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
@@ -104,7 +106,6 @@ def test_dataset_serializer_ensure_dataset_id_is_idempotent() -> None:
     with Session(bind=engine) as session:
         count = session.execute(select(sqlalchemy.func.count(Dataset.id))).scalar_one()
     assert int(count) == 1
-
 
 ###############################################################################
 def test_tokenizers_service_insert_if_missing_is_idempotent(
@@ -123,7 +124,6 @@ def test_tokenizers_service_insert_if_missing_is_idempotent(
         rows = session.execute(select(Tokenizer)).scalars().all()
     assert len(rows) == 1
     assert rows[0].name == "bert-base-uncased"
-
 
 ###############################################################################
 def test_benchmark_service_ensure_tokenizer_ids_returns_mapping(
@@ -144,7 +144,6 @@ def test_benchmark_service_ensure_tokenizer_ids_returns_mapping(
             select(sqlalchemy.func.count(Tokenizer.id))
         ).scalar_one()
     assert int(count) == 2
-
 
 ###############################################################################
 @pytest.mark.parametrize(
@@ -200,7 +199,6 @@ def test_insert_dataframe_without_ignore_duplicates_uses_sqlalchemy_insert(
     sql = str(capture_session.statements[0])
     assert "INSERT INTO metric_value" in sql
     assert "json_value" in sql
-
 
 ###############################################################################
 def test_session_report_rehydrates_json_metrics_when_numeric_is_nan(

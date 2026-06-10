@@ -5,9 +5,9 @@ from typing import Any
 from server.services.jobs import JobManager, JobProgressReporter, JobStopChecker
 from server.services.tokenizers import TokenizersService
 
-
 ###############################################################################
 class TokenizerJobService:
+
     # -------------------------------------------------------------------------
     def run_download_job(
         self,

@@ -12,6 +12,7 @@ from server.repositories.serialization.benchmark_reports import (
 )
 
 
+###############################################################################
 def _build_payload(dataset_name: str) -> dict:
     return {
         "status": "success",
@@ -118,6 +119,7 @@ def _build_payload(dataset_name: str) -> dict:
     }
 
 
+###############################################################################
 def test_benchmark_report_serializer_round_trip(monkeypatch) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     Base.metadata.create_all(engine, checkfirst=True)

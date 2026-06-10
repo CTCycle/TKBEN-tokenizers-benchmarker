@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 
+###############################################################################
 @dataclass(frozen=True)
 class TokenizerRunConfig:
     add_special_tokens: bool = False
@@ -13,6 +14,7 @@ class TokenizerRunConfig:
     batch_size: int = 64
 
 
+###############################################################################
 @dataclass(frozen=True)
 class BatchObservation:
     tokenizer_id: str
@@ -27,6 +29,7 @@ class BatchObservation:
     error_count: int = 0
 
 
+###############################################################################
 @dataclass(frozen=True)
 class BenchmarkEnvironment:
     python_version: str

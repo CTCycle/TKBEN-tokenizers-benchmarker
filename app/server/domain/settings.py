@@ -9,7 +9,6 @@ from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
-
 ###############################################################################
 @dataclass(frozen=True)
 class DatabaseSettings:
@@ -24,7 +23,6 @@ class DatabaseSettings:
     ssl_ca: str | None
     connect_timeout: int
     insert_batch_size: int
-
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -41,6 +39,7 @@ class DatasetSettings:
     download_retry_backoff_seconds: float
 
 
+###############################################################################
 @dataclass(frozen=True)
 class TokenizerSettings:
     default_scan_limit: int
@@ -48,19 +47,16 @@ class TokenizerSettings:
     min_scan_limit: int
     max_upload_bytes: int
 
-
 ###############################################################################
 @dataclass(frozen=True)
 class BenchmarkSettings:
     streaming_batch_size: int
     log_interval: int
 
-
 ###############################################################################
 @dataclass(frozen=True)
 class JobsSettings:
     polling_interval: float
-
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -71,7 +67,6 @@ class ServerSettings:
     benchmarks: BenchmarkSettings
     jobs: JobsSettings
 
-
 ###############################################################################
 def _normalize_optional_text(value: Any) -> str | None:
     if value is None:
@@ -80,7 +75,6 @@ def _normalize_optional_text(value: Any) -> str | None:
     if text == "":
         return None
     return text
-
 
 ###############################################################################
 class JsonDatabaseSettings(BaseModel):
@@ -96,7 +90,6 @@ class JsonDatabaseSettings(BaseModel):
     connect_timeout: int | None = Field(default=None, ge=1)
     insert_batch_size: int | None = Field(default=None, ge=1)
 
-
 ###############################################################################
 def _read_env_bool(name: str, default: bool) -> bool:
     raw_value = os.getenv(name)
@@ -109,7 +102,6 @@ def _read_env_bool(name: str, default: bool) -> bool:
     if normalized in {"0", "false", "no", "off"}:
         return False
     raise RuntimeError(f"{name} must be a boolean value, got: {raw_value}")
-
 
 ###############################################################################
 def _read_env_int(
@@ -136,7 +128,6 @@ def _read_env_int(
         raise RuntimeError(f"{name} must be <= {maximum}, got: {value}")
     return value
 
-
 ###############################################################################
 def _parse_database_url(database_url: str | None) -> dict[str, Any]:
     if not database_url:
@@ -152,7 +143,6 @@ def _parse_database_url(database_url: str | None) -> dict[str, Any]:
         "username": _normalize_optional_text(parsed.username),
         "password": _normalize_optional_text(parsed.password),
     }
-
 
 ###############################################################################
 def _load_database_settings_from_sources(
@@ -287,7 +277,6 @@ def _load_database_settings_from_sources(
         insert_batch_size=insert_batch_size,
     )
 
-
 ###############################################################################
 class JsonDatasetSettings(BaseModel):
     allowed_extensions: tuple[str, ...] = (".csv", ".xls", ".xlsx")
@@ -301,7 +290,6 @@ class JsonDatasetSettings(BaseModel):
     download_retry_attempts: int = Field(default=3, ge=1, le=10)
     download_retry_backoff_seconds: float = Field(default=1.0, ge=0.0, le=60.0)
 
-
 ###############################################################################
 class JsonTokenizerSettings(BaseModel):
     default_scan_limit: int = Field(default=100, ge=1)
@@ -309,6 +297,7 @@ class JsonTokenizerSettings(BaseModel):
     min_scan_limit: int = Field(default=1, ge=1)
     max_upload_bytes: int = Field(default=10 * 1024 * 1024, ge=1)
 
+    # -------------------------------------------------------------------------
     @model_validator(mode="after")
     def validate_scan_limits(self) -> "JsonTokenizerSettings":
         if self.max_scan_limit < self.min_scan_limit:
@@ -325,17 +314,14 @@ class JsonTokenizerSettings(BaseModel):
             )
         return self
 
-
 ###############################################################################
 class JsonBenchmarkSettings(BaseModel):
     streaming_batch_size: int = Field(default=1000, ge=100)
     log_interval: int = Field(default=10000, ge=100)
 
-
 ###############################################################################
 class JsonJobsSettings(BaseModel):
     polling_interval: float = Field(default=1.0, gt=0.0)
-
 
 ###############################################################################
 class JsonConfiguration(BaseModel):

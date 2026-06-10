@@ -3,6 +3,7 @@ from __future__ import annotations
 from server.app import app
 
 
+###############################################################################
 def test_openapi_generation_and_response_models() -> None:
     schema = app.openapi()
     assert schema

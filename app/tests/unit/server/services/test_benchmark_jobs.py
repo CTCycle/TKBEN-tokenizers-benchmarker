@@ -3,23 +3,34 @@ from __future__ import annotations
 from server.services.benchmark_jobs import BenchmarkJobService
 
 
+###############################################################################
 class DummyJobManager:
+
+    # -------------------------------------------------------------------------
     def __init__(self, *, stopped: bool = False) -> None:
         self.stopped = stopped
 
+    # -------------------------------------------------------------------------
     def should_stop(self, job_id: str) -> bool:
         del job_id
         return self.stopped
 
+    # -------------------------------------------------------------------------
     def update_progress(self, job_id: str, value: float) -> None:
         del job_id, value
 
 
+###############################################################################
 def test_run_benchmark_job_builds_and_saves_report(monkeypatch) -> None:
+
+    ###############################################################################
     class FakeBenchmarkService:
+
+        # -------------------------------------------------------------------------
         def __init__(self, max_documents: int = 0):
             self.max_documents = max_documents
 
+        # -------------------------------------------------------------------------
         def run_benchmarks(self, **kwargs):
             del kwargs
             return {
@@ -66,6 +77,7 @@ def test_run_benchmark_job_builds_and_saves_report(monkeypatch) -> None:
                 "raw_observations": {},
             }
 
+        # -------------------------------------------------------------------------
         def save_benchmark_report(self, payload):
             assert payload["dataset_name"] == "custom/sample"
             return 11
@@ -89,13 +101,19 @@ def test_run_benchmark_job_builds_and_saves_report(monkeypatch) -> None:
     assert result["report_version"] == 2
 
 
+###############################################################################
 def test_run_benchmark_job_returns_cancelled_payload_without_persist(
     monkeypatch,
 ) -> None:
+
+    ###############################################################################
     class FakeBenchmarkService:
+
+        # -------------------------------------------------------------------------
         def __init__(self, max_documents: int = 0):
             self.max_documents = max_documents
 
+        # -------------------------------------------------------------------------
         def run_benchmarks(self, **kwargs):
             del kwargs
             return {
@@ -142,6 +160,7 @@ def test_run_benchmark_job_returns_cancelled_payload_without_persist(
                 "raw_observations": {},
             }
 
+        # -------------------------------------------------------------------------
         def save_benchmark_report(self, payload):
             raise AssertionError(
                 "save_benchmark_report must not be called for cancelled runs"

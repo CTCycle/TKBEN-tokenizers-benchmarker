@@ -34,14 +34,12 @@ from server.services.keys import (
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_KEYS, tags=["keys"])
 
-
 ###############################################################################
 def is_key_reveal_enabled() -> bool:
     return coerce_bool(
         os.getenv("ALLOW_KEY_REVEAL"),
         ALLOW_KEY_REVEAL_DEFAULT,
     )
-
 
 ###############################################################################
 @router.post(
@@ -63,7 +61,6 @@ async def create_key(request: HFAccessKeyCreateRequest) -> HFAccessKeyListItem:
         ) from exc
     return HFAccessKeyListItem(**created_key)
 
-
 ###############################################################################
 @router.get(
     API_ROUTE_KEYS_LIST,
@@ -74,7 +71,6 @@ async def list_keys() -> HFAccessKeyListResponse:
     service = HFAccessKeyService()
     keys = await asyncio.to_thread(service.list_keys)
     return HFAccessKeyListResponse(keys=[HFAccessKeyListItem(**key) for key in keys])
-
 
 ###############################################################################
 @router.delete(
@@ -100,7 +96,6 @@ async def delete_key(
         ) from exc
     return HFAccessKeyDeleteResponse()
 
-
 ###############################################################################
 @router.post(
     API_ROUTE_KEYS_ACTIVATE,
@@ -117,7 +112,6 @@ async def activate_key(key_id: int) -> HFAccessKeyActivateResponse:
         ) from exc
     return HFAccessKeyActivateResponse()
 
-
 ###############################################################################
 @router.post(
     API_ROUTE_KEYS_DEACTIVATE,
@@ -133,7 +127,6 @@ async def deactivate_key(key_id: int) -> HFAccessKeyActivateResponse:
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
         ) from exc
     return HFAccessKeyActivateResponse(message="Active key cleared.")
-
 
 ###############################################################################
 @router.post(

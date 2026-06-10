@@ -3,17 +3,26 @@ from __future__ import annotations
 from server.services.tokenizer_jobs import TokenizerJobService
 
 
+###############################################################################
 class DummyJobManager:
+
+    # -------------------------------------------------------------------------
     def should_stop(self, job_id: str) -> bool:
         del job_id
         return False
 
+    # -------------------------------------------------------------------------
     def update_progress(self, job_id: str, value: float) -> None:
         del job_id, value
 
 
+###############################################################################
 def test_run_download_job_delegates_to_service(monkeypatch) -> None:
+
+    ###############################################################################
     class FakeTokenizersService:
+
+        # -------------------------------------------------------------------------
         def download_and_persist(self, **kwargs):
             assert kwargs["tokenizers"] == ["bert-base-uncased"]
             return {"status": "success", "downloaded": ["bert-base-uncased"]}
@@ -31,10 +40,14 @@ def test_run_download_job_delegates_to_service(monkeypatch) -> None:
     assert result["status"] == "success"
 
 
+###############################################################################
 def test_upload_and_clear_custom_tokenizers(monkeypatch) -> None:
     state = {"cleared": False}
 
+    ###############################################################################
     class FakeTokenizersService:
+
+        # -------------------------------------------------------------------------
         def register_custom_tokenizer_from_upload(self, **kwargs):
             assert kwargs["safe_stem"] == "demo"
             return {
@@ -43,6 +56,7 @@ def test_upload_and_clear_custom_tokenizers(monkeypatch) -> None:
                 "is_compatible": True,
             }
 
+        # -------------------------------------------------------------------------
         def clear_custom_tokenizers(self):
             state["cleared"] = True
 

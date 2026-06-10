@@ -36,9 +36,11 @@ CORE_TOKENIZER_BENCHMARK_METRIC_KEYS: set[str] = (
 )
 
 
+###############################################################################
 class DummyTokenizer:
     name_or_path = "dummy/tokenizer"
 
+    # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self._vocab: dict[str, int] = {
             "alpha": 1,
@@ -49,25 +51,31 @@ class DummyTokenizer:
         }
         self._id_to_token = {value: key for key, value in self._vocab.items()}
 
+    # -------------------------------------------------------------------------
     def tokenize(self, text: str) -> list[str]:
         return str(text).split()
 
+    # -------------------------------------------------------------------------
     def encode(self, text: str) -> list[int]:
         return [self._vocab.get(token, 0) for token in str(text).split()]
 
+    # -------------------------------------------------------------------------
     def decode(self, token_ids: Any) -> str:
         ids = token_ids.ids if hasattr(token_ids, "ids") else token_ids
         return " ".join(
             self._id_to_token.get(int(token_id), "[UNK]") for token_id in ids
         )
 
+    # -------------------------------------------------------------------------
     def convert_ids_to_tokens(self, token_ids: list[int]) -> list[str]:
         return [self._id_to_token.get(int(token_id), "[UNK]") for token_id in token_ids]
 
+    # -------------------------------------------------------------------------
     def get_vocab(self) -> dict[str, int]:
         return dict(self._vocab)
 
 
+###############################################################################
 def _benchmark_rows() -> list[tuple[int, str]]:
     return [
         (10, "alpha beta beta"),
@@ -76,6 +84,7 @@ def _benchmark_rows() -> list[tuple[int, str]]:
     ]
 
 
+###############################################################################
 def run_deterministic_benchmark() -> dict[str, Any]:
     service = BenchmarkService()
     rows = _benchmark_rows()
@@ -99,6 +108,7 @@ def run_deterministic_benchmark() -> dict[str, Any]:
     return result
 
 
+###############################################################################
 def build_benchmark_metric_value_map(result: dict[str, Any]) -> dict[str, Any]:
     tokenizer_result = result["tokenizer_results"][0]
     efficiency_metrics = result["chart_data"]["efficiency"][0]
@@ -149,6 +159,7 @@ def build_benchmark_metric_value_map(result: dict[str, Any]) -> dict[str, Any]:
     return metric_values
 
 
+###############################################################################
 def assert_metric_value(
     actual: Any, expected: Any, metric_key: str, path: str = ""
 ) -> None:

@@ -65,7 +65,6 @@ STOPWORDS: dict[str, set[str]] = {
     "it": {"di", "e", "il", "la", "che", "a", "per", "in", "un", "del", "le", "si"},
 }
 
-
 ###############################################################################
 @dataclass
 class RunningMoments:
@@ -127,9 +126,10 @@ class RunningMoments:
         )
         return (m4 / (var * var)) - 3.0
 
-
 ###############################################################################
 class RollingMattr:
+
+    # -------------------------------------------------------------------------
     def __init__(self, window_size: int) -> None:
         self.window_size = max(10, int(window_size))
         self.window: deque[str] = deque()
@@ -156,9 +156,10 @@ class RollingMattr:
             return 0.0
         return self.sum_ttr / float(self.total_windows)
 
-
 ###############################################################################
 class DatasetMetricsEngine:
+
+    # -------------------------------------------------------------------------
     def __init__(self, parameters: dict[str, Any]) -> None:
         self.parameters = parameters
         self.word_frequency = DiskBackedFrequencyStore(

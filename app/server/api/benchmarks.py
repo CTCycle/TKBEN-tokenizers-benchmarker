@@ -29,7 +29,6 @@ from server.services.benchmarks import BenchmarkService
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_BENCHMARKS, tags=["benchmarks"])
 
-
 ###############################################################################
 @router.post(
     API_ROUTE_BENCHMARKS_RUN,
@@ -120,7 +119,6 @@ async def run_benchmarks(
         check_conflict=False,
     )
 
-
 ###############################################################################
 @router.get(
     API_ROUTE_BENCHMARKS_REPORTS,
@@ -137,7 +135,6 @@ async def list_benchmark_reports(
     ]
     return BenchmarkReportListResponse(reports=report_summaries)
 
-
 ###############################################################################
 @router.get(
     API_ROUTE_BENCHMARKS_REPORT_BY_ID,
@@ -153,7 +150,6 @@ async def get_benchmark_report_by_id(report_id: int) -> BenchmarkRunResponse:
             detail=f"Benchmark report '{report_id}' not found.",
         )
     return BenchmarkRunResponse(**report)
-
 
 ###############################################################################
 @router.get(

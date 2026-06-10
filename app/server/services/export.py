@@ -26,7 +26,6 @@ SECONDARY_COLOR = "#38bdf8"
 TERTIARY_COLOR = "#22c55e"
 MUTED_TEXT = "#5b6472"
 
-
 ###############################################################################
 @dataclass(frozen=True)
 class DashboardPdfDocument:
@@ -34,9 +33,10 @@ class DashboardPdfDocument:
     page_count: int
     pdf_bytes: bytes
 
-
 ###############################################################################
 class DashboardExportService(DashboardExportFormatting):
+
+    # -------------------------------------------------------------------------
     def export_dashboard_pdf(
         self,
         *,

@@ -26,6 +26,7 @@ ENV_PATH = ENV_FILE_PATH
 MANIFEST_PATH = FIGURES_DIR / "manifest.json"
 
 
+###############################################################################
 @dataclass
 class CaptureConfig:
     name: str
@@ -36,6 +37,7 @@ class CaptureConfig:
     capture_internal_scroll: bool = False
 
 
+###############################################################################
 def parse_env_file(path: Path) -> dict[str, str]:
     values: dict[str, str] = {}
     if not path.exists():
@@ -50,6 +52,7 @@ def parse_env_file(path: Path) -> dict[str, str]:
     return values
 
 
+###############################################################################
 def wait_for_http(url: str, timeout_s: int = 120, interval_s: float = 1.0) -> bool:
     deadline = time.time() + timeout_s
     while time.time() < deadline:
@@ -64,6 +67,7 @@ def wait_for_http(url: str, timeout_s: int = 120, interval_s: float = 1.0) -> bo
     return False
 
 
+###############################################################################
 def goto_with_retry(page: Page, url: str, attempts: int = 3) -> None:
     last_error: Exception | None = None
     for attempt in range(1, attempts + 1):
@@ -79,6 +83,7 @@ def goto_with_retry(page: Page, url: str, attempts: int = 3) -> None:
         raise last_error
 
 
+###############################################################################
 def wait_for_stable_render(page: Page) -> None:
     try:
         page.wait_for_load_state("networkidle", timeout=12000)
@@ -103,6 +108,7 @@ def wait_for_stable_render(page: Page) -> None:
     page.wait_for_timeout(400)
 
 
+###############################################################################
 def layout_metrics(page: Page) -> dict[str, float]:
     return page.evaluate(
         """
@@ -149,6 +155,7 @@ def layout_metrics(page: Page) -> dict[str, float]:
     )
 
 
+###############################################################################
 def adapt_viewport(page: Page) -> tuple[dict[str, int], list[str]]:
     notes: list[str] = []
     page.set_viewport_size({"width": 1440, "height": 960})
@@ -195,6 +202,7 @@ def adapt_viewport(page: Page) -> tuple[dict[str, int], list[str]]:
     return viewport, notes
 
 
+###############################################################################
 def capture_with_strategy(
     page: Page,
     file_base: str,
@@ -265,6 +273,7 @@ def capture_with_strategy(
     return files, viewport, notes
 
 
+###############################################################################
 def discover_routes(page: Page, base_url: str) -> list[str]:
     discovered: list[str] = []
     goto_with_retry(page, base_url)
@@ -283,6 +292,7 @@ def discover_routes(page: Page, base_url: str) -> list[str]:
     return unique
 
 
+###############################################################################
 def open_dataset_page(page: Page, base_url: str) -> list[str]:
     notes: list[str] = []
     goto_with_retry(page, f"{base_url}/dataset")
@@ -290,6 +300,7 @@ def open_dataset_page(page: Page, base_url: str) -> list[str]:
     return notes
 
 
+###############################################################################
 def open_dataset_dashboard(page: Page, base_url: str) -> list[str]:
     notes = open_dataset_page(page, base_url)
     load_button = page.get_by_role("button", name="Load latest saved report").first
@@ -307,6 +318,7 @@ def open_dataset_dashboard(page: Page, base_url: str) -> list[str]:
     return notes
 
 
+###############################################################################
 def open_dataset_list_modal(page: Page, base_url: str) -> list[str]:
     notes = open_dataset_page(page, base_url)
     page.get_by_role("button", name="Add dataset").click(timeout=8000)
@@ -317,6 +329,7 @@ def open_dataset_list_modal(page: Page, base_url: str) -> list[str]:
     return notes
 
 
+###############################################################################
 def open_tokenizers_page(page: Page, base_url: str) -> list[str]:
     notes: list[str] = []
     goto_with_retry(page, f"{base_url}/tokenizers")
@@ -326,6 +339,7 @@ def open_tokenizers_page(page: Page, base_url: str) -> list[str]:
     return notes
 
 
+###############################################################################
 def open_tokenizer_detail(page: Page, base_url: str) -> list[str]:
     notes = open_tokenizers_page(page, base_url)
     open_report_button = page.locator(
@@ -347,6 +361,7 @@ def open_tokenizer_detail(page: Page, base_url: str) -> list[str]:
     return notes
 
 
+###############################################################################
 def open_settings_modal(page: Page, base_url: str) -> list[str]:
     notes = open_dataset_page(page, base_url)
     page.get_by_role("button", name="Manage Hugging Face keys").click(timeout=8000)
@@ -355,6 +370,7 @@ def open_settings_modal(page: Page, base_url: str) -> list[str]:
     return notes
 
 
+###############################################################################
 def open_cross_benchmark(page: Page, base_url: str) -> list[str]:
     notes: list[str] = []
     goto_with_retry(page, f"{base_url}/cross-benchmark")
@@ -374,6 +390,7 @@ def open_cross_benchmark(page: Page, base_url: str) -> list[str]:
     return notes
 
 
+###############################################################################
 def main() -> None:
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 

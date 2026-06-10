@@ -4,9 +4,10 @@ from functools import lru_cache
 from threading import RLock
 from typing import Any
 
-
 ###############################################################################
 class CustomTokenizerRegistry:
+
+    # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self._lock = RLock()
         self._tokenizers: dict[str, Any] = {}
@@ -30,7 +31,6 @@ class CustomTokenizerRegistry:
     def clear(self) -> None:
         with self._lock:
             self._tokenizers.clear()
-
 
 ###############################################################################
 @lru_cache(maxsize=1)

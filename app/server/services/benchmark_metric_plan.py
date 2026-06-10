@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
+###############################################################################
 @dataclass(frozen=True)
 class BenchmarkMetricPlan:
     needs_latency: bool
@@ -12,7 +13,6 @@ class BenchmarkMetricPlan:
     needs_character_coverage: bool
     needs_fragmentation: bool
     needs_per_document_stats: bool
-
 
 ###############################################################################
 def build_metric_plan(

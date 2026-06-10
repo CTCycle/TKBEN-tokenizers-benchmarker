@@ -8,6 +8,7 @@ from server.repositories.schemas.models import Base, Dataset, DatasetDocument
 from server.repositories.serialization.data import DatasetSerializer
 
 
+###############################################################################
 def test_large_dataset_streaming_batches_do_not_materialize_all_rows(
     monkeypatch,
 ) -> None:

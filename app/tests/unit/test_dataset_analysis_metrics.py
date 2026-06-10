@@ -201,6 +201,7 @@ EXPECTED_DATASET_METRICS: dict[str, Any] = {
 }
 
 
+###############################################################################
 def _assert_metric_value(
     actual: Any, expected: Any, metric_key: str, path: str = ""
 ) -> None:
@@ -261,6 +262,7 @@ def _assert_metric_value(
     assert actual == expected, f"{location} mismatch: expected {expected}, got {actual}"
 
 
+###############################################################################
 def _dataset_metric_keys() -> list[str]:
     return [
         metric["key"]
@@ -270,6 +272,7 @@ def _dataset_metric_keys() -> list[str]:
     ]
 
 
+###############################################################################
 def _extract_metric_value_map() -> dict[str, Any]:
     engine = DatasetMetricsEngine(dict(DATASET_ENGINE_PARAMETERS))
     per_document_rows: list[dict[str, Any]] = []
@@ -317,17 +320,20 @@ def _extract_metric_value_map() -> dict[str, Any]:
     return extracted
 
 
+###############################################################################
 @pytest.fixture(scope="module")
 def actual_dataset_metrics() -> dict[str, Any]:
     return _extract_metric_value_map()
 
 
+###############################################################################
 def test_dataset_metric_catalog_has_expected_cardinality() -> None:
     keys = _dataset_metric_keys()
     assert len(keys) == 77, f"Expected 77 dataset metrics, found {len(keys)}"
     assert len(set(keys)) == 77, "Dataset metric keys must be unique"
 
 
+###############################################################################
 def test_dataset_metric_expected_fixture_matches_catalog() -> None:
     catalog_keys = set(_dataset_metric_keys())
     expected_keys = set(EXPECTED_DATASET_METRICS.keys())
@@ -338,6 +344,7 @@ def test_dataset_metric_expected_fixture_matches_catalog() -> None:
     )
 
 
+###############################################################################
 @pytest.mark.parametrize("metric_key", sorted(EXPECTED_DATASET_METRICS.keys()))
 def test_dataset_analysis_metric_correctness(
     actual_dataset_metrics: dict[str, Any],

@@ -15,11 +15,11 @@ from server.configurations import DatabaseSettings
 from server.repositories.schemas.models import Base
 from server.common.utils.logger import logger
 
-
 ###############################################################################
 class PostgresRepository:
     IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
+    # -------------------------------------------------------------------------
     def __init__(
         self, settings: DatabaseSettings, initialize_schema: bool = False
     ) -> None:
@@ -193,7 +193,7 @@ class PostgresRepository:
         finally:
             session.close()
 
-    ###############################################################################
+    # -------------------------------------------------------------------------
     def get_distinct_values(self, table_name: str, column: str) -> list[str]:
         """Get distinct values from a column in the specified table."""
         safe_name = self.sanitize_identifier(table_name)

@@ -5,23 +5,30 @@ from fastapi.testclient import TestClient
 from server.app import app
 
 
+###############################################################################
 class DummyJobManager:
+
+    # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.last_job_type = ""
 
+    # -------------------------------------------------------------------------
     def is_job_running(self, job_type: str | None = None) -> bool:
         return False
 
+    # -------------------------------------------------------------------------
     def start_job(self, job_type, runner, args=(), kwargs=None):
         del runner, args, kwargs
         self.last_job_type = str(job_type)
         return "job-bench"
 
+    # -------------------------------------------------------------------------
     def get_job_status(self, job_id: str):
         del job_id
         return {"job_type": self.last_job_type, "status": "pending"}
 
 
+###############################################################################
 def test_benchmark_run_route_returns_202(monkeypatch) -> None:
     manager = DummyJobManager()
     monkeypatch.setattr(app.state, "job_manager", manager)
@@ -62,6 +69,7 @@ def test_benchmark_run_route_returns_202(monkeypatch) -> None:
     assert resp.json()["job_id"] == "job-bench"
 
 
+###############################################################################
 def test_benchmark_list_and_by_id(monkeypatch) -> None:
     from server.services.benchmarks import BenchmarkService
 
@@ -145,6 +153,7 @@ def test_benchmark_list_and_by_id(monkeypatch) -> None:
     assert by_id.json()["report_id"] == 1
 
 
+###############################################################################
 def test_benchmark_by_id_accepts_cancelled_contract(monkeypatch) -> None:
     from server.services.benchmarks import BenchmarkService
 

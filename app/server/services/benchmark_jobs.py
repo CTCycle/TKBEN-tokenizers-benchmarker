@@ -7,9 +7,10 @@ from server.domain.benchmarks import BenchmarkRunResponse
 from server.services.benchmarks import BenchmarkService
 from server.services.jobs import JobManager, JobProgressReporter, JobStopChecker
 
-
 ###############################################################################
 class BenchmarkJobService:
+
+    # -------------------------------------------------------------------------
     def run_benchmark_job(
         self,
         request_payload: dict[str, Any],

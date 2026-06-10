@@ -12,12 +12,14 @@ from server.domain.benchmark_observations import BatchObservation, TokenizerRunC
 from server.services.tokenizer_adapters import TokenizerAdapter
 
 
+###############################################################################
 def percentile(values: list[float], q: float) -> float:
     if not values:
         raise ValueError("Cannot compute percentile for empty values")
     return float(np.percentile(np.asarray(values, dtype=float), q * 100.0))
 
 
+###############################################################################
 def ci95_bounds(values: list[float]) -> tuple[float, float]:
     if not values:
         return 0.0, 0.0
@@ -28,6 +30,7 @@ def ci95_bounds(values: list[float]) -> tuple[float, float]:
     return max(0.0, mean - half_width), mean + half_width
 
 
+###############################################################################
 def run_tokenizer_trials(
     *,
     tokenizer: TokenizerAdapter,
@@ -100,6 +103,7 @@ def run_tokenizer_trials(
     return observations
 
 
+###############################################################################
 def summarize_observations(
     observations: list[BatchObservation],
 ) -> dict[str, float | int | None]:
