@@ -24,7 +24,6 @@ dependencies = [
     "sacremoses==0.1.1",   
     "hf-xet==1.1.10",  
     "matplotlib==3.10.8",
-    "seaborn==0.13.2",
     "psutil>=6.1.1"
 ]
 
