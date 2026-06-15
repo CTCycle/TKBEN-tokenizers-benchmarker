@@ -24,7 +24,6 @@ from server.common.utils.security import (
     normalize_identifier,
 )
 from server.services.benchmark_execution import BenchmarkServiceExecutionMixin
-from server.services.benchmark_plotting import BenchmarkPlottingMixin
 from server.services.custom_tokenizers import get_custom_tokenizer_registry
 
 ###############################################################################
@@ -253,7 +252,7 @@ class BenchmarkTools:
         return float(-np.sum(probs * np.log2(probs)))
 
 ###############################################################################
-class BenchmarkService(BenchmarkServiceExecutionMixin, BenchmarkPlottingMixin):
+class BenchmarkService(BenchmarkServiceExecutionMixin):
     TOKENIZER_ID_MAX_LENGTH = 160
 
     # -------------------------------------------------------------------------

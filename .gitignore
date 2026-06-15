@@ -18,6 +18,7 @@ __pycache__/
 runtimes/.venv/
 venv/
 .pytest_cache/
+pytest-cache-files-*/
 .mypy_cache/
 .ruff_cache/
 dist/
@@ -49,6 +50,7 @@ Cargo.toml
 *.lock
 *.log
 *.db
+*.db-journal
 *.sqlite*
 *.exe
 !.gitkeep
