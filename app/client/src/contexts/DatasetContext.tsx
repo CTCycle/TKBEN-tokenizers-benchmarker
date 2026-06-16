@@ -131,8 +131,12 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
     }, []);
 
     useEffect(() => {
-        void refreshAvailableDatasets();
-        void loadMetricsCatalog();
+        const timeoutId = window.setTimeout(() => {
+            void refreshAvailableDatasets();
+            void loadMetricsCatalog();
+        }, 0);
+
+        return () => window.clearTimeout(timeoutId);
     }, [refreshAvailableDatasets, loadMetricsCatalog]);
 
     const handleCorpusChange = useCallback((value: string) => {
@@ -331,7 +335,11 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             return;
         }
 
-        void handleLoadLatestDatasetReport(savedDataset, { suppressNotFoundError: true });
+        const timeoutId = window.setTimeout(() => {
+            void handleLoadLatestDatasetReport(savedDataset, { suppressNotFoundError: true });
+        }, 0);
+
+        return () => window.clearTimeout(timeoutId);
     }, [
         activeReportLoadDataset,
         availableDatasets,
@@ -389,7 +397,6 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             fileInputRef,
             availableDatasets,
             datasetsLoading,
-            datasetsInitialized,
             activeValidationDataset,
             activeReportLoadDataset,
             removingDataset,
@@ -426,7 +433,6 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             fileInputRef,
             availableDatasets,
             datasetsLoading,
-            datasetsInitialized,
             activeValidationDataset,
             activeReportLoadDataset,
             removingDataset,
