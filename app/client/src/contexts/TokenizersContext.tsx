@@ -331,7 +331,11 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
             return;
         }
 
-        void handleOpenTokenizerReport(savedTokenizer);
+        const timeoutId = window.setTimeout(() => {
+            void handleOpenTokenizerReport(savedTokenizer);
+        }, 0);
+
+        return () => window.clearTimeout(timeoutId);
     }, [activeOpeningTokenizer, handleOpenTokenizerReport, tokenizerReport, tokenizers]);
 
     const handleNextTokenizerVocabularyPage = useCallback(async () => {
@@ -389,7 +393,11 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
     }, [loadTokenizerVocabularyPage, tokenizerReport]);
 
     useEffect(() => {
-        void refreshTokenizers();
+        const timeoutId = window.setTimeout(() => {
+            void refreshTokenizers();
+        }, 0);
+
+        return () => window.clearTimeout(timeoutId);
     }, [refreshTokenizers]);
 
     const value = useMemo<TokenizersContextType>(() => ({
