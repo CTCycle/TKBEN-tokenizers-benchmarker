@@ -129,6 +129,42 @@ def sample_dataset_payload() -> tuple[str, str, bytes]:
 
 ###############################################################################
 @pytest.fixture(scope="session")
+def tiny_tokenizer_json() -> bytes:
+    return (
+        b'{"version":"1.0","truncation":null,"padding":null,'
+        b'"added_tokens":[],"normalizer":null,"pre_tokenizer":{"type":"Whitespace"},'
+        b'"post_processor":null,"decoder":null,'
+        b'"model":{"type":"WordLevel","vocab":{"[UNK]":0,"Hello":1,"world":2,'
+        b'"This":3,"is":4,"a":5,"sample":6,"document":7,"Another":8},'
+        b'"unk_token":"[UNK]"}}'
+    )
+
+
+###############################################################################
+@pytest.fixture(scope="session")
+def uploaded_tiny_tokenizer(
+    api_context: APIRequestContext,
+    tiny_tokenizer_json: bytes,
+) -> dict:
+    response = api_context.post(
+        "/api/tokenizers/upload",
+        multipart={
+            "file": {
+                "name": "e2e_tiny_tokenizer.json",
+                "mimeType": "application/json",
+                "buffer": tiny_tokenizer_json,
+            }
+        },
+    )
+    assert response.ok, f"Tokenizer upload failed: {response.status} {response.text()}"
+    payload = response.json()
+    assert payload.get("is_compatible") is True
+    assert payload.get("tokenizer_name") == "CUSTOM_e2e_tiny_tokenizer"
+    return payload
+
+
+###############################################################################
+@pytest.fixture(scope="session")
 def uploaded_dataset(
     api_context: APIRequestContext,
     sample_dataset_payload: tuple[str, str, bytes],

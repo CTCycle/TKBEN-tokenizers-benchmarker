@@ -142,7 +142,15 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    application.state.job_manager = JobManager()
+    settings = get_server_settings()
+    terminal_retention_seconds = getattr(
+        getattr(settings, "jobs", None),
+        "terminal_retention_seconds",
+        3600.0,
+    )
+    application.state.job_manager = JobManager(
+        terminal_retention_seconds=terminal_retention_seconds
+    )
     register_api_routers(application)
     register_frontend_routes(application)
     return application

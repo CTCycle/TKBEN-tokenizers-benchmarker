@@ -10,6 +10,8 @@ from server.common.utils.security import normalize_upload_stem
 from server.configurations import get_server_settings
 from server.domain.jobs import JobStartResponse
 
+UPLOAD_CHUNK_SIZE = 1024 * 1024
+
 ###############################################################################
 def start_managed_job(
     request: Request,
@@ -104,3 +106,28 @@ def validate_upload_size(content: bytes, max_upload_bytes: int) -> None:
             status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail=f"Uploaded file exceeds max allowed size ({max_upload_bytes} bytes).",
         )
+
+###############################################################################
+async def read_upload_limited(
+    file: UploadFile,
+    max_upload_bytes: int,
+    *,
+    chunk_size: int = UPLOAD_CHUNK_SIZE,
+) -> bytes:
+    chunks: list[bytes] = []
+    total_size = 0
+    while True:
+        chunk = await file.read(chunk_size)
+        if not chunk:
+            break
+        total_size += len(chunk)
+        if total_size > max_upload_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                detail=(
+                    "Uploaded file exceeds max allowed size "
+                    f"({max_upload_bytes} bytes)."
+                ),
+            )
+        chunks.append(chunk)
+    return b"".join(chunks)

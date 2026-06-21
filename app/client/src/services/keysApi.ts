@@ -101,7 +101,7 @@ export async function deactivateHFAccessKey(keyId: number): Promise<void> {
 }
 
 /**
- * Request full stored encrypted key value for a single row.
+ * Request full stored plaintext key value for a single row.
  */
 export async function revealHFAccessKey(keyId: number): Promise<HFAccessKeyRevealResponse> {
     const response = await fetch(`${API_ENDPOINTS.KEYS}/${keyId}/reveal`, {

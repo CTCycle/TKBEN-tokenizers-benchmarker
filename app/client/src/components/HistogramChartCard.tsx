@@ -1,4 +1,10 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import {
+  CHART_AXIS_PROPS,
+  CHART_AXIS_TICK,
+  CHART_GRID_PROPS,
+  CHART_TOOLTIP_STYLE,
+} from '../common/chartStyles';
 
 type HistogramSeriesDatum = {
   bin: string;
@@ -35,17 +41,17 @@ const HistogramChartCard = ({
             data={data}
             margin={{ top: 8, right: 8, bottom: 0, left: 18 }}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
+            <CartesianGrid {...CHART_GRID_PROPS} />
             <XAxis dataKey="bin" hide />
             <YAxis
-              stroke="#94a3b8"
+              {...CHART_AXIS_PROPS}
               width={62}
-              tick={{ fill: '#dbe5f1', fontSize: 12 }}
-              axisLine={{ stroke: '#94a3b8' }}
-              tickLine={{ stroke: '#94a3b8' }}
+              tick={CHART_AXIS_TICK}
+              axisLine={CHART_AXIS_PROPS}
+              tickLine={CHART_AXIS_PROPS}
             />
             <Tooltip
-              contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }}
+              contentStyle={CHART_TOOLTIP_STYLE}
               formatter={tooltipFormatter}
             />
             <Bar dataKey="count" fill={barFill} radius={[2, 2, 0, 0]} />

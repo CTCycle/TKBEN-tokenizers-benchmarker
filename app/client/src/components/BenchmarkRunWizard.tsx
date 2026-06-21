@@ -144,25 +144,38 @@ const BenchmarkRunWizard = ({
   const canProceedFromStepOne = selectedMetricKeys.length > 0;
   const canProceedFromStepTwo = selectedTokenizers.length > 0 && Boolean(datasetName);
   const canRun = canProceedFromStepOne && canProceedFromStepTwo && Boolean(runName.trim());
+  const titleId = 'benchmark-wizard-title';
+  const descriptionId = 'benchmark-wizard-description';
+  const tokenizerSearchId = 'benchmark-wizard-tokenizer-search';
+  const tokenizerListId = 'benchmark-wizard-tokenizer-list';
+  const advancedSettingsId = 'benchmark-wizard-advanced-settings';
 
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="benchmark-wizard-title">
+    <div
+      className="modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      aria-describedby={descriptionId}
+    >
       <div className="modal-card benchmark-wizard-modal">
         <header className="benchmark-wizard-header">
           <div>
-            <p id="benchmark-wizard-title" className="panel-label">Run Tokenizer Benchmark</p>
-            <p className="panel-description">
+            <p id={titleId} className="panel-label">Run Tokenizer Benchmark</p>
+            <p id={descriptionId} className="panel-description">
               Configure metrics, inputs, and run metadata for a persisted benchmark report.
             </p>
           </div>
           <button
             type="button"
-            className="icon-button subtle"
+            className="icon-button subtle modal-close-button"
             onClick={onClose}
             aria-label="Close benchmark wizard"
             disabled={running}
           >
-            ×
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18" strokeWidth="2" strokeLinecap="round" />
+            </svg>
           </button>
         </header>
 
@@ -194,13 +207,14 @@ const BenchmarkRunWizard = ({
           {step === 1 && (
             <div className="benchmark-wizard-inputs">
               <div className="input-stack benchmark-wizard-input-stack">
-                <label className="field-label">Tokenizers</label>
+                <label className="field-label" htmlFor={tokenizerSearchId}>Tokenizers</label>
                 <input
+                  id={tokenizerSearchId}
                   className="text-input"
                   value={tokenizerQuery}
                   onChange={(event) => setTokenizerQuery(event.target.value)}
                   placeholder="Search tokenizers"
-                  aria-label="Search tokenizers"
+                  aria-controls={tokenizerListId}
                 />
                 <p className="panel-description">
                   Selected {selectedTokenizers.length} of {MAX_SELECTED_TOKENIZERS}
@@ -210,7 +224,7 @@ const BenchmarkRunWizard = ({
                     Select at least one tokenizer to continue.
                   </p>
                 )}
-                <div className="benchmark-wizard-tokenizer-list">
+                <div id={tokenizerListId} className="benchmark-wizard-tokenizer-list">
                   {availableTokenizers.length === 0 ? (
                     <div className="chart-placeholder">
                       <p>No tokenizers available. Download tokenizers first.</p>
@@ -327,7 +341,8 @@ const BenchmarkRunWizard = ({
               <p className="panel-description">
                 selected metrics: <strong>{selectedMetricKeys.length.toLocaleString()}</strong>
               </p>
-              <div className="benchmark-wizard-input-grid">
+              <div className="benchmark-wizard-input-grid" role="group" aria-labelledby={advancedSettingsId}>
+                <span id={advancedSettingsId} className="sr-only">Advanced benchmark settings</span>
                 <div className="input-stack">
                   <label className="field-label" htmlFor="benchmark-wizard-warmup">Warmup trials</label>
                   <input id="benchmark-wizard-warmup" className="text-input" type="number" min={0} max={100} value={warmupTrials} onChange={(event) => setWarmupTrials(Number(event.target.value) || 0)} />

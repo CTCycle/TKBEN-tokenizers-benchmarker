@@ -37,9 +37,9 @@ from server.common.utils.security import (
     normalize_identifier,
 )
 from server.api.helpers import (
+    read_upload_limited,
     start_managed_job,
     validate_upload_filename,
-    validate_upload_size,
 )
 from server.services.keys import (
     HFAccessKeyService,
@@ -284,15 +284,22 @@ async def upload_custom_tokenizer(
         ),
     )
 
-    content = await file.read()
+    max_upload_bytes = int(get_server_settings().tokenizers.max_upload_bytes)
+    try:
+        content = await read_upload_limited(file, max_upload_bytes)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Failed to read uploaded tokenizer file")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to read uploaded file.",
+        ) from exc
     if not content:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Uploaded file is empty.",
         )
-
-    max_upload_bytes = int(get_server_settings().tokenizers.max_upload_bytes)
-    validate_upload_size(content, max_upload_bytes)
 
     try:
         result = await asyncio.to_thread(

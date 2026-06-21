@@ -297,18 +297,18 @@ const TokenizerExaminationPage = () => {
 
             {tokenizerReport && (
               <>
-                <div className="tokenizer-vocabulary-table-shell">
-                  <div className="tokenizer-vocabulary-table-header">
-                    <span>token_id</span>
-                    <span>token</span>
-                    <span>length</span>
+                <div className="tokenizer-vocabulary-table-shell" role="table" aria-label="Tokenizer vocabulary preview">
+                  <div className="tokenizer-vocabulary-table-header" role="row">
+                    <span role="columnheader">token_id</span>
+                    <span role="columnheader">token</span>
+                    <span role="columnheader">length</span>
                   </div>
-                  <div className="tokenizer-vocabulary-list tokenizer-vocabulary-list--paged">
+                  <div className="tokenizer-vocabulary-list tokenizer-vocabulary-list--paged" role="rowgroup">
                     {tokenizerVocabulary.map((item) => (
-                      <div key={`${item.token_id}-${item.token}`} className="tokenizer-vocabulary-row tokenizer-vocabulary-row--paged">
-                        <span className="tokenizer-vocabulary-id">{item.token_id}</span>
-                        <span className="tokenizer-vocabulary-token">{item.token}</span>
-                        <span className="tokenizer-vocabulary-length">{item.length}</span>
+                      <div key={`${item.token_id}-${item.token}`} className="tokenizer-vocabulary-row tokenizer-vocabulary-row--paged" role="row">
+                        <span className="tokenizer-vocabulary-id" role="cell">{item.token_id}</span>
+                        <span className="tokenizer-vocabulary-token" role="cell">{item.token}</span>
+                        <span className="tokenizer-vocabulary-length" role="cell">{item.length}</span>
                       </div>
                     ))}
                     {tokenizerVocabulary.length === 0 && (

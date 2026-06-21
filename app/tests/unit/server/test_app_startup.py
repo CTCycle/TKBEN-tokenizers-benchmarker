@@ -33,6 +33,27 @@ def test_build_cors_origins_rejects_invalid_port(
 
 
 ###############################################################################
+def test_startup_rejects_non_loopback_bind_without_explicit_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("FASTAPI_HOST", "0.0.0.0")
+    monkeypatch.delenv("TKBEN_ALLOW_UNAUTHENTICATED_NETWORK_BIND", raising=False)
+
+    with pytest.raises(RuntimeError, match="FASTAPI_HOST must stay"):
+        startup_validation.validate_local_only_security_boundary()
+
+
+###############################################################################
+def test_startup_allows_non_loopback_bind_with_explicit_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("FASTAPI_HOST", "0.0.0.0")
+    monkeypatch.setenv("TKBEN_ALLOW_UNAUTHENTICATED_NETWORK_BIND", "true")
+
+    startup_validation.validate_local_only_security_boundary()
+
+
+###############################################################################
 def test_run_startup_validations_creates_runtime_directories(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

@@ -26,6 +26,7 @@
     "log_interval": 10000
   },
   "jobs": {
-    "polling_interval": 1
+    "polling_interval": 1,
+    "terminal_retention_seconds": 3600
   }
 }

@@ -80,10 +80,17 @@ async def run_benchmarks(
             detail=f"Dataset '{payload.dataset_name}' not found or empty",
         )
 
+    custom_tokenizer_names = set(custom_tokenizers)
+    persisted_tokenizers = [
+        tokenizer
+        for tokenizer in payload.tokenizers
+        if tokenizer not in custom_tokenizer_names
+    ]
+
     try:
         missing_tokenizers = await asyncio.to_thread(
             service.get_missing_persisted_tokenizers,
-            payload.tokenizers,
+            persisted_tokenizers,
         )
     except ValueError as exc:
         raise HTTPException(

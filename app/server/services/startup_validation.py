@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from ipaddress import ip_address
 from pathlib import Path
 
 from server.common.path import (
@@ -45,6 +46,20 @@ def validate_tauri_client_bundle(
 
 
 ###############################################################################
+def validate_local_only_security_boundary() -> None:
+    fastapi_host = os.getenv("FASTAPI_HOST", "127.0.0.1").strip() or "127.0.0.1"
+    override = os.getenv("TKBEN_ALLOW_UNAUTHENTICATED_NETWORK_BIND", "false")
+    if override.strip().lower() in {"1", "true", "yes", "on"}:
+        return
+    if _is_loopback_host(fastapi_host):
+        return
+    raise RuntimeError(
+        "FASTAPI_HOST must stay on a loopback interface unless authentication is "
+        "added or TKBEN_ALLOW_UNAUTHENTICATED_NETWORK_BIND=true is set explicitly."
+    )
+
+
+###############################################################################
 def build_cors_origins() -> list[str]:
     ui_host = _normalized_host(os.getenv("UI_HOST", "127.0.0.1"))
     ui_port = _normalized_port(os.getenv("UI_PORT", "8000"))
@@ -66,6 +81,7 @@ def run_startup_validations(
 ) -> None:
     validate_runtime_files()
     ensure_runtime_directories()
+    validate_local_only_security_boundary()
     validate_tauri_client_bundle(
         tauri_mode_enabled=tauri_mode_enabled,
         client_index_file_path=client_index_file_path,
@@ -78,6 +94,17 @@ def _normalized_host(raw_host: str) -> str:
     if host in {"0.0.0.0", "::"}:
         return "127.0.0.1"
     return host
+
+
+###############################################################################
+def _is_loopback_host(raw_host: str) -> bool:
+    host = raw_host.strip().strip("[]").lower()
+    if host == "localhost":
+        return True
+    try:
+        return ip_address(host).is_loopback
+    except ValueError:
+        return False
 
 
 ###############################################################################

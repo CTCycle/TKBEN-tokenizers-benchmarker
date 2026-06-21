@@ -22,6 +22,7 @@ type UseHFAccessKeysResult = {
   deleteKey: (key: HFAccessKeyListItem) => Promise<void>;
   toggleActivation: (keyId: number, isActive: boolean) => Promise<void>;
   toggleReveal: (keyId: number) => Promise<void>;
+  clearRevealedValues: () => void;
 };
 
 export const useHFAccessKeys = (isOpen: boolean): UseHFAccessKeysResult => {
@@ -153,6 +154,11 @@ export const useHFAccessKeys = (isOpen: boolean): UseHFAccessKeysResult => {
     setError(null);
   }, []);
 
+  const clearRevealedValues = useCallback(() => {
+    setVisibleRows({});
+    setRevealedValues({});
+  }, []);
+
   return {
     actionKeyId,
     error,
@@ -166,5 +172,6 @@ export const useHFAccessKeys = (isOpen: boolean): UseHFAccessKeysResult => {
     deleteKey,
     toggleActivation,
     toggleReveal,
+    clearRevealedValues,
   };
 };

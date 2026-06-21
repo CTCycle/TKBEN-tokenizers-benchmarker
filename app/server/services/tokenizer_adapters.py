@@ -37,6 +37,11 @@ class UniversalTokenizerAdapter:
         self._tokenizer = tokenizer
 
     # -------------------------------------------------------------------------
+    def _normalize_ids(self, encoded: Any) -> list[int]:
+        ids = encoded.ids if hasattr(encoded, "ids") else encoded
+        return [int(value) for value in ids]
+
+    # -------------------------------------------------------------------------
     def encode_batch(
         self,
         texts: Sequence[str],
@@ -75,7 +80,7 @@ class UniversalTokenizerAdapter:
         input_ids_by_doc: list[list[int]] = []
         for text in as_list:
             ids = self._tokenizer.encode(text)
-            ids_list = [int(value) for value in ids]
+            ids_list = self._normalize_ids(ids)
             input_ids_by_doc.append(ids_list)
             token_counts.append(len(ids_list))
             if unk_id is None:
