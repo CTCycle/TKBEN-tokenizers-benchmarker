@@ -1,5 +1,12 @@
 import { useMemo, useState } from 'react';
 import type { KeyboardEvent, MouseEvent } from 'react';
+import {
+  CHART_AXIS_PROPS,
+  CHART_COLORS,
+  CHART_GRID_PROPS,
+  CHART_TOOLTIP_STYLE,
+  CHART_TOOLTIP_TEXT_STYLE,
+} from '../common/chartStyles';
 import TokenizerStatusBanners from '../components/TokenizerStatusBanners';
 import { useTokenizers } from '../contexts/TokenizersContext';
 import {
@@ -320,15 +327,15 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
               <h3 className="chart-title">Vocabulary Size Comparison</h3>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={vocabularyChartData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                  <XAxis type="number" stroke="#888" />
-                  <YAxis dataKey="name" type="category" stroke="#888" width={100} tick={{ fontSize: 11 }} />
+                  <CartesianGrid {...CHART_GRID_PROPS} />
+                  <XAxis type="number" {...CHART_AXIS_PROPS} />
+                  <YAxis dataKey="name" type="category" {...CHART_AXIS_PROPS} width={100} tick={{ fontSize: 11 }} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #333' }}
-                    labelStyle={{ color: '#fff' }}
+                    contentStyle={CHART_TOOLTIP_STYLE}
+                    labelStyle={CHART_TOOLTIP_TEXT_STYLE}
                   />
                   <Legend />
-                  <Bar dataKey="Vocabulary Size" fill="#4fc3f7" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="Vocabulary Size" fill={CHART_COLORS.blue} radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -339,15 +346,15 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
               <h3 className="chart-title">Tokenization Speed</h3>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={speedChartData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                  <XAxis type="number" stroke="#888" />
-                  <YAxis dataKey="name" type="category" stroke="#888" width={100} tick={{ fontSize: 11 }} />
+                  <CartesianGrid {...CHART_GRID_PROPS} />
+                  <XAxis type="number" {...CHART_AXIS_PROPS} />
+                  <YAxis dataKey="name" type="category" {...CHART_AXIS_PROPS} width={100} tick={{ fontSize: 11 }} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #333' }}
-                    labelStyle={{ color: '#fff' }}
+                    contentStyle={CHART_TOOLTIP_STYLE}
+                    labelStyle={CHART_TOOLTIP_TEXT_STYLE}
                   />
                   <Legend />
-                  <Bar dataKey="Tokens/sec" fill="#81c784" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="Tokens/sec" fill={CHART_COLORS.green} radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -501,19 +508,28 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
       </div>
 
       {isTokenizerModalOpen && (
-        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="tokenizer-manager-title">
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="tokenizer-manager-title"
+          aria-describedby="tokenizer-manager-description"
+        >
           <div className="tokenizer-modal-window">
             <header className="tokenizer-modal-header">
               <div>
                 <p id="tokenizer-manager-title" className="panel-label">Tokenizer Manager</p>
-                <p className="panel-description">Download tokenizer IDs from text input or Hugging Face scan results.</p>
+                <p id="tokenizer-manager-description" className="panel-description">Download tokenizer IDs from text input or Hugging Face scan results.</p>
               </div>
               <button
                 type="button"
-                className="secondary-button"
+                className="icon-button subtle modal-close-button"
                 onClick={() => setIsTokenizerModalOpen(false)}
+                aria-label="Close tokenizer manager"
               >
-                Close
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M6 6l12 12M18 6L6 18" strokeWidth="2" strokeLinecap="round" />
+                </svg>
               </button>
             </header>
 
@@ -573,13 +589,16 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
                 </p>
 
                 <div className="tokenizer-modal-column-content">
+                  <label className="sr-only" htmlFor="tokenizer-manual-input">Tokenizer names</label>
                   <textarea
+                    id="tokenizer-manual-input"
                     className="tokenizer-manual-input"
                     value={manualTokenizerInput}
                     onChange={(event) => setManualTokenizerInput(event.target.value)}
                     placeholder="Tokenizer names, one per line"
                   />
                   <input
+                    aria-label="Upload custom tokenizer JSON"
                     type="file"
                     ref={customTokenizerInputRef}
                     onChange={handleUploadCustomTokenizer}

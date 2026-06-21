@@ -1,11 +1,11 @@
 # Startup
-Last updated: 2026-06-03
+Last updated: 2026-06-21
 
 ## Local Webapp Mode
 Windows recommended:
 
 ```bat
-.\TKBEN\start_on_windows.bat
+.\start_on_windows.bat
 ```
 
 What it does:
@@ -19,8 +19,8 @@ Cross-platform manual startup:
 
 ```bash
 uv sync
-uv run python -m uvicorn TKBEN.server.app:app --host 127.0.0.1 --port 5000
-cd TKBEN/client
+uv run python -m uvicorn server.app:app --app-dir app --host 127.0.0.1 --port 5000
+cd app/client
 npm ci
 npm run preview -- --host 127.0.0.1 --port 8000 --strictPort
 ```
@@ -29,7 +29,7 @@ npm run preview -- --host 127.0.0.1 --port 8000 --strictPort
 Windows packaging flow:
 
 ```bat
-copy /Y TKBEN\settings\.env.example TKBEN\settings\.env
+copy /Y settings\.env.example settings\.env
 .\release\tauri\build_with_tauri.bat
 ```
 

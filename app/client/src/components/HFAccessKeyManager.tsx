@@ -14,6 +14,7 @@ const HFAccessKeyManager = ({ isOpen, onClose }: HFAccessKeyManagerProps) => {
     actionKeyId,
     addKey,
     clearError,
+    clearRevealedValues,
     deleteKey,
     error,
     keys,
@@ -32,9 +33,18 @@ const HFAccessKeyManager = ({ isOpen, onClose }: HFAccessKeyManagerProps) => {
     }
   };
 
+  const handleClose = (): void => {
+    clearRevealedValues();
+    onClose();
+  };
+
   if (!isOpen) {
     return null;
   }
+
+  const inputId = 'hf-key-manager-new-key';
+  const titleId = 'hf-key-manager-title';
+  const descriptionId = 'hf-key-manager-description';
 
   return (
     <>
@@ -42,15 +52,26 @@ const HFAccessKeyManager = ({ isOpen, onClose }: HFAccessKeyManagerProps) => {
         type="button"
         className="key-manager-backdrop"
         aria-label="Close key manager"
-        onClick={onClose}
+        onClick={handleClose}
       />
-      <div className="key-manager-popover" role="dialog" aria-modal="true" aria-label="Hugging Face keys">
+      <div
+        className="key-manager-popover"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+      >
         <header className="key-manager-header">
-          <p className="panel-label">Hugging Face Keys</p>
+          <div>
+            <p id={titleId} className="panel-label">Hugging Face Keys</p>
+            <p id={descriptionId} className="panel-description">
+              Store access keys for gated Hugging Face downloads.
+            </p>
+          </div>
           <button
             type="button"
-            className="icon-button subtle"
-            onClick={onClose}
+            className="icon-button subtle modal-close-button"
+            onClick={handleClose}
             aria-label="Close key manager"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -60,8 +81,10 @@ const HFAccessKeyManager = ({ isOpen, onClose }: HFAccessKeyManagerProps) => {
         </header>
 
         <div className="key-manager-add-row">
+          <label className="sr-only" htmlFor={inputId}>Hugging Face key</label>
           <input
-            type="text"
+            id={inputId}
+            type="password"
             className="text-input"
             placeholder="Enter Hugging Face key"
             value={newKeyValue}
@@ -81,7 +104,7 @@ const HFAccessKeyManager = ({ isOpen, onClose }: HFAccessKeyManagerProps) => {
           <DismissibleBanner message={error} onDismiss={clearError} />
         )}
 
-        <div className="key-manager-list">
+        <div className="key-manager-list" role={loading ? 'status' : undefined} aria-live="polite">
           {loading ? (
             <div className="key-manager-empty">Loading keys...</div>
           ) : keys.length === 0 ? (

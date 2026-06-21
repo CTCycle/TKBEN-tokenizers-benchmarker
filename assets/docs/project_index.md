@@ -58,6 +58,8 @@ This file is the root index for `assets/docs`. Read it first to find the narrowe
   - Navigation, controls, forms, overlays, and feedback states.
 - `ui/experience.md`
   - Page structure, UX rules, responsiveness, accessibility, and design principles.
+- `ui/ui_standards.md`
+  - Practical UI implementation standards for spacing, typography, colors, components, and responsive polish.
 
 ## Reading Order
 1. Read this root index.

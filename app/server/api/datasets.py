@@ -30,9 +30,9 @@ from server.common.constants import (
     API_ROUTER_PREFIX_DATASETS,
 )
 from server.api.helpers import (
+    read_upload_limited,
     start_managed_job,
     validate_upload_filename,
-    validate_upload_size,
 )
 from server.services.dataset_jobs import DatasetJobService
 from server.services.datasets import DatasetService
@@ -111,9 +111,12 @@ async def upload_custom_dataset(
 
     logger.info("Custom dataset upload requested: filename=%s", normalized_filename)
 
+    max_upload_bytes = int(get_server_settings().datasets.max_upload_bytes)
     try:
-        file_content = await file.read()
+        file_content = await read_upload_limited(file, max_upload_bytes)
     except Exception as exc:
+        if isinstance(exc, HTTPException):
+            raise
         logger.exception("Failed to read uploaded file")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -124,9 +127,6 @@ async def upload_custom_dataset(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Uploaded file is empty.",
         )
-
-    max_upload_bytes = int(get_server_settings().datasets.max_upload_bytes)
-    validate_upload_size(file_content, max_upload_bytes)
 
     return start_managed_job(
         request,

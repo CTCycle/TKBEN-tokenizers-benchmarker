@@ -142,6 +142,76 @@ def test_json_owned_db_embedded_ignores_environment_overlap(
     assert settings.database.host is None
 
 ###############################################################################
+def test_absent_json_database_block_uses_environment_database_settings(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "configurations.json"
+    _write_json(
+        config_path,
+        {
+            "datasets": {},
+            "tokenizers": {},
+            "benchmarks": {},
+            "jobs": {},
+        },
+    )
+
+    env_path = tmp_path / ".env"
+    _write_env(
+        env_path,
+        [
+            "DATABASE_EMBEDDED=false",
+            "DATABASE_ENGINE=postgresql+psycopg",
+            "DATABASE_HOST=127.0.0.1",
+            "DATABASE_PORT=5432",
+            "DATABASE_NAME=tkben_test",
+            "DATABASE_USERNAME=postgres",
+        ],
+    )
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
+
+    settings = get_server_settings(config_path=config_path)
+
+    assert settings.database.embedded_database is False
+    assert settings.database.engine == "postgresql+psycopg"
+    assert settings.database.database_name == "tkben_test"
+
+###############################################################################
+def test_structured_database_block_overrides_environment_database_settings(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "configurations.json"
+    _write_json(
+        config_path,
+        {
+            "database": {"embedded_database": True},
+            "datasets": {},
+            "tokenizers": {},
+            "benchmarks": {},
+            "jobs": {},
+        },
+    )
+
+    env_path = tmp_path / ".env"
+    _write_env(
+        env_path,
+        [
+            "DATABASE_EMBEDDED=false",
+            "DATABASE_ENGINE=postgresql+psycopg",
+            "DATABASE_HOST=127.0.0.1",
+            "DATABASE_NAME=tkben_test",
+            "DATABASE_USERNAME=postgres",
+        ],
+    )
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
+
+    settings = get_server_settings(config_path=config_path)
+
+    assert settings.database.embedded_database is True
+    assert settings.database.engine is None
+    assert settings.database.database_name is None
+
+###############################################################################
 def test_external_database_requires_host_name_and_user(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -16,6 +16,14 @@ import DatasetValidationWizard from '../components/DatasetValidationWizard';
 import DashboardExportButton from '../components/DashboardExportButton';
 import DismissibleBanner from '../components/DismissibleBanner';
 import HistogramChartCard from '../components/HistogramChartCard';
+import {
+  CHART_AXIS_PROPS,
+  CHART_COLORS,
+  CHART_GRID_PROPS,
+  CHART_TOOLTIP_STYLE,
+  CHART_TOOLTIP_TEXT_STYLE,
+  DATASET_DONUT_COLORS,
+} from '../common/chartStyles';
 import { useDataset } from '../contexts/DatasetContext';
 import { useWordCloudLayout } from '../hooks/useWordCloudLayout';
 import type {
@@ -201,7 +209,7 @@ const PREDEFINED_DATASETS: DatasetGroup[] = [
   },
 ];
 
-const DONUT_COLORS = ['#f59e0b', '#fb7185', '#38bdf8', '#34d399', '#a78bfa', '#f97316', '#64748b'];
+const DONUT_COLORS = DATASET_DONUT_COLORS;
 
 const toNumber = (value: unknown, fallback = 0): number => {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -925,10 +933,10 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                         </Pie>
                         <Tooltip
                           formatter={tooltipPercentFormatter}
-                          contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', color: '#f8fafc' }}
-                          itemStyle={{ color: '#f8fafc' }}
-                          labelStyle={{ color: '#f8fafc' }}
-                          wrapperStyle={{ color: '#f8fafc' }}
+                          contentStyle={{ ...CHART_TOOLTIP_STYLE, ...CHART_TOOLTIP_TEXT_STYLE }}
+                          itemStyle={CHART_TOOLTIP_TEXT_STYLE}
+                          labelStyle={CHART_TOOLTIP_TEXT_STYLE}
+                          wrapperStyle={CHART_TOOLTIP_TEXT_STYLE}
                         />
                       </PieChart>
                     </ResponsiveContainer>
@@ -950,7 +958,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                 title="Document Length Histogram"
                 data={documentHistogramSeries}
                 emptyMessage="No persisted document-length histogram found."
-                barFill="#facc15"
+                barFill={CHART_COLORS.yellow}
                 tooltipFormatter={tooltipCountFormatter}
               />
 
@@ -958,7 +966,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                 title="Word Length Histogram"
                 data={wordHistogramSeries}
                 emptyMessage="No persisted word-length histogram found."
-                barFill="#38bdf8"
+                barFill={CHART_COLORS.cyan}
                 tooltipFormatter={tooltipCountFormatter}
               />
             </div>
@@ -976,11 +984,11 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                     ) : (
                       <ResponsiveContainer width="100%" height={220}>
                         <LineChart data={zipfCurve}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
-                          <XAxis dataKey="rank" stroke="#9ea7b3" />
-                          <YAxis stroke="#9ea7b3" />
-                          <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }} />
-                          <Line type="monotone" dataKey="frequency" stroke="#38bdf8" dot={false} strokeWidth={2} />
+                          <CartesianGrid {...CHART_GRID_PROPS} />
+                          <XAxis dataKey="rank" {...CHART_AXIS_PROPS} />
+                          <YAxis {...CHART_AXIS_PROPS} />
+                          <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                          <Line type="monotone" dataKey="frequency" stroke={CHART_COLORS.cyan} dot={false} strokeWidth={2} />
                         </LineChart>
                       </ResponsiveContainer>
                     )}
@@ -1123,6 +1131,20 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                     <path d="M4 19h16" strokeWidth="2" strokeLinecap="round" />
                   </svg>
                 </button>
+                <button
+                  type="button"
+                  className="icon-button subtle modal-close-button"
+                  aria-label="Close dataset selector"
+                  title="Close dataset selector"
+                  onClick={() => {
+                    setIsInsertByNameOpen(false);
+                    setIsModalOpen(false);
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6L6 18" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </button>
               </div>
             </header>
             <input
@@ -1131,6 +1153,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
               onChange={handleFileChange}
               accept=".csv,.xlsx,.xls"
               className="hidden-file-input"
+              aria-label="Upload custom dataset file"
             />
             {loading && (
               <div className="dataset-modal-progress" role="status" aria-live="polite">
@@ -1240,19 +1263,6 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                   ))}
                 </div>
               </div>
-            </div>
-            <div className="modal-footer">
-              <button
-                type="button"
-                className="secondary-button"
-                title="Close dataset selector"
-                onClick={() => {
-                  setIsInsertByNameOpen(false);
-                  setIsModalOpen(false);
-                }}
-              >
-                Close
-              </button>
             </div>
           </div>
         </div>

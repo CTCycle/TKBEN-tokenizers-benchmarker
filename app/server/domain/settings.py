@@ -57,6 +57,7 @@ class BenchmarkSettings:
 @dataclass(frozen=True)
 class JobsSettings:
     polling_interval: float
+    terminal_retention_seconds: float
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -322,6 +323,7 @@ class JsonBenchmarkSettings(BaseModel):
 ###############################################################################
 class JsonJobsSettings(BaseModel):
     polling_interval: float = Field(default=1.0, gt=0.0)
+    terminal_retention_seconds: float = Field(default=3600.0, ge=0.0)
 
 ###############################################################################
 class JsonConfiguration(BaseModel):
@@ -335,7 +337,7 @@ class JsonConfiguration(BaseModel):
     @classmethod
     def from_payload(cls, payload: dict[str, Any]) -> "JsonConfiguration":
         return cls(
-            database=payload.get("database", {}),
+            database=payload.get("database"),
             datasets=payload.get("datasets", {}),
             tokenizers=payload.get("tokenizers", {}),
             benchmarks=payload.get("benchmarks", {}),
@@ -386,5 +388,6 @@ class JsonConfiguration(BaseModel):
             ),
             jobs=JobsSettings(
                 polling_interval=self.jobs.polling_interval,
+                terminal_retention_seconds=self.jobs.terminal_retention_seconds,
             ),
         )

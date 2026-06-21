@@ -70,6 +70,52 @@ def test_benchmark_run_route_returns_202(monkeypatch) -> None:
 
 
 ###############################################################################
+def test_benchmark_run_accepts_selected_custom_tokenizer_without_persisted_cache(
+    monkeypatch,
+) -> None:
+    manager = DummyJobManager()
+    monkeypatch.setattr(app.state, "job_manager", manager)
+
+    from server.services.benchmarks import BenchmarkService
+
+    missing_checked = {"tokenizers": None}
+
+    monkeypatch.setattr(
+        BenchmarkService,
+        "resolve_custom_tokenizer_selection",
+        lambda self, name: {"CUSTOM_demo": object()} if name == "CUSTOM_demo" else {},
+    )
+    monkeypatch.setattr(
+        BenchmarkService, "get_dataset_document_count", lambda self, dataset_name: 3
+    )
+
+    def fake_missing(self, tokenizers):
+        del self
+        missing_checked["tokenizers"] = list(tokenizers)
+        return []
+
+    monkeypatch.setattr(
+        BenchmarkService,
+        "get_missing_persisted_tokenizers",
+        fake_missing,
+    )
+
+    client = TestClient(app)
+    resp = client.post(
+        "/api/benchmarks/run",
+        json={
+            "tokenizers": ["CUSTOM_demo"],
+            "dataset_name": "custom/sample",
+            "custom_tokenizer_name": "CUSTOM_demo",
+            "config": {"max_documents": 2},
+        },
+    )
+
+    assert resp.status_code == 202
+    assert missing_checked["tokenizers"] == []
+
+
+###############################################################################
 def test_benchmark_list_and_by_id(monkeypatch) -> None:
     from server.services.benchmarks import BenchmarkService
 

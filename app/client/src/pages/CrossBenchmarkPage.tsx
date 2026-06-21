@@ -15,13 +15,20 @@ import BenchmarkRunWizard from '../components/BenchmarkRunWizard';
 import ChartPlaceholder from '../components/ChartPlaceholder';
 import DashboardExportButton from '../components/DashboardExportButton';
 import DismissibleBanner from '../components/DismissibleBanner';
+import {
+  CHART_AXIS_PROPS,
+  CHART_COLORS,
+  CHART_GRID_PROPS,
+  CHART_SERIES_COLORS,
+  CHART_TOOLTIP_STYLE,
+} from '../common/chartStyles';
 import { useBenchmarkWorkspace } from '../hooks/useBenchmarkWorkspace';
 import type { BenchmarkRunPayload } from '../hooks/useBenchmarkWorkspace';
 import type {
   BenchmarkTokenizerResult,
 } from '../types/api';
 
-const BAR_COLORS = ['#4fc3f7', '#81c784', '#ffb74d', '#f06292', '#ba68c8', '#4db6ac'];
+const BAR_COLORS = CHART_SERIES_COLORS;
 
 const toNumber = (value: unknown): number => {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -483,10 +490,10 @@ const CrossBenchmarkPage = () => {
                         data={speedChartData}
                         margin={{ top: 6, right: 12, left: 2, bottom: 16 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
+                        <CartesianGrid {...CHART_GRID_PROPS} />
                         <XAxis
                           dataKey="tokenizer"
-                          stroke="#9ea7b3"
+                          {...CHART_AXIS_PROPS}
                           interval="preserveStartEnd"
                           tick={{ fontSize: 11 }}
                           tickFormatter={formatChartTokenizerLabel}
@@ -494,10 +501,10 @@ const CrossBenchmarkPage = () => {
                           minTickGap={16}
                           height={54}
                         />
-                        <YAxis stroke="#9ea7b3" width={78} tick={{ fontSize: 11 }} />
-                        <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }} />
+                        <YAxis {...CHART_AXIS_PROPS} width={78} tick={{ fontSize: 11 }} />
+                        <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
                         <Legend {...chartLegendProps} />
-                        <Bar dataKey="tokens_per_second" fill="#4fc3f7" name="Tokenization Speed (tokens/sec)" />
+                        <Bar dataKey="tokens_per_second" fill={CHART_COLORS.blue} name="Tokenization Speed (tokens/sec)" />
                       </BarChart>
                     </ResponsiveContainer>
                   )}
@@ -515,10 +522,10 @@ const CrossBenchmarkPage = () => {
                         data={speedChartData}
                         margin={{ top: 6, right: 12, left: 2, bottom: 16 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
+                        <CartesianGrid {...CHART_GRID_PROPS} />
                         <XAxis
                           dataKey="tokenizer"
-                          stroke="#9ea7b3"
+                          {...CHART_AXIS_PROPS}
                           interval="preserveStartEnd"
                           tick={{ fontSize: 11 }}
                           tickFormatter={formatChartTokenizerLabel}
@@ -526,10 +533,10 @@ const CrossBenchmarkPage = () => {
                           minTickGap={16}
                           height={54}
                         />
-                        <YAxis stroke="#9ea7b3" width={78} tick={{ fontSize: 11 }} />
-                        <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }} />
+                        <YAxis {...CHART_AXIS_PROPS} width={78} tick={{ fontSize: 11 }} />
+                        <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
                         <Legend {...chartLegendProps} />
-                        <Bar dataKey="chars_per_second" fill="#81c784" name="Character Throughput (chars/sec)" />
+                        <Bar dataKey="chars_per_second" fill={CHART_COLORS.green} name="Character Throughput (chars/sec)" />
                       </BarChart>
                     </ResponsiveContainer>
                   )}
@@ -547,10 +554,10 @@ const CrossBenchmarkPage = () => {
                         data={qualityChartData}
                         margin={{ top: 6, right: 12, left: 2, bottom: 16 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
+                        <CartesianGrid {...CHART_GRID_PROPS} />
                         <XAxis
                           dataKey="tokenizer"
-                          stroke="#9ea7b3"
+                          {...CHART_AXIS_PROPS}
                           interval="preserveStartEnd"
                           tick={{ fontSize: 11 }}
                           tickFormatter={formatChartTokenizerLabel}
@@ -558,19 +565,19 @@ const CrossBenchmarkPage = () => {
                           minTickGap={16}
                           height={54}
                         />
-                        <YAxis stroke="#9ea7b3" width={78} tick={{ fontSize: 11 }} />
+                        <YAxis {...CHART_AXIS_PROPS} width={78} tick={{ fontSize: 11 }} />
                         <Tooltip
                           formatter={(value: unknown) => {
                             const numeric = toNumberOrNull(value);
                             return numeric === null ? 'N/A' : `${normalizeRate(numeric).toFixed(2)}%`;
                           }}
-                          contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }}
+                          contentStyle={CHART_TOOLTIP_STYLE}
                         />
                         <Legend {...chartLegendProps} />
-                        <Bar dataKey="unknown_token_rate" fill="#f87171" name="Unknown Token Rate (%)" />
-                        <Bar dataKey="decode_reencode_id_stability_rate" fill="#38bdf8" name="Decode/Re-encode ID Stability (%)" />
-                        <Bar dataKey="nfc_text_round_trip_rate" fill="#facc15" name="NFC Text Round-Trip Rate (%)" />
-                        <Bar dataKey="vocab_character_overlap_percent" fill="#22c55e" name="Vocabulary Character Overlap (%)" />
+                        <Bar dataKey="unknown_token_rate" fill={CHART_COLORS.red} name="Unknown Token Rate (%)" />
+                        <Bar dataKey="decode_reencode_id_stability_rate" fill={CHART_COLORS.cyan} name="Decode/Re-encode ID Stability (%)" />
+                        <Bar dataKey="nfc_text_round_trip_rate" fill={CHART_COLORS.yellow} name="NFC Text Round-Trip Rate (%)" />
+                        <Bar dataKey="vocab_character_overlap_percent" fill={CHART_COLORS.success} name="Vocabulary Character Overlap (%)" />
                       </BarChart>
                     </ResponsiveContainer>
                   )}
@@ -588,10 +595,10 @@ const CrossBenchmarkPage = () => {
                         data={vocabularyChartData}
                         margin={{ top: 6, right: 12, left: 2, bottom: 16 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
+                        <CartesianGrid {...CHART_GRID_PROPS} />
                         <XAxis
                           dataKey="tokenizer"
-                          stroke="#9ea7b3"
+                          {...CHART_AXIS_PROPS}
                           interval="preserveStartEnd"
                           tick={{ fontSize: 11 }}
                           tickFormatter={formatChartTokenizerLabel}
@@ -599,12 +606,12 @@ const CrossBenchmarkPage = () => {
                           minTickGap={16}
                           height={54}
                         />
-                        <YAxis stroke="#9ea7b3" width={78} tick={{ fontSize: 11 }} />
-                        <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }} />
+                        <YAxis {...CHART_AXIS_PROPS} width={78} tick={{ fontSize: 11 }} />
+                        <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
                         <Legend {...chartLegendProps} />
-                        <Bar dataKey="vocabulary_size" fill="#4fc3f7" name="Vocabulary Size (tokens)" />
-                        <Bar dataKey="added_tokens" fill="#ffb74d" name="Added Tokens" />
-                        <Bar dataKey="special_token_share" fill="#81c784" name="Special Token Share (%)" />
+                        <Bar dataKey="vocabulary_size" fill={CHART_COLORS.blue} name="Vocabulary Size (tokens)" />
+                        <Bar dataKey="added_tokens" fill={CHART_COLORS.orange} name="Added Tokens" />
+                        <Bar dataKey="special_token_share" fill={CHART_COLORS.green} name="Special Token Share (%)" />
                       </ComposedChart>
                     </ResponsiveContainer>
                   )}
@@ -644,11 +651,11 @@ const CrossBenchmarkPage = () => {
                         data={distributionSeries}
                         margin={{ top: 10, right: 16, left: 4, bottom: 22 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#2d3440" />
-                        <XAxis dataKey="label" stroke="#9ea7b3" hide />
-                        <YAxis stroke="#9ea7b3" width={78} tick={{ fontSize: 11 }} />
-                        <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }} />
-                        <Bar dataKey="count" fill="#ba68c8">
+                        <CartesianGrid {...CHART_GRID_PROPS} />
+                        <XAxis dataKey="label" {...CHART_AXIS_PROPS} hide />
+                        <YAxis {...CHART_AXIS_PROPS} width={78} tick={{ fontSize: 11 }} />
+                        <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                        <Bar dataKey="count" fill={CHART_COLORS.purple}>
                           {distributionSeries.map((entry, index) => (
                             <Cell key={`${entry.label}-${entry.count}`} fill={BAR_COLORS[index % BAR_COLORS.length]} />
                           ))}

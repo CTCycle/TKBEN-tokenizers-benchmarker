@@ -18,8 +18,10 @@ const DismissibleBanner = ({
   return (
     <div className={classes} role={role}>
       <span>{message}</span>
-      <button type="button" aria-label={dismissLabel} onClick={onDismiss}>
-        ×
+      <button type="button" className="banner-dismiss-button" aria-label={dismissLabel} onClick={onDismiss}>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18" strokeWidth="2" strokeLinecap="round" />
+        </svg>
       </button>
     </div>
   );

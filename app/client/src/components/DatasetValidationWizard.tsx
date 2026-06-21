@@ -80,23 +80,41 @@ const DatasetValidationWizard = ({
     return null;
   }
 
+  const titleId = 'validation-wizard-title';
+  const descriptionId = 'validation-wizard-description';
+  const samplingModeId = 'validation-wizard-sampling-mode';
+  const fractionId = 'validation-wizard-sampling-fraction';
+  const countRangeId = 'validation-wizard-sampling-count-range';
+  const countInputId = 'validation-wizard-sampling-count';
+  const minLengthId = 'validation-wizard-min-length';
+  const maxLengthId = 'validation-wizard-max-length';
+  const sessionNameId = 'validation-wizard-session-name';
+
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="validation-wizard-title">
+    <div
+      className="modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      aria-describedby={descriptionId}
+    >
       <div className="modal-card validation-wizard-modal">
         <header className="validation-wizard-header">
           <div>
-            <p id="validation-wizard-title" className="panel-label">Run Validation Pipeline</p>
-            <p className="panel-description">
+            <p id={titleId} className="panel-label">Run Validation Pipeline</p>
+            <p id={descriptionId} className="panel-description">
               Configure metrics and sampling for dataset analysis.
             </p>
           </div>
           <button
             type="button"
-            className="icon-button subtle"
+            className="icon-button subtle modal-close-button"
             onClick={onClose}
             aria-label="Close validation wizard"
           >
-            ×
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18" strokeWidth="2" strokeLinecap="round" />
+            </svg>
           </button>
         </header>
 
@@ -144,8 +162,8 @@ const DatasetValidationWizard = ({
           {step === 1 && (
             <div className="validation-form-grid">
               <div className="input-stack">
-                <label className="field-label">Sampling Mode</label>
-                <div className="field-row">
+                <span id={samplingModeId} className="field-label">Sampling Mode</span>
+                <div className="field-row" role="radiogroup" aria-labelledby={samplingModeId}>
                   <label className="checkbox">
                     <input
                       type="radio"
@@ -167,8 +185,9 @@ const DatasetValidationWizard = ({
 
               {samplingMode === 'fraction' ? (
                 <div className="input-stack">
-                  <label className="field-label">Fraction ({samplingFraction.toFixed(2)})</label>
+                  <label className="field-label" htmlFor={fractionId}>Fraction ({samplingFraction.toFixed(2)})</label>
                   <input
+                    id={fractionId}
                     type="range"
                     min={0.01}
                     max={1}
@@ -179,8 +198,9 @@ const DatasetValidationWizard = ({
                 </div>
               ) : (
                 <div className="input-stack">
-                  <label className="field-label">Document Count ({Math.max(1, Math.floor(samplingCount))})</label>
+                  <label className="field-label" htmlFor={countRangeId}>Document Count ({Math.max(1, Math.floor(samplingCount))})</label>
                   <input
+                    id={countRangeId}
                     type="range"
                     min={1}
                     max={100000}
@@ -189,6 +209,8 @@ const DatasetValidationWizard = ({
                     onChange={(event) => setSamplingCount(Math.max(1, Number(event.target.value) || 1))}
                   />
                   <input
+                    id={countInputId}
+                    aria-label="Document count"
                     className="text-input"
                     value={samplingCount}
                     onChange={(event) => setSamplingCount(Math.max(1, Number(event.target.value) || 1))}
@@ -197,8 +219,9 @@ const DatasetValidationWizard = ({
               )}
 
               <div className="input-stack">
-                <label className="field-label">Min Length</label>
+                <label className="field-label" htmlFor={minLengthId}>Min Length</label>
                 <input
+                  id={minLengthId}
                   className="text-input"
                   value={minLength}
                   onChange={(event) => setMinLength(event.target.value)}
@@ -206,8 +229,9 @@ const DatasetValidationWizard = ({
                 />
               </div>
               <div className="input-stack">
-                <label className="field-label">Max Length</label>
+                <label className="field-label" htmlFor={maxLengthId}>Max Length</label>
                 <input
+                  id={maxLengthId}
                   className="text-input"
                   value={maxLength}
                   onChange={(event) => setMaxLength(event.target.value)}
@@ -228,8 +252,9 @@ const DatasetValidationWizard = ({
           {step === 2 && (
             <div className="validation-summary">
               <div className="input-stack">
-                <label className="field-label">Session Name (optional)</label>
+                <label className="field-label" htmlFor={sessionNameId}>Session Name (optional)</label>
                 <input
+                  id={sessionNameId}
                   className="text-input"
                   value={sessionName}
                   onChange={(event) => setSessionName(event.target.value)}
