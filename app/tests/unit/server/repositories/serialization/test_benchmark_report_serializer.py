@@ -11,7 +11,6 @@ from server.repositories.serialization.benchmark_reports import (
     BenchmarkReportSerializer,
 )
 
-
 ###############################################################################
 def _build_payload(dataset_name: str) -> dict:
     return {
@@ -117,7 +116,6 @@ def _build_payload(dataset_name: str) -> dict:
         },
         "raw_observations": {},
     }
-
 
 ###############################################################################
 def test_benchmark_report_serializer_round_trip(monkeypatch) -> None:

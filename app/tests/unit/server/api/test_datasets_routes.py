@@ -4,7 +4,6 @@ from fastapi.testclient import TestClient
 
 from server.app import app
 
-
 ###############################################################################
 class DummyJobManager:
 
@@ -28,7 +27,6 @@ class DummyJobManager:
     def get_job_status(self, job_id: str):
         del job_id
         return {"job_type": self.last_job_type, "status": "pending"}
-
 
 ###############################################################################
 def test_dataset_job_start_routes_return_202(monkeypatch) -> None:
@@ -73,10 +71,12 @@ def test_dataset_upload_rejects_oversized_file_before_job_dispatch(monkeypatch) 
 
     from server.api import datasets as datasets_api
 
+    ###############################################################################
     class _DatasetCfg:
         allowed_extensions = (".csv", ".xls", ".xlsx")
         max_upload_bytes = 4
 
+    ###############################################################################
     class _Settings:
         datasets = _DatasetCfg()
         jobs = type("JobsCfg", (), {"polling_interval": 1.0})()

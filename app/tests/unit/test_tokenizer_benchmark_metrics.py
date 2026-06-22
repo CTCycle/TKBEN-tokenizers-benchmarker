@@ -8,13 +8,11 @@ from tests.unit.benchmark_metric_test_support import (
     run_deterministic_benchmark,
 )
 
-
 ###############################################################################
 @pytest.fixture(scope="module")
 def benchmark_metric_values() -> dict[str, object]:
     result = run_deterministic_benchmark()
     return build_benchmark_metric_value_map(result)
-
 
 ###############################################################################
 def test_tokenizer_benchmark_metrics_are_observed_and_non_synthetic(

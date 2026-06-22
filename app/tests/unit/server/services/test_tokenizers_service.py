@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from server.services.tokenizers import TokenizersService
 
-
 ###############################################################################
 class FakeTokenizerRepository:
 
@@ -30,7 +29,6 @@ class FakeTokenizerRepository:
     def get_tokenizer_report_by_id(self, report_id: int):
         return object() if report_id == 1 else None
 
-
 ###############################################################################
 def test_tokenizers_service_uses_repository_layer(monkeypatch) -> None:
     service = TokenizersService()
@@ -43,7 +41,6 @@ def test_tokenizers_service_uses_repository_layer(monkeypatch) -> None:
 
     missing = service.resolve_missing_tokenizer_names(["exists", "missing"])
     assert missing == ["missing"]
-
 
 ###############################################################################
 def test_tokenizers_service_report_prechecks(monkeypatch) -> None:

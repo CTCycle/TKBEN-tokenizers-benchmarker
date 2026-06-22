@@ -4,7 +4,6 @@ import pytest
 
 from server.services.export import DashboardExportService
 
-
 ###############################################################################
 def build_dataset_payload() -> dict:
     return {
@@ -64,7 +63,6 @@ def build_dataset_payload() -> dict:
         }
     }
 
-
 ###############################################################################
 def build_tokenizer_payload() -> dict:
     return {
@@ -95,7 +93,6 @@ def build_tokenizer_payload() -> dict:
             {"token_id": 5, "token": "the", "length": 3},
         ],
     }
-
 
 ###############################################################################
 def build_benchmark_payload() -> dict:
@@ -148,7 +145,6 @@ def build_benchmark_payload() -> dict:
         "selected_distribution_tokenizer": "bert-base-uncased",
     }
 
-
 ###############################################################################
 def test_export_dataset_dashboard_pdf_generates_pdf_bytes() -> None:
     service = DashboardExportService()
@@ -163,7 +159,6 @@ def test_export_dataset_dashboard_pdf_generates_pdf_bytes() -> None:
     assert result.page_count >= 2
     assert result.pdf_bytes.startswith(b"%PDF")
     assert len(result.pdf_bytes) > 5000
-
 
 ###############################################################################
 def test_export_tokenizer_dashboard_pdf_generates_pdf_bytes() -> None:
@@ -180,7 +175,6 @@ def test_export_tokenizer_dashboard_pdf_generates_pdf_bytes() -> None:
     assert result.pdf_bytes.startswith(b"%PDF")
     assert len(result.pdf_bytes) > 4000
 
-
 ###############################################################################
 def test_export_benchmark_dashboard_pdf_generates_pdf_bytes() -> None:
     service = DashboardExportService()
@@ -195,7 +189,6 @@ def test_export_benchmark_dashboard_pdf_generates_pdf_bytes() -> None:
     assert result.page_count >= 2
     assert result.pdf_bytes.startswith(b"%PDF")
     assert len(result.pdf_bytes) > 5000
-
 
 ###############################################################################
 def test_export_dashboard_pdf_rejects_unsupported_dashboard_type() -> None:

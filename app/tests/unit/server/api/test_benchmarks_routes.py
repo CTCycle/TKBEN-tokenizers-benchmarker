@@ -4,7 +4,6 @@ from fastapi.testclient import TestClient
 
 from server.app import app
 
-
 ###############################################################################
 class DummyJobManager:
 
@@ -26,7 +25,6 @@ class DummyJobManager:
     def get_job_status(self, job_id: str):
         del job_id
         return {"job_type": self.last_job_type, "status": "pending"}
-
 
 ###############################################################################
 def test_benchmark_run_route_returns_202(monkeypatch) -> None:
@@ -67,7 +65,6 @@ def test_benchmark_run_route_returns_202(monkeypatch) -> None:
 
     assert resp.status_code == 202
     assert resp.json()["job_id"] == "job-bench"
-
 
 ###############################################################################
 def test_benchmark_run_accepts_selected_custom_tokenizer_without_persisted_cache(
@@ -113,7 +110,6 @@ def test_benchmark_run_accepts_selected_custom_tokenizer_without_persisted_cache
 
     assert resp.status_code == 202
     assert missing_checked["tokenizers"] == []
-
 
 ###############################################################################
 def test_benchmark_list_and_by_id(monkeypatch) -> None:
@@ -197,7 +193,6 @@ def test_benchmark_list_and_by_id(monkeypatch) -> None:
     by_id = client.get("/api/benchmarks/reports/1")
     assert by_id.status_code == 200
     assert by_id.json()["report_id"] == 1
-
 
 ###############################################################################
 def test_benchmark_by_id_accepts_cancelled_contract(monkeypatch) -> None:

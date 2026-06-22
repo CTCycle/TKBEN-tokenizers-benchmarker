@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import Iterable, Iterator
 from itertools import islice
 
-
 ###############################################################################
 def normalize_benchmark_text(value: object) -> str | None:
     if value is None:
@@ -11,7 +10,6 @@ def normalize_benchmark_text(value: object) -> str | None:
     if isinstance(value, str):
         return value
     return str(value)
-
 
 ###############################################################################
 def iter_limited_rows(
@@ -27,7 +25,6 @@ def iter_limited_rows(
         if text is None:
             continue
         yield int(row_id), text
-
 
 ###############################################################################
 def iter_text_batches(

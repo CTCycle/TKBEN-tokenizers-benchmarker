@@ -4,7 +4,6 @@ from fastapi.testclient import TestClient
 
 from server.app import app
 
-
 ###############################################################################
 class DummyJobManager:
 
@@ -26,7 +25,6 @@ class DummyJobManager:
     def get_job_status(self, job_id: str):
         del job_id
         return {"job_type": self.last_job_type, "status": "pending"}
-
 
 ###############################################################################
 def test_tokenizer_upload_validation_and_custom_clear(monkeypatch) -> None:
@@ -114,14 +112,15 @@ def test_tokenizer_upload_validation_and_custom_clear(monkeypatch) -> None:
     assert cleared.status_code == 200
     assert called["value"] is True
 
-
 ###############################################################################
 def test_tokenizer_upload_rejects_oversized_file_before_service_call(monkeypatch) -> None:
     from server.api import tokenizers as tokenizers_api
 
+    ###############################################################################
     class _TokenizerCfg:
         max_upload_bytes = 1
 
+    ###############################################################################
     class _Settings:
         tokenizers = _TokenizerCfg()
         jobs = type("JobsCfg", (), {"polling_interval": 1.0})()
@@ -148,7 +147,6 @@ def test_tokenizer_upload_rejects_oversized_file_before_service_call(monkeypatch
 
     assert response.status_code == 413
     assert called["upload"] is False
-
 
 ###############################################################################
 def test_tokenizer_job_routes_return_202(monkeypatch) -> None:

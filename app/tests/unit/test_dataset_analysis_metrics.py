@@ -200,7 +200,6 @@ EXPECTED_DATASET_METRICS: dict[str, Any] = {
     "words.zipf_slope": -0.7195898875112114,
 }
 
-
 ###############################################################################
 def _assert_metric_value(
     actual: Any, expected: Any, metric_key: str, path: str = ""
@@ -261,7 +260,6 @@ def _assert_metric_value(
 
     assert actual == expected, f"{location} mismatch: expected {expected}, got {actual}"
 
-
 ###############################################################################
 def _dataset_metric_keys() -> list[str]:
     return [
@@ -270,7 +268,6 @@ def _dataset_metric_keys() -> list[str]:
         for metric in category.get("metrics", [])
         if isinstance(metric, dict) and isinstance(metric.get("key"), str)
     ]
-
 
 ###############################################################################
 def _extract_metric_value_map() -> dict[str, Any]:
@@ -319,19 +316,16 @@ def _extract_metric_value_map() -> dict[str, Any]:
             extracted[key] = aggregate_values[key]
     return extracted
 
-
 ###############################################################################
 @pytest.fixture(scope="module")
 def actual_dataset_metrics() -> dict[str, Any]:
     return _extract_metric_value_map()
-
 
 ###############################################################################
 def test_dataset_metric_catalog_has_expected_cardinality() -> None:
     keys = _dataset_metric_keys()
     assert len(keys) == 77, f"Expected 77 dataset metrics, found {len(keys)}"
     assert len(set(keys)) == 77, "Dataset metric keys must be unique"
-
 
 ###############################################################################
 def test_dataset_metric_expected_fixture_matches_catalog() -> None:
@@ -342,7 +336,6 @@ def test_dataset_metric_expected_fixture_matches_catalog() -> None:
         f"Missing={sorted(catalog_keys - expected_keys)} "
         f"Extra={sorted(expected_keys - catalog_keys)}"
     )
-
 
 ###############################################################################
 @pytest.mark.parametrize("metric_key", sorted(EXPECTED_DATASET_METRICS.keys()))
