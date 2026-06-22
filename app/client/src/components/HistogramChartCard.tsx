@@ -26,8 +26,8 @@ const HistogramChartCard = ({
   barFill,
   tooltipFormatter,
 }: HistogramChartCardProps) => (
-  <div className="dataset-v2-card dataset-v2-chart-card">
-    <div className="dataset-v2-card-header">
+  <div className="dataset-card dataset-chart-card">
+    <div className="dataset-card-header">
       <p className="panel-label">{title}</p>
     </div>
     {data.length === 0 ? (
@@ -35,7 +35,7 @@ const HistogramChartCard = ({
         <p>{emptyMessage}</p>
       </div>
     ) : (
-      <div className="dataset-v2-chart-body">
+      <div className="dataset-chart-body">
         <ResponsiveContainer width="100%" height={260}>
           <BarChart
             data={data}

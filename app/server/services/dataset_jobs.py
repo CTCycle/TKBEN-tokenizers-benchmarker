@@ -32,14 +32,6 @@ class DatasetJobService:
         }
 
     # -------------------------------------------------------------------------
-    def build_download_payload(self, result: dict[str, Any]) -> dict[str, Any]:
-        return self.build_dataset_mutation_payload(result)
-
-    # -------------------------------------------------------------------------
-    def build_upload_payload(self, result: dict[str, Any]) -> dict[str, Any]:
-        return self.build_dataset_mutation_payload(result)
-
-    # -------------------------------------------------------------------------
     def extract_configuration(self, request_payload: dict[str, Any]) -> str | None:
         configs = request_payload.get("configs")
         if isinstance(configs, dict):
@@ -98,7 +90,7 @@ class DatasetJobService:
         )
         if job_manager.should_stop(job_id):
             return {}
-        return self.build_download_payload(result)
+        return self.build_dataset_mutation_payload(result)
 
     # -------------------------------------------------------------------------
     def run_upload_job(
@@ -120,7 +112,7 @@ class DatasetJobService:
         )
         if job_manager.should_stop(job_id):
             return {}
-        return self.build_upload_payload(result)
+        return self.build_dataset_mutation_payload(result)
 
     # -------------------------------------------------------------------------
     def run_analysis_job(

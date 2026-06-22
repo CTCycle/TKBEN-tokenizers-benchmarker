@@ -281,7 +281,7 @@ class TestCrossBenchmarkPage:
                 status=200,
                 content_type="application/json",
                 body=(
-                    '{"status":"success","schema_version":1,"methodology_version":"v2_semantic_honesty",'
+                    '{"status":"success","schema_version":1,"methodology_version":"semantic_honesty",'
                     '"report_id":1,"report_version":2,"created_at":"2026-01-01T00:00:00Z","run_name":"mock run",'
                     '"selected_metric_keys":["eff.encode_tokens_per_second_mean"],"dataset_name":"custom/sample",'
                     '"documents_processed":2,"tokenizers_processed":["ok/tokenizer","broken/tokenizer"],'

@@ -5,7 +5,6 @@ import type {
     TokenizerListResponse,
     TokenizerReportResponse,
     TokenizerScanResponse,
-    TokenizerSettingsResponse,
     TokenizerValidationGenerateRequest,
     TokenizerVocabularyPageResponse,
     TokenizerUploadResponse,
@@ -15,14 +14,6 @@ import { API_ENDPOINTS } from '../common/constants/api';
 import { waitForJobResult } from './jobsApi';
 import { ensureOkResponse, parseRecordPayload, readJobStartResponse, readJsonResponse } from './responseGuards';
 
-/**
- * Get tokenizer configuration settings from the server.
- * @returns Promise with tokenizer settings (scan limits)
- */
-export async function getTokenizerSettings(): Promise<TokenizerSettingsResponse> {
-    const response = await fetch(API_ENDPOINTS.TOKENIZERS_SETTINGS);
-    return readJsonResponse(response, 'Failed to fetch settings');
-}
 
 /**
  * Scan HuggingFace for the most popular tokenizer identifiers.
@@ -127,19 +118,6 @@ export async function generateTokenizerReport(
 }
 
 /**
- * Load latest persisted tokenizer report.
- */
-export async function fetchLatestTokenizerReport(
-    tokenizerName: string,
-): Promise<TokenizerReportResponse> {
-    const response = await fetch(
-        `${API_ENDPOINTS.TOKENIZERS_REPORT_LATEST}?tokenizer_name=${encodeURIComponent(tokenizerName)}`,
-    );
-
-    return readJsonResponse(response, 'Failed to load latest tokenizer report');
-}
-
-/**
  * Load latest persisted tokenizer report, returning null if not found.
  */
 export async function fetchLatestTokenizerReportOrNull(
@@ -153,17 +131,6 @@ export async function fetchLatestTokenizerReportOrNull(
         return null;
     }
     return readJsonResponse(response, 'Failed to load latest tokenizer report');
-}
-
-/**
- * Load tokenizer report by id.
- */
-export async function fetchTokenizerReportById(
-    reportId: number,
-): Promise<TokenizerReportResponse> {
-    const response = await fetch(`${API_ENDPOINTS.TOKENIZERS_REPORT_BY_ID}/${reportId}`);
-
-    return readJsonResponse(response, 'Failed to load tokenizer report');
 }
 
 /**

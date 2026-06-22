@@ -21,12 +21,4 @@ class JobStatusResponse(BaseModel):
     result: dict[str, Any] | None = None
     error: str | None = None
 
-###############################################################################
-class JobListResponse(BaseModel):
-    jobs: list[JobStatusResponse]
 
-###############################################################################
-class JobCancelResponse(BaseModel):
-    job_id: str
-    success: bool
-    message: str

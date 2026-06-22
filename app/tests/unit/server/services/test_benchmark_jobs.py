@@ -34,7 +34,7 @@ def test_run_benchmark_job_builds_and_saves_report(monkeypatch) -> None:
             return {
                 "status": "success",
                 "schema_version": 1,
-                "methodology_version": "v1_observed_trials",
+                "methodology_version": "semantic_honesty",
                 "dataset_name": "custom/sample",
                 "documents_processed": 2,
                 "tokenizers_processed": ["bert-base-uncased"],
@@ -116,7 +116,7 @@ def test_run_benchmark_job_returns_cancelled_payload_without_persist(
             return {
                 "status": "cancelled",
                 "schema_version": 1,
-                "methodology_version": "v1_observed_trials",
+                "methodology_version": "semantic_honesty",
                 "dataset_name": "custom/sample",
                 "documents_processed": 0,
                 "tokenizers_processed": [],

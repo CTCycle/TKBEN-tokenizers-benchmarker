@@ -2521,31 +2521,31 @@ select:focus-visible {
   display: none;
 }
 
-.dataset-v2-dashboard {
+.dataset-dashboard {
   display: flex;
   flex-direction: column;
   gap: 16px;
   margin-top: 4px;
 }
 
-.dataset-v2-row {
+.dataset-row {
   display: grid;
   gap: 14px;
 }
 
-.dataset-v2-row-one {
+.dataset-row-one {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.dataset-v2-row-two {
+.dataset-row-two {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.dataset-v2-row-three {
+.dataset-row-three {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.dataset-v2-card {
+.dataset-card {
   background: var(--color-panel-alt);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -2556,52 +2556,52 @@ select:focus-visible {
   min-height: 0;
 }
 
-.dataset-v2-card-header {
+.dataset-card-header {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   gap: 12px;
 }
 
-.dataset-v2-card-header .panel-description {
+.dataset-card-header .panel-description {
   margin: 0;
   font-size: 12px;
 }
 
-.dataset-v2-table {
+.dataset-table {
   width: 100%;
   border-collapse: collapse;
 }
 
-.dataset-v2-table th,
-.dataset-v2-table td {
+.dataset-table th,
+.dataset-table td {
   padding: 8px 0;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   text-align: left;
   font-size: 13px;
 }
 
-.dataset-v2-table tr:first-child th,
-.dataset-v2-table tr:first-child td {
+.dataset-table tr:first-child th,
+.dataset-table tr:first-child td {
   border-top: 0;
 }
 
-.dataset-v2-table th {
+.dataset-table th {
   color: var(--color-muted);
   font-weight: 600;
   width: 52%;
 }
 
-.dataset-v2-chart-card {
+.dataset-chart-card {
   min-height: 320px;
 }
 
-.dataset-v2-chart-body {
+.dataset-chart-body {
   min-height: 0;
   flex: 1;
 }
 
-.dataset-v2-legend {
+.dataset-legend {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px 12px;
@@ -2609,29 +2609,29 @@ select:focus-visible {
   color: var(--color-muted);
 }
 
-.dataset-v2-legend span {
+.dataset-legend span {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-.dataset-v2-legend i {
+.dataset-legend i {
   width: 8px;
   height: 8px;
   border-radius: 50%;
 }
 
-.dataset-v2-extras {
+.dataset-extras {
   grid-column: span 2;
 }
 
-.dataset-v2-extras-grid {
+.dataset-extras-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px 16px;
 }
 
-.dataset-v2-extras-item {
+.dataset-extras-item {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2639,36 +2639,36 @@ select:focus-visible {
   padding: 2px 0;
 }
 
-.dataset-v2-extras-item .panel-description {
+.dataset-extras-item .panel-description {
   margin: 0 0 8px;
   font-size: 12px;
 }
 
-.dataset-v2-gauge-track {
+.dataset-gauge-track {
   height: 10px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.12);
   overflow: hidden;
 }
 
-.dataset-v2-gauge-fill {
+.dataset-gauge-fill {
   height: 100%;
   background: linear-gradient(90deg, #f59e0b, #22d3ee);
   transition: width 180ms ease;
 }
 
-.dataset-v2-gauge-value {
+.dataset-gauge-value {
   margin: 8px 0 0;
   font-size: 18px;
   font-weight: 600;
 }
 
-.dataset-v2-entropy-help {
+.dataset-entropy-help {
   margin-top: 6px;
   line-height: 1.35;
 }
 
-.dataset-v2-indicator-row {
+.dataset-indicator-row {
   display: flex;
   justify-content: space-between;
   gap: 8px;
@@ -2677,11 +2677,11 @@ select:focus-visible {
   padding: 4px 0;
 }
 
-.dataset-v2-word-cloud-card {
+.dataset-word-cloud-card {
   min-height: 370px;
 }
 
-.dataset-v2-word-cloud-canvas {
+.dataset-word-cloud-canvas {
   position: relative;
   flex: 1;
   min-height: 300px;
@@ -2691,13 +2691,13 @@ select:focus-visible {
   background: radial-gradient(circle at 30% 20%, rgba(56, 189, 248, 0.12), transparent 65%);
 }
 
-.dataset-v2-word-cloud-canvas .chart-placeholder {
+.dataset-word-cloud-canvas .chart-placeholder {
   position: absolute;
   inset: var(--space-3);
   justify-content: center;
 }
 
-.dataset-v2-word-cloud-term {
+.dataset-word-cloud-term {
   position: absolute;
   color: #e2e8f0;
   font-weight: 600;
@@ -2858,15 +2858,15 @@ select:focus-visible {
     padding-inline-end: 10px;
   }
 
-  .dataset-v2-row-one {
+  .dataset-row-one {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .dataset-v2-row-three {
+  .dataset-row-three {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .dataset-v2-extras {
+  .dataset-extras {
     grid-column: span 2;
   }
 
@@ -3066,9 +3066,9 @@ select:focus-visible {
     justify-content: flex-end;
   }
 
-  .dataset-v2-row-one,
-  .dataset-v2-row-two,
-  .dataset-v2-row-three {
+  .dataset-row-one,
+  .dataset-row-two,
+  .dataset-row-three {
     grid-template-columns: 1fr;
   }
 
@@ -3077,11 +3077,11 @@ select:focus-visible {
     grid-template-columns: 78px minmax(0, 1fr) 56px;
   }
 
-  .dataset-v2-extras {
+  .dataset-extras {
     grid-column: span 1;
   }
 
-  .dataset-v2-extras-grid,
+  .dataset-extras-grid,
   .validation-form-grid {
     grid-template-columns: 1fr;
   }

@@ -57,7 +57,7 @@ class UnknownAwareTokenizer(DummyTokenizer):
         self._id_to_token = {1: "known", 0: "[UNK]"}
 
 ###############################################################################
-def test_run_benchmarks_returns_v2_contract() -> None:
+def test_run_benchmarks_returns_contract() -> None:
     service = BenchmarkService()
     rows = [
         (10, "alpha beta beta"),
@@ -102,7 +102,7 @@ def test_run_benchmarks_returns_v2_contract() -> None:
     assert len(result.per_document_stats) == 1
     assert result.tokenizer_results[0].tokenizer == "dummy/tokenizer"
     assert result.per_document_stats[0].tokenizer == "dummy/tokenizer"
-    assert result.methodology_version == "v2_semantic_honesty"
+    assert result.methodology_version == "semantic_honesty"
     assert "benchmark_config" in result.runtime_metadata
     assert result.runtime_metadata["dataset_total_documents_available"] == 3
     assert result.runtime_metadata["dataset_documents_benchmarked"] == 3

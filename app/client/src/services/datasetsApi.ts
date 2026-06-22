@@ -154,22 +154,6 @@ export async function fetchLatestDatasetReport(
 }
 
 /**
- * Fetch a dataset validation report by id.
- */
-export async function fetchDatasetReportById(
-    reportId: number,
-): Promise<DatasetAnalysisResponse> {
-    const response = await fetch(`${API_ENDPOINTS.DATASETS_REPORT_BY_ID}/${reportId}`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-    });
-
-    return readJsonResponse(response, 'Failed to fetch dataset report');
-}
-
-/**
  * Remove a dataset and related reports from the database.
  * @param datasetName - Dataset identifier
  */

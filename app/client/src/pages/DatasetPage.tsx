@@ -279,73 +279,27 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const parseWordFrequencyItems = (value: unknown): WordFrequency[] => {
   const parsed = parseJsonLike(value);
-  if (Array.isArray(parsed)) {
-    return parsed
-      .map((item) => {
-        if (!isRecord(item)) {
-          return null;
-        }
-        const payload = item;
-        const word = typeof payload.word === 'string'
-          ? payload.word
-          : typeof payload.token === 'string'
-            ? payload.token
-            : typeof payload.text === 'string'
-              ? payload.text
-              : '';
-        if (!word) {
-          return null;
-        }
-        const count = Math.max(
-          0,
-          Math.round(
-            toNumber(payload.count ?? payload.frequency ?? payload.value, 0),
-          ),
-        );
-        return { word, count };
-      })
-      .filter((item): item is WordFrequency => item !== null && item.count > 0);
+  if (!Array.isArray(parsed)) {
+    return [];
   }
-  if (isRecord(parsed)) {
-    const payload = parsed;
-    if (
-      typeof payload.word === 'string'
-      || typeof payload.token === 'string'
-      || typeof payload.text === 'string'
-    ) {
-      return parseWordFrequencyItems([payload]);
-    }
-    return Object.entries(payload)
-      .map(([word, countValue]) => ({
-        word,
-        count: Math.max(0, Math.round(toNumber(countValue, 0))),
-      }))
-      .filter((item) => item.word && item.count > 0);
-  }
-  return [];
+  return parsed
+    .map((item) => {
+      if (!isRecord(item)) {
+        return null;
+      }
+      const payload = item;
+      const word = typeof payload.word === 'string' ? payload.word : '';
+      if (!word) {
+        return null;
+      }
+      const count = Math.max(0, Math.round(toNumber(payload.count, 0)));
+      return { word, count };
+    })
+    .filter((item): item is WordFrequency => item !== null && item.count > 0);
 };
 
 const parseWordCloudTerms = (value: unknown): WordCloudTerm[] => {
   const parsed = parseJsonLike(value);
-  if (isRecord(parsed)) {
-    const payload = parsed;
-    if (
-      typeof payload.word === 'string'
-      || typeof payload.token === 'string'
-      || typeof payload.text === 'string'
-    ) {
-      return parseWordCloudTerms([payload]);
-    }
-    if (Array.isArray(payload.terms)) {
-      return parseWordCloudTerms(payload.terms);
-    }
-    if (Array.isArray(payload.items)) {
-      return parseWordCloudTerms(payload.items);
-    }
-    return parseWordCloudTerms(
-      Object.entries(payload).map(([word, count]) => ({ word, count })),
-    );
-  }
   if (!Array.isArray(parsed)) {
     return [];
   }
@@ -356,19 +310,13 @@ const parseWordCloudTerms = (value: unknown): WordCloudTerm[] => {
         return null;
       }
       const payload = item;
-      const word = typeof payload.word === 'string'
-        ? payload.word
-        : typeof payload.token === 'string'
-          ? payload.token
-          : typeof payload.text === 'string'
-            ? payload.text
-            : '';
+      const word = typeof payload.word === 'string' ? payload.word : '';
       if (!word) {
         return null;
       }
       return {
         word,
-        count: Math.max(0, Math.round(toNumber(payload.count ?? payload.frequency ?? payload.value, 0))),
+        count: Math.max(0, Math.round(toNumber(payload.count, 0))),
         weight: toNumber(payload.weight, 0),
       };
     })
@@ -389,68 +337,26 @@ const parseWordCloudTerms = (value: unknown): WordCloudTerm[] => {
 
 const parseZipfCurve = (value: unknown): Array<{ rank: number; frequency: number }> => {
   const parsed = parseJsonLike(value);
-  if (Array.isArray(parsed)) {
-    return parsed
-      .map((item, index) => {
-        if (Array.isArray(item)) {
-          return {
-            rank: toNumber(item[0], index + 1),
-            frequency: toNumber(item[1], 0),
-          };
-        }
-        if (!item || typeof item !== 'object') {
-          return null;
-        }
-        if (!isRecord(item)) {
-          return null;
-        }
-        const payload = item;
-        return {
-          rank: toNumber(payload.rank ?? payload.x, index + 1),
-          frequency: toNumber(payload.frequency ?? payload.count ?? payload.y ?? payload.value, 0),
-        };
-      })
-      .filter((item): item is { rank: number; frequency: number } => item !== null && item.rank > 0 && item.frequency > 0)
-      .sort((a, b) => a.rank - b.rank)
-      .slice(0, 200);
+  if (!Array.isArray(parsed)) {
+    return [];
   }
-
-  if (isRecord(parsed)) {
-    const payload = parsed;
-    if (
-      typeof payload.rank === 'number'
-      || typeof payload.rank === 'string'
-      || typeof payload.frequency === 'number'
-      || typeof payload.frequency === 'string'
-    ) {
-      return parseZipfCurve([payload]);
-    }
-    if (Array.isArray(payload.curve)) {
-      return parseZipfCurve(payload.curve);
-    }
-    if (Array.isArray(payload.ranks) && Array.isArray(payload.frequencies)) {
-      const ranks = payload.ranks;
-      const frequencies = payload.frequencies;
-      const points = ranks.map((rank, index) => ({
-        rank: toNumber(rank, index + 1),
-        frequency: toNumber(frequencies[index], 0),
-      }));
-      return points
-        .filter((item) => item.rank > 0 && item.frequency > 0)
-        .slice(0, 200);
-    }
-    const entries = Object.entries(payload)
-      .map(([rank, frequency]) => ({
-        rank: toNumber(rank, 0),
-        frequency: toNumber(frequency, 0),
-      }))
-      .filter((item) => item.rank > 0 && item.frequency > 0)
-      .sort((a, b) => a.rank - b.rank);
-    if (entries.length > 0) {
-      return entries.slice(0, 200);
-    }
-  }
-  return [];
+  return parsed
+    .map((item, index) => {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+      if (!isRecord(item)) {
+        return null;
+      }
+      const payload = item;
+      return {
+        rank: toNumber(payload.rank, index + 1),
+        frequency: toNumber(payload.frequency, 0),
+      };
+    })
+    .filter((item): item is { rank: number; frequency: number } => item !== null && item.rank > 0 && item.frequency > 0)
+    .sort((a, b) => a.rank - b.rank)
+    .slice(0, 200);
 };
 
 const tooltipPercentFormatter = (value: unknown): string =>
@@ -561,10 +467,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
 
   const zipfCurve = useMemo(() => {
     const parsed = parseZipfCurve(
-      aggregate['lexical.zipf_curve']
-      ?? aggregate['lexical.zipf']
-      ?? aggregate.zipf_curve
-      ?? aggregate.zipfCurve,
+      aggregate['lexical.zipf_curve'],
     );
     if (parsed.length > 0) {
       return parsed;
@@ -626,9 +529,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
     const parsed = validationReport.word_cloud_terms?.length
       ? parseWordCloudTerms(validationReport.word_cloud_terms)
       : parseWordCloudTerms(
-        aggregate['words.word_cloud']
-        ?? aggregate.word_cloud_terms
-        ?? aggregate.wordCloudTerms,
+        aggregate['words.word_cloud'],
       );
     if (parsed.length > 0) {
       return parsed;
@@ -852,7 +753,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
         </section>
 
         {showDashboard && (
-          <aside className="panel dashboard-panel dashboard-plain dataset-v2-dashboard">
+          <aside className="panel dashboard-panel dashboard-plain dataset-dashboard">
             <header className="panel-header">
               <div>
                 <p className="panel-label">Dataset Dashboard</p>
@@ -872,12 +773,12 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
             </header>
             {renderValidationStatus()}
 
-            <div className="dataset-v2-row dataset-v2-row-one">
-              <div className="dataset-v2-card">
-                <div className="dataset-v2-card-header">
+            <div className="dataset-row dataset-row-one">
+              <div className="dataset-card">
+                <div className="dataset-card-header">
                   <p className="panel-label">Aggregate Stats</p>
                 </div>
-                <table className="dataset-v2-table">
+                <table className="dataset-table">
                   <tbody>
                     {aggregateRows.map((row) => (
                       <tr key={row.label}>
@@ -889,11 +790,11 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                 </table>
               </div>
 
-              <div className="dataset-v2-card">
-                <div className="dataset-v2-card-header">
+              <div className="dataset-card">
+                <div className="dataset-card-header">
                   <p className="panel-label">Word Metrics</p>
                 </div>
-                <table className="dataset-v2-table">
+                <table className="dataset-table">
                   <tbody>
                     {wordMetricRows.map((row) => (
                       <tr key={row.label}>
@@ -905,8 +806,8 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                 </table>
               </div>
 
-              <div className="dataset-v2-card dataset-v2-chart-card">
-                <div className="dataset-v2-card-header">
+              <div className="dataset-card dataset-chart-card">
+                <div className="dataset-card-header">
                   <p className="panel-label">Character Composition</p>
                 </div>
                 {characterSlices.length === 0 ? (
@@ -914,7 +815,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                     <p>No character ratio metrics available.</p>
                   </div>
                 ) : (
-                  <div className="dataset-v2-chart-body">
+                  <div className="dataset-chart-body">
                     <ResponsiveContainer width="100%" height={280}>
                       <PieChart>
                         <Pie
@@ -940,7 +841,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                         />
                       </PieChart>
                     </ResponsiveContainer>
-                    <div className="dataset-v2-legend">
+                    <div className="dataset-legend">
                       {characterSlices.map((entry, index) => (
                         <span key={entry.key}>
                           <i style={{ backgroundColor: DONUT_COLORS[index % DONUT_COLORS.length] }} />
@@ -953,7 +854,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
               </div>
             </div>
 
-            <div className="dataset-v2-row dataset-v2-row-two">
+            <div className="dataset-row dataset-row-two">
               <HistogramChartCard
                 title="Document Length Histogram"
                 data={documentHistogramSeries}
@@ -971,13 +872,13 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
               />
             </div>
 
-            <div className="dataset-v2-row dataset-v2-row-three">
-              <div className="dataset-v2-card dataset-v2-extras">
-                <div className="dataset-v2-card-header">
+            <div className="dataset-row dataset-row-three">
+              <div className="dataset-card dataset-extras">
+                <div className="dataset-card-header">
                   <p className="panel-label">Additional Visuals</p>
                 </div>
-                <div className="dataset-v2-extras-grid">
-                  <div className="dataset-v2-extras-item">
+                <div className="dataset-extras-grid">
+                  <div className="dataset-extras-item">
                     <p className="panel-description">Zipf Curve</p>
                     {zipfCurve.length === 0 ? (
                       <div className="chart-placeholder"><p>No Zipf curve data.</p></div>
@@ -994,29 +895,29 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                     )}
                   </div>
 
-                  <div className="dataset-v2-extras-item">
+                  <div className="dataset-extras-item">
                     <p className="panel-description">Entropy Gauge</p>
-                    <div className="dataset-v2-gauge-track">
+                    <div className="dataset-gauge-track">
                       {hasEntropyGauge && (
                         <div
-                          className="dataset-v2-gauge-fill"
+                          className="dataset-gauge-fill"
                           style={{ width: `${Math.max(0, Math.min(100, entropyGauge * 100))}%` }}
                         />
                       )}
                     </div>
-                    <p className="dataset-v2-gauge-value">{hasEntropyGauge ? normalizePercent(entropyGauge) : '—'}</p>
+                    <p className="dataset-gauge-value">{hasEntropyGauge ? normalizePercent(entropyGauge) : '—'}</p>
                     {hasShannonEntropy ? (
-                      <div className="dataset-v2-indicator-row">
+                      <div className="dataset-indicator-row">
                         <span>Shannon entropy</span>
                         <strong>{shannonEntropy.toFixed(4)}</strong>
                       </div>
                     ) : (
-                      <p className="panel-description dataset-v2-entropy-help">
+                      <p className="panel-description dataset-entropy-help">
                         Entropy summarizes how evenly words are distributed across the corpus.
                       </p>
                     )}
                     {hasEntropyGauge && (
-                      <div className="dataset-v2-indicator-row">
+                      <div className="dataset-indicator-row">
                         <span>Interpretation</span>
                         <strong>
                           {entropyGauge >= 0.75
@@ -1029,25 +930,25 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                     )}
                   </div>
 
-                  <div className="dataset-v2-extras-item">
+                  <div className="dataset-extras-item">
                     <p className="panel-description">Duplicate Indicators</p>
-                    <div className="dataset-v2-indicator-row">
+                    <div className="dataset-indicator-row">
                       <span>Exact duplicate rate</span>
                       <strong>{hasMetricValue(duplicateRateRaw) ? normalizePercent(duplicateRate) : '—'}</strong>
                     </div>
-                    <div className="dataset-v2-indicator-row">
+                    <div className="dataset-indicator-row">
                       <span>Near-duplicate rate</span>
                       <strong>{hasMetricValue(nearDuplicateRateRaw) ? normalizePercent(nearDuplicateRate) : '—'}</strong>
                     </div>
                   </div>
 
-                  <div className="dataset-v2-extras-item">
+                  <div className="dataset-extras-item">
                     <p className="panel-description">Concentration</p>
-                    <div className="dataset-v2-indicator-row">
+                    <div className="dataset-indicator-row">
                       <span>Top-k concentration</span>
                       <strong>{hasMetricValue(topKConcentrationRaw) ? normalizePercent(topKConcentration) : '—'}</strong>
                     </div>
-                    <div className="dataset-v2-indicator-row">
+                    <div className="dataset-indicator-row">
                       <span>Rare tail mass</span>
                       <strong>{hasMetricValue(rareTailMassRaw) ? normalizePercent(rareTailMass) : '—'}</strong>
                     </div>
@@ -1055,18 +956,18 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                 </div>
               </div>
 
-              <div className="dataset-v2-card dataset-v2-word-cloud-card">
-                <div className="dataset-v2-card-header">
+              <div className="dataset-card dataset-word-cloud-card">
+                <div className="dataset-card-header">
                   <p className="panel-label">Word Cloud</p>
                 </div>
-                <div className="dataset-v2-word-cloud-canvas" ref={wordCloudRef}>
+                <div className="dataset-word-cloud-canvas" ref={wordCloudRef}>
                   {!wordCloudTerms.length && (
                     <div className="chart-placeholder"><p>No word cloud terms in persisted report.</p></div>
                   )}
                   {wordCloudLayout.map((term) => (
                     <span
                       key={`${term.word}-${term.count}`}
-                      className="dataset-v2-word-cloud-term"
+                      className="dataset-word-cloud-term"
                       style={{
                         left: `${term.x}px`,
                         top: `${term.y}px`,

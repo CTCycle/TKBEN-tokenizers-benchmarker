@@ -16,7 +16,7 @@ def _build_payload(dataset_name: str) -> dict:
     return {
         "status": "success",
         "schema_version": 1,
-        "methodology_version": "v2_semantic_honesty",
+        "methodology_version": "semantic_honesty",
         "report_version": 2,
         "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "run_name": "serializer test",

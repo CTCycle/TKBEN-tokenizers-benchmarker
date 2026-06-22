@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import threading
 import time
 
 from server.services import jobs as jobs_module
@@ -46,33 +45,6 @@ def test_terminal_jobs_are_pruned_after_retention(monkeypatch) -> None:
 
     current_time["value"] = 106.0
 
-    assert manager.list_jobs() == []
     assert manager.get_job_status(job_id) is None
 
-###############################################################################
-def test_cancellation_reports_cancelled_state() -> None:
-    manager = JobManager(terminal_retention_seconds=60.0)
-    started = threading.Event()
 
-    def cancellable_runner(job_manager: JobManager, job_id: str) -> dict[str, object]:
-        started.set()
-        deadline = time.monotonic() + 1.0
-        while time.monotonic() < deadline:
-            if job_manager.should_stop(job_id):
-                return {"observed_stop": True}
-            time.sleep(0.01)
-        return {"observed_stop": False}
-
-    job_id = manager.start_job(
-        "sample",
-        cancellable_runner,
-        kwargs={"job_manager": manager},
-    )
-    assert started.wait(timeout=1.0)
-
-    cancelled = manager.cancel_job(job_id)
-    status = _wait_for_status(manager, job_id, "cancelled")
-
-    assert cancelled is True
-    assert status["status"] == "cancelled"
-    assert status["error"] is None
