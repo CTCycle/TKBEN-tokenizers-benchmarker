@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from server.services.tokenizer_jobs import TokenizerJobService
 
-
 ###############################################################################
 class DummyJobManager:
 
@@ -14,7 +13,6 @@ class DummyJobManager:
     # -------------------------------------------------------------------------
     def update_progress(self, job_id: str, value: float) -> None:
         del job_id, value
-
 
 ###############################################################################
 def test_run_download_job_delegates_to_service(monkeypatch) -> None:
@@ -38,7 +36,6 @@ def test_run_download_job_delegates_to_service(monkeypatch) -> None:
         job_id="job1",
     )
     assert result["status"] == "success"
-
 
 ###############################################################################
 def test_upload_and_clear_custom_tokenizers(monkeypatch) -> None:

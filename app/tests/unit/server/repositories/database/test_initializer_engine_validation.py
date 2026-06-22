@@ -4,11 +4,9 @@ import pytest
 
 from server.repositories.database.initializer import _resolve_postgres_engine
 
-
 ###############################################################################
 def test_resolve_postgres_engine_accepts_psycopg() -> None:
     assert _resolve_postgres_engine("postgresql+psycopg") == "postgresql+psycopg"
-
 
 ###############################################################################
 @pytest.mark.parametrize("engine", ["postgres", "postgresql", "postgresql+psycopg2"])

@@ -13,7 +13,6 @@ from server.common.path import (
     TOKENIZERS_PATH,
 )
 
-
 ###############################################################################
 def ensure_runtime_directories() -> None:
     for directory in (
@@ -24,12 +23,10 @@ def ensure_runtime_directories() -> None:
     ):
         directory.mkdir(parents=True, exist_ok=True)
 
-
 ###############################################################################
 def validate_runtime_files() -> None:
     if not ENV_FILE_PATH.is_file():
         raise RuntimeError(f"Environment file not found: {ENV_FILE_PATH}")
-
 
 ###############################################################################
 def validate_tauri_client_bundle(
@@ -44,7 +41,6 @@ def validate_tauri_client_bundle(
             f"Expected file: {client_index_path}"
         )
 
-
 ###############################################################################
 def validate_local_only_security_boundary() -> None:
     fastapi_host = os.getenv("FASTAPI_HOST", "127.0.0.1").strip() or "127.0.0.1"
@@ -58,7 +54,6 @@ def validate_local_only_security_boundary() -> None:
         "added or TKBEN_ALLOW_UNAUTHENTICATED_NETWORK_BIND=true is set explicitly."
     )
 
-
 ###############################################################################
 def build_cors_origins() -> list[str]:
     ui_host = _normalized_host(os.getenv("UI_HOST", "127.0.0.1"))
@@ -71,7 +66,6 @@ def build_cors_origins() -> list[str]:
         hosts.add("127.0.0.1")
 
     return sorted(f"http://{host}:{ui_port}" for host in hosts)
-
 
 ###############################################################################
 def run_startup_validations(
@@ -87,14 +81,12 @@ def run_startup_validations(
         client_index_file_path=client_index_file_path,
     )
 
-
 ###############################################################################
 def _normalized_host(raw_host: str) -> str:
     host = raw_host.strip() or "127.0.0.1"
     if host in {"0.0.0.0", "::"}:
         return "127.0.0.1"
     return host
-
 
 ###############################################################################
 def _is_loopback_host(raw_host: str) -> bool:
@@ -105,7 +97,6 @@ def _is_loopback_host(raw_host: str) -> bool:
         return ip_address(host).is_loopback
     except ValueError:
         return False
-
 
 ###############################################################################
 def _normalized_port(raw_port: str) -> str:

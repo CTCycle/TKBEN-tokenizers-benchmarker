@@ -176,7 +176,6 @@ class HistogramArtifact(Base):
     session = relationship("AnalysisSession", back_populates="histograms")
     metric_type = relationship("MetricType", back_populates="histograms")
 
-
 ###############################################################################
 class TokenizerVocabulary(Base):
     __tablename__ = "tokenizer_vocabulary"
@@ -236,7 +235,6 @@ class BenchmarkReport(Base):
         Index("ix_benchmark_report_created_at", "created_at"),
     )
     dataset = relationship("Dataset", back_populates="benchmark_reports")
-
 
 ###############################################################################
 class DatasetValidationReport(Base):

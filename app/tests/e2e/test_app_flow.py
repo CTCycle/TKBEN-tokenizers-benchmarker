@@ -10,7 +10,6 @@ from uuid import uuid4
 from playwright.sync_api import Page, expect
 from playwright.sync_api import APIRequestContext
 
-
 ###############################################################################
 def _upload_dataset_for_ui_test(
     api_context: APIRequestContext,
@@ -42,7 +41,6 @@ def _upload_dataset_for_ui_test(
     assert job_status.get("status") == "completed", job_status.get("error")
     return dataset_name
 
-
 ###############################################################################
 class TestAppShell:
     """Tests for core layout and routing."""
@@ -69,7 +67,6 @@ class TestAppShell:
         """Unknown routes should redirect back to the dataset page."""
         page.goto(f"{base_url}/does-not-exist")
         expect(page).to_have_url(re.compile(r".*/dataset/?$"))
-
 
 ###############################################################################
 class TestDatasetPage:
@@ -192,7 +189,6 @@ class TestDatasetPage:
             "No validation report found"
         )
 
-
 ###############################################################################
 class TestTokenizersPage:
     """Tests for tokenizers page UI elements."""
@@ -203,7 +199,6 @@ class TestTokenizersPage:
         page.goto(f"{base_url}/tokenizers")
         expect(page.get_by_text("Tokenizer Selection")).to_be_visible()
         expect(page.get_by_text("Tokenizers Dashboard")).to_be_visible()
-
 
 ###############################################################################
 class TestCrossBenchmarkPage:

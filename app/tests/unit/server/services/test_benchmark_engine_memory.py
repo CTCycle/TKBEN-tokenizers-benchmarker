@@ -4,7 +4,6 @@ from server.domain.benchmark_observations import TokenizerRunConfig
 from server.services.benchmark_engine import run_tokenizer_trials
 from server.services.tokenizer_adapters import EncodedBatch
 
-
 ###############################################################################
 class MemoryAdapter:
     tokenizer_id = "dummy"
@@ -17,7 +16,6 @@ class MemoryAdapter:
             unknown_counts=[0 for _ in texts],
             input_ids_by_doc=[[ord(character) for character in text] for text in texts],
         )
-
 
 ###############################################################################
 def test_memory_peak_is_measured_not_placeholder() -> None:

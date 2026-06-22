@@ -9,7 +9,6 @@ from fastapi.testclient import TestClient
 from server import app as app_module
 from server.services import startup_validation
 
-
 ###############################################################################
 def test_build_cors_origins_normalizes_local_hosts(
     monkeypatch: pytest.MonkeyPatch,
@@ -21,7 +20,6 @@ def test_build_cors_origins_normalizes_local_hosts(
 
     assert origins == ["http://127.0.0.1:8000", "http://localhost:8000"]
 
-
 ###############################################################################
 def test_build_cors_origins_rejects_invalid_port(
     monkeypatch: pytest.MonkeyPatch,
@@ -30,7 +28,6 @@ def test_build_cors_origins_rejects_invalid_port(
 
     with pytest.raises(RuntimeError, match="UI_PORT must be a valid integer"):
         startup_validation.build_cors_origins()
-
 
 ###############################################################################
 def test_startup_rejects_non_loopback_bind_without_explicit_override(
@@ -42,7 +39,6 @@ def test_startup_rejects_non_loopback_bind_without_explicit_override(
     with pytest.raises(RuntimeError, match="FASTAPI_HOST must stay"):
         startup_validation.validate_local_only_security_boundary()
 
-
 ###############################################################################
 def test_startup_allows_non_loopback_bind_with_explicit_override(
     monkeypatch: pytest.MonkeyPatch,
@@ -51,7 +47,6 @@ def test_startup_allows_non_loopback_bind_with_explicit_override(
     monkeypatch.setenv("TKBEN_ALLOW_UNAUTHENTICATED_NETWORK_BIND", "true")
 
     startup_validation.validate_local_only_security_boundary()
-
 
 ###############################################################################
 def test_run_startup_validations_creates_runtime_directories(
@@ -85,7 +80,6 @@ def test_run_startup_validations_creates_runtime_directories(
     assert tokenizers_path.is_dir()
     assert templates_path.is_dir()
 
-
 ###############################################################################
 def test_run_startup_validations_requires_env_file(
     tmp_path: Path,
@@ -98,7 +92,6 @@ def test_run_startup_validations_requires_env_file(
             tauri_mode_enabled=False,
             client_index_file_path=tmp_path / "index.html",
         )
-
 
 ###############################################################################
 def test_create_app_initializes_startup_state(
@@ -128,7 +121,6 @@ def test_create_app_initializes_startup_state(
     assert application.state.settings is settings
     assert calls == ["validated", "database"]
 
-
 ###############################################################################
 def test_create_app_redirects_root_in_web_mode(
     monkeypatch: pytest.MonkeyPatch,
@@ -145,7 +137,6 @@ def test_create_app_redirects_root_in_web_mode(
 
     assert response.status_code == 307
     assert response.headers["location"] == "/docs"
-
 
 ###############################################################################
 def test_create_app_serves_spa_in_tauri_mode(

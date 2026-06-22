@@ -11,7 +11,6 @@ from playwright.sync_api import APIRequestContext
 
 RUN_BENCHMARKS = os.getenv("E2E_RUN_BENCHMARKS", "").lower() in ("1", "true", "yes")
 
-
 ###############################################################################
 def test_run_benchmarks_requires_tokenizers(api_context: APIRequestContext) -> None:
     """POST /api/benchmarks/run should reject empty tokenizer lists."""
@@ -22,7 +21,6 @@ def test_run_benchmarks_requires_tokenizers(api_context: APIRequestContext) -> N
     assert response.status == 400
     data = response.json()
     assert "At least one tokenizer" in data.get("detail", "")
-
 
 ###############################################################################
 def test_run_benchmarks_requires_dataset(api_context: APIRequestContext) -> None:
@@ -37,7 +35,6 @@ def test_run_benchmarks_requires_dataset(api_context: APIRequestContext) -> None
     assert response.status == 400
     data = response.json()
     assert "Dataset name must be specified" in data.get("detail", "")
-
 
 ###############################################################################
 def test_run_benchmarks_missing_dataset_returns_400(
@@ -55,7 +52,6 @@ def test_run_benchmarks_missing_dataset_returns_400(
     data = response.json()
     assert "not found or empty" in data.get("detail", "").lower()
 
-
 ###############################################################################
 def test_get_benchmark_metrics_catalog_returns_categories(
     api_context: APIRequestContext,
@@ -71,7 +67,6 @@ def test_get_benchmark_metrics_catalog_returns_categories(
     assert isinstance(first.get("category_key"), str)
     assert isinstance(first.get("metrics"), list)
 
-
 ###############################################################################
 def test_list_benchmark_reports_returns_payload(
     api_context: APIRequestContext,
@@ -81,7 +76,6 @@ def test_list_benchmark_reports_returns_payload(
     assert response.ok, response.text()
     data = response.json()
     assert isinstance(data.get("reports", []), list)
-
 
 ###############################################################################
 @pytest.mark.skipif(

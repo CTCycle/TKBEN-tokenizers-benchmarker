@@ -33,22 +33,18 @@ from server.services.startup_validation import (
     run_startup_validations,
 )
 
-
 ###############################################################################
 def tauri_mode_enabled() -> bool:
     value = os.getenv("TKBEN_TAURI_MODE", "false").strip().lower()
     return value in {"1", "true", "yes", "on"}
 
-
 ###############################################################################
 def packaged_client_available() -> bool:
     return CLIENT_INDEX_FILE_PATH.is_file()
 
-
 ###############################################################################
 def serve_spa_root() -> FileResponse:
     return FileResponse(CLIENT_INDEX_FILE_PATH)
-
 
 ###############################################################################
 def serve_spa_entrypoint(full_path: str) -> FileResponse:
@@ -60,16 +56,13 @@ def serve_spa_entrypoint(full_path: str) -> FileResponse:
 
     return FileResponse(CLIENT_INDEX_FILE_PATH)
 
-
 ###############################################################################
 def redirect_to_docs() -> RedirectResponse:
     return RedirectResponse(url="/docs")
 
-
 ###############################################################################
 def backend_healthcheck() -> dict[str, str]:
     return {"status": "ok"}
-
 
 ###############################################################################
 def register_api_routers(application: FastAPI) -> None:
@@ -83,7 +76,6 @@ def register_api_routers(application: FastAPI) -> None:
         exports_router,
     ):
         application.include_router(router, prefix="/api")
-
 
 ###############################################################################
 def register_frontend_routes(application: FastAPI) -> None:
@@ -111,7 +103,6 @@ def register_frontend_routes(application: FastAPI) -> None:
         include_in_schema=False,
     )
 
-
 ###############################################################################
 @asynccontextmanager
 async def app_lifespan(application: FastAPI) -> AsyncIterator[None]:
@@ -125,7 +116,6 @@ async def app_lifespan(application: FastAPI) -> AsyncIterator[None]:
 
     application.state.settings = settings
     yield
-
 
 ###############################################################################
 def create_app() -> FastAPI:

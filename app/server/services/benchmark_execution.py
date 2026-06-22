@@ -45,7 +45,6 @@ from server.services.tokenizer_adapters import UniversalTokenizerAdapter
 class BenchmarkCancelledError(RuntimeError):
     pass
 
-
 ###############################################################################
 @dataclass(frozen=True)
 class SpooledTextBatchFactory:

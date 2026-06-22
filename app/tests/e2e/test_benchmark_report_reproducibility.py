@@ -8,7 +8,6 @@ from playwright.sync_api import APIRequestContext
 
 RUN_BENCHMARKS = os.getenv("E2E_RUN_BENCHMARKS", "").lower() in ("1", "true", "yes")
 
-
 ###############################################################################
 @pytest.mark.skipif(
     not RUN_BENCHMARKS, reason="Set E2E_RUN_BENCHMARKS=1 to enable benchmark execution."

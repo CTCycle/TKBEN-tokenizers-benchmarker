@@ -38,7 +38,6 @@ class DatasetSettings:
     download_retry_attempts: int
     download_retry_backoff_seconds: float
 
-
 ###############################################################################
 @dataclass(frozen=True)
 class TokenizerSettings:

@@ -17,7 +17,6 @@ RUN_TOKENIZER_REPORT_FLOW = os.getenv("E2E_RUN_TOKENIZER_REPORT_FLOW", "").lower
     "yes",
 )
 
-
 ###############################################################################
 def _build_wordlevel_tokenizer_json() -> bytes:
     from tokenizers import Tokenizer
@@ -37,7 +36,6 @@ def _build_wordlevel_tokenizer_json() -> bytes:
         payload = json.dumps(payload)
     return str(payload).encode("utf-8")
 
-
 ###############################################################################
 def test_get_tokenizer_settings(api_context: APIRequestContext) -> None:
     """GET /api/tokenizers/settings should return configured scan limits."""
@@ -51,7 +49,6 @@ def test_get_tokenizer_settings(api_context: APIRequestContext) -> None:
         data["min_scan_limit"] <= data["default_scan_limit"] <= data["max_scan_limit"]
     )
 
-
 ###############################################################################
 @pytest.mark.skipif(not RUN_HF_SCAN, reason="Set E2E_RUN_HF_SCAN=1 to enable.")
 def test_scan_tokenizers_returns_identifiers(
@@ -64,7 +61,6 @@ def test_scan_tokenizers_returns_identifiers(
     assert data.get("status") == "success"
     assert isinstance(data.get("identifiers"), list)
     assert data.get("count", 0) >= 1
-
 
 ###############################################################################
 def test_upload_rejects_invalid_extension(api_context: APIRequestContext) -> None:
@@ -83,7 +79,6 @@ def test_upload_rejects_invalid_extension(api_context: APIRequestContext) -> Non
     data = response.json()
     assert "File must be a .json file" in data.get("detail", "")
 
-
 ###############################################################################
 def test_upload_rejects_invalid_json(api_context: APIRequestContext) -> None:
     """POST /api/tokenizers/upload should reject invalid tokenizer JSON."""
@@ -100,7 +95,6 @@ def test_upload_rejects_invalid_json(api_context: APIRequestContext) -> None:
     assert response.status == 400
     data = response.json()
     assert "Failed to load tokenizer" in data.get("detail", "")
-
 
 ###############################################################################
 def test_upload_accepts_valid_tokenizer_json(api_context: APIRequestContext) -> None:
@@ -125,7 +119,6 @@ def test_upload_accepts_valid_tokenizer_json(api_context: APIRequestContext) -> 
     cleanup = api_context.delete("/api/tokenizers/custom")
     assert cleanup.ok
 
-
 ###############################################################################
 def test_clear_custom_tokenizers(api_context: APIRequestContext) -> None:
     """DELETE /api/tokenizers/custom should return a success message."""
@@ -133,7 +126,6 @@ def test_clear_custom_tokenizers(api_context: APIRequestContext) -> None:
     assert response.ok
     data = response.json()
     assert data.get("status") == "success"
-
 
 ###############################################################################
 @pytest.mark.skipif(

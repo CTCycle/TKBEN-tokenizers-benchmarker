@@ -6,7 +6,6 @@ import time
 from server.services import jobs as jobs_module
 from server.services.jobs import JobManager
 
-
 ###############################################################################
 def _wait_for_status(
     manager: JobManager,
@@ -24,7 +23,6 @@ def _wait_for_status(
     status = manager.get_job_status(job_id)
     raise AssertionError(f"Expected {expected_status}, got {status}")
 
-
 ###############################################################################
 def test_completed_job_remains_visible_within_retention() -> None:
     manager = JobManager(terminal_retention_seconds=60.0)
@@ -35,7 +33,6 @@ def test_completed_job_remains_visible_within_retention() -> None:
 
     assert status["result"] == {"value": 1}
     assert manager.get_job_status(job_id) is not None
-
 
 ###############################################################################
 def test_terminal_jobs_are_pruned_after_retention(monkeypatch) -> None:
@@ -51,7 +48,6 @@ def test_terminal_jobs_are_pruned_after_retention(monkeypatch) -> None:
 
     assert manager.list_jobs() == []
     assert manager.get_job_status(job_id) is None
-
 
 ###############################################################################
 def test_cancellation_reports_cancelled_state() -> None:

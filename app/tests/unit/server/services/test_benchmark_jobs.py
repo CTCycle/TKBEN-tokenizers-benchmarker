@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from server.services.benchmark_jobs import BenchmarkJobService
 
-
 ###############################################################################
 class DummyJobManager:
 
@@ -18,7 +17,6 @@ class DummyJobManager:
     # -------------------------------------------------------------------------
     def update_progress(self, job_id: str, value: float) -> None:
         del job_id, value
-
 
 ###############################################################################
 def test_run_benchmark_job_builds_and_saves_report(monkeypatch) -> None:
@@ -99,7 +97,6 @@ def test_run_benchmark_job_builds_and_saves_report(monkeypatch) -> None:
 
     assert result["report_id"] == 11
     assert result["report_version"] == 2
-
 
 ###############################################################################
 def test_run_benchmark_job_returns_cancelled_payload_without_persist(

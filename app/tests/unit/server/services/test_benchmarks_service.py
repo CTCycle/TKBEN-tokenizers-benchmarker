@@ -4,7 +4,6 @@ from pathlib import Path
 
 from server.services.benchmarks import BenchmarkService
 
-
 ###############################################################################
 class FakeBenchmarkRepository:
 
@@ -16,7 +15,6 @@ class FakeBenchmarkRepository:
     def get_missing_persisted_tokenizers(self, tokenizer_ids: list[str]) -> list[str]:
         return [name for name in tokenizer_ids if name != "bert-base-uncased"]
 
-
 ###############################################################################
 def test_benchmark_service_uses_repository_for_dataset_and_tokenizer_checks() -> None:
     service = BenchmarkService()
@@ -27,7 +25,6 @@ def test_benchmark_service_uses_repository_for_dataset_and_tokenizer_checks() ->
 
     missing = service.get_missing_persisted_tokenizers(["bert-base-uncased", "missing"])
     assert "missing" in missing
-
 
 ###############################################################################
 def test_benchmark_service_preserves_repository_missing_with_cached_files(
@@ -45,7 +42,6 @@ def test_benchmark_service_preserves_repository_missing_with_cached_files(
     missing = service.get_missing_persisted_tokenizers(["missing"])
 
     assert missing == ["missing"]
-
 
 ###############################################################################
 def test_resolve_custom_tokenizer_selection(monkeypatch) -> None:

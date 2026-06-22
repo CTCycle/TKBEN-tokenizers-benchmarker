@@ -108,15 +108,19 @@ def test_add_key_detects_duplicate_raw_key_across_encryption(
     del isolated_engine
     service = HFAccessKeyService()
 
+    ###############################################################################
     class NonDeterministicCipher:
 
+        # -------------------------------------------------------------------------
         def __init__(self) -> None:
             self.encryptions = 0
 
+        # -------------------------------------------------------------------------
         def encrypt(self, plaintext: str) -> str:
             self.encryptions += 1
             return f"enc:{self.encryptions}:{plaintext}"
 
+        # -------------------------------------------------------------------------
         def decrypt(self, encrypted_value: str) -> str:
             return encrypted_value.rsplit(":", 1)[-1]
 

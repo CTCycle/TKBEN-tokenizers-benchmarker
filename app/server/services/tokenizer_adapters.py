@@ -3,14 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Protocol, Sequence
 
-
 ###############################################################################
 @dataclass(frozen=True)
 class EncodedBatch:
     token_counts: list[int]
     unknown_counts: list[int | None]
     input_ids_by_doc: list[list[int]]
-
 
 ###############################################################################
 class TokenizerAdapter(Protocol):
@@ -26,7 +24,6 @@ class TokenizerAdapter(Protocol):
         truncation: bool,
         max_length: int | None,
     ) -> EncodedBatch: ...
-
 
 ###############################################################################
 class UniversalTokenizerAdapter:
