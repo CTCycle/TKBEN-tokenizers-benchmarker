@@ -44,15 +44,6 @@ export interface TokenizerListResponse {
 }
 
 /**
- * Response from the tokenizer settings endpoint
- */
-export interface TokenizerSettingsResponse {
-    default_scan_limit: number;
-    max_scan_limit: number;
-    min_scan_limit: number;
-}
-
-/**
  * Hugging Face access key entry.
  */
 export interface HFAccessKeyListItem {
@@ -78,13 +69,6 @@ export interface HFAccessKeyRevealResponse {
 }
 
 /**
- * Generic API error response
- */
-export interface ApiError {
-    detail: string;
-}
-
-/**
  * Response from a job start endpoint
  */
 export interface JobStartResponse {
@@ -105,15 +89,6 @@ export interface JobStatusResponse {
     progress: number;
     result?: unknown | null;
     error?: string | null;
-}
-
-/**
- * Response from a job cancel endpoint
- */
-export interface JobCancelResponse {
-    job_id: string;
-    success: boolean;
-    message: string;
 }
 
 /**
@@ -173,17 +148,6 @@ export interface DatasetAnalysisRequest {
     sampling?: Record<string, unknown> | null;
     filters?: Record<string, unknown> | null;
     metric_parameters?: Record<string, unknown> | null;
-}
-
-/**
- * Summary of word-level statistics from dataset analysis
- */
-export interface DatasetStatisticsSummary {
-    total_documents: number;
-    mean_words_count: number;
-    median_words_count: number;
-    mean_avg_word_length: number;
-    mean_std_word_length: number;
 }
 
 /**
@@ -387,7 +351,7 @@ export interface BenchmarkDistributionPoint {
     sample_count: number;
 }
 
-export interface BenchmarkChartDataV2 {
+export interface BenchmarkChartData {
     efficiency: BenchmarkSeriesPoint[];
     fidelity: BenchmarkSeriesPoint[];
     vocabulary: BenchmarkSeriesPoint[];
@@ -551,7 +515,7 @@ export interface BenchmarkRunResponse {
     hardware_profile: BenchmarkHardwareProfile;
     trial_summary: BenchmarkTrialSummary;
     tokenizer_results: BenchmarkTokenizerResult[];
-    chart_data: BenchmarkChartDataV2;
+    chart_data: BenchmarkChartData;
     per_document_stats: BenchmarkPerDocumentTokenizerStats[];
     runtime_metadata: Record<string, unknown>;
     raw_observations: Record<string, Array<Record<string, unknown>>>;

@@ -51,19 +51,6 @@ class TokenizerRepository:
                     session.rollback()
 
     # -------------------------------------------------------------------------
-    def get_missing_tokenizers(self, tokenizer_ids: list[str]) -> list[str]:
-        if not tokenizer_ids:
-            return []
-        unique_requested = list(dict.fromkeys(tokenizer_ids))
-        with self._session() as session:
-            persisted_names = set(
-                session.execute(
-                    select(Tokenizer.name).where(Tokenizer.name.in_(unique_requested))
-                ).scalars()
-            )
-        return [name for name in unique_requested if name not in persisted_names]
-
-    # -------------------------------------------------------------------------
     def get_tokenizer_report_by_id(self, report_id: int) -> TokenizerReport | None:
         with self._session() as session:
             return session.execute(

@@ -36,9 +36,7 @@ All routers are included with `prefix="/api"` during backend startup.
 - `GET /api/benchmarks/metrics/catalog`
 
 ## Jobs
-- `GET /api/jobs`
 - `GET /api/jobs/{job_id}`
-- `DELETE /api/jobs/{job_id}`
 
 ## Hugging Face Keys
 - `POST /api/keys`

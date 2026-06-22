@@ -138,7 +138,7 @@ def test_benchmark_list_and_by_id(monkeypatch) -> None:
         lambda self, report_id: {
             "status": "success",
             "schema_version": 1,
-            "methodology_version": "v1_observed_trials",
+            "methodology_version": "semantic_honesty",
             "report_id": report_id,
             "report_version": 2,
             "created_at": "2026-01-01T00:00:00Z",
@@ -204,7 +204,7 @@ def test_benchmark_by_id_accepts_cancelled_contract(monkeypatch) -> None:
         lambda self, report_id: {
             "status": "cancelled",
             "schema_version": 1,
-            "methodology_version": "v1_observed_trials",
+            "methodology_version": "semantic_honesty",
             "report_id": report_id,
             "report_version": 2,
             "created_at": "2026-01-01T00:00:00Z",

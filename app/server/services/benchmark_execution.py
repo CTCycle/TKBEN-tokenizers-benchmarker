@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 
 from server.domain.benchmarks import (
-    BenchmarkChartDataV2,
+    BenchmarkChartData,
     BenchmarkDistributionPoint,
     BenchmarkEfficiencyMetrics,
     BenchmarkFidelityMetrics,
@@ -348,7 +348,7 @@ class BenchmarkServiceExecutionMixin:
         self,
         tokenizer_results: list[BenchmarkTokenizerResult],
         raw_observations: dict[str, list[dict[str, object]]],
-    ) -> BenchmarkChartDataV2:
+    ) -> BenchmarkChartData:
         successful_results = [
             result for result in tokenizer_results if result.status == "success"
         ]
@@ -409,7 +409,7 @@ class BenchmarkServiceExecutionMixin:
                 )
             )
 
-        return BenchmarkChartDataV2(
+        return BenchmarkChartData(
             efficiency=efficiency,
             fidelity=fidelity,
             vocabulary=vocabulary,
@@ -501,7 +501,7 @@ class BenchmarkServiceExecutionMixin:
                 return BenchmarkRunResponse(
                     status="cancelled",
                     schema_version=1,
-                    methodology_version="v1_observed_trials",
+                    methodology_version="semantic_honesty",
                     run_name=normalized_run_name or None,
                     selected_metric_keys=resolved_metric_keys,
                     dataset_name=dataset_name,
@@ -512,7 +512,7 @@ class BenchmarkServiceExecutionMixin:
                     hardware_profile=BenchmarkHardwareProfile(),
                     trial_summary=BenchmarkTrialSummary(),
                     tokenizer_results=[],
-                    chart_data=BenchmarkChartDataV2(),
+                    chart_data=BenchmarkChartData(),
                     per_document_stats=[],
                     runtime_metadata={},
                     raw_observations={},
@@ -1019,7 +1019,7 @@ class BenchmarkServiceExecutionMixin:
         return BenchmarkRunResponse(
             status="cancelled" if cancelled else "success",
             schema_version=1,
-            methodology_version="v2_semantic_honesty",
+            methodology_version="semantic_honesty",
             run_name=normalized_run_name or None,
             selected_metric_keys=resolved_metric_keys,
             dataset_name=dataset_name,

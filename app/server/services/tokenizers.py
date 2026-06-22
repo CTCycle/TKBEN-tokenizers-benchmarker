@@ -126,10 +126,6 @@ class TokenizersService(TokenizerStorageMixin):
         self.repository.insert_if_missing(tokenizer_id)
 
     # -------------------------------------------------------------------------
-    def resolve_missing_tokenizer_names(self, tokenizer_ids: list[str]) -> list[str]:
-        return self.repository.get_missing_tokenizers(tokenizer_ids)
-
-    # -------------------------------------------------------------------------
     def list_downloaded_tokenizers(self) -> list[str]:
         names: list[str] = []
         for name in self.repository.list_downloaded_tokenizers():

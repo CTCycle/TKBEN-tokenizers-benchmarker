@@ -123,7 +123,7 @@ class BenchmarkDistributionPoint(BaseModel):
     sample_count: int = Field(default=0)
 
 ###############################################################################
-class BenchmarkChartDataV2(BaseModel):
+class BenchmarkChartData(BaseModel):
     efficiency: list[BenchmarkSeriesPoint] = Field(default_factory=list)
     fidelity: list[BenchmarkSeriesPoint] = Field(default_factory=list)
     vocabulary: list[BenchmarkSeriesPoint] = Field(default_factory=list)
@@ -241,7 +241,7 @@ class BenchmarkPerDocumentTokenizerStats(BaseModel):
 class BenchmarkRunResponse(BaseModel):
     status: str = Field(default="success")
     schema_version: int = Field(default=1)
-    methodology_version: str = Field(default="v1_observed_trials")
+    methodology_version: str = Field(default="semantic_honesty")
     report_id: int | None = Field(default=None)
     report_version: int = Field(default=2)
     created_at: str | None = Field(default=None)
@@ -257,7 +257,7 @@ class BenchmarkRunResponse(BaseModel):
     )
     trial_summary: BenchmarkTrialSummary = Field(default_factory=BenchmarkTrialSummary)
     tokenizer_results: list[BenchmarkTokenizerResult] = Field(default_factory=list)
-    chart_data: BenchmarkChartDataV2 = Field(default_factory=BenchmarkChartDataV2)
+    chart_data: BenchmarkChartData = Field(default_factory=BenchmarkChartData)
     per_document_stats: list[BenchmarkPerDocumentTokenizerStats] = Field(
         default_factory=list
     )

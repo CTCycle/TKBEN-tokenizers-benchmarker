@@ -18,10 +18,6 @@ class FakeTokenizerRepository:
         self.inserted.append(tokenizer_id)
 
     # -------------------------------------------------------------------------
-    def get_missing_tokenizers(self, tokenizer_ids: list[str]) -> list[str]:
-        return [name for name in tokenizer_ids if name != "exists"]
-
-    # -------------------------------------------------------------------------
     def get_latest_tokenizer_report(self, tokenizer_name: str):
         return object() if tokenizer_name == "exists" else None
 
@@ -38,9 +34,6 @@ def test_tokenizers_service_uses_repository_layer(monkeypatch) -> None:
     assert service.is_tokenizer_persisted("exists") is True
     service.insert_tokenizer_if_missing("new")
     assert fake_repo.inserted == ["new"]
-
-    missing = service.resolve_missing_tokenizer_names(["exists", "missing"])
-    assert missing == ["missing"]
 
 ###############################################################################
 def test_tokenizers_service_report_prechecks(monkeypatch) -> None:

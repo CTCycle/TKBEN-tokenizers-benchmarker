@@ -126,18 +126,6 @@ class JobManager:
         return state.snapshot()
 
     # -------------------------------------------------------------------------
-    def cancel_job(self, job_id: str) -> bool:
-        with self.lock:
-            state = self.jobs.get(job_id)
-        if state is None:
-            return False
-        if state.status not in ("pending", "running"):
-            return False
-        state.update(stop_requested=True, status="cancelled", completed_at=monotonic())
-        logger.info("Cancelled job %s", job_id)
-        return True
-
-    # -------------------------------------------------------------------------
     def is_job_running(self, job_type: str | None = None) -> bool:
         with self.lock:
             self._prune_terminal_jobs_locked(monotonic())
@@ -146,17 +134,6 @@ class JobManager:
                     if job_type is None or state.job_type == job_type:
                         return True
         return False
-
-    # -------------------------------------------------------------------------
-    def list_jobs(self, job_type: str | None = None) -> list[dict[str, Any]]:
-        with self.lock:
-            self._prune_terminal_jobs_locked(monotonic())
-            states = list(self.jobs.values())
-        results = []
-        for state in states:
-            if job_type is None or state.job_type == job_type:
-                results.append(state.snapshot())
-        return results
 
     # -------------------------------------------------------------------------
     def should_stop(self, job_id: str) -> bool:

@@ -236,7 +236,7 @@ class DashboardExportService(DashboardExportFormatting):
 
         zipf_ax = fig2.add_subplot(grid2[0, 1])
         zipf_points = self._parse_zipf_curve(
-            aggregate.get("words.zipf_curve") or aggregate.get("words.zipf")
+            aggregate.get("words.zipf_curve")
         )
         zipf_ax.set_title("Zipf Curve", fontsize=12, fontweight="bold")
         if zipf_points:
