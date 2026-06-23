@@ -314,9 +314,10 @@ goto :menu
 if exist "%tauri_clean_script%" (
   powershell -NoProfile -ExecutionPolicy Bypass -File "%tauri_clean_script%"
 ) else (
-  if exist "%tauri_dir%" rd /s /q "%tauri_dir%"
+  if exist "%tauri_dir%\target" rd /s /q "%tauri_dir%\target"
+  if exist "%tauri_dir%\bundle" rd /s /q "%tauri_dir%\bundle"
+  if exist "%tauri_dir%\gen" rd /s /q "%tauri_dir%\gen"
   if exist "%repo_root%\release\windows" rd /s /q "%repo_root%\release\windows"
-  for /r "%repo_root%" %%F in (*.exe) do del /q "%%F"
 )
 echo [SUCCESS] Desktop package cleanup completed.
 pause

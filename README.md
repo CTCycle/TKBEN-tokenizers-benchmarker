@@ -99,6 +99,11 @@ copy /Y settings\.env.example settings\.env
 .\release\tauri\build_with_tauri.bat
 ```
 
+Repository hygiene for desktop packaging:
+- `app/src-tauri` is versioned as desktop source/config only: Rust sources, `Cargo.toml`, `Cargo.lock`, `build.rs`, `tauri.conf.json`, capabilities, and icons.
+- Generated desktop outputs under `app/src-tauri/target`, `app/src-tauri/bundle`, `app/src-tauri/gen`, and `release/windows` are not committed to Git.
+- Desktop `.exe`, `.msi`, and other packaged artifacts are published through GitHub release artifacts, not tracked in the repository.
+
 Build artifacts are produced under:
 - `release/windows/installers`
 - `release/windows/portable`
@@ -140,6 +145,7 @@ Run:
 Available actions:
 - **Remove logs**: Deletes `*.log` files under `app/resources/logs`.
 - **Uninstall app**: Removes local runtime artifacts under `runtimes\` (including `app\\server\\.venv` and `app\\server\\uv.lock`), frontend `node_modules`, frontend `dist`, and related local artifacts.
+- **Remove desktop packages**: Removes only generated Tauri outputs under `app\src-tauri\target`, `app\src-tauri\bundle`, `app\src-tauri\gen`, and `release\windows`.
 - **Initialize database**: Executes `app/scripts/initialize_database.py` using local `uv` + portable Python runtime.
 
 ## 5. Resources
