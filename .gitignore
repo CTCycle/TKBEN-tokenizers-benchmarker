@@ -54,5 +54,18 @@ Cargo.toml
 !.gitkeep
 
 # Tauri
-app/src-tauri/**
+app/src-tauri/target/
 release/windows/
+!app/src-tauri/
+!app/src-tauri/build.rs
+!app/src-tauri/Cargo.toml
+!app/src-tauri/Cargo.lock
+!app/src-tauri/tauri.conf.json
+!app/src-tauri/src/
+!app/src-tauri/src/**
+!app/src-tauri/capabilities/
+!app/src-tauri/capabilities/**
+!app/src-tauri/gen/
+!app/src-tauri/gen/**
+!app/src-tauri/icons/
+!app/src-tauri/icons/**

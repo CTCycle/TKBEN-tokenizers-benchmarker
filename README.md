@@ -116,7 +116,7 @@ Scan available tokenizer IDs, download selected tokenizers, optionally upload a 
 **Cross Benchmark (`/cross-benchmark`)**
 
 Create benchmark runs by selecting dataset, tokenizers, and metric categories, then compare persisted results across tokenizer candidates.
-### 3.5 Product Snapshots (Release 3.4.0)
+### 3.5 Product Snapshots
 
 The following snapshots were captured in local webapp mode with backend and frontend running:
 
