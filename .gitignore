@@ -43,7 +43,6 @@ yarn.lock
 Thumbs.db
 
 # Misc
-Cargo.toml
 .sonarlint/
 *.lock
 *.log
@@ -53,19 +52,18 @@ Cargo.toml
 *.exe
 !.gitkeep
 
-# Tauri
-app/src-tauri/target/
-release/windows/
-!app/src-tauri/
-!app/src-tauri/build.rs
-!app/src-tauri/Cargo.toml
+# Tauri desktop source is versioned; generated outputs stay local.
 !app/src-tauri/Cargo.lock
-!app/src-tauri/tauri.conf.json
-!app/src-tauri/src/
-!app/src-tauri/src/**
-!app/src-tauri/capabilities/
-!app/src-tauri/capabilities/**
-!app/src-tauri/gen/
-!app/src-tauri/gen/**
-!app/src-tauri/icons/
-!app/src-tauri/icons/**
+app/src-tauri/target/
+app/src-tauri/bundle/
+app/src-tauri/gen/
+app/src-tauri/**/*.exe
+app/src-tauri/**/*.msi
+app/src-tauri/**/*.dmg
+app/src-tauri/**/*.AppImage
+app/src-tauri/**/*.deb
+app/src-tauri/**/*.rpm
+app/src-tauri/**/*.zip
+app/src-tauri/**/*.7z
+app/src-tauri/**/*.tar.gz
+release/windows/

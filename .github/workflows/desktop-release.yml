@@ -1,0 +1,93 @@
+name: Desktop Release
+
+on:
+  workflow_dispatch:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+jobs:
+  windows-desktop:
+    runs-on: windows-latest
+    env:
+      CI: "1"
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: utf-8
+      PYTHON_VERSION: 3.14.2
+      NODE_VERSION: 22.12.0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Prepare desktop runtime files
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $repoRoot = Get-Location
+          $runtimesDir = Join-Path $repoRoot 'runtimes'
+          $pythonDir = Join-Path $runtimesDir 'python'
+          $uvDir = Join-Path $runtimesDir 'uv'
+          $nodeDir = Join-Path $runtimesDir 'nodejs'
+          New-Item -ItemType Directory -Force -Path $pythonDir, $uvDir, $nodeDir | Out-Null
+
+          $pythonZip = Join-Path $env:RUNNER_TEMP "python-$env:PYTHON_VERSION-embed-amd64.zip"
+          Invoke-WebRequest -Uri "https://www.python.org/ftp/python/$env:PYTHON_VERSION/python-$env:PYTHON_VERSION-embed-amd64.zip" -OutFile $pythonZip
+          Expand-Archive -LiteralPath $pythonZip -DestinationPath $pythonDir -Force
+          $pythonPth = Join-Path $pythonDir 'python314._pth'
+          if (Test-Path $pythonPth) {
+            (Get-Content -LiteralPath $pythonPth) -replace '#import site', 'import site' | Set-Content -LiteralPath $pythonPth
+          }
+
+          $uvZip = Join-Path $env:RUNNER_TEMP 'uv-x86_64-pc-windows-msvc.zip'
+          Invoke-WebRequest -Uri 'https://github.com/astral-sh/uv/releases/latest/download/uv-x86_64-pc-windows-msvc.zip' -OutFile $uvZip
+          $uvExtractDir = Join-Path $env:RUNNER_TEMP 'uv-extract'
+          if (Test-Path $uvExtractDir) {
+            Remove-Item -LiteralPath $uvExtractDir -Recurse -Force
+          }
+          Expand-Archive -LiteralPath $uvZip -DestinationPath $uvExtractDir -Force
+          Get-ChildItem -LiteralPath $uvExtractDir -Recurse -Filter '*.exe' -File | ForEach-Object {
+            Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $uvDir $_.Name) -Force
+          }
+
+          $nodeZip = Join-Path $env:RUNNER_TEMP "node-v$env:NODE_VERSION-win-x64.zip"
+          Invoke-WebRequest -Uri "https://nodejs.org/dist/v$env:NODE_VERSION/node-v$env:NODE_VERSION-win-x64.zip" -OutFile $nodeZip
+          $nodeExtractDir = Join-Path $env:RUNNER_TEMP 'node-extract'
+          if (Test-Path $nodeExtractDir) {
+            Remove-Item -LiteralPath $nodeExtractDir -Recurse -Force
+          }
+          Expand-Archive -LiteralPath $nodeZip -DestinationPath $nodeExtractDir -Force
+          $nodeSourceDir = Join-Path $nodeExtractDir "node-v$env:NODE_VERSION-win-x64"
+          Get-ChildItem -LiteralPath $nodeSourceDir -Force | ForEach-Object {
+            Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $nodeDir $_.Name) -Recurse -Force
+          }
+
+          $envExample = Join-Path $repoRoot 'settings\.env.example'
+          $envFile = Join-Path $repoRoot 'settings\.env'
+          if ((Test-Path $envExample) -and -not (Test-Path $envFile)) {
+            Copy-Item -LiteralPath $envExample -Destination $envFile
+          }
+
+      - name: Build Windows desktop artifacts
+        shell: cmd
+        run: release\tauri\build_with_tauri.bat
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-desktop-release
+          path: release/windows/**
+          if-no-files-found: error
+
+      - name: Upload GitHub release assets
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/windows/**/*
+          fail_on_unmatched_files: true

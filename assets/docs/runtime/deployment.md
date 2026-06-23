@@ -1,5 +1,5 @@
 # Deployment
-Last updated: 2026-06-21
+Last updated: 2026-06-23
 
 ## Dependency Prerequisites
 From project and runtime scripts:
@@ -9,9 +9,15 @@ From project and runtime scripts:
 - Rust and Cargo are required only for Tauri packaging
 
 ## Packaging Notes
+### Versioned Desktop Sources
+- `app/src-tauri` is versioned only for desktop source/config and required build metadata.
+- Keep `Cargo.toml`, `Cargo.lock`, `build.rs`, `tauri.conf.json`, `src/**`, `capabilities/**`, and `icons/**` in Git.
+
 ### Desktop Build Outputs
+- Generated Tauri outputs under `app/src-tauri/target`, `app/src-tauri/bundle`, and `app/src-tauri/gen` must stay out of Git.
 - `release/windows/installers`
 - `release/windows/portable`
+- Desktop `.exe`, `.msi`, and other packaged archives are published as release artifacts, not committed to the repository.
 
 ### Packaging Flow Summary
 - Build frontend with `npm run build`
