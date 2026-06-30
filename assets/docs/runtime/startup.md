@@ -1,5 +1,5 @@
 # Startup
-Last updated: 2026-06-21
+Last updated: 2026-06-30
 
 ## Local Webapp Mode
 Windows recommended:
