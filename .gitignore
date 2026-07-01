@@ -10,6 +10,9 @@ app/client/logs/
 app/client/.angular/
 app/client/*.local
 app/server/.venv/
+release/windows/
+assets/QA/**
+.playwright-mcp/
 
 # Python
 __pycache__/
@@ -23,6 +26,7 @@ dist/
 build/
 .coverage
 htmlcov/
+app/server/uv.lock
 
 # Node / JS
 **/node_modules/
@@ -43,7 +47,6 @@ yarn.lock
 Thumbs.db
 
 # Misc
-Cargo.toml
 .sonarlint/
 *.lock
 *.log
@@ -55,7 +58,8 @@ Cargo.toml
 
 # Tauri
 app/src-tauri/target/
-release/windows/
+app/src-tauri/bundle/
+app/src-tauri/gen/
 !app/src-tauri/
 !app/src-tauri/build.rs
 !app/src-tauri/Cargo.toml
@@ -65,7 +69,5 @@ release/windows/
 !app/src-tauri/src/**
 !app/src-tauri/capabilities/
 !app/src-tauri/capabilities/**
-!app/src-tauri/gen/
-!app/src-tauri/gen/**
 !app/src-tauri/icons/
 !app/src-tauri/icons/**
