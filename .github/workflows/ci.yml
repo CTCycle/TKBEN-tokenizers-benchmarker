@@ -53,12 +53,16 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: app/client/package-lock.json
+          package-manager-cache: false
 
       - name: Install frontend dependencies
         working-directory: app/client
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
 
       - name: Lint frontend
         working-directory: app/client
