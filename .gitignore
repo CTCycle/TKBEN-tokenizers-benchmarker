@@ -10,6 +10,9 @@ app/client/logs/
 app/client/.angular/
 app/client/*.local
 app/server/.venv/
+release/windows/
+assets/QA/**
+.playwright-mcp/
 
 # Python
 __pycache__/
@@ -23,6 +26,7 @@ dist/
 build/
 .coverage
 htmlcov/
+app/server/uv.lock
 
 # Node / JS
 **/node_modules/
@@ -57,13 +61,14 @@ Thumbs.db
 app/src-tauri/target/
 app/src-tauri/bundle/
 app/src-tauri/gen/
-app/src-tauri/**/*.exe
-app/src-tauri/**/*.msi
-app/src-tauri/**/*.dmg
-app/src-tauri/**/*.AppImage
-app/src-tauri/**/*.deb
-app/src-tauri/**/*.rpm
-app/src-tauri/**/*.zip
-app/src-tauri/**/*.7z
-app/src-tauri/**/*.tar.gz
-release/windows/
+!app/src-tauri/
+!app/src-tauri/build.rs
+!app/src-tauri/Cargo.toml
+!app/src-tauri/Cargo.lock
+!app/src-tauri/tauri.conf.json
+!app/src-tauri/src/
+!app/src-tauri/src/**
+!app/src-tauri/capabilities/
+!app/src-tauri/capabilities/**
+!app/src-tauri/icons/
+!app/src-tauri/icons/**
