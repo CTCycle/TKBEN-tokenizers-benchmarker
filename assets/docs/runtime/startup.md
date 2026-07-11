@@ -11,9 +11,10 @@ Windows recommended:
 What it does:
 - opens the single combined launch-and-maintenance menu
 - installs pinned portable Python, uv, and Node.js on first use
-- restores committed `app/server/uv.lock` and `app/client/package-lock.json`
-- seeds `%LOCALAPPDATA%\TKBEN` configuration/data directories
-- starts FastAPI and Vite development mode with owned PID tracking
+- creates `settings/.env` from the versioned example when missing
+- synchronizes Python and frontend dependencies and builds the frontend
+- starts FastAPI and the Vite preview server, waits for health checks, opens the browser, and prints ports and process IDs
+- optionally shows backend logs in a dedicated terminal when `BACKEND_VISIBLE=true`
 
 ## Manual Local Mode
 Cross-platform manual startup:
@@ -26,14 +27,8 @@ npm ci
 npm run preview -- --host 127.0.0.1 --port 8000 --strictPort
 ```
 
-## Desktop Packaging Mode
-Windows packaging flow:
-
-```bat
-.\release\tauri\build_with_tauri.bat
-```
-
-Use `.\start_on_windows.ps1` for the interactive menu. Non-interactive callers pass `-Action <Action>` through that same entry point.
+## Maintenance Menu
+Use `.\start_on_windows.ps1` for dependency installation/update, database initialization, tests, log removal, cache cleanup, and uninstall operations.
 
 ## Test Mode
 ```bat

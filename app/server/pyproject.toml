@@ -35,7 +35,4 @@ test = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["server"] 
-
-[tool.ruff]
-extend-exclude = ["app/client/src-tauri/target"]
+packages = ["server"]

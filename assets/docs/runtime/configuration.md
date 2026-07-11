@@ -2,11 +2,9 @@
 Last updated: 2026-07-11
 
 ## Environment File
-Primary launcher/desktop runtime env file:
-- `%LOCALAPPDATA%\TKBEN\config\.env`
-- Seeded from the versioned `settings/.env.example` template
-
-Direct/manual repository execution may use an ignored `settings/.env` when `TKBEN_CONFIG_DIR` is not set.
+Primary launcher runtime env file:
+- `settings/.env`
+- Created from the versioned `settings/.env.example` template when missing
 
 ## Core Variables
 - `FASTAPI_HOST`
@@ -17,6 +15,7 @@ Direct/manual repository execution may use an ignored `settings/.env` when `TKBE
 - `VITE_API_BASE_URL` (default `/api`)
 - `RELOAD`
 - `OPTIONAL_DEPENDENCIES`
+- `BACKEND_VISIBLE` (set to `true` to show backend logs in a dedicated terminal)
 - `ALLOW_KEY_REVEAL`
 - `HF_KEYS_ENCRYPTION_KEY`
 - `TKBEN_DATA_DIR` (mutable database, datasets, tokenizers, and exports)
@@ -44,11 +43,6 @@ Direct/manual repository execution may use an ignored `settings/.env` when `TKBE
 ### Dev and Local Webapp
 - Vite serves and proxies `/api` to the FastAPI host and port from the environment.
 - `RELOAD=true` enables Uvicorn reload behavior.
-
-### Desktop Packaged
-- Tauri launches the backend process locally and sets `TKBEN_TAURI_MODE=true`.
-- Backend may serve packaged SPA assets when packaged client dist is available.
-- Tauri sets the `TKBEN_*_DIR` paths below `%LOCALAPPDATA%\TKBEN` and executes the immutable bundled Python runtime without installing dependencies.
 
 ### Persistence Toggle
 - If `database` is present in `settings/configurations.json`, that block is authoritative for database mode and connection fields.
