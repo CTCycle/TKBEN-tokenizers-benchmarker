@@ -1,9 +1,13 @@
 # Persistence
-Last updated: 2026-06-02
+Last updated: 2026-07-11
 
 ## Data Persistence
-- Default embedded persistence:
-  - SQLite file: `app/resources/database.db`
+- Default launcher/desktop persistence:
+  - SQLite and mutable content: `%LOCALAPPDATA%\TKBEN\data`
+  - configuration: `%LOCALAPPDATA%\TKBEN\config`
+  - logs: `%LOCALAPPDATA%\TKBEN\logs`
+  - caches: `%LOCALAPPDATA%\TKBEN\cache`
+- Direct/manual repository execution retains `app/resources` and `settings` defaults unless `TKBEN_DATA_DIR`, `TKBEN_CONFIG_DIR`, or `TKBEN_LOG_DIR` is set.
 - Optional external persistence:
   - PostgreSQL via `postgresql+psycopg` when `DATABASE_EMBEDDED=false` in `settings/.env`
 - Non-DB persisted artifacts:

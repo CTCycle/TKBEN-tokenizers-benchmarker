@@ -16,37 +16,38 @@ Main workflow routes:
 - `/cross-benchmark`
 
 Runtime model:
-- **Local webapp mode (default)**: run directly on host via `start_on_windows.bat`.
+- **Local webapp mode (default)**: run directly on host via `start_on_windows.ps1`.
 - **Packaged desktop mode**: build and run the local Tauri package.
-- **Single runtime env file**: edit `settings/.env` (seed from `settings/.env.example`).
+- **Single runtime env file**: launcher-managed runs edit `%LOCALAPPDATA%\TKBEN\config\.env`, seeded from `settings/.env.example`.
 
-Default embedded storage is the SQLite file at `app/resources/database.db`.
+Packaged and launcher-managed runs store mutable data under `%LOCALAPPDATA%\TKBEN`; repository paths are used only by direct/manual development and tests.
 
 ## 2. Installation
 
 ### 2.1 Windows (One-Click Local Setup)
 
-Run the launcher from repository root:
+Run the single developer and maintenance entry point from any directory:
 
-```bat
-.\start_on_windows.bat
+```powershell
+.\start_on_windows.ps1
 ```
 
-The launcher will:
-1. Install portable Python, `uv`, and Node.js under `runtimes`.
-2. Install backend dependencies using `uv sync`.
-3. Install frontend dependencies (`npm ci` when lockfile is present, fallback to `npm install`).
-4. Build and start backend + frontend.
+`start_on_windows.ps1` is the sole root launcher and opens the full combined menu. Choose **Launch application** to download pinned portable Python, uv, and Node.js runtimes on first use, restore both committed lockfiles, initialize user configuration/data, then start FastAPI and Vite. Later launches reuse the synchronized environment and do not rebuild Tauri.
 
 ### 2.2 Windows Packaged Desktop (Tauri)
 
-Prerequisites:
-- Rust toolchain (`cargo`) with a default toolchain configured.
+Supported release target: Windows 10/11 x64. End users need no Python, Node.js, uv, Rust, or source checkout. Microsoft WebView2 is installed through Tauri's supported bootstrap flow when it is absent.
+
+Build prerequisites: Rust stable with the x64 MSVC target, Windows SDK/WiX support, and the development runtimes installed by `start_on_windows.ps1`.
 
 ```bat
-copy /Y settings\.env.example settings\.env
 .\release\tauri\build_with_tauri.bat
 ```
+
+Outputs:
+- `release/windows/TKBEN-Desktop-<version>-windows-x64-portable.zip`
+- `release/windows/TKBEN-Desktop-<version>-windows-x64.msi`
+- `release/windows/TKBEN-Desktop-<version>-windows-x64-SHA256SUMS.txt`
 
 ### 2.3 macOS / Linux (Manual Local Setup)
 
@@ -75,34 +76,27 @@ copy /Y settings\.env.example settings\.env
 
 ### 3.1 Runtime Configuration (`.env`)
 
-Use `settings/.env` as the active runtime file for both local webapp mode and packaged desktop mode.
+Developer launcher and packaged desktop runs seed user configuration at `%LOCALAPPDATA%\TKBEN\config`. `settings/.env.example` and `settings/configurations.json` are immutable templates.
 
 Initialize from the single template:
 ```bat
-copy /Y settings\.env.example settings\.env
+Copy-Item settings\.env.example "$env:LOCALAPPDATA\TKBEN\config\.env"
 ```
 
 ### 3.2 Local Webapp Mode (Default)
 
-```bat
-.\start_on_windows.bat
+```powershell
+.\start_on_windows.ps1
 ```
 
-Runtime addresses are taken from `settings/.env`:
+Runtime addresses are taken from the user configuration:
 - **Web UI**: `http://<UI_HOST>:<UI_PORT>`
 - **Backend API**: `http://<FASTAPI_HOST>:<FASTAPI_PORT>`
 - **API Docs**: `http://<FASTAPI_HOST>:<FASTAPI_PORT>/docs`
 
 ### 3.3 Packaged Desktop Mode (Tauri)
 
-```bat
-copy /Y settings\.env.example settings\.env
-.\release\tauri\build_with_tauri.bat
-```
-
-Build artifacts are produced under:
-- `release/windows/installers`
-- `release/windows/portable`
+The desktop app starts its bundled backend automatically and performs no dependency installation. Application data, downloaded tokenizer/dataset content, configuration, caches, and logs are stored below `%LOCALAPPDATA%\TKBEN`. Closing the desktop window terminates the managed backend process tree.
 
 ### 3.4 Application Flow
 
@@ -132,24 +126,21 @@ The following snapshots were captured in local webapp mode with backend and fron
 
 ## 4. Setup and Maintenance
 
-Run:
+Run the unified menu:
 
-```bat
-.\setup_and_maintenance.bat
+```powershell
+.\start_on_windows.ps1
 ```
 
-Available actions:
-- **Remove logs**: Deletes `*.log` files under `app/resources/logs`.
-- **Uninstall app**: Removes local runtime artifacts under `runtimes\` (including `app\\server\\.venv` and `app\\server\\uv.lock`), frontend `node_modules`, frontend `dist`, and related local artifacts.
-- **Initialize database**: Executes `app/scripts/initialize_database.py` using local `uv` + portable Python runtime.
+The same menu contains launch and all maintenance actions: first-time install, locked dependency synchronization, deliberate lockfile upgrades, database initialization, repair, generated-cache cleanup, diagnostics, log viewing, service shutdown, tests, desktop build/output cleanup, and developer-runtime uninstall. For automation, use the same entry point, for example `.\start_on_windows.ps1 -Action Diagnostics`.
 
 ## 5. Resources
 
 Key paths:
-- `app/resources/database.db`: Embedded SQLite database path.
-- `app/resources/sources/datasets`: Dataset source/download artifacts.
-- `app/resources/sources/tokenizers`: Tokenizer source/download artifacts.
-- `app/resources/logs`: Launcher and backend logs.
+- `%LOCALAPPDATA%\TKBEN\data`: SQLite database and mutable application data.
+- `%LOCALAPPDATA%\TKBEN\config`: User `.env` and structured configuration.
+- `%LOCALAPPDATA%\TKBEN\logs`: Developer and desktop logs.
+- `%LOCALAPPDATA%\TKBEN\cache`: Runtime/model/rendering caches.
 - `runtimes`: Portable Windows runtimes.
 - `assets/docs/project_index.md`: Documentation root index and topic map.
 - `assets/docs/runtime/modes.md`: Runtime packaging and mode details.
@@ -159,8 +150,7 @@ Key paths:
 ## 6. Configuration
 
 Configuration is split between:
-- `settings/.env`: Active runtime/process configuration used by launcher, tests, frontend dev/preview, and desktop startup.
-- `settings/.env.example`: Single template for `.env`.
+- `settings/.env.example`: Versioned configuration template; `settings/.env` must never be committed.
 - `settings/configurations.json`: Backend structured settings for datasets, tokenizers, benchmarks, jobs, and optional database overrides.
 
 Core runtime keys you will commonly edit:
@@ -177,9 +167,15 @@ Core runtime keys you will commonly edit:
 
 Determinism:
 - Backend lockfile: `app/server/uv.lock` (generated/updated directly by running `uv sync` from `app/server`).
-- Frontend lockfile: committed `app/client/package-lock.json` + `npm ci` in local runtime/bootstrap flow.
+- Frontend lockfile: committed `app/client/package-lock.json` + `npm ci`.
 
-## 7. License
+## 7. Releases and Repository Hygiene
+
+Tags matching `v*` and manual workflow dispatches run `.github/workflows/desktop-release.yml`. The workflow validates the locked backend/frontend/Rust sources, builds the x64 MSI and portable ZIP, verifies required runtime content, generates SHA-256 checksums, and publishes only final distributables. Optional signing uses the `WINDOWS_SIGNING_CERTIFICATE_BASE64` and `WINDOWS_SIGNING_CERTIFICATE_PASSWORD` repository secrets.
+
+Never commit `.env` files, credentials, signing certificates, databases, downloaded model/data caches, logs, virtual environments, Node dependencies, Tauri targets, prepared runtime payloads, MSI/EXE/ZIP outputs, or `release/windows` contents. Keep `package-lock.json`, `uv.lock`, `Cargo.lock`, Tauri configuration/source, icons, templates, scripts, workflows, and migrations tracked.
+
+## 8. License
 
 This project is licensed under the MIT License. See `LICENSE` for details.
 

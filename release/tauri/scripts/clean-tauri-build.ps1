@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param()
+param([switch]$KeepBundleSource)
 
 $ErrorActionPreference = "Stop"
 
@@ -8,6 +8,7 @@ $pathsToRemove = @(
   (Join-Path $repoRoot "app\src-tauri\target"),
   (Join-Path $repoRoot "release\windows")
 )
+if (-not $KeepBundleSource) { $pathsToRemove += (Join-Path $repoRoot "release\tauri\.bundle-src") }
 
 foreach ($path in $pathsToRemove) {
   if (Test-Path $path) {

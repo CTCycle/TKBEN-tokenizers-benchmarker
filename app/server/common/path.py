@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 
@@ -12,12 +13,12 @@ TESTS_DIR = APP_DIR / "tests"
 ASSETS_DIR = ROOT_DIR / "assets"
 FIGURES_DIR = ASSETS_DIR / "figures"
 QA_DIR = ROOT_DIR / "QA"
-SETTINGS_DIR = ROOT_DIR / "settings"
-RESOURCES_PATH = APP_DIR / "resources"
+SETTINGS_DIR = Path(os.getenv("TKBEN_CONFIG_DIR", ROOT_DIR / "settings")).resolve()
+RESOURCES_PATH = Path(os.getenv("TKBEN_DATA_DIR", APP_DIR / "resources")).resolve()
 SOURCES_PATH = RESOURCES_PATH / "sources"
 DATASETS_PATH = SOURCES_PATH / "datasets"
 TOKENIZERS_PATH = SOURCES_PATH / "tokenizers"
-LOGS_PATH = RESOURCES_PATH / "logs"
+LOGS_PATH = Path(os.getenv("TKBEN_LOG_DIR", RESOURCES_PATH / "logs")).resolve()
 TEMPLATES_PATH = RESOURCES_PATH / "templates"
 ENV_FILE_PATH = SETTINGS_DIR / ".env"
 CONFIGURATIONS_FILE = SETTINGS_DIR / "configurations.json"

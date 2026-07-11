@@ -78,5 +78,5 @@ This file is the root index for `assets/docs`. Read it first to find the narrowe
 ## Environment Rules
 - Windows is the default operating environment for this project.
 - Document and support both PowerShell and CMD usage patterns where commands differ.
-- Keep environment guidance aligned with launcher/runtime scripts in `start_on_windows.bat`, `release/tauri/*.bat`, and `app/tests/run_tests.bat`.
+- Keep environment guidance aligned with launcher/runtime scripts in `start_on_windows.ps1`, `release/tauri/*.bat`, and `app/tests/run_tests.bat`.
 - Update this section when new environment-specific constraints or solutions are introduced.

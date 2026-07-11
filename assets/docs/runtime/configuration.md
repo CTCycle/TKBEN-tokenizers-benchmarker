@@ -1,10 +1,12 @@
 # Configuration
-Last updated: 2026-06-21
+Last updated: 2026-07-11
 
 ## Environment File
-Primary runtime env file:
-- `settings/.env`
-- Seed from `settings/.env.example`
+Primary launcher/desktop runtime env file:
+- `%LOCALAPPDATA%\TKBEN\config\.env`
+- Seeded from the versioned `settings/.env.example` template
+
+Direct/manual repository execution may use an ignored `settings/.env` when `TKBEN_CONFIG_DIR` is not set.
 
 ## Core Variables
 - `FASTAPI_HOST`
@@ -17,6 +19,9 @@ Primary runtime env file:
 - `OPTIONAL_DEPENDENCIES`
 - `ALLOW_KEY_REVEAL`
 - `HF_KEYS_ENCRYPTION_KEY`
+- `TKBEN_DATA_DIR` (mutable database, datasets, tokenizers, and exports)
+- `TKBEN_LOG_DIR` (runtime logs)
+- `TKBEN_CONFIG_DIR` (active `.env` and `configurations.json`)
 - `DATABASE_EMBEDDED`
 - `DATABASE_URL`
 - `DATABASE_ENGINE`
@@ -43,7 +48,7 @@ Primary runtime env file:
 ### Desktop Packaged
 - Tauri launches the backend process locally and sets `TKBEN_TAURI_MODE=true`.
 - Backend may serve packaged SPA assets when packaged client dist is available.
-- Runtime environment may be prepared into a writable runtime path for packaged execution.
+- Tauri sets the `TKBEN_*_DIR` paths below `%LOCALAPPDATA%\TKBEN` and executes the immutable bundled Python runtime without installing dependencies.
 
 ### Persistence Toggle
 - If `database` is present in `settings/configurations.json`, that block is authoritative for database mode and connection fields.

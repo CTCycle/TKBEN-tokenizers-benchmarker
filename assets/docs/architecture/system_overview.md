@@ -1,5 +1,5 @@
 # System Overview
-Last updated: 2026-06-06
+Last updated: 2026-07-11
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
@@ -21,8 +21,7 @@ Source-level structure, with generated folders omitted:
 ├─ assets/
 │  ├─ docs/
 │  └─ figures/
-├─ start_on_windows.bat
-├─ setup_and_maintenance.bat
+├─ start_on_windows.ps1
 ├─ settings/
 │  ├─ .env
 │  ├─ .env.example
@@ -61,12 +60,12 @@ Source-level structure, with generated folders omitted:
   - `app/client/src/App.tsx`
 - Desktop runtime entry:
   - `app/src-tauri/src/main.rs`
-- Windows local launcher:
-  - `start_on_windows.bat`
+- Windows launcher:
+  - `start_on_windows.ps1` is the single user-facing root entry point for the combined launch and maintenance menu.
 
 ## Runtime Interaction Topology
 - Local webapp mode:
   - Browser -> Vite preview (`UI_HOST:UI_PORT`) -> proxied `/api` -> FastAPI (`FASTAPI_HOST:FASTAPI_PORT`)
 - Desktop mode:
-  - Tauri webview boots the local backend process and loads the local app URL.
-  - Backend can serve packaged SPA assets when `TKBEN_TAURI_MODE=true`.
+  - Tauri webview boots the bundled Python/backend from immutable resources and loads its dynamically allocated loopback URL.
+  - Mutable configuration, data, logs, and caches are redirected to `%LOCALAPPDATA%\TKBEN`.
