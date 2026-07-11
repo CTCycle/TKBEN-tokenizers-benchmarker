@@ -1,5 +1,5 @@
 # Project Overview
-Last updated: 2026-06-02
+Last updated: 2026-07-11
 
 ## Purpose
 This file is the root index for `assets/docs`. Read it first to find the narrowest topic file for the task at hand.
@@ -49,7 +49,7 @@ This file is the root index for `assets/docs`. Read it first to find the narrowe
 - `runtime/configuration.md`
   - Environment variables and structured settings.
 - `runtime/deployment.md`
-  - Dependencies, packaging, and distribution notes.
+  - Dependencies and local distribution notes.
 
 ### UI
 - `ui/design_tokens.md`
@@ -78,5 +78,5 @@ This file is the root index for `assets/docs`. Read it first to find the narrowe
 ## Environment Rules
 - Windows is the default operating environment for this project.
 - Document and support both PowerShell and CMD usage patterns where commands differ.
-- Keep environment guidance aligned with launcher/runtime scripts in `start_on_windows.ps1`, `release/tauri/*.bat`, and `app/tests/run_tests.bat`.
+- Keep environment guidance aligned with `start_on_windows.ps1`, its root-level helper scripts, and `app/tests/run_tests.bat`.
 - Update this section when new environment-specific constraints or solutions are introduced.

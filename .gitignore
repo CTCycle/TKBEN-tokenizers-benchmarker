@@ -11,7 +11,6 @@ app/client/logs/
 app/client/.angular/
 app/client/*.local
 app/server/.venv/
-release/windows/
 assets/QA/**
 .playwright-mcp/
 
@@ -51,7 +50,6 @@ Thumbs.db
 .sonarlint/
 *.lock
 !app/server/uv.lock
-!app/src-tauri/Cargo.lock
 *.log
 *.db
 *.db-journal
@@ -59,31 +57,5 @@ Thumbs.db
 *.exe
 !.gitkeep
 
-# Tauri
-app/src-tauri/target/
-app/src-tauri/bundle/
-app/src-tauri/gen/
-app/src-tauri/r/
-!app/src-tauri/
-!app/src-tauri/build.rs
-!app/src-tauri/Cargo.toml
-!app/src-tauri/Cargo.lock
-!app/src-tauri/tauri.conf.json
-!app/src-tauri/src/
-!app/src-tauri/src/**
-!app/src-tauri/capabilities/
-!app/src-tauri/capabilities/**
-!app/src-tauri/icons/
-!app/src-tauri/icons/**
-
-# Local configuration and Windows release payloads
+# Local configuration
 settings/.env
-release/windows/
-release/tauri/.bundle-src/
-*.msi
-*.msix
-*.pfx
-*.p12
-*.cer
-*.crt
-*.key

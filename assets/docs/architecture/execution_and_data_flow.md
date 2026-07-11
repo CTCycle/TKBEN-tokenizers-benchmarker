@@ -1,5 +1,5 @@
 # Execution and Data Flow
-Last updated: 2026-06-02
+Last updated: 2026-07-11
 
 ## Layered Architecture
 Primary backend flow:
@@ -7,7 +7,7 @@ Primary backend flow:
 
 ## Key Module Responsibilities
 - `server/app.py`
-  - FastAPI app factory, router registration, and SPA serving in Tauri mode.
+  - FastAPI app factory, router registration, and SPA serving support.
 - `server/api/*`
   - HTTP contracts, status codes, request/response models, and job dispatch.
 - `server/domain/*`
