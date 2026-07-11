@@ -24,7 +24,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["msi"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -33,12 +33,14 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "r/app/server": "app/server",
-      "r/settings": "settings",
-      "r/app/client/dist": "app/client/dist",
-      "r/app/resources": "app/resources",
-      "r/runtimes/python": "runtimes/python",
-      "r/runtimes/uv": "runtimes/uv"
+      "../../release/tauri/.bundle-src/app/server": "app/server",
+      "../../release/tauri/.bundle-src/settings": "settings",
+      "../../release/tauri/.bundle-src/app/client/dist": "app/client/dist",
+      "../../release/tauri/.bundle-src/runtimes/python": "runtimes/python"
+    },
+    "windows": {
+      "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true },
+      "wix": { "language": "en-US" }
     }
   }
 }

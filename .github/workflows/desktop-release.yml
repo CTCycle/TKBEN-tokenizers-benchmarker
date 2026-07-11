@@ -1,0 +1,102 @@
+name: Windows Desktop Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows-x64:
+    runs-on: windows-latest
+    env:
+      CI: "1"
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22.14.0"
+          cache: npm
+          cache-dependency-path: app/client/package-lock.json
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Install uv
+        run: python -m pip install "uv==0.9.26"
+
+      - name: Install Rust x64 MSVC
+        shell: pwsh
+        run: |
+          rustup toolchain install stable-x86_64-pc-windows-msvc --profile minimal
+          rustup default stable-x86_64-pc-windows-msvc
+          rustup target add x86_64-pc-windows-msvc
+
+      - name: Validate source
+        shell: pwsh
+        run: |
+          uv sync --frozen --extra test --project app/server
+          uv run --project app/server ruff check app/server app/tests
+          uv run --project app/server pytest app/tests/unit -q
+          npm ci --prefix app/client
+          npm run lint --prefix app/client
+          npm run build --prefix app/client
+          powershell -NoProfile -ExecutionPolicy Bypass -File release/tauri/scripts/prepare-check-resources.ps1
+          cargo check --locked --target x86_64-pc-windows-msvc --manifest-path app/src-tauri/Cargo.toml
+
+      - name: Prepare optional signing certificate
+        if: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_BASE64 != '' }}
+        shell: pwsh
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_BASE64 }}
+        run: |
+          $path = Join-Path $env:RUNNER_TEMP 'tkben-signing.pfx'
+          [IO.File]::WriteAllBytes($path, [Convert]::FromBase64String($env:CERTIFICATE_BASE64))
+          "TKBEN_SIGNING_CERTIFICATE_PATH=$path" >> $env:GITHUB_ENV
+          $configPath = 'app/src-tauri/tauri.conf.json'
+          $config = Get-Content $configPath -Raw | ConvertFrom-Json
+          $config.bundle.windows | Add-Member -NotePropertyName signCommand -NotePropertyValue 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File ../../release/tauri/scripts/sign-windows.ps1 %1' -Force
+          $config | ConvertTo-Json -Depth 20 | Set-Content $configPath -Encoding utf8
+
+      - name: Build release artifacts
+        shell: cmd
+        env:
+          TKBEN_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_PASSWORD }}
+        run: release\tauri\build_with_tauri.bat
+
+      - name: Verify release payload
+        shell: pwsh
+        run: |
+          $files = @(Get-ChildItem release/windows -File)
+          if (@($files | Where-Object Extension -eq '.msi').Count -ne 1) { throw 'Expected exactly one MSI.' }
+          if (@($files | Where-Object Name -like '*-portable.zip').Count -ne 1) { throw 'Expected exactly one portable ZIP.' }
+          if (@($files | Where-Object Name -like '*-SHA256SUMS.txt').Count -ne 1) { throw 'Expected a checksum manifest.' }
+          $extract = Join-Path $env:RUNNER_TEMP 'tkben-portable'
+          Expand-Archive ($files | Where-Object Name -like '*-portable.zip').FullName $extract
+          if (-not (Get-ChildItem $extract -Recurse -Filter python.exe)) { throw 'Bundled Python is missing.' }
+          if (Get-ChildItem $extract -Recurse -File | Where-Object { $_.Name -match '(?i)(\.db|\.log|\.pfx|\.key)$' -or ($_.Name -match '(?i)\.pem$' -and $_.FullName -notmatch '(?i)\\certifi\\cacert\.pem$') }) { throw 'Forbidden payload file found.' }
+
+      - name: Smoke test portable application
+        shell: pwsh
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File release/tauri/scripts/smoke-test-portable.ps1 -ArchivePath (Get-ChildItem release/windows/*-portable.zip).FullName
+
+      - name: Smoke test MSI install and uninstall
+        shell: pwsh
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File release/tauri/scripts/smoke-test-msi.ps1 -MsiPath (Get-ChildItem release/windows/*.msi).FullName
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: tkben-desktop-windows-x64
+          path: release/windows/*
+          if-no-files-found: error
+
+      - name: Publish tag release assets
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/windows/*

@@ -1,5 +1,6 @@
 # Project-specific generated/runtime artifacts
 runtimes/**
+!runtimes/.gitkeep
 app/resources/sources/datasets/**
 app/resources/sources/tokenizers/**
 app/resources/logs/**
@@ -26,7 +27,6 @@ dist/
 build/
 .coverage
 htmlcov/
-app/server/uv.lock
 
 # Node / JS
 **/node_modules/
@@ -38,6 +38,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 package-lock.json
+!app/client/package-lock.json
 yarn.lock
 
 # IDE / OS
@@ -49,6 +50,8 @@ Thumbs.db
 # Misc
 .sonarlint/
 *.lock
+!app/server/uv.lock
+!app/src-tauri/Cargo.lock
 *.log
 *.db
 *.db-journal
@@ -60,6 +63,7 @@ Thumbs.db
 app/src-tauri/target/
 app/src-tauri/bundle/
 app/src-tauri/gen/
+app/src-tauri/r/
 !app/src-tauri/
 !app/src-tauri/build.rs
 !app/src-tauri/Cargo.toml
@@ -71,3 +75,15 @@ app/src-tauri/gen/
 !app/src-tauri/capabilities/**
 !app/src-tauri/icons/
 !app/src-tauri/icons/**
+
+# Local configuration and Windows release payloads
+settings/.env
+release/windows/
+release/tauri/.bundle-src/
+*.msi
+*.msix
+*.pfx
+*.p12
+*.cer
+*.crt
+*.key

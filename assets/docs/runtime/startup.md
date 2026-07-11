@@ -1,18 +1,19 @@
 # Startup
-Last updated: 2026-06-30
+Last updated: 2026-07-11
 
 ## Local Webapp Mode
 Windows recommended:
 
-```bat
-.\start_on_windows.bat
+```powershell
+.\start_on_windows.ps1
 ```
 
 What it does:
-- installs or uses portable Python, uv, and Node.js under `runtimes`
-- syncs Python dependencies with `uv sync` using `runtimes/uv.lock`
-- installs frontend dependencies and builds the frontend
-- starts backend and frontend
+- opens the single combined launch-and-maintenance menu
+- installs pinned portable Python, uv, and Node.js on first use
+- restores committed `app/server/uv.lock` and `app/client/package-lock.json`
+- seeds `%LOCALAPPDATA%\TKBEN` configuration/data directories
+- starts FastAPI and Vite development mode with owned PID tracking
 
 ## Manual Local Mode
 Cross-platform manual startup:
@@ -29,9 +30,10 @@ npm run preview -- --host 127.0.0.1 --port 8000 --strictPort
 Windows packaging flow:
 
 ```bat
-copy /Y settings\.env.example settings\.env
 .\release\tauri\build_with_tauri.bat
 ```
+
+Use `.\start_on_windows.ps1` for the interactive menu. Non-interactive callers pass `-Action <Action>` through that same entry point.
 
 ## Test Mode
 ```bat
