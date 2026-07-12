@@ -1,5 +1,5 @@
 # Components and Patterns
-Last updated: 2026-06-02
+Last updated: 2026-07-12
 
 ## Navigation
 - Top tab navigation for:
@@ -40,3 +40,9 @@ Last updated: 2026-06-02
   - placeholder component with optional detail text
 - Disabled:
   - reduced opacity and non-interactive cursor
+
+## Shared visual contracts
+- The application shell uses a compact brand lockup and a visible accent underline for the active route.
+- Dataset and tokenizer preview sections use aligned two-column cards with shared panel padding and surface treatment.
+- Tokenizer report and vocabulary panels use CSS Grid stretch alignment; JavaScript height measurement is not required.
+- Chart cards use centralized heights and legend spacing so adjacent plots keep consistent geometry.

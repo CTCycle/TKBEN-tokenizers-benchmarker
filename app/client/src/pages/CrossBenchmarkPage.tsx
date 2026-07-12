@@ -19,8 +19,11 @@ import {
   CHART_AXIS_PROPS,
   CHART_COLORS,
   CHART_GRID_PROPS,
+  CHART_LEGEND_PROPS,
   CHART_SERIES_COLORS,
   CHART_TOOLTIP_STYLE,
+  PRIMARY_CHART_HEIGHT,
+  SECONDARY_CHART_HEIGHT,
 } from '../common/chartStyles';
 import { useBenchmarkWorkspace } from '../hooks/useBenchmarkWorkspace';
 import type { BenchmarkRunPayload } from '../hooks/useBenchmarkWorkspace';
@@ -84,15 +87,6 @@ const formatTokenizerLabel = (tokenizer: string): string => {
 };
 const formatChartTokenizerLabel = (tokenizer: string): string =>
   truncateText(formatTokenizerLabel(tokenizer), 22);
-const chartLegendProps = {
-  layout: 'vertical' as const,
-  align: 'center' as const,
-  verticalAlign: 'bottom' as const,
-  wrapperStyle: { fontSize: 12, paddingTop: 2, width: '100%' },
-  height: 56,
-};
-const PRIMARY_CHART_HEIGHT = 300;
-const SECONDARY_CHART_HEIGHT = 300;
 
 type AdditionalMetricKey =
   | 'tokens_per_character'
@@ -503,7 +497,7 @@ const CrossBenchmarkPage = () => {
                         />
                         <YAxis {...CHART_AXIS_PROPS} width={78} tick={{ fontSize: 11 }} />
                         <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
-                        <Legend {...chartLegendProps} />
+                        <Legend {...CHART_LEGEND_PROPS} />
                         <Bar dataKey="tokens_per_second" fill={CHART_COLORS.blue} name="Tokenization Speed (tokens/sec)" />
                       </BarChart>
                     </ResponsiveContainer>
@@ -535,7 +529,7 @@ const CrossBenchmarkPage = () => {
                         />
                         <YAxis {...CHART_AXIS_PROPS} width={78} tick={{ fontSize: 11 }} />
                         <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
-                        <Legend {...chartLegendProps} />
+                        <Legend {...CHART_LEGEND_PROPS} />
                         <Bar dataKey="chars_per_second" fill={CHART_COLORS.green} name="Character Throughput (chars/sec)" />
                       </BarChart>
                     </ResponsiveContainer>
@@ -573,7 +567,7 @@ const CrossBenchmarkPage = () => {
                           }}
                           contentStyle={CHART_TOOLTIP_STYLE}
                         />
-                        <Legend {...chartLegendProps} />
+                        <Legend {...CHART_LEGEND_PROPS} />
                         <Bar dataKey="unknown_token_rate" fill={CHART_COLORS.red} name="Unknown Token Rate (%)" />
                         <Bar dataKey="decode_reencode_id_stability_rate" fill={CHART_COLORS.cyan} name="Decode/Re-encode ID Stability (%)" />
                         <Bar dataKey="nfc_text_round_trip_rate" fill={CHART_COLORS.yellow} name="NFC Text Round-Trip Rate (%)" />
@@ -608,7 +602,7 @@ const CrossBenchmarkPage = () => {
                         />
                         <YAxis {...CHART_AXIS_PROPS} width={78} tick={{ fontSize: 11 }} />
                         <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
-                        <Legend {...chartLegendProps} />
+                        <Legend {...CHART_LEGEND_PROPS} />
                         <Bar dataKey="vocabulary_size" fill={CHART_COLORS.blue} name="Vocabulary Size (tokens)" />
                         <Bar dataKey="added_tokens" fill={CHART_COLORS.orange} name="Added Tokens" />
                         <Bar dataKey="special_token_share" fill={CHART_COLORS.green} name="Special Token Share (%)" />
