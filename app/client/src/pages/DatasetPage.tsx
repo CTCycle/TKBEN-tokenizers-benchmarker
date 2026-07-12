@@ -621,7 +621,6 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                 quality and lexical metrics for dashboard analysis.
               </p>
             </div>
-            <div className="dataset-top-divider" aria-hidden="true" />
             <div className="dataset-preview-panel">
               <header className="panel-header">
                 <div>
