@@ -105,7 +105,8 @@ function Import-Environment {
         UI_PORT = '8001'
         RELOAD = 'false'
         OPTIONAL_DEPENDENCIES = 'false'
-        BACKEND_VISIBLE = 'false'
+        # Backend logs are visible by default when the setting is absent.
+        BACKEND_LOGS_VISIBLE = 'true'
     }
     foreach ($entry in $defaults.GetEnumerator()) {
         Set-Item -Path "Env:$($entry.Key)" -Value $entry.Value
@@ -125,6 +126,14 @@ function Import-Environment {
         if ($key) {
             Set-Item -Path "Env:$key" -Value $value
         }
+    }
+
+    if ($env:BACKEND_LOGS_VISIBLE -ieq 'true') {
+        $env:BACKEND_LOGS_VISIBLE = 'true'
+    } elseif ($env:BACKEND_LOGS_VISIBLE -ieq 'false') {
+        $env:BACKEND_LOGS_VISIBLE = 'false'
+    } else {
+        throw "BACKEND_LOGS_VISIBLE must be either 'true' or 'false'."
     }
 
     $env:UV_CACHE_DIR = $UvCacheDir
@@ -251,14 +260,19 @@ function Launch-Application {
     Stop-PortListeners -Port $backendPort
     Stop-PortListeners -Port $uiPort
 
-    $reloadFlag = if ($env:RELOAD -ieq 'true') { ' --reload' } else { '' }
-    $backendArgs = @('-m', 'uvicorn', 'server.app:app', '--app-dir', (Join-Path $RepoRoot 'app'), '--host', $env:FASTAPI_HOST, '--port', "$backendPort")
-    if ($env:RELOAD -ieq 'true') { $backendArgs += '--reload' }
+    $backendAppPath = Join-Path $RepoRoot 'app'
+    $backendArgs = "-m uvicorn server.app:app --app-dir `"$backendAppPath`" --host `"$($env:FASTAPI_HOST)`" --port $backendPort"
+    if ($env:RELOAD -ieq 'true') { $backendArgs += ' --reload' }
 
     Write-Step 'Starting backend.'
-    if ($env:BACKEND_VISIBLE -ieq 'true') {
-        $backendCommand = "`"$VenvPython`" -m uvicorn server.app:app --app-dir `"$(Join-Path $RepoRoot 'app')`" --host $($env:FASTAPI_HOST) --port $backendPort$reloadFlag"
-        & cmd.exe /c "start `"Backend`" cmd /c `"$backendCommand`""
+    if ($env:BACKEND_LOGS_VISIBLE -ieq 'true') {
+        $escapedPython = $VenvPython.Replace("'", "''")
+        $escapedApp = $backendAppPath.Replace("'", "''")
+        $backendCommand = "& '$escapedPython' -m uvicorn server.app:app --app-dir '$escapedApp' --host $($env:FASTAPI_HOST) --port $backendPort"
+        if ($env:RELOAD -ieq 'true') { $backendCommand += ' --reload' }
+        $backendProcess = Start-Process -FilePath 'powershell.exe' `
+            -ArgumentList @('-NoProfile', '-NoExit', '-Command', $backendCommand) `
+            -WorkingDirectory $RepoRoot -WindowStyle Normal -PassThru
     } else {
         $backendProcess = Start-Process -FilePath $VenvPython -ArgumentList $backendArgs -WorkingDirectory $RepoRoot -WindowStyle Hidden -PassThru
     }
@@ -344,6 +358,7 @@ function Uninstall-Application {
 }
 
 function Wait-ForMenu {
+    if ([Console]::IsInputRedirected) { return }
     Write-Host
     Write-Host 'Press any key to return to menu...'
     [Console]::ReadKey($true) | Out-Null
@@ -375,7 +390,7 @@ function Show-Menu {
 
         try {
             switch ($selection) {
-                '1' { Launch-Application; return }
+                '1' { Launch-Application; exit 0 }
                 '2' { Install-Dependencies }
                 '3' { Initialize-Database }
                 '4' { Run-TestSuite }

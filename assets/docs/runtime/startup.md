@@ -1,5 +1,5 @@
 # Startup
-Last updated: 2026-07-11
+Last updated: 2026-07-12
 
 ## Local Webapp Mode
 Windows recommended:
@@ -14,7 +14,7 @@ What it does:
 - creates `settings/.env` from the versioned example when missing
 - synchronizes Python and frontend dependencies and builds the frontend
 - starts FastAPI and the Vite preview server, waits for health checks, opens the browser, and prints ports and process IDs
-- optionally shows backend logs in a dedicated terminal when `BACKEND_VISIBLE=true`
+- optionally shows backend logs in a dedicated terminal when `BACKEND_LOGS_VISIBLE=true` (the default when absent; the only accepted values are `true` and `false`)
 
 ## Manual Local Mode
 Cross-platform manual startup:

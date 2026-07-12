@@ -1,5 +1,5 @@
 # Configuration
-Last updated: 2026-07-11
+Last updated: 2026-07-12
 
 ## Environment File
 Primary launcher runtime env file:
@@ -15,7 +15,7 @@ Primary launcher runtime env file:
 - `VITE_API_BASE_URL` (default `/api`)
 - `RELOAD`
 - `OPTIONAL_DEPENDENCIES`
-- `BACKEND_VISIBLE` (set to `true` to show backend logs in a dedicated terminal)
+- `BACKEND_LOGS_VISIBLE` (accepts only `true` or `false`; shows backend logs in a dedicated terminal when `true`, and defaults to `true` when absent)
 - `ALLOW_KEY_REVEAL`
 - `HF_KEYS_ENCRYPTION_KEY`
 - `TKBEN_DATA_DIR` (mutable database, datasets, tokenizers, and exports)
