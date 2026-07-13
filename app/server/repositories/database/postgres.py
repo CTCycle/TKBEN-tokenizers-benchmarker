@@ -11,7 +11,10 @@ from server.repositories.database.base import RepositoryBase
 from server.repositories.schemas.models import Base
 
 
+###############################################################################
 class PostgresRepository(RepositoryBase):
+
+    # -------------------------------------------------------------------------
     def __init__(self, settings: DatabaseSettings, initialize_schema: bool = False) -> None:
         if not settings.host or not settings.database_name or not settings.username:
             raise ValueError("PostgreSQL host, database name, and username are required")
@@ -32,6 +35,7 @@ class PostgresRepository(RepositoryBase):
         else:
             self.validate_schema()
 
+    # -------------------------------------------------------------------------
     def _insert(self, table, records, *, ignore_duplicates: bool) -> None:  # type: ignore[no-untyped-def]
         with self.session_factory() as session:
             try:
@@ -45,6 +49,7 @@ class PostgresRepository(RepositoryBase):
                 session.rollback()
                 raise
 
+    # -------------------------------------------------------------------------
     def _upsert(self, table, records, conflict_columns) -> None:  # type: ignore[no-untyped-def]
         with self.session_factory() as session:
             try:

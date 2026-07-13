@@ -119,6 +119,7 @@ class DatasetSerializer:
         existing = self.begin_dataset_import(dataset_name)
         return existing
 
+    # -------------------------------------------------------------------------
     def begin_dataset_import(self, dataset_name: str) -> int:
         now = datetime.now(timezone.utc)
         with self._session() as session:
@@ -145,6 +146,7 @@ class DatasetSerializer:
             raise ValueError(f"Failed to resolve dataset id for '{dataset_name}'")
         return int(dataset_id)
 
+    # -------------------------------------------------------------------------
     def finalize_dataset_import(self, dataset_id: int, document_count: int) -> None:
         now = datetime.now(timezone.utc)
         with self._session() as session:
@@ -153,6 +155,7 @@ class DatasetSerializer:
                 raise ValueError(f"Dataset import {dataset_id} is not loading")
             session.commit()
 
+    # -------------------------------------------------------------------------
     def delete_incomplete_dataset(self, dataset_id: int) -> None:
         with self._session() as session:
             session.execute(delete(Dataset).where(Dataset.id == int(dataset_id), Dataset.status == "loading"))
@@ -801,6 +804,7 @@ class TokenizerReportSerializer:
             raise ValueError("Failed to resolve saved tokenizer report id.")
         return int(report_row.id)
 
+    # -------------------------------------------------------------------------
     def replace_report_and_vocabulary(
         self, tokenizer_name: str, report: dict[str, Any], vocabulary_rows: list[dict[str, Any]]
     ) -> int:
