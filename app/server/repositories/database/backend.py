@@ -1,99 +1,56 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Mapping
 from functools import cache
 from pathlib import Path
 from typing import Any, Protocol
 
-import pandas as pd
-
 from server.common.path import DATABASE_PATH
+from server.common.utils.logger import logger
 from server.configurations import DatabaseSettings, get_server_settings
 from server.repositories.database.postgres import PostgresRepository
 from server.repositories.database.sqlite import SQLiteRepository
 from server.repositories.database.utils import normalize_sqlite_path
-from server.common.utils.logger import logger
 
-###############################################################################
+
 class DatabaseBackend(Protocol):
-    db_path: str | None
     engine: Any
+    session_factory: Any
 
-    # -------------------------------------------------------------------------
-    def load_from_database(self, table_name: str) -> pd.DataFrame: ...
-
-    # -------------------------------------------------------------------------
-    def upsert_into_database(self, df: pd.DataFrame, table_name: str) -> None: ...
-
-    # -------------------------------------------------------------------------
-    def insert_dataframe(
-        self, df: pd.DataFrame, table_name: str, ignore_duplicates: bool = True
-    ) -> None: ...
+    def insert_records(self, table_name: str, records: list[Mapping[str, Any]], *, ignore_duplicates: bool = False) -> None: ...
+    def upsert_records(self, table_name: str, records: list[Mapping[str, Any]], conflict_columns: list[str]) -> None: ...
+    def get_distinct_values(self, table_name: str, column: str) -> list[Any]: ...
+    def validate_schema(self) -> None: ...
 
 
-BackendFactory = Callable[[DatabaseSettings], DatabaseBackend]
-
-###############################################################################
 def build_sqlite_backend(settings: DatabaseSettings) -> DatabaseBackend:
-    db_path = normalize_sqlite_path(DATABASE_PATH)
-    should_initialize_schema = not Path(db_path).exists()
-    return SQLiteRepository(settings, initialize_schema=should_initialize_schema)
+    return SQLiteRepository(settings, initialize_schema=not Path(normalize_sqlite_path(DATABASE_PATH)).exists())
 
-###############################################################################
+
 def build_postgres_backend(settings: DatabaseSettings) -> DatabaseBackend:
     return PostgresRepository(settings)
 
 
-BACKEND_FACTORIES: dict[str, BackendFactory] = {
-    "sqlite": build_sqlite_backend,
-    "postgres": build_postgres_backend,
-}
-
-###############################################################################
 class TKBENDatabase:
-
-    # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.settings = get_server_settings().database
-        self.backend = self._build_backend(self.settings.embedded_database)
-
-    # -------------------------------------------------------------------------
-    def _build_backend(self, is_embedded: bool) -> DatabaseBackend:
-        if is_embedded:
-            backend_name = "sqlite"
+        if self.settings.embedded_database:
+            self.backend = build_sqlite_backend(self.settings)
         else:
-            engine_name = (self.settings.engine or "").lower()
-            if engine_name != "postgresql+psycopg":
+            if (self.settings.engine or "").lower() != "postgresql+psycopg":
                 raise ValueError(f"Unsupported database engine: {self.settings.engine}")
-            backend_name = "postgres"
-        normalized_name = backend_name.lower()
-        logger.info("Initializing %s database backend", backend_name)
-        if normalized_name not in BACKEND_FACTORIES:
-            raise ValueError(f"Unsupported database engine: {backend_name}")
-        factory = BACKEND_FACTORIES[normalized_name]
-        return factory(self.settings)
+            self.backend = build_postgres_backend(self.settings)
+        logger.info("Initialized database backend")
 
-    # -------------------------------------------------------------------------
+    @property
+    def engine(self) -> Any:
+        return self.backend.engine
+
     @property
     def db_path(self) -> str | None:
         return getattr(self.backend, "db_path", None)
 
-    # -------------------------------------------------------------------------
-    def load_from_database(self, table_name: str) -> pd.DataFrame:
-        return self.backend.load_from_database(table_name)
 
-    # -------------------------------------------------------------------------
-    def upsert_into_database(self, df: pd.DataFrame, table_name: str) -> None:
-        self.backend.upsert_into_database(df, table_name)
-
-    # -------------------------------------------------------------------------
-    def insert_dataframe(
-        self, df: pd.DataFrame, table_name: str, ignore_duplicates: bool = True
-    ) -> None:
-        """Insert DataFrame rows in batches (append mode, no delete)."""
-        self.backend.insert_dataframe(df, table_name, ignore_duplicates)
-
-###############################################################################
 @cache
 def get_database() -> TKBENDatabase:
     return TKBENDatabase()

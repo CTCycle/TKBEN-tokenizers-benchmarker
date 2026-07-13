@@ -833,8 +833,8 @@ class TokenizersService(TokenizerStorageMixin):
         vocabulary_rows = [
             {
                 "token_id": token_id,
-                "vocabulary_tokens": token,
-                "decoded_tokens": token,
+                "token": token,
+                "decoded_token": token,
             }
             for token_id, token in vocab_pairs
         ]
@@ -845,8 +845,6 @@ class TokenizersService(TokenizerStorageMixin):
 
         if progress_callback:
             progress_callback(55.0)
-
-        self.report_serializer.replace_tokenizer_vocabulary(name, vocabulary_rows)
 
         special_tokens = self.normalize_special_tokens(tokenizer)
         special_token_ids = self.normalize_special_token_ids(tokenizer)
@@ -921,7 +919,9 @@ class TokenizersService(TokenizerStorageMixin):
             "vocabulary_size": int(len(vocab_pairs)),
         }
 
-        report_id = self.report_serializer.save_tokenizer_report(report_payload)
+        report_id = self.report_serializer.replace_report_and_vocabulary(
+            name, report_payload, vocabulary_rows
+        )
         report_payload["report_id"] = int(report_id)
 
         if progress_callback:

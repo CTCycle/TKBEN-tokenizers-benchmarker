@@ -395,7 +395,7 @@ class DatasetMetricsEngine:
             {
                 "metric_key": "quality.language_tag",
                 "document_id": document_id,
-                "text_value": language_tag,
+                "text_value": language_tag or "unknown",
             },
         ]
 

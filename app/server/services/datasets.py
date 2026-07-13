@@ -615,7 +615,7 @@ class DatasetService(DatasetServiceOperationsMixin):
                 "Removed partially persisted dataset after cancellation: %s",
                 dataset_name,
             )
-        except SQLAlchemyError, OSError, ValueError, RuntimeError:
+        except (SQLAlchemyError, OSError, ValueError, RuntimeError):
             logger.warning(
                 "Failed to cleanup partially persisted dataset after cancellation: %s",
                 dataset_name,

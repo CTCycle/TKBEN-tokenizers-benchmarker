@@ -44,10 +44,11 @@ class DatasetServiceOperationsMixin:
 
         for text in self._iterate_texts(dataset, text_column, remove_invalid):
             if should_stop and should_stop():
+                self.dataset_serializer.delete_incomplete_dataset(dataset_id)
                 return self.histogram_from_counts(stats, length_counts), saved_count
             text_length = len(text)
             length_counts[text_length] = length_counts.get(text_length, 0) + 1
-            batch.append({"dataset_id": dataset_id, "text": text})
+            batch.append({"dataset_id": dataset_id, "ordinal": saved_count + len(batch), "text": text})
 
             if len(batch) >= batch_size:
                 self.dataset_serializer.save_document_batch(batch)
@@ -60,7 +61,7 @@ class DatasetServiceOperationsMixin:
                         progress_base + (saved_count / total_documents) * progress_span
                     )
                     progress_callback(progress_value)
-                batch.clear()
+            batch.clear()
 
         if batch:
             self.dataset_serializer.save_document_batch(batch)
@@ -74,6 +75,7 @@ class DatasetServiceOperationsMixin:
         logger.info("Completed saving %d documents to database", saved_count)
         if progress_callback and stats.document_count == 0:
             progress_callback(progress_base + progress_span)
+        self.dataset_serializer.finalize_dataset_import(dataset_id, saved_count)
         return self.histogram_from_counts(stats, length_counts), saved_count
 
     # -------------------------------------------------------------------------
@@ -342,7 +344,7 @@ class DatasetServiceOperationsMixin:
                 break
             text_length = len(text)
             length_counts[text_length] = length_counts.get(text_length, 0) + 1
-            batch.append({"dataset_id": dataset_id, "text": text})
+            batch.append({"dataset_id": dataset_id, "ordinal": saved_count + len(batch), "text": text})
 
             if len(batch) >= batch_size:
                 self.dataset_serializer.save_document_batch(batch)
@@ -367,10 +369,11 @@ class DatasetServiceOperationsMixin:
                 progress_callback(progress_value)
 
         if cancelled and saved_count < stats.document_count:
-            self.cleanup_cancelled_dataset(dataset_name)
+            self.dataset_serializer.delete_incomplete_dataset(dataset_id)
             return {}
 
         logger.info("Completed saving %d documents from uploaded file", saved_count)
+        self.dataset_serializer.finalize_dataset_import(dataset_id, saved_count)
 
         return {
             "dataset_name": dataset_name,

@@ -123,28 +123,18 @@ class BenchmarkReportSerializer:
 
         summaries: list[dict[str, Any]] = []
         for report_row, dataset_name in rows:
-            row = {
-                "id": report_row.id,
-                "report_version": report_row.report_version,
-                "created_at": report_row.created_at,
+            created_at = pd.to_datetime(report_row.created_at, utc=True, errors="coerce")
+            summaries.append(BenchmarkReportSummary.model_validate({
+                "report_id": int(report_row.id),
+                "report_version": int(report_row.report_version),
+                "created_at": created_at.isoformat().replace("+00:00", "Z") if not pd.isna(created_at) else None,
                 "run_name": report_row.run_name,
-                "selected_metric_keys": report_row.selected_metric_keys,
-                "payload": report_row.payload,
-                "dataset_name": dataset_name,
-            }
-            try:
-                normalized = self._normalize_report_row(row)
-            except ValueError:
-                logger.warning(
-                    "Skipping incompatible benchmark report row id=%s",
-                    report_row.id,
-                )
-                continue
-            summaries.append(
-                BenchmarkReportSummary.model_validate(normalized).model_dump(
-                    mode="json"
-                )
-            )
+                "dataset_name": str(dataset_name),
+                "documents_processed": int(report_row.documents_processed),
+                "tokenizers_count": int(report_row.tokenizers_count),
+                "tokenizers_processed": list(report_row.tokenizers_processed or []),
+                "selected_metric_keys": list(report_row.selected_metric_keys or []),
+            }).model_dump(mode="json"))
         return summaries
 
     # -------------------------------------------------------------------------

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import math
 from collections.abc import Iterator
+from datetime import datetime, timezone
 from typing import Any
 
 import pandas as pd
@@ -45,7 +47,7 @@ class DatasetSerializer:
         if isinstance(value, str):
             try:
                 return json.loads(value)
-            except json.JSONDecodeError, TypeError:
+            except (json.JSONDecodeError, TypeError):
                 return default
         if isinstance(value, (dict, list)):
             return value
@@ -83,10 +85,9 @@ class DatasetSerializer:
         stmt = (
             select(
                 Dataset.name.label("dataset_name"),
-                func.count(DatasetDocument.id).label("document_count"),
+                Dataset.document_count,
             )
-            .outerjoin(DatasetDocument, DatasetDocument.dataset_id == Dataset.id)
-            .group_by(Dataset.id, Dataset.name)
+            .where(Dataset.status == "ready")
             .order_by(Dataset.name.asc())
         )
         with self._session() as session:
@@ -102,23 +103,37 @@ class DatasetSerializer:
 
     # -------------------------------------------------------------------------
     def list_dataset_names(self) -> list[str]:
-        return self.queries.get_distinct_values(self.dataset_dimension_table, "name")
+        stmt = select(Dataset.name).where(Dataset.status == "ready").order_by(Dataset.name.asc())
+        with self._session() as session:
+            return [str(name) for name in session.execute(stmt).scalars()]
 
     # -------------------------------------------------------------------------
     def get_dataset_id(self, dataset_name: str) -> int | None:
-        stmt = select(Dataset.id).where(Dataset.name == dataset_name).limit(1)
+        stmt = select(Dataset.id).where(Dataset.name == dataset_name, Dataset.status == "ready").limit(1)
         with self._session() as session:
             dataset_id = session.execute(stmt).scalar_one_or_none()
         return int(dataset_id) if dataset_id is not None else None
 
     # -------------------------------------------------------------------------
     def ensure_dataset_id(self, dataset_name: str) -> int:
+        existing = self.begin_dataset_import(dataset_name)
+        return existing
+
+    def begin_dataset_import(self, dataset_name: str) -> int:
+        now = datetime.now(timezone.utc)
         with self._session() as session:
-            dataset_id = session.execute(
-                select(Dataset.id).where(Dataset.name == dataset_name).limit(1)
-            ).scalar_one_or_none()
+            dataset_row = session.execute(
+                select(Dataset.id, Dataset.status).where(Dataset.name == dataset_name).limit(1)
+            ).first()
+            dataset_id = dataset_row[0] if dataset_row is not None else None
+            if dataset_row is not None:
+                dataset_status = dataset_row[1]
+                if dataset_status == "ready":
+                    session.execute(delete(Dataset).where(Dataset.id == int(dataset_id)))
+                    session.flush()
+                    dataset_id = None
             if dataset_id is None:
-                session.add(Dataset(name=dataset_name))
+                session.add(Dataset(name=dataset_name, status="loading", created_at=now, updated_at=now))
                 try:
                     session.commit()
                 except IntegrityError:
@@ -130,16 +145,28 @@ class DatasetSerializer:
             raise ValueError(f"Failed to resolve dataset id for '{dataset_name}'")
         return int(dataset_id)
 
+    def finalize_dataset_import(self, dataset_id: int, document_count: int) -> None:
+        now = datetime.now(timezone.utc)
+        with self._session() as session:
+            result = session.execute(update(Dataset).where(Dataset.id == int(dataset_id), Dataset.status == "loading").values(status="ready", document_count=max(0, int(document_count)), ready_at=now, updated_at=now))
+            if result.rowcount != 1:
+                raise ValueError(f"Dataset import {dataset_id} is not loading")
+            session.commit()
+
+    def delete_incomplete_dataset(self, dataset_id: int) -> None:
+        with self._session() as session:
+            session.execute(delete(Dataset).where(Dataset.id == int(dataset_id), Dataset.status == "loading"))
+            session.commit()
+
     # -------------------------------------------------------------------------
     def save_document_batch(self, batch: list[dict[str, Any]]) -> None:
         if not batch:
             return
-        frame = pd.DataFrame(batch)
-        self.queries.insert_table(frame, DatasetDocument.__tablename__)
+        self.queries.insert_records(DatasetDocument.__tablename__, batch)
 
     # -------------------------------------------------------------------------
     def dataset_exists(self, dataset_name: str) -> bool:
-        stmt = select(Dataset.id).where(Dataset.name == dataset_name).limit(1)
+        stmt = select(Dataset.id).where(Dataset.name == dataset_name, Dataset.status == "ready").limit(1)
         with self._session() as session:
             return session.execute(stmt).first() is not None
 
@@ -148,7 +175,7 @@ class DatasetSerializer:
         stmt = (
             select(func.count(DatasetDocument.id))
             .join(Dataset, Dataset.id == DatasetDocument.dataset_id)
-            .where(Dataset.name == dataset_name)
+            .where(Dataset.name == dataset_name, Dataset.status == "ready")
         )
         with self._session() as session:
             value = session.execute(stmt).scalar_one_or_none() or 0
@@ -166,7 +193,7 @@ class DatasetSerializer:
                 select(DatasetDocument.id, DatasetDocument.text)
                 .join(Dataset, Dataset.id == DatasetDocument.dataset_id)
                 .where(
-                    Dataset.name == dataset_name,
+                    Dataset.name == dataset_name, Dataset.status == "ready",
                     DatasetDocument.id > int(last_seen_id),
                 )
                 .order_by(DatasetDocument.id.asc())
@@ -210,7 +237,7 @@ class DatasetSerializer:
             stmt = (
                 select(DatasetDocument.id, DatasetDocument.text)
                 .join(Dataset, Dataset.id == DatasetDocument.dataset_id)
-                .where(and_(*conditions), DatasetDocument.id > int(last_seen_id))
+                .where(and_(*conditions), Dataset.status == "ready", DatasetDocument.id > int(last_seen_id))
                 .order_by(DatasetDocument.id.asc())
                 .limit(int(batch_size))
             )
@@ -316,7 +343,9 @@ class DatasetSerializer:
         parameters: dict[str, Any],
         report_version: int = 2,
     ) -> int:
-        dataset_id = self.ensure_dataset_id(dataset_name)
+        dataset_id = self.get_dataset_id(dataset_name)
+        if dataset_id is None:
+            raise ValueError(f"Dataset '{dataset_name}' is not ready")
         created_at = pd.Timestamp.utcnow().to_pydatetime()
         session_row = AnalysisSession(
             dataset_id=int(dataset_id),
@@ -358,6 +387,11 @@ class DatasetSerializer:
     ) -> None:
         if not batch:
             return
+        with self._session() as session:
+            owning_dataset_id = session.execute(select(AnalysisSession.dataset_id).where(AnalysisSession.id == int(session_id))).scalar_one_or_none()
+        if owning_dataset_id is None:
+            raise ValueError(f"Analysis session {session_id} does not exist")
+        created_at = datetime.now(timezone.utc)
         metric_type_map = self.get_metric_type_map()
         rows: list[dict[str, Any]] = []
         for item in batch:
@@ -365,26 +399,42 @@ class DatasetSerializer:
             metric_type_id = metric_type_map.get(metric_key)
             if metric_type_id is None:
                 continue
+            raw_numeric = item.get("numeric_value")
+            numeric_value = None
+            if raw_numeric is not None:
+                numeric_candidate = float(raw_numeric)
+                if math.isfinite(numeric_candidate):
+                    numeric_value = numeric_candidate
+            raw_text = item.get("text_value")
+            text_value = None
+            if raw_text is not None and not (isinstance(raw_text, float) and math.isnan(raw_text)):
+                text_value = str(raw_text)
+            json_value = item.get("json_value")
+            if json_value is not None:
+                numeric_value = None
+                text_value = None
+            elif text_value is not None:
+                numeric_value = None
+            value_count = sum(value is not None for value in (numeric_value, text_value, json_value))
+            if value_count != 1:
+                raise ValueError(
+                    f"Metric '{metric_key}' must contain exactly one value representation; "
+                    f"received numeric={numeric_value!r}, text={text_value!r}, json={json_value!r}"
+                )
             rows.append(
                 {
                     "session_id": int(session_id),
+                    "dataset_id": int(owning_dataset_id),
                     "metric_type_id": int(metric_type_id),
                     "document_id": (
                         int(item["document_id"])
                         if item.get("document_id") is not None
                         else None
                     ),
-                    "numeric_value": (
-                        float(item["numeric_value"])
-                        if item.get("numeric_value") is not None
-                        else None
-                    ),
-                    "text_value": (
-                        str(item["text_value"])
-                        if item.get("text_value") is not None
-                        else None
-                    ),
-                    "json_value": item.get("json_value"),
+                    "numeric_value": numeric_value,
+                    "text_value": text_value,
+                    "json_value": json_value,
+                    "created_at": created_at,
                 }
             )
         if not rows:
@@ -392,13 +442,7 @@ class DatasetSerializer:
         chunk_size = 100
         for start in range(0, len(rows), chunk_size):
             chunk = rows[start : start + chunk_size]
-            df = pd.DataFrame(chunk, dtype=object)
-            df = df.where(pd.notna(df), None)
-            self.queries.insert_table(
-                df,
-                self.metric_value_table,
-                ignore_duplicates=False,
-            )
+            self.queries.insert_records(self.metric_value_table, chunk, ignore_duplicates=False)
 
     # -------------------------------------------------------------------------
     def save_histogram_artifact(
@@ -420,9 +464,9 @@ class DatasetSerializer:
             "max_value": float(histogram.get("max_length", 0.0) or 0.0),
             "mean_value": float(histogram.get("mean_length", 0.0) or 0.0),
             "median_value": float(histogram.get("median_length", 0.0) or 0.0),
+            "created_at": datetime.now(timezone.utc),
         }
-        df = pd.DataFrame([row])
-        self.queries.upsert_table(df, self.histogram_table)
+        self.queries.upsert_records(self.histogram_table, [row], ["session_id", "metric_type_id"])
 
     # -------------------------------------------------------------------------
     def _load_metric_rows_for_session(self, session_id: int) -> list[dict[str, Any]]:
@@ -715,7 +759,7 @@ class TokenizerReportSerializer:
                 select(Tokenizer.id).where(Tokenizer.name == tokenizer_name).limit(1)
             ).scalar_one_or_none()
             if tokenizer_id is None:
-                session.add(Tokenizer(name=tokenizer_name))
+                session.add(Tokenizer(name=tokenizer_name, created_at=datetime.now(timezone.utc)))
                 try:
                     session.commit()
                 except IntegrityError:
@@ -749,12 +793,45 @@ class TokenizerReportSerializer:
             description=report.get("description"),
         )
         with self._session() as session:
+            session.execute(delete(TokenizerReport).where(TokenizerReport.tokenizer_id == int(tokenizer_id)))
             session.add(report_row)
             session.commit()
             session.refresh(report_row)
         if report_row.id is None:
             raise ValueError("Failed to resolve saved tokenizer report id.")
         return int(report_row.id)
+
+    def replace_report_and_vocabulary(
+        self, tokenizer_name: str, report: dict[str, Any], vocabulary_rows: list[dict[str, Any]]
+    ) -> int:
+        name = str(tokenizer_name).strip()
+        if not name:
+            raise ValueError("Tokenizer name must be provided")
+        now = datetime.now(timezone.utc)
+        with self._session() as session:
+            tokenizer_id = session.execute(select(Tokenizer.id).where(Tokenizer.name == name)).scalar_one_or_none()
+            if tokenizer_id is None:
+                tokenizer = Tokenizer(name=name, created_at=now)
+                session.add(tokenizer)
+                session.flush()
+                tokenizer_id = tokenizer.id
+            session.execute(delete(TokenizerVocabulary).where(TokenizerVocabulary.tokenizer_id == int(tokenizer_id)))
+            records = [{"tokenizer_id": int(tokenizer_id), "token_id": int(row["token_id"]), "token": str(row.get("token", "")), "decoded_token": row.get("decoded_token")} for row in vocabulary_rows]
+            for start in range(0, len(records), 1000):
+                session.execute(TokenizerVocabulary.__table__.insert(), records[start : start + 1000])
+            session.execute(delete(TokenizerReport).where(TokenizerReport.tokenizer_id == int(tokenizer_id)))
+            global_stats = report.get("global_stats", {})
+            metadata_payload = dict(global_stats) if isinstance(global_stats, dict) else {}
+            metadata_payload.setdefault("huggingface_url", report.get("huggingface_url"))
+            report_row = TokenizerReport(
+                tokenizer_id=int(tokenizer_id), report_version=int(report.get("report_version", 1) or 1),
+                created_at=now, metadata_json=metadata_payload,
+                token_length_histogram=report.get("token_length_histogram", {}), description=report.get("description"),
+            )
+            session.add(report_row)
+            session.commit()
+            session.refresh(report_row)
+            return int(report_row.id)
 
     # -------------------------------------------------------------------------
     def replace_tokenizer_vocabulary(
@@ -766,10 +843,8 @@ class TokenizerReportSerializer:
         if not vocabulary_rows:
             return tokenizer_id
 
-        df = pd.DataFrame(vocabulary_rows)
-        df["tokenizer_id"] = tokenizer_id
-        df = df[["tokenizer_id", "token_id", "vocabulary_tokens", "decoded_tokens"]]
-        self.queries.upsert_table(df, self.tokenizer_vocabulary_table)
+        records = [{"tokenizer_id": tokenizer_id, "token_id": int(row["token_id"]), "token": str(row.get("token", "")), "decoded_token": row.get("decoded_token")} for row in vocabulary_rows]
+        self.queries.upsert_records(self.tokenizer_vocabulary_table, records, ["tokenizer_id", "token_id"])
         return tokenizer_id
 
     # -------------------------------------------------------------------------
@@ -892,7 +967,7 @@ class TokenizerReportSerializer:
             TokenizerVocabulary.tokenizer_id == int(tokenizer_id)
         )
         page_stmt = (
-            select(TokenizerVocabulary.token_id, TokenizerVocabulary.vocabulary_tokens)
+            select(TokenizerVocabulary.token_id, TokenizerVocabulary.token)
             .where(TokenizerVocabulary.tokenizer_id == int(tokenizer_id))
             .order_by(TokenizerVocabulary.token_id.asc())
             .limit(int(limit))
