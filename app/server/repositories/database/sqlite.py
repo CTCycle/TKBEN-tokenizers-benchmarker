@@ -13,9 +13,11 @@ from server.repositories.schemas.models import Base
 from server.repositories.database.utils import normalize_sqlite_path
 
 
+###############################################################################
 class SQLiteRepository(RepositoryBase):
     SQLITE_MAX_VARIABLES = 900
 
+    # -------------------------------------------------------------------------
     def __init__(self, settings: DatabaseSettings, initialize_schema: bool = False) -> None:
         self.db_path = normalize_sqlite_path(DATABASE_PATH)
         DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -27,6 +29,7 @@ class SQLiteRepository(RepositoryBase):
         else:
             self.validate_schema()
 
+    # -------------------------------------------------------------------------
     @staticmethod
     def enable_foreign_keys(dbapi_connection: Any, connection_record: Any) -> None:
         cursor = dbapi_connection.cursor()
@@ -36,6 +39,7 @@ class SQLiteRepository(RepositoryBase):
         finally:
             cursor.close()
 
+    # -------------------------------------------------------------------------
     def _insert(self, table, records, *, ignore_duplicates: bool) -> None:  # type: ignore[no-untyped-def]
         with self.session_factory() as session:
             try:
@@ -49,6 +53,7 @@ class SQLiteRepository(RepositoryBase):
                 session.rollback()
                 raise
 
+    # -------------------------------------------------------------------------
     def _upsert(self, table, records, conflict_columns) -> None:  # type: ignore[no-untyped-def]
         with self.session_factory() as session:
             try:

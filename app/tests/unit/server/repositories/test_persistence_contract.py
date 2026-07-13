@@ -17,6 +17,7 @@ from server.repositories.schemas.models import (
 )
 
 
+###############################################################################
 @pytest.fixture()
 def sqlite_session():
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
@@ -26,6 +27,7 @@ def sqlite_session():
         yield session
 
 
+###############################################################################
 def test_canonical_tables_and_removed_validation_report(sqlite_session: Session) -> None:
     tables = set(inspect(sqlite_session.bind).get_table_names())
     assert "dataset_validation_report" not in tables
@@ -36,6 +38,7 @@ def test_canonical_tables_and_removed_validation_report(sqlite_session: Session)
     } == tables
 
 
+###############################################################################
 def test_metric_values_require_one_value_and_dataset_safe_document(sqlite_session: Session) -> None:
     now = datetime.now(timezone.utc)
     first = Dataset(name="one", status="ready", document_count=1, created_at=now, updated_at=now, ready_at=now)

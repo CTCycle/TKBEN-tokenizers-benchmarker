@@ -20,10 +20,12 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from server.repositories.schemas.types import JSONArray, JSONObject, UTCDateTime
 
 
+###############################################################################
 class Base(DeclarativeBase):
     pass
 
 
+###############################################################################
 class Dataset(Base):
     __tablename__ = "dataset"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -45,6 +47,7 @@ class Dataset(Base):
     benchmark_reports: Mapped[list[BenchmarkReport]] = relationship(back_populates="dataset", cascade="all, delete-orphan", passive_deletes=True, lazy="raise")
 
 
+###############################################################################
 class DatasetDocument(Base):
     __tablename__ = "dataset_document"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -61,6 +64,7 @@ class DatasetDocument(Base):
     metric_values: Mapped[list[MetricValue]] = relationship(back_populates="document", passive_deletes=True, lazy="raise", overlaps="metric_values,session")
 
 
+###############################################################################
 class AnalysisSession(Base):
     __tablename__ = "analysis_session"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -85,6 +89,7 @@ class AnalysisSession(Base):
     histograms: Mapped[list[HistogramArtifact]] = relationship(back_populates="session", cascade="all, delete-orphan", passive_deletes=True, lazy="raise")
 
 
+###############################################################################
 class MetricType(Base):
     __tablename__ = "metric_type"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -106,6 +111,7 @@ class MetricType(Base):
     histograms: Mapped[list[HistogramArtifact]] = relationship(back_populates="metric_type", lazy="raise")
 
 
+###############################################################################
 class MetricValue(Base):
     __tablename__ = "metric_value"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -131,6 +137,7 @@ class MetricValue(Base):
     document: Mapped[DatasetDocument | None] = relationship(back_populates="metric_values", lazy="raise", overlaps="metric_values,session")
 
 
+###############################################################################
 class HistogramArtifact(Base):
     __tablename__ = "histogram_artifact"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -149,6 +156,7 @@ class HistogramArtifact(Base):
     metric_type: Mapped[MetricType] = relationship(back_populates="histograms", lazy="raise")
 
 
+###############################################################################
 class Tokenizer(Base):
     __tablename__ = "tokenizer"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -159,6 +167,7 @@ class Tokenizer(Base):
     vocabularies: Mapped[list[TokenizerVocabulary]] = relationship(back_populates="tokenizer", cascade="all, delete-orphan", passive_deletes=True, lazy="raise")
 
 
+###############################################################################
 class TokenizerVocabulary(Base):
     __tablename__ = "tokenizer_vocabulary"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -170,6 +179,7 @@ class TokenizerVocabulary(Base):
     tokenizer: Mapped[Tokenizer] = relationship(back_populates="vocabularies", lazy="raise")
 
 
+###############################################################################
 class TokenizerReport(Base):
     __tablename__ = "tokenizer_report"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -183,6 +193,7 @@ class TokenizerReport(Base):
     tokenizer: Mapped[Tokenizer] = relationship(back_populates="reports", lazy="raise")
 
 
+###############################################################################
 class BenchmarkReport(Base):
     __tablename__ = "benchmark_report"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -202,6 +213,7 @@ class BenchmarkReport(Base):
     dataset: Mapped[Dataset] = relationship(back_populates="benchmark_reports", lazy="raise")
 
 
+###############################################################################
 class HFAccessKey(Base):
     __tablename__ = "hf_access_keys"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

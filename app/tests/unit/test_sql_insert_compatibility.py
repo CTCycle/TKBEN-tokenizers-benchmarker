@@ -73,7 +73,6 @@ def test_benchmark_service_ensure_tokenizer_ids_returns_mapping(
     assert int(count) == 2
 
 ###############################################################################
-###############################################################################
 def test_session_report_rehydrates_json_metrics_when_numeric_is_nan(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
