@@ -27,10 +27,10 @@ class DashboardExportFormatting:
         return points[:300]
 
     # -------------------------------------------------------------------------
-    def _parse_word_frequency(self, value: Any) -> list[dict[str, int]]:
+    def _parse_word_frequency(self, value: Any) -> list[dict[str, str | int]]:
         if not isinstance(value, list):
             return []
-        rows: list[dict[str, int]] = []
+        rows: list[dict[str, str | int]] = []
         for item in value:
             if not isinstance(item, dict):
                 continue
@@ -41,7 +41,7 @@ class DashboardExportFormatting:
             if count <= 0:
                 continue
             rows.append({"word": word, "count": count})
-        rows.sort(key=lambda item: (-item["count"], item["word"]))
+        rows.sort(key=lambda item: (-int(item["count"]), str(item["word"])))
         return rows
 
     # -------------------------------------------------------------------------

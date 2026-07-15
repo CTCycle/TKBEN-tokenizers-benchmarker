@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from functools import cache
 from pathlib import Path
 from typing import Any, Protocol
@@ -19,10 +19,10 @@ class DatabaseBackend(Protocol):
     session_factory: Any
 
     # -------------------------------------------------------------------------
-    def insert_records(self, table_name: str, records: list[Mapping[str, Any]], *, ignore_duplicates: bool = False) -> None: ...
+    def insert_records(self, table_name: str, records: Sequence[Mapping[str, Any]], *, ignore_duplicates: bool = False) -> None: ...
 
     # -------------------------------------------------------------------------
-    def upsert_records(self, table_name: str, records: list[Mapping[str, Any]], conflict_columns: list[str]) -> None: ...
+    def upsert_records(self, table_name: str, records: Sequence[Mapping[str, Any]], conflict_columns: list[str]) -> None: ...
 
     # -------------------------------------------------------------------------
     def get_distinct_values(self, table_name: str, column: str) -> list[Any]: ...

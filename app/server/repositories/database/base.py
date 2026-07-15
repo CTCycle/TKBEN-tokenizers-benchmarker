@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
 from sqlalchemy import inspect, select
@@ -47,7 +47,7 @@ class RepositoryBase:
             yield records[start : start + self.insert_batch_size]
 
     # -------------------------------------------------------------------------
-    def insert_records(self, table_name: str, records: list[Mapping[str, Any]], *, ignore_duplicates: bool = False) -> None:
+    def insert_records(self, table_name: str, records: Sequence[Mapping[str, Any]], *, ignore_duplicates: bool = False) -> None:
         if not records:
             return
         self._insert(self.get_table(table_name), records, ignore_duplicates=ignore_duplicates)
@@ -57,7 +57,7 @@ class RepositoryBase:
         raise NotImplementedError
 
     # -------------------------------------------------------------------------
-    def upsert_records(self, table_name: str, records: list[Mapping[str, Any]], conflict_columns: list[str]) -> None:
+    def upsert_records(self, table_name: str, records: Sequence[Mapping[str, Any]], conflict_columns: list[str]) -> None:
         if not records:
             return
         self._upsert(self.get_table(table_name), records, conflict_columns)

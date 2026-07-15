@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from server.common.utils.encryption import SymmetricCipher, get_hf_key_cipher
 from server.common.utils.logger import logger
 from server.repositories.hf_access_keys import HFAccessKeyRepository
+from server.domain.keys import HFAccessKeyListItem
 
 ###############################################################################
 class HFAccessKeyError(Exception):
@@ -62,20 +63,19 @@ class HFAccessKeyService:
         )
 
     # -------------------------------------------------------------------------
-    def list_keys(self) -> list[dict[str, object]]:
+    def list_keys(self) -> list[HFAccessKeyListItem]:
         rows = self.repository.list_all()
-        return [
-            {
-                "id": int(row.id),
-                "created_at": row.created_at,
-                "is_active": bool(row.is_active),
-                "masked_preview": self.mask_key_preview(str(row.key_value or "")),
-            }
+        return [HFAccessKeyListItem(
+                id=int(row.id),
+                created_at=row.created_at,
+                is_active=bool(row.is_active),
+                masked_preview=self.mask_key_preview(str(row.key_value or "")),
+            )
             for row in rows
         ]
 
     # -------------------------------------------------------------------------
-    def add_key(self, raw_key: str) -> dict[str, object]:
+    def add_key(self, raw_key: str) -> HFAccessKeyListItem:
         normalized_key = self.normalize_raw_key(raw_key)
         created_at = datetime.now(timezone.utc)
 
@@ -103,12 +103,12 @@ class HFAccessKeyService:
         if key_row.id is None:
             raise RuntimeError("Failed to save Hugging Face key.")
 
-        return {
-            "id": int(key_row.id),
-            "created_at": key_row.created_at or created_at,
-            "is_active": False,
-            "masked_preview": self.mask_key_preview(encrypted_value),
-        }
+        return HFAccessKeyListItem(
+            id=int(key_row.id),
+            created_at=key_row.created_at or created_at,
+            is_active=False,
+            masked_preview=self.mask_key_preview(encrypted_value),
+        )
 
     # -------------------------------------------------------------------------
     def get_encrypted_key(self, key_id: int) -> str:

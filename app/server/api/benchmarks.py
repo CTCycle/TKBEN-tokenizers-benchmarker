@@ -21,10 +21,15 @@ from server.common.constants import (
     API_ROUTE_BENCHMARKS_RUN,
     API_ROUTER_PREFIX_BENCHMARKS,
 )
-from server.api.helpers import start_managed_job
 from server.common.utils.logger import logger
 from server.services.benchmark_jobs import BenchmarkJobService
 from server.services.benchmarks import BenchmarkService
+from server.services.managed_jobs import (
+    ManagedJobConflictError,
+    ManagedJobInitializationError,
+    ManagedJobService,
+    ManagedJobSpec,
+)
 
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_BENCHMARKS, tags=["benchmarks"])
@@ -62,13 +67,6 @@ async def run_benchmarks(
     custom_tokenizers = await asyncio.to_thread(
         service.resolve_custom_tokenizer_selection, payload.custom_tokenizer_name
     )
-
-    job_manager = request.app.state.job_manager
-    if job_manager.is_job_running("benchmark_run"):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Benchmark run is already in progress.",
-        )
 
     doc_count = await asyncio.to_thread(
         service.get_dataset_document_count,
@@ -113,18 +111,22 @@ async def run_benchmarks(
     request_payload = payload.model_dump()
     request_payload["custom_tokenizers"] = custom_tokenizers
 
-    return start_managed_job(
-        request,
-        job_type="benchmark_run",
-        runner=BenchmarkJobService().run_benchmark_job,
-        kwargs={
-            "request_payload": request_payload,
-        },
-        conflict_detail="Benchmark run is already in progress.",
-        init_failure_detail="Failed to initialize benchmark job.",
-        message="Benchmark job started.",
-        check_conflict=False,
-    )
+    try:
+        return ManagedJobService().start(
+            request.app.state.job_manager,
+            ManagedJobSpec(
+                job_type="benchmark_run",
+                runner=BenchmarkJobService().run_benchmark_job,
+                kwargs={"request_payload": request_payload},
+                conflict_detail="Benchmark run is already in progress.",
+                initialization_detail="Failed to initialize benchmark job.",
+                message="Benchmark job started.",
+            ),
+        )
+    except ManagedJobConflictError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except ManagedJobInitializationError as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
 
 ###############################################################################
 @router.get(

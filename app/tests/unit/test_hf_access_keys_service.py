@@ -90,7 +90,7 @@ def test_add_key_skips_undecryptable_rows_during_duplicate_check(
 
     service._cipher = RecoveringCipher()  # type: ignore[assignment]
     result = service.add_key("hf_test_key")
-    assert result["is_active"] is False
+    assert result.is_active is False
 
     with Session(bind=get_database().backend.engine) as session:
         rows = (

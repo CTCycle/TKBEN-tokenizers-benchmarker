@@ -59,7 +59,7 @@ async def create_key(request: HFAccessKeyCreateRequest) -> HFAccessKeyListItem:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=str(exc)
         ) from exc
-    return HFAccessKeyListItem(**created_key)
+    return created_key
 
 ###############################################################################
 @router.get(
@@ -70,7 +70,7 @@ async def create_key(request: HFAccessKeyCreateRequest) -> HFAccessKeyListItem:
 async def list_keys() -> HFAccessKeyListResponse:
     service = HFAccessKeyService()
     keys = await asyncio.to_thread(service.list_keys)
-    return HFAccessKeyListResponse(keys=[HFAccessKeyListItem(**key) for key in keys])
+    return HFAccessKeyListResponse(keys=keys)
 
 ###############################################################################
 @router.delete(

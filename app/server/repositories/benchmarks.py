@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, load_only
@@ -71,7 +72,8 @@ class BenchmarkRepository:
             .limit(capped_limit)
         )
         with self._session() as session:
-            return list(session.execute(stmt).all())
+            rows = session.execute(stmt).all()
+        return [(row[0], str(row[1])) for row in rows]
 
     # -------------------------------------------------------------------------
     def get_benchmark_report_by_id(
@@ -87,7 +89,7 @@ class BenchmarkRepository:
             row = session.execute(stmt).first()
         if row is None or row[0] is None:
             return None
-        return row
+        return row[0], str(row[1])
 
     # -------------------------------------------------------------------------
     def get_dataset_id(self, dataset_name: str) -> int | None:
@@ -132,7 +134,7 @@ class BenchmarkRepository:
         created_at,
         run_name: str | None,
         selected_metric_keys: list[str],
-        payload: dict,
+        payload: dict[str, Any],
     ) -> int:
         schema_version = int(payload.get("schema_version", 1) or 1)
         methodology_version = str(payload.get("methodology_version", "unknown") or "unknown")

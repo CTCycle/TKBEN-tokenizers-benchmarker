@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from server.repositories.serialization.data import TokenizerReportSerializer
+from server.repositories.serialization.tokenizer_reports import TokenizerReportSerializer
 from server.services.tokenizers import TokenizersService
 
 ###############################################################################

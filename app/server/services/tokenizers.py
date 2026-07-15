@@ -16,7 +16,7 @@ from transformers import AutoTokenizer
 from server.common.utils.logger import logger
 from server.configurations import get_server_settings
 from server.repositories.tokenizers import TokenizerRepository
-from server.repositories.serialization.data import TokenizerReportSerializer
+from server.repositories.serialization.tokenizer_reports import TokenizerReportSerializer
 from server.services.benchmarks import BenchmarkTools
 from server.services.custom_tokenizers import get_custom_tokenizer_registry
 from server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
@@ -157,7 +157,7 @@ class TokenizersService(TokenizerStorageMixin):
             logger.debug("Tokenizer identifier fetch failed", exc_info=True)
             return []
 
-        identifiers = [m.modelId for m in models]
+        identifiers = [model_id for model in models if isinstance(model_id := getattr(model, "modelId", None), str)]
 
         return identifiers
 
@@ -438,6 +438,8 @@ class TokenizersService(TokenizerStorageMixin):
             if isinstance(value, bool):
                 continue
             try:
+                if isinstance(value, bool) or not isinstance(value, int | str | float):
+                    continue
                 normalized.append(int(value))
             except Exception:
                 continue
@@ -446,7 +448,7 @@ class TokenizersService(TokenizerStorageMixin):
     # -------------------------------------------------------------------------
     def resolve_base_vocabulary_size(self, tokenizer: Any) -> int | None:
         value = getattr(tokenizer, "vocab_size", None)
-        if isinstance(value, bool):
+        if isinstance(value, bool) or not isinstance(value, int | str | float):
             return None
         try:
             parsed = int(value)

@@ -190,6 +190,8 @@ def _load_database_settings_from_sources(
             joined = ", ".join(missing)
             raise RuntimeError(f"External database configuration requires: {joined}")
 
+        assert engine is not None
+
         return DatabaseSettings(
             embedded_database=False,
             engine=engine.lower(),
@@ -262,6 +264,8 @@ def _load_database_settings_from_sources(
     if missing:
         joined = ", ".join(missing)
         raise RuntimeError(f"External database configuration requires: {joined}")
+
+    assert engine is not None
 
     return DatabaseSettings(
         embedded_database=False,

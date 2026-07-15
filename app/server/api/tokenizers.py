@@ -37,8 +37,8 @@ from server.common.utils.security import (
     normalize_identifier,
 )
 from server.api.helpers import (
+    ManagedJobHttpAdapter,
     read_upload_limited,
-    start_managed_job,
     validate_upload_filename,
 )
 from server.services.keys import (
@@ -47,6 +47,9 @@ from server.services.keys import (
 )
 from server.services.tokenizer_jobs import TokenizerJobService
 from server.services.tokenizers import TokenizersService
+from server.services.managed_jobs import (
+    ManagedJobSpec,
+)
 
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_TOKENIZERS, tags=["tokenizers"])
@@ -141,16 +144,16 @@ async def download_tokenizers(
             detail=str(exc),
         ) from exc
 
-    return start_managed_job(
+    return ManagedJobHttpAdapter.start(
         request,
-        job_type="tokenizer_download",
-        runner=TokenizerJobService().run_download_job,
-        kwargs={
-            "request_payload": payload.model_dump(),
-        },
-        conflict_detail="Tokenizer download is already in progress.",
-        init_failure_detail="Failed to initialize tokenizer download job.",
-        message="Tokenizer download job started.",
+        ManagedJobSpec(
+            job_type="tokenizer_download",
+            runner=TokenizerJobService().run_download_job,
+            kwargs={"request_payload": payload.model_dump()},
+            conflict_detail="Tokenizer download is already in progress.",
+            initialization_detail="Failed to initialize tokenizer download job.",
+            message="Tokenizer download job started.",
+        ),
     )
 
 ###############################################################################
@@ -184,17 +187,18 @@ async def generate_tokenizer_report(
             ),
         )
 
-    return start_managed_job(
+    return ManagedJobHttpAdapter.start(
         request,
-        job_type="tokenizer_report",
-        runner=TokenizerJobService().run_report_job,
-        kwargs={
-            "request_payload": payload.model_dump(),
-        },
-        conflict_detail="Tokenizer report generation is already in progress.",
-        init_failure_detail="Failed to initialize tokenizer report job.",
-        message="Tokenizer report job started.",
+        ManagedJobSpec(
+            job_type="tokenizer_report",
+            runner=TokenizerJobService().run_report_job,
+            kwargs={"request_payload": payload.model_dump()},
+            conflict_detail="Tokenizer report generation is already in progress.",
+            initialization_detail="Failed to initialize tokenizer report job.",
+            message="Tokenizer report job started.",
+        ),
     )
+
 
 ###############################################################################
 @router.get(

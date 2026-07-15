@@ -8,7 +8,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from server.repositories.database.backend import get_database
-from server.repositories.serialization.data import DatasetSerializer
+from server.repositories.serialization.datasets import DatasetSerializer
 from server.repositories.schemas.models import Base, Dataset, Tokenizer
 from server.services.benchmarks import BenchmarkService
 from server.services.tokenizers import TokenizersService

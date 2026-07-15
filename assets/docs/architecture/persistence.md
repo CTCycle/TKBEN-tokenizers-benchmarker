@@ -1,5 +1,5 @@
 # Persistence
-Last updated: 2026-07-13
+Last updated: 2026-07-15
 
 ## Storage selection
 
@@ -46,6 +46,13 @@ Timestamps are normalized to aware UTC values at the persistence boundary.
 JSON object and array fields are validated by typed SQLAlchemy decorators;
 domain validation remains responsible for nested JSON contracts and histogram
 array compatibility.
+
+Serializer ownership is split by persisted domain: dataset and analysis
+materialization remains in `repositories/serialization/datasets.py`, tokenizer
+reports and vocabulary belong to `repositories/serialization/tokenizer_reports.py`,
+and benchmark reports remain in `benchmark_reports.py`. This is an ownership
+refactor only; it does not change the schema, response fields, ordering, or
+transaction behavior.
 
 ## Validation
 
