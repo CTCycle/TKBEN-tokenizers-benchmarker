@@ -1,5 +1,5 @@
 # System Overview
-Last updated: 2026-07-11
+Last updated: 2026-07-15
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
@@ -14,7 +14,7 @@ Source-level structure, with generated folders omitted:
 
 ```text
 .
-├─ runtimes/
+├─ app/server/
 │  ├─ .venv/
 │  └─ uv.lock
 ├─ assets/
@@ -60,4 +60,4 @@ Source-level structure, with generated folders omitted:
 ## Runtime Interaction Topology
 - Local webapp mode:
   - Browser -> Vite preview (`UI_HOST:UI_PORT`) -> proxied `/api` -> FastAPI (`FASTAPI_HOST:FASTAPI_PORT`)
-- The launcher downloads portable runtimes into `runtimes/`, builds the frontend, starts both services, and opens the configured UI URL.
+- The launcher uses the canonical backend environment at `app/server/.venv` and lockfile at `app/server/uv.lock`, builds the frontend, starts both services, and opens the configured UI URL.

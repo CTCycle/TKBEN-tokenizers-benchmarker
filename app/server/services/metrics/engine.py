@@ -217,7 +217,7 @@ class DatasetMetricsEngine:
         for lang, stopwords in STOPWORDS.items():
             hits = sum(1 for token in sample if token in stopwords)
             lang_scores[lang] = hits
-        best_lang = max(lang_scores, key=lang_scores.get) if lang_scores else "unknown"
+        best_lang = max(lang_scores, key=lambda lang: lang_scores[lang]) if lang_scores else "unknown"
         if lang_scores.get(best_lang, 0) >= 2:
             return best_lang
 

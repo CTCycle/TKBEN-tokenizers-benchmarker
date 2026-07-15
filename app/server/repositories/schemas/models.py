@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
     ForeignKey,
     ForeignKeyConstraint,
+    Float,
     Index,
     Integer,
     JSON,
@@ -74,8 +76,8 @@ class AnalysisSession(Base):
     report_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
-    parameters: Mapped[dict] = mapped_column(JSONObject(), nullable=False, default=dict, server_default="{}")
-    selected_metric_keys: Mapped[list] = mapped_column(JSONArray(), nullable=False, default=list, server_default="[]")
+    parameters: Mapped[dict[str, Any]] = mapped_column(JSONObject(), nullable=False, default=dict, server_default="{}")
+    selected_metric_keys: Mapped[list[str]] = mapped_column(JSONArray(), nullable=False, default=list, server_default="[]")
     error_message: Mapped[str | None] = mapped_column(Text)
     __table_args__ = (
         UniqueConstraint("id", "dataset_id"),
@@ -119,9 +121,9 @@ class MetricValue(Base):
     dataset_id: Mapped[int] = mapped_column(Integer, nullable=False)
     metric_type_id: Mapped[int] = mapped_column(ForeignKey("metric_type.id"), nullable=False)
     document_id: Mapped[int | None] = mapped_column(Integer)
-    numeric_value: Mapped[float | None]
+    numeric_value: Mapped[float | None] = mapped_column(Float, nullable=True)
     text_value: Mapped[str | None] = mapped_column(Text)
-    json_value: Mapped[dict | list | None] = mapped_column(JSON(none_as_null=True))
+    json_value: Mapped[dict[str, Any] | list[Any] | None] = mapped_column(JSON(none_as_null=True))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
     __table_args__ = (
         ForeignKeyConstraint(["session_id", "dataset_id"], ["analysis_session.id", "analysis_session.dataset_id"], ondelete="CASCADE"),
@@ -143,9 +145,9 @@ class HistogramArtifact(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     session_id: Mapped[int] = mapped_column(ForeignKey("analysis_session.id", ondelete="CASCADE"), nullable=False)
     metric_type_id: Mapped[int] = mapped_column(ForeignKey("metric_type.id"), nullable=False)
-    bins: Mapped[list] = mapped_column(JSONArray(), nullable=False)
-    bin_edges: Mapped[list] = mapped_column(JSONArray(), nullable=False)
-    counts: Mapped[list] = mapped_column(JSONArray(), nullable=False)
+    bins: Mapped[list[Any]] = mapped_column(JSONArray(), nullable=False)
+    bin_edges: Mapped[list[float]] = mapped_column(JSONArray(), nullable=False)
+    counts: Mapped[list[int]] = mapped_column(JSONArray(), nullable=False)
     min_value: Mapped[float] = mapped_column(nullable=False)
     max_value: Mapped[float] = mapped_column(nullable=False)
     mean_value: Mapped[float] = mapped_column(nullable=False)
@@ -186,8 +188,8 @@ class TokenizerReport(Base):
     tokenizer_id: Mapped[int] = mapped_column(ForeignKey("tokenizer.id", ondelete="CASCADE"), nullable=False, unique=True)
     report_version: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
-    metadata_json: Mapped[dict] = mapped_column("metadata", JSONObject(), nullable=False)
-    token_length_histogram: Mapped[dict] = mapped_column(JSONObject(), nullable=False)
+    metadata_json: Mapped[dict[str, Any]] = mapped_column("metadata", JSONObject(), nullable=False)
+    token_length_histogram: Mapped[dict[str, Any]] = mapped_column(JSONObject(), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     __table_args__ = (CheckConstraint("report_version > 0", name="ck_tokenizer_report_version"),)
     tokenizer: Mapped[Tokenizer] = relationship(back_populates="reports", lazy="raise")
@@ -206,9 +208,9 @@ class BenchmarkReport(Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     documents_processed: Mapped[int] = mapped_column(Integer, nullable=False)
     tokenizers_count: Mapped[int] = mapped_column(Integer, nullable=False)
-    tokenizers_processed: Mapped[list] = mapped_column(JSONArray(), nullable=False)
-    selected_metric_keys: Mapped[list] = mapped_column(JSONArray(), nullable=False)
-    payload: Mapped[dict] = mapped_column(JSONObject(), nullable=False)
+    tokenizers_processed: Mapped[list[str]] = mapped_column(JSONArray(), nullable=False)
+    selected_metric_keys: Mapped[list[str]] = mapped_column(JSONArray(), nullable=False)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONObject(), nullable=False)
     __table_args__ = (CheckConstraint("report_version > 0", name="ck_benchmark_report_version"), CheckConstraint("schema_version > 0", name="ck_benchmark_schema_version"), CheckConstraint("documents_processed >= 0 AND tokenizers_count >= 0", name="ck_benchmark_counts"), Index("ix_benchmark_report_dataset_created_id", "dataset_id", "created_at", "id"), Index("ix_benchmark_report_created_id", "created_at", "id"))
     dataset: Mapped[Dataset] = relationship(back_populates="benchmark_reports", lazy="raise")
 

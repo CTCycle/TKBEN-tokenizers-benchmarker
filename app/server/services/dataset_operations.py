@@ -7,7 +7,7 @@ import time
 from collections.abc import Callable
 from functools import partial
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, ClassVar, cast
 
 import pandas as pd
 from datasets import Dataset, DatasetDict
@@ -15,11 +15,51 @@ from datasets import Dataset, DatasetDict
 from server.common.path import DATASETS_PATH
 from server.common.utils.logger import logger
 from server.common.utils.security import normalize_upload_stem
+from server.repositories.serialization.datasets import DatasetSerializer
 from server.services.metrics.catalog import default_selected_metric_keys
 from server.services.metrics.engine import DatasetMetricsEngine
 
 ###############################################################################
 class DatasetServiceOperationsMixin:
+    """Dataset operation slice with an explicit concrete-host contract."""
+
+    dataset_serializer: DatasetSerializer = cast(DatasetSerializer, cast(object, None))
+    streaming_batch_size: int = 0
+    log_interval: int = 0
+    histogram_bins: int = 0
+    REPORT_VERSION: ClassVar[int]
+    SUPPORTED_TEXT_FIELDS: ClassVar[tuple[str, ...]]
+    _iterate_texts: ClassVar[Callable[..., Any]]
+    _dataframe_length_stream: ClassVar[Callable[..., Any]]
+    _iterate_dataframe_texts: ClassVar[Callable[..., Any]]
+    resolve_dataset_download: ClassVar[Callable[..., Any]]
+    get_dataset_name: ClassVar[Callable[..., str]]
+    get_cache_path: ClassVar[Callable[..., str]]
+    is_dataset_in_database: ClassVar[Callable[..., bool]]
+    build_persisted_dataset_payload: ClassVar[Callable[..., dict[str, Any]]]
+    maybe_cleanup_downloaded_source: ClassVar[Callable[..., Any]]
+    get_hf_access_token_for_download: ClassVar[Callable[..., str | None]]
+    load_dataset_with_progress: ClassVar[Callable[..., Any]]
+    classify_download_exception: ClassVar[Callable[..., str]]
+    should_retry_download: ClassVar[Callable[..., bool]]
+    build_download_error_message: ClassVar[Callable[..., str]]
+    find_text_column: ClassVar[Callable[..., str | None]]
+    dataset_length_stream: ClassVar[Callable[..., Any]]
+    estimate_total_rows: ClassVar[Callable[..., int | None]]
+    collect_length_statistics: ClassVar[Callable[..., Any]]
+    stop_requested: ClassVar[Callable[..., bool]]
+    cleanup_cancelled_dataset: ClassVar[Callable[..., Any]]
+    get_default_analysis_parameters: ClassVar[Callable[..., dict[str, Any]]]
+    get_metric_catalog: ClassVar[Callable[..., list[dict[str, Any]]]]
+    validate_non_empty_text: ClassVar[Callable[..., str]]
+    normalize_optional_text: ClassVar[Callable[..., str | None]]
+    is_gated_or_auth_error: ClassVar[Callable[..., bool]]
+    is_network_error: ClassVar[Callable[..., bool]]
+    build_analysis_report_payload: ClassVar[Callable[..., dict[str, Any]]]
+    build_dataset_metrics: ClassVar[Callable[..., Any]]
+    histogram_from_counts: ClassVar[Callable[..., dict[str, Any]]]
+    download_retry_attempts: int = 0
+    retry_delay_seconds: ClassVar[Callable[..., float]]
 
     # -------------------------------------------------------------------------
     def persist_dataset(

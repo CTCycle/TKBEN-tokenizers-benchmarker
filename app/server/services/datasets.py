@@ -9,7 +9,7 @@ from collections.abc import Callable, Generator, Iterator
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 from datasets import Dataset, DatasetDict, load_dataset
@@ -24,7 +24,7 @@ from requests.exceptions import ConnectionError as RequestsConnectionError
 from requests.exceptions import RequestException, Timeout
 from sqlalchemy.exc import SQLAlchemyError
 
-from server.repositories.serialization.data import DatasetSerializer
+from server.repositories.serialization.datasets import DatasetSerializer
 from server.configurations import get_server_settings
 from server.common.path import DATASETS_PATH
 from server.common.utils.logger import logger
@@ -522,7 +522,7 @@ class DatasetService(DatasetServiceOperationsMixin):
         hf_config: str | None,
         cache_path: str,
         hf_access_token: str | None,
-        load_kwargs: dict[str, str],
+        load_kwargs: dict[str, Any],
     ) -> None:
         try:
             result_holder["dataset"] = load_dataset(
@@ -762,10 +762,10 @@ class DatasetService(DatasetServiceOperationsMixin):
         if isinstance(dataset, DatasetDict):
             for split_name in dataset.keys():
                 for row in dataset[split_name]:
-                    yield row
+                    yield cast(dict[str, Any], row)
             return
         for row in dataset:
-            yield row
+            yield cast(dict[str, Any], row)
 
     # -------------------------------------------------------------------------
     @staticmethod
@@ -962,7 +962,7 @@ class DatasetService(DatasetServiceOperationsMixin):
                 if isinstance(word, str) and word
             ),
             key=lambda item: (
-                -item["length"] if descending else item["length"],
+                -int(item["length"]) if descending else int(item["length"]),
                 item["word"],
             ),
         )

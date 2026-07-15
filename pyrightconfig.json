@@ -1,0 +1,9 @@
+{
+  "include": ["app/server"],
+  "extraPaths": ["app"],
+  "venvPath": "app/server",
+  "venv": ".venv",
+  "pythonVersion": "3.14",
+  "typeCheckingMode": "recommended",
+  "failOnWarnings": false
+}

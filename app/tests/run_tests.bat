@@ -21,6 +21,8 @@ set "FRONTEND_BOOTSTRAP_PHASE=SKIPPED"
 set "FRONTEND_UNIT_PHASE=SKIPPED"
 set "FRONTEND_E2E_PHASE=SKIPPED"
 set "PYTEST_PHASE=SKIPPED"
+set "RUFF_PHASE=SKIPPED"
+set "TYPE_PHASE=SKIPPED"
 set "LIVE_SERVER_PHASE=SKIPPED"
 set "STARTED_BACKEND=0"
 set "STARTED_FRONTEND=0"
@@ -90,7 +92,7 @@ echo.
 
 set "PYTEST_TARGET=%TESTS_DIR%"
 if not "%STANDARD_TEST_PYTEST_TARGET%"=="" set "PYTEST_TARGET=%STANDARD_TEST_PYTEST_TARGET%"
-set "QA_DIR=%PROJECT_ROOT%\QA"
+set "QA_DIR=%PROJECT_ROOT%\assets\QA"
 set "HAS_E2E=0"
 if exist "%TESTS_DIR%\e2e" set "HAS_E2E=1"
 if not exist "%QA_DIR%" mkdir "%QA_DIR%" >nul 2>&1
@@ -165,6 +167,24 @@ if /i "%STANDARD_TEST_SKIP_LIVE_SERVERS%"=="false" if "%HAS_E2E%"=="1" (
   )
 )
 
+echo [STEP] Running Ruff...
+pushd "%SERVER_DIR%"
+"%PYTHON_CMD%" -m ruff check .
+if errorlevel 1 (
+  set "RUFF_PHASE=FAIL"
+  set "TEST_RESULT=1"
+) else (
+  set "RUFF_PHASE=PASS"
+)
+echo [STEP] Running BasedPyright...
+"%PYTHON_CMD%" -m basedpyright
+if errorlevel 1 (
+  set "TYPE_PHASE=FAIL"
+  set "TEST_RESULT=1"
+) else (
+  set "TYPE_PHASE=PASS"
+)
+popd
 echo [STEP] Running Python tests...
 "%PYTHON_CMD%" -m pytest "%PYTEST_TARGET%" -v --tb=short %*
 set "PYTEST_RC=%ERRORLEVEL%"
@@ -214,6 +234,8 @@ echo ============================================================
 echo  Test Summary
 echo ============================================================
 echo  Live server phase   : %LIVE_SERVER_PHASE%
+echo  Ruff phase          : %RUFF_PHASE%
+echo  BasedPyright phase  : %TYPE_PHASE%
 echo  Python tests        : %PYTEST_PHASE%
 echo  Frontend bootstrap  : %FRONTEND_BOOTSTRAP_PHASE%
 echo  Frontend unit tests : %FRONTEND_UNIT_PHASE%

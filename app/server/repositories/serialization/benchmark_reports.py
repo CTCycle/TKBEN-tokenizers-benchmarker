@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 
@@ -10,6 +10,13 @@ from server.common.utils.logger import logger
 from server.repositories.benchmarks import BenchmarkRepository
 from server.repositories.queries.data import DataRepositoryQueries
 from server.repositories.schemas.models import BenchmarkReport
+
+
+def _parse_timestamp(value: object) -> pd.Timestamp | None:
+    if value is None:
+        return None
+    parsed = pd.to_datetime(cast(Any, value), utc=True, errors="coerce")
+    return parsed if isinstance(parsed, pd.Timestamp) and not pd.isna(parsed) else None
 
 ###############################################################################
 class BenchmarkReportSerializer:
@@ -36,11 +43,7 @@ class BenchmarkReportSerializer:
             str(key) for key in selected_metric_keys if isinstance(key, str) and key
         ]
 
-        created_at = pd.to_datetime(
-            report_payload.get("created_at"), utc=True, errors="coerce"
-        )
-        if pd.isna(created_at):
-            created_at = pd.Timestamp.utcnow()
+        created_at = _parse_timestamp(report_payload.get("created_at")) or pd.Timestamp.utcnow()
         created_at_value = created_at.to_pydatetime()
 
         run_name = report_payload.get("run_name")
@@ -74,10 +77,10 @@ class BenchmarkReportSerializer:
         payload = self._parse_json(row.get("payload"), {})
         if not isinstance(payload, dict):
             raise ValueError("Benchmark report payload must be a JSON object.")
-        created_at = pd.to_datetime(row.get("created_at"), utc=True, errors="coerce")
+        created_at = _parse_timestamp(row.get("created_at"))
         created_at_iso = (
             created_at.isoformat().replace("+00:00", "Z")
-            if not pd.isna(created_at)
+            if created_at is not None
             else None
         )
 
