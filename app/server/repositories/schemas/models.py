@@ -21,11 +21,9 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from server.repositories.schemas.types import JSONArray, JSONObject, UTCDateTime
 
-
 ###############################################################################
 class Base(DeclarativeBase):
     pass
-
 
 ###############################################################################
 class Dataset(Base):
@@ -48,7 +46,6 @@ class Dataset(Base):
     analysis_sessions: Mapped[list[AnalysisSession]] = relationship(back_populates="dataset", cascade="all, delete-orphan", passive_deletes=True, lazy="raise")
     benchmark_reports: Mapped[list[BenchmarkReport]] = relationship(back_populates="dataset", cascade="all, delete-orphan", passive_deletes=True, lazy="raise")
 
-
 ###############################################################################
 class DatasetDocument(Base):
     __tablename__ = "dataset_document"
@@ -64,7 +61,6 @@ class DatasetDocument(Base):
     )
     dataset: Mapped[Dataset] = relationship(back_populates="documents", lazy="raise")
     metric_values: Mapped[list[MetricValue]] = relationship(back_populates="document", passive_deletes=True, lazy="raise", overlaps="metric_values,session")
-
 
 ###############################################################################
 class AnalysisSession(Base):
@@ -90,7 +86,6 @@ class AnalysisSession(Base):
     metric_values: Mapped[list[MetricValue]] = relationship(back_populates="session", cascade="all, delete-orphan", passive_deletes=True, lazy="raise", overlaps="metric_values,document")
     histograms: Mapped[list[HistogramArtifact]] = relationship(back_populates="session", cascade="all, delete-orphan", passive_deletes=True, lazy="raise")
 
-
 ###############################################################################
 class MetricType(Base):
     __tablename__ = "metric_type"
@@ -111,7 +106,6 @@ class MetricType(Base):
     )
     metric_values: Mapped[list[MetricValue]] = relationship(back_populates="metric_type", lazy="raise")
     histograms: Mapped[list[HistogramArtifact]] = relationship(back_populates="metric_type", lazy="raise")
-
 
 ###############################################################################
 class MetricValue(Base):
@@ -138,7 +132,6 @@ class MetricValue(Base):
     metric_type: Mapped[MetricType] = relationship(back_populates="metric_values", lazy="raise")
     document: Mapped[DatasetDocument | None] = relationship(back_populates="metric_values", lazy="raise", overlaps="metric_values,session")
 
-
 ###############################################################################
 class HistogramArtifact(Base):
     __tablename__ = "histogram_artifact"
@@ -157,7 +150,6 @@ class HistogramArtifact(Base):
     session: Mapped[AnalysisSession] = relationship(back_populates="histograms", lazy="raise")
     metric_type: Mapped[MetricType] = relationship(back_populates="histograms", lazy="raise")
 
-
 ###############################################################################
 class Tokenizer(Base):
     __tablename__ = "tokenizer"
@@ -167,7 +159,6 @@ class Tokenizer(Base):
     __table_args__ = (CheckConstraint("length(trim(name)) > 0", name="ck_tokenizer_name_nonblank"),)
     reports: Mapped[list[TokenizerReport]] = relationship(back_populates="tokenizer", cascade="all, delete-orphan", passive_deletes=True, lazy="raise")
     vocabularies: Mapped[list[TokenizerVocabulary]] = relationship(back_populates="tokenizer", cascade="all, delete-orphan", passive_deletes=True, lazy="raise")
-
 
 ###############################################################################
 class TokenizerVocabulary(Base):
@@ -179,7 +170,6 @@ class TokenizerVocabulary(Base):
     decoded_token: Mapped[str | None] = mapped_column(Text)
     __table_args__ = (UniqueConstraint("tokenizer_id", "token_id"), CheckConstraint("token_id >= 0", name="ck_tokenizer_token_id"))
     tokenizer: Mapped[Tokenizer] = relationship(back_populates="vocabularies", lazy="raise")
-
 
 ###############################################################################
 class TokenizerReport(Base):
@@ -193,7 +183,6 @@ class TokenizerReport(Base):
     description: Mapped[str | None] = mapped_column(Text)
     __table_args__ = (CheckConstraint("report_version > 0", name="ck_tokenizer_report_version"),)
     tokenizer: Mapped[Tokenizer] = relationship(back_populates="reports", lazy="raise")
-
 
 ###############################################################################
 class BenchmarkReport(Base):
@@ -213,7 +202,6 @@ class BenchmarkReport(Base):
     payload: Mapped[dict[str, Any]] = mapped_column(JSONObject(), nullable=False)
     __table_args__ = (CheckConstraint("report_version > 0", name="ck_benchmark_report_version"), CheckConstraint("schema_version > 0", name="ck_benchmark_schema_version"), CheckConstraint("documents_processed >= 0 AND tokenizers_count >= 0", name="ck_benchmark_counts"), Index("ix_benchmark_report_dataset_created_id", "dataset_id", "created_at", "id"), Index("ix_benchmark_report_created_id", "created_at", "id"))
     dataset: Mapped[Dataset] = relationship(back_populates="benchmark_reports", lazy="raise")
-
 
 ###############################################################################
 class HFAccessKey(Base):

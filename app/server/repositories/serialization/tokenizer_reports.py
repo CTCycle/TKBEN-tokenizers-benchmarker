@@ -13,13 +13,12 @@ from server.repositories.queries.data import DataRepositoryQueries
 from server.repositories.schemas.models import Tokenizer, TokenizerReport, TokenizerVocabulary
 
 
+###############################################################################
 def _parse_timestamp(value: object) -> pd.Timestamp | None:
     if value is None:
         return None
     parsed = pd.to_datetime(cast(Any, value), utc=True, errors="coerce")
     return parsed if isinstance(parsed, pd.Timestamp) and not pd.isna(parsed) else None
-
-
 
 ###############################################################################
 class TokenizerReportSerializer:

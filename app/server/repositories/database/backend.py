@@ -12,7 +12,6 @@ from server.repositories.database.postgres import PostgresRepository
 from server.repositories.database.sqlite import SQLiteRepository
 from server.repositories.database.utils import normalize_sqlite_path
 
-
 ###############################################################################
 class DatabaseBackend(Protocol):
     engine: Any
@@ -30,16 +29,13 @@ class DatabaseBackend(Protocol):
     # -------------------------------------------------------------------------
     def validate_schema(self) -> None: ...
 
-
 ###############################################################################
 def build_sqlite_backend(settings: DatabaseSettings) -> DatabaseBackend:
     return SQLiteRepository(settings, initialize_schema=not Path(normalize_sqlite_path(DATABASE_PATH)).exists())
 
-
 ###############################################################################
 def build_postgres_backend(settings: DatabaseSettings) -> DatabaseBackend:
     return PostgresRepository(settings)
-
 
 ###############################################################################
 class TKBENDatabase:
@@ -64,7 +60,6 @@ class TKBENDatabase:
     @property
     def db_path(self) -> str | None:
         return getattr(self.backend, "db_path", None)
-
 
 ###############################################################################
 @cache

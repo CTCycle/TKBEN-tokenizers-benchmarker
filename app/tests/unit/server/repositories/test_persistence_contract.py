@@ -16,7 +16,6 @@ from server.repositories.schemas.models import (
     MetricValue,
 )
 
-
 ###############################################################################
 @pytest.fixture()
 def sqlite_session():
@@ -25,7 +24,6 @@ def sqlite_session():
     Base.metadata.create_all(engine)
     with Session(engine) as session:
         yield session
-
 
 ###############################################################################
 def test_canonical_tables_and_removed_validation_report(sqlite_session: Session) -> None:
@@ -36,7 +34,6 @@ def test_canonical_tables_and_removed_validation_report(sqlite_session: Session)
         "metric_value", "histogram_artifact", "tokenizer", "tokenizer_vocabulary",
         "tokenizer_report", "benchmark_report", "hf_access_keys",
     } == tables
-
 
 ###############################################################################
 def test_metric_values_require_one_value_and_dataset_safe_document(sqlite_session: Session) -> None:

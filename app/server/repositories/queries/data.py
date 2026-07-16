@@ -7,7 +7,6 @@ from sqlalchemy.engine import Engine
 
 from server.repositories.database.backend import TKBENDatabase, get_database
 
-
 ###############################################################################
 class DataRepositoryQueries:
 
