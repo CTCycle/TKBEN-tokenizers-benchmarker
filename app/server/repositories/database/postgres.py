@@ -10,7 +10,6 @@ from server.configurations import DatabaseSettings
 from server.repositories.database.base import RepositoryBase
 from server.repositories.schemas.models import Base
 
-
 ###############################################################################
 class PostgresRepository(RepositoryBase):
 

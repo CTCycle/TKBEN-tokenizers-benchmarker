@@ -199,7 +199,6 @@ async def generate_tokenizer_report(
         ),
     )
 
-
 ###############################################################################
 @router.get(
     API_ROUTE_TOKENIZERS_REPORT_LATEST,

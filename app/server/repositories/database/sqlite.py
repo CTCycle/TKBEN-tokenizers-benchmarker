@@ -12,7 +12,6 @@ from server.repositories.database.base import RepositoryBase
 from server.repositories.schemas.models import Base
 from server.repositories.database.utils import normalize_sqlite_path
 
-
 ###############################################################################
 class SQLiteRepository(RepositoryBase):
     SQLITE_MAX_VARIABLES = 900

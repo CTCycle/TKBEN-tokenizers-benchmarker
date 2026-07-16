@@ -39,6 +39,7 @@ class BenchmarkCancelledError(RuntimeError):
     pass
 
 
+###############################################################################
 def _as_float(value: object, default: float = 0.0) -> float:
     return float(value) if isinstance(value, int | float) else default
 

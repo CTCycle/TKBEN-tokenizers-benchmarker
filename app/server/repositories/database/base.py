@@ -9,7 +9,6 @@ from sqlalchemy.orm import sessionmaker
 
 from server.repositories.schemas.models import Base
 
-
 ###############################################################################
 class RepositoryBase:
     IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")

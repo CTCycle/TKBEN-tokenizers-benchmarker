@@ -12,6 +12,7 @@ from server.repositories.queries.data import DataRepositoryQueries
 from server.repositories.schemas.models import BenchmarkReport
 
 
+###############################################################################
 def _parse_timestamp(value: object) -> pd.Timestamp | None:
     if value is None:
         return None

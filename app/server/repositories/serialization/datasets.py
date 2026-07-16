@@ -24,6 +24,7 @@ from server.repositories.schemas.models import (
 K_ERROR = "k error"
 
 
+###############################################################################
 def _parse_timestamp(value: object) -> pd.Timestamp | None:
     if value is None:
         return None

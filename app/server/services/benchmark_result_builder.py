@@ -24,9 +24,14 @@ from server.domain.benchmarks import (
 )
 
 
+###############################################################################
 class BenchmarkResultBuilder:
+
+    # -------------------------------------------------------------------------
     def __init__(self, tools: Any) -> None:
         self.tools = tools
+
+    # -------------------------------------------------------------------------
     def _percentile(self, values: Sequence[float], percentile: float) -> float:
         if not values:
             return 0.0
