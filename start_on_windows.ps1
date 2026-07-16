@@ -105,6 +105,7 @@ function Import-Environment {
         UI_PORT = '8001'
         RELOAD = 'false'
         OPTIONAL_DEPENDENCIES = 'false'
+        always_rebuild = 'true'
         # Backend logs are visible by default when the setting is absent.
         BACKEND_LOGS_VISIBLE = 'true'
     }
@@ -134,6 +135,14 @@ function Import-Environment {
         $env:BACKEND_LOGS_VISIBLE = 'false'
     } else {
         throw "BACKEND_LOGS_VISIBLE must be either 'true' or 'false'."
+    }
+
+    if ($env:always_rebuild -ieq 'true') {
+        $env:always_rebuild = 'true'
+    } elseif ($env:always_rebuild -ieq 'false') {
+        $env:always_rebuild = 'false'
+    } else {
+        throw "always_rebuild must be either 'true' or 'false'."
     }
 
     $env:UV_CACHE_DIR = $UvCacheDir
@@ -202,6 +211,8 @@ function Install-Runtimes {
 }
 
 function Sync-Dependencies {
+    param([bool]$BuildFrontend = $true)
+
     Import-Environment
     Install-Runtimes
 
@@ -226,9 +237,13 @@ function Sync-Dependencies {
         }
         if ($LASTEXITCODE -ne 0) { throw "npm dependency installation failed with exit code $LASTEXITCODE." }
 
-        Write-Step 'Building frontend.'
-        & $NpmCmd run build
-        if ($LASTEXITCODE -ne 0) { throw "Frontend build failed with exit code $LASTEXITCODE." }
+        if ($BuildFrontend) {
+            Write-Step 'Building frontend.'
+            & $NpmCmd run build
+            if ($LASTEXITCODE -ne 0) { throw "Frontend build failed with exit code $LASTEXITCODE." }
+        } else {
+            Write-Step 'Skipping frontend build because always_rebuild=false.'
+        }
     } finally {
         Pop-Location
     }
@@ -252,7 +267,8 @@ function Get-PortProcessId([int]$Port) {
 }
 
 function Launch-Application {
-    Sync-Dependencies
+    Import-Environment
+    Sync-Dependencies -BuildFrontend ($env:always_rebuild -ieq 'true')
     Import-Environment
 
     $backendPort = [int]$env:FASTAPI_PORT
