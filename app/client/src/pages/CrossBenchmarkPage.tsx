@@ -279,7 +279,16 @@ const CrossBenchmarkPage = () => {
 
   const overviewMetrics = useMemo(() => {
     if (!activeReport) {
-      return [];
+      return [
+        { label: 'Dataset', value: '—' },
+        { label: 'Run Name', value: '—' },
+        { label: 'Documents', value: '—' },
+        { label: 'Tokenizers', value: '—' },
+        { label: 'Failed Tokenizers', value: '—' },
+        { label: 'Best Encode Throughput', value: '—', detail: '—' },
+        { label: 'Lowest Unknown-Token Rate', value: '—', detail: '—' },
+        { label: 'Best Decode/Re-encode Stability', value: '—', detail: '—' },
+      ];
     }
     const tokenizerResults = (activeReport.tokenizer_results ?? []).filter((item) => item.status !== 'failed');
     const bestSpeed = tokenizerResults.reduce<BenchmarkTokenizerResult | null>((best, item) => {
@@ -387,14 +396,6 @@ const CrossBenchmarkPage = () => {
               )}
             </div>
             <div className="cross-benchmark-dashboard-controls">
-              <button
-                type="button"
-                className="primary-button cross-benchmark-start-button"
-                onClick={() => setWizardOpen(true)}
-                disabled={runningBenchmark || loadingPage}
-              >
-                {runningBenchmark ? 'Running...' : 'Start benchmark'}
-              </button>
               <div className="cross-benchmark-report-picker">
                 <label className="field-label" htmlFor="benchmark-report-selector">Report</label>
                 <select
@@ -420,6 +421,18 @@ const CrossBenchmarkPage = () => {
                   )}
                 </select>
               </div>
+              <button
+                type="button"
+                className="icon-button subtle cross-benchmark-start-button"
+                onClick={() => setWizardOpen(true)}
+                disabled={runningBenchmark || loadingPage}
+                aria-label={runningBenchmark ? 'Running benchmark' : 'Start benchmark'}
+                title={runningBenchmark ? 'Running benchmark' : 'Start benchmark'}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8 5v14l11-7L8 5z" strokeWidth="2" strokeLinejoin="round" />
+                </svg>
+              </button>
               <div className="dashboard-export-header-actions">
                 <DashboardExportButton
                   dashboardType="benchmark"
@@ -451,10 +464,22 @@ const CrossBenchmarkPage = () => {
           )}
 
           {!loadingPage && !activeReport && (
-            <ChartPlaceholder
-              message="No benchmark report loaded."
-              detail="Use Start benchmark or select an existing report."
-            />
+            <>
+              <div className="cross-benchmark-overview-grid">
+                {overviewMetrics.map((item) => (
+                  <article key={item.label} className="cross-benchmark-kpi-card">
+                    <p className="cross-benchmark-kpi-label">{item.label}</p>
+                    <p className="cross-benchmark-kpi-value">{item.value}</p>
+                    {'detail' in item && typeof item.detail === 'string' && (
+                      <p className="cross-benchmark-kpi-detail">{item.detail}</p>
+                    )}
+                  </article>
+                ))}
+              </div>
+              <div className="cross-benchmark-empty-state" role="status">
+                No benchmark report loaded. Use Start benchmark or select an existing report.
+              </div>
+            </>
           )}
 
           {!loadingPage && activeReport && (

@@ -129,11 +129,35 @@ const TokenizerExaminationPage = () => {
             </header>
 
             {!tokenizerReport && (
-              <ChartPlaceholder
-                className="tokenizer-dashboard-empty"
-                message="No tokenizer report loaded."
-                detail="Use the report icon in tokenizer preview."
-              />
+              <div className="tokenizer-report-grid">
+                <article className="tokenizer-report-card tokenizer-report-card--basics">
+                  <p className="panel-label">Basics</p>
+                  <table className="tokenizer-meta-table">
+                    <tbody>
+                      <tr><th>Tokenizer</th><td>—</td></tr>
+                      <tr><th>Family</th><td>—</td></tr>
+                      <tr><th>Backend</th><td>—</td></tr>
+                      <tr><th>Vocabulary size</th><td>—</td></tr>
+                      <tr><th>Model max length</th><td>—</td></tr>
+                    </tbody>
+                  </table>
+                </article>
+                <article className="tokenizer-report-card tokenizer-report-card--histogram">
+                  <p className="panel-label">Token Length Histogram</p>
+                  <p className="tokenizer-empty-label">No tokenizer report loaded.</p>
+                </article>
+                <article className="tokenizer-report-card tokenizer-report-card--vocabulary">
+                  <p className="panel-label">Vocabulary Stats</p>
+                  <table className="tokenizer-meta-table tokenizer-meta-table-compact">
+                    <tbody>
+                      <tr><th>Mean token length</th><td>—</td></tr>
+                      <tr><th>Median token length</th><td>—</td></tr>
+                      <tr><th>Special tokens</th><td>—</td></tr>
+                      <tr><th>Vocabulary density</th><td>—</td></tr>
+                    </tbody>
+                  </table>
+                </article>
+              </div>
             )}
 
             {tokenizerReport && (
