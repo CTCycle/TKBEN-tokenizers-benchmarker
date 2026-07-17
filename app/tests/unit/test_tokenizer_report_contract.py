@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from server.repositories.serialization.data import TokenizerReportSerializer
+from server.repositories.serialization.tokenizer_reports import TokenizerReportSerializer
 from server.services.tokenizers import TokenizersService
 
 ###############################################################################
@@ -116,22 +116,17 @@ def test_generate_report_payload_includes_hf_url_and_subword_stats(
     monkeypatch.setattr(service, "find_cached_file", lambda *args, **kwargs: None)
     monkeypatch.setattr(service, "load_json_if_present", lambda *args, **kwargs: {})
     monkeypatch.setattr(
-        service.report_serializer,
-        "replace_tokenizer_vocabulary",
-        lambda *args, **kwargs: 1,
-    )
-    monkeypatch.setattr(
         service,
         "resolve_hf_repo_metadata",
         lambda tokenizer_name: (None, f"https://huggingface.co/{tokenizer_name}"),
     )
 
-    def capture_report(report: dict[str, Any]) -> int:
-        captured_report.update(report)
-        return 123
-
     monkeypatch.setattr(
-        service.report_serializer, "save_tokenizer_report", capture_report
+        service.report_serializer,
+        "replace_report_and_vocabulary",
+        lambda tokenizer_name, report, vocabulary_rows: (
+            captured_report.update(report) or 123
+        ),
     )
 
     report = service.generate_and_store_report("bert-base-uncased")

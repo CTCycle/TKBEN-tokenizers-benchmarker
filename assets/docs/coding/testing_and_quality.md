@@ -1,13 +1,15 @@
 # Testing and Quality
-Last updated: 2026-06-02
+Last updated: 2026-07-15
 
 ## Tooling and Tests
 - Lint and format with Ruff, or the project-standard equivalent if it changes in the future.
 - Type check expectations are Pylance-compatible typing.
+- Run `app/server/.venv/Scripts/python.exe -m basedpyright` from the repository root; the gate requires zero errors and does not fail on warnings.
 - Tests use pytest.
 - Minimum test impact coverage:
   - `tests/unit`
   - relevant `tests/e2e` when behavior crosses API and UI boundaries
+- Browser/live validation uses Playwright or pytest-playwright; the in-app browser is not a validation path.
 
 ## Cross-language Quality Gates
 - Keep architecture layering intact: API -> service -> repository.

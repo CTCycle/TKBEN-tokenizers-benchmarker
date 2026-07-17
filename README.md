@@ -3,6 +3,7 @@
 ![Python](https://img.shields.io/badge/python-%3E%3D3.14-3776AB?logo=python&logoColor=white)
 ![Node.js](https://img.shields.io/badge/node.js-%3E%3D22-339933?logo=node.js&logoColor=white)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![CTCycle Portfolio](https://img.shields.io/badge/CTCycle-Portfolio-58a6ff?style=flat-square)](https://ctcycle.github.io/CTCycle/)
 [![CI](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/workflows/ci.yml?query=branch%3Adevelop)
 
 ## 1. Project Overview
@@ -15,39 +16,24 @@ Main workflow routes:
 - `/cross-benchmark`
 
 Runtime model:
-- **Local webapp mode (default)**: run directly on host via `start_on_windows.bat`.
-- **Packaged desktop mode**: build and run the local Tauri package.
-- **Single runtime env file**: edit `settings/.env` (seed from `settings/.env.example`).
+- **Local webapp mode (default)**: run directly on host via `start_on_windows.ps1`.
+- **Single runtime env file**: launcher-managed runs use `settings/.env`, seeded from `settings/.env.example`.
 
-Default embedded storage is the SQLite file at `app/resources/database.db`.
+Launcher-managed runs use `settings/.env` and repository resource paths; direct/manual development and tests use the same local configuration model.
 
 ## 2. Installation
 
 ### 2.1 Windows (One-Click Local Setup)
 
-Run the launcher from repository root:
+Run the single developer and maintenance entry point from any directory:
 
-```bat
-.\start_on_windows.bat
+```powershell
+.\start_on_windows.ps1
 ```
 
-The launcher will:
-1. Install portable Python, `uv`, and Node.js under `runtimes`.
-2. Install backend dependencies using `uv sync`.
-3. Install frontend dependencies (`npm ci` when lockfile is present, fallback to `npm install`).
-4. Build and start backend + frontend.
+`start_on_windows.ps1` is the sole root launcher and opens the combined eight-option menu. Choose **Launch application** to download pinned portable Python, uv, and Node.js runtimes when missing, synchronize dependencies, build the frontend, and start FastAPI plus the Vite preview server.
 
-### 2.2 Windows Packaged Desktop (Tauri)
-
-Prerequisites:
-- Rust toolchain (`cargo`) with a default toolchain configured.
-
-```bat
-copy /Y settings\.env.example settings\.env
-.\release\tauri\build_with_tauri.bat
-```
-
-### 2.3 macOS / Linux (Manual Local Setup)
+### 2.2 macOS / Linux (Manual Local Setup)
 
 **Prerequisites**:
 - Python 3.14+
@@ -74,41 +60,25 @@ copy /Y settings\.env.example settings\.env
 
 ### 3.1 Runtime Configuration (`.env`)
 
-Use `settings/.env` as the active runtime file for both local webapp mode and packaged desktop mode.
+The launcher creates `settings/.env` from `settings/.env.example` on first use. `settings/.env` is local and ignored; `settings/.env.example` and `settings/configurations.json` remain versioned templates.
 
 Initialize from the single template:
 ```bat
-copy /Y settings\.env.example settings\.env
+Copy-Item settings\.env.example "$env:LOCALAPPDATA\TKBEN\config\.env"
 ```
 
 ### 3.2 Local Webapp Mode (Default)
 
-```bat
-.\start_on_windows.bat
+```powershell
+.\start_on_windows.ps1
 ```
 
-Runtime addresses are taken from `settings/.env`:
+Runtime addresses are taken from the user configuration:
 - **Web UI**: `http://<UI_HOST>:<UI_PORT>`
 - **Backend API**: `http://<FASTAPI_HOST>:<FASTAPI_PORT>`
 - **API Docs**: `http://<FASTAPI_HOST>:<FASTAPI_PORT>/docs`
 
-### 3.3 Packaged Desktop Mode (Tauri)
-
-```bat
-copy /Y settings\.env.example settings\.env
-.\release\tauri\build_with_tauri.bat
-```
-
-Repository hygiene for desktop packaging:
-- `app/src-tauri` is versioned as desktop source/config only: Rust sources, `Cargo.toml`, `Cargo.lock`, `build.rs`, `tauri.conf.json`, capabilities, and icons.
-- Generated desktop outputs under `app/src-tauri/target`, `app/src-tauri/bundle`, `app/src-tauri/gen`, and `release/windows` are not committed to Git.
-- Desktop `.exe`, `.msi`, and other packaged artifacts are published through GitHub release artifacts, not tracked in the repository.
-
-Build artifacts are produced under:
-- `release/windows/installers`
-- `release/windows/portable`
-
-### 3.4 Application Flow
+### 3.3 Application Flow
 
 **Dataset (`/dataset`)**
 
@@ -121,7 +91,7 @@ Scan available tokenizer IDs, download selected tokenizers, optionally upload a 
 **Cross Benchmark (`/cross-benchmark`)**
 
 Create benchmark runs by selecting dataset, tokenizers, and metric categories, then compare persisted results across tokenizer candidates.
-### 3.5 Product Snapshots
+### 3.4 Product Snapshots
 
 The following snapshots were captured in local webapp mode with backend and frontend running:
 
@@ -136,36 +106,28 @@ The following snapshots were captured in local webapp mode with backend and fron
 
 ## 4. Setup and Maintenance
 
-Run:
+Run the unified menu:
 
-```bat
-.\setup_and_maintenance.bat
+```powershell
+.\start_on_windows.ps1
 ```
 
-Available actions:
-- **Remove logs**: Deletes `*.log` files under `app/resources/logs`.
-- **Uninstall app**: Removes local runtime artifacts under `runtimes\` (including `app\\server\\.venv` and `app\\server\\uv.lock`), frontend `node_modules`, frontend `dist`, and related local artifacts.
-- **Remove desktop packages**: Removes only generated Tauri outputs under `app\src-tauri\target`, `app\src-tauri\bundle`, `app\src-tauri\gen`, and `release\windows`.
-- **Initialize database**: Executes `app/scripts/initialize_database.py` using local `uv` + portable Python runtime.
+The menu contains launch, dependency installation/update, database initialization, test execution, log removal, cache cleanup, uninstall, and exit actions. Launching starts the backend and frontend, opens the browser, prints the active ports and process IDs, and then exits the menu.
 
 ## 5. Resources
 
 Key paths:
-- `app/resources/database.db`: Embedded SQLite database path.
-- `app/resources/sources/datasets`: Dataset source/download artifacts.
-- `app/resources/sources/tokenizers`: Tokenizer source/download artifacts.
-- `app/resources/logs`: Launcher and backend logs.
+- `app/resources`: SQLite database, downloaded sources, logs, and mutable application data.
+- `settings`: Local `.env` plus versioned structured configuration and environment templates.
 - `runtimes`: Portable Windows runtimes.
 - `assets/docs/project_index.md`: Documentation root index and topic map.
-- `assets/docs/runtime/modes.md`: Runtime packaging and mode details.
+- `assets/docs/runtime/modes.md`: Supported runtime mode details.
 - `assets/docs/runtime/startup.md`: Startup procedures and launcher commands.
-- `app/src-tauri`: Desktop shell and packaging configuration.
 
 ## 6. Configuration
 
 Configuration is split between:
-- `settings/.env`: Active runtime/process configuration used by launcher, tests, frontend dev/preview, and desktop startup.
-- `settings/.env.example`: Single template for `.env`.
+- `settings/.env.example`: Versioned configuration template; `settings/.env` must never be committed.
 - `settings/configurations.json`: Backend structured settings for datasets, tokenizers, benchmarks, jobs, and optional database overrides.
 
 Core runtime keys you will commonly edit:
@@ -182,9 +144,17 @@ Core runtime keys you will commonly edit:
 
 Determinism:
 - Backend lockfile: `app/server/uv.lock` (generated/updated directly by running `uv sync` from `app/server`).
-- Frontend lockfile: committed `app/client/package-lock.json` + `npm ci` in local runtime/bootstrap flow.
+- Frontend lockfile: committed `app/client/package-lock.json` + `npm ci`.
 
-## 7. License
+## 7. Releases and Repository Hygiene
+
+Continuous integration validates the locked backend and frontend sources. Keep `app/server/uv.lock` and `app/client/package-lock.json` tracked so installations remain reproducible.
+
+GitHub releases provide a versioned repository source ZIP for download. The archive contains tracked source files only; local environments, credentials, dependencies, caches, logs, and generated build output are excluded.
+
+Never commit `.env` files, credentials, databases, downloaded model/data caches, logs, virtual environments, Node dependencies, or generated frontend output. Keep configuration templates, scripts, workflows, migrations, and both application lockfiles tracked.
+
+## 8. License
 
 This project is licensed under the MIT License. See `LICENSE` for details.
 

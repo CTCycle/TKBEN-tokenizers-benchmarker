@@ -14,7 +14,7 @@ from server.repositories.benchmarks import BenchmarkRepository
 from server.repositories.serialization.benchmark_reports import (
     BenchmarkReportSerializer,
 )
-from server.repositories.serialization.data import DatasetSerializer
+from server.repositories.serialization.datasets import DatasetSerializer
 from server.services.metrics.catalog import BENCHMARK_METRIC_CATALOG
 from server.configurations import get_server_settings
 from server.common.path import TOKENIZERS_PATH
@@ -24,6 +24,7 @@ from server.common.utils.security import (
     normalize_identifier,
 )
 from server.services.benchmark_execution import BenchmarkServiceExecutionMixin
+from server.services.benchmark_result_builder import BenchmarkResultBuilder
 from server.services.custom_tokenizers import get_custom_tokenizer_registry
 
 ###############################################################################
@@ -264,6 +265,7 @@ class BenchmarkService(BenchmarkServiceExecutionMixin):
         self.max_documents = max_documents
         self.reduce_data_size = True  # Always true for webapp
         self.tools = BenchmarkTools()
+        self.result_builder = BenchmarkResultBuilder(self.tools)
         self.repository = BenchmarkRepository()
         self.report_serializer = BenchmarkReportSerializer()
         self.dataset_serializer = DatasetSerializer()

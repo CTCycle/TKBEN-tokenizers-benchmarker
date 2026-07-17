@@ -50,7 +50,13 @@ const AppShell = () => {
   return (
     <div className="app-shell">
       <header className="app-header-bar">
-        <h1 className="app-header-title">TKBEN Benchmarker</h1>
+        <div className="app-brand">
+          <span className="app-brand-mark" aria-hidden="true">TK</span>
+          <div className="app-brand-copy">
+            <span className="app-brand-name">TKBEN</span>
+            <span className="app-brand-subtitle">Tokenizer Benchmarker</span>
+          </div>
+        </div>
         <button
           type="button"
           className={`icon-button subtle app-header-key-button${isKeyManagerOpen ? ' accent' : ''}`}

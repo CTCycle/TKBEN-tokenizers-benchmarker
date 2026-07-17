@@ -63,6 +63,7 @@ def build_postgres_create_database_sql(
 ###############################################################################
 def initialize_sqlite_database(settings: DatabaseSettings) -> None:
     repository = SQLiteRepository(settings, initialize_schema=True)
+    repository.validate_schema()
     logger.info("Initialized SQLite database at %s", repository.db_path)
 
 ###############################################################################
@@ -101,6 +102,7 @@ def ensure_postgres_database(settings: DatabaseSettings) -> str:
     normalized_settings = clone_settings_with_database(settings, target_database)
     repository = PostgresRepository(normalized_settings)
     Base.metadata.create_all(repository.engine)
+    repository.validate_schema()
     logger.info("Ensured PostgreSQL tables exist in %s", target_database)
 
     return target_database

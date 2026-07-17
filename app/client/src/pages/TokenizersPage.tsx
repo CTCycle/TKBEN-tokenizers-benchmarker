@@ -416,7 +416,6 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
                 Manage tokenizer identifiers and custom JSON tokenizers from a single popup window.
               </p>
             </div>
-            <div className="dataset-top-divider" aria-hidden="true" />
             <div className="tokenizer-preview-panel">
               <header className="panel-header">
                 <div>

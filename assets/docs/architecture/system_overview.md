@@ -1,11 +1,10 @@
 # System Overview
-Last updated: 2026-06-06
+Last updated: 2026-07-15
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
 - FastAPI backend (`app/server`)
 - React + Vite frontend (`app/client`)
-- Optional Tauri desktop packaging (`app/src-tauri`)
 - Shared local resources and settings (`app/resources`, `settings`)
 
 Backend APIs are mounted under `/api/*`. Frontend calls `/api` and relies on the Vite proxy in dev and preview modes.
@@ -15,14 +14,13 @@ Source-level structure, with generated folders omitted:
 
 ```text
 .
-├─ runtimes/
+├─ app/server/
 │  ├─ .venv/
 │  └─ uv.lock
 ├─ assets/
 │  ├─ docs/
 │  └─ figures/
-├─ start_on_windows.bat
-├─ setup_and_maintenance.bat
+├─ start_on_windows.ps1
 ├─ settings/
 │  ├─ .env
 │  ├─ .env.example
@@ -33,7 +31,6 @@ Source-level structure, with generated folders omitted:
 │  │  ├─ vite.config.ts
 │  │  ├─ src/
 │  │  └─ dist/
-│  ├─ src-tauri/
 │  ├─ server/
 │  │  ├─ pyproject.toml
 │  │  ├─ app.py
@@ -46,9 +43,7 @@ Source-level structure, with generated folders omitted:
 │  ├─ scripts/
 │  ├─ tests/
 │  └─ resources/
-├─ release/
-│  ├─ tauri/
-│  └─ windows/
+└─ start_on_windows.ps1
 ```
 
 ## Application Entry Points
@@ -59,14 +54,10 @@ Source-level structure, with generated folders omitted:
   - `app/client/src/main.tsx`
 - Frontend routing root:
   - `app/client/src/App.tsx`
-- Desktop runtime entry:
-  - `app/src-tauri/src/main.rs`
-- Windows local launcher:
-  - `start_on_windows.bat`
+- Windows launcher:
+  - `start_on_windows.ps1` is the single user-facing root entry point for the combined launch and maintenance menu.
 
 ## Runtime Interaction Topology
 - Local webapp mode:
   - Browser -> Vite preview (`UI_HOST:UI_PORT`) -> proxied `/api` -> FastAPI (`FASTAPI_HOST:FASTAPI_PORT`)
-- Desktop mode:
-  - Tauri webview boots the local backend process and loads the local app URL.
-  - Backend can serve packaged SPA assets when `TKBEN_TAURI_MODE=true`.
+- The launcher uses the canonical backend environment at `app/server/.venv` and lockfile at `app/server/uv.lock`, builds the frontend, starts both services, and opens the configured UI URL.

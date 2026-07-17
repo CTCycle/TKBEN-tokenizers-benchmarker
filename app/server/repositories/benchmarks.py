@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 
 from server.repositories.database.backend import TKBENDatabase, get_database
 from server.repositories.schemas.models import (
@@ -28,7 +30,7 @@ class BenchmarkRepository:
         stmt = (
             select(func.count(DatasetDocument.id))
             .join(Dataset, Dataset.id == DatasetDocument.dataset_id)
-            .where(Dataset.name == dataset_name)
+            .where(Dataset.name == dataset_name, Dataset.status == "ready")
         )
         with self._session() as session:
             value = session.execute(stmt).scalar_one_or_none() or 0
@@ -54,12 +56,24 @@ class BenchmarkRepository:
         capped_limit = max(1, min(1000, int(limit or 200)))
         stmt = (
             select(BenchmarkReport, Dataset.name.label("dataset_name"))
+            .options(load_only(
+                BenchmarkReport.id,
+                BenchmarkReport.report_version,
+                BenchmarkReport.created_at,
+                BenchmarkReport.run_name,
+                BenchmarkReport.status,
+                BenchmarkReport.documents_processed,
+                BenchmarkReport.tokenizers_count,
+                BenchmarkReport.tokenizers_processed,
+                BenchmarkReport.selected_metric_keys,
+            ))
             .join(Dataset, Dataset.id == BenchmarkReport.dataset_id)
             .order_by(BenchmarkReport.id.desc())
             .limit(capped_limit)
         )
         with self._session() as session:
-            return list(session.execute(stmt).all())
+            rows = session.execute(stmt).all()
+        return [(row[0], str(row[1])) for row in rows]
 
     # -------------------------------------------------------------------------
     def get_benchmark_report_by_id(
@@ -75,7 +89,7 @@ class BenchmarkRepository:
             row = session.execute(stmt).first()
         if row is None or row[0] is None:
             return None
-        return row
+        return row[0], str(row[1])
 
     # -------------------------------------------------------------------------
     def get_dataset_id(self, dataset_name: str) -> int | None:
@@ -100,7 +114,7 @@ class BenchmarkRepository:
             existing_names = {row.name for row in existing_rows}
             for name in deduped_names:
                 if name not in existing_names:
-                    session.add(Tokenizer(name=name))
+                    session.add(Tokenizer(name=name, created_at=datetime.now(timezone.utc)))
             try:
                 session.commit()
             except IntegrityError:
@@ -120,14 +134,27 @@ class BenchmarkRepository:
         created_at,
         run_name: str | None,
         selected_metric_keys: list[str],
-        payload: dict,
+        payload: dict[str, Any],
     ) -> int:
+        schema_version = int(payload.get("schema_version", 1) or 1)
+        methodology_version = str(payload.get("methodology_version", "unknown") or "unknown")
+        status = str(payload.get("status", "completed") or "completed")
+        documents_processed = int(payload.get("documents_processed", payload.get("document_count", 0)) or 0)
+        tokenizers_processed = payload.get("tokenizers_processed", payload.get("tokenizers", []))
+        if not isinstance(tokenizers_processed, list):
+            tokenizers_processed = []
         report_row = BenchmarkReport(
             dataset_id=int(dataset_id),
             report_version=int(report_version),
             created_at=created_at,
             run_name=run_name,
             selected_metric_keys=selected_metric_keys,
+            schema_version=schema_version,
+            methodology_version=methodology_version,
+            status=status,
+            documents_processed=documents_processed,
+            tokenizers_count=len(tokenizers_processed),
+            tokenizers_processed=tokenizers_processed,
             payload=payload,
         )
         with self._session() as session:

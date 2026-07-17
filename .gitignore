@@ -1,5 +1,6 @@
 # Project-specific generated/runtime artifacts
 runtimes/**
+!runtimes/.gitkeep
 app/resources/sources/datasets/**
 app/resources/sources/tokenizers/**
 app/resources/logs/**
@@ -10,7 +11,6 @@ app/client/logs/
 app/client/.angular/
 app/client/*.local
 app/server/.venv/
-release/windows/
 assets/QA/**
 .playwright-mcp/
 
@@ -26,7 +26,6 @@ dist/
 build/
 .coverage
 htmlcov/
-app/server/uv.lock
 
 # Node / JS
 **/node_modules/
@@ -38,6 +37,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 package-lock.json
+!app/client/package-lock.json
 yarn.lock
 
 # IDE / OS
@@ -49,6 +49,7 @@ Thumbs.db
 # Misc
 .sonarlint/
 *.lock
+!app/server/uv.lock
 *.log
 *.db
 *.db-journal
@@ -56,19 +57,5 @@ Thumbs.db
 *.exe
 !.gitkeep
 
-# Tauri desktop source is versioned; generated outputs stay local.
-!app/src-tauri/Cargo.lock
-app/src-tauri/target/
-app/src-tauri/bundle/
-app/src-tauri/gen/
-!app/src-tauri/
-!app/src-tauri/build.rs
-!app/src-tauri/Cargo.toml
-!app/src-tauri/Cargo.lock
-!app/src-tauri/tauri.conf.json
-!app/src-tauri/src/
-!app/src-tauri/src/**
-!app/src-tauri/capabilities/
-!app/src-tauri/capabilities/**
-!app/src-tauri/icons/
-!app/src-tauri/icons/**
+# Local configuration
+settings/.env
