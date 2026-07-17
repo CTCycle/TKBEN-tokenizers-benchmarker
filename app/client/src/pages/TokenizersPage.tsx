@@ -437,9 +437,16 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
               </header>
               <div className="tokenizer-preview-body">
                 {tokenizers.length === 0 ? (
-                  <div className="dataset-preview-empty">
-                    No tokenizers selected. Click + to add tokenizers.
-                  </div>
+                  <>
+                    <div className="tokenizer-preview-table" role="table" aria-label="Selected tokenizers">
+                      <div className="tokenizer-preview-row tokenizer-preview-row--header" role="row">
+                        <span role="columnheader">Tokenizer</span>
+                        <span role="columnheader">Reports</span>
+                        <span role="columnheader">Actions</span>
+                      </div>
+                    </div>
+                    <p className="tokenizer-preview-empty-label">No tokenizers selected.</p>
+                  </>
                 ) : (
                   <div className="tokenizer-preview-list">
                     {tokenizers.map((tokenizerId) => (
