@@ -12,7 +12,7 @@ What it does:
 - opens the single combined launch-and-maintenance menu
 - installs pinned portable Python, uv, and Node.js on first use
 - creates `settings/.env` from the versioned example when missing
-- synchronizes Python and frontend dependencies and rebuilds the frontend when `always_rebuild=true` (the default); set it to `false` to skip the frontend build at application start
+- synchronizes Python and frontend dependencies and rebuilds the frontend when `ALWAYS_REBUILD=true` (the default); set it to `false` to skip the frontend build at application start
 - starts FastAPI and the Vite preview server, waits for health checks, opens the browser, and prints ports and process IDs
 - optionally shows backend logs in a dedicated terminal when `BACKEND_LOGS_VISIBLE=true` (the default when absent; the only accepted values are `true` and `false`)
 
