@@ -10,7 +10,9 @@ from server.domain.dataset import (
     DatasetDeleteResponse,
     DatasetDownloadRequest,
     DatasetListResponse,
+    DatasetMetricCatalogCategory,
     DatasetMetricCatalogResponse,
+    DatasetPreview,
 )
 from server.domain.jobs import JobStartResponse
 from server.configurations import get_server_settings
@@ -30,12 +32,15 @@ from server.common.constants import (
     API_ROUTER_PREFIX_DATASETS,
 )
 from server.api.helpers import (
+    ManagedJobHttpAdapter,
     read_upload_limited,
-    start_managed_job,
     validate_upload_filename,
 )
 from server.services.dataset_jobs import DatasetJobService
 from server.services.datasets import DatasetService
+from server.services.managed_jobs import (
+    ManagedJobSpec,
+)
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_DATASETS, tags=["datasets"])
 
@@ -48,7 +53,9 @@ router = APIRouter(prefix=API_ROUTER_PREFIX_DATASETS, tags=["datasets"])
 async def list_datasets() -> DatasetListResponse:
     service = DatasetService()
     datasets = await asyncio.to_thread(service.get_dataset_previews)
-    return DatasetListResponse(datasets=datasets)
+    return DatasetListResponse(
+        datasets=[DatasetPreview.model_validate(dataset) for dataset in datasets]
+    )
 
 ###############################################################################
 @router.get(
@@ -59,7 +66,12 @@ async def list_datasets() -> DatasetListResponse:
 async def get_dataset_metrics_catalog() -> DatasetMetricCatalogResponse:
     service = DatasetService()
     categories = await asyncio.to_thread(service.get_metric_catalog)
-    return DatasetMetricCatalogResponse(categories=categories)
+    return DatasetMetricCatalogResponse(
+        categories=[
+            DatasetMetricCatalogCategory.model_validate(category)
+            for category in categories
+        ]
+    )
 
 ###############################################################################
 @router.post(
@@ -77,16 +89,16 @@ async def download_dataset(
         payload.configs.configuration,
     )
 
-    return start_managed_job(
+    return ManagedJobHttpAdapter.start(
         request,
-        job_type="dataset_download",
-        runner=DatasetJobService().run_download_job,
-        kwargs={
-            "request_payload": payload.model_dump(),
-        },
-        conflict_detail="Dataset download is already in progress.",
-        init_failure_detail="Failed to initialize dataset download job.",
-        message="Dataset download job started.",
+        ManagedJobSpec(
+            job_type="dataset_download",
+            runner=DatasetJobService().run_download_job,
+            kwargs={"request_payload": payload.model_dump()},
+            conflict_detail="Dataset download is already in progress.",
+            initialization_detail="Failed to initialize dataset download job.",
+            message="Dataset download job started.",
+        ),
     )
 
 ###############################################################################
@@ -128,17 +140,16 @@ async def upload_custom_dataset(
             detail="Uploaded file is empty.",
         )
 
-    return start_managed_job(
+    return ManagedJobHttpAdapter.start(
         request,
-        job_type="dataset_upload",
-        runner=DatasetJobService().run_upload_job,
-        kwargs={
-            "file_content": file_content,
-            "filename": normalized_filename,
-        },
-        conflict_detail="Dataset upload is already in progress.",
-        init_failure_detail="Failed to initialize dataset upload job.",
-        message="Custom dataset upload job started.",
+        ManagedJobSpec(
+            job_type="dataset_upload",
+            runner=DatasetJobService().run_upload_job,
+            kwargs={"file_content": file_content, "filename": normalized_filename},
+            conflict_detail="Dataset upload is already in progress.",
+            initialization_detail="Failed to initialize dataset upload job.",
+            message="Custom dataset upload job started.",
+        ),
     )
 
 ###############################################################################
@@ -153,13 +164,6 @@ async def analyze_dataset(
 ) -> JobStartResponse:
     logger.info("Dataset validation requested: dataset=%s", payload.dataset_name)
 
-    job_manager = request.app.state.job_manager
-    if job_manager.is_job_running("dataset_validation"):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Dataset validation is already in progress.",
-        )
-
     service = DatasetService()
     dataset_exists = await asyncio.to_thread(
         service.is_dataset_in_database,
@@ -172,17 +176,16 @@ async def analyze_dataset(
             detail=f"Dataset '{payload.dataset_name}' not found. Please load it first.",
         )
 
-    return start_managed_job(
+    return ManagedJobHttpAdapter.start(
         request,
-        job_type="dataset_validation",
-        runner=DatasetJobService().run_analysis_job,
-        kwargs={
-            "request_payload": payload.model_dump(),
-        },
-        conflict_detail="Dataset validation is already in progress.",
-        init_failure_detail="Failed to initialize dataset validation job.",
-        message="Dataset validation job started.",
-        check_conflict=False,
+        ManagedJobSpec(
+            job_type="dataset_validation",
+            runner=DatasetJobService().run_analysis_job,
+            kwargs={"request_payload": payload.model_dump()},
+            conflict_detail="Dataset validation is already in progress.",
+            initialization_detail="Failed to initialize dataset validation job.",
+            message="Dataset validation job started.",
+        ),
     )
 
 ###############################################################################

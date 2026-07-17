@@ -44,6 +44,17 @@ export const CHART_TOOLTIP_TEXT_STYLE = {
   color: CHART_COLORS.tooltipText,
 } as const;
 
+export const CHART_LEGEND_PROPS = {
+  layout: 'vertical' as const,
+  align: 'center' as const,
+  verticalAlign: 'bottom' as const,
+  height: 48,
+  wrapperStyle: { color: CHART_COLORS.axisTick, fontSize: 12, paddingTop: 8, width: '100%' },
+} as const;
+
+export const PRIMARY_CHART_HEIGHT = 286;
+export const SECONDARY_CHART_HEIGHT = 286;
+
 export const CHART_SERIES_COLORS = [
   CHART_COLORS.blue,
   CHART_COLORS.green,

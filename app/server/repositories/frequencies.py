@@ -7,6 +7,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from sqlalchemy import Integer, String, create_engine, func, select
+from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session, declarative_base, mapped_column, sessionmaker
 
 Base = declarative_base()
@@ -62,29 +63,15 @@ class DiskBackedFrequencyStore:
         if not self.memory:
             return
         with self._session() as session:
-            tokens = list(self.memory.keys())
-            existing_rows: list[FrequencyEntry] = []
-            batch_size = self._token_lookup_batch_size()
-            for start in range(0, len(tokens), batch_size):
-                token_batch = tokens[start : start + batch_size]
-                if not token_batch:
-                    continue
-                existing_rows.extend(
-                    session.execute(
-                        select(FrequencyEntry).where(
-                            FrequencyEntry.token.in_(token_batch)
-                        )
-                    )
-                    .scalars()
-                    .all()
+            records = [{"token": token, "count": int(count)} for token, count in self.memory.items()]
+            for start in range(0, len(records), self._token_lookup_batch_size()):
+                batch = records[start : start + self._token_lookup_batch_size()]
+                statement = insert(FrequencyEntry.__table__).values(batch)
+                statement = statement.on_conflict_do_update(
+                    index_elements=[FrequencyEntry.token],
+                    set_={"count": FrequencyEntry.count + statement.excluded.count},
                 )
-            existing = {row.token: row for row in existing_rows}
-            for token, count in self.memory.items():
-                row = existing.get(token)
-                if row is None:
-                    session.add(FrequencyEntry(token=token, count=int(count)))
-                else:
-                    row.count = int(row.count) + int(count)
+                session.execute(statement)
             session.commit()
         self.memory.clear()
 

@@ -210,7 +210,7 @@ class TestCrossBenchmarkPage:
     ) -> None:
         """Cross benchmark page should render control panel and report selector."""
         page.goto(f"{base_url}/cross-benchmark")
-        expect(page.get_by_text("Tokenizer Benchmark")).to_be_visible()
+        expect(page.get_by_text("Tokenizer Benchmark Dashboard", exact=True)).to_be_visible()
         expect(page.get_by_role("button", name="Start benchmark")).to_be_visible()
         expect(page.locator("#benchmark-report-selector")).to_be_visible()
 

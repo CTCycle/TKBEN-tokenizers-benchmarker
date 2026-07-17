@@ -1,54 +1,40 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path, PurePosixPath
-from typing import Any
+from collections.abc import Callable
 
 from fastapi import HTTPException, Request, UploadFile, status
 
 from server.common.utils.security import normalize_upload_stem
-from server.configurations import get_server_settings
 from server.domain.jobs import JobStartResponse
+from server.services.managed_jobs import (
+    ManagedJobConflictError,
+    ManagedJobInitializationError,
+    ManagedJobService,
+    ManagedJobSpec,
+)
 
 UPLOAD_CHUNK_SIZE = 1024 * 1024
 
+
 ###############################################################################
-def start_managed_job(
-    request: Request,
-    *,
-    job_type: str,
-    runner: Callable[..., Any],
-    kwargs: dict[str, Any],
-    conflict_detail: str,
-    init_failure_detail: str,
-    message: str,
-    check_conflict: bool = True,
-) -> JobStartResponse:
-    job_manager = request.app.state.job_manager
-    if check_conflict and job_manager.is_job_running(job_type):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail=conflict_detail
-        )
+class ManagedJobHttpAdapter:
+    """Maps service-level job lifecycle failures to HTTP responses."""
 
-    job_id = job_manager.start_job(
-        job_type=job_type,
-        runner=runner,
-        kwargs={**kwargs, "job_manager": job_manager},
-    )
-    job_status = job_manager.get_job_status(job_id)
-    if job_status is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=init_failure_detail,
-        )
+    # -------------------------------------------------------------------------
+    @staticmethod
+    def start(request: Request, spec: ManagedJobSpec) -> JobStartResponse:
+        try:
+            return ManagedJobService().start(request.app.state.job_manager, spec)
+        except ManagedJobConflictError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+            ) from exc
+        except ManagedJobInitializationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+            ) from exc
 
-    return JobStartResponse(
-        job_id=job_id,
-        job_type=job_status["job_type"],
-        status=job_status["status"],
-        message=message,
-        poll_interval=get_server_settings().jobs.polling_interval,
-    )
 
 ###############################################################################
 def validate_upload_filename(
@@ -59,53 +45,33 @@ def validate_upload_filename(
     validate_stem_before_extension: bool = False,
 ) -> tuple[str, str]:
     if not file.filename:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No filename provided.",
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No filename provided.")
 
     normalized_filename = PurePosixPath(file.filename.strip().replace("\\", "/")).name
     if not normalized_filename:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid filename.",
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid filename.")
 
     safe_stem = ""
     if validate_stem_before_extension:
-        try:
-            safe_stem = normalize_upload_stem(normalized_filename)
-        except ValueError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(exc),
-            ) from exc
-
+        safe_stem = _normalize_upload_stem(normalized_filename)
     extension = Path(normalized_filename).suffix.lower()
     if not extension_allowed(extension):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=unsupported_detail(extension),
         )
-
     if not validate_stem_before_extension:
-        try:
-            safe_stem = normalize_upload_stem(normalized_filename)
-        except ValueError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(exc),
-            ) from exc
-
+        safe_stem = _normalize_upload_stem(normalized_filename)
     return normalized_filename, safe_stem
 
+
 ###############################################################################
-def validate_upload_size(content: bytes, max_upload_bytes: int) -> None:
-    if len(content) > max_upload_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-            detail=f"Uploaded file exceeds max allowed size ({max_upload_bytes} bytes).",
-        )
+def _normalize_upload_stem(filename: str) -> str:
+    try:
+        return normalize_upload_stem(filename)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
 
 ###############################################################################
 async def read_upload_limited(
@@ -124,10 +90,16 @@ async def read_upload_limited(
         if total_size > max_upload_bytes:
             raise HTTPException(
                 status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-                detail=(
-                    "Uploaded file exceeds max allowed size "
-                    f"({max_upload_bytes} bytes)."
-                ),
+                detail=f"Uploaded file exceeds max allowed size ({max_upload_bytes} bytes).",
             )
         chunks.append(chunk)
     return b"".join(chunks)
+
+
+###############################################################################
+def validate_upload_size(content: bytes, max_upload_bytes: int) -> None:
+    if len(content) > max_upload_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail=f"Uploaded file exceeds max allowed size ({max_upload_bytes} bytes).",
+        )

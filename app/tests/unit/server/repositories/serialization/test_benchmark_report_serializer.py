@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
 from sqlalchemy import create_engine
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from server.repositories.database.backend import get_database
@@ -126,7 +125,8 @@ def test_benchmark_report_serializer_round_trip(monkeypatch) -> None:
 
     dataset_name = "custom/serializer_ds"
     with Session(bind=engine) as session:
-        session.add(Dataset(name=dataset_name))
+        now = datetime.now(timezone.utc)
+        session.add(Dataset(name=dataset_name, status="ready", created_at=now, updated_at=now, ready_at=now))
         session.commit()
 
     serializer = BenchmarkReportSerializer()

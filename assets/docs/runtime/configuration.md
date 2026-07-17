@@ -1,10 +1,10 @@
 # Configuration
-Last updated: 2026-06-21
+Last updated: 2026-07-12
 
 ## Environment File
-Primary runtime env file:
+Primary launcher runtime env file:
 - `settings/.env`
-- Seed from `settings/.env.example`
+- Created from the versioned `settings/.env.example` template when missing
 
 ## Core Variables
 - `FASTAPI_HOST`
@@ -15,8 +15,13 @@ Primary runtime env file:
 - `VITE_API_BASE_URL` (default `/api`)
 - `RELOAD`
 - `OPTIONAL_DEPENDENCIES`
+- `ALWAYS_REBUILD` (accepts only `true` or `false`; defaults to `true` and controls whether the frontend is rebuilt when the application starts)
+- `BACKEND_LOGS_VISIBLE` (accepts only `true` or `false`; shows backend logs in a dedicated terminal when `true`, and defaults to `true` when absent)
 - `ALLOW_KEY_REVEAL`
 - `HF_KEYS_ENCRYPTION_KEY`
+- `TKBEN_DATA_DIR` (mutable database, datasets, tokenizers, and exports)
+- `TKBEN_LOG_DIR` (runtime logs)
+- `TKBEN_CONFIG_DIR` (active `.env` and `configurations.json`)
 - `DATABASE_EMBEDDED`
 - `DATABASE_URL`
 - `DATABASE_ENGINE`
@@ -39,11 +44,6 @@ Primary runtime env file:
 ### Dev and Local Webapp
 - Vite serves and proxies `/api` to the FastAPI host and port from the environment.
 - `RELOAD=true` enables Uvicorn reload behavior.
-
-### Desktop Packaged
-- Tauri launches the backend process locally and sets `TKBEN_TAURI_MODE=true`.
-- Backend may serve packaged SPA assets when packaged client dist is available.
-- Runtime environment may be prepared into a writable runtime path for packaged execution.
 
 ### Persistence Toggle
 - If `database` is present in `settings/configurations.json`, that block is authoritative for database mode and connection fields.

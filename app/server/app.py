@@ -25,6 +25,7 @@ from server.common.path import (
     CLIENT_DIST_PATH,
     CLIENT_INDEX_FILE_PATH,
 )
+from server.domain.health import HealthResponse
 from server.configurations import get_server_settings
 from server.repositories.database.initializer import initialize_database
 from server.services.jobs import JobManager
@@ -61,12 +62,17 @@ def redirect_to_docs() -> RedirectResponse:
     return RedirectResponse(url="/docs")
 
 ###############################################################################
-def backend_healthcheck() -> dict[str, str]:
-    return {"status": "ok"}
+def backend_healthcheck() -> HealthResponse:
+    return HealthResponse(status="ok")
 
 ###############################################################################
 def register_api_routers(application: FastAPI) -> None:
-    application.add_api_route("/api/health", backend_healthcheck, methods=["GET"])
+    application.add_api_route(
+        "/api/health",
+        backend_healthcheck,
+        methods=["GET"],
+        response_model=HealthResponse,
+    )
     for router in (
         datasets_router,
         tokenizers_router,

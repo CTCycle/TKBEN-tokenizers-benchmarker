@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from 'react';
 import ChartPlaceholder from '../components/ChartPlaceholder';
 import DashboardExportButton from '../components/DashboardExportButton';
 import TokenizersPage from './TokenizersPage';
@@ -79,39 +78,6 @@ const TokenizerExaminationPage = () => {
     handlePreviousTokenizerVocabularyPage,
     handleTokenizerVocabularyPageSizeChange,
   } = useTokenizers();
-  const leftPanelRef = useRef<HTMLElement | null>(null);
-  const [vocabularyPanelHeight, setVocabularyPanelHeight] = useState<number | null>(null);
-
-  useEffect(() => {
-    const syncVocabularyPanelHeight = () => {
-      const leftPanel = leftPanelRef.current;
-      if (!leftPanel) {
-        setVocabularyPanelHeight(null);
-        return;
-      }
-      if (window.innerWidth <= 1100) {
-        setVocabularyPanelHeight(null);
-        return;
-      }
-      setVocabularyPanelHeight(Math.max(0, Math.floor(leftPanel.getBoundingClientRect().height)));
-    };
-
-    syncVocabularyPanelHeight();
-
-    const observer = new ResizeObserver(() => {
-      syncVocabularyPanelHeight();
-    });
-    if (leftPanelRef.current) {
-      observer.observe(leftPanelRef.current);
-    }
-    window.addEventListener('resize', syncVocabularyPanelHeight);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', syncVocabularyPanelHeight);
-    };
-  }, [tokenizerReport]);
-
   const histogram = tokenizerReport?.token_length_histogram ?? null;
   const maxCount = histogram?.counts.length ? Math.max(...histogram.counts) : 0;
 
@@ -137,7 +103,6 @@ const TokenizerExaminationPage = () => {
 
         <div className="tokenizer-report-split">
           <section
-            ref={leftPanelRef}
             className="panel dashboard-panel dashboard-plain tokenizer-report-left"
           >
             <header className="panel-header">
@@ -259,12 +224,7 @@ const TokenizerExaminationPage = () => {
             )}
           </section>
 
-          <aside
-            className="panel dashboard-panel dashboard-plain tokenizer-report-right"
-            style={vocabularyPanelHeight
-              ? { height: `${vocabularyPanelHeight}px` }
-              : undefined}
-          >
+          <aside className="panel dashboard-panel dashboard-plain tokenizer-report-right">
             <header className="panel-header">
               <div>
                 <p className="panel-label">Vocabulary Preview</p>

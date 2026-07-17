@@ -1,5 +1,5 @@
 # Experience
-Last updated: 2026-06-02
+Last updated: 2026-07-12
 
 ## Page Structure
 - `DatasetPage`
@@ -49,3 +49,8 @@ Required behavior:
 - Clarity over decoration: prioritize readable metrics and workflows.
 - Predictability: navigation, action placement, and panel semantics should remain stable.
 - Avoid introducing parallel style systems for incremental features.
+
+## Visual validation matrix
+- Review the three primary routes at 1920x1080, 1440x900, 1024x768, and 390x844.
+- Check shell alignment, page gutters, panel edges, chart title/plot alignment, contained table overflow, and dialog viewport fit.
+- Treat populated, empty, loading, error, and long-identifier states as required visual states; visual polish must not hide existing diagnostics or controls.

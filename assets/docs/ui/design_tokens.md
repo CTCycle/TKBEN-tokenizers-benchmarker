@@ -1,5 +1,5 @@
 # Design Tokens
-Last updated: 2026-06-02
+Last updated: 2026-07-12
 
 ## Typography
 - Base family:
@@ -54,3 +54,9 @@ Semantic usage:
 Accessibility baseline:
 - Maintain high contrast on dark surfaces.
 - Focus state uses a visible ring with highlight border.
+
+## Refined Glass Dark additions
+- Canvas uses `--color-canvas-top` and `--color-canvas-bottom` with restrained radial lighting.
+- Shared panels use `--color-glass` / `--color-glass-strong`, `--border-default`, `--shadow-panel`, and `--shadow-inset`.
+- Layout roles include `--page-max-width`, `--page-gutter`, `--section-gap`, `--panel-padding`, and `--card-gap`.
+- Cross-benchmark charts share centralized height and legend contracts from `src/common/chartStyles.ts`.

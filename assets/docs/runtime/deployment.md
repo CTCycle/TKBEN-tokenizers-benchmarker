@@ -1,35 +1,19 @@
 # Deployment
-Last updated: 2026-06-23
+Last updated: 2026-07-11
 
 ## Dependency Prerequisites
 From project and runtime scripts:
-- Python `>=3.14`
-- Node.js `>=22`
-- `uv`
-- Rust and Cargo are required only for Tauri packaging
-
-## Packaging Notes
-### Versioned Desktop Sources
-- `app/src-tauri` is versioned only for desktop source/config and required build metadata.
-- Keep `Cargo.toml`, `Cargo.lock`, `build.rs`, `tauri.conf.json`, `src/**`, `capabilities/**`, and `icons/**` in Git.
-
-### Desktop Build Outputs
-- Generated Tauri outputs under `app/src-tauri/target`, `app/src-tauri/bundle`, and `app/src-tauri/gen` must stay out of Git.
-- `release/windows/installers`
-- `release/windows/portable`
-- Desktop `.exe`, `.msi`, and other packaged archives are published as release artifacts, not committed to the repository.
-
-### Packaging Flow Summary
-- Build frontend with `npm run build`
-- Build Tauri app with `npm run tauri:build:release`
-- Export artifacts with `release/tauri/scripts/export-windows-artifacts.ps1`
-- Tauri packaging is rooted at `app/src-tauri`, with frontend output read from `app/client/dist`.
+- Windows launcher mode bootstraps pinned Python 3.14.2, Node.js 22.12.0, and uv locally.
+- The launcher downloads portable runtimes into the ignored `runtimes/` directory when they are missing.
+- Manual macOS/Linux use requires system Python 3.14+, Node.js 22+, and uv.
 
 ## Local Distribution Strategy
-- For non-packaged use, the repository plus `start_on_windows.bat` is the operational deployment path.
+- The repository plus `start_on_windows.ps1` is the supported Windows operational path.
+- The launcher synchronizes Python and frontend dependencies, builds the frontend, then starts FastAPI and Vite preview locally.
 - The supported built-in security mode is local-only: keep `FASTAPI_HOST=127.0.0.1` or `localhost`.
 - Network-hosted deployments require an external authentication boundary before exposing key management or destructive API routes.
 - The backend refuses non-loopback binds by default. `TKBEN_ALLOW_UNAUTHENTICATED_NETWORK_BIND=true` is an explicit override for environments that provide their own access control.
 
 ## Constraints
 - The repository does not currently include an active Docker runtime configuration in the root.
+- Automatic Python and Node.js downloads target Windows x64.

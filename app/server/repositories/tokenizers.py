@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -44,7 +45,7 @@ class TokenizerRepository:
                 select(Tokenizer.id).where(Tokenizer.name == tokenizer_id).limit(1)
             ).scalar_one_or_none()
             if existing is None:
-                session.add(Tokenizer(name=tokenizer_id))
+                session.add(Tokenizer(name=tokenizer_id, created_at=datetime.now(timezone.utc)))
                 try:
                     session.commit()
                 except IntegrityError:
@@ -100,7 +101,7 @@ class TokenizerRepository:
             TokenizerVocabulary.tokenizer_id == int(tokenizer_id)
         )
         page_stmt = (
-            select(TokenizerVocabulary.token_id, TokenizerVocabulary.vocabulary_tokens)
+            select(TokenizerVocabulary.token_id, TokenizerVocabulary.token)
             .where(TokenizerVocabulary.tokenizer_id == int(tokenizer_id))
             .order_by(TokenizerVocabulary.token_id.asc())
             .limit(int(limit))

@@ -1,5 +1,5 @@
 # Execution and Data Flow
-Last updated: 2026-06-02
+Last updated: 2026-07-15
 
 ## Layered Architecture
 Primary backend flow:
@@ -7,9 +7,9 @@ Primary backend flow:
 
 ## Key Module Responsibilities
 - `server/app.py`
-  - FastAPI app factory, router registration, and SPA serving in Tauri mode.
+  - FastAPI app factory, router registration, and SPA serving support.
 - `server/api/*`
-  - HTTP contracts, status codes, request/response models, and job dispatch.
+  - HTTP contracts, status codes, request/response models, multipart handling, and HTTP error mapping.
 - `server/domain/*`
   - Pydantic and dataclass domain models plus settings schemas.
 - `server/services/*`
@@ -30,10 +30,14 @@ Primary backend flow:
   - Dashboard export payload parsing and value formatting helpers used by the PDF export service.
 - `services/benchmark_engine.py`
   - Warmup and timed trial batch runner with per-batch observations and cancellation checks.
+- `services/managed_jobs.py`
+  - Shared typed dispatcher for conflict checks, job start, initial status verification, polling metadata, and initialization failures.
 - `repositories/database/backend.py`
   - `get_database()` is the single cached accessor for the configured backend; repositories receive or resolve this dependency instead of importing module-level database state.
 - `repositories/serialization/benchmark_reports.py`
   - Benchmark report persistence serialization and Pydantic response normalization.
+- `repositories/serialization/data.py` and `repositories/serialization/tokenizer_reports.py`
+  - Canonical dataset and tokenizer-report persistence serialization boundaries.
 - `repositories/frequencies.py`
   - Temporary SQLite-backed frequency persistence used by metrics services for large vocabularies.
 

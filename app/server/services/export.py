@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from io import BytesIO
 import re
-from typing import Any, get_args
+from typing import Any, cast, get_args
 
 import matplotlib
 
@@ -82,7 +82,7 @@ class DashboardExportService(DashboardExportFormatting):
             raise ValueError(
                 "Unsupported dashboard type. Use one of: dataset, tokenizer, benchmark."
             )
-        return value  # type: ignore[return-value]
+        return cast(DashboardType, value)
 
     # -------------------------------------------------------------------------
     def _normalize_file_name(self, file_name: str, report_name: str) -> str:
@@ -416,7 +416,7 @@ class DashboardExportService(DashboardExportFormatting):
                 colLabels=["token_id", "token", "length"],
                 cellLoc="left",
                 colLoc="left",
-                bbox=[0, 0.02, 1, 0.9],
+                bbox=cast(Any, [0, 0.02, 1, 0.9]),
             )
             table.auto_set_font_size(False)
             table.set_fontsize(8)
@@ -632,7 +632,7 @@ class DashboardExportService(DashboardExportFormatting):
             ],
             cellLoc="left",
             colLoc="left",
-            bbox=[0, 0.02, 1, 0.92],
+            bbox=cast(Any, [0, 0.02, 1, 0.92]),
         )
         table.auto_set_font_size(False)
         table.set_fontsize(8.5)

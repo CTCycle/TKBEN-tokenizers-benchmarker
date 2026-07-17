@@ -1,13 +1,13 @@
 # Python Rules
-Last updated: 2026-06-02
+Last updated: 2026-07-15
 
 ## Runtime and Dependencies
 - Python target version: `>=3.14` from `pyproject.toml`.
-- Use `runtimes/.venv` when available.
+- Use `app/server/.venv` as the canonical backend environment.
 - Do not create new virtual environments in this project.
 - Keep dependency state aligned with:
   - `pyproject.toml`
-  - `runtimes/uv.lock`
+  - `app/server/uv.lock`
 - Use `uv` as the dependency and runtime manager used by project scripts.
 
 ## Typing
@@ -16,6 +16,10 @@ Last updated: 2026-06-02
 - Prefer `|` unions over `typing.Union`.
 - Use `collections.abc` abstract types where appropriate.
 - Treat typing as required quality, not optional documentation.
+
+BasedPyright runs from the repository root with `pyrightconfig.json`, targets
+Python 3.14 in recommended mode, and must report zero errors. Warnings are
+reported for visibility but do not fail the gate.
 
 ## Validation and API Contracts
 - Use Pydantic or domain models for request, response, and settings validation.
