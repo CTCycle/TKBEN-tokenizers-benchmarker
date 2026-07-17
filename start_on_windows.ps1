@@ -105,7 +105,7 @@ function Import-Environment {
         UI_PORT = '8001'
         RELOAD = 'false'
         OPTIONAL_DEPENDENCIES = 'false'
-        always_rebuild = 'true'
+        ALWAYS_REBUILD = 'true'
         # Backend logs are visible by default when the setting is absent.
         BACKEND_LOGS_VISIBLE = 'true'
     }
@@ -137,12 +137,12 @@ function Import-Environment {
         throw "BACKEND_LOGS_VISIBLE must be either 'true' or 'false'."
     }
 
-    if ($env:always_rebuild -ieq 'true') {
-        $env:always_rebuild = 'true'
-    } elseif ($env:always_rebuild -ieq 'false') {
-        $env:always_rebuild = 'false'
+    if ($env:ALWAYS_REBUILD -ieq 'true') {
+        $env:ALWAYS_REBUILD = 'true'
+    } elseif ($env:ALWAYS_REBUILD -ieq 'false') {
+        $env:ALWAYS_REBUILD = 'false'
     } else {
-        throw "always_rebuild must be either 'true' or 'false'."
+        throw "ALWAYS_REBUILD must be either 'true' or 'false'."
     }
 
     $env:UV_CACHE_DIR = $UvCacheDir
@@ -242,7 +242,7 @@ function Sync-Dependencies {
             & $NpmCmd run build
             if ($LASTEXITCODE -ne 0) { throw "Frontend build failed with exit code $LASTEXITCODE." }
         } else {
-            Write-Step 'Skipping frontend build because always_rebuild=false.'
+            Write-Step 'Skipping frontend build because ALWAYS_REBUILD=false.'
         }
     } finally {
         Pop-Location
@@ -268,7 +268,7 @@ function Get-PortProcessId([int]$Port) {
 
 function Launch-Application {
     Import-Environment
-    Sync-Dependencies -BuildFrontend ($env:always_rebuild -ieq 'true')
+    Sync-Dependencies -BuildFrontend ($env:ALWAYS_REBUILD -ieq 'true')
     Import-Environment
 
     $backendPort = [int]$env:FASTAPI_PORT

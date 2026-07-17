@@ -15,7 +15,7 @@ Primary launcher runtime env file:
 - `VITE_API_BASE_URL` (default `/api`)
 - `RELOAD`
 - `OPTIONAL_DEPENDENCIES`
-- `always_rebuild` (accepts only `true` or `false`; defaults to `true` and controls whether the frontend is rebuilt when the application starts)
+- `ALWAYS_REBUILD` (accepts only `true` or `false`; defaults to `true` and controls whether the frontend is rebuilt when the application starts)
 - `BACKEND_LOGS_VISIBLE` (accepts only `true` or `false`; shows backend logs in a dedicated terminal when `true`, and defaults to `true` when absent)
 - `ALLOW_KEY_REVEAL`
 - `HF_KEYS_ENCRYPTION_KEY`
