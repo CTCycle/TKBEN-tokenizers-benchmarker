@@ -43,11 +43,12 @@ Run the single developer and maintenance entry point from any directory:
 **Setup Steps**:
 1. Install backend dependencies
    ```bash
+   cd app/server
    uv sync
    ```
 2. Start backend
    ```bash
-   uv run python -m uvicorn server.app:app --host 127.0.0.1 --port 5000
+   uv run python -m uvicorn server.app:app --app-dir .. --host 127.0.0.1 --port 5000
    ```
 3. Start frontend (new terminal)
    ```bash
@@ -63,8 +64,8 @@ Run the single developer and maintenance entry point from any directory:
 The launcher creates `settings/.env` from `settings/.env.example` on first use. `settings/.env` is local and ignored; `settings/.env.example` and `settings/configurations.json` remain versioned templates.
 
 Initialize from the single template:
-```bat
-Copy-Item settings\.env.example "$env:LOCALAPPDATA\TKBEN\config\.env"
+```powershell
+Copy-Item settings\.env.example settings\.env
 ```
 
 ### 3.2 Local Webapp Mode (Default)
@@ -135,11 +136,19 @@ Core runtime keys you will commonly edit:
 - `UI_HOST`, `UI_PORT`
 - `VITE_API_BASE_URL` (normally `/api`)
 - `RELOAD`
+- `ALWAYS_REBUILD` (`true` or `false`; controls the frontend build at application startup)
+- `BACKEND_LOGS_VISIBLE` (`true` or `false`; controls the dedicated backend log terminal)
+- `TKBEN_ALLOW_UNAUTHENTICATED_NETWORK_BIND`
+- `ALLOW_KEY_REVEAL`
+- `TKBEN_DATA_DIR`, `TKBEN_LOG_DIR`, `TKBEN_CONFIG_DIR`
 - `DATABASE_EMBEDDED`
 - `DATABASE_URL`
+- `DATABASE_ENGINE`
 - `DATABASE_HOST`, `DATABASE_PORT`
 - `DATABASE_NAME`
 - `DATABASE_USERNAME`, `DATABASE_PASSWORD`
+- `DATABASE_SSL`, `DATABASE_SSL_CA`, `DATABASE_CONNECT_TIMEOUT`
+- `DATABASE_INSERT_BATCH_SIZE`
 - `HF_KEYS_ENCRYPTION_KEY`
 
 Determinism:
