@@ -376,26 +376,47 @@ function Uninstall-Application {
 function Wait-ForMenu {
     if ([Console]::IsInputRedirected) { return }
     Write-Host
-    Write-Host 'Press any key to return to menu...'
+    Write-Host 'Press any key to return to the menu...' -ForegroundColor DarkGray
     [Console]::ReadKey($true) | Out-Null
+}
+
+function Write-MenuItem([string]$Number, [string]$Label, [string]$Description, [ConsoleColor]$Color = [ConsoleColor]::White) {
+    Write-Host "  [$Number] " -NoNewline -ForegroundColor $Color
+    Write-Host $Label -NoNewline -ForegroundColor White
+    Write-Host "  $Description" -ForegroundColor DarkGray
 }
 
 function Show-Menu {
     while ($true) {
         Clear-Host
-        Write-Host '========================================='
-        Write-Host '    TKBEN -- Tokenizers Benchmarker'
-        Write-Host '========================================='
-        Write-Host '1.  Launch application'
-        Write-Host '2.  Install / update dependencies'
-        Write-Host '3.  Initialize database'
-        Write-Host '4.  Run test suite'
-        Write-Host '5.  Remove logs'
-        Write-Host '6.  Clear cache'
-        Write-Host '7.  Uninstall application'
-        Write-Host '8.  Exit'
-        Write-Host '========================================='
-        $selection = (Read-Host 'Select an option (1-8)').Trim()
+        $host.UI.RawUI.WindowTitle = 'TKBEN | Tokenizers Benchmarker'
+        Write-Host
+        Write-Host '  +----------------------------------------------------------+' -ForegroundColor DarkCyan
+        Write-Host '  |' -NoNewline -ForegroundColor DarkCyan
+        Write-Host '  TKBEN' -NoNewline -ForegroundColor Cyan
+        Write-Host '  TOKENIZERS BENCHMARKER' -NoNewline -ForegroundColor White
+        Write-Host '                         |' -ForegroundColor DarkCyan
+        Write-Host ('  |  {0,-56}|' -f 'Launch, maintain, and validate your local workspace.') -ForegroundColor DarkGray
+        Write-Host '  +----------------------------------------------------------+' -ForegroundColor DarkCyan
+        Write-Host
+        Write-Host '  APPLICATION' -ForegroundColor DarkCyan
+        Write-MenuItem '1' 'Launch application' 'Start the local benchmark workspace' Cyan
+        Write-Host
+        Write-Host '  SETUP & VALIDATION' -ForegroundColor DarkCyan
+        Write-MenuItem '2' 'Install / update dependencies' 'Sync the required local tooling'
+        Write-MenuItem '3' 'Initialize database' 'Create or update the local database'
+        Write-MenuItem '4' 'Run test suite' 'Validate backend and frontend checks'
+        Write-Host
+        Write-Host '  MAINTENANCE' -ForegroundColor DarkCyan
+        Write-MenuItem '5' 'Remove logs' 'Clear generated application logs'
+        Write-MenuItem '6' 'Clear cache' 'Remove downloaded and generated caches'
+        Write-MenuItem '7' 'Uninstall application' 'Remove local runtimes and dependencies' Yellow
+        Write-Host
+        Write-Host '  +----------------------------------------------------------+' -ForegroundColor DarkCyan
+        Write-MenuItem '8' 'Exit' 'Close this launcher' DarkGray
+        Write-Host '  +----------------------------------------------------------+' -ForegroundColor DarkCyan
+        Write-Host
+        $selection = (Read-Host '  Select an option [1-8]').Trim()
 
         if ($selection -notmatch '^[1-8]$') {
             Write-Fatal 'Invalid option. Enter a number from 1 through 8.'
