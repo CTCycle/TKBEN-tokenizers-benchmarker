@@ -1,5 +1,5 @@
 # Components and Patterns
-Last updated: 2026-07-12
+Last updated: 2026-07-19
 
 ## Navigation
 - Top tab navigation for:
@@ -46,3 +46,4 @@ Last updated: 2026-07-12
 - Dataset and tokenizer preview sections use aligned two-column cards with shared panel padding and surface treatment.
 - Tokenizer report and vocabulary panels use CSS Grid stretch alignment; JavaScript height measurement is not required.
 - Chart cards use centralized heights and legend spacing so adjacent plots keep consistent geometry.
+- Dataset and tokenizer catalogs use the shared stateless `CatalogFilterToolbar`; search, source, and numeric filters are server-driven and must not alter benchmark selection.

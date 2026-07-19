@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { KeyboardEvent, MouseEvent } from 'react';
 import {
   CHART_AXIS_PROPS,
@@ -8,6 +8,7 @@ import {
   CHART_TOOLTIP_TEXT_STYLE,
 } from '../common/chartStyles';
 import TokenizerStatusBanners from '../components/TokenizerStatusBanners';
+import CatalogFilterToolbar from '../components/CatalogFilterToolbar';
 import { useTokenizers } from '../contexts/TokenizersContext';
 import {
   BarChart,
@@ -35,6 +36,8 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
     fetchedTokenizers,
     selectedTokenizer,
     tokenizers,
+    availableTokenizers,
+    tokenizersLoading,
     customTokenizerName,
     customTokenizerUploading,
     maxDocuments,
@@ -57,6 +60,7 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
     setBenchmarkError,
     addTokenizer,
     downloadTokenizers,
+    refreshTokenizers,
     handleScan,
     handleRunBenchmarks,
     handleOpenTokenizerReport,
@@ -69,8 +73,25 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
   const [isTokenizerModalOpen, setIsTokenizerModalOpen] = useState(false);
   const [manualTokenizerInput, setManualTokenizerInput] = useState('');
   const [selectedScannedTokenizers, setSelectedScannedTokenizers] = useState<string[]>([]);
+  const [tokenizerSearch, setTokenizerSearch] = useState('');
+  const [tokenizerSourceFilter, setTokenizerSourceFilter] = useState<'all' | 'huggingface' | 'custom'>('all');
+  const [vocabularySizeValue, setVocabularySizeValue] = useState('');
+  const [vocabularySizeOperator, setVocabularySizeOperator] = useState<'at_least' | 'at_most'>('at_least');
 
   const isEmbeddedSelectionLayout = embedded && !showDashboard;
+
+  useEffect(() => {
+    const numericValue = Number(vocabularySizeValue);
+    const filters = {
+      search: tokenizerSearch,
+      source: tokenizerSourceFilter,
+      vocabulary_size_operator: vocabularySizeOperator,
+      ...(vocabularySizeValue.trim() !== '' && Number.isFinite(numericValue) && numericValue >= 0
+        ? { vocabulary_size: numericValue } : {}),
+    };
+    const timeoutId = window.setTimeout(() => { void refreshTokenizers(filters); }, 250);
+    return () => window.clearTimeout(timeoutId);
+  }, [refreshTokenizers, tokenizerSearch, tokenizerSourceFilter, vocabularySizeOperator, vocabularySizeValue]);
 
   const chartStats = useMemo(
     () => [
@@ -415,6 +436,26 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
               <p className="panel-description">
                 Manage tokenizer identifiers and custom JSON tokenizers from a single popup window.
               </p>
+              <CatalogFilterToolbar
+                accessibleName="Tokenizer filters"
+                searchLabel="Search tokenizers"
+                searchValue={tokenizerSearch}
+                searchPlaceholder="Name or namespace"
+                onSearchChange={setTokenizerSearch}
+                sourceLabel="Source"
+                sourceValue={tokenizerSourceFilter}
+                sourceOptions={[{ value: 'all', label: 'All tokenizers' }, { value: 'huggingface', label: 'Hugging Face' }, { value: 'custom', label: 'Custom' }]}
+                onSourceChange={(value) => setTokenizerSourceFilter(value as 'all' | 'huggingface' | 'custom')}
+                numericLabel="Vocabulary"
+                numericValue={vocabularySizeValue}
+                numericOperator={vocabularySizeOperator}
+                numericPlaceholder="Any size"
+                onNumericValueChange={setVocabularySizeValue}
+                onNumericOperatorChange={(value) => setVocabularySizeOperator(value as 'at_least' | 'at_most')}
+                addButtonLabel="Add tokenizer"
+                addButtonTitle="Open Tokenizer Manager"
+                onAdd={() => setIsTokenizerModalOpen(true)}
+              />
             </div>
             <div className="tokenizer-preview-panel">
               <header className="panel-header">
@@ -436,59 +477,32 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
                 </button>
               </header>
               <div className="tokenizer-preview-body">
-                {tokenizers.length === 0 ? (
-                  <>
-                    <div className="tokenizer-preview-table" role="table" aria-label="Selected tokenizers">
-                      <div className="tokenizer-preview-row tokenizer-preview-row--header" role="row">
-                        <span role="columnheader">Tokenizer</span>
-                        <span role="columnheader">Reports</span>
-                        <span role="columnheader">Actions</span>
-                      </div>
-                    </div>
-                    <p className="tokenizer-preview-empty-label">No tokenizers selected.</p>
-                  </>
+                {tokenizersLoading && availableTokenizers.length === 0 ? (
+                  <p className="tokenizer-preview-empty-label">Loading tokenizers...</p>
+                ) : availableTokenizers.length === 0 ? (
+                  <p className="tokenizer-preview-empty-label">
+                    {tokenizerSearch.trim() || vocabularySizeValue.trim() || tokenizerSourceFilter !== 'all'
+                      ? 'No tokenizers match the current filters.' : 'No tokenizers available.'}
+                  </p>
                 ) : (
                   <div className="tokenizer-preview-list">
-                    {tokenizers.map((tokenizerId) => (
-                      <div key={tokenizerId} className="tokenizer-preview-row">
-                        <span className="tokenizer-preview-name">{tokenizerId}</span>
+                    {availableTokenizers.map((item) => {
+                      const isSelected = tokenizers.includes(item.tokenizer_name);
+                      return (
+                      <div key={item.tokenizer_name} className={`tokenizer-preview-row${isSelected ? ' selected' : ''}`}>
+                        <span className="tokenizer-preview-name">{item.tokenizer_name}</span>
+                        <span className="tokenizer-preview-vocabulary">{item.vocabulary_size ?? '—'}</span>
                         <div className="tokenizer-preview-actions">
-                          <button
-                            type="button"
-                            className="icon-button subtle"
-                            aria-label={`Generate or open tokenizer report for ${tokenizerId}`}
-                            title="Generate report if missing, otherwise open latest report"
-                            onClick={() => void handleOpenTokenizerReport(tokenizerId)}
-                            disabled={
-                              activeOpeningTokenizer === tokenizerId
-                            }
-                          >
-                            {activeOpeningTokenizer === tokenizerId ? (
-                              <span className="action-spinner" />
-                            ) : (
-                              <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M5 4h14v4H5z" />
-                                <path d="M5 12h14v8H5z" />
-                              </svg>
-                            )}
+                          <button type="button" className="icon-button subtle" aria-label={`Generate or open tokenizer report for ${item.tokenizer_name}`} title="Generate report if missing, otherwise open latest report" onClick={() => void handleOpenTokenizerReport(item.tokenizer_name)} disabled={item.source === 'custom' || activeOpeningTokenizer === item.tokenizer_name}>
+                            {activeOpeningTokenizer === item.tokenizer_name ? <span className="action-spinner" /> : <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v4H5z" /><path d="M5 12h14v8H5z" /></svg>}
                           </button>
-                          <button
-                            type="button"
-                            className="icon-button danger"
-                            aria-label={`Remove ${tokenizerId} from preview`}
-                            title="Remove tokenizer from preview list"
-                            onClick={() => handleRemoveTokenizerFromPreview(tokenizerId)}
-                          >
-                            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
-                              <path d="M4 7h16" strokeWidth="2" strokeLinecap="round" />
-                              <path d="M9 7V5h6v2" strokeWidth="2" strokeLinecap="round" />
-                              <path d="M8 10v8m4-8v8m4-8v8" strokeWidth="2" strokeLinecap="round" />
-                              <path d="M6 7l1 13h10l1-13" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
+                          <button type="button" className={`icon-button ${isSelected ? 'danger' : 'subtle'}`} aria-pressed={isSelected} aria-label={`${isSelected ? 'Remove' : 'Add'} ${item.tokenizer_name} ${isSelected ? 'from benchmark selection' : 'to benchmark selection'}`} title={`${isSelected ? 'Remove from' : 'Add to'} benchmark selection`} onClick={() => isSelected ? handleRemoveTokenizerFromPreview(item.tokenizer_name) : addTokenizer(item.tokenizer_name)}>
+                            {isSelected ? '−' : '+'}
                           </button>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

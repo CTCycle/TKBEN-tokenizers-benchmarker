@@ -13,6 +13,7 @@ import {
   YAxis,
 } from 'recharts';
 import DatasetValidationWizard from '../components/DatasetValidationWizard';
+import CatalogFilterToolbar from '../components/CatalogFilterToolbar';
 import DashboardExportButton from '../components/DashboardExportButton';
 import DismissibleBanner from '../components/DismissibleBanner';
 import HistogramChartCard from '../components/HistogramChartCard';
@@ -408,6 +409,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
     fileInputRef,
     availableDatasets,
     datasetsLoading,
+    datasetsInitialized,
     activeValidationDataset,
     activeReportLoadDataset,
     removingDataset,
@@ -424,6 +426,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
     handleValidateDataset,
     handleLoadLatestDatasetReport,
     handleDeleteDataset,
+    refreshAvailableDatasets,
   } = useDataset();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -432,7 +435,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
   const [datasetSearch, setDatasetSearch] = useState('');
   const [datasetSourceFilter, setDatasetSourceFilter] = useState<'all' | 'public' | 'custom'>('all');
   const [documentCountValue, setDocumentCountValue] = useState('');
-  const [documentCountOperator, setDocumentCountOperator] = useState<'atLeast' | 'atMost'>('atLeast');
+  const [documentCountOperator, setDocumentCountOperator] = useState<'at_least' | 'at_most'>('at_least');
   const [isInsertByNameOpen, setIsInsertByNameOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardDatasetName, setWizardDatasetName] = useState<string | null>(null);
@@ -441,25 +444,18 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
   const corpusInputId = 'corpus-input';
   const configInputId = 'config-input';
   const manualInsertRegionId = 'dataset-manual-insert-panel';
-  const filteredDatasets = useMemo(() => {
-    const searchTerm = datasetSearch.trim().toLowerCase();
-    const documentCount = Number(documentCountValue);
-    const hasDocumentCount = documentCountValue.trim() !== '' && Number.isFinite(documentCount);
-
-    return availableDatasets.filter((dataset) => {
-      const normalizedName = dataset.dataset_name.toLowerCase();
-      const isCustomDataset = normalizedName.startsWith('custom/');
-      const matchesSearch = !searchTerm || normalizedName.includes(searchTerm);
-      const matchesSource = datasetSourceFilter === 'all'
-        || (datasetSourceFilter === 'custom' && isCustomDataset)
-        || (datasetSourceFilter === 'public' && !isCustomDataset);
-      const matchesDocumentCount = !hasDocumentCount
-        || (documentCountOperator === 'atLeast'
-          ? dataset.document_count >= documentCount
-          : dataset.document_count <= documentCount);
-      return matchesSearch && matchesSource && matchesDocumentCount;
-    });
-  }, [availableDatasets, datasetSearch, datasetSourceFilter, documentCountOperator, documentCountValue]);
+  useEffect(() => {
+    const numericValue = Number(documentCountValue);
+    const filters = {
+      search: datasetSearch,
+      source: datasetSourceFilter,
+      document_count_operator: documentCountOperator,
+      ...(documentCountValue.trim() !== '' && Number.isFinite(numericValue) && numericValue >= 0
+        ? { document_count: numericValue } : {}),
+    };
+    const timeoutId = window.setTimeout(() => { void refreshAvailableDatasets(filters); }, 250);
+    return () => window.clearTimeout(timeoutId);
+  }, [datasetSearch, datasetSourceFilter, documentCountOperator, documentCountValue, refreshAvailableDatasets]);
   const aggregate = useMemo<Record<string, unknown>>(() => {
     const aggregateStats = validationReport?.aggregate_statistics;
     return isRecord(aggregateStats) ? aggregateStats : {};
@@ -641,64 +637,26 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                   quality and lexical metrics for dashboard analysis.
                 </p>
               </div>
-              <div className="dataset-filter-toolbar" aria-label="Dataset filters">
-                <label className="dataset-filter-field dataset-filter-field--search">
-                  <span className="field-label">Search datasets</span>
-                  <input
-                    type="search"
-                    className="text-input"
-                    value={datasetSearch}
-                    onChange={(event) => setDatasetSearch(event.target.value)}
-                    placeholder="Name or namespace"
-                  />
-                </label>
-                <label className="dataset-filter-field">
-                  <span className="field-label">Source</span>
-                  <select
-                    className="text-input"
-                    value={datasetSourceFilter}
-                    onChange={(event) => setDatasetSourceFilter(event.target.value as 'all' | 'public' | 'custom')}
-                  >
-                    <option value="all">All datasets</option>
-                    <option value="public">Public</option>
-                    <option value="custom">Custom</option>
-                  </select>
-                </label>
-                <div className="dataset-filter-field">
-                  <span className="field-label">Documents</span>
-                  <div className="dataset-document-filter-control">
-                    <select
-                      className="text-input"
-                      aria-label="Document count comparison"
-                      value={documentCountOperator}
-                      onChange={(event) => setDocumentCountOperator(event.target.value as 'atLeast' | 'atMost')}
-                    >
-                      <option value="atLeast">At least</option>
-                      <option value="atMost">At most</option>
-                    </select>
-                    <input
-                      type="number"
-                      className="text-input"
-                      aria-label="Document count"
-                      value={documentCountValue}
-                      onChange={(event) => setDocumentCountValue(event.target.value)}
-                      min="0"
-                      placeholder="Any count"
-                    />
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="icon-button accent dataset-add-button"
-                  onClick={() => setIsModalOpen(true)}
-                  aria-label="Add dataset"
-                  title="Add or import a dataset"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 5v14M5 12h14" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                </button>
-              </div>
+              <CatalogFilterToolbar
+                accessibleName="Dataset filters"
+                searchLabel="Search datasets"
+                searchValue={datasetSearch}
+                searchPlaceholder="Name or namespace"
+                onSearchChange={setDatasetSearch}
+                sourceLabel="Source"
+                sourceValue={datasetSourceFilter}
+                sourceOptions={[{ value: 'all', label: 'All datasets' }, { value: 'public', label: 'Public' }, { value: 'custom', label: 'Custom' }]}
+                onSourceChange={(value) => setDatasetSourceFilter(value as 'all' | 'public' | 'custom')}
+                numericLabel="Documents"
+                numericValue={documentCountValue}
+                numericOperator={documentCountOperator}
+                numericPlaceholder="Any count"
+                onNumericValueChange={setDocumentCountValue}
+                onNumericOperatorChange={(value) => setDocumentCountOperator(value as 'at_least' | 'at_most')}
+                addButtonLabel="Add dataset"
+                addButtonTitle="Add or import a dataset"
+                onAdd={() => setIsModalOpen(true)}
+              />
             </div>
             <div className="dataset-preview-panel">
               <header className="panel-header">
@@ -712,7 +670,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
               <div className="dataset-preview-body">
                 {datasetsLoading ? (
                   <div className="dataset-preview-empty">Loading datasets...</div>
-                ) : availableDatasets.length === 0 ? (
+                ) : availableDatasets.length === 0 && !datasetsInitialized ? (
                   <>
                     <div className="dataset-preview-table dataset-preview-table--empty" role="table" aria-label="Available datasets">
                       <div className="dataset-preview-row dataset-preview-row--header" role="row">
@@ -723,11 +681,14 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                     </div>
                     <p className="dataset-preview-empty-label">No datasets available.</p>
                   </>
-                ) : filteredDatasets.length === 0 ? (
-                  <p className="dataset-preview-empty-label">No datasets match the current filters.</p>
+                ) : availableDatasets.length === 0 ? (
+                  <p className="dataset-preview-empty-label">
+                    {datasetSearch.trim() || documentCountValue.trim() || datasetSourceFilter !== 'all'
+                      ? 'No datasets match the current filters.' : 'No datasets available.'}
+                  </p>
                 ) : (
                   <div className="dataset-preview-table">
-                    {filteredDatasets.map((dataset) => {
+                    {availableDatasets.map((dataset) => {
                       const isValidating = activeValidationDataset === dataset.dataset_name;
                       const isLoadingReport = activeReportLoadDataset === dataset.dataset_name;
                       const isRemoving = removingDataset === dataset.dataset_name;

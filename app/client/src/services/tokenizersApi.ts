@@ -3,6 +3,7 @@ import type {
     TokenizerDownloadRequest,
     TokenizerDownloadResponse,
     TokenizerListResponse,
+    TokenizerCatalogFilters,
     TokenizerReportResponse,
     TokenizerScanResponse,
     TokenizerValidationGenerateRequest,
@@ -40,8 +41,14 @@ export async function scanTokenizers(limit?: number): Promise<TokenizerScanRespo
 /**
  * List persisted tokenizers available for benchmarking.
  */
-export async function fetchDownloadedTokenizers(): Promise<TokenizerListResponse> {
-    const response = await fetch(API_ENDPOINTS.TOKENIZERS_LIST);
+export async function fetchDownloadedTokenizers(filters: TokenizerCatalogFilters = {}): Promise<TokenizerListResponse> {
+    const params = new URLSearchParams();
+    if (filters.search?.trim()) params.set('search', filters.search.trim());
+    if (filters.source && filters.source !== 'all') params.set('source', filters.source);
+    if (filters.vocabulary_size_operator) params.set('vocabulary_size_operator', filters.vocabulary_size_operator);
+    if (filters.vocabulary_size !== undefined) params.set('vocabulary_size', String(filters.vocabulary_size));
+    const query = params.toString();
+    const response = await fetch(`${API_ENDPOINTS.TOKENIZERS_LIST}${query ? `?${query}` : ''}`);
     return readJsonResponse(response, 'Failed to list tokenizers');
 }
 

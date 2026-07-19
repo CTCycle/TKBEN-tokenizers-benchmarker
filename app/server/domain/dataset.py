@@ -292,6 +292,7 @@ class DatasetListResponse(BaseModel):
     datasets: list[DatasetPreview] = Field(
         default_factory=list, description="List of dataset names in the database"
     )
+    count: int = Field(default=0, ge=0)
 
 ###############################################################################
 class DatasetDeleteResponse(BaseModel):

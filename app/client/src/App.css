@@ -438,7 +438,8 @@
   max-width: 60ch;
 }
 
-.dataset-filter-toolbar {
+.dataset-filter-toolbar,
+.catalog-filter-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
   gap: 8px;
@@ -448,23 +449,27 @@
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.dataset-filter-field {
+.dataset-filter-field,
+.catalog-filter-field {
   display: flex;
   flex-direction: column;
   gap: 5px;
   min-width: 0;
 }
 
-.dataset-filter-field .field-label {
+.dataset-filter-field .field-label,
+.catalog-filter-field .field-label {
   font-size: 10px;
   letter-spacing: 0.08em;
 }
 
-.dataset-filter-field--search {
+.dataset-filter-field--search,
+.catalog-filter-field--search {
   grid-column: 1 / -1;
 }
 
-.dataset-filter-field .text-input {
+.dataset-filter-field .text-input,
+.catalog-filter-field .text-input {
   width: 100%;
   min-width: 0;
   height: 32px;
@@ -472,20 +477,23 @@
   font-size: 12px;
 }
 
-.dataset-document-filter-control {
+.dataset-document-filter-control,
+.catalog-number-filter-control {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
   gap: 6px;
   min-width: 0;
 }
 
-.dataset-add-button {
+.dataset-add-button,
+.catalog-add-button {
   width: 34px;
   height: 34px;
   padding: 0;
 }
 
-.dataset-add-button svg {
+.dataset-add-button svg,
+.catalog-add-button svg {
   width: 16px;
   height: 16px;
 }
@@ -1513,6 +1521,17 @@
 .tokenizer-dashboard-empty {
   min-height: 260px;
   justify-content: center;
+}
+
+.tokenizer-preview-row.selected {
+  background: rgba(94, 234, 212, 0.08);
+  border-color: rgba(94, 234, 212, 0.35);
+}
+
+.tokenizer-preview-vocabulary {
+  min-width: 70px;
+  color: var(--color-muted);
+  text-align: right;
 }
 
 .tokenizer-empty-label {
@@ -3170,11 +3189,13 @@ select:focus-visible {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .dataset-filter-toolbar {
+  .dataset-filter-toolbar,
+  .catalog-filter-toolbar {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
-  .dataset-add-button {
+  .dataset-add-button,
+  .catalog-add-button {
     justify-self: end;
   }
 

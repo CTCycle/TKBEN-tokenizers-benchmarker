@@ -1,5 +1,5 @@
 # Backend API
-Last updated: 2026-06-03
+Last updated: 2026-07-19
 
 ## API Prefix
 All routers are included with `prefix="/api"` during backend startup.
@@ -8,7 +8,7 @@ All routers are included with `prefix="/api"` during backend startup.
 - `GET /api/health`
 
 ## Datasets
-- `GET /api/datasets/list`
+- `GET /api/datasets/list` — optional `search`, `source=all|public|custom`, `document_count_operator=at_least|at_most`, and non-negative `document_count` filters.
 - `GET /api/datasets/metrics/catalog`
 - `POST /api/datasets/download`
 - `POST /api/datasets/upload`
@@ -20,7 +20,7 @@ All routers are included with `prefix="/api"` during backend startup.
 ## Tokenizers
 - `GET /api/tokenizers/settings`
 - `GET /api/tokenizers/scan`
-- `GET /api/tokenizers/list`
+- `GET /api/tokenizers/list` — optional `search`, `source=all|huggingface|custom`, `vocabulary_size_operator=at_least|at_most`, and non-negative `vocabulary_size` filters.
 - `POST /api/tokenizers/download`
 - `POST /api/tokenizers/reports/generate`
 - `GET /api/tokenizers/reports/latest`
