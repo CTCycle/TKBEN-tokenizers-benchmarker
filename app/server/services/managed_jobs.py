@@ -8,21 +8,17 @@ from server.configurations import get_server_settings
 from server.domain.jobs import JobStartResponse
 from server.services.jobs import JobManager
 
-
 ###############################################################################
 class ManagedJobError(Exception):
     """Base error for managed-job initialization decisions."""
-
 
 ###############################################################################
 class ManagedJobConflictError(ManagedJobError):
     """Raised when another job of the same type is active."""
 
-
 ###############################################################################
 class ManagedJobInitializationError(ManagedJobError):
     """Raised when a started job cannot be observed immediately."""
-
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -34,7 +30,6 @@ class ManagedJobSpec:
     initialization_detail: str
     message: str
     check_conflict: bool = True
-
 
 ###############################################################################
 class ManagedJobService:

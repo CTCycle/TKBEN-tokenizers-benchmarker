@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session
 from server.repositories.queries.data import DataRepositoryQueries
 from server.repositories.schemas.models import Tokenizer, TokenizerReport, TokenizerVocabulary
 
-
 ###############################################################################
 def _parse_timestamp(value: object) -> pd.Timestamp | None:
     if value is None:

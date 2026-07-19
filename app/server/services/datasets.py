@@ -798,8 +798,19 @@ class DatasetService(DatasetServiceOperationsMixin):
         return self.dataset_serializer.list_dataset_names()
 
     # -------------------------------------------------------------------------
-    def get_dataset_previews(self) -> list[dict[str, Any]]:
-        return self.dataset_serializer.list_dataset_previews()
+    def get_dataset_previews(
+        self,
+        search: str | None = None,
+        source: str = "all",
+        document_count_operator: str = "at_least",
+        document_count: int | None = None,
+    ) -> list[dict[str, Any]]:
+        return self.dataset_serializer.list_dataset_previews(
+            search=search,
+            source=source,
+            document_count_operator=document_count_operator,
+            document_count=document_count,
+        )
 
     # -------------------------------------------------------------------------
     def get_metric_catalog(self) -> list[dict[str, Any]]:

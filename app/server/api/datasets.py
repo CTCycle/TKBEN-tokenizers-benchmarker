@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, File, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile, status
 
 from server.domain.dataset import (
     DatasetAnalysisRequest,
@@ -50,11 +51,23 @@ router = APIRouter(prefix=API_ROUTER_PREFIX_DATASETS, tags=["datasets"])
     response_model=DatasetListResponse,
     status_code=status.HTTP_200_OK,
 )
-async def list_datasets() -> DatasetListResponse:
+async def list_datasets(
+    search: Annotated[str | None, Query(max_length=160)] = None,
+    source: Annotated[Literal["all", "public", "custom"], Query()] = "all",
+    document_count_operator: Annotated[Literal["at_least", "at_most"], Query()] = "at_least",
+    document_count: Annotated[int | None, Query(ge=0)] = None,
+) -> DatasetListResponse:
     service = DatasetService()
-    datasets = await asyncio.to_thread(service.get_dataset_previews)
+    datasets = await asyncio.to_thread(
+        service.get_dataset_previews,
+        search=search,
+        source=source,
+        document_count_operator=document_count_operator,
+        document_count=document_count,
+    )
     return DatasetListResponse(
-        datasets=[DatasetPreview.model_validate(dataset) for dataset in datasets]
+        datasets=[DatasetPreview.model_validate(dataset) for dataset in datasets],
+        count=len(datasets),
     )
 
 ###############################################################################

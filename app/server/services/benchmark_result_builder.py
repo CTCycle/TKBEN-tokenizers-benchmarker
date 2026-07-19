@@ -23,7 +23,6 @@ from server.domain.benchmarks import (
     BenchmarkTokenizerResult,
 )
 
-
 ###############################################################################
 class BenchmarkResultBuilder:
 

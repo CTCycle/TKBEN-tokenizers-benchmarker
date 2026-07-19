@@ -23,7 +23,6 @@ from server.repositories.schemas.models import (
 
 K_ERROR = "k error"
 
-
 ###############################################################################
 def _parse_timestamp(value: object) -> pd.Timestamp | None:
     if value is None:
@@ -86,13 +85,34 @@ class DatasetSerializer:
         return df_copy
 
     # -------------------------------------------------------------------------
-    def list_dataset_previews(self) -> list[dict[str, Any]]:
+    def list_dataset_previews(
+        self,
+        search: str | None = None,
+        source: str = "all",
+        document_count_operator: str = "at_least",
+        document_count: int | None = None,
+    ) -> list[dict[str, Any]]:
+        conditions = [Dataset.status == "ready"]
+        normalized_search = (search or "").strip().lower()
+        if normalized_search:
+            conditions.append(func.lower(Dataset.name).contains(normalized_search))
+        if source == "custom":
+            conditions.append(Dataset.name.like("custom/%"))
+        elif source == "public":
+            conditions.append(~Dataset.name.like("custom/%"))
+        if document_count is not None:
+            conditions.append(
+                Dataset.document_count <= document_count
+                if document_count_operator == "at_most"
+                else Dataset.document_count >= document_count
+            )
+
         stmt = (
             select(
                 Dataset.name.label("dataset_name"),
                 Dataset.document_count,
             )
-            .where(Dataset.status == "ready")
+            .where(*conditions)
             .order_by(Dataset.name.asc())
         )
         with self._session() as session:

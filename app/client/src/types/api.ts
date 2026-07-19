@@ -33,6 +33,9 @@ export interface TokenizerDownloadResponse {
  */
 export interface TokenizerListItem {
     tokenizer_name: string;
+    source: 'huggingface' | 'custom';
+    has_report: boolean;
+    vocabulary_size: number | null;
 }
 
 /**
@@ -236,6 +239,21 @@ export interface DatasetPreviewItem {
  */
 export interface DatasetListResponse {
     datasets: DatasetPreviewItem[];
+    count: number;
+}
+
+export type ComparisonOperator = 'at_least' | 'at_most';
+export interface DatasetCatalogFilters {
+    search?: string;
+    source?: 'all' | 'public' | 'custom';
+    document_count_operator?: ComparisonOperator;
+    document_count?: number;
+}
+export interface TokenizerCatalogFilters {
+    search?: string;
+    source?: 'all' | 'huggingface' | 'custom';
+    vocabulary_size_operator?: ComparisonOperator;
+    vocabulary_size?: number;
 }
 
 /**
