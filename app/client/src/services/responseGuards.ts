@@ -15,10 +15,28 @@ const readNumber = (record: JsonRecord, key: string): number | null => {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 };
 
+const formatErrorDetail = (detail: unknown, fallback: string): string => {
+  if (typeof detail === 'string') return detail;
+  if (!Array.isArray(detail)) return fallback;
+
+  const messages = detail.flatMap((item) => {
+    if (!isRecord(item)) return [];
+    const message = readString(item, 'msg');
+    if (!message) return [];
+    const location = Array.isArray(item.loc)
+      ? item.loc.filter((part): part is string | number =>
+        typeof part === 'string' || typeof part === 'number').join('.')
+      : '';
+    return [location ? `${location}: ${message}` : message];
+  });
+
+  return messages.length > 0 ? messages.join(' ') : fallback;
+};
+
 const readErrorDetail = async (response: Response, fallback: string): Promise<string> => {
   const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
   const detail = isRecord(errorData) ? errorData.detail : null;
-  return detail ? String(detail) : fallback;
+  return formatErrorDetail(detail, fallback);
 };
 
 export const readJsonResponse = async <T>(

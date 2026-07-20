@@ -693,28 +693,24 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                       return (
                         <div
                           key={dataset.dataset_name}
-                          role="button"
-                          tabIndex={0}
-                          aria-pressed={isSelectedDataset}
                           className={`dataset-preview-row${isSelectedDataset ? ' selected' : ''}`}
-                          onClick={() => {
-                            if (!isValidating && !isLoadingReport && !isRemoving) {
-                              selectDatasetAndLoadReport(dataset.dataset_name);
-                            }
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                              event.preventDefault();
+                        >
+                          <button
+                            type="button"
+                            className="dataset-preview-select"
+                            aria-pressed={isSelectedDataset}
+                            onClick={() => {
                               if (!isValidating && !isLoadingReport && !isRemoving) {
                                 selectDatasetAndLoadReport(dataset.dataset_name);
                               }
-                            }
-                          }}
-                        >
-                          <span className="dataset-preview-name">{dataset.dataset_name}</span>
-                          <span className="dataset-preview-count">
-                            {normalizeCount(dataset.document_count)}
-                          </span>
+                            }}
+                            disabled={isValidating || isLoadingReport || isRemoving}
+                          >
+                            <span className="dataset-preview-name">{dataset.dataset_name}</span>
+                            <span className="dataset-preview-count">
+                              {normalizeCount(dataset.document_count)}
+                            </span>
+                          </button>
                           <div className="dataset-preview-actions dataset-preview-actions-wide">
                             <button
                               type="button"
