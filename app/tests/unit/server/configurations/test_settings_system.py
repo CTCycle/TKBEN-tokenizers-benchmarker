@@ -6,8 +6,6 @@ import os
 from pathlib import Path
 
 import pytest
-from cryptography.fernet import Fernet
-
 from server.api.keys import is_key_reveal_enabled
 from server.common.utils.encryption import get_hf_key_cipher
 from server.configurations import environment as bootstrap
@@ -392,14 +390,16 @@ def test_allow_key_reveal_reads_environment(monkeypatch: pytest.MonkeyPatch) -> 
     assert is_key_reveal_enabled() is False
 
 ###############################################################################
-def test_hf_key_cipher_reads_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    key = Fernet.generate_key().decode("utf-8")
-    monkeypatch.setenv("HF_KEYS_ENCRYPTION_KEY", key)
+def test_hf_key_cipher_seeds_external_material_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    material_path = tmp_path / "hf-key-material.json"
+    monkeypatch.setenv("HF_KEYS_ENCRYPTION_MATERIAL_FILE", str(material_path))
 
     cipher = get_hf_key_cipher()
     encrypted = cipher.encrypt("hf_test")
     assert cipher.decrypt(encrypted) == "hf_test"
+    assert material_path.is_file()
 
-    monkeypatch.delenv("HF_KEYS_ENCRYPTION_KEY", raising=False)
-    with pytest.raises(RuntimeError, match="HF_KEYS_ENCRYPTION_KEY"):
-        _ = get_hf_key_cipher()
+    second_cipher = get_hf_key_cipher()
+    assert second_cipher.decrypt(encrypted) == "hf_test"

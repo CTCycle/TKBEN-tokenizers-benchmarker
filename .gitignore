@@ -56,3 +56,4 @@ Thumbs.db
 
 # Local configuration
 settings/.env
+app/resources/hf-key-material.json
