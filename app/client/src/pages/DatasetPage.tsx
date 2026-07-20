@@ -409,7 +409,6 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
     fileInputRef,
     availableDatasets,
     datasetsLoading,
-    datasetsInitialized,
     activeValidationDataset,
     activeReportLoadDataset,
     removingDataset,
@@ -670,7 +669,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
               <div className="dataset-preview-body">
                 {datasetsLoading ? (
                   <div className="dataset-preview-empty">Loading datasets...</div>
-                ) : availableDatasets.length === 0 && !datasetsInitialized ? (
+                ) : availableDatasets.length === 0 ? (
                   <>
                     <div className="dataset-preview-table dataset-preview-table--empty" role="table" aria-label="Available datasets">
                       <div className="dataset-preview-row dataset-preview-row--header" role="row">
@@ -679,13 +678,11 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                         <span role="columnheader">Actions</span>
                       </div>
                     </div>
-                    <p className="dataset-preview-empty-label">No datasets available.</p>
+                    <p className="dataset-preview-empty-label">
+                      {datasetSearch.trim() || documentCountValue.trim() || datasetSourceFilter !== 'all'
+                        ? 'No datasets match the current filters.' : 'No datasets available.'}
+                    </p>
                   </>
-                ) : availableDatasets.length === 0 ? (
-                  <p className="dataset-preview-empty-label">
-                    {datasetSearch.trim() || documentCountValue.trim() || datasetSourceFilter !== 'all'
-                      ? 'No datasets match the current filters.' : 'No datasets available.'}
-                  </p>
                 ) : (
                   <div className="dataset-preview-table">
                     {availableDatasets.map((dataset) => {

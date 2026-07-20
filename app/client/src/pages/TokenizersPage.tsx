@@ -462,7 +462,7 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
                 <div>
                   <p className="panel-label">Tokenizer Preview</p>
                   <p className="panel-description">
-                    Review selected tokenizers and open persisted reports (auto-generates if missing).
+                    Review selected tokenizers and open persisted reports.
                   </p>
                 </div>
                 <button
@@ -480,10 +480,19 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
                 {tokenizersLoading && availableTokenizers.length === 0 ? (
                   <p className="tokenizer-preview-empty-label">Loading tokenizers...</p>
                 ) : availableTokenizers.length === 0 ? (
-                  <p className="tokenizer-preview-empty-label">
-                    {tokenizerSearch.trim() || vocabularySizeValue.trim() || tokenizerSourceFilter !== 'all'
-                      ? 'No tokenizers match the current filters.' : 'No tokenizers available.'}
-                  </p>
+                  <>
+                    <div className="tokenizer-preview-table tokenizer-preview-table--empty" role="table" aria-label="Available tokenizers">
+                      <div className="tokenizer-preview-row--header" role="row">
+                        <span role="columnheader">Tokenizer</span>
+                        <span role="columnheader">Vocabulary</span>
+                        <span role="columnheader">Actions</span>
+                      </div>
+                    </div>
+                    <p className="tokenizer-preview-empty-label">
+                      {tokenizerSearch.trim() || vocabularySizeValue.trim() || tokenizerSourceFilter !== 'all'
+                        ? 'No tokenizers match the current filters.' : 'No tokenizers available.'}
+                    </p>
+                  </>
                 ) : (
                   <div className="tokenizer-preview-list">
                     {availableTokenizers.map((item) => {

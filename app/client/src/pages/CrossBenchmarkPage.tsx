@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import {
   Bar,
   BarChart,
@@ -379,6 +379,21 @@ const CrossBenchmarkPage = () => {
     />
   );
 
+  const renderEmptyChartPreview = (message: string) => (
+    <div className="cross-benchmark-empty-chart" role="img" aria-label={message}>
+      <div className="cross-benchmark-empty-chart-plot" aria-hidden="true">
+        {[28, 52, 40, 68, 46, 60].map((height, index) => (
+          <span
+            key={`${message}-${index}`}
+            className="cross-benchmark-empty-chart-bar"
+            style={{ '--empty-chart-bar-height': `${height}%` } as CSSProperties}
+          />
+        ))}
+      </div>
+      <p>{message}</p>
+    </div>
+  );
+
   return (
     <div className="page-scroll cross-benchmark-scroll">
       <div className="page-grid cross-benchmark-page">
@@ -398,28 +413,35 @@ const CrossBenchmarkPage = () => {
             <div className="cross-benchmark-dashboard-controls">
               <div className="cross-benchmark-report-picker">
                 <label className="field-label" htmlFor="benchmark-report-selector">Report</label>
-                <select
-                  id="benchmark-report-selector"
-                  className="text-input cross-benchmark-report-select"
-                  value={selectedReportId ?? ''}
-                  onChange={(event) => {
-                    const nextReportId = Number(event.target.value);
-                    if (Number.isFinite(nextReportId) && nextReportId > 0) {
-                      void loadReportById(nextReportId);
-                    }
-                  }}
-                  disabled={reports.length === 0 || loadingReport}
-                >
-                  {reports.length === 0 ? (
-                    <option value="">No reports available</option>
-                  ) : (
-                    reports.map((report) => (
-                      <option key={report.report_id} value={report.report_id}>
-                        #{report.report_id} - {report.run_name || 'unnamed run'} - {report.dataset_name}
-                      </option>
-                    ))
+                <div className="cross-benchmark-report-select-wrap">
+                  <select
+                    id="benchmark-report-selector"
+                    className={`text-input cross-benchmark-report-select${reports.length === 0 ? ' cross-benchmark-report-select--empty' : ''}`}
+                    value={selectedReportId ?? ''}
+                    onChange={(event) => {
+                      const nextReportId = Number(event.target.value);
+                      if (Number.isFinite(nextReportId) && nextReportId > 0) {
+                        void loadReportById(nextReportId);
+                      }
+                    }}
+                    disabled={reports.length === 0 || loadingReport}
+                  >
+                    {reports.length === 0 ? (
+                      <option value="">No reports available</option>
+                    ) : (
+                      reports.map((report) => (
+                        <option key={report.report_id} value={report.report_id}>
+                          #{report.report_id} - {report.run_name || 'unnamed run'} - {report.dataset_name}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  {reports.length === 0 && (
+                    <span className="cross-benchmark-report-empty-label" aria-hidden="true">
+                      No reports available
+                    </span>
                   )}
-                </select>
+                </div>
               </div>
               <button
                 type="button"
@@ -478,6 +500,35 @@ const CrossBenchmarkPage = () => {
               </div>
               <div className="cross-benchmark-empty-state" role="status">
                 No benchmark report loaded. Use Start benchmark or select an existing report.
+              </div>
+              <div className="cross-benchmark-chart-grid cross-benchmark-chart-grid--empty">
+                {[
+                  ['Tokenization Speed', 'Tokenization speed unavailable'],
+                  ['Character Throughput', 'Character throughput unavailable'],
+                  ['Fidelity and Heuristic Coverage', 'Global rate metrics unavailable'],
+                  ['Vocabulary Comparison', 'Vocabulary metrics unavailable'],
+                ].map(([title, message]) => (
+                  <article key={title} className="cross-benchmark-chart-card">
+                    <div className="cross-benchmark-chart-header">
+                      <p className="panel-label">{title}</p>
+                    </div>
+                    {renderEmptyChartPreview(message)}
+                  </article>
+                ))}
+              </div>
+              <div className="cross-benchmark-chart-grid cross-benchmark-chart-grid-secondary cross-benchmark-chart-grid--empty">
+                <article className="cross-benchmark-chart-card">
+                  <div className="cross-benchmark-chart-header">
+                    <p className="panel-label">Fragmentation by Word-Length Bucket</p>
+                  </div>
+                  {renderEmptyChartPreview('Fragmentation distribution unavailable')}
+                </article>
+                <article className="cross-benchmark-chart-card">
+                  <div className="cross-benchmark-chart-header">
+                    <p className="panel-label">Latency Distribution (Box Plot)</p>
+                  </div>
+                  {renderEmptyChartPreview('Latency distribution unavailable')}
+                </article>
               </div>
             </>
           )}
