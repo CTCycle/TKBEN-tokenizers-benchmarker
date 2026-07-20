@@ -1,5 +1,5 @@
 # Execution and Data Flow
-Last updated: 2026-07-15
+Last updated: 2026-07-20
 
 ## Layered Architecture
 Primary backend flow:
@@ -40,6 +40,12 @@ Primary backend flow:
   - Canonical dataset and tokenizer-report persistence serialization boundaries.
 - `repositories/frequencies.py`
   - Temporary SQLite-backed frequency persistence used by metrics services for large vocabularies.
+
+## Catalog Filtering Flow
+- Dataset and tokenizer catalog controls are rendered by the shared frontend `CatalogFilterToolbar`.
+- Pages keep filter input state locally and debounce changes by 250 ms before calling the typed API service.
+- The backend applies search, source, and numeric comparison filters in the catalog service and returns the filtered items plus a result count.
+- Dataset/tokenizer catalog refreshes use request sequence guards so an older response cannot replace a newer filter result; the filter state only changes catalog visibility, not benchmark selection.
 
 ## Async and Sync Behavior
 - FastAPI endpoints are mostly `async def`.

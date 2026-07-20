@@ -1,5 +1,5 @@
 # Project Overview
-Last updated: 2026-07-11
+Last updated: 2026-07-20
 
 ## Purpose
 This file is the root index for `assets/docs`. Read it first to find the narrowest topic file for the task at hand.
@@ -25,9 +25,9 @@ This file is the root index for `assets/docs`. Read it first to find the narrowe
 - `architecture/system_overview.md`
   - Repository layout, entry points, and runtime interaction topology.
 - `architecture/backend_api.md`
-  - API surface and endpoint catalog.
+  - API surface, catalog filter parameters, and response contracts.
 - `architecture/execution_and_data_flow.md`
-  - Layered backend flow, module responsibilities, and async/sync behavior.
+  - Layered backend flow, catalog filtering, module responsibilities, and async/sync behavior.
 - `architecture/persistence.md`
   - Data storage model and persisted artifact locations.
 - `architecture/benchmark_contract.md`
@@ -37,7 +37,7 @@ This file is the root index for `assets/docs`. Read it first to find the narrowe
 - `coding/python.md`
   - Python runtime, typing, validation, async, and structure guidance.
 - `coding/typescript.md`
-  - Frontend TypeScript, state, UI, and styling guidance.
+  - Frontend TypeScript, typed catalog state, UI, and styling guidance.
 - `coding/testing_and_quality.md`
   - Testing, linting, and cross-language quality gates.
 
@@ -55,7 +55,7 @@ This file is the root index for `assets/docs`. Read it first to find the narrowe
 - `ui/design_tokens.md`
   - Typography, layout, spacing, and color system.
 - `ui/components_and_patterns.md`
-  - Navigation, controls, forms, overlays, and feedback states.
+  - Branded navigation, catalog controls, forms, overlays, and feedback states.
 - `ui/experience.md`
   - Page structure, UX rules, responsiveness, accessibility, and design principles.
 - `ui/ui_standards.md`

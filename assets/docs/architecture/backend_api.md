@@ -1,5 +1,5 @@
 # Backend API
-Last updated: 2026-07-19
+Last updated: 2026-07-20
 
 ## API Prefix
 All routers are included with `prefix="/api"` during backend startup.
@@ -8,7 +8,7 @@ All routers are included with `prefix="/api"` during backend startup.
 - `GET /api/health`
 
 ## Datasets
-- `GET /api/datasets/list` — optional `search`, `source=all|public|custom`, `document_count_operator=at_least|at_most`, and non-negative `document_count` filters.
+- `GET /api/datasets/list` — returns `{datasets, count}`; optional `search` (trimmed, max 160 characters), `source=all|public|custom`, `document_count_operator=at_least|at_most`, and non-negative `document_count` filters. Filtering is applied server-side to the catalog.
 - `GET /api/datasets/metrics/catalog`
 - `POST /api/datasets/download`
 - `POST /api/datasets/upload`
@@ -20,7 +20,7 @@ All routers are included with `prefix="/api"` during backend startup.
 ## Tokenizers
 - `GET /api/tokenizers/settings`
 - `GET /api/tokenizers/scan`
-- `GET /api/tokenizers/list` — optional `search`, `source=all|huggingface|custom`, `vocabulary_size_operator=at_least|at_most`, and non-negative `vocabulary_size` filters.
+- `GET /api/tokenizers/list` — returns `{tokenizers, count}`; each item includes `tokenizer_name`, `source=huggingface|custom`, `has_report`, and nullable `vocabulary_size`. Optional `search` (trimmed, max 160 characters), `source=all|huggingface|custom`, `vocabulary_size_operator=at_least|at_most`, and non-negative `vocabulary_size` filters are applied server-side.
 - `POST /api/tokenizers/download`
 - `POST /api/tokenizers/reports/generate`
 - `GET /api/tokenizers/reports/latest`

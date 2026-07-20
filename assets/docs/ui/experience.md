@@ -1,5 +1,5 @@
 # Experience
-Last updated: 2026-07-12
+Last updated: 2026-07-20
 
 ## Page Structure
 - `DatasetPage`
@@ -9,11 +9,16 @@ Last updated: 2026-07-12
 - `CrossBenchmarkPage`
   - Run and open benchmark reports and compare tokenizer metrics.
 - `AppShell`
-  - Global header, tabs, and Hugging Face key manager access.
+  - Branded header with logo, integrated primary tabs, and Hugging Face key manager access.
 
 Navigation hierarchy:
 - Root redirects to `/dataset`.
 - Unknown routes redirect to `/dataset`.
+
+Catalog interactions:
+- Dataset and tokenizer preview catalogs support debounced search, source filtering, and numeric threshold filtering.
+- Filtering refreshes catalog results without changing the current benchmark selection.
+- Empty states distinguish an unfiltered empty catalog from a catalog with no matches.
 
 ## User Experience Standards
 - Maintain workflow continuity:
@@ -54,3 +59,4 @@ Required behavior:
 - Review the three primary routes at 1920x1080, 1440x900, 1024x768, and 390x844.
 - Check shell alignment, page gutters, panel edges, chart title/plot alignment, contained table overflow, and dialog viewport fit.
 - Treat populated, empty, loading, error, and long-identifier states as required visual states; visual polish must not hide existing diagnostics or controls.
+- Include filtered catalog loading and no-match states, plus the integrated header navigation and logo, in route-level visual review.

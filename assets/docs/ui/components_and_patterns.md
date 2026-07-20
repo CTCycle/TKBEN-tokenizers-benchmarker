@@ -1,5 +1,5 @@
 # Components and Patterns
-Last updated: 2026-07-19
+Last updated: 2026-07-20
 
 ## Navigation
 - Top tab navigation for:
@@ -7,6 +7,7 @@ Last updated: 2026-07-19
   - `/tokenizers`
   - `/cross-benchmark`
 - Active state must be visually explicit with `app-tab--active` and `aria-current="page"`.
+- The route tabs are integrated into the branded header beside the `tkben-logo.png` mark; the header also exposes the Hugging Face key manager as an icon button.
 
 ## Buttons
 - Primary action:
@@ -47,3 +48,5 @@ Last updated: 2026-07-19
 - Tokenizer report and vocabulary panels use CSS Grid stretch alignment; JavaScript height measurement is not required.
 - Chart cards use centralized heights and legend spacing so adjacent plots keep consistent geometry.
 - Dataset and tokenizer catalogs use the shared stateless `CatalogFilterToolbar`; search, source, and numeric filters are server-driven and must not alter benchmark selection.
+- Catalog filter changes are debounced, and filtered catalogs need distinct loading, no-match, and no-data messaging.
+- Tokenizer preview rows expose source and vocabulary metadata with independent report and benchmark-selection actions; custom tokenizers cannot open generated reports.
