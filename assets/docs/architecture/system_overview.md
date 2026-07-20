@@ -1,5 +1,5 @@
 # System Overview
-Last updated: 2026-07-15
+Last updated: 2026-07-20
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
@@ -29,6 +29,8 @@ Source-level structure, with generated folders omitted:
 │  ├─ client/
 │  │  ├─ package.json
 │  │  ├─ vite.config.ts
+│  │  ├─ public/
+│  │  │  └─ tkben-logo.png
 │  │  ├─ src/
 │  │  └─ dist/
 │  ├─ server/
@@ -54,6 +56,8 @@ Source-level structure, with generated folders omitted:
   - `app/client/src/main.tsx`
 - Frontend routing root:
   - `app/client/src/App.tsx`
+- Frontend shell:
+  - `app/client/src/components/AppShell.tsx` provides the branded header, primary route tabs, and Hugging Face key manager control.
 - Windows launcher:
   - `start_on_windows.ps1` is the single user-facing root entry point for the combined launch and maintenance menu.
 
