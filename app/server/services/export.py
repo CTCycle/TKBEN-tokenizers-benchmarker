@@ -500,16 +500,29 @@ class DashboardExportService(DashboardExportFormatting):
             pages.append(current)
 
         for page_index, page_widgets in enumerate(pages, start=1):
-            fig = plt.figure(figsize=(11.69, 8.27), constrained_layout=True)
-            grid = fig.add_gridspec(2, 2, height_ratios=[0.16, 0.84])
-            title_ax = fig.add_subplot(grid[0, :])
-            title_ax.axis("off")
-            title_ax.text(0.0, 0.82, "Benchmark Dashboard Report", fontsize=16, fontweight="bold", color="#111827")
-            title_ax.text(0.0, 0.38, f"Report: {report_name or source.get('dataset_name') or 'N/A'} | Page {page_index} of {len(pages)}", fontsize=10, color=MUTED_TEXT)
+            fig = plt.figure(figsize=(11.69, 8.27))
+            fig.text(
+                0.06,
+                0.94,
+                "Benchmark Dashboard Report",
+                fontsize=16,
+                fontweight="bold",
+                color="#111827",
+            )
+            fig.text(
+                0.06,
+                0.89,
+                f"Report: {report_name or source.get('dataset_name') or 'N/A'} | Page {page_index} of {len(pages)}",
+                fontsize=10,
+                color=MUTED_TEXT,
+            )
             if len(page_widgets) == 1:
-                axes = [fig.add_subplot(grid[1, :])]
+                axes = [fig.add_axes([0.07, 0.1, 0.88, 0.66])]
             else:
-                axes = [fig.add_subplot(grid[1, 0]), fig.add_subplot(grid[1, 1])]
+                axes = [
+                    fig.add_axes([0.07, 0.1, 0.4, 0.66]),
+                    fig.add_axes([0.55, 0.1, 0.4, 0.66]),
+                ]
             for axis, widget in zip(axes, page_widgets, strict=True):
                 self._render_normalized_benchmark_widget(axis, widget)
             pdf.savefig(fig)
@@ -519,11 +532,14 @@ class DashboardExportService(DashboardExportFormatting):
     # -------------------------------------------------------------------------
     def _render_normalized_benchmark_widget(self, ax: Any, widget: dict[str, Any]) -> None:
         label = str(widget.get("label") or "Metric")
-        description = str(widget.get("description") or "")
         unit = str(widget.get("unit") or "")
-        ax.set_title(label, fontsize=12, fontweight="bold", loc="left")
-        if description:
-            ax.text(0.0, 1.01, f"{description} ({unit})", transform=ax.transAxes, fontsize=8.5, color=MUTED_TEXT, va="bottom")
+        ax.set_title(
+            f"{label} ({unit})" if unit else label,
+            fontsize=12,
+            fontweight="bold",
+            loc="left",
+            pad=10,
+        )
         visualization = widget.get("visualization")
         if visualization == "box_plot":
             rows = [row for row in widget.get("distributions", []) if isinstance(row, dict)]
