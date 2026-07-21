@@ -354,6 +354,7 @@ class BenchmarkResultBuilder:
             available_keys.update(definition.required_metric_keys)
         return BenchmarkDashboardData(widgets=widgets, available_widget_ids=[widget.widget_id for widget in widgets], available_metric_keys=[definition.key for definition in BENCHMARK_METRIC_DEFINITIONS if definition.key in available_keys], unavailable_selected_metric_keys=[key for key in selected if key not in available_keys])
 
+    # -------------------------------------------------------------------------
     def _extract_path(self, value: object, path: str | None) -> object | None:
         current = value
         for part in (path or "").split("."):
@@ -362,9 +363,11 @@ class BenchmarkResultBuilder:
             current = getattr(current, part, None)
         return current
 
+    # -------------------------------------------------------------------------
     def _is_number(self, value: object) -> bool:
         return isinstance(value, int | float) and not isinstance(value, bool) and np.isfinite(float(value))
 
+    # -------------------------------------------------------------------------
     def _distribution_summary(self, values: list[float]) -> dict[str, float | int] | None:
         finite = [value for value in values if self._is_number(value)]
         if not finite:
@@ -372,6 +375,7 @@ class BenchmarkResultBuilder:
         array = np.asarray(finite, dtype=float)
         return {"min": float(np.min(array)), "q1": float(np.percentile(array, 25)), "median": float(np.percentile(array, 50)), "q3": float(np.percentile(array, 75)), "max": float(np.max(array)), "sample_count": len(finite)}
 
+    # -------------------------------------------------------------------------
     def _dashboard_distribution_values(self, source: str, tokenizer: str, raw: dict[str, list[dict[str, object]]], stats: dict[str, BenchmarkPerDocumentTokenizerStats]) -> list[float]:
         if source == "raw_latency":
             return [(float(row["elapsed_ns"]) / 1_000_000.0) / max(1.0, float(row["documents"])) for row in raw.get(tokenizer, []) if isinstance(row, dict) and self._is_number(row.get("elapsed_ns")) and self._is_number(row.get("documents"))]

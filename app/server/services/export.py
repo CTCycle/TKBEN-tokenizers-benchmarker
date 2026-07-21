@@ -567,6 +567,8 @@ class DashboardExportService(DashboardExportFormatting):
                 ax.text(0.5, 0.5, "No metric data", ha="center", va="center", color=MUTED_TEXT)
         ax.set_ylabel(unit)
         ax.set_axisbelow(True)
+
+    # -------------------------------------------------------------------------
     def _render_legacy_benchmark_dashboard(
         self,
         pdf: PdfPages,

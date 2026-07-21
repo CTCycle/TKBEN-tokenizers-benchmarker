@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 
+###############################################################################
 class BenchmarkVisualizationKind(StrEnum):
     BAR = "bar"
     INTERVAL_BAR = "interval_bar"
@@ -12,11 +13,13 @@ class BenchmarkVisualizationKind(StrEnum):
     BUCKET_BAR = "bucket_bar"
 
 
+###############################################################################
 class BenchmarkWidgetWidth(StrEnum):
     STANDARD = "standard"
     WIDE = "wide"
 
 
+###############################################################################
 @dataclass(frozen=True)
 class BenchmarkMetricDefinition:
     key: str
@@ -37,6 +40,7 @@ class BenchmarkMetricDefinition:
     distribution_source: str | None = None
 
 
+###############################################################################
 def _definition(key: str, category_key: str, category_label: str, label: str, path: str, unit: str, display_format: str, *, default_visible: bool = False, visualization: BenchmarkVisualizationKind = BenchmarkVisualizationKind.BAR, width: BenchmarkWidgetWidth = BenchmarkWidgetWidth.STANDARD, interval_low_path: str | None = None, interval_high_path: str | None = None, distribution_source: str | None = None, required_metric_keys: tuple[str, ...] = ()) -> BenchmarkMetricDefinition:
     return BenchmarkMetricDefinition(key=key, widget_id=f"benchmark.{key}", category_key=category_key, category_label=category_label, label=label, description=label, path=path, unit=unit, display_format=display_format, default_visible=default_visible, visualization=visualization, width=width, interval_low_path=interval_low_path, interval_high_path=interval_high_path, distribution_source=distribution_source, required_metric_keys=required_metric_keys or (key,))
 
@@ -64,6 +68,7 @@ BENCHMARK_DEFINITION_BY_KEY = {definition.key: definition for definition in BENC
 BENCHMARK_DEFINITION_BY_WIDGET_ID = {definition.widget_id: definition for definition in BENCHMARK_METRIC_DEFINITIONS}
 
 
+###############################################################################
 def benchmark_metric_catalog() -> list[dict[str, object]]:
     categories: dict[str, dict[str, object]] = {}
     for definition in BENCHMARK_METRIC_DEFINITIONS:
