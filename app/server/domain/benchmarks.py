@@ -55,8 +55,8 @@ class BenchmarkLatencyMetrics(BaseModel):
 
 ###############################################################################
 class BenchmarkFidelityMetrics(BaseModel):
-    exact_round_trip_rate: float = Field(default=0.0)
-    normalized_round_trip_rate: float = Field(default=0.0)
+    exact_round_trip_rate: float | None = Field(default=None)
+    normalized_round_trip_rate: float | None = Field(default=None)
     unknown_token_rate: float | None = Field(default=None)
     byte_fallback_rate: float | None = Field(default=None)
     lossless_encodability_rate: float | None = Field(default=None)
@@ -68,19 +68,19 @@ class BenchmarkFragmentationBucket(BaseModel):
 
 ###############################################################################
 class BenchmarkFragmentationMetrics(BaseModel):
-    tokens_per_character: float = Field(default=0.0)
-    characters_per_token: float = Field(default=0.0)
-    tokens_per_byte: float = Field(default=0.0)
-    bytes_per_token: float = Field(default=0.0)
-    pieces_per_word_mean: float = Field(default=0.0)
+    tokens_per_character: float | None = Field(default=None)
+    characters_per_token: float | None = Field(default=None)
+    tokens_per_byte: float | None = Field(default=None)
+    bytes_per_token: float | None = Field(default=None)
+    pieces_per_word_mean: float | None = Field(default=None)
     fragmentation_by_word_length_bucket: list[BenchmarkFragmentationBucket] = Field(
         default_factory=list
     )
 
 ###############################################################################
 class BenchmarkResourceMetrics(BaseModel):
-    peak_rss_mb: float = Field(default=0.0)
-    memory_delta_mb: float = Field(default=0.0)
+    peak_rss_mb: float | None = Field(default=None)
+    memory_delta_mb: float | None = Field(default=None)
 
 ###############################################################################
 class BenchmarkTokenizerResult(BaseModel):

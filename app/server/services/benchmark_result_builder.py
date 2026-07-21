@@ -183,28 +183,28 @@ class BenchmarkResultBuilder:
         vocabulary_size: int,
         oov_rate: float | None,
         character_coverage: float | None,
-        round_trip_fidelity_rate: float,
-        round_trip_text_fidelity_rate: float,
-        subword_fertility: float,
-        compression_chars_per_token: float,
-        compression_bytes_per_character: float,
+        round_trip_fidelity_rate: float | None,
+        round_trip_text_fidelity_rate: float | None,
+        subword_fertility: float | None,
+        compression_chars_per_token: float | None,
+        compression_bytes_per_character: float | None,
         fragmentation_buckets: list[BenchmarkFragmentationBucket],
-        peak_rss_mb: float = 0.0,
-        memory_delta_mb: float = 0.0,
+        peak_rss_mb: float | None = None,
+        memory_delta_mb: float | None = None,
     ) -> BenchmarkTokenizerResult:
-        chars_per_token = float(compression_chars_per_token)
-        tokens_per_character = (1.0 / chars_per_token) if chars_per_token > 0 else 0.0
-        tokens_per_byte = float(compression_bytes_per_character)
-        bytes_per_token = (1.0 / tokens_per_byte) if tokens_per_byte > 0 else 0.0
+        chars_per_token = float(compression_chars_per_token) if compression_chars_per_token is not None else None
+        tokens_per_character = (1.0 / chars_per_token) if chars_per_token is not None and chars_per_token > 0 else None
+        tokens_per_byte = float(compression_bytes_per_character) if compression_bytes_per_character is not None else None
+        bytes_per_token = (1.0 / tokens_per_byte) if tokens_per_byte is not None and tokens_per_byte > 0 else None
         tokenization_speed_tps = (
             float(np.mean(trial_tokenization_speeds_tps))
             if trial_tokenization_speeds_tps
             else 0.0
         )
         ci95_half_width = self._ci95_half_width(trial_tokenization_speeds_tps)
-        latency_p50 = self._percentile(observed_latency_ms, 50.0)
-        latency_p95 = self._percentile(observed_latency_ms, 95.0)
-        latency_p99 = self._percentile(observed_latency_ms, 99.0)
+        latency_p50 = self._percentile(observed_latency_ms, 50.0) if observed_latency_ms else None
+        latency_p95 = self._percentile(observed_latency_ms, 95.0) if observed_latency_ms else None
+        latency_p99 = self._percentile(observed_latency_ms, 99.0) if observed_latency_ms else None
 
         return BenchmarkTokenizerResult(
             tokenizer=tokenizer_name,
@@ -241,8 +241,8 @@ class BenchmarkResultBuilder:
                 sample_count=int(latency_sample_count),
             ),
             fidelity=BenchmarkFidelityMetrics(
-                exact_round_trip_rate=float(round_trip_fidelity_rate),
-                normalized_round_trip_rate=float(round_trip_text_fidelity_rate),
+                exact_round_trip_rate=round_trip_fidelity_rate,
+                normalized_round_trip_rate=round_trip_text_fidelity_rate,
                 unknown_token_rate=(
                     float(oov_rate) if isinstance(oov_rate, int | float) else None
                 ),
@@ -254,16 +254,16 @@ class BenchmarkResultBuilder:
                 ),
             ),
             fragmentation=BenchmarkFragmentationMetrics(
-                tokens_per_character=float(tokens_per_character),
+                tokens_per_character=tokens_per_character,
                 characters_per_token=chars_per_token,
                 tokens_per_byte=tokens_per_byte,
-                bytes_per_token=float(bytes_per_token),
-                pieces_per_word_mean=float(subword_fertility),
+                bytes_per_token=bytes_per_token,
+                pieces_per_word_mean=subword_fertility,
                 fragmentation_by_word_length_bucket=fragmentation_buckets,
             ),
             resources=BenchmarkResourceMetrics(
-                peak_rss_mb=float(peak_rss_mb),
-                memory_delta_mb=float(memory_delta_mb),
+                peak_rss_mb=peak_rss_mb,
+                memory_delta_mb=memory_delta_mb,
             ),
         )
 

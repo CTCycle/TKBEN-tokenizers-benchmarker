@@ -434,6 +434,130 @@ class DashboardExportService(DashboardExportFormatting):
     ) -> int:
         report = self._extract_nested(payload, "report")
         source = report if report else payload
+        widgets = self._normalize_benchmark_dashboard_widgets(source, payload)
+        return self._render_normalized_benchmark_widgets(pdf, report_name, source, widgets)
+
+    # -------------------------------------------------------------------------
+    def _normalize_benchmark_dashboard_widgets(
+        self, source: dict[str, Any], payload: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        dashboard = source.get("dashboard")
+        if not isinstance(dashboard, dict):
+            return []
+        raw_widgets = dashboard.get("widgets")
+        if not isinstance(raw_widgets, list):
+            return []
+        widgets_by_id = {
+            widget.get("widget_id"): widget
+            for widget in raw_widgets
+            if isinstance(widget, dict) and isinstance(widget.get("widget_id"), str)
+        }
+        visible_ids = payload.get("visible_widget_ids")
+        ordered_ids = payload.get("ordered_widget_ids")
+        visible = visible_ids if isinstance(visible_ids, list) else list(widgets_by_id)
+        ordered = ordered_ids if isinstance(ordered_ids, list) else list(widgets_by_id)
+        visible_set = {widget_id for widget_id in visible if isinstance(widget_id, str)}
+        normalized: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for widget_id in ordered:
+            if not isinstance(widget_id, str) or widget_id in seen or widget_id not in visible_set:
+                continue
+            widget = widgets_by_id.get(widget_id)
+            if widget is not None:
+                normalized.append(widget)
+                seen.add(widget_id)
+        return normalized
+
+    # -------------------------------------------------------------------------
+    def _render_normalized_benchmark_widgets(
+        self, pdf: PdfPages, report_name: str, source: dict[str, Any], widgets: list[dict[str, Any]]
+    ) -> int:
+        if not widgets:
+            fig = plt.figure(figsize=(11.69, 8.27), constrained_layout=True)
+            ax = fig.add_subplot(111)
+            ax.axis("off")
+            ax.text(0.0, 0.92, "Benchmark Dashboard Report", fontsize=18, fontweight="bold", color="#111827")
+            ax.text(0.0, 0.74, f"Report: {report_name or source.get('dataset_name') or 'N/A'}", fontsize=11, color=MUTED_TEXT)
+            ax.text(0.5, 0.45, "No selected metric widgets are available for this export.", ha="center", va="center", color=MUTED_TEXT)
+            pdf.savefig(fig)
+            plt.close(fig)
+            return 1
+
+        pages: list[list[dict[str, Any]]] = []
+        current: list[dict[str, Any]] = []
+        for widget in widgets:
+            if widget.get("width") == "wide":
+                if current:
+                    pages.append(current)
+                pages.append([widget])
+                current = []
+            else:
+                current.append(widget)
+                if len(current) == 2:
+                    pages.append(current)
+                    current = []
+        if current:
+            pages.append(current)
+
+        for page_index, page_widgets in enumerate(pages, start=1):
+            fig = plt.figure(figsize=(11.69, 8.27), constrained_layout=True)
+            grid = fig.add_gridspec(2, 2, height_ratios=[0.16, 0.84])
+            title_ax = fig.add_subplot(grid[0, :])
+            title_ax.axis("off")
+            title_ax.text(0.0, 0.82, "Benchmark Dashboard Report", fontsize=16, fontweight="bold", color="#111827")
+            title_ax.text(0.0, 0.38, f"Report: {report_name or source.get('dataset_name') or 'N/A'} | Page {page_index} of {len(pages)}", fontsize=10, color=MUTED_TEXT)
+            if len(page_widgets) == 1:
+                axes = [fig.add_subplot(grid[1, :])]
+            else:
+                axes = [fig.add_subplot(grid[1, 0]), fig.add_subplot(grid[1, 1])]
+            for axis, widget in zip(axes, page_widgets, strict=True):
+                self._render_normalized_benchmark_widget(axis, widget)
+            pdf.savefig(fig)
+            plt.close(fig)
+        return len(pages)
+
+    # -------------------------------------------------------------------------
+    def _render_normalized_benchmark_widget(self, ax: Any, widget: dict[str, Any]) -> None:
+        label = str(widget.get("label") or "Metric")
+        description = str(widget.get("description") or "")
+        unit = str(widget.get("unit") or "")
+        ax.set_title(label, fontsize=12, fontweight="bold", loc="left")
+        if description:
+            ax.text(0.0, 1.01, f"{description} ({unit})", transform=ax.transAxes, fontsize=8.5, color=MUTED_TEXT, va="bottom")
+        visualization = widget.get("visualization")
+        if visualization == "box_plot":
+            rows = [row for row in widget.get("distributions", []) if isinstance(row, dict)]
+            if rows:
+                labels = [self._short_name(str(row.get("tokenizer") or "")) for row in rows]
+                values = [[self._to_number(row.get(key)) for key in ("min", "q1", "median", "q3", "max")] for row in rows]
+                ax.boxplot(values, tick_labels=labels, vert=False)
+            else:
+                ax.text(0.5, 0.5, "No distribution data", ha="center", va="center", color=MUTED_TEXT)
+        else:
+            rows = widget.get("buckets") if visualization == "bucket_bar" else widget.get("points")
+            rows = [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
+            if rows:
+                labels = [self._short_name(str(row.get("tokenizer") or "")) + (f" - {row.get('bucket')}" if visualization == "bucket_bar" else "") for row in rows]
+                values = [self._to_number(row.get("value")) for row in rows]
+                ax.bar(labels, values, color=TERTIARY_COLOR if visualization == "bucket_bar" else SECONDARY_COLOR)
+                if visualization == "interval_bar":
+                    lows = [self._to_number(row.get("interval_low")) for row in rows]
+                    highs = [self._to_number(row.get("interval_high")) for row in rows]
+                    errors = [[max(0.0, value - low) for value, low in zip(values, lows, strict=True)], [max(0.0, high - value) for value, high in zip(values, highs, strict=True)]]
+                    ax.errorbar(labels, values, yerr=errors, fmt="none", ecolor="#111827", capsize=3)
+                ax.tick_params(axis="x", rotation=35, labelsize=8)
+                ax.grid(axis="y", alpha=0.25)
+            else:
+                ax.text(0.5, 0.5, "No metric data", ha="center", va="center", color=MUTED_TEXT)
+        ax.set_ylabel(unit)
+        ax.set_axisbelow(True)
+    def _render_legacy_benchmark_dashboard(
+        self,
+        pdf: PdfPages,
+        report_name: str,
+        payload: dict[str, Any],
+        source: dict[str, Any],
+    ) -> int:
         tokenizer_results = source.get("tokenizer_results")
         if not isinstance(tokenizer_results, list):
             tokenizer_results = []
