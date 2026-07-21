@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 from server.domain.benchmarks import (
-    BenchmarkChartData,
+    BenchmarkDashboardData,
     BenchmarkFragmentationBucket,
     BenchmarkHardwareProfile,
     BenchmarkPerDocumentTokenizerStats,
@@ -21,6 +21,7 @@ from server.domain.benchmarks import (
     BenchmarkTokenizerResult,
     BenchmarkTrialSummary,
 )
+from server.common.constants import BENCHMARK_REPORT_VERSION, BENCHMARK_SCHEMA_VERSION
 from server.common.utils.logger import logger
 from server.domain.benchmark_observations import TokenizerRunConfig
 from server.services.benchmark_result_builder import BenchmarkResultBuilder
@@ -163,7 +164,7 @@ class BenchmarkServiceExecutionMixin:
                     hardware_profile=BenchmarkHardwareProfile(),
                     trial_summary=BenchmarkTrialSummary(),
                     tokenizer_results=[],
-                    chart_data=BenchmarkChartData(),
+                    dashboard=BenchmarkDashboardData(),
                     per_document_stats=[],
                     runtime_metadata={},
                     raw_observations={},
@@ -592,9 +593,11 @@ class BenchmarkServiceExecutionMixin:
             memory_total_mb=None,
         )
 
-        chart_data = self.result_builder._build_chart_data(
+        dashboard = self.result_builder.build_dashboard_data(
             tokenizer_results,
             getattr(self, "_raw_observations", {}),
+            per_document_stats,
+            resolved_metric_keys,
         )
 
         runtime_metadata = collect_runtime_environment()
@@ -632,38 +635,6 @@ class BenchmarkServiceExecutionMixin:
             "postprocess_definition": "Time spent computing post-trial metrics from replayed rows.",
             "latency_summary_definition": "Latency percentiles and distributions are computed from all timed batch observations, normalized by documents per batch.",
         }
-        successful_results = [
-            result for result in tokenizer_results if result.status == "success"
-        ]
-        resource_metrics_available = any(
-            (
-                result.resources.peak_rss_mb > 0.0
-                or result.resources.memory_delta_mb > 0.0
-            )
-            for result in successful_results
-        )
-        runtime_metadata["metric_availability"] = {
-            "resource_metrics": resource_metrics_available,
-            "latency_distribution": bool(
-                metric_plan.needs_latency and len(successful_results) > 0
-            ),
-            "byte_fallback_rate": False,
-            "unknown_token_rate": any(
-                result.fidelity.unknown_token_rate is not None
-                for result in successful_results
-            ),
-            "vocab_character_overlap": any(
-                result.fidelity.lossless_encodability_rate is not None
-                for result in successful_results
-            ),
-            "fragmentation_word_length_bucket": any(
-                bool(result.fragmentation.fragmentation_by_word_length_bucket)
-                for result in successful_results
-            ),
-            "per_document_stats": bool(
-                metric_plan.needs_per_document_stats and len(per_document_stats) > 0
-            ),
-        }
         runtime_metadata["end_to_end_benchmark_seconds"] = max(
             0.0, time.perf_counter() - run_started_at
         )
@@ -671,7 +642,8 @@ class BenchmarkServiceExecutionMixin:
 
         return BenchmarkRunResponse(
             status="cancelled" if cancelled else "success",
-            schema_version=1,
+            schema_version=BENCHMARK_SCHEMA_VERSION,
+            report_version=BENCHMARK_REPORT_VERSION,
             methodology_version="semantic_honesty",
             run_name=normalized_run_name or None,
             selected_metric_keys=resolved_metric_keys,
@@ -686,7 +658,7 @@ class BenchmarkServiceExecutionMixin:
                 timed_trials=config.timed_trials,
             ),
             tokenizer_results=tokenizer_results,
-            chart_data=chart_data,
+            dashboard=dashboard,
             per_document_stats=per_document_stats,
             runtime_metadata=runtime_metadata,
             raw_observations=getattr(self, "_raw_observations", {}),

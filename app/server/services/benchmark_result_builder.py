@@ -10,8 +10,11 @@ import pandas as pd
 
 from server.common.utils.logger import logger
 from server.domain.benchmarks import (
-    BenchmarkChartData,
-    BenchmarkDistributionPoint,
+    BenchmarkDashboardBucketPoint,
+    BenchmarkDashboardData,
+    BenchmarkDashboardDistribution,
+    BenchmarkDashboardPoint,
+    BenchmarkDashboardWidgetData,
     BenchmarkEfficiencyMetrics,
     BenchmarkFidelityMetrics,
     BenchmarkFragmentationBucket,
@@ -19,9 +22,9 @@ from server.domain.benchmarks import (
     BenchmarkLatencyMetrics,
     BenchmarkPerDocumentTokenizerStats,
     BenchmarkResourceMetrics,
-    BenchmarkSeriesPoint,
     BenchmarkTokenizerResult,
 )
+from server.services.metrics.benchmark_definitions import BENCHMARK_METRIC_DEFINITIONS
 
 ###############################################################################
 class BenchmarkResultBuilder:
@@ -310,77 +313,69 @@ class BenchmarkResultBuilder:
         )
 
     # -------------------------------------------------------------------------
-    def _build_chart_data(
+    def build_dashboard_data(
         self,
         tokenizer_results: list[BenchmarkTokenizerResult],
         raw_observations: dict[str, list[dict[str, object]]],
-    ) -> BenchmarkChartData:
-        successful_results = [
-            result for result in tokenizer_results if result.status == "success"
-        ]
-        efficiency = [
-            BenchmarkSeriesPoint(
-                tokenizer=result.tokenizer,
-                value=result.efficiency.encode_tokens_per_second_mean,
-                ci95_low=result.efficiency.encode_tokens_per_second_ci95_low,
-                ci95_high=result.efficiency.encode_tokens_per_second_ci95_high,
-            )
-            for result in successful_results
-        ]
-        fidelity = [
-            BenchmarkSeriesPoint(
-                tokenizer=result.tokenizer,
-                value=result.fidelity.exact_round_trip_rate,
-            )
-            for result in successful_results
-        ]
-        vocabulary = [
-            BenchmarkSeriesPoint(
-                tokenizer=result.tokenizer,
-                value=float(result.vocabulary_size),
-            )
-            for result in successful_results
-        ]
-        fragmentation = [
-            BenchmarkSeriesPoint(
-                tokenizer=result.tokenizer,
-                value=result.fragmentation.pieces_per_word_mean,
-            )
-            for result in successful_results
-        ]
-        latency_distribution: list[BenchmarkDistributionPoint] = []
-        for result in successful_results:
-            rows = raw_observations.get(result.tokenizer, [])
-            latencies_ms: list[float] = []
-            for row in rows:
-                elapsed_ns = row.get("elapsed_ns") if isinstance(row, dict) else None
-                documents = row.get("documents") if isinstance(row, dict) else None
-                if isinstance(elapsed_ns, int | float) and isinstance(
-                    documents, int | float
-                ):
-                    docs = max(1.0, float(documents))
-                    latencies_ms.append((float(elapsed_ns) / 1_000_000.0) / docs)
-            if not latencies_ms:
-                latencies_ms = [0.0]
-            arr = np.asarray(latencies_ms, dtype=float)
-            latency_distribution.append(
-                BenchmarkDistributionPoint(
-                    tokenizer=result.tokenizer,
-                    min=float(np.min(arr)),
-                    q1=float(np.percentile(arr, 25)),
-                    median=float(np.percentile(arr, 50)),
-                    q3=float(np.percentile(arr, 75)),
-                    max=float(np.max(arr)),
-                    sample_count=len(latencies_ms),
-                )
-            )
+        per_document_stats: list[BenchmarkPerDocumentTokenizerStats] | None = None,
+        selected_metric_keys: list[str] | None = None,
+    ) -> BenchmarkDashboardData:
+        successful = [result for result in tokenizer_results if result.status == "success"]
+        selected = set(selected_metric_keys or [])
+        per_document_by_tokenizer = {item.tokenizer: item for item in per_document_stats or []}
+        widgets: list[BenchmarkDashboardWidgetData] = []
+        available_keys: set[str] = set()
+        for definition in BENCHMARK_METRIC_DEFINITIONS:
+            points: list[BenchmarkDashboardPoint] = []
+            distributions: list[BenchmarkDashboardDistribution] = []
+            buckets: list[BenchmarkDashboardBucketPoint] = []
+            if definition.distribution_source:
+                for result in successful:
+                    values = self._dashboard_distribution_values(definition.distribution_source, result.tokenizer, raw_observations, per_document_by_tokenizer)
+                    summary = self._distribution_summary(values)
+                    if summary is not None:
+                        distributions.append(BenchmarkDashboardDistribution(tokenizer=result.tokenizer, **summary))
+            elif definition.visualization.value == "bucket_bar":
+                for result in successful:
+                    for bucket in result.fragmentation.fragmentation_by_word_length_bucket:
+                        if self._is_number(bucket.pieces_per_word_mean):
+                            buckets.append(BenchmarkDashboardBucketPoint(tokenizer=result.tokenizer, bucket=bucket.bucket, value=float(bucket.pieces_per_word_mean)))
+            else:
+                for result in successful:
+                    value = self._extract_path(result, definition.path)
+                    if not self._is_number(value):
+                        continue
+                    low = self._extract_path(result, definition.interval_low_path) if definition.interval_low_path else None
+                    high = self._extract_path(result, definition.interval_high_path) if definition.interval_high_path else None
+                    points.append(BenchmarkDashboardPoint(tokenizer=result.tokenizer, value=float(value), interval_low=float(low) if self._is_number(low) else None, interval_high=float(high) if self._is_number(high) else None))
+            if not points and not distributions and not buckets:
+                continue
+            widgets.append(BenchmarkDashboardWidgetData(widget_id=definition.widget_id, metric_keys=list(definition.required_metric_keys), category_key=definition.category_key, category_label=definition.category_label, label=definition.label, description=definition.description, unit=definition.unit, display_format=definition.display_format, visualization=definition.visualization.value, default_visible=definition.default_visible, width=definition.width.value, points=points, distributions=distributions, buckets=buckets))
+            available_keys.update(definition.required_metric_keys)
+        return BenchmarkDashboardData(widgets=widgets, available_widget_ids=[widget.widget_id for widget in widgets], available_metric_keys=[definition.key for definition in BENCHMARK_METRIC_DEFINITIONS if definition.key in available_keys], unavailable_selected_metric_keys=[key for key in selected if key not in available_keys])
 
-        return BenchmarkChartData(
-            efficiency=efficiency,
-            fidelity=fidelity,
-            vocabulary=vocabulary,
-            fragmentation=fragmentation,
-            latency_or_memory_distribution=latency_distribution,
-        )
+    def _extract_path(self, value: object, path: str | None) -> object | None:
+        current = value
+        for part in (path or "").split("."):
+            if not part:
+                continue
+            current = getattr(current, part, None)
+        return current
+
+    def _is_number(self, value: object) -> bool:
+        return isinstance(value, int | float) and not isinstance(value, bool) and np.isfinite(float(value))
+
+    def _distribution_summary(self, values: list[float]) -> dict[str, float | int] | None:
+        finite = [value for value in values if self._is_number(value)]
+        if not finite:
+            return None
+        array = np.asarray(finite, dtype=float)
+        return {"min": float(np.min(array)), "q1": float(np.percentile(array, 25)), "median": float(np.percentile(array, 50)), "q3": float(np.percentile(array, 75)), "max": float(np.max(array)), "sample_count": len(finite)}
+
+    def _dashboard_distribution_values(self, source: str, tokenizer: str, raw: dict[str, list[dict[str, object]]], stats: dict[str, BenchmarkPerDocumentTokenizerStats]) -> list[float]:
+        if source == "raw_latency":
+            return [(float(row["elapsed_ns"]) / 1_000_000.0) / max(1.0, float(row["documents"])) for row in raw.get(tokenizer, []) if isinstance(row, dict) and self._is_number(row.get("elapsed_ns")) and self._is_number(row.get("documents"))]
+        values = getattr(stats.get(tokenizer), source, []) if tokenizer in stats else []
+        return [float(value) for value in values if self._is_number(value)]
 
     # -------------------------------------------------------------------------
