@@ -108,16 +108,18 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
   );
 
   const vocabularyChartData = useMemo(() => {
-    if (!benchmarkResult?.chart_data?.vocabulary) return [];
-    return benchmarkResult.chart_data.vocabulary.map((stat) => ({
+    const widget = benchmarkResult?.dashboard.widgets.find((item) => item.metric_keys.includes('meta.vocabulary_size'));
+    if (!widget) return [];
+    return widget.points.map((stat) => ({
       name: stat.tokenizer.split('/').pop() || stat.tokenizer,
       'Vocabulary Size': stat.value,
     }));
   }, [benchmarkResult]);
 
   const speedChartData = useMemo(() => {
-    if (!benchmarkResult?.chart_data?.efficiency) return [];
-    return benchmarkResult.chart_data.efficiency.map((stat) => ({
+    const widget = benchmarkResult?.dashboard.widgets.find((item) => item.metric_keys.includes('eff.encode_tokens_per_second_mean'));
+    if (!widget) return [];
+    return widget.points.map((stat) => ({
       name: stat.tokenizer.split('/').pop() || stat.tokenizer,
       'Tokens/sec': Math.round(stat.value),
     }));
