@@ -71,6 +71,15 @@ function Invoke-CheckPyVer {
     if ($LASTEXITCODE -ne 0) { throw "Python version check failed with exit code $LASTEXITCODE." }
 }
 
+function Invoke-Npm {
+    param([Parameter(ValueFromRemainingArguments)][string[]]$Arguments)
+    if (-not (Test-Path -LiteralPath $NpmCmd)) { throw "npm was not installed at $NpmCmd" }
+    $commandLine = '"' + $NpmCmd + '"'
+    if ($Arguments) { $commandLine += ' ' + ($Arguments -join ' ') }
+    & cmd.exe /d /c $commandLine | Out-Host
+    return [int]$LASTEXITCODE
+}
+
 function Invoke-FindUv {
     param([Parameter(Mandatory)][string]$SearchRoot)
     $match = Get-ChildItem -LiteralPath $SearchRoot -Recurse -Filter 'uv.exe' -File | Select-Object -First 1
@@ -221,8 +230,19 @@ function Sync-Dependencies {
     if ($env:OPTIONAL_DEPENDENCIES -ieq 'true') { $uvArguments += '--all-extras' }
     Push-Location $ServerDir
     try {
-        & $UvExe @uvArguments
-        if ($LASTEXITCODE -ne 0) { throw "uv sync failed with exit code $LASTEXITCODE." }
+        $uvExitCode = 1
+        for ($attempt = 1; $attempt -le 2; $attempt++) {
+            & $UvExe @uvArguments
+            $uvExitCode = $LASTEXITCODE
+            if ($uvExitCode -eq 0) { break }
+            if ($attempt -eq 1) {
+                Write-Step 'uv sync failed; clearing the managed uv cache and retrying once.'
+                if (Test-Path -LiteralPath $UvCacheDir) {
+                    Remove-Item -LiteralPath $UvCacheDir -Recurse -Force
+                }
+            }
+        }
+        if ($uvExitCode -ne 0) { throw "uv sync failed with exit code $uvExitCode." }
     } finally {
         Pop-Location
     }
@@ -231,16 +251,16 @@ function Sync-Dependencies {
     Push-Location $ClientDir
     try {
         if (Test-Path -LiteralPath (Join-Path $ClientDir 'package-lock.json')) {
-            & $NpmCmd ci
+            $npmExitCode = Invoke-Npm ci
         } else {
-            & $NpmCmd install
+            $npmExitCode = Invoke-Npm install
         }
-        if ($LASTEXITCODE -ne 0) { throw "npm dependency installation failed with exit code $LASTEXITCODE." }
+        if ($npmExitCode -ne 0) { throw "npm dependency installation failed with exit code $npmExitCode." }
 
         if ($BuildFrontend) {
             Write-Step 'Building frontend.'
-            & $NpmCmd run build
-            if ($LASTEXITCODE -ne 0) { throw "Frontend build failed with exit code $LASTEXITCODE." }
+            $npmExitCode = Invoke-Npm run build
+            if ($npmExitCode -ne 0) { throw "Frontend build failed with exit code $npmExitCode." }
         } else {
             Write-Step 'Skipping frontend build because ALWAYS_REBUILD=false.'
         }
@@ -297,8 +317,9 @@ function Launch-Application {
     $backendPid = if ($backendProcess) { $backendProcess.Id } else { Get-PortProcessId -Port $backendPort }
 
     Write-Step 'Starting frontend preview.'
-    $frontendProcess = Start-Process -FilePath $NpmCmd `
-        -ArgumentList @('run', 'preview', '--', '--host', $env:UI_HOST, '--port', "$uiPort", '--strictPort') `
+    $previewCommandLine = '"' + $NpmCmd + '" run preview -- --host ' + $env:UI_HOST + ' --port ' + $uiPort + ' --strictPort'
+    $frontendProcess = Start-Process -FilePath 'cmd.exe' `
+        -ArgumentList @('/d', '/c', $previewCommandLine) `
         -WorkingDirectory $ClientDir -WindowStyle Hidden -PassThru
     Invoke-HealthCheck -Uri "http://$($env:UI_HOST):$uiPort/" -Attempts 60 -IntervalSeconds 1
 
