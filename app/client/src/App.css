@@ -992,6 +992,36 @@
   background: rgba(255, 232, 31, 0.12);
 }
 
+.dashboard-layout-reset {
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.dashboard-export-control {
+  position: relative;
+}
+
+.dashboard-export-feedback {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 8px);
+  right: 0;
+  width: max-content;
+  max-width: min(320px, 80vw);
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-panel);
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.dashboard-export-feedback--success { border-color: var(--color-success-border); color: var(--color-success-text); }
+.dashboard-export-feedback--error { border-color: var(--color-danger-border); color: var(--color-danger-text); }
+
 .dashboard-export-modal {
   width: min(560px, 92vw);
   max-height: min(86vh, 520px);

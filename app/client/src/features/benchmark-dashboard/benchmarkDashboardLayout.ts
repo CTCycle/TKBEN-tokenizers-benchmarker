@@ -12,6 +12,12 @@ export const validateStoredDashboardLayout = (value: unknown): BenchmarkDashboar
   return { version: 1, ordered_widget_ids: unique(candidate.ordered_widget_ids), hidden_widget_ids: unique(candidate.hidden_widget_ids), known_widget_ids: unique(candidate.known_widget_ids) };
 };
 export const resetDashboardLayout = (widgets: BenchmarkDashboardWidgetData[]): BenchmarkDashboardLayoutState => ({ version: 1, ordered_widget_ids: widgets.map((widget) => widget.widget_id), hidden_widget_ids: widgets.filter((widget) => !widget.default_visible).map((widget) => widget.widget_id), known_widget_ids: widgets.map((widget) => widget.widget_id) });
+export const isDefaultDashboardLayout = (layout: BenchmarkDashboardLayoutState | null, widgets: BenchmarkDashboardWidgetData[]): boolean => {
+  const defaults = resetDashboardLayout(widgets);
+  const current = layout ?? defaults;
+  return current.ordered_widget_ids.join('|') === defaults.ordered_widget_ids.join('|')
+    && current.hidden_widget_ids.join('|') === defaults.hidden_widget_ids.join('|');
+};
 export const resolveAvailableDashboardLayout = (stored: BenchmarkDashboardLayoutState | null, widgets: BenchmarkDashboardWidgetData[]): ResolvedBenchmarkDashboardLayout => {
   const base = stored ?? resetDashboardLayout(widgets); const available = new Set(widgets.map((widget) => widget.widget_id));
   const fresh = widgets.filter((widget) => !base.known_widget_ids.includes(widget.widget_id));

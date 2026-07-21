@@ -129,6 +129,7 @@ class BenchmarkDashboardPoint(BaseModel):
     interval_low: float | None = None
     interval_high: float | None = None
 
+###############################################################################
 class BenchmarkDashboardDistribution(BaseModel):
     tokenizer: str
     min: float
@@ -138,11 +139,13 @@ class BenchmarkDashboardDistribution(BaseModel):
     max: float
     sample_count: int
 
+###############################################################################
 class BenchmarkDashboardBucketPoint(BaseModel):
     tokenizer: str
     bucket: str
     value: float
 
+###############################################################################
 class BenchmarkDashboardWidgetData(BaseModel):
     widget_id: str
     metric_keys: list[str]
@@ -159,6 +162,7 @@ class BenchmarkDashboardWidgetData(BaseModel):
     distributions: list[BenchmarkDashboardDistribution] = Field(default_factory=list)
     buckets: list[BenchmarkDashboardBucketPoint] = Field(default_factory=list)
 
+###############################################################################
 class BenchmarkDashboardData(BaseModel):
     widgets: list[BenchmarkDashboardWidgetData] = Field(default_factory=list)
     available_widget_ids: list[str] = Field(default_factory=list)
