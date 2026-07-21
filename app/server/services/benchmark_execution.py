@@ -363,7 +363,7 @@ class BenchmarkServiceExecutionMixin:
 
                 fragmentation_buckets: list[BenchmarkFragmentationBucket] = []
                 if metric_plan.needs_fragmentation:
-                    subword_fertility = (
+                    subword_fertility: float | None = (
                         float(np.mean(fragmentation_word_piece_counts))
                         if fragmentation_word_piece_counts
                         else 0.0
@@ -377,7 +377,7 @@ class BenchmarkServiceExecutionMixin:
                         if values
                     ]
                 else:
-                    subword_fertility = 0.0
+                    subword_fertility = None
 
                 oov_rate: float | None = None
                 if metric_plan.needs_unknown_rate and total_tokens > 0:
@@ -411,25 +411,25 @@ class BenchmarkServiceExecutionMixin:
                 else:
                     character_coverage = None
 
-                compression_chars_per_token = (
+                compression_chars_per_token: float | None = (
                     float(total_chars / fragmentation_token_total)
                     if fragmentation_token_total > 0
-                    else 0.0
+                    else None
                 )
-                compression_bytes_per_character = (
+                compression_bytes_per_character: float | None = (
                     float(fragmentation_token_total / total_bytes)
-                    if total_bytes > 0
-                    else 0.0
+                    if metric_plan.needs_fragmentation and total_bytes > 0
+                    else None
                 )
-                round_trip_fidelity_rate = (
+                round_trip_fidelity_rate: float | None = (
                     float(np.mean(round_trip_token_fidelity))
                     if metric_plan.needs_round_trip and round_trip_token_fidelity
-                    else 0.0
+                    else None
                 )
-                round_trip_text_rate = (
+                round_trip_text_rate: float | None = (
                     float(np.mean(round_trip_text_fidelity))
                     if metric_plan.needs_round_trip and round_trip_text_fidelity
-                    else 0.0
+                    else None
                 )
                 postprocess_wall_time_seconds = max(
                     0.0, time.perf_counter() - postprocess_started_at
@@ -470,34 +470,20 @@ class BenchmarkServiceExecutionMixin:
                         vocabulary_size=int(vocabulary_size),
                         oov_rate=oov_rate,
                         character_coverage=character_coverage,
-                        round_trip_fidelity_rate=float(round_trip_fidelity_rate),
-                        round_trip_text_fidelity_rate=float(round_trip_text_rate),
-                        subword_fertility=float(subword_fertility),
-                        compression_chars_per_token=float(compression_chars_per_token),
-                        compression_bytes_per_character=float(
-                            compression_bytes_per_character
-                        ),
+                        round_trip_fidelity_rate=round_trip_fidelity_rate,
+                        round_trip_text_fidelity_rate=round_trip_text_rate,
+                        subword_fertility=subword_fertility,
+                        compression_chars_per_token=compression_chars_per_token,
+                        compression_bytes_per_character=compression_bytes_per_character,
                         fragmentation_buckets=fragmentation_buckets,
-                        peak_rss_mb=max(
-                            (float(obs.peak_rss_mb or 0.0) for obs in observations),
-                            default=0.0,
-                        ),
-                        memory_delta_mb=max(
-                            0.0,
-                            max(
-                                (float(obs.peak_rss_mb or 0.0) for obs in observations),
-                                default=0.0,
-                            )
-                            - min(
-                                (float(obs.peak_rss_mb or 0.0) for obs in observations),
-                                default=0.0,
-                            ),
-                        ),
+                        peak_rss_mb=(max(values) if (values := [float(obs.peak_rss_mb) for obs in observations if isinstance(obs.peak_rss_mb, int | float)]) and metric_plan.needs_resources else None),
+                        memory_delta_mb=(max(values) - min(values) if values and metric_plan.needs_resources else None),
                     )
                 )
-                tokenizer_results[-1].efficiency.encode_bytes_per_second_mean = float(
-                    throughput_bytes_per_sec
-                )
+                if metric_plan.needs_throughput:
+                    tokenizer_results[-1].efficiency.encode_bytes_per_second_mean = float(throughput_bytes_per_sec)
+                else:
+                    tokenizer_results[-1].efficiency = tokenizer_results[-1].efficiency.model_copy(update={field: None for field in tokenizer_results[-1].efficiency.model_fields})
 
                 if metric_plan.needs_per_document_stats:
                     sampled_data = pd.DataFrame(sample_rows)
@@ -505,9 +491,10 @@ class BenchmarkServiceExecutionMixin:
                         self.result_builder._build_per_document_stats(
                             tokenizer_name=name,
                             data=sampled_data,
-                            per_document_latency_ms=[
-                                None for _ in range(len(sampled_data))
-                            ],
+                            per_document_latency_ms=(
+                                [(obs.elapsed_ns / 1_000_000.0) / max(1, obs.documents) for obs in observations[:len(sampled_data)]]
+                                if metric_plan.needs_per_document_latency else [None for _ in range(len(sampled_data))]
+                            ),
                         )
                     )
                 self._raw_observations[name] = [
