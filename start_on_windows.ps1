@@ -22,7 +22,7 @@ $EnvFile = Join-Path $RepoRoot 'settings\.env'
 $EnvTemplate = Join-Path $RepoRoot 'settings\.env.example'
 $UvCacheDir = Join-Path $RuntimeDir '.uv-cache'
 $PythonVersion = '3.14.2'
-$NodeVersion = '22.12.0'
+$NodeVersion = '22.13.0'
 
 function Write-Step([string]$Message) { Write-Host "[STEP] $Message" -ForegroundColor Cyan }
 function Write-Ok([string]$Message) { Write-Host "[OK] $Message" -ForegroundColor Green }
@@ -201,7 +201,16 @@ function Install-Runtimes {
     }
     Write-Ok (& $UvExe --version)
 
-    if (-not (Test-Path -LiteralPath $NodeExe)) {
+    $nodeNeedsInstall = -not (Test-Path -LiteralPath $NodeExe)
+    if (-not $nodeNeedsInstall) {
+        $installedNodeVersion = (& $NodeExe --version).Trim().TrimStart('v')
+        $nodeNeedsInstall = $installedNodeVersion -ne $NodeVersion
+        if ($nodeNeedsInstall) {
+            Write-Step "Replacing incompatible Node.js $installedNodeVersion with $NodeVersion."
+            Stop-PortListeners -Port ([int]$env:UI_PORT)
+        }
+    }
+    if ($nodeNeedsInstall) {
         Write-Step "Downloading Node.js $NodeVersion (portable x64)."
         $nodeArchive = Join-Path $NodeDir "node-v$NodeVersion-win-x64.zip"
         Invoke-DownloadAndExtract `
@@ -224,6 +233,7 @@ function Sync-Dependencies {
 
     Import-Environment
     Install-Runtimes
+    Stop-PortListeners -Port ([int]$env:UI_PORT)
 
     Write-Step 'Installing Python dependencies.'
     $uvArguments = @('sync', '--python', $PythonExe)
