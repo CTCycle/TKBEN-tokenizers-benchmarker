@@ -707,10 +707,10 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                             disabled={isValidating || isLoadingReport || isRemoving}
                           >
                             <span className="dataset-preview-name">{dataset.dataset_name}</span>
-                            <span className="dataset-preview-count">
-                              {normalizeCount(dataset.document_count)}
-                            </span>
                           </button>
+                          <span className="dataset-preview-count">
+                            {normalizeCount(dataset.document_count)}
+                          </span>
                           <div className="dataset-preview-actions dataset-preview-actions-wide">
                             <button
                               type="button"
