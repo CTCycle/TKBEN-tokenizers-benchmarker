@@ -27,8 +27,8 @@ class TokenizersService(TokenizerStorageMixin):
     """
     Service for fetching tokenizer information from HuggingFace.
 
-    This is a webapp-specific service that provides tokenizer scanning
-    functionality without the desktop app dependencies.
+    Service for tokenizer scanning and metadata retrieval
+    from HuggingFace.
     """
 
     PIPELINE_TAGS = [

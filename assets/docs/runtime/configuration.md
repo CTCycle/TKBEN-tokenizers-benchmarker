@@ -37,7 +37,7 @@ Primary launcher runtime env file:
 - `jobs.terminal_retention_seconds` in `settings/configurations.json`
 
 ## Structured Settings
-- `TKBEN/settings/configurations.json`
+- `settings/configurations.json`
   - `datasets`, `tokenizers`, `benchmarks`, `jobs`, and optional `database` overrides
 
 ## Configuration Differences
