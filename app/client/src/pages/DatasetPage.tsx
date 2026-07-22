@@ -685,6 +685,11 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                   </>
                 ) : (
                   <div className="dataset-preview-table">
+                    <div className="dataset-preview-row dataset-preview-row--header" role="row">
+                      <span role="columnheader">Dataset</span>
+                      <span role="columnheader">Documents</span>
+                      <span role="columnheader">Actions</span>
+                    </div>
                     {availableDatasets.map((dataset) => {
                       const isValidating = activeValidationDataset === dataset.dataset_name;
                       const isLoadingReport = activeReportLoadDataset === dataset.dataset_name;

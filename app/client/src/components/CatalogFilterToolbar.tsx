@@ -54,7 +54,7 @@ const CatalogFilterToolbar = ({
     </div>
     <button type="button" className="catalog-add-button" onClick={onAdd} aria-label={addButtonLabel} title={addButtonTitle}>
       <span aria-hidden="true">{addIcon ?? '+'}</span>
-      <span>{addButtonLabel}</span>
+      <span className="sr-only">{addButtonLabel}</span>
     </button>
   </div>
 );
