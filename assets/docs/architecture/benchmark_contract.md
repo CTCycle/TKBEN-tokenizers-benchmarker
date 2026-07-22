@@ -1,5 +1,5 @@
 # Benchmark Contract
-Last updated: 2026-07-21
+Last updated: 2026-07-22
 
 ## Benchmark Request Notes
 Benchmark run request config includes tokenizer behavior flags and per-document controls:
@@ -9,6 +9,9 @@ Benchmark run request config includes tokenizer behavior flags and per-document 
 - `max_length`
 - `store_per_document_stats`
 - `per_document_sample_size`
+
+## Cancellation
+- An active benchmark may be stopped from the run wizard. Cancellation is cooperative: the active job receives a stop request, the engine exits at its next stop-check point, and the job finishes with status `cancelled` without persisting a benchmark report.
 
 ## Result and Runtime Metadata
 Each tokenizer result includes status and optional error details for failure isolation:

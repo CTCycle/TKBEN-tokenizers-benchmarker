@@ -144,6 +144,19 @@ class JobManager:
         return state.stop_requested
 
     # -------------------------------------------------------------------------
+    def request_stop(self, job_id: str) -> dict[str, Any] | None:
+        """Request cooperative cancellation for an active job."""
+        with self.lock:
+            state = self.jobs.get(job_id)
+        if state is None:
+            return None
+
+        with state.lock:
+            if state.status not in TERMINAL_STATUSES:
+                state.stop_requested = True
+        return state.snapshot()
+
+    # -------------------------------------------------------------------------
     def update_progress(self, job_id: str, progress: float) -> None:
         with self.lock:
             state = self.jobs.get(job_id)
