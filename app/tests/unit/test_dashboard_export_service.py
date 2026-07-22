@@ -141,8 +141,47 @@ def build_benchmark_payload() -> dict:
                     }
                 ],
             },
+            "dashboard": {
+                "widgets": [
+                    {
+                        "widget_id": "benchmark.vocabulary",
+                        "label": "Vocabulary size",
+                        "description": "Vocabulary size by tokenizer",
+                        "unit": "tokens",
+                        "visualization": "bar",
+                        "width": "standard",
+                        "points": [
+                            {"tokenizer": "bert-base-uncased", "value": 30522},
+                            {"tokenizer": "gpt2", "value": 50257},
+                        ],
+                    },
+                    {
+                        "widget_id": "benchmark.speed",
+                        "label": "Tokens per second",
+                        "description": "Tokenization throughput",
+                        "unit": "tokens/s",
+                        "visualization": "interval_bar",
+                        "width": "wide",
+                        "points": [
+                            {"tokenizer": "bert-base-uncased", "value": 11000, "interval_low": 10500, "interval_high": 11500},
+                            {"tokenizer": "gpt2", "value": 9600, "interval_low": 9200, "interval_high": 10000},
+                        ],
+                    },
+                    {
+                        "widget_id": "benchmark.hidden",
+                        "label": "Hidden metric",
+                        "description": "Must not be exported",
+                        "unit": "ratio",
+                        "visualization": "bar",
+                        "width": "standard",
+                        "points": [{"tokenizer": "bert-base-uncased", "value": 1}],
+                    },
+                ],
+            },
         },
         "selected_distribution_tokenizer": "bert-base-uncased",
+        "visible_widget_ids": ["benchmark.speed", "benchmark.vocabulary"],
+        "ordered_widget_ids": ["benchmark.speed", "benchmark.hidden", "benchmark.vocabulary"],
     }
 
 ###############################################################################
@@ -186,9 +225,22 @@ def test_export_benchmark_dashboard_pdf_generates_pdf_bytes() -> None:
     )
 
     assert result.file_name == "benchmark-layout-export.pdf"
-    assert result.page_count >= 2
+    assert result.page_count == 2
     assert result.pdf_bytes.startswith(b"%PDF")
     assert len(result.pdf_bytes) > 5000
+
+###############################################################################
+def test_benchmark_pdf_normalizes_visible_widgets_in_requested_order() -> None:
+    service = DashboardExportService()
+    payload = build_benchmark_payload()
+    source = payload["report"]
+
+    widgets = service._normalize_benchmark_dashboard_widgets(source, payload)
+
+    assert [widget["widget_id"] for widget in widgets] == [
+        "benchmark.speed",
+        "benchmark.vocabulary",
+    ]
 
 ###############################################################################
 def test_export_dashboard_pdf_rejects_unsupported_dashboard_type() -> None:

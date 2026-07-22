@@ -59,7 +59,7 @@ class HFAccessKeyService:
     def get_decryption_error_message(self) -> str:
         return (
             "Stored Hugging Face key cannot be decrypted. "
-            "Set a valid active key again using the current HF_KEYS_ENCRYPTION_KEY."
+            "Set a valid active key again using the current key material file."
         )
 
     # -------------------------------------------------------------------------

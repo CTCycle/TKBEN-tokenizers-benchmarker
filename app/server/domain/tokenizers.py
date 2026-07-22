@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -30,6 +30,9 @@ class TokenizerScanResponse(BaseModel):
 ###############################################################################
 class TokenizerListItem(BaseModel):
     tokenizer_name: str
+    source: Literal["huggingface", "custom"]
+    has_report: bool = False
+    vocabulary_size: int | None = Field(default=None, ge=0)
 
 ###############################################################################
 class TokenizerListResponse(BaseModel):

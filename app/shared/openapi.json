@@ -16,11 +16,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object",
-                  "title": "Response Backend Healthcheck Api Health Get"
+                  "$ref": "#/components/schemas/HealthResponse"
                 }
               }
             }
@@ -35,6 +31,71 @@
         ],
         "summary": "List Datasets",
         "operationId": "list_datasets_api_datasets_list_get",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 160
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "all",
+                "public",
+                "custom"
+              ],
+              "type": "string",
+              "default": "all",
+              "title": "Source"
+            }
+          },
+          {
+            "name": "document_count_operator",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "at_least",
+                "at_most"
+              ],
+              "type": "string",
+              "default": "at_least",
+              "title": "Document Count Operator"
+            }
+          },
+          {
+            "name": "document_count",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Document Count"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -42,6 +103,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DatasetListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -396,6 +467,71 @@
         ],
         "summary": "List Tokenizers",
         "operationId": "list_tokenizers_api_tokenizers_list_get",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 160
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "all",
+                "huggingface",
+                "custom"
+              ],
+              "type": "string",
+              "default": "all",
+              "title": "Source"
+            }
+          },
+          {
+            "name": "vocabulary_size_operator",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "at_least",
+                "at_most"
+              ],
+              "type": "string",
+              "default": "at_least",
+              "title": "Vocabulary Size Operator"
+            }
+          },
+          {
+            "name": "vocabulary_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Vocabulary Size"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -403,6 +539,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TokenizerListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -2568,6 +2714,12 @@
             "type": "array",
             "title": "Datasets",
             "description": "List of dataset names in the database"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Count",
+            "default": 0
           }
         },
         "type": "object",
@@ -2796,6 +2948,19 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "HealthResponse"
       },
       "HistogramData": {
         "properties": {
@@ -3042,11 +3207,37 @@
           "tokenizer_name": {
             "type": "string",
             "title": "Tokenizer Name"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "huggingface",
+              "custom"
+            ],
+            "title": "Source"
+          },
+          "has_report": {
+            "type": "boolean",
+            "title": "Has Report",
+            "default": false
+          },
+          "vocabulary_size": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vocabulary Size"
           }
         },
         "type": "object",
         "required": [
-          "tokenizer_name"
+          "tokenizer_name",
+          "source"
         ],
         "title": "TokenizerListItem"
       },

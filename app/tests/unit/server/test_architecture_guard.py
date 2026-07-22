@@ -6,11 +6,9 @@ from pathlib import Path
 
 SERVER_ROOT = Path(__file__).parents[4] / "server"
 
-
 ###############################################################################
 def _python_files() -> list[Path]:
     return [path for path in SERVER_ROOT.rglob("*.py") if "__pycache__" not in path.parts]
-
 
 ###############################################################################
 def test_api_modules_do_not_import_repositories() -> None:
@@ -27,7 +25,6 @@ def test_api_modules_do_not_import_repositories() -> None:
                     if alias.name.startswith("server.repositories")
                 )
     assert violations == []
-
 
 ###############################################################################
 def test_production_imports_are_top_level_and_files_are_bounded() -> None:

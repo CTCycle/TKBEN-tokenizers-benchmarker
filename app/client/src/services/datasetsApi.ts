@@ -5,6 +5,7 @@ import type {
     DatasetDownloadRequest,
     DatasetDownloadResponse,
     DatasetListResponse,
+    DatasetCatalogFilters,
     DatasetMetricCatalogResponse,
     JobStatusResponse,
 } from '../types/api';
@@ -31,8 +32,14 @@ const sanitizeDatasetJobErrorMessage = (error: unknown, fallback: string): strin
  * Fetch list of available datasets from the database.
  * @returns Promise with the list of dataset names
  */
-export async function fetchAvailableDatasets(): Promise<DatasetListResponse> {
-    const response = await fetch(API_ENDPOINTS.DATASETS_LIST, {
+export async function fetchAvailableDatasets(filters: DatasetCatalogFilters = {}): Promise<DatasetListResponse> {
+    const params = new URLSearchParams();
+    if (filters.search?.trim()) params.set('search', filters.search.trim());
+    if (filters.source && filters.source !== 'all') params.set('source', filters.source);
+    if (filters.document_count_operator) params.set('document_count_operator', filters.document_count_operator);
+    if (filters.document_count !== undefined) params.set('document_count', String(filters.document_count));
+    const query = params.toString();
+    const response = await fetch(`${API_ENDPOINTS.DATASETS_LIST}${query ? `?${query}` : ''}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',

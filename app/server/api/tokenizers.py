@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile, status
 
@@ -111,11 +111,22 @@ async def scan_tokenizers(
     response_model=TokenizerListResponse,
     status_code=status.HTTP_200_OK,
 )
-async def list_tokenizers() -> TokenizerListResponse:
+async def list_tokenizers(
+    search: Annotated[str | None, Query(max_length=160)] = None,
+    source: Annotated[Literal["all", "huggingface", "custom"], Query()] = "all",
+    vocabulary_size_operator: Annotated[Literal["at_least", "at_most"], Query()] = "at_least",
+    vocabulary_size: Annotated[int | None, Query(ge=0)] = None,
+) -> TokenizerListResponse:
     service = TokenizersService()
-    tokenizers = await asyncio.to_thread(service.list_downloaded_tokenizers)
+    tokenizers = await asyncio.to_thread(
+        service.list_tokenizer_catalog,
+        search=search,
+        source=source,
+        vocabulary_size_operator=vocabulary_size_operator,
+        vocabulary_size=vocabulary_size,
+    )
     return TokenizerListResponse(
-        tokenizers=[TokenizerListItem(tokenizer_name=name) for name in tokenizers],
+        tokenizers=[TokenizerListItem.model_validate(item) for item in tokenizers],
         count=len(tokenizers),
     )
 

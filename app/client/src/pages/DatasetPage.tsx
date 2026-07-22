@@ -13,6 +13,7 @@ import {
   YAxis,
 } from 'recharts';
 import DatasetValidationWizard from '../components/DatasetValidationWizard';
+import CatalogFilterToolbar from '../components/CatalogFilterToolbar';
 import DashboardExportButton from '../components/DashboardExportButton';
 import DismissibleBanner from '../components/DismissibleBanner';
 import HistogramChartCard from '../components/HistogramChartCard';
@@ -424,10 +425,16 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
     handleValidateDataset,
     handleLoadLatestDatasetReport,
     handleDeleteDataset,
+    refreshAvailableDatasets,
   } = useDataset();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
+  const [collapsedPresetGroups, setCollapsedPresetGroups] = useState<Record<string, boolean>>({});
+  const [datasetSearch, setDatasetSearch] = useState('');
+  const [datasetSourceFilter, setDatasetSourceFilter] = useState<'all' | 'public' | 'custom'>('all');
+  const [documentCountValue, setDocumentCountValue] = useState('');
+  const [documentCountOperator, setDocumentCountOperator] = useState<'at_least' | 'at_most'>('at_least');
   const [isInsertByNameOpen, setIsInsertByNameOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardDatasetName, setWizardDatasetName] = useState<string | null>(null);
@@ -436,6 +443,18 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
   const corpusInputId = 'corpus-input';
   const configInputId = 'config-input';
   const manualInsertRegionId = 'dataset-manual-insert-panel';
+  useEffect(() => {
+    const numericValue = Number(documentCountValue);
+    const filters = {
+      search: datasetSearch,
+      source: datasetSourceFilter,
+      document_count_operator: documentCountOperator,
+      ...(documentCountValue.trim() !== '' && Number.isFinite(numericValue) && numericValue >= 0
+        ? { document_count: numericValue } : {}),
+    };
+    const timeoutId = window.setTimeout(() => { void refreshAvailableDatasets(filters); }, 250);
+    return () => window.clearTimeout(timeoutId);
+  }, [datasetSearch, datasetSourceFilter, documentCountOperator, documentCountValue, refreshAvailableDatasets]);
   const aggregate = useMemo<Record<string, unknown>>(() => {
     const aggregateStats = validationReport?.aggregate_statistics;
     return isRecord(aggregateStats) ? aggregateStats : {};
@@ -590,12 +609,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
       return null;
     }
 
-    return (
-      <div className="chart-placeholder">
-        <p>No persisted validation session loaded.</p>
-        <span>Run validation from the preview list.</span>
-      </div>
-    );
+    return null;
   };
 
   const modalDownloadProgress = loadProgress !== null
@@ -615,11 +629,33 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
         <section className="dataset-top-section">
           <div className="dataset-top-row">
             <div className="dataset-intro-panel">
-              <p className="panel-label">Dataset Usage</p>
-              <p className="panel-description">
-                Download or upload datasets, then run the validation pipeline to persist advanced
-                quality and lexical metrics for dashboard analysis.
-              </p>
+              <div className="dataset-usage-copy">
+                <p className="panel-label">Dataset Usage</p>
+                <p className="panel-description">
+                  Download or upload datasets, then run the validation pipeline to persist advanced
+                  quality and lexical metrics for dashboard analysis.
+                </p>
+              </div>
+              <CatalogFilterToolbar
+                accessibleName="Dataset filters"
+                searchLabel="Search datasets"
+                searchValue={datasetSearch}
+                searchPlaceholder="Name or namespace"
+                onSearchChange={setDatasetSearch}
+                sourceLabel="Source"
+                sourceValue={datasetSourceFilter}
+                sourceOptions={[{ value: 'all', label: 'All datasets' }, { value: 'public', label: 'Public' }, { value: 'custom', label: 'Custom' }]}
+                onSourceChange={(value) => setDatasetSourceFilter(value as 'all' | 'public' | 'custom')}
+                numericLabel="Documents"
+                numericValue={documentCountValue}
+                numericOperator={documentCountOperator}
+                numericPlaceholder="Any count"
+                onNumericValueChange={setDocumentCountValue}
+                onNumericOperatorChange={(value) => setDocumentCountOperator(value as 'at_least' | 'at_most')}
+                addButtonLabel="Add dataset"
+                addButtonTitle="Add or import a dataset"
+                onAdd={() => setIsModalOpen(true)}
+              />
             </div>
             <div className="dataset-preview-panel">
               <header className="panel-header">
@@ -629,27 +665,31 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                     Select a dataset and run validation sessions with custom metric selections.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  className="icon-button"
-                  onClick={() => setIsModalOpen(true)}
-                  aria-label="Add dataset"
-                  title="Add or import a dataset"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 5v14M5 12h14" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                </button>
               </header>
               <div className="dataset-preview-body">
                 {datasetsLoading ? (
                   <div className="dataset-preview-empty">Loading datasets...</div>
                 ) : availableDatasets.length === 0 ? (
-                  <div className="dataset-preview-empty">
-                    No datasets available.
-                  </div>
+                  <>
+                    <div className="dataset-preview-table dataset-preview-table--empty" role="table" aria-label="Available datasets">
+                      <div className="dataset-preview-row dataset-preview-row--header" role="row">
+                        <span role="columnheader">Dataset</span>
+                        <span role="columnheader">Documents</span>
+                        <span role="columnheader">Actions</span>
+                      </div>
+                    </div>
+                    <p className="dataset-preview-empty-label">
+                      {datasetSearch.trim() || documentCountValue.trim() || datasetSourceFilter !== 'all'
+                        ? 'No datasets match the current filters.' : 'No datasets available.'}
+                    </p>
+                  </>
                 ) : (
                   <div className="dataset-preview-table">
+                    <div className="dataset-preview-row dataset-preview-row--header" role="row">
+                      <span role="columnheader">Dataset</span>
+                      <span role="columnheader">Documents</span>
+                      <span role="columnheader">Actions</span>
+                    </div>
                     {availableDatasets.map((dataset) => {
                       const isValidating = activeValidationDataset === dataset.dataset_name;
                       const isLoadingReport = activeReportLoadDataset === dataset.dataset_name;
@@ -658,25 +698,21 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                       return (
                         <div
                           key={dataset.dataset_name}
-                          role="button"
-                          tabIndex={0}
-                          aria-pressed={isSelectedDataset}
                           className={`dataset-preview-row${isSelectedDataset ? ' selected' : ''}`}
-                          onClick={() => {
-                            if (!isValidating && !isLoadingReport && !isRemoving) {
-                              selectDatasetAndLoadReport(dataset.dataset_name);
-                            }
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                              event.preventDefault();
+                        >
+                          <button
+                            type="button"
+                            className="dataset-preview-select"
+                            aria-pressed={isSelectedDataset}
+                            onClick={() => {
                               if (!isValidating && !isLoadingReport && !isRemoving) {
                                 selectDatasetAndLoadReport(dataset.dataset_name);
                               }
-                            }
-                          }}
-                        >
-                          <span className="dataset-preview-name">{dataset.dataset_name}</span>
+                            }}
+                            disabled={isValidating || isLoadingReport || isRemoving}
+                          >
+                            <span className="dataset-preview-name">{dataset.dataset_name}</span>
+                          </button>
                           <span className="dataset-preview-count">
                             {normalizeCount(dataset.document_count)}
                           </span>
@@ -810,9 +846,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                   <p className="panel-label">Character Composition</p>
                 </div>
                 {characterSlices.length === 0 ? (
-                  <div className="chart-placeholder">
-                    <p>No character ratio metrics available.</p>
-                  </div>
+                  <p className="dataset-empty-label">No character ratio metrics available.</p>
                 ) : (
                   <div className="dataset-chart-body">
                     <ResponsiveContainer width="100%" height={280}>
@@ -959,26 +993,29 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                 <div className="dataset-card-header">
                   <p className="panel-label">Word Cloud</p>
                 </div>
-                <div className="dataset-word-cloud-canvas" ref={wordCloudRef}>
-                  {!wordCloudTerms.length && (
-                    <div className="chart-placeholder"><p>No word cloud terms in persisted report.</p></div>
-                  )}
-                  {wordCloudLayout.map((term) => (
-                    <span
-                      key={`${term.word}-${term.count}`}
-                      className="dataset-word-cloud-term"
-                      style={{
-                        left: `${term.x}px`,
-                        top: `${term.y}px`,
-                        fontSize: `${term.fontSize}px`,
-                        transform: `translate(-50%, -50%) rotate(${term.rotate}deg)`,
-                      }}
-                      title={`${term.word}: ${normalizeCount(term.count)}`}
-                    >
-                      {term.word}
-                    </span>
-                  ))}
-                </div>
+                {!wordCloudTerms.length ? (
+                  <p className="dataset-empty-label dataset-word-cloud-empty">
+                    No word cloud terms in persisted report.
+                  </p>
+                ) : (
+                  <div className="dataset-word-cloud-canvas" ref={wordCloudRef}>
+                    {wordCloudLayout.map((term) => (
+                      <span
+                        key={`${term.word}-${term.count}`}
+                        className="dataset-word-cloud-term"
+                        style={{
+                          left: `${term.x}px`,
+                          top: `${term.y}px`,
+                          fontSize: `${term.fontSize}px`,
+                          transform: `translate(-50%, -50%) rotate(${term.rotate}deg)`,
+                        }}
+                        title={`${term.word}: ${normalizeCount(term.count)}`}
+                      >
+                        {term.word}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </aside>
@@ -1113,54 +1150,72 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                 aria-disabled={presetsDisabled}
               >
                 <div className="dataset-preset-list">
-                  {PREDEFINED_DATASETS.map((group) => (
-                    <div className="dataset-preset-group" key={group.group}>
-                      <p className="dataset-preset-heading">{group.group}</p>
-                      {group.datasets.map((preset) => {
-                        const isSelected = selectedPreset === preset.id;
-                        return (
-                          <div
-                            key={preset.id}
-                            role="button"
-                            tabIndex={presetsDisabled ? -1 : 0}
-                            aria-disabled={presetsDisabled}
-                            className={`dataset-preset-row${isSelected ? ' selected' : ''}`}
-                            onClick={() => {
-                              if (!presetsDisabled) {
-                                handlePresetSelect(preset);
-                              }
-                            }}
-                            onKeyDown={(event) => {
-                              if (!presetsDisabled && (event.key === 'Enter' || event.key === ' ')) {
-                                handlePresetSelect(preset);
-                              }
-                            }}
-                          >
-                            <div className="dataset-preset-info">
-                              <span className="dataset-preset-name">{preset.label}</span>
-                              <span className="dataset-preset-description">{preset.description}</span>
-                            </div>
-                            {isSelected && (
-                              <button
-                                type="button"
-                                className="icon-button subtle"
-                                aria-label={`Download ${preset.label}`}
-                                title={`Download ${preset.label}`}
-                                onClick={handlePresetDownload}
-                                disabled={loading || presetsDisabled}
+                  {PREDEFINED_DATASETS.map((group, groupIndex) => {
+                    const groupId = `dataset-preset-group-${groupIndex}`;
+                    const isCollapsed = collapsedPresetGroups[group.group] ?? false;
+                    return (
+                      <div className="dataset-preset-group" key={group.group}>
+                        <button
+                          type="button"
+                          className="dataset-preset-heading"
+                          aria-expanded={!isCollapsed}
+                          aria-controls={groupId}
+                          onClick={() => setCollapsedPresetGroups((current) => ({
+                            ...current,
+                            [group.group]: !isCollapsed,
+                          }))}
+                        >
+                          <span>{group.group}</span>
+                          <span className="dataset-preset-heading-icon" aria-hidden="true">{isCollapsed ? '+' : '−'}</span>
+                        </button>
+                        <div id={groupId} hidden={isCollapsed}>
+                          {group.datasets.map((preset) => {
+                            const isSelected = selectedPreset === preset.id;
+                            return (
+                              <div
+                                key={preset.id}
+                                role="button"
+                                tabIndex={presetsDisabled ? -1 : 0}
+                                aria-disabled={presetsDisabled}
+                                className={`dataset-preset-row${isSelected ? ' selected' : ''}`}
+                                onClick={() => {
+                                  if (!presetsDisabled) {
+                                    handlePresetSelect(preset);
+                                  }
+                                }}
+                                onKeyDown={(event) => {
+                                  if (!presetsDisabled && (event.key === 'Enter' || event.key === ' ')) {
+                                    handlePresetSelect(preset);
+                                  }
+                                }}
                               >
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                  <path d="M12 3v12" strokeWidth="2" strokeLinecap="round" />
-                                  <path d="M7 10l5 5 5-5" strokeWidth="2" strokeLinecap="round" />
-                                  <path d="M5 19h14" strokeWidth="2" strokeLinecap="round" />
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
+                                <div className="dataset-preset-info">
+                                  <span className="dataset-preset-name">{preset.label}</span>
+                                  <span className="dataset-preset-description">{preset.description}</span>
+                                </div>
+                                {isSelected && (
+                                  <button
+                                    type="button"
+                                    className="icon-button subtle"
+                                    aria-label={`Download ${preset.label}`}
+                                    title={`Download ${preset.label}`}
+                                    onClick={handlePresetDownload}
+                                    disabled={loading || presetsDisabled}
+                                  >
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                      <path d="M12 3v12" strokeWidth="2" strokeLinecap="round" />
+                                      <path d="M7 10l5 5 5-5" strokeWidth="2" strokeLinecap="round" />
+                                      <path d="M5 19h14" strokeWidth="2" strokeLinecap="round" />
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

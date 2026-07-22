@@ -1,6 +1,8 @@
 FASTAPI_TITLE = "TKBEN_webapp Tokenizers Benchmark Backend"
 FASTAPI_DESCRIPTION = "FastAPI backend"
 FASTAPI_VERSION = "1.2.0"
+BENCHMARK_SCHEMA_VERSION = 2
+BENCHMARK_REPORT_VERSION = 3
 
 
 ###############################################################################
@@ -36,6 +38,7 @@ API_ROUTE_BENCHMARKS_REPORT_BY_ID = "/reports/{report_id}"
 API_ROUTE_BENCHMARKS_METRICS_CATALOG = "/metrics/catalog"
 API_ROUTE_EXPORTS_DASHBOARD_PDF = "/dashboard/pdf"
 API_ROUTE_JOBS_STATUS = "/{job_id}"
+API_ROUTE_JOBS_CANCEL = "/{job_id}/cancel"
 API_ROUTE_KEYS_CREATE = ""
 API_ROUTE_KEYS_LIST = ""
 API_ROUTE_KEYS_DELETE = "/{key_id}"

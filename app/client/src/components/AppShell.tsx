@@ -51,12 +51,30 @@ const AppShell = () => {
     <div className="app-shell">
       <header className="app-header-bar">
         <div className="app-brand">
-          <span className="app-brand-mark" aria-hidden="true">TK</span>
+          <img className="app-brand-mark" src="/tkben-logo.png" alt="" aria-hidden="true" />
           <div className="app-brand-copy">
             <span className="app-brand-name">TKBEN</span>
             <span className="app-brand-subtitle">Tokenizer Benchmarker</span>
           </div>
         </div>
+        <nav className="app-tab-nav" aria-label="Primary">
+          {navItems.map((item) => (
+            <button
+              key={item.to}
+              type="button"
+              className={`app-tab${isNavItemActive(item.to) ? ' app-tab--active' : ''}`}
+              aria-current={isNavItemActive(item.to) ? 'page' : undefined}
+              onClick={() => {
+                if (!isNavItemActive(item.to)) {
+                  navigate(item.to);
+                }
+              }}
+            >
+              <span className="app-tab-icon">{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
         <button
           type="button"
           className={`icon-button subtle app-header-key-button${isKeyManagerOpen ? ' accent' : ''}`}
@@ -74,24 +92,6 @@ const AppShell = () => {
           </svg>
         </button>
       </header>
-      <nav className="app-tab-nav" aria-label="Primary">
-        {navItems.map((item) => (
-          <button
-            key={item.to}
-            type="button"
-            className={`app-tab${isNavItemActive(item.to) ? ' app-tab--active' : ''}`}
-            aria-current={isNavItemActive(item.to) ? 'page' : undefined}
-            onClick={() => {
-              if (!isNavItemActive(item.to)) {
-                navigate(item.to);
-              }
-            }}
-          >
-            <span className="app-tab-icon">{item.icon}</span>
-            <span>{item.label}</span>
-          </button>
-        ))}
-      </nav>
       <div className="app-main">
         <section className="app-content" key={location.pathname}>
           <Outlet />

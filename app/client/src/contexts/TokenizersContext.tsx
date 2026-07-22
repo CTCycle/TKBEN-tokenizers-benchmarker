@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
     clearCustomTokenizers,
@@ -13,7 +13,7 @@ import {
 import { runBenchmarks } from '../services/benchmarksApi';
 import { useAvailableDatasets } from '../hooks/useAvailableDatasets';
 import { useFileInputControl } from '../hooks/useFileInputControl';
-import type { BenchmarkRunResponse, TokenizerReportResponse, TokenizerVocabularyItem } from '../types/api';
+import type { BenchmarkRunResponse, TokenizerCatalogFilters, TokenizerListItem, TokenizerReportResponse, TokenizerVocabularyItem } from '../types/api';
 
 const DEFAULT_TOKENIZER_VOCABULARY_LIMIT = 500;
 const LAST_TOKENIZER_REPORT_STORAGE_KEY = 'tkben.lastTokenizerReport';
@@ -28,6 +28,8 @@ interface TokenizersContextType {
     fetchedTokenizers: string[];
     selectedTokenizer: string;
     tokenizers: string[];
+    availableTokenizers: TokenizerListItem[];
+    tokenizersLoading: boolean;
     customTokenizerName: string | null;
     customTokenizerUploading: boolean;
     maxDocuments: number;
@@ -57,6 +59,7 @@ interface TokenizersContextType {
     setBenchmarkError: (error: string | null) => void;
     addTokenizer: (tokenizer: string) => void;
     downloadTokenizers: (tokenizerIds: string[]) => Promise<void>;
+    refreshTokenizers: (filters?: TokenizerCatalogFilters) => Promise<void>;
     handleScan: () => Promise<void>;
     handleRunBenchmarks: () => Promise<void>;
     handleOpenTokenizerReport: (tokenizerName: string) => Promise<void>;
@@ -85,6 +88,10 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
     const [fetchedTokenizers, setFetchedTokenizers] = useState<string[]>([]);
     const [selectedTokenizer, setSelectedTokenizer] = useState('');
     const [tokenizers, setTokenizers] = useState<string[]>([]);
+    const [availableTokenizers, setAvailableTokenizers] = useState<TokenizerListItem[]>([]);
+    const [tokenizersLoading, setTokenizersLoading] = useState(false);
+    const tokenizerRequestSequence = useRef(0);
+    const tokenizerCatalogInitialized = useRef(false);
     const [customTokenizerName, setCustomTokenizerName] = useState<string | null>(null);
     const [customTokenizerUploading, setCustomTokenizerUploading] = useState(false);
     const [maxDocuments, setMaxDocuments] = useState(1000);
@@ -134,12 +141,21 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         });
     }, []);
 
-    const refreshTokenizers = useCallback(async () => {
+    const refreshTokenizers = useCallback(async (filters: TokenizerCatalogFilters = {}) => {
+        const requestId = ++tokenizerRequestSequence.current;
+        setTokenizersLoading(true);
         try {
-            const response = await fetchDownloadedTokenizers();
-            setTokenizers(response.tokenizers.map((item) => item.tokenizer_name));
+            const response = await fetchDownloadedTokenizers(filters);
+            if (requestId !== tokenizerRequestSequence.current) return;
+            setAvailableTokenizers(response.tokenizers);
+            if (!tokenizerCatalogInitialized.current && Object.keys(filters).length === 0) {
+                tokenizerCatalogInitialized.current = true;
+                setTokenizers(response.tokenizers.filter((item) => item.source === 'huggingface').map((item) => item.tokenizer_name));
+            }
         } catch (error) {
             console.error('Failed to fetch tokenizers:', error);
+        } finally {
+            if (requestId === tokenizerRequestSequence.current) setTokenizersLoading(false);
         }
     }, []);
 
@@ -175,6 +191,10 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
                 );
             }
             await refreshTokenizers();
+            const successful = [...response.downloaded, ...response.already_downloaded];
+            if (successful.length > 0) {
+                setTokenizers((current) => Array.from(new Set([...current, ...successful])));
+            }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to download tokenizers';
             setScanError(errorMessage);
@@ -214,6 +234,7 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
             const response = await uploadCustomTokenizer(file);
             if (response.is_compatible) {
                 setCustomTokenizerName(response.tokenizer_name);
+                await refreshTokenizers();
             } else {
                 setBenchmarkError(`Tokenizer "${response.tokenizer_name}" is not compatible.`);
             }
@@ -225,16 +246,17 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
             setCustomTokenizerUploading(false);
             resetCustomTokenizerInput();
         }
-    }, [resetCustomTokenizerInput]);
+    }, [refreshTokenizers, resetCustomTokenizerInput]);
 
     const handleClearCustomTokenizer = useCallback(async () => {
         try {
             await clearCustomTokenizers();
             setCustomTokenizerName(null);
+            await refreshTokenizers();
         } catch (error) {
             console.error('Failed to clear custom tokenizer:', error);
         }
-    }, []);
+    }, [refreshTokenizers]);
 
     const handleRunBenchmarks = useCallback(async () => {
         if (tokenizers.length === 0 && !customTokenizerName) {
@@ -410,6 +432,8 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         fetchedTokenizers,
         selectedTokenizer,
         tokenizers,
+        availableTokenizers,
+        tokenizersLoading,
         customTokenizerName,
         customTokenizerUploading,
         maxDocuments,
@@ -439,6 +463,7 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         setBenchmarkError,
         addTokenizer,
         downloadTokenizers,
+        refreshTokenizers,
         handleScan,
         handleRunBenchmarks,
         handleOpenTokenizerReport,
@@ -458,6 +483,8 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         fetchedTokenizers,
         selectedTokenizer,
         tokenizers,
+        availableTokenizers,
+        tokenizersLoading,
         customTokenizerName,
         customTokenizerUploading,
         maxDocuments,
@@ -485,6 +512,7 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         setBenchmarkError,
         addTokenizer,
         downloadTokenizers,
+        refreshTokenizers,
         handleScan,
         handleRunBenchmarks,
         handleOpenTokenizerReport,

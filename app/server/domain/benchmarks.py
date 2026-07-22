@@ -35,28 +35,28 @@ class BenchmarkTrialSummary(BaseModel):
 
 ###############################################################################
 class BenchmarkEfficiencyMetrics(BaseModel):
-    encode_tokens_per_second_mean: float = Field(default=0.0)
-    encode_tokens_per_second_ci95_low: float = Field(default=0.0)
-    encode_tokens_per_second_ci95_high: float = Field(default=0.0)
-    encode_chars_per_second_mean: float = Field(default=0.0)
-    encode_bytes_per_second_mean: float = Field(default=0.0)
-    encode_only_wall_time_seconds: float = Field(default=0.0)
-    dataset_stream_wall_time_seconds: float = Field(default=0.0)
-    postprocess_wall_time_seconds: float = Field(default=0.0)
-    end_to_end_wall_time_seconds: float = Field(default=0.0)
-    load_time_seconds: float = Field(default=0.0)
+    encode_tokens_per_second_mean: float | None = None
+    encode_tokens_per_second_ci95_low: float | None = None
+    encode_tokens_per_second_ci95_high: float | None = None
+    encode_chars_per_second_mean: float | None = None
+    encode_bytes_per_second_mean: float | None = None
+    encode_only_wall_time_seconds: float | None = None
+    dataset_stream_wall_time_seconds: float | None = None
+    postprocess_wall_time_seconds: float | None = None
+    end_to_end_wall_time_seconds: float | None = None
+    load_time_seconds: float | None = None
 
 ###############################################################################
 class BenchmarkLatencyMetrics(BaseModel):
-    encode_latency_p50_ms: float = Field(default=0.0)
-    encode_latency_p95_ms: float = Field(default=0.0)
-    encode_latency_p99_ms: float = Field(default=0.0)
-    sample_count: int = Field(default=0)
+    encode_latency_p50_ms: float | None = None
+    encode_latency_p95_ms: float | None = None
+    encode_latency_p99_ms: float | None = None
+    sample_count: int | None = None
 
 ###############################################################################
 class BenchmarkFidelityMetrics(BaseModel):
-    exact_round_trip_rate: float = Field(default=0.0)
-    normalized_round_trip_rate: float = Field(default=0.0)
+    exact_round_trip_rate: float | None = Field(default=None)
+    normalized_round_trip_rate: float | None = Field(default=None)
     unknown_token_rate: float | None = Field(default=None)
     byte_fallback_rate: float | None = Field(default=None)
     lossless_encodability_rate: float | None = Field(default=None)
@@ -68,19 +68,19 @@ class BenchmarkFragmentationBucket(BaseModel):
 
 ###############################################################################
 class BenchmarkFragmentationMetrics(BaseModel):
-    tokens_per_character: float = Field(default=0.0)
-    characters_per_token: float = Field(default=0.0)
-    tokens_per_byte: float = Field(default=0.0)
-    bytes_per_token: float = Field(default=0.0)
-    pieces_per_word_mean: float = Field(default=0.0)
+    tokens_per_character: float | None = Field(default=None)
+    characters_per_token: float | None = Field(default=None)
+    tokens_per_byte: float | None = Field(default=None)
+    bytes_per_token: float | None = Field(default=None)
+    pieces_per_word_mean: float | None = Field(default=None)
     fragmentation_by_word_length_bucket: list[BenchmarkFragmentationBucket] = Field(
         default_factory=list
     )
 
 ###############################################################################
 class BenchmarkResourceMetrics(BaseModel):
-    peak_rss_mb: float = Field(default=0.0)
-    memory_delta_mb: float = Field(default=0.0)
+    peak_rss_mb: float | None = Field(default=None)
+    memory_delta_mb: float | None = Field(default=None)
 
 ###############################################################################
 class BenchmarkTokenizerResult(BaseModel):
@@ -123,14 +123,51 @@ class BenchmarkDistributionPoint(BaseModel):
     sample_count: int = Field(default=0)
 
 ###############################################################################
-class BenchmarkChartData(BaseModel):
-    efficiency: list[BenchmarkSeriesPoint] = Field(default_factory=list)
-    fidelity: list[BenchmarkSeriesPoint] = Field(default_factory=list)
-    vocabulary: list[BenchmarkSeriesPoint] = Field(default_factory=list)
-    fragmentation: list[BenchmarkSeriesPoint] = Field(default_factory=list)
-    latency_or_memory_distribution: list[BenchmarkDistributionPoint] = Field(
-        default_factory=list
-    )
+class BenchmarkDashboardPoint(BaseModel):
+    tokenizer: str
+    value: float
+    interval_low: float | None = None
+    interval_high: float | None = None
+
+###############################################################################
+class BenchmarkDashboardDistribution(BaseModel):
+    tokenizer: str
+    min: float
+    q1: float
+    median: float
+    q3: float
+    max: float
+    sample_count: int
+
+###############################################################################
+class BenchmarkDashboardBucketPoint(BaseModel):
+    tokenizer: str
+    bucket: str
+    value: float
+
+###############################################################################
+class BenchmarkDashboardWidgetData(BaseModel):
+    widget_id: str
+    metric_keys: list[str]
+    category_key: str
+    category_label: str
+    label: str
+    description: str
+    unit: str
+    display_format: str
+    visualization: str
+    default_visible: bool
+    width: str
+    points: list[BenchmarkDashboardPoint] = Field(default_factory=list)
+    distributions: list[BenchmarkDashboardDistribution] = Field(default_factory=list)
+    buckets: list[BenchmarkDashboardBucketPoint] = Field(default_factory=list)
+
+###############################################################################
+class BenchmarkDashboardData(BaseModel):
+    widgets: list[BenchmarkDashboardWidgetData] = Field(default_factory=list)
+    available_widget_ids: list[str] = Field(default_factory=list)
+    available_metric_keys: list[str] = Field(default_factory=list)
+    unavailable_selected_metric_keys: list[str] = Field(default_factory=list)
 
 ###############################################################################
 class BenchmarkRunRequest(BaseModel):
@@ -201,6 +238,11 @@ class BenchmarkMetricCatalogMetric(BaseModel):
     value_kind: str
     source: str = Field(default="observed")
     core: bool = Field(default=False)
+    unit: str = ""
+    display_format: str = "number"
+    visualization: str = "bar"
+    default_visible: bool = False
+    width: str = "standard"
 
 ###############################################################################
 class BenchmarkMetricCatalogCategory(BaseModel):
@@ -240,10 +282,10 @@ class BenchmarkPerDocumentTokenizerStats(BaseModel):
 ###############################################################################
 class BenchmarkRunResponse(BaseModel):
     status: str = Field(default="success")
-    schema_version: int = Field(default=1)
+    schema_version: int = Field(default=2)
     methodology_version: str = Field(default="semantic_honesty")
     report_id: int | None = Field(default=None)
-    report_version: int = Field(default=2)
+    report_version: int = Field(default=3)
     created_at: str | None = Field(default=None)
     run_name: str | None = Field(default=None)
     selected_metric_keys: list[str] = Field(default_factory=list)
@@ -257,7 +299,7 @@ class BenchmarkRunResponse(BaseModel):
     )
     trial_summary: BenchmarkTrialSummary = Field(default_factory=BenchmarkTrialSummary)
     tokenizer_results: list[BenchmarkTokenizerResult] = Field(default_factory=list)
-    chart_data: BenchmarkChartData = Field(default_factory=BenchmarkChartData)
+    dashboard: BenchmarkDashboardData = Field(default_factory=BenchmarkDashboardData)
     per_document_stats: list[BenchmarkPerDocumentTokenizerStats] = Field(
         default_factory=list
     )

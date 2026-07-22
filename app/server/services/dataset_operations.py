@@ -101,7 +101,7 @@ class DatasetServiceOperationsMixin:
                         progress_base + (saved_count / total_documents) * progress_span
                     )
                     progress_callback(progress_value)
-            batch.clear()
+                batch.clear()
 
         if batch:
             self.dataset_serializer.save_document_batch(batch)

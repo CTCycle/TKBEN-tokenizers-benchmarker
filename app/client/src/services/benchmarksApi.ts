@@ -4,6 +4,7 @@ import type {
     BenchmarkRunRequest,
     BenchmarkRunResponse,
     JobStatusResponse,
+    JobStartResponse,
 } from '../types/api';
 
 import { API_ENDPOINTS } from '../common/constants/api';
@@ -21,6 +22,7 @@ const BENCHMARK_TIMEOUT_MS = 30 * 60 * 1000;
 export async function runBenchmarks(
     request: BenchmarkRunRequest,
     onUpdate?: (status: JobStatusResponse) => void,
+    onStarted?: (job: JobStartResponse) => void,
 ): Promise<BenchmarkRunResponse> {
     const response = await fetch(API_ENDPOINTS.BENCHMARKS_RUN, {
         method: 'POST',
@@ -31,6 +33,7 @@ export async function runBenchmarks(
     });
 
     const job = await readJobStartResponse(response, 'Failed to run benchmarks');
+    onStarted?.(job);
     return waitForJobResult<BenchmarkRunResponse>(job, {
         onUpdate,
         timeoutMs: BENCHMARK_TIMEOUT_MS,
