@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 from server.domain.benchmarks import (
-    BenchmarkChartData,
+    BenchmarkDashboardData,
     BenchmarkFragmentationBucket,
     BenchmarkHardwareProfile,
     BenchmarkPerDocumentTokenizerStats,
@@ -21,6 +21,7 @@ from server.domain.benchmarks import (
     BenchmarkTokenizerResult,
     BenchmarkTrialSummary,
 )
+from server.common.constants import BENCHMARK_REPORT_VERSION, BENCHMARK_SCHEMA_VERSION
 from server.common.utils.logger import logger
 from server.domain.benchmark_observations import TokenizerRunConfig
 from server.services.benchmark_result_builder import BenchmarkResultBuilder
@@ -163,7 +164,7 @@ class BenchmarkServiceExecutionMixin:
                     hardware_profile=BenchmarkHardwareProfile(),
                     trial_summary=BenchmarkTrialSummary(),
                     tokenizer_results=[],
-                    chart_data=BenchmarkChartData(),
+                    dashboard=BenchmarkDashboardData(),
                     per_document_stats=[],
                     runtime_metadata={},
                     raw_observations={},
@@ -362,7 +363,7 @@ class BenchmarkServiceExecutionMixin:
 
                 fragmentation_buckets: list[BenchmarkFragmentationBucket] = []
                 if metric_plan.needs_fragmentation:
-                    subword_fertility = (
+                    subword_fertility: float | None = (
                         float(np.mean(fragmentation_word_piece_counts))
                         if fragmentation_word_piece_counts
                         else 0.0
@@ -376,7 +377,7 @@ class BenchmarkServiceExecutionMixin:
                         if values
                     ]
                 else:
-                    subword_fertility = 0.0
+                    subword_fertility = None
 
                 oov_rate: float | None = None
                 if metric_plan.needs_unknown_rate and total_tokens > 0:
@@ -410,25 +411,25 @@ class BenchmarkServiceExecutionMixin:
                 else:
                     character_coverage = None
 
-                compression_chars_per_token = (
+                compression_chars_per_token: float | None = (
                     float(total_chars / fragmentation_token_total)
                     if fragmentation_token_total > 0
-                    else 0.0
+                    else None
                 )
-                compression_bytes_per_character = (
+                compression_bytes_per_character: float | None = (
                     float(fragmentation_token_total / total_bytes)
-                    if total_bytes > 0
-                    else 0.0
+                    if metric_plan.needs_fragmentation and total_bytes > 0
+                    else None
                 )
-                round_trip_fidelity_rate = (
+                round_trip_fidelity_rate: float | None = (
                     float(np.mean(round_trip_token_fidelity))
                     if metric_plan.needs_round_trip and round_trip_token_fidelity
-                    else 0.0
+                    else None
                 )
-                round_trip_text_rate = (
+                round_trip_text_rate: float | None = (
                     float(np.mean(round_trip_text_fidelity))
                     if metric_plan.needs_round_trip and round_trip_text_fidelity
-                    else 0.0
+                    else None
                 )
                 postprocess_wall_time_seconds = max(
                     0.0, time.perf_counter() - postprocess_started_at
@@ -469,34 +470,20 @@ class BenchmarkServiceExecutionMixin:
                         vocabulary_size=int(vocabulary_size),
                         oov_rate=oov_rate,
                         character_coverage=character_coverage,
-                        round_trip_fidelity_rate=float(round_trip_fidelity_rate),
-                        round_trip_text_fidelity_rate=float(round_trip_text_rate),
-                        subword_fertility=float(subword_fertility),
-                        compression_chars_per_token=float(compression_chars_per_token),
-                        compression_bytes_per_character=float(
-                            compression_bytes_per_character
-                        ),
+                        round_trip_fidelity_rate=round_trip_fidelity_rate,
+                        round_trip_text_fidelity_rate=round_trip_text_rate,
+                        subword_fertility=subword_fertility,
+                        compression_chars_per_token=compression_chars_per_token,
+                        compression_bytes_per_character=compression_bytes_per_character,
                         fragmentation_buckets=fragmentation_buckets,
-                        peak_rss_mb=max(
-                            (float(obs.peak_rss_mb or 0.0) for obs in observations),
-                            default=0.0,
-                        ),
-                        memory_delta_mb=max(
-                            0.0,
-                            max(
-                                (float(obs.peak_rss_mb or 0.0) for obs in observations),
-                                default=0.0,
-                            )
-                            - min(
-                                (float(obs.peak_rss_mb or 0.0) for obs in observations),
-                                default=0.0,
-                            ),
-                        ),
+                        peak_rss_mb=(max(values) if (values := [float(obs.peak_rss_mb) for obs in observations if isinstance(obs.peak_rss_mb, int | float)]) and metric_plan.needs_resources else None),
+                        memory_delta_mb=(max(values) - min(values) if values and metric_plan.needs_resources else None),
                     )
                 )
-                tokenizer_results[-1].efficiency.encode_bytes_per_second_mean = float(
-                    throughput_bytes_per_sec
-                )
+                if metric_plan.needs_throughput:
+                    tokenizer_results[-1].efficiency.encode_bytes_per_second_mean = float(throughput_bytes_per_sec)
+                else:
+                    tokenizer_results[-1].efficiency = tokenizer_results[-1].efficiency.model_copy(update={field: None for field in tokenizer_results[-1].efficiency.model_fields})
 
                 if metric_plan.needs_per_document_stats:
                     sampled_data = pd.DataFrame(sample_rows)
@@ -504,9 +491,10 @@ class BenchmarkServiceExecutionMixin:
                         self.result_builder._build_per_document_stats(
                             tokenizer_name=name,
                             data=sampled_data,
-                            per_document_latency_ms=[
-                                None for _ in range(len(sampled_data))
-                            ],
+                            per_document_latency_ms=(
+                                [(obs.elapsed_ns / 1_000_000.0) / max(1, obs.documents) for obs in observations[:len(sampled_data)]]
+                                if metric_plan.needs_per_document_latency else [None for _ in range(len(sampled_data))]
+                            ),
                         )
                     )
                 self._raw_observations[name] = [
@@ -592,9 +580,11 @@ class BenchmarkServiceExecutionMixin:
             memory_total_mb=None,
         )
 
-        chart_data = self.result_builder._build_chart_data(
+        dashboard = self.result_builder.build_dashboard_data(
             tokenizer_results,
             getattr(self, "_raw_observations", {}),
+            per_document_stats,
+            resolved_metric_keys,
         )
 
         runtime_metadata = collect_runtime_environment()
@@ -632,38 +622,6 @@ class BenchmarkServiceExecutionMixin:
             "postprocess_definition": "Time spent computing post-trial metrics from replayed rows.",
             "latency_summary_definition": "Latency percentiles and distributions are computed from all timed batch observations, normalized by documents per batch.",
         }
-        successful_results = [
-            result for result in tokenizer_results if result.status == "success"
-        ]
-        resource_metrics_available = any(
-            (
-                result.resources.peak_rss_mb > 0.0
-                or result.resources.memory_delta_mb > 0.0
-            )
-            for result in successful_results
-        )
-        runtime_metadata["metric_availability"] = {
-            "resource_metrics": resource_metrics_available,
-            "latency_distribution": bool(
-                metric_plan.needs_latency and len(successful_results) > 0
-            ),
-            "byte_fallback_rate": False,
-            "unknown_token_rate": any(
-                result.fidelity.unknown_token_rate is not None
-                for result in successful_results
-            ),
-            "vocab_character_overlap": any(
-                result.fidelity.lossless_encodability_rate is not None
-                for result in successful_results
-            ),
-            "fragmentation_word_length_bucket": any(
-                bool(result.fragmentation.fragmentation_by_word_length_bucket)
-                for result in successful_results
-            ),
-            "per_document_stats": bool(
-                metric_plan.needs_per_document_stats and len(per_document_stats) > 0
-            ),
-        }
         runtime_metadata["end_to_end_benchmark_seconds"] = max(
             0.0, time.perf_counter() - run_started_at
         )
@@ -671,7 +629,8 @@ class BenchmarkServiceExecutionMixin:
 
         return BenchmarkRunResponse(
             status="cancelled" if cancelled else "success",
-            schema_version=1,
+            schema_version=BENCHMARK_SCHEMA_VERSION,
+            report_version=BENCHMARK_REPORT_VERSION,
             methodology_version="semantic_honesty",
             run_name=normalized_run_name or None,
             selected_metric_keys=resolved_metric_keys,
@@ -686,7 +645,7 @@ class BenchmarkServiceExecutionMixin:
                 timed_trials=config.timed_trials,
             ),
             tokenizer_results=tokenizer_results,
-            chart_data=chart_data,
+            dashboard=dashboard,
             per_document_stats=per_document_stats,
             runtime_metadata=runtime_metadata,
             raw_observations=getattr(self, "_raw_observations", {}),

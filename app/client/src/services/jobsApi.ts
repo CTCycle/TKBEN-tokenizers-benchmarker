@@ -11,6 +11,13 @@ export async function fetchJobStatus(jobId: string): Promise<JobStatusResponse> 
     return parseJobStatusResponse(await readJsonResponse(response, 'Failed to fetch job status'));
 }
 
+export async function cancelJob(jobId: string): Promise<JobStatusResponse> {
+    const response = await fetch(`${API_ENDPOINTS.JOBS}/${encodeURIComponent(jobId)}/cancel`, {
+        method: 'POST',
+    });
+    return parseJobStatusResponse(await readJsonResponse(response, 'Failed to stop job'));
+}
+
 interface JobPollOptions<T> {
     onUpdate?: (status: JobStatusResponse) => void;
     timeoutMs?: number;

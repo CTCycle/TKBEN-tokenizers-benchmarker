@@ -13,6 +13,7 @@ from server.repositories.schemas.models import (
     DatasetDocument,
     Tokenizer,
 )
+from server.common.constants import BENCHMARK_REPORT_VERSION
 
 ###############################################################################
 class BenchmarkRepository:
@@ -68,6 +69,7 @@ class BenchmarkRepository:
                 BenchmarkReport.selected_metric_keys,
             ))
             .join(Dataset, Dataset.id == BenchmarkReport.dataset_id)
+            .where(BenchmarkReport.report_version == BENCHMARK_REPORT_VERSION)
             .order_by(BenchmarkReport.id.desc())
             .limit(capped_limit)
         )
@@ -82,7 +84,7 @@ class BenchmarkRepository:
         stmt = (
             select(BenchmarkReport, Dataset.name.label("dataset_name"))
             .join(Dataset, Dataset.id == BenchmarkReport.dataset_id)
-            .where(BenchmarkReport.id == int(report_id))
+            .where(BenchmarkReport.id == int(report_id), BenchmarkReport.report_version == BENCHMARK_REPORT_VERSION)
             .limit(1)
         )
         with self._session() as session:

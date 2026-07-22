@@ -1,5 +1,5 @@
 # Backend API
-Last updated: 2026-07-20
+Last updated: 2026-07-22
 
 ## API Prefix
 All routers are included with `prefix="/api"` during backend startup.
@@ -37,6 +37,7 @@ All routers are included with `prefix="/api"` during backend startup.
 
 ## Jobs
 - `GET /api/jobs/{job_id}`
+- `POST /api/jobs/{job_id}/cancel` — requests cooperative cancellation for an active job; status polling reports `cancelled` once the runner exits.
 
 ## Hugging Face Keys
 - `POST /api/keys`

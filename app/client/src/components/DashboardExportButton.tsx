@@ -71,14 +71,16 @@ const DashboardExportButton = ({
     );
 
     const [submitting, setSubmitting] = useState(false);
+    const [feedback, setFeedback] = useState<{ kind: 'error' | 'success'; message: string } | null>(null);
     const handleExport = async () => {
         if (!dashboardPayload) {
-            window.alert('No dashboard report data available to export.');
+            setFeedback({ kind: 'error', message: 'No dashboard report data is available to export.' });
             return;
         }
         const normalizedFileName = toPdfFileName(defaultStem);
 
         setSubmitting(true);
+        setFeedback(null);
         try {
             const pickerWindow = window as SavePickerWindow;
             const response = await exportDashboardPdf({
@@ -90,6 +92,7 @@ const DashboardExportButton = ({
 
             if (!pickerWindow.showSaveFilePicker) {
                 downloadPdfBlob(response.blob, response.fileName);
+                setFeedback({ kind: 'success', message: `${response.fileName} was downloaded.` });
                 return;
             }
 
@@ -105,6 +108,7 @@ const DashboardExportButton = ({
             const writable = await fileHandle.createWritable();
             await writable.write(response.blob);
             await writable.close();
+            setFeedback({ kind: 'success', message: `${fileHandle.name ?? response.fileName} was saved.` });
         } catch (submissionError) {
             if (submissionError instanceof DOMException && submissionError.name === 'AbortError') {
                 return;
@@ -112,27 +116,30 @@ const DashboardExportButton = ({
             const message = submissionError instanceof Error
                 ? submissionError.message
                 : 'Failed to export dashboard.';
-            window.alert(message);
+            setFeedback({ kind: 'error', message });
         } finally {
             setSubmitting(false);
         }
     };
 
     return (
-        <button
+        <div className="dashboard-export-control">
+            <button
             type="button"
             className="icon-button subtle dashboard-export-trigger"
             onClick={() => { void handleExport(); }}
             disabled={submitting || !dashboardPayload}
             title="Export dashboard report as PDF"
             aria-label="Export dashboard report as PDF"
-        >
+            >
             <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M12 3v10" strokeWidth="2" strokeLinecap="round" />
                 <path d="M8 9l4 4 4-4" strokeWidth="2" strokeLinecap="round" />
                 <path d="M5 16.5V20h14v-3.5" strokeWidth="2" strokeLinecap="round" />
             </svg>
-        </button>
+            </button>
+            {feedback && <p className={`dashboard-export-feedback dashboard-export-feedback--${feedback.kind}`} role={feedback.kind === 'error' ? 'alert' : 'status'}>{feedback.message}</p>}
+        </div>
     );
 };
 

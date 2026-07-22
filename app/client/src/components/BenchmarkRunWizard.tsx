@@ -16,6 +16,7 @@ type BenchmarkRunWizardProps = {
   defaultDatasetName: string | null;
   defaultMaxDocuments: number;
   running: boolean;
+  onCancel: () => Promise<boolean>;
   onClose: () => void;
   onRun: (payload: BenchmarkRunWizardPayload) => Promise<void>;
 };
@@ -31,6 +32,7 @@ const BenchmarkRunWizard = ({
   defaultDatasetName,
   defaultMaxDocuments,
   running,
+  onCancel,
   onClose,
   onRun,
 }: BenchmarkRunWizardProps) => {
@@ -447,10 +449,10 @@ const BenchmarkRunWizard = ({
             <button
               type="button"
               className="primary-button"
-              onClick={() => void runBenchmark()}
-              disabled={running || !canRun}
+              onClick={() => void (running ? onCancel() : runBenchmark())}
+              disabled={running ? false : !canRun}
             >
-              {running ? 'Running...' : 'Confirm and Run'}
+              {running ? 'Stop benchmark' : 'Confirm and Run'}
             </button>
           )}
         </footer>

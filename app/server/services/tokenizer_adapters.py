@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from collections.abc import Mapping
 from typing import Any, Protocol, Sequence
 
 ###############################################################################
@@ -59,7 +60,7 @@ class UniversalTokenizerAdapter:
                 truncation=truncation,
                 max_length=max_length,
             )
-            input_ids = encoded["input_ids"] if isinstance(encoded, dict) else []
+            input_ids = encoded["input_ids"] if isinstance(encoded, Mapping) else []
             normalized_ids = [[int(value) for value in ids] for ids in input_ids]
             token_counts = [len(ids) for ids in normalized_ids]
             unknown_counts = [

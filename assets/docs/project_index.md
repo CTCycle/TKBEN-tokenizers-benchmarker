@@ -60,6 +60,8 @@ This file is the root index for `assets/docs`. Read it first to find the narrowe
   - Page structure, UX rules, responsiveness, accessibility, and design principles.
 - `ui/ui_standards.md`
   - Practical UI implementation standards for spacing, typography, colors, components, and responsive polish.
+- `ui/benchmark_dashboard.md`
+  - Normalized cross-benchmark dashboard contract, customization, persistence, and version policy.
 
 ## Reading Order
 1. Read this root index.
