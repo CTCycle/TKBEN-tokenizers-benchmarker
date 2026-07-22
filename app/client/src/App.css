@@ -487,9 +487,10 @@
 
 .dataset-add-button,
 .catalog-add-button {
-  width: 34px;
+  width: auto;
+  min-width: 34px;
   height: 34px;
-  padding: 0;
+  padding: 0 11px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: transparent;
@@ -497,6 +498,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   cursor: pointer;
   transition: background var(--transition), color var(--transition), border-color var(--transition);
 }
@@ -599,7 +601,7 @@
 
 .dataset-preview-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 12px;
   align-items: center;
   min-height: 52px;
@@ -620,6 +622,10 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: default;
+}
+
+.dataset-preview-row--header span:last-child {
+  justify-self: end;
 }
 
 .dataset-preview-row--header:hover {
@@ -648,7 +654,7 @@
 
 .dataset-preview-select {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   align-items: center;
   min-width: 0;
