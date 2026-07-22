@@ -1,11 +1,11 @@
 # Runtime Modes
-Last updated: 2026-07-11
+Last updated: 2026-07-22
 
 ## Supported Modes
 ### 1. Local webapp mode
-- Backend: FastAPI (`TKBEN.server.app:app`)
-- Frontend: Vite preview build (`TKBEN/client/dist`)
-- Canonical and sole root launcher: `TKBEN/start_on_windows.ps1`.
+- Backend: FastAPI (`server.app:app` from `app/`)
+- Frontend: Vite preview build (`app/client/dist`)
+- Canonical and sole root launcher: `start_on_windows.ps1`.
 - Uses a Vite preview build and FastAPI with portable Windows runtimes.
 
 ### 2. Test runtime mode
