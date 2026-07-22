@@ -52,7 +52,10 @@ const CatalogFilterToolbar = ({
         <input type="number" className="text-input" value={numericValue} onChange={(event) => onNumericValueChange(event.target.value)} placeholder={numericPlaceholder} min={0} />
       </div>
     </div>
-    <button type="button" className="catalog-add-button" onClick={onAdd} aria-label={addButtonLabel} title={addButtonTitle}>{addIcon ?? '+'}</button>
+    <button type="button" className="catalog-add-button" onClick={onAdd} aria-label={addButtonLabel} title={addButtonTitle}>
+      <span aria-hidden="true">{addIcon ?? '+'}</span>
+      <span className="sr-only">{addButtonLabel}</span>
+    </button>
   </div>
 );
 

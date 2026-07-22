@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from server.services.metrics.benchmark_definitions import benchmark_metric_catalog
 
 
 ###############################################################################
@@ -435,7 +436,7 @@ DATASET_METRIC_CATALOG: list[dict[str, Any]] = [
 ]
 
 ###############################################################################
-BENCHMARK_METRIC_CATALOG: list[dict[str, Any]] = [
+_LEGACY_BENCHMARK_METRIC_CATALOG: list[dict[str, Any]] = [
     {
         "category_key": "efficiency",
         "category_label": "Efficiency",
@@ -570,6 +571,8 @@ BENCHMARK_METRIC_CATALOG: list[dict[str, Any]] = [
         "metrics": [],
     },
 ]
+
+BENCHMARK_METRIC_CATALOG: list[dict[str, Any]] = benchmark_metric_catalog()
 
 ###############################################################################
 def flatten_metric_keys(

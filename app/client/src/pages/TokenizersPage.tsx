@@ -108,16 +108,18 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
   );
 
   const vocabularyChartData = useMemo(() => {
-    if (!benchmarkResult?.chart_data?.vocabulary) return [];
-    return benchmarkResult.chart_data.vocabulary.map((stat) => ({
+    const widget = benchmarkResult?.dashboard.widgets.find((item) => item.metric_keys.includes('meta.vocabulary_size'));
+    if (!widget) return [];
+    return widget.points.map((stat) => ({
       name: stat.tokenizer.split('/').pop() || stat.tokenizer,
       'Vocabulary Size': stat.value,
     }));
   }, [benchmarkResult]);
 
   const speedChartData = useMemo(() => {
-    if (!benchmarkResult?.chart_data?.efficiency) return [];
-    return benchmarkResult.chart_data.efficiency.map((stat) => ({
+    const widget = benchmarkResult?.dashboard.widgets.find((item) => item.metric_keys.includes('eff.encode_tokens_per_second_mean'));
+    if (!widget) return [];
+    return widget.points.map((stat) => ({
       name: stat.tokenizer.split('/').pop() || stat.tokenizer,
       'Tokens/sec': Math.round(stat.value),
     }));
@@ -465,16 +467,6 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
                     Review selected tokenizers and open persisted reports.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  className="icon-button"
-                  onClick={() => setIsTokenizerModalOpen(true)}
-                  aria-label="Add tokenizer"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 5v14M5 12h14" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                </button>
               </header>
               <div className="tokenizer-preview-body">
                 {tokenizersLoading && availableTokenizers.length === 0 ? (
@@ -494,8 +486,14 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
                     </p>
                   </>
                 ) : (
-                  <div className="tokenizer-preview-list">
-                    {availableTokenizers.map((item) => {
+                  <div className="tokenizer-preview-table">
+                    <div className="tokenizer-preview-row--header" role="row">
+                      <span role="columnheader">Tokenizer</span>
+                      <span role="columnheader">Vocabulary</span>
+                      <span role="columnheader">Actions</span>
+                    </div>
+                    <div className="tokenizer-preview-list">
+                      {availableTokenizers.map((item) => {
                       const isSelected = tokenizers.includes(item.tokenizer_name);
                       return (
                       <div key={item.tokenizer_name} className={`tokenizer-preview-row${isSelected ? ' selected' : ''}`}>
@@ -511,7 +509,8 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
                         </div>
                       </div>
                       );
-                    })}
+                      })}
+                    </div>
                   </div>
                 )}
               </div>

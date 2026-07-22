@@ -369,13 +369,17 @@ export interface BenchmarkDistributionPoint {
     sample_count: number;
 }
 
-export interface BenchmarkChartData {
-    efficiency: BenchmarkSeriesPoint[];
-    fidelity: BenchmarkSeriesPoint[];
-    vocabulary: BenchmarkSeriesPoint[];
-    fragmentation: BenchmarkSeriesPoint[];
-    latency_or_memory_distribution: BenchmarkDistributionPoint[];
+export interface BenchmarkDashboardPoint { tokenizer: string; value: number; interval_low: number | null; interval_high: number | null; }
+export interface BenchmarkDashboardDistribution { tokenizer: string; min: number; q1: number; median: number; q3: number; max: number; sample_count: number; }
+export interface BenchmarkDashboardBucketPoint { tokenizer: string; bucket: string; value: number; }
+export interface BenchmarkDashboardWidgetData {
+  widget_id: string; metric_keys: string[]; category_key: string; category_label: string;
+  label: string; description: string; unit: string; display_format: string;
+  visualization: 'bar' | 'interval_bar' | 'box_plot' | 'bucket_bar'; default_visible: boolean;
+  width: 'standard' | 'wide'; points: BenchmarkDashboardPoint[];
+  distributions: BenchmarkDashboardDistribution[]; buckets: BenchmarkDashboardBucketPoint[];
 }
+export interface BenchmarkDashboardData { widgets: BenchmarkDashboardWidgetData[]; available_widget_ids: string[]; available_metric_keys: string[]; unavailable_selected_metric_keys: string[]; }
 
 /**
  * Request for running tokenizer benchmarks
@@ -405,6 +409,11 @@ export interface BenchmarkMetricCatalogMetric {
     scope: string;
     value_kind: string;
     core: boolean;
+    unit: string;
+    display_format: string;
+    visualization: string;
+    default_visible: boolean;
+    width: string;
 }
 
 export interface BenchmarkMetricCatalogCategory {
@@ -533,7 +542,7 @@ export interface BenchmarkRunResponse {
     hardware_profile: BenchmarkHardwareProfile;
     trial_summary: BenchmarkTrialSummary;
     tokenizer_results: BenchmarkTokenizerResult[];
-    chart_data: BenchmarkChartData;
+    dashboard: BenchmarkDashboardData;
     per_document_stats: BenchmarkPerDocumentTokenizerStats[];
     runtime_metadata: Record<string, unknown>;
     raw_observations: Record<string, Array<Record<string, unknown>>>;

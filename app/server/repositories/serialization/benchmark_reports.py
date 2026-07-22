@@ -10,6 +10,7 @@ from server.common.utils.logger import logger
 from server.repositories.benchmarks import BenchmarkRepository
 from server.repositories.queries.data import DataRepositoryQueries
 from server.repositories.schemas.models import BenchmarkReport
+from server.common.constants import BENCHMARK_REPORT_VERSION, BENCHMARK_SCHEMA_VERSION
 
 ###############################################################################
 def _parse_timestamp(value: object) -> pd.Timestamp | None:
@@ -54,7 +55,7 @@ class BenchmarkReportSerializer:
 
         return self.repository.save_benchmark_report(
             dataset_id=int(dataset_id),
-            report_version=int(report_payload.get("report_version", 2) or 2),
+            report_version=BENCHMARK_REPORT_VERSION,
             created_at=created_at_value,
             run_name=run_name,
             selected_metric_keys=selected_metric_keys,
@@ -95,8 +96,8 @@ class BenchmarkReportSerializer:
         ]
 
         normalized_payload = dict(payload)
-        if "schema_version" not in normalized_payload:
-            raise ValueError("Benchmark report is missing required schema_version.")
+        if normalized_payload.get("schema_version") != BENCHMARK_SCHEMA_VERSION:
+            raise ValueError("Benchmark report uses an incompatible schema version.")
         if "methodology_version" not in normalized_payload:
             raise ValueError(
                 "Benchmark report is missing required methodology_version."
@@ -104,9 +105,9 @@ class BenchmarkReportSerializer:
         normalized_payload["report_id"] = int(
             row.get("id") or normalized_payload.get("report_id") or 0
         )
-        normalized_payload["report_version"] = int(
-            row.get("report_version") or normalized_payload.get("report_version") or 2
-        )
+        if int(row.get("report_version") or 0) != BENCHMARK_REPORT_VERSION:
+            raise ValueError("Benchmark report uses an incompatible report version.")
+        normalized_payload["report_version"] = BENCHMARK_REPORT_VERSION
         normalized_payload["created_at"] = created_at_iso
         normalized_payload["run_name"] = row.get("run_name") or normalized_payload.get(
             "run_name"
