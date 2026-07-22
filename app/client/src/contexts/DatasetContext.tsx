@@ -20,6 +20,7 @@ import type {
     DatasetAnalysisResponse,
     DatasetMetricCatalogCategory,
     DatasetPreviewItem,
+    DatasetCatalogFilters,
     HistogramData,
 } from '../types/api';
 import { useAvailableDatasets } from '../hooks/useAvailableDatasets';
@@ -49,6 +50,7 @@ interface DatasetContextType {
     fileInputRef: React.RefObject<HTMLInputElement | null>;
     availableDatasets: DatasetPreviewItem[];
     datasetsLoading: boolean;
+    datasetsInitialized: boolean;
     activeValidationDataset: string | null;
     activeReportLoadDataset: string | null;
     removingDataset: string | null;
@@ -73,7 +75,7 @@ interface DatasetContextType {
         options?: { suppressNotFoundError?: boolean },
     ) => Promise<void>;
     handleDeleteDataset: (datasetName: string) => Promise<void>;
-    refreshAvailableDatasets: () => Promise<void>;
+    refreshAvailableDatasets: (filters?: DatasetCatalogFilters) => Promise<void>;
     loadMetricsCatalog: () => Promise<void>;
 }
 
@@ -110,9 +112,9 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
     const [metricsCatalog, setMetricsCatalog] = useState<DatasetMetricCatalogCategory[]>([]);
     const [metricsCatalogLoading, setMetricsCatalogLoading] = useState(false);
 
-    const refreshAvailableDatasets = useCallback(async () => {
+    const refreshAvailableDatasets = useCallback(async (filters: DatasetCatalogFilters = {}) => {
         try {
-            await refreshAvailableDatasetsInternal();
+            await refreshAvailableDatasetsInternal(filters);
         } catch (err) {
             console.error('Failed to fetch datasets:', err);
         }
@@ -397,6 +399,7 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             fileInputRef,
             availableDatasets,
             datasetsLoading,
+            datasetsInitialized,
             activeValidationDataset,
             activeReportLoadDataset,
             removingDataset,
@@ -433,6 +436,7 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             fileInputRef,
             availableDatasets,
             datasetsLoading,
+            datasetsInitialized,
             activeValidationDataset,
             activeReportLoadDataset,
             removingDataset,

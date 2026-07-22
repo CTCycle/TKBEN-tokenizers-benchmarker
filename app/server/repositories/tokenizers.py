@@ -24,11 +24,19 @@ class TokenizerRepository:
         return Session(bind=self.database.backend.engine)
 
     # -------------------------------------------------------------------------
-    def list_downloaded_tokenizers(self) -> list[str]:
-        stmt = select(Tokenizer.name).order_by(Tokenizer.name.asc())
+    def list_downloaded_tokenizer_catalog(self) -> list[tuple[str, bool, object]]:
+        stmt = (
+            select(Tokenizer.name, TokenizerReport.id, TokenizerReport.metadata_json)
+            .outerjoin(TokenizerReport, TokenizerReport.tokenizer_id == Tokenizer.id)
+            .order_by(Tokenizer.name.asc())
+        )
         with self._session() as session:
             rows = session.execute(stmt).all()
-        return [str(name) for (name,) in rows]
+        return [(str(name), report_id is not None, metadata) for name, report_id, metadata in rows]
+
+    # -------------------------------------------------------------------------
+    def list_downloaded_tokenizers(self) -> list[str]:
+        return [name for name, _, _ in self.list_downloaded_tokenizer_catalog()]
 
     # -------------------------------------------------------------------------
     def tokenizer_exists(self, tokenizer_id: str) -> bool:

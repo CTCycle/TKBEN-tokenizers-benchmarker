@@ -22,7 +22,7 @@ $EnvFile = Join-Path $RepoRoot 'settings\.env'
 $EnvTemplate = Join-Path $RepoRoot 'settings\.env.example'
 $UvCacheDir = Join-Path $RuntimeDir '.uv-cache'
 $PythonVersion = '3.14.2'
-$NodeVersion = '22.12.0'
+$NodeVersion = '22.13.0'
 
 function Write-Step([string]$Message) { Write-Host "[STEP] $Message" -ForegroundColor Cyan }
 function Write-Ok([string]$Message) { Write-Host "[OK] $Message" -ForegroundColor Green }
@@ -69,6 +69,15 @@ function Invoke-CheckPyVer {
     param([Parameter(Mandatory)][string]$PythonExe)
     & $PythonExe -c 'import platform; print(platform.python_version())'
     if ($LASTEXITCODE -ne 0) { throw "Python version check failed with exit code $LASTEXITCODE." }
+}
+
+function Invoke-Npm {
+    param([Parameter(ValueFromRemainingArguments)][string[]]$Arguments)
+    if (-not (Test-Path -LiteralPath $NpmCmd)) { throw "npm was not installed at $NpmCmd" }
+    $commandLine = '"' + $NpmCmd + '"'
+    if ($Arguments) { $commandLine += ' ' + ($Arguments -join ' ') }
+    & cmd.exe /d /c $commandLine | Out-Host
+    return [int]$LASTEXITCODE
 }
 
 function Invoke-FindUv {
@@ -192,7 +201,16 @@ function Install-Runtimes {
     }
     Write-Ok (& $UvExe --version)
 
-    if (-not (Test-Path -LiteralPath $NodeExe)) {
+    $nodeNeedsInstall = -not (Test-Path -LiteralPath $NodeExe)
+    if (-not $nodeNeedsInstall) {
+        $installedNodeVersion = (& $NodeExe --version).Trim().TrimStart('v')
+        $nodeNeedsInstall = $installedNodeVersion -ne $NodeVersion
+        if ($nodeNeedsInstall) {
+            Write-Step "Replacing incompatible Node.js $installedNodeVersion with $NodeVersion."
+            Stop-PortListeners -Port ([int]$env:UI_PORT)
+        }
+    }
+    if ($nodeNeedsInstall) {
         Write-Step "Downloading Node.js $NodeVersion (portable x64)."
         $nodeArchive = Join-Path $NodeDir "node-v$NodeVersion-win-x64.zip"
         Invoke-DownloadAndExtract `
@@ -215,14 +233,26 @@ function Sync-Dependencies {
 
     Import-Environment
     Install-Runtimes
+    Stop-PortListeners -Port ([int]$env:UI_PORT)
 
     Write-Step 'Installing Python dependencies.'
     $uvArguments = @('sync', '--python', $PythonExe)
     if ($env:OPTIONAL_DEPENDENCIES -ieq 'true') { $uvArguments += '--all-extras' }
     Push-Location $ServerDir
     try {
-        & $UvExe @uvArguments
-        if ($LASTEXITCODE -ne 0) { throw "uv sync failed with exit code $LASTEXITCODE." }
+        $uvExitCode = 1
+        for ($attempt = 1; $attempt -le 2; $attempt++) {
+            & $UvExe @uvArguments
+            $uvExitCode = $LASTEXITCODE
+            if ($uvExitCode -eq 0) { break }
+            if ($attempt -eq 1) {
+                Write-Step 'uv sync failed; clearing the managed uv cache and retrying once.'
+                if (Test-Path -LiteralPath $UvCacheDir) {
+                    Remove-Item -LiteralPath $UvCacheDir -Recurse -Force
+                }
+            }
+        }
+        if ($uvExitCode -ne 0) { throw "uv sync failed with exit code $uvExitCode." }
     } finally {
         Pop-Location
     }
@@ -231,16 +261,16 @@ function Sync-Dependencies {
     Push-Location $ClientDir
     try {
         if (Test-Path -LiteralPath (Join-Path $ClientDir 'package-lock.json')) {
-            & $NpmCmd ci
+            $npmExitCode = Invoke-Npm ci
         } else {
-            & $NpmCmd install
+            $npmExitCode = Invoke-Npm install
         }
-        if ($LASTEXITCODE -ne 0) { throw "npm dependency installation failed with exit code $LASTEXITCODE." }
+        if ($npmExitCode -ne 0) { throw "npm dependency installation failed with exit code $npmExitCode." }
 
         if ($BuildFrontend) {
             Write-Step 'Building frontend.'
-            & $NpmCmd run build
-            if ($LASTEXITCODE -ne 0) { throw "Frontend build failed with exit code $LASTEXITCODE." }
+            $npmExitCode = Invoke-Npm run build
+            if ($npmExitCode -ne 0) { throw "Frontend build failed with exit code $npmExitCode." }
         } else {
             Write-Step 'Skipping frontend build because ALWAYS_REBUILD=false.'
         }
@@ -297,8 +327,9 @@ function Launch-Application {
     $backendPid = if ($backendProcess) { $backendProcess.Id } else { Get-PortProcessId -Port $backendPort }
 
     Write-Step 'Starting frontend preview.'
-    $frontendProcess = Start-Process -FilePath $NpmCmd `
-        -ArgumentList @('run', 'preview', '--', '--host', $env:UI_HOST, '--port', "$uiPort", '--strictPort') `
+    $previewCommandLine = '"' + $NpmCmd + '" run preview -- --host ' + $env:UI_HOST + ' --port ' + $uiPort + ' --strictPort'
+    $frontendProcess = Start-Process -FilePath 'cmd.exe' `
+        -ArgumentList @('/d', '/c', $previewCommandLine) `
         -WorkingDirectory $ClientDir -WindowStyle Hidden -PassThru
     Invoke-HealthCheck -Uri "http://$($env:UI_HOST):$uiPort/" -Attempts 60 -IntervalSeconds 1
 
@@ -376,26 +407,47 @@ function Uninstall-Application {
 function Wait-ForMenu {
     if ([Console]::IsInputRedirected) { return }
     Write-Host
-    Write-Host 'Press any key to return to menu...'
+    Write-Host 'Press any key to return to the menu...' -ForegroundColor DarkGray
     [Console]::ReadKey($true) | Out-Null
+}
+
+function Write-MenuItem([string]$Number, [string]$Label, [string]$Description, [ConsoleColor]$Color = [ConsoleColor]::White) {
+    Write-Host "  [$Number] " -NoNewline -ForegroundColor $Color
+    Write-Host $Label -NoNewline -ForegroundColor White
+    Write-Host "  $Description" -ForegroundColor DarkGray
 }
 
 function Show-Menu {
     while ($true) {
         Clear-Host
-        Write-Host '========================================='
-        Write-Host '    TKBEN -- Tokenizers Benchmarker'
-        Write-Host '========================================='
-        Write-Host '1.  Launch application'
-        Write-Host '2.  Install / update dependencies'
-        Write-Host '3.  Initialize database'
-        Write-Host '4.  Run test suite'
-        Write-Host '5.  Remove logs'
-        Write-Host '6.  Clear cache'
-        Write-Host '7.  Uninstall application'
-        Write-Host '8.  Exit'
-        Write-Host '========================================='
-        $selection = (Read-Host 'Select an option (1-8)').Trim()
+        $host.UI.RawUI.WindowTitle = 'TKBEN | Tokenizers Benchmarker'
+        Write-Host
+        Write-Host '  +----------------------------------------------------------+' -ForegroundColor DarkCyan
+        Write-Host '  |' -NoNewline -ForegroundColor DarkCyan
+        Write-Host '  TKBEN' -NoNewline -ForegroundColor Cyan
+        Write-Host '  TOKENIZERS BENCHMARKER' -NoNewline -ForegroundColor White
+        Write-Host '                         |' -ForegroundColor DarkCyan
+        Write-Host ('  |  {0,-56}|' -f 'Launch, maintain, and validate your local workspace.') -ForegroundColor DarkGray
+        Write-Host '  +----------------------------------------------------------+' -ForegroundColor DarkCyan
+        Write-Host
+        Write-Host '  APPLICATION' -ForegroundColor DarkCyan
+        Write-MenuItem '1' 'Launch application' 'Start the local benchmark workspace' Cyan
+        Write-Host
+        Write-Host '  SETUP & VALIDATION' -ForegroundColor DarkCyan
+        Write-MenuItem '2' 'Install / update dependencies' 'Sync the required local tooling'
+        Write-MenuItem '3' 'Initialize database' 'Create or update the local database'
+        Write-MenuItem '4' 'Run test suite' 'Validate backend and frontend checks'
+        Write-Host
+        Write-Host '  MAINTENANCE' -ForegroundColor DarkCyan
+        Write-MenuItem '5' 'Remove logs' 'Clear generated application logs'
+        Write-MenuItem '6' 'Clear cache' 'Remove downloaded and generated caches'
+        Write-MenuItem '7' 'Uninstall application' 'Remove local runtimes and dependencies' Yellow
+        Write-Host
+        Write-Host '  +----------------------------------------------------------+' -ForegroundColor DarkCyan
+        Write-MenuItem '8' 'Exit' 'Close this launcher' DarkGray
+        Write-Host '  +----------------------------------------------------------+' -ForegroundColor DarkCyan
+        Write-Host
+        $selection = (Read-Host '  Select an option [1-8]').Trim()
 
         if ($selection -notmatch '^[1-8]$') {
             Write-Fatal 'Invalid option. Enter a number from 1 through 8.'

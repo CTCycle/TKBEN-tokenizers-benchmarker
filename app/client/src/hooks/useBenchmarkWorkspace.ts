@@ -5,6 +5,7 @@ import {
   fetchBenchmarkReports,
   runBenchmarks,
 } from '../services/benchmarksApi';
+import { cancelJob } from '../services/jobsApi';
 import { fetchAvailableDatasets } from '../services/datasetsApi';
 import { fetchDownloadedTokenizers } from '../services/tokenizersApi';
 import type {
@@ -45,6 +46,7 @@ type BenchmarkWorkspaceResult = {
   loadingPage: boolean;
   loadingReport: boolean;
   runningBenchmark: boolean;
+  cancelBenchmark: () => Promise<boolean>;
   error: string | null;
   clearError: () => void;
   loadReportById: (reportId: number) => Promise<void>;
@@ -64,6 +66,7 @@ export const useBenchmarkWorkspace = (): BenchmarkWorkspaceResult => {
   const [loadingPage, setLoadingPage] = useState(true);
   const [loadingReport, setLoadingReport] = useState(false);
   const [runningBenchmark, setRunningBenchmark] = useState(false);
+  const [activeBenchmarkJobId, setActiveBenchmarkJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const selectedReportIdRef = useRef<number | null>(null);
 
@@ -133,7 +136,7 @@ export const useBenchmarkWorkspace = (): BenchmarkWorkspaceResult => {
     setRunningBenchmark(true);
     setError(null);
     try {
-      const report = await runBenchmarks(payload);
+      const report = await runBenchmarks(payload, undefined, (job) => setActiveBenchmarkJobId(job.job_id));
       setActiveReport(report);
       await refreshReportSummaries(report.report_id);
       return true;
@@ -141,9 +144,23 @@ export const useBenchmarkWorkspace = (): BenchmarkWorkspaceResult => {
       setError(getErrorMessage(runError, 'Failed to run benchmark'));
       return false;
     } finally {
+      setActiveBenchmarkJobId(null);
       setRunningBenchmark(false);
     }
   }, [refreshReportSummaries]);
+
+  const cancelBenchmark = useCallback(async () => {
+    if (!activeBenchmarkJobId) {
+      return false;
+    }
+    try {
+      await cancelJob(activeBenchmarkJobId);
+      return true;
+    } catch (cancelError) {
+      setError(getErrorMessage(cancelError, 'Failed to stop benchmark'));
+      return false;
+    }
+  }, [activeBenchmarkJobId]);
 
   return {
     tokenizers,
@@ -155,6 +172,7 @@ export const useBenchmarkWorkspace = (): BenchmarkWorkspaceResult => {
     loadingPage,
     loadingReport,
     runningBenchmark,
+    cancelBenchmark,
     error,
     clearError,
     loadReportById,

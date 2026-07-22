@@ -1,6 +1,5 @@
 # Project-specific generated/runtime artifacts
 runtimes/**
-!runtimes/.gitkeep
 app/resources/sources/datasets/**
 app/resources/sources/tokenizers/**
 app/resources/logs/**
@@ -49,13 +48,12 @@ Thumbs.db
 # Misc
 .sonarlint/
 *.lock
-!app/server/uv.lock
 *.log
-*.db
-*.db-journal
+*.db*
 *.sqlite*
 *.exe
 !.gitkeep
 
 # Local configuration
 settings/.env
+app/resources/hf-key-material.json

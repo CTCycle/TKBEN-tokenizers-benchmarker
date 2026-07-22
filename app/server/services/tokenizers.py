@@ -7,7 +7,7 @@ import tempfile
 from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from huggingface_hub import HfApi, ModelCard
 from tokenizers import Tokenizer as FastTokenizer
@@ -27,8 +27,8 @@ class TokenizersService(TokenizerStorageMixin):
     """
     Service for fetching tokenizer information from HuggingFace.
 
-    This is a webapp-specific service that provides tokenizer scanning
-    functionality without the desktop app dependencies.
+    Service for tokenizer scanning and metadata retrieval
+    from HuggingFace.
     """
 
     PIPELINE_TAGS = [
@@ -132,6 +132,73 @@ class TokenizersService(TokenizerStorageMixin):
             if self.has_cached_tokenizer(name):
                 names.append(name)
         return names
+
+    # -------------------------------------------------------------------------
+    def list_tokenizer_catalog(
+        self,
+        search: str | None = None,
+        source: Literal["all", "huggingface", "custom"] = "all",
+        vocabulary_size_operator: Literal["at_least", "at_most"] = "at_least",
+        vocabulary_size: int | None = None,
+    ) -> list[dict[str, Any]]:
+        catalog: list[dict[str, Any]] = []
+        for name, has_report, metadata in self.repository.list_downloaded_tokenizer_catalog():
+            if not self.has_cached_tokenizer(name):
+                continue
+            parsed_size = None
+            if isinstance(metadata, dict):
+                value = metadata.get("vocabulary_size")
+                if isinstance(value, int) and value >= 0:
+                    parsed_size = value
+            catalog.append({
+                "tokenizer_name": name,
+                "source": "huggingface",
+                "has_report": has_report,
+                "vocabulary_size": parsed_size,
+            })
+
+        for name, tokenizer in self.custom_tokenizer_registry.snapshot().items():
+            parsed_size: int | None = None
+            get_size = getattr(tokenizer, "get_vocab_size", None)
+            if callable(get_size):
+                try:
+                    value = get_size()
+                    if isinstance(value, int) and value >= 0:
+                        parsed_size = value
+                except Exception:  # noqa: BLE001
+                    pass
+            if parsed_size is None:
+                get_vocab = getattr(tokenizer, "get_vocab", None)
+                if callable(get_vocab):
+                    try:
+                        parsed_size = len(get_vocab())
+                    except Exception:  # noqa: BLE001
+                        pass
+            catalog.append({
+                "tokenizer_name": name,
+                "source": "custom",
+                "has_report": False,
+                "vocabulary_size": parsed_size,
+            })
+
+        search_term = (search or "").strip().casefold()
+        filtered = [
+            item for item in catalog
+            if (source == "all" or item["source"] == source)
+            and (not search_term or search_term in str(item["tokenizer_name"]).casefold())
+            and (
+                vocabulary_size is None
+                or (
+                    item["vocabulary_size"] is not None
+                    and (
+                        item["vocabulary_size"] >= vocabulary_size
+                        if vocabulary_size_operator == "at_least"
+                        else item["vocabulary_size"] <= vocabulary_size
+                    )
+                )
+            )
+        ]
+        return sorted(filtered, key=lambda item: str(item["tokenizer_name"]).casefold())
 
     # -------------------------------------------------------------------------
     def get_tokenizer_identifiers(self, limit: int = 100) -> list[Any]:

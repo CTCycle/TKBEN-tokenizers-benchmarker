@@ -1,5 +1,5 @@
 # Benchmark Contract
-Last updated: 2026-06-06
+Last updated: 2026-07-22
 
 ## Benchmark Request Notes
 Benchmark run request config includes tokenizer behavior flags and per-document controls:
@@ -9,6 +9,9 @@ Benchmark run request config includes tokenizer behavior flags and per-document 
 - `max_length`
 - `store_per_document_stats`
 - `per_document_sample_size`
+
+## Cancellation
+- An active benchmark may be stopped from the run wizard. Cancellation is cooperative: the active job receives a stop request, the engine exits at its next stop-check point, and the job finishes with status `cancelled` without persisting a benchmark report.
 
 ## Result and Runtime Metadata
 Each tokenizer result includes status and optional error details for failure isolation:
@@ -20,8 +23,13 @@ Runtime metadata includes benchmark config echo and dataset scope details:
 - `dataset_total_documents_available`
 - `dataset_documents_benchmarked`
 - `benchmark_config`
-- `metric_availability` indicates whether metric families are measured or available for the run payload
 - unavailable benchmark metrics use `null` rather than synthetic zero values
+
+## Dashboard and Versions
+- new benchmark reports use schema version `2` and report version `3`
+- `dashboard.widgets` is the normalized metric-widget payload; it provides only available widget series and includes display metadata
+- `available_metric_keys` and `unavailable_selected_metric_keys` make availability explicit at metric level
+- version 1 and 2 reports are not listed or loaded and are not migrated
 
 ## Fidelity Semantics
 - `fid.exact_round_trip_rate` stores decode/re-encode token ID stability, not direct text preservation
