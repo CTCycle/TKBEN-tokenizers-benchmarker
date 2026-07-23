@@ -11,6 +11,13 @@ from server.common.utils.security import (
 ###############################################################################
 class TokenizerStorageMixin:
     TOKENIZER_ID_MAX_LENGTH = 160
+    TOKENIZER_ARTIFACT_NAMES = (
+        "tokenizer.json",
+        "tokenizer.model",
+        "spiece.model",
+        "sentencepiece.bpe.model",
+        "vocab.json",
+    )
 
     # -------------------------------------------------------------------------
     def validate_tokenizer_identifier(self, value: str) -> str:
@@ -57,7 +64,12 @@ class TokenizerStorageMixin:
         cache_dir = Path(self.get_tokenizer_cache_dir(tokenizer_id))
         if not cache_dir.is_dir():
             return False
-        return any(path.is_file() for path in cache_dir.rglob("*"))
+        return any(
+            path.is_file()
+            and path.name in self.TOKENIZER_ARTIFACT_NAMES
+            and path.stat().st_size > 0
+            for path in cache_dir.rglob("*")
+        )
 
     # -------------------------------------------------------------------------
     def build_huggingface_url(self, tokenizer_name: str) -> str | None:

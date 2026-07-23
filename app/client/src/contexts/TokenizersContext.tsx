@@ -1,5 +1,5 @@
 import { createContext, useContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import {
     clearCustomTokenizers,
     downloadTokenizers as downloadTokenizersApi,
@@ -51,7 +51,7 @@ interface TokenizersContextType {
 
     // Actions
     setSelectedTokenizer: (tokenizer: string) => void;
-    setTokenizers: (tokenizers: string[]) => void;
+    setTokenizers: Dispatch<SetStateAction<string[]>>;
     setMaxDocuments: (value: number) => void;
     setSelectedDataset: (name: string) => void;
     setScanError: (error: string | null) => void;
@@ -186,9 +186,10 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
                 setDownloadWarning('Tokenizer already downloaded.');
             }
             if (response.failed_count > 0) {
-                setScanError(
-                    `Failed to download ${response.failed_count} tokenizer(s).`,
-                );
+    const failureDetails = response.failed_details.length > 0
+      ? `: ${response.failed_details.join(' | ')}`
+      : '';
+    setScanError(`Failed to download ${response.failed_count} tokenizer(s)${failureDetails}`);
             }
             await refreshTokenizers();
             const successful = [...response.downloaded, ...response.already_downloaded];
