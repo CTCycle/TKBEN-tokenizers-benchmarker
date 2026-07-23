@@ -719,14 +719,18 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                           <div className="dataset-preview-actions dataset-preview-actions-wide">
                             <button
                               type="button"
-                              className="secondary-button dataset-run-pipeline-button"
+                              className="icon-button subtle dataset-run-pipeline-button"
+                              aria-label={`Run validation pipeline for ${dataset.dataset_name}`}
+                              title="Run validation pipeline"
                               onClick={(event) => {
                                 event.stopPropagation();
                                 openValidationWizard(dataset.dataset_name);
                               }}
                               disabled={isValidating || isLoadingReport || isRemoving}
                             >
-                              Run validation pipeline
+                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M8 5.5v13l10-6.5-10-6.5Z" fill="currentColor" />
+                              </svg>
                             </button>
                             <button
                               type="button"

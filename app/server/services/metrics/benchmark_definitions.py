@@ -4,7 +4,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
-
 ###############################################################################
 class BenchmarkVisualizationKind(StrEnum):
     BAR = "bar"
@@ -12,12 +11,10 @@ class BenchmarkVisualizationKind(StrEnum):
     BOX_PLOT = "box_plot"
     BUCKET_BAR = "bucket_bar"
 
-
 ###############################################################################
 class BenchmarkWidgetWidth(StrEnum):
     STANDARD = "standard"
     WIDE = "wide"
-
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -38,7 +35,6 @@ class BenchmarkMetricDefinition:
     interval_low_path: str | None = None
     interval_high_path: str | None = None
     distribution_source: str | None = None
-
 
 ###############################################################################
 def _definition(key: str, category_key: str, category_label: str, label: str, path: str, unit: str, display_format: str, *, default_visible: bool = False, visualization: BenchmarkVisualizationKind = BenchmarkVisualizationKind.BAR, width: BenchmarkWidgetWidth = BenchmarkWidgetWidth.STANDARD, interval_low_path: str | None = None, interval_high_path: str | None = None, distribution_source: str | None = None, required_metric_keys: tuple[str, ...] = ()) -> BenchmarkMetricDefinition:
@@ -66,7 +62,6 @@ BENCHMARK_METRIC_DEFINITIONS: tuple[BenchmarkMetricDefinition, ...] = (
 
 BENCHMARK_DEFINITION_BY_KEY = {definition.key: definition for definition in BENCHMARK_METRIC_DEFINITIONS}
 BENCHMARK_DEFINITION_BY_WIDGET_ID = {definition.widget_id: definition for definition in BENCHMARK_METRIC_DEFINITIONS}
-
 
 ###############################################################################
 def benchmark_metric_catalog() -> list[dict[str, object]]:
