@@ -492,8 +492,7 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
                       <span role="columnheader">Vocabulary</span>
                       <span role="columnheader">Actions</span>
                     </div>
-                    <div className="tokenizer-preview-list">
-                      {availableTokenizers.map((item) => {
+                    {availableTokenizers.map((item) => {
                       const isSelected = tokenizers.includes(item.tokenizer_name);
                       return (
                       <div key={item.tokenizer_name} className={`tokenizer-preview-row${isSelected ? ' selected' : ''}`}>
@@ -504,13 +503,18 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
                             {activeOpeningTokenizer === item.tokenizer_name ? <span className="action-spinner" /> : <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v4H5z" /><path d="M5 12h14v8H5z" /></svg>}
                           </button>
                           <button type="button" className={`icon-button ${isSelected ? 'danger' : 'subtle'}`} aria-pressed={isSelected} aria-label={`${isSelected ? 'Remove' : 'Add'} ${item.tokenizer_name} ${isSelected ? 'from benchmark selection' : 'to benchmark selection'}`} title={`${isSelected ? 'Remove from' : 'Add to'} benchmark selection`} onClick={() => isSelected ? handleRemoveTokenizerFromPreview(item.tokenizer_name) : addTokenizer(item.tokenizer_name)}>
-                            {isSelected ? '−' : '+'}
+                            {isSelected ? (
+                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M5 7h14" strokeWidth="2" strokeLinecap="round" />
+                                <path d="M9 7V5h6v2" strokeWidth="2" strokeLinecap="round" />
+                                <rect x="7" y="7" width="10" height="12" rx="2" />
+                              </svg>
+                            ) : '+'}
                           </button>
                         </div>
                       </div>
                       );
-                      })}
-                    </div>
+                    })}
                   </div>
                 )}
               </div>
