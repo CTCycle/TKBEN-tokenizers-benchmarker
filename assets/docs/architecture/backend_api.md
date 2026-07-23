@@ -1,5 +1,5 @@
 # Backend API
-Last updated: 2026-07-22
+Last updated: 2026-07-23
 
 ## API Prefix
 All routers are included with `prefix="/api"` during backend startup.
@@ -19,9 +19,9 @@ All routers are included with `prefix="/api"` during backend startup.
 
 ## Tokenizers
 - `GET /api/tokenizers/settings`
-- `GET /api/tokenizers/scan`
+- `GET /api/tokenizers/scan` — returns Hugging Face models with supported text pipeline tags only; multimodal, image, audio, and untyped repositories are excluded.
 - `GET /api/tokenizers/list` — returns `{tokenizers, count}`; each item includes `tokenizer_name`, `source=huggingface|custom`, `has_report`, and nullable `vocabulary_size`. Optional `search` (trimmed, max 160 characters), `source=all|huggingface|custom`, `vocabulary_size_operator=at_least|at_most`, and non-negative `vocabulary_size` filters are applied server-side.
-- `POST /api/tokenizers/download`
+- `POST /api/tokenizers/download` — background result includes `failed_details` with sanitized exception summaries; failed downloads remove incomplete cache artifacts.
 - `POST /api/tokenizers/reports/generate`
 - `GET /api/tokenizers/reports/latest`
 - `GET /api/tokenizers/reports/{report_id}`

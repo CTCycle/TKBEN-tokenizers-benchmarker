@@ -1295,8 +1295,10 @@
 
 .tokenizer-preview-actions {
   display: inline-flex;
+  width: 68px;
   align-items: center;
   gap: 8px;
+  justify-content: flex-end;
   flex-shrink: 0;
 }
 
@@ -1740,7 +1742,8 @@
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background: var(--color-panel-alt);
-  overflow: auto;
+  max-height: min(52vh, 560px);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -1783,8 +1786,8 @@
 .tokenizer-vocabulary-list--paged {
   border: 0;
   border-radius: 0;
-  max-height: none;
-  flex: 1;
+  max-height: min(52vh, 480px);
+  flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
