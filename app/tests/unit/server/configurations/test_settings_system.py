@@ -77,16 +77,16 @@ def test_server_package_import_bootstraps_env_early(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     env_path = tmp_path / ".env"
-    _write_env(env_path, ["TKBEN_TAURI_MODE=true"])
+    _write_env(env_path, ["FASTAPI_HOST=192.168.1.1"])
 
     monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
-    monkeypatch.setenv("TKBEN_TAURI_MODE", "false")
+    monkeypatch.setenv("FASTAPI_HOST", "127.0.0.1")
 
     import server as server_package
 
     importlib.reload(server_package)
 
-    assert os.getenv("TKBEN_TAURI_MODE") == "true"
+    assert os.getenv("FASTAPI_HOST") == "192.168.1.1"
 
 ###############################################################################
 def test_missing_configuration_file_fails_fast(

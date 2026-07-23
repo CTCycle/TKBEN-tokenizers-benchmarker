@@ -2,12 +2,10 @@ from __future__ import annotations
 
 import os
 from ipaddress import ip_address
-from pathlib import Path
 
 from server.common.path import (
     DATASETS_PATH,
     ENV_FILE_PATH,
-    CLIENT_INDEX_FILE_PATH,
     LOGS_PATH,
     TEMPLATES_PATH,
     TOKENIZERS_PATH,
@@ -27,19 +25,6 @@ def ensure_runtime_directories() -> None:
 def validate_runtime_files() -> None:
     if not ENV_FILE_PATH.is_file():
         raise RuntimeError(f"Environment file not found: {ENV_FILE_PATH}")
-
-###############################################################################
-def validate_tauri_client_bundle(
-    *,
-    tauri_mode_enabled: bool,
-    client_index_file_path: os.PathLike[str] | str = CLIENT_INDEX_FILE_PATH,
-) -> None:
-    client_index_path = Path(client_index_file_path)
-    if tauri_mode_enabled and not client_index_path.is_file():
-        raise RuntimeError(
-            "TKBEN_TAURI_MODE is enabled but the packaged frontend build is missing. "
-            f"Expected file: {client_index_path}"
-        )
 
 ###############################################################################
 def validate_local_only_security_boundary() -> None:
@@ -68,18 +53,10 @@ def build_cors_origins() -> list[str]:
     return sorted(f"http://{host}:{ui_port}" for host in hosts)
 
 ###############################################################################
-def run_startup_validations(
-    *,
-    tauri_mode_enabled: bool,
-    client_index_file_path: os.PathLike[str] | str = CLIENT_INDEX_FILE_PATH,
-) -> None:
+def run_startup_validations() -> None:
     validate_runtime_files()
     ensure_runtime_directories()
     validate_local_only_security_boundary()
-    validate_tauri_client_bundle(
-        tauri_mode_enabled=tauri_mode_enabled,
-        client_index_file_path=client_index_file_path,
-    )
 
 ###############################################################################
 def _normalized_host(raw_host: str) -> str:
