@@ -72,6 +72,7 @@ class TokenizerDownloadResponse(BaseModel):
     downloaded: list[str] = Field(default_factory=list)
     already_downloaded: list[str] = Field(default_factory=list)
     failed: list[str] = Field(default_factory=list)
+    failed_details: list[str] = Field(default_factory=list)
     requested_count: int = Field(default=0)
     downloaded_count: int = Field(default=0)
     already_downloaded_count: int = Field(default=0)

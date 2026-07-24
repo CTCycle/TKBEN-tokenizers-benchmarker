@@ -601,7 +601,7 @@
 
 .dataset-preview-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) 77px 106px;
   gap: 12px;
   align-items: center;
   min-height: 52px;
@@ -625,6 +625,10 @@
 }
 
 .dataset-preview-row--header span:last-child {
+  justify-self: end;
+}
+
+.dataset-preview-row--header span:nth-child(2) {
   justify-self: end;
 }
 
@@ -1218,6 +1222,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  max-height: calc(5 * 52px + 22px);
   overflow-y: auto;
   padding-right: 8px;
 }
@@ -1229,8 +1234,8 @@
 
 .tokenizer-preview-row--header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) 77px 76px;
+  column-gap: 20px;
   align-items: center;
   min-height: 34px;
   padding: 0 24px 8px 6px;
@@ -1240,6 +1245,11 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.tokenizer-preview-row--header span:nth-child(2),
+.tokenizer-preview-row--header span:last-child {
+  justify-self: end;
 }
 
 .tokenizer-preview-table--empty .tokenizer-preview-row--header {
@@ -1252,23 +1262,25 @@
   text-align: center;
 }
 
-.tokenizer-preview-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-height: calc(5 * 52px + 20px);
-  overflow-y: auto;
-  padding-right: 8px;
+.tokenizer-preview-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 77px 76px;
+  column-gap: 20px;
+  align-items: center;
+  min-height: 52px;
+  padding: 8px 24px 8px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  transition: border-color var(--transition), background var(--transition);
 }
 
-.tokenizer-preview-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-  min-height: 52px;
-  padding: 10px 12px 10px 8px;
+.tokenizer-preview-row:first-of-type {
   border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.tokenizer-preview-row:hover {
+  background: var(--color-surface-subtle);
+  border-color: rgba(255, 232, 31, 0.45);
 }
 
 .tokenizer-preview-name {
@@ -1276,18 +1288,29 @@
   min-width: 0;
   font-size: 14px;
   font-weight: 600;
-  line-height: 1.35;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  padding-right: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tokenizer-preview-actions {
   display: inline-flex;
+  width: 68px;
   align-items: center;
   gap: 8px;
+  justify-content: flex-end;
   flex-shrink: 0;
+}
+
+.tokenizer-preview-row .icon-button {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+}
+
+.tokenizer-preview-row .icon-button svg {
+  width: 15px;
+  height: 15px;
 }
 
 .tokenizer-report-hint {
@@ -1615,9 +1638,10 @@
 }
 
 .tokenizer-preview-vocabulary {
-  min-width: 70px;
+  min-width: 0;
+  font-size: 13px;
   color: var(--color-muted);
-  text-align: right;
+  text-align: left;
 }
 
 .tokenizer-empty-label {
@@ -1718,7 +1742,8 @@
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background: var(--color-panel-alt);
-  overflow: auto;
+  max-height: min(52vh, 560px);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -1761,8 +1786,8 @@
 .tokenizer-vocabulary-list--paged {
   border: 0;
   border-radius: 0;
-  max-height: none;
-  flex: 1;
+  max-height: min(52vh, 480px);
+  flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
@@ -3099,10 +3124,10 @@ select:focus-visible {
 }
 
 .dataset-run-pipeline-button {
-  padding: 8px 12px;
-  font-size: 12px;
-  min-height: 36px;
-  white-space: nowrap;
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
 }
 
 .hidden-file-input {
@@ -3970,6 +3995,7 @@ select:focus-visible {
   align-items: baseline;
   justify-content: space-between;
   gap: 16px;
+  margin-bottom: 12px;
 }
 
 .benchmark-dashboard-widget > header .cross-benchmark-chart-note {
@@ -4016,7 +4042,7 @@ select:focus-visible {
 .tokenizer-preview-row.selected {
   background: transparent;
   border-color: transparent;
-  border-top-color: rgba(255, 255, 255, 0.12);
+  border-bottom-color: rgba(255, 255, 255, 0.12);
 }
 
 /* Keep benchmark actions beside the report selector instead of in a left rail. */
@@ -4031,14 +4057,16 @@ select:focus-visible {
 
 .cross-benchmark-command-navbar {
   position: absolute;
-  top: 17px;
-  left: 300px;
+  top: 4px;
+  left: 288px;
   z-index: 2;
-  width: auto;
-  min-width: 0;
+  width: 28px;
+  min-width: 28px;
   margin: 0;
   padding: 0;
-  border: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(18, 25, 37, 0.72);
 }
 
 .cross-benchmark-controls-toggle {
@@ -4046,33 +4074,222 @@ select:focus-visible {
 }
 
 .cross-benchmark-command-navbar__content {
-  flex-direction: row;
+  width: 28px;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 1px;
 }
 
 .cross-benchmark-command-control {
   display: inline-flex;
+  width: 28px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+
+.cross-benchmark-command-control > span {
+  display: none;
+}
+
+.cross-benchmark-command-control > .icon-button,
+.cross-benchmark-command-control > .secondary-button,
+.cross-benchmark-command-control > .primary-button,
+.cross-benchmark-command-control .dashboard-export-control,
+.cross-benchmark-command-control .dashboard-export-control button {
+  width: 28px;
+  min-width: 28px;
+  height: 20px;
+  min-height: 20px;
+  padding: 0;
+}
+
+.cross-benchmark-command-control > .icon-button::before,
+.cross-benchmark-command-control > .secondary-button::before,
+.cross-benchmark-command-control > .primary-button::before,
+.cross-benchmark-command-control .dashboard-export-control button::before {
+  font-size: 16px;
+}
+
+.cross-benchmark-command-control .dashboard-export-control {
+  display: block;
+  height: 20px;
+}
+
+.cross-benchmark-command-control .dashboard-export-control button {
+  display: inline-flex;
+}
+
+.cross-benchmark-command-navbar__content .cross-benchmark-command-control .icon-button.subtle.dashboard-export-trigger::before {
+  content: '↓';
+  font-size: 16px;
+}
+
+.cross-benchmark-top-row {
+  grid-template-columns: 280px minmax(0, 1fr);
+  column-gap: 40px;
+}
+
+@media (max-width: 900px) {
+  .cross-benchmark-top-row {
+    grid-template-columns: 1fr;
+    row-gap: 12px;
+  }
+
+  .cross-benchmark-command-navbar {
+    position: static;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .cross-benchmark-command-navbar__content {
+    width: 100%;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 10px;
+  }
+
+  .cross-benchmark-command-control {
+    width: auto;
+    height: auto;
+  }
+
+  .cross-benchmark-command-control > span {
+    display: inline;
+  }
+
+  .cross-benchmark-command-control > .icon-button,
+  .cross-benchmark-command-control > .secondary-button,
+  .cross-benchmark-command-control > .primary-button,
+  .cross-benchmark-command-control .dashboard-export-control,
+  .cross-benchmark-command-control .dashboard-export-control button {
+    width: auto;
+    min-width: 0;
+    height: auto;
+    min-height: 34px;
+    padding: 0 8px;
+  }
+}
+
+/* Keep the report selector and benchmark toolbar together in the header's left column. */
+.benchmark-dashboard-widget {
+  border-radius: 0;
+}
+
+.cross-benchmark-command-navbar {
+  top: 0;
+  left: 0;
+  width: 320px;
+  min-width: 320px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.cross-benchmark-command-navbar__content {
+  display: grid;
+  width: 320px;
+  grid-template-columns: 90px 78px 70px 58px;
+  grid-template-rows: 14px 28px;
+  align-items: center;
+  justify-content: start;
+  gap: 4px;
+}
+
+.cross-benchmark-command-navbar__title {
+  display: block;
+  grid-column: 1 / -1;
+  color: var(--color-accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: normal;
+  text-transform: uppercase;
+}
+
+.cross-benchmark-command-control {
+  display: inline-flex;
+  width: auto;
+  height: 28px;
   align-items: center;
   gap: 4px;
   white-space: nowrap;
 }
 
 .cross-benchmark-command-control > span {
+  display: inline;
+  overflow: hidden;
   color: var(--color-muted);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.03em;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+}
+
+.cross-benchmark-command-control > .icon-button,
+.cross-benchmark-command-control > .secondary-button,
+.cross-benchmark-command-control > .primary-button,
+.cross-benchmark-command-control .dashboard-export-control,
+.cross-benchmark-command-control .dashboard-export-control button {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
 }
 
 .cross-benchmark-command-control .dashboard-export-control {
   display: block;
 }
 
-.cross-benchmark-command-control .icon-button.subtle.dashboard-export-trigger::before {
-  content: '↓';
-  font-size: 20px;
+.cross-benchmark-top-row {
+  grid-template-columns: 280px minmax(0, 1fr);
+  column-gap: 40px;
+  min-height: 112px;
+}
+
+.cross-benchmark-top-row .cross-benchmark-overview-grid {
+  align-self: center;
+  min-height: 76px;
+}
+
+.cross-benchmark-top-row .cross-benchmark-kpi-card {
+  padding: 8px 12px;
+}
+
+.cross-benchmark-top-row > .field-label {
+  gap: 8px;
+  padding-top: 50px;
+  width: 248px;
+  transform: translateY(4px);
+}
+
+.cross-benchmark-top-row > .field-label select {
+  width: 248px;
+  height: 30px;
+  padding: 0 12px;
+}
+
+@media (max-width: 900px) {
+  .cross-benchmark-command-navbar {
+    position: static;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+  }
+
+  .cross-benchmark-command-navbar__content {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .cross-benchmark-top-row > .field-label {
+    padding-top: 0;
+  }
 }
 
 

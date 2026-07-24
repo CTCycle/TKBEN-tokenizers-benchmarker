@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import math
 import re
+import shutil
 import tempfile
 from collections.abc import Callable
 from datetime import datetime, timezone
@@ -224,7 +225,12 @@ class TokenizersService(TokenizerStorageMixin):
             logger.debug("Tokenizer identifier fetch failed", exc_info=True)
             return []
 
-        identifiers = [model_id for model in models if isinstance(model_id := getattr(model, "modelId", None), str)]
+        identifiers = [
+            model_id
+            for model in models
+            if isinstance(model_id := getattr(model, "modelId", None), str)
+            and getattr(model, "pipeline_tag", None) in self.PIPELINE_TAGS
+        ]
 
         return identifiers
 
@@ -259,6 +265,7 @@ class TokenizersService(TokenizerStorageMixin):
                 "downloaded": downloaded,
                 "already_downloaded": already_downloaded,
                 "failed": failed,
+                "failed_details": [],
                 "requested_count": 0,
                 "downloaded_count": 0,
                 "already_downloaded_count": 0,
@@ -286,12 +293,17 @@ class TokenizersService(TokenizerStorageMixin):
                     # tokenizers locally with local_files_only=True.
                     self.insert_tokenizer_if_missing(tokenizer_id)
                     downloaded.append(tokenizer_id)
-            except Exception:
-                logger.warning("Failed to download tokenizer %s", tokenizer_id)
+            except Exception as exc:  # noqa: BLE001
+                cache_dir = Path(self.get_tokenizer_cache_dir(tokenizer_id))
+                shutil.rmtree(cache_dir, ignore_errors=True)
+                reason = f"{type(exc).__name__}: {str(exc).splitlines()[0][:240]}"
+                logger.warning(
+                    "Failed to download tokenizer %s (%s)", tokenizer_id, reason
+                )
                 logger.debug(
                     "Tokenizer download failed for %s", tokenizer_id, exc_info=True
                 )
-                failed.append(tokenizer_id)
+                failed.append(f"{tokenizer_id}: {reason}")
 
             if callable(progress_callback):
                 progress_callback(((index + 1) / total) * 100.0)
@@ -300,7 +312,8 @@ class TokenizersService(TokenizerStorageMixin):
             "status": "success",
             "downloaded": downloaded,
             "already_downloaded": already_downloaded,
-            "failed": failed,
+            "failed": [item.split(": ", 1)[0] for item in failed],
+            "failed_details": failed,
             "requested_count": len(requested),
             "downloaded_count": len(downloaded),
             "already_downloaded_count": len(already_downloaded),
