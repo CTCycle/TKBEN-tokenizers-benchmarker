@@ -2,7 +2,6 @@
 
 from playwright.sync_api import Page, expect
 
-
 ###############################################################################
 def _route_dashboard_api(page: Page) -> None:
     page.route("**/api/tokenizers/list", lambda route: route.fulfill(json={"tokenizers": [], "count": 0}))
@@ -24,7 +23,6 @@ def _route_dashboard_api(page: Page) -> None:
             ]},
         }),
     )
-
 
 ###############################################################################
 def test_cross_benchmark_dashboard_customization_and_accessible_data(

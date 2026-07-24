@@ -27,11 +27,13 @@ class RawTokenizer:
         return RawEncoding([1, 0] if text == "unknown" else [1, 2, 3])
 
 
+###############################################################################
 class PaddingTokenizer:
     eos_token = "<eos>"
     pad_token_id = None
     unk_token_id = None
 
+    # -------------------------------------------------------------------------
     def __call__(self, texts, **kwargs):  # type: ignore[no-untyped-def]
         assert kwargs["padding"] is True
         assert self.pad_token == self.eos_token
@@ -65,6 +67,7 @@ def test_adapter_accepts_raw_tokenizers_encoding_objects() -> None:
     assert encoded.unknown_counts == [0, 1]
 
 
+###############################################################################
 def test_adapter_uses_eos_token_for_padding_when_pad_token_is_missing() -> None:
     tokenizer = PaddingTokenizer()
     adapter = UniversalTokenizerAdapter("padding", tokenizer)

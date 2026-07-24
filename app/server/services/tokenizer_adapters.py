@@ -39,6 +39,7 @@ class UniversalTokenizerAdapter:
         ids = encoded.ids if hasattr(encoded, "ids") else encoded
         return [int(value) for value in ids]
 
+    # -------------------------------------------------------------------------
     def _ensure_padding_token(self, padding: bool) -> None:
         if not padding or getattr(self._tokenizer, "pad_token_id", None) is not None:
             return
