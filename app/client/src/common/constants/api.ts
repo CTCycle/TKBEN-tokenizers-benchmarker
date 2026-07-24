@@ -20,6 +20,7 @@ export const API_ENDPOINTS = {
     TOKENIZERS_SCAN: `${API_BASE_URL}/tokenizers/scan`,
     TOKENIZERS_LIST: `${API_BASE_URL}/tokenizers/list`,
     TOKENIZERS_DOWNLOAD: `${API_BASE_URL}/tokenizers/download`,
+    TOKENIZERS_DELETE: `${API_BASE_URL}/tokenizers/delete`,
     TOKENIZERS_UPLOAD: `${API_BASE_URL}/tokenizers/upload`,
     TOKENIZERS_CUSTOM: `${API_BASE_URL}/tokenizers/custom`,
     TOKENIZERS_REPORT_GENERATE: `${API_BASE_URL}/tokenizers/reports/generate`,

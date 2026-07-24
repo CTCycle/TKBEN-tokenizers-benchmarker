@@ -114,18 +114,6 @@ const TokenizerExaminationPage = () => {
                     : 'Open a tokenizer report from the preview list to populate this dashboard.'}
                 </p>
               </div>
-              <div className="dashboard-export-header-actions">
-                <DashboardExportButton
-                  dashboardType="tokenizer"
-                  reportName={tokenizerExportReportName}
-                  dashboardPayload={tokenizerReport
-                    ? {
-                      report: tokenizerReport,
-                      vocabulary_items: tokenizerVocabulary,
-                    }
-                    : null}
-                />
-              </div>
             </header>
 
             {!tokenizerReport && (
@@ -256,7 +244,18 @@ const TokenizerExaminationPage = () => {
                   Offset {tokenizerVocabularyOffset.toLocaleString()} | Limit {tokenizerVocabularyLimit.toLocaleString()} | Total {tokenizerVocabularyTotal.toLocaleString()}
                 </p>
               </div>
-              <div className="tokenizer-vocabulary-controls">
+              <div className="tokenizer-vocabulary-header-actions">
+                <DashboardExportButton
+                  dashboardType="tokenizer"
+                  reportName={tokenizerExportReportName}
+                  dashboardPayload={tokenizerReport
+                    ? {
+                      report: tokenizerReport,
+                      vocabulary_items: tokenizerVocabulary,
+                    }
+                    : null}
+                />
+                <div className="tokenizer-vocabulary-controls">
                 <label htmlFor="tokenizer-page-size" className="panel-description">Page size</label>
                 <select
                   id="tokenizer-page-size"
@@ -269,6 +268,7 @@ const TokenizerExaminationPage = () => {
                     <option key={size} value={size}>{size}</option>
                   ))}
                 </select>
+                </div>
               </div>
             </header>
 
