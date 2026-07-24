@@ -40,6 +40,14 @@ class UniversalTokenizerAdapter:
         return [int(value) for value in ids]
 
     # -------------------------------------------------------------------------
+    def _ensure_padding_token(self, padding: bool) -> None:
+        if not padding or getattr(self._tokenizer, "pad_token_id", None) is not None:
+            return
+        eos_token = getattr(self._tokenizer, "eos_token", None)
+        if eos_token is not None:
+            self._tokenizer.pad_token = eos_token
+
+    # -------------------------------------------------------------------------
     def encode_batch(
         self,
         texts: Sequence[str],
@@ -51,6 +59,7 @@ class UniversalTokenizerAdapter:
     ) -> EncodedBatch:
         as_list = list(texts)
         unk_id = getattr(self._tokenizer, "unk_token_id", None)
+        self._ensure_padding_token(padding)
 
         if callable(getattr(self._tokenizer, "__call__", None)):
             encoded = self._tokenizer(

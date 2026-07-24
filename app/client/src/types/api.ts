@@ -22,6 +22,7 @@ export interface TokenizerDownloadResponse {
     downloaded: string[];
     already_downloaded: string[];
     failed: string[];
+    failed_details: string[];
     requested_count: number;
     downloaded_count: number;
     already_downloaded_count: number;

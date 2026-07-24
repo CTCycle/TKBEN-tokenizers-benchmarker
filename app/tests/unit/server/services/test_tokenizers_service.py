@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from server.services.tokenizers import TokenizersService
 
 ###############################################################################
@@ -69,3 +71,63 @@ def test_tokenizers_service_report_prechecks(monkeypatch) -> None:
 
     assert service.get_tokenizer_report_vocabulary(1, 0, 10) is not None
     assert service.get_tokenizer_report_vocabulary(2, 0, 10) is None
+
+
+###############################################################################
+def test_tokenizer_scan_keeps_only_supported_text_pipeline_models(monkeypatch) -> None:
+    service = TokenizersService()
+
+    ###############################################################################
+    class FakeModel:
+
+        # -------------------------------------------------------------------------
+        def __init__(self, model_id: str, pipeline_tag: str | None) -> None:
+            self.modelId = model_id
+            self.pipeline_tag = pipeline_tag
+
+    ###############################################################################
+    class FakeApi:
+
+        # -------------------------------------------------------------------------
+        def list_models(self, **kwargs):
+            return [
+                FakeModel("bert-base-uncased", "fill-mask"),
+                FakeModel("XiaomiMiMo/MiMo-Audio-Tokenizer", None),
+                FakeModel("turkeyju/tokenizer_tatitok_bl128_vq", "image-tokenization"),
+            ]
+
+    monkeypatch.setattr("server.services.tokenizers.HfApi", lambda **kwargs: FakeApi())
+    monkeypatch.setattr(service.key_service, "get_active_key", lambda: None)
+
+    assert service.get_tokenizer_identifiers(limit=100) == ["bert-base-uncased"]
+
+
+###############################################################################
+def test_failed_tokenizer_download_cleans_partial_cache_and_returns_reason(
+    monkeypatch,
+) -> None:
+    service = TokenizersService()
+    cache_dir = "G:/TKBEN-test-cache/broken"
+    removed: list[str] = []
+
+    monkeypatch.setattr(service.key_service, "get_active_key", lambda: None)
+    monkeypatch.setattr(service, "is_tokenizer_persisted", lambda _: False)
+    monkeypatch.setattr(service, "get_tokenizer_cache_dir", lambda _: cache_dir)
+    monkeypatch.setattr(service, "has_cached_tokenizer", lambda _: False)
+    monkeypatch.setattr(
+        "server.services.tokenizers.shutil.rmtree",
+        lambda path, ignore_errors=False: removed.append(str(path)),
+    )
+    monkeypatch.setattr(
+        "server.services.tokenizers.AutoTokenizer.from_pretrained",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            ValueError("Unrecognized model configuration")
+        ),
+    )
+
+    result = service.download_and_persist(["broken/model"])
+
+    assert result["failed"] == ["broken/model"]
+    assert result["failed_count"] == 1
+    assert "ValueError: Unrecognized model configuration" in result["failed_details"][0]
+    assert removed == [str(Path(cache_dir))]
