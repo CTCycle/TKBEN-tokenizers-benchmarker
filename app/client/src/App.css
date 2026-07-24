@@ -1845,44 +1845,7 @@
   align-self: flex-start;
 }
 
-.cross-benchmark-command-navbar {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  width: fit-content;
-  max-width: 100%;
-  padding: 8px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-}
 
-.cross-benchmark-command-navbar.is-collapsed {
-  display: none;
-}
-
-.cross-benchmark-command-navbar__title {
-  color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.cross-benchmark-first-row {
-  display: grid;
-  grid-template-columns: minmax(260px, 0.34fr) minmax(0, 1fr);
-  gap: 18px;
-  align-items: start;
-}
-
-.cross-benchmark-top-row {
-  display: grid;
-  grid-template-columns: minmax(260px, 0.34fr) minmax(0, 1fr);
-  gap: 18px;
-  align-items: stretch;
-}
 
 .cross-benchmark-report-context {
   display: flex;
@@ -1907,79 +1870,7 @@
   font-size: 16px;
 }
 
-.cross-benchmark-content-row {
-  display: grid;
-  grid-template-columns: minmax(260px, 0.34fr) minmax(0, 1fr);
-  gap: 18px;
-  align-items: start;
-}
 
-.cross-benchmark-kpi-column {
-  min-width: 0;
-}
-
-.cross-benchmark-kpi-column h2 {
-  margin: 0 0 10px;
-  font-size: 16px;
-}
-
-.cross-benchmark-first-column {
-  min-width: 0;
-}
-
-.cross-benchmark-statistics-column {
-  min-width: 0;
-}
-
-.cross-benchmark-control-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  min-width: 0;
-}
-
-.cross-benchmark-control-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.cross-benchmark-control-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  justify-content: flex-start;
-  width: 100%;
-}
-
-.cross-benchmark-start-button {
-  width: 34px;
-  min-width: 34px;
-  height: 34px;
-  padding: 0;
-  flex-shrink: 0;
-}
-
-.cross-benchmark-start-button svg {
-  width: 16px;
-  height: 16px;
-}
-
-.cross-benchmark-report-picker {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.cross-benchmark-report-picker .field-label {
-  margin: 0;
-  white-space: nowrap;
-}
 
 .cross-benchmark-report-select {
   width: 100%;
@@ -2070,20 +1961,6 @@
   text-align: center;
 }
 
-.cross-benchmark-overview-grid {
-  display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.cross-benchmark-kpi-card {
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-subtle);
-  padding: var(--space-3);
-  min-width: 0;
-}
-
 .cross-benchmark-kpi-label {
   margin: 0;
   color: var(--color-muted);
@@ -2103,6 +1980,289 @@
   font-size: 11px;
   color: var(--color-muted);
   overflow-wrap: anywhere;
+}
+
+/* ── Canonical header surface ── */
+.cross-benchmark-workspace-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.cross-benchmark-control-surface {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-4);
+  align-items: stretch;
+  padding: var(--space-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-panel);
+  background: linear-gradient(
+    145deg,
+    var(--color-glass-strong),
+    var(--color-glass)
+  );
+  box-shadow: var(--shadow-panel), var(--shadow-inset);
+}
+
+.cross-benchmark-header-main {
+  min-width: 0;
+}
+
+.cross-benchmark-top-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(480px, 1.7fr);
+  gap: var(--space-3);
+  align-items: stretch;
+}
+
+.cross-benchmark-report-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cross-benchmark-report-picker .field-label {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.cross-benchmark-report-picker select {
+  width: 100%;
+  min-width: 0;
+}
+
+.cross-benchmark-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.cross-benchmark-kpi-card {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2) var(--space-3);
+  min-width: 0;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-subtle);
+}
+
+.cross-benchmark-command-navbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  border-left: 1px solid var(--color-border);
+  padding-left: var(--space-4);
+}
+
+.cross-benchmark-command-navbar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.cross-benchmark-command-navbar__title {
+  color: var(--color-accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.cross-benchmark-controls-toggle {
+  align-self: flex-start;
+}
+
+.cross-benchmark-command-navbar__content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.cross-benchmark-action-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 40px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-subtle);
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.cross-benchmark-action-button svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.cross-benchmark-action-button:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  background: var(--color-surface-hover);
+}
+
+.cross-benchmark-action-button:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.cross-benchmark-action-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.cross-benchmark-run-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 156px;
+  height: 40px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-control);
+  background: var(--color-accent);
+  color: #111;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: var(--glow-accent-soft);
+  transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
+}
+
+.cross-benchmark-run-button svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.cross-benchmark-run-button:hover:not(:disabled) {
+  background: var(--color-accent-dark);
+  border-color: var(--color-accent-dark);
+}
+
+.cross-benchmark-run-button:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.cross-benchmark-run-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+  box-shadow: none;
+}
+
+/* Export button inside the benchmark navbar */
+.cross-benchmark-command-navbar .dashboard-export-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 40px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-subtle);
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.cross-benchmark-command-navbar .dashboard-export-trigger:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  background: var(--color-surface-hover);
+}
+
+.cross-benchmark-command-navbar .dashboard-export-trigger:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.cross-benchmark-command-navbar .dashboard-export-trigger:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.cross-benchmark-command-navbar .dashboard-export-trigger__label {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Remove dashboard grid top margin inside cross-benchmark */
+.cross-benchmark-kpi-grid .benchmark-dashboard-grid {
+  margin-top: 0;
+}
+
+/* ── Responsive: 1100px ── */
+@media (max-width: 1100px) {
+  .cross-benchmark-control-surface {
+    grid-template-columns: 1fr;
+  }
+
+  .cross-benchmark-command-navbar {
+    border-left: 0;
+    padding-left: 0;
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border);
+  }
+}
+
+/* ── Responsive: 900px ── */
+@media (max-width: 900px) {
+  .cross-benchmark-top-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+
+  .cross-benchmark-report-picker {
+    flex-direction: column;
+  }
+
+  .cross-benchmark-command-navbar__content {
+    gap: var(--space-2);
+  }
+
+  .cross-benchmark-action-button,
+  .cross-benchmark-command-navbar .dashboard-export-trigger {
+    height: 36px;
+    padding: 0 var(--space-2);
+    font-size: 12px;
+  }
+
+  .cross-benchmark-run-button {
+    height: 36px;
+    min-width: 140px;
+    font-size: 13px;
+  }
+}
+
+/* ── Responsive: 700px ── */
+@media (max-width: 700px) {
+  .cross-benchmark-overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cross-benchmark-command-navbar__content {
+    flex-wrap: wrap;
+  }
+
+  .cross-benchmark-run-button {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 .cross-benchmark-chart-grid {
@@ -3325,343 +3485,6 @@ select:focus-visible {
   justify-content: center;
 }
 
-/* Initial desktop overrides for the annotation-driven benchmark command stack. */
-.cross-benchmark-workspace-shell { display: grid; grid-template-columns: 176px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 18px; row-gap: 20px; align-items: start; }
-.cross-benchmark-command-navbar { grid-column: 1; grid-row: 1; position: static; width: 176px; min-width: 176px; }
-.cross-benchmark-header-main { grid-column: 2; grid-row: 1; min-width: 0; }
-.cross-benchmark-top-row { display: flex; width: 60%; min-height: 0; margin-left: auto; flex-direction: column; gap: 12px; }
-.cross-benchmark-report-picker { display: grid; grid-template-columns: auto minmax(180px, 320px); align-items: center; gap: 10px; }
-.cross-benchmark-report-picker .field-label { margin: 0; color: var(--color-accent); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-.cross-benchmark-report-picker select { width: 100%; min-width: 0; }
-.cross-benchmark-top-row .cross-benchmark-overview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; min-height: 76px; }
-.cross-benchmark-workspace-main { grid-column: 1 / -1; grid-row: 2; width: 100%; min-width: 0; }
-.tokenizer-report-right { height: 100%; min-height: 100%; }
-.tokenizer-vocabulary-table-shell { max-height: none; }
-.cross-benchmark-command-navbar {
-  position: sticky;
-  top: 16px;
-  width: 176px;
-  min-width: 176px;
-  height: auto;
-  margin: 0;
-  padding: 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background: var(--color-panel);
-}
-
-.cross-benchmark-command-navbar__content {
-  display: flex;
-  width: 100%;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 14px;
-}
-
-.cross-benchmark-command-navbar__title {
-  display: block;
-}
-
-.cross-benchmark-command-control {
-  display: flex;
-  width: 100%;
-  height: auto;
-  align-items: center;
-  gap: 8px;
-}
-
-.cross-benchmark-command-control > span {
-  display: inline;
-}
-
-/* Annotation layout: compact header row with controls at left and report context at right. */
-.cross-benchmark-workspace-shell {
-  display: grid;
-  grid-template-columns: 176px minmax(0, 1fr);
-  grid-template-rows: auto auto;
-  column-gap: 18px;
-  row-gap: 20px;
-  align-items: start;
-}
-.cross-benchmark-command-navbar {
-  grid-column: 1;
-  grid-row: 1;
-  position: static;
-  width: 176px;
-  min-width: 176px;
-}
-.cross-benchmark-header-main {
-  grid-column: 2;
-  grid-row: 1;
-  min-width: 0;
-}
-.cross-benchmark-top-row {
-  display: flex;
-  min-height: 0;
-  flex-direction: column;
-  gap: 12px;
-}
-.cross-benchmark-report-picker {
-  display: grid;
-  grid-template-columns: auto minmax(180px, 320px);
-  align-items: center;
-  gap: 10px;
-}
-.cross-benchmark-report-picker .field-label {
-  margin: 0;
-  color: var(--color-accent);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-.cross-benchmark-report-picker select {
-  width: 100%;
-  min-width: 0;
-}
-.cross-benchmark-top-row .cross-benchmark-overview-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  min-height: 76px;
-}
-.cross-benchmark-workspace-main {
-  grid-column: 1 / -1;
-  grid-row: 2;
-  width: 100%;
-  min-width: 0;
-}
-.tokenizer-report-right {
-  height: 100%;
-  min-height: 100%;
-}
-.tokenizer-vocabulary-table-shell {
-  max-height: none;
-}
-
-@media (max-width: 900px) {
-  .cross-benchmark-workspace-shell {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
-  }
-  .cross-benchmark-command-navbar,
-  .cross-benchmark-header-main,
-  .cross-benchmark-workspace-main {
-    grid-column: 1;
-    width: 100%;
-    min-width: 0;
-  }
-  .cross-benchmark-command-navbar { grid-row: 1; }
-  .cross-benchmark-header-main { grid-row: 2; }
-  .cross-benchmark-workspace-main { grid-row: 3; }
-}
-
-/* Final annotation layout overrides. */
-.cross-benchmark-workspace-shell {
-  display: grid;
-  grid-template-columns: 176px minmax(0, 1fr);
-  grid-template-rows: auto auto;
-  column-gap: 18px;
-  row-gap: 20px;
-  align-items: start;
-}
-.cross-benchmark-command-navbar {
-  grid-column: 1;
-  grid-row: 1;
-  position: static;
-  width: 176px;
-  min-width: 176px;
-}
-.cross-benchmark-header-main {
-  grid-column: 2;
-  grid-row: 1;
-  min-width: 0;
-}
-.cross-benchmark-top-row {
-  display: flex;
-  min-height: 0;
-  flex-direction: column;
-  gap: 12px;
-}
-.cross-benchmark-report-picker {
-  display: grid;
-  grid-template-columns: auto minmax(180px, 320px);
-  align-items: center;
-  gap: 10px;
-}
-.cross-benchmark-report-picker .field-label {
-  margin: 0;
-  color: var(--color-accent);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-.cross-benchmark-report-picker select { width: 100%; min-width: 0; }
-.cross-benchmark-top-row .cross-benchmark-overview-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  min-height: 76px;
-}
-.cross-benchmark-workspace-main {
-  grid-column: 1 / -1;
-  grid-row: 2;
-  width: 100%;
-  min-width: 0;
-}
-.tokenizer-report-right { height: 100%; min-height: 100%; }
-.tokenizer-vocabulary-table-shell { max-height: none; }
-@media (max-width: 900px) {
-  .cross-benchmark-workspace-shell { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
-  .cross-benchmark-command-navbar, .cross-benchmark-header-main, .cross-benchmark-workspace-main { grid-column: 1; width: 100%; min-width: 0; }
-  .cross-benchmark-command-navbar { grid-row: 1; }
-  .cross-benchmark-header-main { grid-row: 2; }
-  .cross-benchmark-workspace-main { grid-row: 3; }
-}
-
-.cross-benchmark-command-control > .icon-button,
-.cross-benchmark-command-control > .secondary-button,
-.cross-benchmark-command-control > .primary-button,
-.cross-benchmark-command-control .dashboard-export-control,
-.cross-benchmark-command-control .dashboard-export-control button {
-  width: 36px;
-  min-width: 36px;
-  height: 34px;
-  min-height: 34px;
-  padding: 0;
-}
-
-/* Final desktop header layout. */
-.cross-benchmark-workspace-shell { display: grid; grid-template-columns: 176px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 18px; row-gap: 20px; align-items: start; }
-.cross-benchmark-command-navbar { grid-column: 1; grid-row: 1; position: static; width: 176px; min-width: 176px; }
-.cross-benchmark-header-main { grid-column: 2; grid-row: 1; min-width: 0; }
-.cross-benchmark-top-row { display: flex; min-height: 0; flex-direction: column; gap: 12px; }
-.cross-benchmark-report-picker { display: grid; grid-template-columns: auto minmax(180px, 320px); align-items: center; gap: 10px; }
-.cross-benchmark-report-picker .field-label { margin: 0; color: var(--color-accent); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-.cross-benchmark-report-picker select { width: 100%; min-width: 0; }
-.cross-benchmark-top-row .cross-benchmark-overview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; min-height: 76px; }
-.cross-benchmark-workspace-main { grid-column: 1 / -1; grid-row: 2; width: 100%; min-width: 0; }
-.tokenizer-report-right { height: 100%; min-height: 100%; }
-.tokenizer-vocabulary-table-shell { max-height: none; }
-@media (max-width: 900px) {
-  .cross-benchmark-workspace-shell { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
-  .cross-benchmark-command-navbar, .cross-benchmark-header-main, .cross-benchmark-workspace-main { grid-column: 1; width: 100%; min-width: 0; }
-  .cross-benchmark-command-navbar { grid-row: 1; }
-  .cross-benchmark-header-main { grid-row: 2; }
-  .cross-benchmark-workspace-main { grid-row: 3; }
-}
-
-@media (max-width: 900px) {
-  .cross-benchmark-command-navbar {
-    position: static;
-    width: 100%;
-    min-width: 0;
-  }
-
-.cross-benchmark-command-navbar__content {
-    width: 100%;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-}
-
-@media (min-width: 901px) {
-  .cross-benchmark-command-navbar {
-    position: static;
-    width: 176px;
-    min-width: 176px;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .cross-benchmark-command-navbar__content {
-    width: 176px;
-    gap: 12px;
-  }
-
-  .cross-benchmark-command-control {
-    display: grid;
-    grid-template-columns: 36px minmax(0, 1fr);
-    width: 176px;
-    min-height: 34px;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .cross-benchmark-report-picker {
-    width: 100%;
-    grid-template-columns: minmax(0, 1fr) minmax(180px, 320px);
-  }
-
-  .cross-benchmark-top-row .cross-benchmark-overview-grid {
-    width: 100%;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    justify-content: stretch;
-  }
-}
-@media (min-width: 901px) {
-  .cross-benchmark-command-navbar {
-    position: static;
-    width: 176px;
-    min-width: 176px;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .cross-benchmark-command-navbar__content {
-    width: 176px;
-    gap: 12px;
-  }
-
-  .cross-benchmark-command-control {
-    display: grid;
-    grid-template-columns: 36px minmax(0, 1fr);
-    width: 176px;
-    min-height: 34px;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .cross-benchmark-report-picker {
-    width: 100%;
-    grid-template-columns: minmax(0, 1fr) minmax(180px, 320px);
-  }
-
-  .cross-benchmark-top-row .cross-benchmark-overview-grid {
-    width: 100%;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    justify-content: stretch;
-  }
-}
-
-/* End-of-file desktop layout contract for the annotation-driven header. */
-.cross-benchmark-workspace-shell { display: grid; grid-template-columns: 176px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 18px; row-gap: 20px; align-items: start; }
-.cross-benchmark-command-navbar { grid-column: 1; grid-row: 1; position: static; width: 176px; min-width: 176px; }
-.cross-benchmark-header-main { grid-column: 2; grid-row: 1; min-width: 0; }
-.cross-benchmark-top-row { display: flex; min-height: 0; flex-direction: column; gap: 12px; }
-.cross-benchmark-report-picker { display: grid; grid-template-columns: auto minmax(180px, 320px); align-items: center; gap: 10px; }
-.cross-benchmark-report-picker .field-label { margin: 0; color: var(--color-accent); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-.cross-benchmark-report-picker select { width: 100%; min-width: 0; }
-.cross-benchmark-top-row .cross-benchmark-overview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; min-height: 76px; }
-.cross-benchmark-workspace-main { grid-column: 1 / -1; grid-row: 2; width: 100%; min-width: 0; }
-.tokenizer-report-right { height: 100%; min-height: 100%; }
-.tokenizer-vocabulary-table-shell { max-height: none; }
-@media (max-width: 900px) {
-  .cross-benchmark-workspace-shell { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
-  .cross-benchmark-command-navbar, .cross-benchmark-header-main, .cross-benchmark-workspace-main { grid-column: 1; width: 100%; min-width: 0; }
-  .cross-benchmark-command-navbar { grid-row: 1; }
-  .cross-benchmark-header-main { grid-row: 2; }
-  .cross-benchmark-workspace-main { grid-row: 3; }
-}
-
 .dataset-word-cloud-fallback {
   display: flex;
   flex-wrap: wrap;
@@ -4010,18 +3833,6 @@ select:focus-visible {
     max-width: none;
   }
 
-.cross-benchmark-overview-grid {
-  grid-template-columns: 1fr;
-}
-
-.cross-benchmark-top-row .cross-benchmark-overview-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  min-width: 0;
-  min-height: 90px;
-  box-sizing: border-box;
-}
-
   .cross-benchmark-kpi-card {
     padding: 10px 12px;
   }
@@ -4111,10 +3922,6 @@ select:focus-visible {
     max-height: 180px;
   }
 
-  .cross-benchmark-overview-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .cross-benchmark-boxplot-row {
     grid-template-columns: 1fr;
     gap: 6px;
@@ -4161,187 +3968,9 @@ select:focus-visible {
 @media (max-width: 900px) { .benchmark-dashboard-grid { grid-template-columns: 1fr; } .benchmark-dashboard-widget--wide, .benchmark-dashboard-sortable:has(.benchmark-dashboard-widget--wide) { grid-column: auto; } }
 @media (max-width: 700px) { .benchmark-dashboard-modal { padding: 18px; } .benchmark-dashboard-modal footer { flex-direction: column; } }
 
-@media (max-width: 900px) {
-  .cross-benchmark-top-row,
-  .cross-benchmark-content-row { grid-template-columns: 1fr; }
-  .cross-benchmark-first-row { grid-template-columns: 1fr; }
-  .cross-benchmark-command-navbar { flex-wrap: wrap; }
-}
-
-@media (max-width: 700px) {
-  .cross-benchmark-command-navbar { align-items: stretch; flex-direction: column; }
-  .cross-benchmark-command-navbar .dashboard-export-header-actions { justify-content: flex-start; flex-wrap: wrap; }
-}
-
-.cross-benchmark-overview-grid { grid-template-columns: 1fr; }
-.cross-benchmark-kpi-card span,
-.cross-benchmark-kpi-card strong,
-.cross-benchmark-kpi-card small { display: block; }
-.cross-benchmark-kpi-card strong { margin-top: 4px; }
-.cross-benchmark-kpi-card small { margin-top: 4px; color: var(--color-muted); font-size: 11px; }
-
-.cross-benchmark-top-row .cross-benchmark-overview-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  min-width: 0;
-}
-
-.cross-benchmark-workspace-shell {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 18px;
-  align-items: start;
-  min-width: 0;
-}
-
-.cross-benchmark-workspace-main {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.cross-benchmark-command-navbar {
-  position: sticky;
-  top: 16px;
-  display: flex;
-  width: 176px;
-  min-width: 176px;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
-  padding: 10px;
-}
-
-.cross-benchmark-command-navbar.is-collapsed {
-  display: flex;
-  width: 44px;
-  min-width: 44px;
-  padding: 5px;
-}
-
-.cross-benchmark-command-navbar__content {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
-}
-
-.cross-benchmark-command-navbar__content .icon-button,
-.cross-benchmark-command-navbar__content .secondary-button,
-.cross-benchmark-command-navbar__content .primary-button,
-.cross-benchmark-command-navbar__content .dashboard-export-control,
-.cross-benchmark-command-navbar__content .dashboard-export-control button {
-  width: 100%;
-}
-
-.cross-benchmark-command-navbar__content .dashboard-export-control {
-  display: block;
-}
-
-.cross-benchmark-command-navbar__title {
-  white-space: normal;
-  line-height: 1.25;
-}
-
-@media (max-width: 900px) {
-  .cross-benchmark-workspace-shell { grid-template-columns: 1fr; }
-  .cross-benchmark-command-navbar,
-  .cross-benchmark-command-navbar.is-collapsed {
-    position: static;
-    width: 100%;
-    min-width: 0;
-    flex-direction: row;
-    align-items: center;
-  }
-  .cross-benchmark-command-navbar__content { flex: 1; flex-direction: row; flex-wrap: wrap; align-items: center; }
-  .cross-benchmark-command-navbar__content .icon-button,
-  .cross-benchmark-command-navbar__content .secondary-button,
-  .cross-benchmark-command-navbar__content .primary-button,
-  .cross-benchmark-command-navbar__content .dashboard-export-control,
-  .cross-benchmark-command-navbar__content .dashboard-export-control button { width: auto; }
-}
-
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
-/* Compact benchmark command rail */
-.cross-benchmark-command-navbar {
-  width: 72px;
-  min-width: 72px;
-  margin-left: -12px;
-  padding: 4px;
-  border-color: transparent;
-  background: transparent;
-  box-shadow: none;
-}
 
-.cross-benchmark-command-navbar__content {
-  align-items: center;
-  gap: 12px;
-}
-
-.cross-benchmark-command-navbar__title {
-  display: none;
-}
-
-.cross-benchmark-command-navbar__content .icon-button,
-.cross-benchmark-command-navbar__content .secondary-button,
-.cross-benchmark-command-navbar__content .primary-button,
-.cross-benchmark-command-navbar__content .dashboard-export-control,
-.cross-benchmark-command-navbar__content .dashboard-export-control button {
-  width: 42px;
-  min-width: 42px;
-  height: 38px;
-  padding: 0;
-  border-color: transparent;
-  background: transparent;
-  box-shadow: none;
-  font-size: 0;
-}
-
-.cross-benchmark-command-navbar__content .icon-button::before,
-.cross-benchmark-command-navbar__content .secondary-button::before,
-.cross-benchmark-command-navbar__content .primary-button::before,
-.cross-benchmark-command-navbar__content .dashboard-export-control button::before {
-  display: inline-grid;
-  width: 100%;
-  height: 100%;
-  place-items: center;
-  color: currentColor;
-  font-size: 20px;
-  line-height: 1;
-}
-
-.cross-benchmark-command-navbar__content .icon-button.subtle::before { content: '⚙'; }
-.cross-benchmark-command-navbar__content .dashboard-layout-reset::before { content: '↺'; font-size: 20px; }
-.cross-benchmark-command-navbar__content .dashboard-export-control button::before { content: '↓'; font-size: 20px; }
-.cross-benchmark-command-navbar__content .dashboard-export-control button svg { display: none; }
-.cross-benchmark-command-navbar__content .primary-button::before { content: '▶'; font-size: 13px; }
-.cross-benchmark-command-navbar__content .icon-button:hover,
-.cross-benchmark-command-navbar__content .secondary-button:hover,
-.cross-benchmark-command-navbar__content .primary-button:hover,
-.cross-benchmark-command-navbar__content .dashboard-export-control button:hover {
-  border-color: var(--color-border);
-  background: var(--color-surface-subtle);
-}
-
-.cross-benchmark-top-row {
-  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
-  column-gap: 32px;
-}
-
-.cross-benchmark-top-row > .field-label {
-  color: var(--color-accent);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.cross-benchmark-top-row .cross-benchmark-overview-grid {
-  grid-template-columns: repeat(3, minmax(150px, 220px));
-  justify-content: end;
-}
 
 .benchmark-dashboard-widget > header {
   display: flex;
@@ -4418,101 +4047,6 @@ select:focus-visible {
   align-items: center;
 }
 
-.cross-benchmark-workspace-shell {
-  display: grid;
-  grid-template-columns: 176px minmax(0, 1fr);
-  gap: 18px;
-  align-items: start;
-}
-
-.cross-benchmark-command-navbar {
-  position: sticky;
-  top: 16px;
-  width: 176px;
-  min-width: 176px;
-  margin: 0;
-  padding: 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background: var(--color-panel);
-}
-
-.cross-benchmark-command-navbar__content {
-  display: flex;
-  width: 100%;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 14px;
-}
-
-.cross-benchmark-command-navbar__title {
-  display: block;
-  color: var(--color-accent);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.cross-benchmark-command-control {
-  display: flex;
-  width: 100%;
-  height: auto;
-  align-items: center;
-  gap: 8px;
-}
-
-.cross-benchmark-command-control > span {
-  display: inline;
-  color: var(--color-muted);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.cross-benchmark-command-control > .icon-button,
-.cross-benchmark-command-control > .secondary-button,
-.cross-benchmark-command-control > .primary-button,
-.cross-benchmark-command-control .dashboard-export-control,
-.cross-benchmark-command-control .dashboard-export-control button {
-  width: 36px;
-  min-width: 36px;
-  height: 34px;
-  min-height: 34px;
-  padding: 0;
-}
-
-.cross-benchmark-top-row {
-  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
-  column-gap: 24px;
-  min-height: 112px;
-}
-
-.cross-benchmark-report-picker {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.cross-benchmark-report-picker .field-label {
-  color: var(--color-accent);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.cross-benchmark-report-picker > select {
-  width: 100%;
-  min-width: 0;
-  height: 34px;
-  padding: 0 10px;
-}
-
 @media (max-width: 900px) {
   .app-tab-nav {
     position: static;
@@ -4521,31 +4055,11 @@ select:focus-visible {
     padding-left: 20px;
     transform: none;
   }
-
-  .cross-benchmark-workspace-shell {
-    grid-template-columns: 1fr;
-  }
-
-  .cross-benchmark-command-navbar {
-    position: static;
-    width: 100%;
-    min-width: 0;
-  }
-
-  .cross-benchmark-command-navbar__content {
-    width: 100%;
-  }
 }
 
 @media (max-width: 700px) {
   .tokenizer-vocabulary-header-actions {
     gap: 8px;
-  }
-
-  .cross-benchmark-report-picker {
-    grid-template-columns: 1fr;
-    align-items: stretch;
-    gap: 6px;
   }
 }
 
@@ -4556,330 +4070,12 @@ select:focus-visible {
   border-bottom-color: rgba(255, 255, 255, 0.12);
 }
 
-/* Keep benchmark actions beside the report selector instead of in a left rail. */
-.cross-benchmark-workspace-shell {
-  position: relative;
-  display: block;
-}
 
-.cross-benchmark-workspace-main {
-  width: 100%;
-}
 
-.cross-benchmark-command-navbar {
-  position: absolute;
-  top: 4px;
-  left: 288px;
-  z-index: 2;
-  width: 28px;
-  min-width: 28px;
-  margin: 0;
-  padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  background: rgba(18, 25, 37, 0.72);
-}
 
-.cross-benchmark-controls-toggle {
-  display: none;
-}
 
-.cross-benchmark-command-navbar__content {
-  width: 28px;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-}
 
-.cross-benchmark-command-control {
-  display: inline-flex;
-  width: 28px;
-  height: 20px;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-}
 
-.cross-benchmark-command-control > span {
-  display: none;
-}
 
-.cross-benchmark-command-control > .icon-button,
-.cross-benchmark-command-control > .secondary-button,
-.cross-benchmark-command-control > .primary-button,
-.cross-benchmark-command-control .dashboard-export-control,
-.cross-benchmark-command-control .dashboard-export-control button {
-  width: 28px;
-  min-width: 28px;
-  height: 20px;
-  min-height: 20px;
-  padding: 0;
-}
-
-.cross-benchmark-command-control > .icon-button::before,
-.cross-benchmark-command-control > .secondary-button::before,
-.cross-benchmark-command-control > .primary-button::before,
-.cross-benchmark-command-control .dashboard-export-control button::before {
-  font-size: 16px;
-}
-
-.cross-benchmark-command-control .dashboard-export-control {
-  display: block;
-  height: 20px;
-}
-
-.cross-benchmark-command-control .dashboard-export-control button {
-  display: inline-flex;
-}
-
-.cross-benchmark-command-navbar__content .cross-benchmark-command-control .icon-button.subtle.dashboard-export-trigger::before {
-  content: '↓';
-  font-size: 16px;
-}
-
-.cross-benchmark-top-row {
-  grid-template-columns: 280px minmax(0, 1fr);
-  column-gap: 40px;
-}
-
-@media (max-width: 900px) {
-  .cross-benchmark-top-row {
-    grid-template-columns: 1fr;
-    row-gap: 12px;
-  }
-
-  .cross-benchmark-command-navbar {
-    position: static;
-    width: 100%;
-    min-width: 0;
-  }
-
-  .cross-benchmark-command-navbar__content {
-    width: 100%;
-    flex-direction: row;
-    justify-content: flex-start;
-    gap: 10px;
-  }
-
-  .cross-benchmark-command-control {
-    width: auto;
-    height: auto;
-  }
-
-  .cross-benchmark-command-control > span {
-    display: inline;
-  }
-
-  .cross-benchmark-command-control > .icon-button,
-  .cross-benchmark-command-control > .secondary-button,
-  .cross-benchmark-command-control > .primary-button,
-  .cross-benchmark-command-control .dashboard-export-control,
-  .cross-benchmark-command-control .dashboard-export-control button {
-    width: auto;
-    min-width: 0;
-    height: auto;
-    min-height: 34px;
-    padding: 0 8px;
-  }
-}
-
-/* Keep the report selector and benchmark toolbar together in the header's left column. */
-.benchmark-dashboard-widget {
-  border-radius: 0;
-}
-
-.cross-benchmark-command-navbar {
-  top: 0;
-  left: 0;
-  width: 320px;
-  min-width: 320px;
-  height: 28px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.cross-benchmark-command-navbar__content {
-  display: grid;
-  width: 320px;
-  grid-template-columns: 90px 78px 70px 58px;
-  grid-template-rows: 14px 28px;
-  align-items: center;
-  justify-content: start;
-  gap: 4px;
-}
-
-.cross-benchmark-command-navbar__title {
-  display: block;
-  grid-column: 1 / -1;
-  color: var(--color-accent);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  line-height: normal;
-  text-transform: uppercase;
-}
-
-.cross-benchmark-command-control {
-  display: inline-flex;
-  width: auto;
-  height: 28px;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-}
-
-.cross-benchmark-command-control > span {
-  display: inline;
-  overflow: hidden;
-  color: var(--color-muted);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-}
-
-.cross-benchmark-command-control > .icon-button,
-.cross-benchmark-command-control > .secondary-button,
-.cross-benchmark-command-control > .primary-button,
-.cross-benchmark-command-control .dashboard-export-control,
-.cross-benchmark-command-control .dashboard-export-control button {
-  width: 28px;
-  min-width: 28px;
-  height: 28px;
-  min-height: 28px;
-  padding: 0;
-}
-
-.cross-benchmark-command-control .dashboard-export-control {
-  display: block;
-}
-
-.cross-benchmark-top-row {
-  grid-template-columns: 280px minmax(0, 1fr);
-  column-gap: 40px;
-  min-height: 112px;
-}
-
-.cross-benchmark-top-row .cross-benchmark-overview-grid {
-  align-self: center;
-  min-height: 76px;
-}
-
-.cross-benchmark-top-row .cross-benchmark-kpi-card {
-  padding: 8px 12px;
-}
-
-.cross-benchmark-top-row > .field-label {
-  gap: 8px;
-  padding-top: 50px;
-  width: 248px;
-  transform: translateY(4px);
-}
-
-.cross-benchmark-top-row > .field-label select {
-  width: 248px;
-  height: 30px;
-  padding: 0 12px;
-}
-
-@media (max-width: 900px) {
-  .cross-benchmark-command-navbar {
-    position: static;
-    width: 100%;
-    min-width: 0;
-    height: auto;
-  }
-
-  .cross-benchmark-command-navbar__content {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-
-  .cross-benchmark-top-row > .field-label {
-    padding-top: 0;
-  }
-}
-
-/* Final desktop overrides for the annotation-driven benchmark command stack. */
-.cross-benchmark-workspace-shell { display: grid; grid-template-columns: 176px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 18px; row-gap: 20px; align-items: start; }
-.cross-benchmark-command-navbar { grid-column: 1; grid-row: 1; position: static; width: 176px; min-width: 176px; }
-.cross-benchmark-header-main { grid-column: 2; grid-row: 1; min-width: 0; }
-.cross-benchmark-top-row { display: flex; min-height: 0; flex-direction: column; gap: 12px; }
-.cross-benchmark-report-picker { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 320px); align-items: center; gap: 10px; }
-.cross-benchmark-report-picker .field-label { margin: 0; color: var(--color-accent); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-.cross-benchmark-report-picker select { width: 100%; min-width: 0; }
-.cross-benchmark-top-row .cross-benchmark-overview-grid { display: grid; width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; min-height: 76px; justify-content: stretch; }
-.cross-benchmark-workspace-main { grid-column: 1 / -1; grid-row: 2; width: 100%; min-width: 0; }
-.tokenizer-report-right { height: 100%; min-height: 100%; }
-.tokenizer-vocabulary-table-shell { max-height: none; }
-.cross-benchmark-command-navbar {
-  position: static;
-  top: auto;
-  width: 176px;
-  min-width: 176px;
-  height: auto;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.cross-benchmark-command-navbar__content {
-  display: flex;
-  width: 176px;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-}
-
-.cross-benchmark-command-navbar__title {
-  display: block;
-}
-
-.cross-benchmark-command-control {
-  display: grid;
-  grid-template-columns: 36px minmax(0, 1fr);
-  width: 176px;
-  height: auto;
-  min-height: 34px;
-  align-items: center;
-  gap: 10px;
-}
-
-.cross-benchmark-command-control > span {
-  display: inline;
-}
-
-.cross-benchmark-command-control > .icon-button,
-.cross-benchmark-command-control > .secondary-button,
-.cross-benchmark-command-control > .primary-button,
-.cross-benchmark-command-control .dashboard-export-control,
-.cross-benchmark-command-control .dashboard-export-control button {
-  width: 36px;
-  min-width: 36px;
-  height: 34px;
-  min-height: 34px;
-  padding: 0;
-}
-
-@media (max-width: 900px) {
-  .cross-benchmark-command-navbar {
-    position: static;
-    width: 100%;
-    min-width: 0;
-  }
-
-  .cross-benchmark-command-navbar__content {
-    width: 100%;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-}
 
 
