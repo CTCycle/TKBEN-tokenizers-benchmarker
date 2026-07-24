@@ -102,6 +102,15 @@ export async function clearCustomTokenizers(): Promise<void> {
     await ensureOkResponse(response, 'Failed to clear tokenizers');
 }
 
+/** Remove a downloaded tokenizer and its persisted artifacts. */
+export async function deleteDownloadedTokenizer(tokenizerName: string): Promise<void> {
+    const params = new URLSearchParams({ tokenizer_name: tokenizerName });
+    const response = await fetch(`${API_ENDPOINTS.TOKENIZERS_DELETE}?${params.toString()}`, {
+        method: 'DELETE',
+    });
+    await ensureOkResponse(response, 'Failed to remove tokenizer');
+}
+
 /**
  * Generate and persist a tokenizer metadata report.
  */

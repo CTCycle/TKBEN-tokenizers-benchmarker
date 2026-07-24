@@ -67,6 +67,7 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
     refreshDatasets,
     handleUploadCustomTokenizer,
     handleClearCustomTokenizer,
+    removeDownloadedTokenizer,
     triggerCustomTokenizerUpload,
   } = useTokenizers();
 
@@ -191,8 +192,12 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
     void downloadTokenizers(selectedScannedTokenizers);
   };
 
-  const handleRemoveTokenizerFromPreview = (tokenizerId: string) => {
-    setTokenizers((current) => current.filter((item) => item !== tokenizerId));
+  const handleRemoveTokenizerFromPreview = async (tokenizerId: string) => {
+    try {
+      await removeDownloadedTokenizer(tokenizerId);
+    } catch (error) {
+      setBenchmarkError(error instanceof Error ? error.message : 'Failed to remove tokenizer');
+    }
   };
 
   const pageContent = (
@@ -512,7 +517,7 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
                           <button type="button" className="icon-button subtle" aria-label={`Generate or open tokenizer report for ${item.tokenizer_name}`} title="Generate report if missing, otherwise open latest report" onClick={() => void handleOpenTokenizerReport(item.tokenizer_name)} disabled={item.source === 'custom' || activeOpeningTokenizer === item.tokenizer_name}>
                             {activeOpeningTokenizer === item.tokenizer_name ? <span className="action-spinner" /> : <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v4H5z" /><path d="M5 12h14v8H5z" /></svg>}
                           </button>
-                          <button type="button" className="icon-button danger" aria-label={`Remove ${item.tokenizer_name}`} title="Remove tokenizer" onClick={() => handleRemoveTokenizerFromPreview(item.tokenizer_name)}>
+                          <button type="button" className="icon-button danger" aria-label={`Remove ${item.tokenizer_name}`} title="Remove tokenizer" onClick={() => void handleRemoveTokenizerFromPreview(item.tokenizer_name)}>
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                               <path d="M5 7h14" strokeWidth="2" strokeLinecap="round" />
                               <path d="M9 7V5h6v2" strokeWidth="2" strokeLinecap="round" />

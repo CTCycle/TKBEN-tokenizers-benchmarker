@@ -3325,6 +3325,359 @@ select:focus-visible {
   justify-content: center;
 }
 
+/* Initial desktop overrides for the annotation-driven benchmark command stack. */
+.cross-benchmark-workspace-shell { display: grid; grid-template-columns: 176px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 18px; row-gap: 20px; align-items: start; }
+.cross-benchmark-command-navbar { grid-column: 1; grid-row: 1; position: static; width: 176px; min-width: 176px; }
+.cross-benchmark-header-main { grid-column: 2; grid-row: 1; min-width: 0; }
+.cross-benchmark-top-row { display: flex; width: 60%; min-height: 0; margin-left: auto; flex-direction: column; gap: 12px; }
+.cross-benchmark-report-picker { display: grid; grid-template-columns: auto minmax(180px, 320px); align-items: center; gap: 10px; }
+.cross-benchmark-report-picker .field-label { margin: 0; color: var(--color-accent); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.cross-benchmark-report-picker select { width: 100%; min-width: 0; }
+.cross-benchmark-top-row .cross-benchmark-overview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; min-height: 76px; }
+.cross-benchmark-workspace-main { grid-column: 1 / -1; grid-row: 2; width: 100%; min-width: 0; }
+.tokenizer-report-right { height: 100%; min-height: 100%; }
+.tokenizer-vocabulary-table-shell { max-height: none; }
+.cross-benchmark-command-navbar {
+  position: sticky;
+  top: 16px;
+  width: 176px;
+  min-width: 176px;
+  height: auto;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-panel);
+}
+
+.cross-benchmark-command-navbar__content {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+}
+
+.cross-benchmark-command-navbar__title {
+  display: block;
+}
+
+.cross-benchmark-command-control {
+  display: flex;
+  width: 100%;
+  height: auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.cross-benchmark-command-control > span {
+  display: inline;
+}
+
+/* Annotation layout: compact header row with controls at left and report context at right. */
+.cross-benchmark-workspace-shell {
+  display: grid;
+  grid-template-columns: 176px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 18px;
+  row-gap: 20px;
+  align-items: start;
+}
+.cross-benchmark-command-navbar {
+  grid-column: 1;
+  grid-row: 1;
+  position: static;
+  width: 176px;
+  min-width: 176px;
+}
+.cross-benchmark-header-main {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+}
+.cross-benchmark-top-row {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+.cross-benchmark-report-picker {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 320px);
+  align-items: center;
+  gap: 10px;
+}
+.cross-benchmark-report-picker .field-label {
+  margin: 0;
+  color: var(--color-accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.cross-benchmark-report-picker select {
+  width: 100%;
+  min-width: 0;
+}
+.cross-benchmark-top-row .cross-benchmark-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  min-height: 76px;
+}
+.cross-benchmark-workspace-main {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  width: 100%;
+  min-width: 0;
+}
+.tokenizer-report-right {
+  height: 100%;
+  min-height: 100%;
+}
+.tokenizer-vocabulary-table-shell {
+  max-height: none;
+}
+
+@media (max-width: 900px) {
+  .cross-benchmark-workspace-shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+  }
+  .cross-benchmark-command-navbar,
+  .cross-benchmark-header-main,
+  .cross-benchmark-workspace-main {
+    grid-column: 1;
+    width: 100%;
+    min-width: 0;
+  }
+  .cross-benchmark-command-navbar { grid-row: 1; }
+  .cross-benchmark-header-main { grid-row: 2; }
+  .cross-benchmark-workspace-main { grid-row: 3; }
+}
+
+/* Final annotation layout overrides. */
+.cross-benchmark-workspace-shell {
+  display: grid;
+  grid-template-columns: 176px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 18px;
+  row-gap: 20px;
+  align-items: start;
+}
+.cross-benchmark-command-navbar {
+  grid-column: 1;
+  grid-row: 1;
+  position: static;
+  width: 176px;
+  min-width: 176px;
+}
+.cross-benchmark-header-main {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+}
+.cross-benchmark-top-row {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+.cross-benchmark-report-picker {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 320px);
+  align-items: center;
+  gap: 10px;
+}
+.cross-benchmark-report-picker .field-label {
+  margin: 0;
+  color: var(--color-accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.cross-benchmark-report-picker select { width: 100%; min-width: 0; }
+.cross-benchmark-top-row .cross-benchmark-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  min-height: 76px;
+}
+.cross-benchmark-workspace-main {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  width: 100%;
+  min-width: 0;
+}
+.tokenizer-report-right { height: 100%; min-height: 100%; }
+.tokenizer-vocabulary-table-shell { max-height: none; }
+@media (max-width: 900px) {
+  .cross-benchmark-workspace-shell { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
+  .cross-benchmark-command-navbar, .cross-benchmark-header-main, .cross-benchmark-workspace-main { grid-column: 1; width: 100%; min-width: 0; }
+  .cross-benchmark-command-navbar { grid-row: 1; }
+  .cross-benchmark-header-main { grid-row: 2; }
+  .cross-benchmark-workspace-main { grid-row: 3; }
+}
+
+.cross-benchmark-command-control > .icon-button,
+.cross-benchmark-command-control > .secondary-button,
+.cross-benchmark-command-control > .primary-button,
+.cross-benchmark-command-control .dashboard-export-control,
+.cross-benchmark-command-control .dashboard-export-control button {
+  width: 36px;
+  min-width: 36px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+}
+
+/* Final desktop header layout. */
+.cross-benchmark-workspace-shell { display: grid; grid-template-columns: 176px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 18px; row-gap: 20px; align-items: start; }
+.cross-benchmark-command-navbar { grid-column: 1; grid-row: 1; position: static; width: 176px; min-width: 176px; }
+.cross-benchmark-header-main { grid-column: 2; grid-row: 1; min-width: 0; }
+.cross-benchmark-top-row { display: flex; min-height: 0; flex-direction: column; gap: 12px; }
+.cross-benchmark-report-picker { display: grid; grid-template-columns: auto minmax(180px, 320px); align-items: center; gap: 10px; }
+.cross-benchmark-report-picker .field-label { margin: 0; color: var(--color-accent); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.cross-benchmark-report-picker select { width: 100%; min-width: 0; }
+.cross-benchmark-top-row .cross-benchmark-overview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; min-height: 76px; }
+.cross-benchmark-workspace-main { grid-column: 1 / -1; grid-row: 2; width: 100%; min-width: 0; }
+.tokenizer-report-right { height: 100%; min-height: 100%; }
+.tokenizer-vocabulary-table-shell { max-height: none; }
+@media (max-width: 900px) {
+  .cross-benchmark-workspace-shell { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
+  .cross-benchmark-command-navbar, .cross-benchmark-header-main, .cross-benchmark-workspace-main { grid-column: 1; width: 100%; min-width: 0; }
+  .cross-benchmark-command-navbar { grid-row: 1; }
+  .cross-benchmark-header-main { grid-row: 2; }
+  .cross-benchmark-workspace-main { grid-row: 3; }
+}
+
+@media (max-width: 900px) {
+  .cross-benchmark-command-navbar {
+    position: static;
+    width: 100%;
+    min-width: 0;
+  }
+
+.cross-benchmark-command-navbar__content {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+}
+
+@media (min-width: 901px) {
+  .cross-benchmark-command-navbar {
+    position: static;
+    width: 176px;
+    min-width: 176px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .cross-benchmark-command-navbar__content {
+    width: 176px;
+    gap: 12px;
+  }
+
+  .cross-benchmark-command-control {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr);
+    width: 176px;
+    min-height: 34px;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .cross-benchmark-report-picker {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 320px);
+  }
+
+  .cross-benchmark-top-row .cross-benchmark-overview-grid {
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-content: stretch;
+  }
+}
+@media (min-width: 901px) {
+  .cross-benchmark-command-navbar {
+    position: static;
+    width: 176px;
+    min-width: 176px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .cross-benchmark-command-navbar__content {
+    width: 176px;
+    gap: 12px;
+  }
+
+  .cross-benchmark-command-control {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr);
+    width: 176px;
+    min-height: 34px;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .cross-benchmark-report-picker {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 320px);
+  }
+
+  .cross-benchmark-top-row .cross-benchmark-overview-grid {
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-content: stretch;
+  }
+}
+
+/* End-of-file desktop layout contract for the annotation-driven header. */
+.cross-benchmark-workspace-shell { display: grid; grid-template-columns: 176px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 18px; row-gap: 20px; align-items: start; }
+.cross-benchmark-command-navbar { grid-column: 1; grid-row: 1; position: static; width: 176px; min-width: 176px; }
+.cross-benchmark-header-main { grid-column: 2; grid-row: 1; min-width: 0; }
+.cross-benchmark-top-row { display: flex; min-height: 0; flex-direction: column; gap: 12px; }
+.cross-benchmark-report-picker { display: grid; grid-template-columns: auto minmax(180px, 320px); align-items: center; gap: 10px; }
+.cross-benchmark-report-picker .field-label { margin: 0; color: var(--color-accent); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.cross-benchmark-report-picker select { width: 100%; min-width: 0; }
+.cross-benchmark-top-row .cross-benchmark-overview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; min-height: 76px; }
+.cross-benchmark-workspace-main { grid-column: 1 / -1; grid-row: 2; width: 100%; min-width: 0; }
+.tokenizer-report-right { height: 100%; min-height: 100%; }
+.tokenizer-vocabulary-table-shell { max-height: none; }
+@media (max-width: 900px) {
+  .cross-benchmark-workspace-shell { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
+  .cross-benchmark-command-navbar, .cross-benchmark-header-main, .cross-benchmark-workspace-main { grid-column: 1; width: 100%; min-width: 0; }
+  .cross-benchmark-command-navbar { grid-row: 1; }
+  .cross-benchmark-header-main { grid-row: 2; }
+  .cross-benchmark-workspace-main { grid-row: 3; }
+}
+
+.dataset-word-cloud-fallback {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: 14px 18px;
+  height: 100%;
+  padding: 24px;
+}
+
+.dataset-word-cloud-fallback-term {
+  color: #e2e8f0;
+  font-weight: 600;
+  line-height: 1;
+}
+
 .dataset-word-cloud-term {
   position: absolute;
   color: #e2e8f0;
@@ -4038,6 +4391,164 @@ select:focus-visible {
   background: var(--color-surface);
 }
 
+/* Annotation-driven layout refinements. */
+.app-header-bar {
+  position: fixed;
+}
+
+.app-tab-nav {
+  position: absolute;
+  left: 50%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  transform: translateX(-50%);
+}
+
+.tokenizer-vocabulary-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.tokenizer-vocabulary-header-actions .dashboard-export-header-actions,
+.tokenizer-vocabulary-header-actions .dashboard-export-control {
+  display: inline-flex;
+  align-items: center;
+}
+
+.cross-benchmark-workspace-shell {
+  display: grid;
+  grid-template-columns: 176px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.cross-benchmark-command-navbar {
+  position: sticky;
+  top: 16px;
+  width: 176px;
+  min-width: 176px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-panel);
+}
+
+.cross-benchmark-command-navbar__content {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+}
+
+.cross-benchmark-command-navbar__title {
+  display: block;
+  color: var(--color-accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cross-benchmark-command-control {
+  display: flex;
+  width: 100%;
+  height: auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.cross-benchmark-command-control > span {
+  display: inline;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cross-benchmark-command-control > .icon-button,
+.cross-benchmark-command-control > .secondary-button,
+.cross-benchmark-command-control > .primary-button,
+.cross-benchmark-command-control .dashboard-export-control,
+.cross-benchmark-command-control .dashboard-export-control button {
+  width: 36px;
+  min-width: 36px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+}
+
+.cross-benchmark-top-row {
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  column-gap: 24px;
+  min-height: 112px;
+}
+
+.cross-benchmark-report-picker {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.cross-benchmark-report-picker .field-label {
+  color: var(--color-accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.cross-benchmark-report-picker > select {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+}
+
+@media (max-width: 900px) {
+  .app-tab-nav {
+    position: static;
+    flex: 1 1 auto;
+    margin-left: 12px;
+    padding-left: 20px;
+    transform: none;
+  }
+
+  .cross-benchmark-workspace-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .cross-benchmark-command-navbar {
+    position: static;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .cross-benchmark-command-navbar__content {
+    width: 100%;
+  }
+}
+
+@media (max-width: 700px) {
+  .tokenizer-vocabulary-header-actions {
+    gap: 8px;
+  }
+
+  .cross-benchmark-report-picker {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 6px;
+  }
+}
+
 /* Tokenizer preview rows use one consistent surface in every state. */
 .tokenizer-preview-row.selected {
   background: transparent;
@@ -4289,6 +4800,85 @@ select:focus-visible {
 
   .cross-benchmark-top-row > .field-label {
     padding-top: 0;
+  }
+}
+
+/* Final desktop overrides for the annotation-driven benchmark command stack. */
+.cross-benchmark-workspace-shell { display: grid; grid-template-columns: 176px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 18px; row-gap: 20px; align-items: start; }
+.cross-benchmark-command-navbar { grid-column: 1; grid-row: 1; position: static; width: 176px; min-width: 176px; }
+.cross-benchmark-header-main { grid-column: 2; grid-row: 1; min-width: 0; }
+.cross-benchmark-top-row { display: flex; min-height: 0; flex-direction: column; gap: 12px; }
+.cross-benchmark-report-picker { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 320px); align-items: center; gap: 10px; }
+.cross-benchmark-report-picker .field-label { margin: 0; color: var(--color-accent); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.cross-benchmark-report-picker select { width: 100%; min-width: 0; }
+.cross-benchmark-top-row .cross-benchmark-overview-grid { display: grid; width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; min-height: 76px; justify-content: stretch; }
+.cross-benchmark-workspace-main { grid-column: 1 / -1; grid-row: 2; width: 100%; min-width: 0; }
+.tokenizer-report-right { height: 100%; min-height: 100%; }
+.tokenizer-vocabulary-table-shell { max-height: none; }
+.cross-benchmark-command-navbar {
+  position: static;
+  top: auto;
+  width: 176px;
+  min-width: 176px;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.cross-benchmark-command-navbar__content {
+  display: flex;
+  width: 176px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.cross-benchmark-command-navbar__title {
+  display: block;
+}
+
+.cross-benchmark-command-control {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  width: 176px;
+  height: auto;
+  min-height: 34px;
+  align-items: center;
+  gap: 10px;
+}
+
+.cross-benchmark-command-control > span {
+  display: inline;
+}
+
+.cross-benchmark-command-control > .icon-button,
+.cross-benchmark-command-control > .secondary-button,
+.cross-benchmark-command-control > .primary-button,
+.cross-benchmark-command-control .dashboard-export-control,
+.cross-benchmark-command-control .dashboard-export-control button {
+  width: 36px;
+  min-width: 36px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+}
+
+@media (max-width: 900px) {
+  .cross-benchmark-command-navbar {
+    position: static;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .cross-benchmark-command-navbar__content {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
   }
 }
 

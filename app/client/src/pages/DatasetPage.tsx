@@ -1003,7 +1003,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                   </p>
                 ) : (
                   <div className="dataset-word-cloud-canvas" ref={wordCloudRef}>
-                    {wordCloudLayout.map((term) => (
+                    {wordCloudLayout.length > 0 ? wordCloudLayout.map((term) => (
                       <span
                         key={`${term.word}-${term.count}`}
                         className="dataset-word-cloud-term"
@@ -1017,7 +1017,20 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                       >
                         {term.word}
                       </span>
-                    ))}
+                    )) : (
+                      <div className="dataset-word-cloud-fallback" role="status">
+                        {wordCloudTerms.slice(0, 48).map((term) => (
+                          <span
+                            key={`${term.word}-${term.count}`}
+                            className="dataset-word-cloud-fallback-term"
+                            style={{ fontSize: `${Math.max(12, Math.min(32, 12 + Math.round(term.weight * 0.16)))}px` }}
+                            title={`${term.word}: ${normalizeCount(term.count)}`}
+                          >
+                            {term.word}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
