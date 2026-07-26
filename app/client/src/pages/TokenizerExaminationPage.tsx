@@ -245,6 +245,20 @@ const TokenizerExaminationPage = () => {
                 </p>
               </div>
               <div className="tokenizer-vocabulary-header-actions">
+                <div className="tokenizer-vocabulary-controls">
+                  <label htmlFor="tokenizer-page-size" className="panel-description">Page size</label>
+                  <select
+                    id="tokenizer-page-size"
+                    className="text-input"
+                    value={tokenizerVocabularyLimit}
+                    onChange={(event) => void handleTokenizerVocabularyPageSizeChange(Number(event.target.value))}
+                    disabled={tokenizerVocabularyLoading}
+                  >
+                    {[100, 250, 500, 1000].map((size) => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
+                </div>
                 <DashboardExportButton
                   dashboardType="tokenizer"
                   reportName={tokenizerExportReportName}
@@ -255,20 +269,6 @@ const TokenizerExaminationPage = () => {
                     }
                     : null}
                 />
-                <div className="tokenizer-vocabulary-controls">
-                <label htmlFor="tokenizer-page-size" className="panel-description">Page size</label>
-                <select
-                  id="tokenizer-page-size"
-                  className="text-input"
-                  value={tokenizerVocabularyLimit}
-                  onChange={(event) => void handleTokenizerVocabularyPageSizeChange(Number(event.target.value))}
-                  disabled={tokenizerVocabularyLoading}
-                >
-                  {[100, 250, 500, 1000].map((size) => (
-                    <option key={size} value={size}>{size}</option>
-                  ))}
-                </select>
-                </div>
               </div>
             </header>
 
@@ -299,29 +299,28 @@ const TokenizerExaminationPage = () => {
                       <div className="word-frequency-empty">No vocabulary rows loaded.</div>
                     )}
                   </div>
-                </div>
-
-                <div className="tokenizer-vocabulary-footer">
-                  <span className="panel-description">
-                    Showing {vocabularyStart.toLocaleString()}-{vocabularyEnd.toLocaleString()} of {tokenizerVocabularyTotal.toLocaleString()}
-                  </span>
-                  <div className="tokenizer-vocabulary-actions">
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      onClick={() => void handlePreviousTokenizerVocabularyPage()}
-                      disabled={!canGoPrevious || tokenizerVocabularyLoading}
-                    >
-                      Previous
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      onClick={() => void handleNextTokenizerVocabularyPage()}
-                      disabled={!canGoNext || tokenizerVocabularyLoading}
-                    >
-                      Next
-                    </button>
+                  <div className="tokenizer-vocabulary-footer">
+                    <span className="panel-description">
+                      Showing {vocabularyStart.toLocaleString()}-{vocabularyEnd.toLocaleString()} of {tokenizerVocabularyTotal.toLocaleString()}
+                    </span>
+                    <div className="tokenizer-vocabulary-actions">
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => void handlePreviousTokenizerVocabularyPage()}
+                        disabled={!canGoPrevious || tokenizerVocabularyLoading}
+                      >
+                        Previous
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => void handleNextTokenizerVocabularyPage()}
+                        disabled={!canGoNext || tokenizerVocabularyLoading}
+                      >
+                        Next
+                      </button>
+                    </div>
                   </div>
                 </div>
               </>

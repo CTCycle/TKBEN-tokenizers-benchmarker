@@ -1,7 +1,7 @@
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, rectSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useRef, useState, type KeyboardEvent, type RefObject } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import BenchmarkRunWizard from '../components/BenchmarkRunWizard';
 import { BenchmarkMetricWidget } from '../components/benchmark-dashboard/BenchmarkMetricWidget';
 import DashboardExportButton from '../components/DashboardExportButton';
@@ -16,13 +16,102 @@ const SortableWidget = ({ widget, onKeyboardReorder }: { widget: BenchmarkDashbo
   return <div ref={setNodeRef} className="benchmark-dashboard-sortable" style={{ transform: CSS.Transform.toString(transform), transition }} {...attributes} {...listeners} data-dragging={isDragging || undefined} onKeyDown={(event) => onKeyboardReorder(event, widget.widget_id)}><BenchmarkMetricWidget widget={widget} /></div>;
 };
 
-const Customizer = ({ widgets, visibleIds, onApply, onClose, trigger }: { widgets: BenchmarkDashboardWidgetData[]; visibleIds: string[]; onApply: (ids: string[]) => void; onClose: () => void; trigger: RefObject<HTMLButtonElement | null> }) => { const [draft, setDraft] = useState(visibleIds); const groups = widgets.reduce<Record<string, BenchmarkDashboardWidgetData[]>>((result, widget) => { (result[widget.category_label] ??= []).push(widget); return result; }, {}); const close = () => { onClose(); trigger.current?.focus(); }; return <div className="benchmark-dashboard-modal-backdrop" role="presentation" onMouseDown={close}><section className="benchmark-dashboard-modal" role="dialog" aria-modal="true" aria-labelledby="dashboard-customizer-title" onMouseDown={(event) => event.stopPropagation()} onKeyDown={(event) => { if (event.key === 'Escape') close(); }}><h2 id="dashboard-customizer-title">Customize benchmark dashboard</h2><p>{draft.length} of {widgets.length} available widgets selected.</p>{Object.entries(groups).map(([category, entries]) => <fieldset key={category}><legend>{category}</legend><button type="button" onClick={() => setDraft((current) => [...new Set([...current, ...entries.map((item) => item.widget_id)])])}>Select all</button><button type="button" onClick={() => setDraft((current) => current.filter((id) => !entries.some((item) => item.widget_id === id)))}>Clear</button>{entries.map((widget) => <label key={widget.widget_id}><input type="checkbox" checked={draft.includes(widget.widget_id)} onChange={() => setDraft((current) => current.includes(widget.widget_id) ? current.filter((id) => id !== widget.widget_id) : [...current, widget.widget_id])} />{widget.label} — {widget.description} ({widget.unit}, {widget.visualization})</label>)}</fieldset>)}<footer><button type="button" onClick={() => setDraft(widgets.filter((item) => item.default_visible).map((item) => item.widget_id))}>Reset to defaults</button><button type="button" onClick={close}>Cancel</button><button type="button" className="primary-button" disabled={!draft.length} onClick={() => { onApply(draft); close(); }}>Apply</button></footer></section></div> };
+const Customizer = ({ widgets, visibleIds, onApply, onClose, trigger }: { widgets: BenchmarkDashboardWidgetData[]; visibleIds: string[]; onApply: (ids: string[]) => void; onClose: () => void; trigger: RefObject<HTMLButtonElement | null> }) => {
+  const [draft, setDraft] = useState(visibleIds);
+  const groups = widgets.reduce<Record<string, BenchmarkDashboardWidgetData[]>>((result, widget) => {
+    (result[widget.category_label] ??= []).push(widget);
+    return result;
+  }, {});
+  const close = () => {
+    onClose();
+    trigger.current?.focus();
+  };
+
+  useEffect(() => {
+    const scrollY = window.scrollY;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousBodyPosition = document.body.style.position;
+    const previousBodyTop = document.body.style.top;
+    const previousBodyWidth = document.body.style.width;
+    const previousDocumentOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.body.style.position = previousBodyPosition;
+      document.body.style.top = previousBodyTop;
+      document.body.style.width = previousBodyWidth;
+      document.documentElement.style.overflow = previousDocumentOverflow;
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
+  return (
+    <div className="benchmark-dashboard-modal-backdrop" role="presentation" onMouseDown={close}>
+      <section
+        className="benchmark-dashboard-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dashboard-customizer-title"
+        onMouseDown={(event) => event.stopPropagation()}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') close();
+        }}
+      >
+        <h2 id="dashboard-customizer-title">Customize benchmark dashboard</h2>
+        <p>{draft.length} of {widgets.length} available widgets selected.</p>
+        {Object.entries(groups).map(([category, entries]) => (
+          <fieldset key={category}>
+            <legend>{category}</legend>
+            <div className="benchmark-dashboard-section-actions">
+              <button
+                type="button"
+                className="icon-button subtle benchmark-dashboard-section-action"
+                aria-label={`Select all ${category} metrics`}
+                title="Select all"
+                onClick={() => setDraft((current) => [...new Set([...current, ...entries.map((item) => item.widget_id)])])}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </button>
+              <button
+                type="button"
+                className="icon-button subtle benchmark-dashboard-section-action"
+                aria-label={`Clear ${category} metrics`}
+                title="Clear"
+                onClick={() => setDraft((current) => current.filter((id) => !entries.some((item) => item.widget_id === id)))}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+              </button>
+            </div>
+            {entries.map((widget) => (
+              <label key={widget.widget_id}>
+                <input
+                  type="checkbox"
+                  checked={draft.includes(widget.widget_id)}
+                  onChange={() => setDraft((current) => current.includes(widget.widget_id) ? current.filter((id) => id !== widget.widget_id) : [...current, widget.widget_id])}
+                />
+                {widget.label} — {widget.description} ({widget.unit}, {widget.visualization})
+              </label>
+            ))}
+          </fieldset>
+        ))}
+        <footer className="modal-wizard-footer">
+          <button type="button" className="secondary-button" onClick={() => setDraft(widgets.filter((item) => item.default_visible).map((item) => item.widget_id))}>Reset to defaults</button>
+          <button type="button" className="secondary-button" onClick={close}>Cancel</button>
+          <button type="button" className="primary-button" disabled={!draft.length} onClick={() => { onApply(draft); close(); }}>Apply</button>
+        </footer>
+      </section>
+    </div>
+  );
+};
 
 const CrossBenchmarkPage = () => {
   const workspace = useBenchmarkWorkspace();
   const [wizardOpen, setWizardOpen] = useState(false);
   const [customizing, setCustomizing] = useState(false);
-  const [controlsOpen, setControlsOpen] = useState(true);
   const [keyboardDragId, setKeyboardDragId] = useState<string | null>(null);
   const customizeButton = useRef<HTMLButtonElement>(null);
   const layout = useBenchmarkDashboardLayout(workspace.activeReport?.dashboard);
@@ -54,7 +143,7 @@ const CrossBenchmarkPage = () => {
               {workspace.activeReport &&
                 <div className="cross-benchmark-top-row">
                   <div className="cross-benchmark-report-picker">
-                    <label className="field-label" htmlFor="cross-benchmark-report-select">Select report</label>
+                    <label className="field-label panel-label" htmlFor="cross-benchmark-report-select">Select report</label>
                     <select id="cross-benchmark-report-select" value={workspace.selectedReportId ?? ''} onChange={(event) => { const id = Number(event.target.value); if (id) void workspace.loadReportById(id); }}>
                       <option value="">Select a report</option>
                       {workspace.reports.map((report) => <option key={report.report_id} value={report.report_id}>{report.run_name || report.dataset_name}</option>)}
@@ -80,12 +169,11 @@ const CrossBenchmarkPage = () => {
                 </div>
               }
             </div>
-            <nav id="cross-benchmark-command-navbar" className={`cross-benchmark-command-navbar${controlsOpen ? '' : ' is-collapsed'}`} aria-label="Benchmark controls">
+            <nav id="cross-benchmark-command-navbar" className="cross-benchmark-command-navbar" aria-label="Benchmark controls">
               <div className="cross-benchmark-command-navbar__header">
                 <span className="cross-benchmark-command-navbar__title">Benchmark actions</span>
-                <button type="button" className="icon-button subtle cross-benchmark-controls-toggle" aria-expanded={controlsOpen} aria-controls="cross-benchmark-command-navbar-content" aria-label={controlsOpen ? 'Collapse benchmark controls' : 'Expand benchmark controls'} onClick={() => setControlsOpen((current) => !current)}>☰</button>
               </div>
-              {controlsOpen && <div id="cross-benchmark-command-navbar-content" className="cross-benchmark-command-navbar__content" role="group" aria-label="Benchmark actions">
+              <div id="cross-benchmark-command-navbar-content" className="cross-benchmark-command-navbar__content" role="group" aria-label="Benchmark actions">
                 <button ref={customizeButton} type="button" className="cross-benchmark-action-button" disabled={!workspace.activeReport || workspace.loadingReport} title="Customize benchmark dashboard" aria-label="Customize benchmark dashboard" onClick={() => setCustomizing(true)}>
                   <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
                   <span>Customize</span>
@@ -97,9 +185,9 @@ const CrossBenchmarkPage = () => {
                 <DashboardExportButton dashboardType="benchmark" reportName={workspace.activeReport?.run_name ?? 'benchmark-dashboard'} dashboardPayload={payload} label="Export" />
                 <button type="button" className="cross-benchmark-run-button" aria-label="Run benchmark" title="Run benchmark" disabled={!workspace.activeReport || workspace.loadingReport} onClick={() => setWizardOpen(true)}>
                   <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
-                  <span>Run benchmark</span>
+                  <span>Run</span>
                 </button>
-              </div>}
+              </div>
             </nav>
           </header>
           <main className="cross-benchmark-workspace-main">
