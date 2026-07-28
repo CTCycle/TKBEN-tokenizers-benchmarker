@@ -8,7 +8,13 @@
 
 ## 1. Project Overview
 
-TKBEN is a tokenizer benchmarking platform for text datasets and tokenizer assets.
+TKBEN is a local web application for examining tokenizer assets, validating text datasets, and comparing tokenizer performance across repeatable benchmark runs. It keeps downloaded assets, validation reports, and benchmark results in the application workspace so that a later session can reopen and inspect the same evidence.
+
+The main workflows are:
+
+- **Dataset validation**: load a Hugging Face dataset, a custom dataset identifier, or a local CSV/XLS/XLSX file; select validation metrics; and review persisted statistics, lexical indicators, histograms, and charts.
+- **Tokenizer examination**: scan or add tokenizer identifiers, download supported assets, upload a custom `tokenizer.json`, and inspect vocabulary and token-length reports.
+- **Cross-benchmark comparison**: select a saved dataset and tokenizer set, run benchmark metrics, reorder or customize dashboard widgets, and export the resulting comparison as a PDF.
 
 Main workflow routes:
 - `/dataset`
@@ -25,13 +31,13 @@ Launcher-managed runs use `settings/.env` and repository resource paths; direct/
 
 ### 2.1 Windows (One-Click Local Setup)
 
-Run the single developer and maintenance entry point from any directory:
+From the repository root, run the single application and maintenance entry point:
 
 ```powershell
 .\start_on_windows.ps1
 ```
 
-`start_on_windows.ps1` is the sole root launcher and opens the combined eight-option menu. Choose **Launch application** to download pinned portable Python, uv, and Node.js runtimes when missing, synchronize dependencies, build the frontend, and start FastAPI plus the Vite preview server.
+`start_on_windows.ps1` opens the combined eight-option menu. Choose **Launch application** to download pinned portable Python, uv, and Node.js runtimes when missing, synchronize dependencies, build the frontend when enabled, and start FastAPI plus the Vite preview server. The launcher also waits for the backend health endpoint and frontend before reporting success.
 
 ### 2.2 macOS / Linux (Manual Local Setup)
 
@@ -83,27 +89,27 @@ Runtime addresses are taken from the user configuration:
 
 **Dataset (`/dataset`)**
 
-Load data from Hugging Face presets or manual IDs, or upload local CSV/XLS/XLSX files. Then run dataset analysis and reopen saved reports for statistics and charts.
+Load data from a Hugging Face preset or manual ID, or upload a local CSV/XLS/XLSX file. Select a dataset row to preview its document count, run the validation pipeline, and reopen the latest saved report for aggregate statistics, lexical metrics, histograms, and additional visual analysis.
 
 **Tokenizers (`/tokenizers`)**
 
-Scan available tokenizer IDs, download selected tokenizers, optionally upload a custom `tokenizer.json`, and inspect tokenizer reports.
+Scan available text tokenizer IDs, download selected tokenizers, optionally upload a custom `tokenizer.json`, and open a report with vocabulary statistics and a paginated token preview.
 
 **Cross Benchmark (`/cross-benchmark`)**
 
-Create benchmark runs by selecting dataset, tokenizers, and metric categories, then compare persisted results across tokenizer candidates.
+Create benchmark runs by selecting a persisted dataset, tokenizer candidates, and metric categories. Review saved reports, compare normalized metrics in dashboard widgets, customize the widget layout, and export the report when the analysis is complete.
 ### 3.4 Product Snapshots
 
 The following snapshots were captured in local webapp mode with backend and frontend running:
 
 - Dataset dashboard with a loaded persisted validation session, aggregate statistics, histograms, and word-cloud analytics.
-![Dataset workspace](assets/figures/release-v3.4.0-dataset.png)
+![Dataset workspace](assets/figures/release-v3.7.1-dataset.png)
 
 - Tokenizers dashboard with an opened tokenizer report, vocabulary statistics, and populated token preview table.
-![Tokenizers workspace](assets/figures/release-v3.4.0-tokenizers.png)
+![Tokenizers workspace](assets/figures/release-v3.7.1-tokenizers.png)
 
 - Cross-benchmark dashboard with a loaded run summary and comparative metric panels.
-![Cross-benchmark dashboard](assets/figures/release-v3.4.0-cross-benchmark.png)
+![Cross-benchmark dashboard](assets/figures/release-v3.7.1-cross-benchmark.png)
 
 ## 4. Setup and Maintenance
 
