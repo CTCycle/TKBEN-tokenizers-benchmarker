@@ -2,6 +2,7 @@ import { createContext, useContext, useCallback, useEffect, useMemo, useRef, use
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import {
     clearCustomTokenizers,
+    deleteDownloadedTokenizer,
     downloadTokenizers as downloadTokenizersApi,
     fetchDownloadedTokenizers,
     fetchLatestTokenizerReportOrNull,
@@ -69,6 +70,7 @@ interface TokenizersContextType {
     refreshDatasets: () => Promise<void>;
     handleUploadCustomTokenizer: (event: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
     handleClearCustomTokenizer: () => Promise<void>;
+    removeDownloadedTokenizer: (tokenizerName: string) => Promise<void>;
     triggerCustomTokenizerUpload: () => void;
 }
 
@@ -257,6 +259,12 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         } catch (error) {
             console.error('Failed to clear custom tokenizer:', error);
         }
+    }, [refreshTokenizers]);
+
+    const removeDownloadedTokenizer = useCallback(async (tokenizerName: string) => {
+        await deleteDownloadedTokenizer(tokenizerName);
+        setTokenizers((current) => current.filter((item) => item !== tokenizerName));
+        await refreshTokenizers();
     }, [refreshTokenizers]);
 
     const handleRunBenchmarks = useCallback(async () => {
@@ -474,6 +482,7 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         refreshDatasets,
         handleUploadCustomTokenizer,
         handleClearCustomTokenizer,
+        removeDownloadedTokenizer,
         triggerCustomTokenizerUpload,
     }), [
         scanInProgress,
@@ -523,6 +532,7 @@ export const TokenizersProvider = ({ children }: { children: ReactNode }) => {
         refreshDatasets,
         handleUploadCustomTokenizer,
         handleClearCustomTokenizer,
+        removeDownloadedTokenizer,
         triggerCustomTokenizerUpload,
     ]);
 

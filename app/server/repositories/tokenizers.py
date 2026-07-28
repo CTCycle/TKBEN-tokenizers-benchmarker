@@ -60,6 +60,18 @@ class TokenizerRepository:
                     session.rollback()
 
     # -------------------------------------------------------------------------
+    def delete_tokenizer(self, tokenizer_id: str) -> bool:
+        with self._session() as session:
+            row = session.execute(
+                select(Tokenizer).where(Tokenizer.name == tokenizer_id).limit(1)
+            ).scalar_one_or_none()
+            if row is None:
+                return False
+            session.delete(row)
+            session.commit()
+        return True
+
+    # -------------------------------------------------------------------------
     def get_tokenizer_report_by_id(self, report_id: int) -> TokenizerReport | None:
         with self._session() as session:
             return session.execute(

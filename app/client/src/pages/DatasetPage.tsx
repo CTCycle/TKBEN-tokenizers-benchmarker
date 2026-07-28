@@ -748,7 +748,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                                 <span className="action-spinner" />
                               ) : (
                                 <svg viewBox="0 0 24 24" aria-hidden="true">
-                                  <path d="M12 4v9m0 0-4-4m4 4 4-4M5 19h14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z M14 2v6h6 M8 13h8 M8 17h6" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
                                 </svg>
                               )}
                             </button>
@@ -1003,7 +1003,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                   </p>
                 ) : (
                   <div className="dataset-word-cloud-canvas" ref={wordCloudRef}>
-                    {wordCloudLayout.map((term) => (
+                    {wordCloudLayout.length > 0 ? wordCloudLayout.map((term) => (
                       <span
                         key={`${term.word}-${term.count}`}
                         className="dataset-word-cloud-term"
@@ -1017,7 +1017,20 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                       >
                         {term.word}
                       </span>
-                    ))}
+                    )) : (
+                      <div className="dataset-word-cloud-fallback" role="status">
+                        {wordCloudTerms.slice(0, 48).map((term) => (
+                          <span
+                            key={`${term.word}-${term.count}`}
+                            className="dataset-word-cloud-fallback-term"
+                            style={{ fontSize: `${Math.max(12, Math.min(32, 12 + Math.round(term.weight * 0.16)))}px` }}
+                            title={`${term.word}: ${normalizeCount(term.count)}`}
+                          >
+                            {term.word}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

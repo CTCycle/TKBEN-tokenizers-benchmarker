@@ -147,3 +147,9 @@ class TokenizerVocabularyPageResponse(BaseModel):
 class CustomTokenizersDeleteResponse(BaseModel):
     status: str = Field(default="success")
     message: str
+
+###############################################################################
+class TokenizerDeleteResponse(BaseModel):
+    status: str = Field(default="success")
+    tokenizer_name: str
+    message: str

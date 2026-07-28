@@ -54,6 +54,31 @@ const DatasetValidationWizard = ({
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [ensureSelectionInitialized, isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    const scrollY = window.scrollY;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousBodyPosition = document.body.style.position;
+    const previousBodyTop = document.body.style.top;
+    const previousBodyWidth = document.body.style.width;
+    const previousDocumentOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.body.style.position = previousBodyPosition;
+      document.body.style.top = previousBodyTop;
+      document.body.style.width = previousBodyWidth;
+      document.documentElement.style.overflow = previousDocumentOverflow;
+      window.scrollTo(0, scrollY);
+    };
+  }, [isOpen]);
+
   const runPipeline = async () => {
     if (!datasetName) return;
     const request: Partial<DatasetAnalysisRequest> = {
@@ -85,7 +110,6 @@ const DatasetValidationWizard = ({
   const samplingModeId = 'validation-wizard-sampling-mode';
   const fractionId = 'validation-wizard-sampling-fraction';
   const countRangeId = 'validation-wizard-sampling-count-range';
-  const countInputId = 'validation-wizard-sampling-count';
   const minLengthId = 'validation-wizard-min-length';
   const maxLengthId = 'validation-wizard-max-length';
   const sessionNameId = 'validation-wizard-session-name';
@@ -97,6 +121,8 @@ const DatasetValidationWizard = ({
       aria-modal="true"
       aria-labelledby={titleId}
       aria-describedby={descriptionId}
+      onWheel={(event) => event.preventDefault()}
+      onTouchMove={(event) => event.preventDefault()}
     >
       <div className="modal-card validation-wizard-modal">
         <header className="validation-wizard-header">
@@ -118,15 +144,15 @@ const DatasetValidationWizard = ({
           </button>
         </header>
 
-        <div className="validation-wizard-steps">
-          <span className={step === 0 ? 'active' : ''}>1. Metric Selection</span>
-          <span className={step === 1 ? 'active' : ''}>2. Sampling & Filters</span>
+        <div className="modal-wizard-steps">
+          <span className={step === 0 ? 'active' : step > 0 ? 'completed' : ''}>1. Metric Selection</span>
+          <span className={step === 1 ? 'active' : step > 1 ? 'completed' : ''}>2. Sampling & Filters</span>
           <span className={step === 2 ? 'active' : ''}>3. Confirmation</span>
         </div>
 
         <div className="validation-wizard-body">
           {step === 0 && (
-            <div className="validation-tree-container">
+            <div className="validation-tree-container" onWheel={(event) => event.stopPropagation()}>
               {loadingCategories ? (
                 <div className="chart-placeholder">
                   <p>Loading metrics catalog...</p>
@@ -161,7 +187,7 @@ const DatasetValidationWizard = ({
 
           {step === 1 && (
             <div className="validation-form-grid">
-              <div className="input-stack">
+              <div className="input-stack validation-sampling-mode">
                 <span id={samplingModeId} className="field-label">Sampling Mode</span>
                 <div className="field-row" role="radiogroup" aria-labelledby={samplingModeId}>
                   <label className="checkbox">
@@ -184,7 +210,7 @@ const DatasetValidationWizard = ({
               </div>
 
               {samplingMode === 'fraction' ? (
-                <div className="input-stack">
+                <div className="input-stack validation-sampling-control">
                   <label className="field-label" htmlFor={fractionId}>Fraction ({samplingFraction.toFixed(2)})</label>
                   <input
                     id={fractionId}
@@ -197,7 +223,7 @@ const DatasetValidationWizard = ({
                   />
                 </div>
               ) : (
-                <div className="input-stack">
+                <div className="input-stack validation-sampling-control">
                   <label className="field-label" htmlFor={countRangeId}>Document Count ({Math.max(1, Math.floor(samplingCount))})</label>
                   <input
                     id={countRangeId}
@@ -208,44 +234,41 @@ const DatasetValidationWizard = ({
                     value={Math.max(1, Math.floor(samplingCount))}
                     onChange={(event) => setSamplingCount(Math.max(1, Number(event.target.value) || 1))}
                   />
-                  <input
-                    id={countInputId}
-                    aria-label="Document count"
-                    className="text-input"
-                    value={samplingCount}
-                    onChange={(event) => setSamplingCount(Math.max(1, Number(event.target.value) || 1))}
-                  />
                 </div>
               )}
 
-              <div className="input-stack">
-                <label className="field-label" htmlFor={minLengthId}>Min Length</label>
-                <input
-                  id={minLengthId}
-                  className="text-input"
-                  value={minLength}
-                  onChange={(event) => setMinLength(event.target.value)}
-                  placeholder="Optional"
-                />
+              <div className="validation-filter-row">
+                <div className="validation-length-filters">
+                  <div className="input-stack validation-filter-field">
+                    <label className="field-label" htmlFor={minLengthId}>Min Length</label>
+                    <input
+                      id={minLengthId}
+                      className="text-input validation-number-input"
+                      value={minLength}
+                      onChange={(event) => setMinLength(event.target.value)}
+                      placeholder="Optional"
+                    />
+                  </div>
+                  <div className="input-stack validation-filter-field">
+                    <label className="field-label" htmlFor={maxLengthId}>Max Length</label>
+                    <input
+                      id={maxLengthId}
+                      className="text-input validation-number-input"
+                      value={maxLength}
+                      onChange={(event) => setMaxLength(event.target.value)}
+                      placeholder="Optional"
+                    />
+                  </div>
+                </div>
+                <label className="checkbox validation-exclude-empty">
+                  <input
+                    type="checkbox"
+                    checked={excludeEmpty}
+                    onChange={(event) => setExcludeEmpty(event.target.checked)}
+                  />
+                  <span>Exclude empty documents</span>
+                </label>
               </div>
-              <div className="input-stack">
-                <label className="field-label" htmlFor={maxLengthId}>Max Length</label>
-                <input
-                  id={maxLengthId}
-                  className="text-input"
-                  value={maxLength}
-                  onChange={(event) => setMaxLength(event.target.value)}
-                  placeholder="Optional"
-                />
-              </div>
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={excludeEmpty}
-                  onChange={(event) => setExcludeEmpty(event.target.checked)}
-                />
-                <span>Exclude empty documents</span>
-              </label>
             </div>
           )}
 
@@ -281,7 +304,7 @@ const DatasetValidationWizard = ({
           )}
         </div>
 
-        <footer className="validation-wizard-footer">
+        <footer className="modal-wizard-footer">
           <button
             type="button"
             className="secondary-button"
