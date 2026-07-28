@@ -8,6 +8,7 @@ from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile, 
 from server.domain.jobs import JobStartResponse
 from server.domain.tokenizers import (
     CustomTokenizersDeleteResponse,
+    TokenizerDeleteResponse,
     TokenizerDownloadRequest,
     TokenizerListItem,
     TokenizerListResponse,
@@ -21,6 +22,7 @@ from server.domain.tokenizers import (
 from server.configurations import get_server_settings
 from server.common.constants import (
     API_ROUTE_TOKENIZERS_CUSTOM,
+    API_ROUTE_TOKENIZERS_DELETE,
     API_ROUTE_TOKENIZERS_DOWNLOAD,
     API_ROUTE_TOKENIZERS_LIST,
     API_ROUTE_TOKENIZERS_REPORT_BY_ID,
@@ -341,4 +343,39 @@ async def delete_custom_tokenizers() -> CustomTokenizersDeleteResponse:
     return CustomTokenizersDeleteResponse(
         status="success",
         message="Custom tokenizers cleared",
+    )
+
+###############################################################################
+@router.delete(
+    API_ROUTE_TOKENIZERS_DELETE,
+    response_model=TokenizerDeleteResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def delete_tokenizer(
+    tokenizer_name: Annotated[str, Query(min_length=1, max_length=160)],
+) -> TokenizerDeleteResponse:
+    try:
+        normalized_name = normalize_identifier(
+            tokenizer_name,
+            "Tokenizer name",
+            max_length=160,
+        )
+        removed = await asyncio.to_thread(
+            TokenizersService().remove_downloaded_tokenizer,
+            normalized_name,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    if not removed:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tokenizer '{normalized_name}' is not downloaded.",
+        )
+    return TokenizerDeleteResponse(
+        status="success",
+        tokenizer_name=normalized_name,
+        message="Tokenizer removed",
     )

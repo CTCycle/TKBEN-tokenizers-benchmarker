@@ -181,9 +181,9 @@ const BenchmarkRunWizard = ({
           </button>
         </header>
 
-        <div className="benchmark-wizard-steps">
-          <span className={step === 0 ? 'active' : ''}>1. Metrics</span>
-          <span className={step === 1 ? 'active' : ''}>2. Inputs</span>
+        <div className="modal-wizard-steps">
+          <span className={step === 0 ? 'active' : step > 0 ? 'completed' : ''}>1. Metrics</span>
+          <span className={step === 1 ? 'active' : step > 1 ? 'completed' : ''}>2. Inputs</span>
           <span className={step === 2 ? 'active' : ''}>3. Summary</span>
         </div>
 
@@ -343,91 +343,106 @@ const BenchmarkRunWizard = ({
               <p className="panel-description">
                 selected metrics: <strong>{selectedMetricKeys.length.toLocaleString()}</strong>
               </p>
-              <div className="benchmark-wizard-input-grid" role="group" aria-labelledby={advancedSettingsId}>
+              <div className="benchmark-wizard-advanced-settings" role="group" aria-labelledby={advancedSettingsId}>
                 <span id={advancedSettingsId} className="sr-only">Advanced benchmark settings</span>
-                <div className="input-stack">
-                  <label className="field-label" htmlFor="benchmark-wizard-warmup">Warmup trials</label>
-                  <input id="benchmark-wizard-warmup" className="text-input" type="number" min={0} max={100} value={warmupTrials} onChange={(event) => setWarmupTrials(Number(event.target.value) || 0)} />
-                </div>
-                <div className="input-stack">
-                  <label className="field-label" htmlFor="benchmark-wizard-timed">Timed trials</label>
-                  <input id="benchmark-wizard-timed" className="text-input" type="number" min={1} max={200} value={timedTrials} onChange={(event) => setTimedTrials(Number(event.target.value) || 1)} />
-                </div>
-                <div className="input-stack">
-                  <label className="field-label" htmlFor="benchmark-wizard-batch">Batch size</label>
-                  <input id="benchmark-wizard-batch" className="text-input" type="number" min={1} max={4096} value={batchSize} onChange={(event) => setBatchSize(Number(event.target.value) || 1)} />
-                </div>
-                <div className="input-stack">
-                  <label className="field-label" htmlFor="benchmark-wizard-seed">Seed</label>
-                  <input id="benchmark-wizard-seed" className="text-input" type="number" value={seed} onChange={(event) => setSeed(Number(event.target.value) || 0)} />
-                </div>
-                <div className="input-stack">
-                  <label className="field-label" htmlFor="benchmark-wizard-parallelism">Parallelism</label>
-                  <input id="benchmark-wizard-parallelism" className="text-input" type="number" min={1} max={128} value={parallelism} onChange={(event) => setParallelism(Number(event.target.value) || 1)} />
-                </div>
-                <label className="checkbox">
-                  <input type="checkbox" checked={includeLmMetrics} onChange={(event) => setIncludeLmMetrics(event.target.checked)} />
-                  <span>Enable LM-backed metrics</span>
-                </label>
-                <label className="checkbox">
-                  <input type="checkbox" checked={addSpecialTokens} onChange={(event) => setAddSpecialTokens(event.target.checked)} />
-                  <span>Add special tokens</span>
-                </label>
-                <label className="checkbox">
-                  <input type="checkbox" checked={padding} onChange={(event) => setPadding(event.target.checked)} />
-                  <span>Enable padding</span>
-                </label>
-                <label className="checkbox">
-                  <input type="checkbox" checked={truncation} onChange={(event) => setTruncation(event.target.checked)} />
-                  <span>Enable truncation</span>
-                </label>
-                <div className="input-stack">
-                  <label className="field-label" htmlFor="benchmark-wizard-max-length">Max length (optional)</label>
-                  <input
-                    id="benchmark-wizard-max-length"
-                    className="text-input"
-                    type="number"
-                    min={1}
-                    value={maxLength ?? ''}
-                    onChange={(event) => {
-                      const value = event.target.value.trim();
-                      if (!value) {
-                        setMaxLength(null);
-                        return;
-                      }
-                      setMaxLength(Math.max(1, Math.floor(Number(value) || 1)));
-                    }}
-                    placeholder="none"
-                  />
-                </div>
-                <label className="checkbox">
-                  <input
-                    type="checkbox"
-                    checked={storePerDocumentStats}
-                    onChange={(event) => setStorePerDocumentStats(event.target.checked)}
-                  />
-                  <span>Store per-document stats</span>
-                </label>
-                <div className="input-stack">
-                  <label className="field-label" htmlFor="benchmark-wizard-per-doc-sample">
-                    Per-document sample size
-                  </label>
-                  <input
-                    id="benchmark-wizard-per-doc-sample"
-                    className="text-input"
-                    type="number"
-                    min={1}
-                    max={10000}
-                    value={perDocumentSampleSize}
-                    onChange={(event) => setPerDocumentSampleSize(Number(event.target.value) || 1)}
-                  />
-                </div>
+                <section className="benchmark-wizard-advanced-group benchmark-wizard-advanced-group--execution" aria-labelledby="benchmark-wizard-execution-title">
+                  <h3 id="benchmark-wizard-execution-title" className="benchmark-wizard-advanced-group-title">Execution</h3>
+                  <div className="benchmark-wizard-advanced-fields benchmark-wizard-advanced-fields--execution">
+                    <div className="input-stack">
+                      <label className="field-label" htmlFor="benchmark-wizard-warmup">Warmup trials</label>
+                      <input id="benchmark-wizard-warmup" className="text-input" type="number" min={0} max={100} value={warmupTrials} onChange={(event) => setWarmupTrials(Number(event.target.value) || 0)} />
+                    </div>
+                    <div className="input-stack">
+                      <label className="field-label" htmlFor="benchmark-wizard-timed">Timed trials</label>
+                      <input id="benchmark-wizard-timed" className="text-input" type="number" min={1} max={200} value={timedTrials} onChange={(event) => setTimedTrials(Number(event.target.value) || 1)} />
+                    </div>
+                    <div className="input-stack">
+                      <label className="field-label" htmlFor="benchmark-wizard-batch">Batch size</label>
+                      <input id="benchmark-wizard-batch" className="text-input" type="number" min={1} max={4096} value={batchSize} onChange={(event) => setBatchSize(Number(event.target.value) || 1)} />
+                    </div>
+                    <div className="input-stack">
+                      <label className="field-label" htmlFor="benchmark-wizard-seed">Seed</label>
+                      <input id="benchmark-wizard-seed" className="text-input" type="number" value={seed} onChange={(event) => setSeed(Number(event.target.value) || 0)} />
+                    </div>
+                    <div className="input-stack">
+                      <label className="field-label" htmlFor="benchmark-wizard-parallelism">Parallelism</label>
+                      <input id="benchmark-wizard-parallelism" className="text-input" type="number" min={1} max={128} value={parallelism} onChange={(event) => setParallelism(Number(event.target.value) || 1)} />
+                    </div>
+                  </div>
+                </section>
+                <section className="benchmark-wizard-advanced-group benchmark-wizard-advanced-group--token-processing" aria-labelledby="benchmark-wizard-token-processing-title">
+                  <h3 id="benchmark-wizard-token-processing-title" className="benchmark-wizard-advanced-group-title">Token processing</h3>
+                  <div className="benchmark-wizard-advanced-fields">
+                    <label className="checkbox">
+                      <input type="checkbox" checked={includeLmMetrics} onChange={(event) => setIncludeLmMetrics(event.target.checked)} />
+                      <span>Enable LM-backed metrics</span>
+                    </label>
+                    <label className="checkbox">
+                      <input type="checkbox" checked={addSpecialTokens} onChange={(event) => setAddSpecialTokens(event.target.checked)} />
+                      <span>Add special tokens</span>
+                    </label>
+                    <label className="checkbox">
+                      <input type="checkbox" checked={padding} onChange={(event) => setPadding(event.target.checked)} />
+                      <span>Enable padding</span>
+                    </label>
+                    <label className="checkbox">
+                      <input type="checkbox" checked={truncation} onChange={(event) => setTruncation(event.target.checked)} />
+                      <span>Enable truncation</span>
+                    </label>
+                  </div>
+                </section>
+                <section className="benchmark-wizard-advanced-group benchmark-wizard-advanced-group--document-statistics" aria-labelledby="benchmark-wizard-document-statistics-title">
+                  <h3 id="benchmark-wizard-document-statistics-title" className="benchmark-wizard-advanced-group-title">Document statistics</h3>
+                  <div className="benchmark-wizard-advanced-fields">
+                    <label className="checkbox">
+                      <input
+                        type="checkbox"
+                        checked={storePerDocumentStats}
+                        onChange={(event) => setStorePerDocumentStats(event.target.checked)}
+                      />
+                      <span>Store per-document stats</span>
+                    </label>
+                    <div className="input-stack">
+                      <label className="field-label" htmlFor="benchmark-wizard-per-doc-sample">
+                        Per-document sample size
+                      </label>
+                      <input
+                        id="benchmark-wizard-per-doc-sample"
+                        className="text-input"
+                        type="number"
+                        min={1}
+                        max={10000}
+                        value={perDocumentSampleSize}
+                        onChange={(event) => setPerDocumentSampleSize(Number(event.target.value) || 1)}
+                      />
+                    </div>
+                    <div className="input-stack">
+                      <label className="field-label" htmlFor="benchmark-wizard-max-length">Max length (optional)</label>
+                      <input
+                        id="benchmark-wizard-max-length"
+                        className="text-input"
+                        type="number"
+                        min={1}
+                        value={maxLength ?? ''}
+                        onChange={(event) => {
+                          const value = event.target.value.trim();
+                          if (!value) {
+                            setMaxLength(null);
+                            return;
+                          }
+                          setMaxLength(Math.max(1, Math.floor(Number(value) || 1)));
+                        }}
+                        placeholder="none"
+                      />
+                    </div>
+                  </div>
+                </section>
               </div>
             </div>
           )}
         </div>
 
-        <footer className="benchmark-wizard-footer">
+        <footer className="modal-wizard-footer">
           <button
             type="button"
             className="secondary-button"

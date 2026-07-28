@@ -23,6 +23,28 @@ type UseWordCloudLayoutResult = {
   wordCloudLayout: WordCloudLayoutTerm[];
 };
 
+const buildFallbackLayout = (
+  terms: WordCloudTerm[],
+  width: number,
+  height: number,
+): WordCloudLayoutTerm[] => {
+  const visibleTerms = terms.slice(0, 48);
+  const columns = Math.max(1, Math.floor(width / 150));
+  const rowHeight = Math.max(34, Math.min(48, height / Math.max(1, Math.ceil(visibleTerms.length / columns))));
+
+  return visibleTerms.map((term, index) => {
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    return {
+      ...term,
+      x: Math.round(((column + 1) / (columns + 1)) * width),
+      y: Math.round(Math.min(height - 18, 24 + row * rowHeight)),
+      rotate: index % 5 === 0 ? -6 : index % 7 === 0 ? 6 : 0,
+      fontSize: Math.max(12, Math.min(36, 12 + Math.round(term.weight * 0.18))),
+    };
+  });
+};
+
 export const useWordCloudLayout = (terms: WordCloudTerm[]): UseWordCloudLayoutResult => {
   const [wordCloudLayout, setWordCloudLayout] = useState<WordCloudLayoutTerm[]>([]);
   const [wordCloudSize, setWordCloudSize] = useState<WordCloudSize>({ width: 0, height: 0 });
@@ -58,7 +80,14 @@ export const useWordCloudLayout = (terms: WordCloudTerm[]): UseWordCloudLayoutRe
       type: 'module',
     });
     worker.onmessage = (event: MessageEvent<WordCloudWorkerOutput>) => {
-      setWordCloudLayout(event.data?.terms ?? []);
+      const nextLayout = event.data?.terms ?? [];
+      setWordCloudLayout(nextLayout.length > 0
+        ? nextLayout
+        : buildFallbackLayout(terms, wordCloudSize.width, wordCloudSize.height));
+      worker.terminate();
+    };
+    worker.onerror = () => {
+      setWordCloudLayout(buildFallbackLayout(terms, wordCloudSize.width, wordCloudSize.height));
       worker.terminate();
     };
     worker.postMessage({

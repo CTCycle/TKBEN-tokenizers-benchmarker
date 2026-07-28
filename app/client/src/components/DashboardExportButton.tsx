@@ -29,6 +29,7 @@ type DashboardExportButtonProps = {
     dashboardType: DashboardType;
     reportName: string;
     dashboardPayload: Record<string, unknown> | null;
+    label?: string;
 };
 
 const DEFAULT_FILE_STEMS: Record<DashboardType, string> = {
@@ -63,6 +64,7 @@ const DashboardExportButton = ({
     dashboardType,
     reportName,
     dashboardPayload,
+    label,
 }: DashboardExportButtonProps) => {
     const fallbackStem = DEFAULT_FILE_STEMS[dashboardType];
     const defaultStem = useMemo(
@@ -132,11 +134,12 @@ const DashboardExportButton = ({
             title="Export dashboard report as PDF"
             aria-label="Export dashboard report as PDF"
             >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16">
                 <path d="M12 3v10" strokeWidth="2" strokeLinecap="round" />
                 <path d="M8 9l4 4 4-4" strokeWidth="2" strokeLinecap="round" />
                 <path d="M5 16.5V20h14v-3.5" strokeWidth="2" strokeLinecap="round" />
             </svg>
+            {label && <span className="dashboard-export-trigger__label">{label}</span>}
             </button>
             {feedback && <p className={`dashboard-export-feedback dashboard-export-feedback--${feedback.kind}`} role={feedback.kind === 'error' ? 'alert' : 'status'}>{feedback.message}</p>}
         </div>

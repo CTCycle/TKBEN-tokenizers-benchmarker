@@ -135,6 +135,17 @@ class TokenizersService(TokenizerStorageMixin):
         return names
 
     # -------------------------------------------------------------------------
+    def remove_downloaded_tokenizer(self, tokenizer_id: str) -> bool:
+        tokenizer_name = self.validate_tokenizer_identifier(tokenizer_id)
+        removed = self.repository.delete_tokenizer(tokenizer_name)
+        if not removed:
+            return False
+        cache_dir = Path(self.get_tokenizer_cache_dir(tokenizer_name))
+        if cache_dir.exists():
+            shutil.rmtree(cache_dir)
+        return True
+
+    # -------------------------------------------------------------------------
     def list_tokenizer_catalog(
         self,
         search: str | None = None,
