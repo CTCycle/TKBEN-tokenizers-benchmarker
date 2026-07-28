@@ -10,10 +10,10 @@
     "streaming_batch_size": 10000,
     "log_interval": 100000,
     "max_upload_bytes": 26214400,
-    "download_timeout_seconds": 120.0,
+    "download_timeout_seconds": 180.0,
     "download_retry_attempts": 3,
-    "download_retry_backoff_seconds": 1.0,
-    "cleanup_downloaded_sources": false,
+    "download_retry_backoff_seconds": 2.0,
+    "cleanup_downloaded_sources": true,
     "allowed_extensions": [
       ".csv",
       ".xls",
