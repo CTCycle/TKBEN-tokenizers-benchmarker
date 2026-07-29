@@ -9,11 +9,11 @@ from server.common.utils.security import contains_control_chars, normalize_ident
 ###############################################################################
 class BenchmarkVisualizationKind(StrEnum):
     BAR = "bar"
-    LOLLIPOP = "lollipop"
+    HORIZONTAL_BAR = "horizontal_bar"
     INTERVAL_BAR = "interval_bar"
     DOT_WHISKER = "dot_whisker"
     BOX_PLOT = "box_plot"
-    RANGE_PLOT = "range_plot"
+    HISTOGRAM = "histogram"
     GROUPED_BAR = "grouped_bar"
     HEATMAP = "heatmap"
 
@@ -158,6 +158,14 @@ class BenchmarkDashboardBucketPoint(BaseModel):
     bucket: str
     value: float
 
+
+class BenchmarkDashboardHistogramBin(BaseModel):
+    tokenizer: str
+    bin_low: float
+    bin_high: float
+    count: int
+    proportion: float
+
 ###############################################################################
 class BenchmarkDashboardWidgetData(BaseModel):
     widget_id: str
@@ -175,6 +183,7 @@ class BenchmarkDashboardWidgetData(BaseModel):
     points: list[BenchmarkDashboardPoint] = Field(default_factory=list)
     distributions: list[BenchmarkDashboardDistribution] = Field(default_factory=list)
     buckets: list[BenchmarkDashboardBucketPoint] = Field(default_factory=list)
+    histogram_bins: list[BenchmarkDashboardHistogramBin] = Field(default_factory=list)
 
 ###############################################################################
 class BenchmarkDashboardData(BaseModel):
@@ -255,7 +264,7 @@ class BenchmarkMetricCatalogMetric(BaseModel):
     unit: str = ""
     display_format: str = "number"
     default_visualization: BenchmarkVisualizationKind = BenchmarkVisualizationKind.BAR
-    compatible_visualizations: list[BenchmarkVisualizationKind] = Field(default_factory=lambda: [BenchmarkVisualizationKind.BAR, BenchmarkVisualizationKind.LOLLIPOP])
+    compatible_visualizations: list[BenchmarkVisualizationKind] = Field(default_factory=lambda: [BenchmarkVisualizationKind.BAR, BenchmarkVisualizationKind.HORIZONTAL_BAR])
     default_visible: bool = False
     width: str = "standard"
 
@@ -297,10 +306,10 @@ class BenchmarkPerDocumentTokenizerStats(BaseModel):
 ###############################################################################
 class BenchmarkRunResponse(BaseModel):
     status: str = Field(default="success")
-    schema_version: int = Field(default=2)
+    schema_version: int = Field(default=3)
     methodology_version: str = Field(default="semantic_honesty")
     report_id: int | None = Field(default=None)
-    report_version: int = Field(default=4)
+    report_version: int = Field(default=5)
     created_at: str | None = Field(default=None)
     run_name: str | None = Field(default=None)
     selected_metric_keys: list[str] = Field(default_factory=list)

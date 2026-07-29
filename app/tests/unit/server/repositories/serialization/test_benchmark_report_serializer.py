@@ -15,9 +15,9 @@ from server.repositories.serialization.benchmark_reports import (
 def _build_payload(dataset_name: str) -> dict:
     return {
         "status": "success",
-        "schema_version": 2,
+        "schema_version": 3,
         "methodology_version": "semantic_honesty",
-        "report_version": 4,
+        "report_version": 5,
         "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "run_name": "serializer test",
         "selected_metric_keys": ["eff.encode_tokens_per_second_mean"],
@@ -150,15 +150,15 @@ def test_benchmark_report_serializer_round_trip(monkeypatch) -> None:
     assert summaries[0]["dataset_name"] == dataset_name
 
 ###############################################################################
-def test_benchmark_report_serializer_rejects_v3_payload() -> None:
+def test_benchmark_report_serializer_rejects_v4_payload() -> None:
     serializer = BenchmarkReportSerializer()
     with pytest.raises(ValueError, match="incompatible report version"):
         serializer._normalize_report_row({
             "id": 3,
-            "report_version": 3,
+            "report_version": 4,
             "created_at": datetime.now(timezone.utc),
             "run_name": "old",
             "selected_metric_keys": [],
             "dataset_name": "custom/old",
-            "payload": {"schema_version": 2, "methodology_version": "semantic_honesty", "dataset_name": "custom/old"},
+            "payload": {"schema_version": 3, "methodology_version": "semantic_honesty", "dataset_name": "custom/old"},
         })

@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
   const envDir = path.resolve(__dirname, '../../settings')
   const settingsEnv = loadEnv(mode, envDir, '')
   const localEnv = loadEnv(mode, __dirname, '')
-  const env = { ...localEnv, ...settingsEnv }
+  const env = { ...localEnv, ...settingsEnv, ...process.env }
 
   const fastapiHost = env.FASTAPI_HOST || '127.0.0.1'
   const fastapiPort = Number(env.FASTAPI_PORT || 5000)

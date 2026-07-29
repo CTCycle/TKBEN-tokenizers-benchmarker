@@ -373,13 +373,14 @@ export interface BenchmarkDistributionPoint {
 export interface BenchmarkDashboardPoint { tokenizer: string; value: number; interval_low: number | null; interval_high: number | null; }
 export interface BenchmarkDashboardDistribution { tokenizer: string; min: number; q1: number; median: number; q3: number; max: number; sample_count: number; }
 export interface BenchmarkDashboardBucketPoint { tokenizer: string; bucket: string; value: number; }
-export type BenchmarkVisualizationKind = 'bar' | 'lollipop' | 'interval_bar' | 'dot_whisker' | 'box_plot' | 'range_plot' | 'grouped_bar' | 'heatmap';
+export interface BenchmarkDashboardHistogramBin { tokenizer: string; bin_low: number; bin_high: number; count: number; proportion: number; }
+export type BenchmarkVisualizationKind = 'bar' | 'horizontal_bar' | 'interval_bar' | 'dot_whisker' | 'box_plot' | 'histogram' | 'grouped_bar' | 'heatmap';
 export interface BenchmarkDashboardWidgetData {
   widget_id: string; metric_keys: string[]; category_key: string; category_label: string;
   label: string; description: string; unit: string; display_format: string;
   default_visualization: BenchmarkVisualizationKind; compatible_visualizations: BenchmarkVisualizationKind[]; default_visible: boolean;
   width: 'standard' | 'wide'; points: BenchmarkDashboardPoint[];
-  distributions: BenchmarkDashboardDistribution[]; buckets: BenchmarkDashboardBucketPoint[];
+  distributions: BenchmarkDashboardDistribution[]; buckets: BenchmarkDashboardBucketPoint[]; histogram_bins: BenchmarkDashboardHistogramBin[];
 }
 export interface BenchmarkDashboardData { widgets: BenchmarkDashboardWidgetData[]; available_widget_ids: string[]; available_metric_keys: string[]; unavailable_selected_metric_keys: string[]; }
 

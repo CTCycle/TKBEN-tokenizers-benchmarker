@@ -1,5 +1,5 @@
 # Benchmark Contract
-Last updated: 2026-07-28
+Last updated: 2026-07-29
 
 ## Benchmark Request Notes
 Benchmark run request config includes tokenizer behavior flags and per-document controls:
@@ -26,12 +26,13 @@ Runtime metadata includes benchmark config echo and dataset scope details:
 - unavailable benchmark metrics use `null` rather than synthetic zero values
 
 ## Dashboard and Versions
-- new benchmark reports use schema version `2` and report version `4`
+- new benchmark reports use schema version `3` and report version `5`
 - `dashboard.widgets` is the normalized metric-widget payload; it provides only available widget series and includes display metadata
-- each widget has a strict `default_visualization` and ordered `compatible_visualizations`: scalar `bar`/`lollipop`, interval `interval_bar`/`dot_whisker`, five-number distributions `box_plot`/`range_plot`, and tokenizer-by-bucket matrices `grouped_bar`/`heatmap`
+- each widget has a strict `default_visualization` and ordered `compatible_visualizations`: scalar `bar`/`horizontal_bar`, interval `interval_bar`/`dot_whisker`, five-number distributions `box_plot`/`histogram`, and tokenizer-by-bucket matrices `grouped_bar`/`heatmap`
+- distribution widgets persist immutable `histogram_bins` with tokenizer, `bin_low`, `bin_high`, `count`, and `proportion`; bins use shared finite-value NumPy auto edges capped at 24, with one padded bin for constant data
 - dashboard export accepts `visualization_by_widget_id` and rejects unknown or widget-incompatible overrides
 - `available_metric_keys` and `unavailable_selected_metric_keys` make availability explicit at metric level
-- version 1, 2, and 3 reports are not listed or loaded and are not migrated
+- schema 2/report 4 and every earlier report are not listed or loaded and are not migrated; they must be rerun
 
 ## Fidelity Semantics
 - `fid.exact_round_trip_rate` stores decode/re-encode token ID stability, not direct text preservation
