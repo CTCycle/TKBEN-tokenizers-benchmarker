@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { BenchmarkDashboardData, BenchmarkDashboardWidgetData } from '../types/api';
-import { BENCHMARK_DASHBOARD_STORAGE_KEY, LEGACY_BENCHMARK_DASHBOARD_STORAGE_KEY, isDefaultDashboardLayout, resetDashboardLayout, resolveAvailableDashboardLayout, validateStoredDashboardLayout, type BenchmarkDashboardLayoutState } from '../features/benchmark-dashboard/benchmarkDashboardLayout';
+import { BENCHMARK_DASHBOARD_STORAGE_KEY, BENCHMARK_DASHBOARD_STORAGE_KEY_V2, isDefaultDashboardLayout, resetDashboardLayout, resolveAvailableDashboardLayout, validateStoredDashboardLayout, type BenchmarkDashboardLayoutState } from '../features/benchmark-dashboard/benchmarkDashboardLayout';
 import type { BenchmarkVisualizationKind } from '../types/api';
 
-const readStored = (): BenchmarkDashboardLayoutState | null => { try { window.localStorage.removeItem(LEGACY_BENCHMARK_DASHBOARD_STORAGE_KEY); return validateStoredDashboardLayout(JSON.parse(window.localStorage.getItem(BENCHMARK_DASHBOARD_STORAGE_KEY) ?? 'null')); } catch { return null; } };
+const readStored = (): BenchmarkDashboardLayoutState | null => { try { window.localStorage.removeItem(BENCHMARK_DASHBOARD_STORAGE_KEY_V2); return validateStoredDashboardLayout(JSON.parse(window.localStorage.getItem(BENCHMARK_DASHBOARD_STORAGE_KEY) ?? 'null')); } catch { return null; } };
 export const useBenchmarkDashboardLayout = (dashboard: BenchmarkDashboardData | undefined) => {
   const widgets = useMemo(() => dashboard?.widgets ?? [], [dashboard]); const [layout, setLayout] = useState<BenchmarkDashboardLayoutState | null>(() => readStored());
   const resolved = useMemo(() => resolveAvailableDashboardLayout(layout, widgets), [layout, widgets]);

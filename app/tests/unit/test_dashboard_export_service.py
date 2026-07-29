@@ -149,7 +149,7 @@ def build_benchmark_payload() -> dict:
                         "description": "Vocabulary size by tokenizer",
                         "unit": "tokens",
                         "default_visualization": "bar",
-                        "compatible_visualizations": ["bar", "lollipop"],
+                        "compatible_visualizations": ["bar", "horizontal_bar"],
                         "width": "standard",
                         "points": [
                             {"tokenizer": "bert-base-uncased", "value": 30522},
@@ -175,7 +175,7 @@ def build_benchmark_payload() -> dict:
                         "description": "Must not be exported",
                         "unit": "ratio",
                         "default_visualization": "bar",
-                        "compatible_visualizations": ["bar", "lollipop"],
+                        "compatible_visualizations": ["bar", "horizontal_bar"],
                         "width": "standard",
                         "points": [{"tokenizer": "bert-base-uncased", "value": 1}],
                     },
@@ -185,7 +185,7 @@ def build_benchmark_payload() -> dict:
         "selected_distribution_tokenizer": "bert-base-uncased",
         "visible_widget_ids": ["benchmark.speed", "benchmark.vocabulary"],
         "ordered_widget_ids": ["benchmark.speed", "benchmark.hidden", "benchmark.vocabulary"],
-        "visualization_by_widget_id": {"benchmark.speed": "dot_whisker", "benchmark.vocabulary": "lollipop"},
+        "visualization_by_widget_id": {"benchmark.speed": "dot_whisker", "benchmark.vocabulary": "horizontal_bar"},
     }
 
 ###############################################################################

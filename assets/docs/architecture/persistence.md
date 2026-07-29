@@ -1,5 +1,5 @@
 # Persistence
-Last updated: 2026-07-15
+Last updated: 2026-07-29
 
 ## Storage selection
 
@@ -30,8 +30,8 @@ Metric values carry the owning dataset, enforce composite session/document
 ownership, require exactly one value representation, and use partial unique
 indexes for aggregate and per-document values. Tokenizer reports are
 current-only: replacing a report replaces its vocabulary and report as one
-logical operation. Benchmark reports keep immutable JSON snapshots plus
-projected summary columns; list queries do not select the full payload.
+logical operation. Benchmark reports keep immutable schema-3/report-5 JSON snapshots plus
+projected summary columns; list queries do not select the full payload. Reports from older contracts are filtered out and never migrated; dashboard histogram bins remain inside the immutable payload snapshot.
 
 ## Backend and transaction guarantees
 

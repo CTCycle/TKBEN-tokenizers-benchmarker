@@ -1,5 +1,5 @@
 # Backend API
-Last updated: 2026-07-28
+Last updated: 2026-07-29
 
 ## API Prefix
 All routers are included with `prefix="/api"` during backend startup.
@@ -34,7 +34,7 @@ All routers are included with `prefix="/api"` during backend startup.
 - `GET /api/benchmarks/reports`
 - `GET /api/benchmarks/reports/{report_id}`
 - `GET /api/benchmarks/metrics/catalog`
-  - dashboard widgets use report-v4 `default_visualization` and ordered `compatible_visualizations` fields; v3 reports are not listed or loaded
+  - dashboard widgets use report-v5/schema-3 `default_visualization`, ordered `compatible_visualizations`, and persisted `histogram_bins`; older reports are not listed or loaded
 
 ## Jobs
 - `GET /api/jobs/{job_id}`

@@ -1,8 +1,8 @@
 FASTAPI_TITLE = "TKBEN_webapp Tokenizers Benchmark Backend"
 FASTAPI_DESCRIPTION = "FastAPI backend"
 FASTAPI_VERSION = "1.2.0"
-BENCHMARK_SCHEMA_VERSION = 2
-BENCHMARK_REPORT_VERSION = 4
+BENCHMARK_SCHEMA_VERSION = 3
+BENCHMARK_REPORT_VERSION = 5
 
 
 ###############################################################################

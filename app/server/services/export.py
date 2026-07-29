@@ -570,21 +570,28 @@ class DashboardExportService(DashboardExportFormatting):
                 labels = [self._short_name(str(row.get("tokenizer") or "")) for row in rows]
                 stats = [{"label": label, "whislo": self._to_number(row.get("min")), "q1": self._to_number(row.get("q1")), "med": self._to_number(row.get("median")), "q3": self._to_number(row.get("q3")), "whishi": self._to_number(row.get("max")), "fliers": []} for label, row in zip(labels, rows, strict=True)]
                 ax.bxp(stats, orientation="horizontal", showfliers=False, patch_artist=True, boxprops={"facecolor": SECONDARY_COLOR, "alpha": 0.75}, medianprops={"color": PRIMARY_COLOR, "linewidth": 2})
+                minimum = min(stat["whislo"] for stat in stats)
+                maximum = max(stat["whishi"] for stat in stats)
+                if minimum > 0 and maximum / minimum >= 50:
+                    ax.set_xscale("log")
+                    ax.set_xlabel(f"{unit} (log scale)")
             else:
                 ax.text(0.5, 0.5, "No distribution data", ha="center", va="center", color=MUTED_TEXT)
-        elif visualization == "range_plot":
-            rows = [row for row in widget.get("distributions", []) if isinstance(row, dict)]
-            labels = [self._short_name(str(row.get("tokenizer") or "")) for row in rows]
-            y = list(range(len(rows)))
+        elif visualization == "histogram":
+            rows = [row for row in widget.get("histogram_bins", []) if isinstance(row, dict)]
+            tokenizers = list(dict.fromkeys(str(row.get("tokenizer") or "") for row in rows))
             if rows:
-                for index, row in enumerate(rows):
-                    low, q1, median, q3, high = [self._to_number(row.get(key)) for key in ("min", "q1", "median", "q3", "max")]
-                    ax.plot([low, high], [index, index], color=MUTED_TEXT, linewidth=2)
-                    ax.plot([q1, q3], [index, index], color=SECONDARY_COLOR, linewidth=8, solid_capstyle="round")
-                    ax.scatter([median], [index], color=PRIMARY_COLOR, s=45, zorder=3)
-                ax.set_yticks(y, labels)
+                for index, tokenizer in enumerate(tokenizers):
+                    tokenizer_rows = [row for row in rows if str(row.get("tokenizer") or "") == tokenizer]
+                    lows = [self._to_number(row.get("bin_low")) for row in tokenizer_rows]
+                    widths = [self._to_number(row.get("bin_high")) - low for row, low in zip(tokenizer_rows, lows, strict=True)]
+                    counts = [self._to_number(row.get("count")) for row in tokenizer_rows]
+                    ax.bar(lows, counts, width=widths, align="edge", alpha=0.35, label=self._short_name(tokenizer), color=CHART_SERIES_COLORS[index % len(CHART_SERIES_COLORS)])
+                ax.legend(fontsize=8)
+                ax.set_xlabel(unit)
+                ax.set_ylabel("Count")
             else:
-                ax.text(0.5, 0.5, "No distribution data", ha="center", va="center", color=MUTED_TEXT)
+                ax.text(0.5, 0.5, "No histogram data", ha="center", va="center", color=MUTED_TEXT)
         elif visualization in {"grouped_bar", "heatmap"}:
             rows = [row for row in widget.get("buckets", []) if isinstance(row, dict)]
             tokenizers = list(dict.fromkeys(str(row.get("tokenizer") or "") for row in rows))
@@ -605,15 +612,13 @@ class DashboardExportService(DashboardExportFormatting):
                 ax.figure.colorbar(image, ax=ax, fraction=0.046, pad=0.04)
             else:
                 ax.text(0.5, 0.5, "No bucket data", ha="center", va="center", color=MUTED_TEXT)
-        elif visualization == "lollipop":
+        elif visualization == "horizontal_bar":
             rows = [row for row in widget.get("points", []) if isinstance(row, dict)]
             labels = [self._short_name(str(row.get("tokenizer") or "")) for row in rows]
             values = [self._to_number(row.get("value")) for row in rows]
             if rows:
-                markerline, stemlines, _ = ax.stem(labels, values, linefmt=SECONDARY_COLOR, markerfmt="o", basefmt=" ")
-                plt.setp(markerline, color=PRIMARY_COLOR, markersize=7)
-                plt.setp(stemlines, color=SECONDARY_COLOR)
-                ax.tick_params(axis="x", rotation=35, labelsize=8)
+                ax.barh(labels, values, color=SECONDARY_COLOR)
+                ax.set_xlabel(unit)
             else:
                 ax.text(0.5, 0.5, "No metric data", ha="center", va="center", color=MUTED_TEXT)
         elif visualization == "dot_whisker":
