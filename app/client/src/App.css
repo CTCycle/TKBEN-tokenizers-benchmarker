@@ -1786,7 +1786,8 @@
 .tokenizer-vocabulary-list--paged {
   border: 0;
   border-radius: 0;
-  flex: 1 1 auto;
+  flex: 1 1 0;
+  max-height: none;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
@@ -4137,7 +4138,7 @@ select:focus-visible {
 
 .benchmark-dashboard-widget > header {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 12px;
@@ -4145,8 +4146,23 @@ select:focus-visible {
 
 .benchmark-dashboard-widget > header .cross-benchmark-chart-note {
   margin: 0;
-  text-align: right;
+  margin-top: 4px;
 }
+
+.benchmark-visualization-switcher { display: inline-flex; flex: 0 0 auto; gap: 3px; padding: 3px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface-subtle); }
+.benchmark-visualization-button { display: grid; width: 28px; height: 28px; place-items: center; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--color-muted); font-size: 15px; line-height: 1; cursor: pointer; }
+.benchmark-visualization-button:hover, .benchmark-visualization-button[aria-pressed="true"] { background: var(--color-accent); color: #07131f; }
+.benchmark-visualization-button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.benchmark-custom-chart { display: block; width: 100%; min-height: 220px; overflow: visible; }
+.benchmark-dashboard-empty { display: grid; min-height: 220px; place-items: center; color: var(--color-muted); }
+.benchmark-chart-tooltip { display: grid; gap: 4px; padding: 8px 10px; color: var(--color-text); }
+.benchmark-chart-tooltip span { color: var(--color-accent); font-variant-numeric: tabular-nums; }
+.benchmark-heatmap { display: grid; gap: 5px; min-height: 220px; overflow-x: auto; align-content: center; padding: 12px 4px; font-size: 12px; }
+.benchmark-heatmap > * { min-height: 34px; display: grid; place-items: center; padding: 5px 7px; border-radius: 5px; }
+.benchmark-heatmap strong { color: var(--color-muted); font-weight: 600; text-align: center; }
+.benchmark-heatmap-corner { color: var(--color-muted); font-size: 11px; text-align: left; }
+.benchmark-heatmap-cell { color: var(--color-text); font-variant-numeric: tabular-nums; }
+@media (max-width: 700px) { .benchmark-dashboard-widget > header { flex-direction: column; } .benchmark-visualization-switcher { align-self: flex-start; } .benchmark-custom-chart { min-height: 190px; } }
 
 .benchmark-dashboard-modal fieldset {
   position: relative;

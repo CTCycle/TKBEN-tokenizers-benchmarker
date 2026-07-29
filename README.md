@@ -37,7 +37,7 @@ From the repository root, run the single application and maintenance entry point
 .\start_on_windows.ps1
 ```
 
-`start_on_windows.ps1` opens the combined eight-option menu. Choose **Launch application** to download pinned portable Python, uv, and Node.js runtimes when missing, synchronize dependencies, build the frontend when enabled, and start FastAPI plus the Vite preview server. The launcher also waits for the backend health endpoint and frontend before reporting success.
+`start_on_windows.ps1` opens the combined eight-option menu. Choose **Launch application** to download pinned portable Python, uv, and Node.js runtimes when missing, synchronize Python dependencies, reuse unchanged frontend dependencies, build the frontend when enabled, and start FastAPI plus the Vite preview server. The launcher also waits for the backend health endpoint and frontend before reporting success.
 
 ### 2.2 macOS / Linux (Manual Local Setup)
 
@@ -159,7 +159,7 @@ Core runtime keys you will commonly edit:
 
 Determinism:
 - Backend lockfile: `app/server/uv.lock` (generated/updated directly by running `uv sync` from `app/server`).
-- Frontend lockfile: committed `app/client/package-lock.json` + `npm ci`.
+- Frontend lockfile: committed `app/client/package-lock.json`; setup uses `npm ci`, while application launch reuses a verified unchanged dependency tree.
 
 ## 7. Releases and Repository Hygiene
 

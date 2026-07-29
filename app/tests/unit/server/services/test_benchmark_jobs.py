@@ -33,7 +33,7 @@ def test_run_benchmark_job_builds_and_saves_report(monkeypatch) -> None:
             del kwargs
             return {
                 "status": "success",
-                "schema_version": 1,
+                "schema_version": 2,
                 "methodology_version": "semantic_honesty",
                 "dataset_name": "custom/sample",
                 "documents_processed": 2,
@@ -96,7 +96,7 @@ def test_run_benchmark_job_builds_and_saves_report(monkeypatch) -> None:
     )
 
     assert result["report_id"] == 11
-    assert result["report_version"] == 2
+    assert result["report_version"] == 4
 
 ###############################################################################
 def test_run_benchmark_job_returns_cancelled_payload_without_persist(
@@ -115,7 +115,7 @@ def test_run_benchmark_job_returns_cancelled_payload_without_persist(
             del kwargs
             return {
                 "status": "cancelled",
-                "schema_version": 1,
+                "schema_version": 2,
                 "methodology_version": "semantic_honesty",
                 "dataset_name": "custom/sample",
                 "documents_processed": 0,

@@ -13,6 +13,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 from server.common.utils.security import contains_control_chars
 from server.domain.exports import DashboardType
+from server.domain.benchmarks import BenchmarkVisualizationKind
 from server.services.dashboard_export_helpers import DashboardExportFormatting
 
 
@@ -25,6 +26,7 @@ PRIMARY_COLOR = "#facc15"
 SECONDARY_COLOR = "#38bdf8"
 TERTIARY_COLOR = "#22c55e"
 MUTED_TEXT = "#5b6472"
+CHART_SERIES_COLORS = (SECONDARY_COLOR, TERTIARY_COLOR, PRIMARY_COLOR, "#f472b6", "#a78bfa", "#2dd4bf")
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -456,6 +458,16 @@ class DashboardExportService(DashboardExportFormatting):
         ordered_ids = payload.get("ordered_widget_ids")
         visible = visible_ids if isinstance(visible_ids, list) else list(widgets_by_id)
         ordered = ordered_ids if isinstance(ordered_ids, list) else list(widgets_by_id)
+        overrides = payload.get("visualization_by_widget_id", {})
+        if not isinstance(overrides, dict):
+            raise ValueError("visualization_by_widget_id must be an object.")
+        unknown_override_ids = set(overrides) - set(widgets_by_id)
+        if unknown_override_ids:
+            raise ValueError(
+                "visualization_by_widget_id contains unknown widget IDs: "
+                + ", ".join(sorted(str(widget_id) for widget_id in unknown_override_ids))
+                + "."
+            )
         visible_set = {widget_id for widget_id in visible if isinstance(widget_id, str)}
         normalized: list[dict[str, Any]] = []
         seen: set[str] = set()
@@ -464,7 +476,18 @@ class DashboardExportService(DashboardExportFormatting):
                 continue
             widget = widgets_by_id.get(widget_id)
             if widget is not None:
-                normalized.append(widget)
+                default = widget.get("default_visualization")
+                compatible = widget.get("compatible_visualizations")
+                if not isinstance(default, str) or not isinstance(compatible, list) or not all(isinstance(item, str) for item in compatible):
+                    raise ValueError(f"Widget '{widget_id}' has an invalid visualization contract.")
+                try:
+                    selected = overrides.get(widget_id, default)
+                    selected_kind = BenchmarkVisualizationKind(selected)
+                except ValueError as exc:
+                    raise ValueError(f"Widget '{widget_id}' has an unknown visualization override.") from exc
+                if selected_kind.value not in compatible:
+                    raise ValueError(f"Visualization '{selected_kind.value}' is incompatible with widget '{widget_id}'.")
+                normalized.append({**widget, "visualization": selected_kind.value})
                 seen.add(widget_id)
         return normalized
 
@@ -545,242 +568,82 @@ class DashboardExportService(DashboardExportFormatting):
             rows = [row for row in widget.get("distributions", []) if isinstance(row, dict)]
             if rows:
                 labels = [self._short_name(str(row.get("tokenizer") or "")) for row in rows]
-                values = [[self._to_number(row.get(key)) for key in ("min", "q1", "median", "q3", "max")] for row in rows]
-                ax.boxplot(values, tick_labels=labels, vert=False)
+                stats = [{"label": label, "whislo": self._to_number(row.get("min")), "q1": self._to_number(row.get("q1")), "med": self._to_number(row.get("median")), "q3": self._to_number(row.get("q3")), "whishi": self._to_number(row.get("max")), "fliers": []} for label, row in zip(labels, rows, strict=True)]
+                ax.bxp(stats, orientation="horizontal", showfliers=False, patch_artist=True, boxprops={"facecolor": SECONDARY_COLOR, "alpha": 0.75}, medianprops={"color": PRIMARY_COLOR, "linewidth": 2})
             else:
                 ax.text(0.5, 0.5, "No distribution data", ha="center", va="center", color=MUTED_TEXT)
-        else:
-            rows = widget.get("buckets") if visualization == "bucket_bar" else widget.get("points")
-            rows = [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
+        elif visualization == "range_plot":
+            rows = [row for row in widget.get("distributions", []) if isinstance(row, dict)]
+            labels = [self._short_name(str(row.get("tokenizer") or "")) for row in rows]
+            y = list(range(len(rows)))
             if rows:
-                labels = [self._short_name(str(row.get("tokenizer") or "")) + (f" - {row.get('bucket')}" if visualization == "bucket_bar" else "") for row in rows]
+                for index, row in enumerate(rows):
+                    low, q1, median, q3, high = [self._to_number(row.get(key)) for key in ("min", "q1", "median", "q3", "max")]
+                    ax.plot([low, high], [index, index], color=MUTED_TEXT, linewidth=2)
+                    ax.plot([q1, q3], [index, index], color=SECONDARY_COLOR, linewidth=8, solid_capstyle="round")
+                    ax.scatter([median], [index], color=PRIMARY_COLOR, s=45, zorder=3)
+                ax.set_yticks(y, labels)
+            else:
+                ax.text(0.5, 0.5, "No distribution data", ha="center", va="center", color=MUTED_TEXT)
+        elif visualization in {"grouped_bar", "heatmap"}:
+            rows = [row for row in widget.get("buckets", []) if isinstance(row, dict)]
+            tokenizers = list(dict.fromkeys(str(row.get("tokenizer") or "") for row in rows))
+            buckets = list(dict.fromkeys(str(row.get("bucket") or "") for row in rows))
+            lookup = {(str(row.get("tokenizer") or ""), str(row.get("bucket") or "")): self._to_number(row.get("value")) for row in rows}
+            if rows and visualization == "grouped_bar":
+                x = list(range(len(buckets)))
+                width = 0.8 / max(len(tokenizers), 1)
+                for index, tokenizer in enumerate(tokenizers):
+                    ax.bar([item + (index - (len(tokenizers) - 1) / 2) * width for item in x], [lookup.get((tokenizer, bucket), 0.0) for bucket in buckets], width=width, label=self._short_name(tokenizer), color=CHART_SERIES_COLORS[index % len(CHART_SERIES_COLORS)])
+                ax.set_xticks(x, [self._short_name(bucket) for bucket in buckets])
+                ax.legend(fontsize=8)
+            elif rows:
+                matrix = [[lookup.get((tokenizer, bucket), float("nan")) for bucket in buckets] for tokenizer in tokenizers]
+                image = ax.imshow(matrix, aspect="auto", cmap="viridis")
+                ax.set_xticks(range(len(buckets)), [self._short_name(bucket) for bucket in buckets])
+                ax.set_yticks(range(len(tokenizers)), [self._short_name(tokenizer) for tokenizer in tokenizers])
+                ax.figure.colorbar(image, ax=ax, fraction=0.046, pad=0.04)
+            else:
+                ax.text(0.5, 0.5, "No bucket data", ha="center", va="center", color=MUTED_TEXT)
+        elif visualization == "lollipop":
+            rows = [row for row in widget.get("points", []) if isinstance(row, dict)]
+            labels = [self._short_name(str(row.get("tokenizer") or "")) for row in rows]
+            values = [self._to_number(row.get("value")) for row in rows]
+            if rows:
+                markerline, stemlines, _ = ax.stem(labels, values, linefmt=SECONDARY_COLOR, markerfmt="o", basefmt=" ")
+                plt.setp(markerline, color=PRIMARY_COLOR, markersize=7)
+                plt.setp(stemlines, color=SECONDARY_COLOR)
+                ax.tick_params(axis="x", rotation=35, labelsize=8)
+            else:
+                ax.text(0.5, 0.5, "No metric data", ha="center", va="center", color=MUTED_TEXT)
+        elif visualization == "dot_whisker":
+            rows = [row for row in widget.get("points", []) if isinstance(row, dict)]
+            labels = [self._short_name(str(row.get("tokenizer") or "")) for row in rows]
+            values = [self._to_number(row.get("value")) for row in rows]
+            lows = [self._to_number(row.get("interval_low")) for row in rows]
+            highs = [self._to_number(row.get("interval_high")) for row in rows]
+            if rows:
+                errors = [[max(0.0, value - low) for value, low in zip(values, lows, strict=True)], [max(0.0, high - value) for value, high in zip(values, highs, strict=True)]]
+                ax.errorbar(values, labels, xerr=errors, fmt="o", color=PRIMARY_COLOR, ecolor=SECONDARY_COLOR, capsize=4)
+            else:
+                ax.text(0.5, 0.5, "No metric data", ha="center", va="center", color=MUTED_TEXT)
+        else:
+            rows = [row for row in widget.get("points", []) if isinstance(row, dict)]
+            if rows:
+                labels = [self._short_name(str(row.get("tokenizer") or "")) for row in rows]
                 values = [self._to_number(row.get("value")) for row in rows]
-                ax.bar(labels, values, color=TERTIARY_COLOR if visualization == "bucket_bar" else SECONDARY_COLOR)
+                ax.bar(labels, values, color=SECONDARY_COLOR)
                 if visualization == "interval_bar":
                     lows = [self._to_number(row.get("interval_low")) for row in rows]
                     highs = [self._to_number(row.get("interval_high")) for row in rows]
                     errors = [[max(0.0, value - low) for value, low in zip(values, lows, strict=True)], [max(0.0, high - value) for value, high in zip(values, highs, strict=True)]]
-                    ax.errorbar(labels, values, yerr=errors, fmt="none", ecolor="#111827", capsize=3)
+                    ax.errorbar(labels, values, yerr=errors, fmt="none", ecolor=PRIMARY_COLOR, capsize=3)
                 ax.tick_params(axis="x", rotation=35, labelsize=8)
                 ax.grid(axis="y", alpha=0.25)
             else:
                 ax.text(0.5, 0.5, "No metric data", ha="center", va="center", color=MUTED_TEXT)
         ax.set_ylabel(unit)
         ax.set_axisbelow(True)
-
-    # -------------------------------------------------------------------------
-    def _render_legacy_benchmark_dashboard(
-        self,
-        pdf: PdfPages,
-        report_name: str,
-        payload: dict[str, Any],
-        source: dict[str, Any],
-    ) -> int:
-        tokenizer_results = source.get("tokenizer_results")
-        if not isinstance(tokenizer_results, list):
-            tokenizer_results = []
-        global_metrics = self._benchmark_global_metrics(source, tokenizer_results)
-        chart_data = self._benchmark_chart_data(source, tokenizer_results)
-
-        fig = plt.figure(figsize=(11.69, 8.27), constrained_layout=True)
-        grid = fig.add_gridspec(3, 2, height_ratios=[0.28, 0.36, 0.36])
-
-        title_ax = fig.add_subplot(grid[0, :])
-        title_ax.axis("off")
-        dataset_name = str(source.get("dataset_name") or "N/A")
-        title_ax.text(
-            0.0,
-            0.9,
-            "Benchmark Dashboard Report",
-            fontsize=18,
-            fontweight="bold",
-            color="#111827",
-        )
-        title_ax.text(
-            0.0,
-            0.62,
-            f"Report: {report_name or dataset_name}",
-            fontsize=11,
-            color=MUTED_TEXT,
-        )
-        title_ax.text(
-            0.0, 0.42, f"Dataset: {dataset_name}", fontsize=11, color=MUTED_TEXT
-        )
-        title_ax.text(
-            0.0,
-            0.22,
-            f"Documents: {self._format_count(source.get('documents_processed'))} | "
-            f"Tokenizers: {self._format_count(source.get('tokenizers_count'))}",
-            fontsize=10,
-            color=MUTED_TEXT,
-        )
-
-        speed_ax = fig.add_subplot(grid[1, 0])
-        speed_ax.set_title("Speed Comparison", fontsize=12, fontweight="bold")
-        speed_rows = chart_data.get("speed_metrics")
-        if isinstance(speed_rows, list) and speed_rows:
-            labels = [
-                self._short_name(str(item.get("tokenizer") or ""))
-                for item in speed_rows
-            ]
-            values = [
-                self._to_number(item.get("tokens_per_second")) for item in speed_rows
-            ]
-            speed_ax.bar(labels, values, color=SECONDARY_COLOR)
-            speed_ax.set_ylabel("tokens/sec")
-            speed_ax.tick_params(axis="x", rotation=35)
-            speed_ax.grid(axis="y", alpha=0.25)
-        else:
-            speed_ax.axis("off")
-            speed_ax.text(
-                0.5,
-                0.5,
-                "No speed metrics available",
-                ha="center",
-                va="center",
-                color=MUTED_TEXT,
-            )
-
-        rates_ax = fig.add_subplot(grid[1, 1])
-        rates_ax.set_title("Global Rates", fontsize=12, fontweight="bold")
-        if global_metrics:
-            labels = [
-                self._short_name(str(item.get("tokenizer") or ""))
-                for item in global_metrics
-            ]
-            oov = [self._as_percent(item.get("oov_rate")) for item in global_metrics]
-            round_trip = [
-                self._as_percent(item.get("round_trip_fidelity_rate"))
-                for item in global_metrics
-            ]
-            x = list(range(len(labels)))
-            width = 0.38
-            rates_ax.bar(
-                [value - width / 2 for value in x],
-                oov,
-                width=width,
-                label="OOV %",
-                color="#f87171",
-            )
-            rates_ax.bar(
-                [value + width / 2 for value in x],
-                round_trip,
-                width=width,
-                label="Round-trip %",
-                color=TERTIARY_COLOR,
-            )
-            rates_ax.set_xticks(x, labels)
-            rates_ax.tick_params(axis="x", rotation=35)
-            rates_ax.set_ylabel("Percent")
-            rates_ax.legend()
-            rates_ax.grid(axis="y", alpha=0.25)
-        else:
-            rates_ax.axis("off")
-            rates_ax.text(
-                0.5,
-                0.5,
-                "No global rate metrics available",
-                ha="center",
-                va="center",
-                color=MUTED_TEXT,
-            )
-
-        vocab_ax = fig.add_subplot(grid[2, 0])
-        vocab_ax.set_title("Vocabulary Size", fontsize=12, fontweight="bold")
-        vocabulary_rows = chart_data.get("vocabulary_stats")
-        if isinstance(vocabulary_rows, list) and vocabulary_rows:
-            labels = [
-                self._short_name(str(item.get("tokenizer") or ""))
-                for item in vocabulary_rows
-            ]
-            values = [
-                self._to_number(item.get("vocabulary_size")) for item in vocabulary_rows
-            ]
-            vocab_ax.bar(labels, values, color=PRIMARY_COLOR)
-            vocab_ax.tick_params(axis="x", rotation=35)
-            vocab_ax.grid(axis="y", alpha=0.25)
-        else:
-            vocab_ax.axis("off")
-            vocab_ax.text(
-                0.5,
-                0.5,
-                "No vocabulary stats available",
-                ha="center",
-                va="center",
-                color=MUTED_TEXT,
-            )
-
-        dist_ax = fig.add_subplot(grid[2, 1])
-        dist_ax.set_title("Token Length Distribution", fontsize=12, fontweight="bold")
-        distribution_rows = chart_data.get("token_length_distributions")
-        selected_distribution = str(
-            payload.get("selected_distribution_tokenizer") or ""
-        )
-        selected = self._select_distribution(distribution_rows, selected_distribution)
-        if selected:
-            bins = selected.get("bins")
-            if isinstance(bins, list) and bins:
-                labels = [
-                    f"{int(self._to_number(item.get('bin_start')))}-{int(self._to_number(item.get('bin_end')))}"
-                    for item in bins
-                ]
-                counts = [self._to_number(item.get("count")) for item in bins]
-                dist_ax.bar(labels, counts, color="#a78bfa")
-                dist_ax.tick_params(axis="x", rotation=45)
-                dist_ax.grid(axis="y", alpha=0.25)
-            else:
-                dist_ax.axis("off")
-                dist_ax.text(
-                    0.5,
-                    0.5,
-                    "No distribution bins",
-                    ha="center",
-                    va="center",
-                    color=MUTED_TEXT,
-                )
-        else:
-            dist_ax.axis("off")
-            dist_ax.text(
-                0.5,
-                0.5,
-                "No token length distribution",
-                ha="center",
-                va="center",
-                color=MUTED_TEXT,
-            )
-
-        pdf.savefig(fig)
-        plt.close(fig)
-
-        metrics_page = plt.figure(figsize=(11.69, 8.27), constrained_layout=True)
-        ax = metrics_page.add_subplot(111)
-        ax.axis("off")
-        ax.set_title(
-            "Per Tokenizer Additional Metrics",
-            fontsize=13,
-            fontweight="bold",
-            loc="left",
-        )
-
-        table_rows = self._build_benchmark_metrics_table(global_metrics)
-        table = ax.table(
-            cellText=table_rows,
-            colLabels=[
-                "Tokenizer",
-                "Word Recovery %",
-                "Coverage %",
-                "Subword Fertility",
-                "Entropy",
-            ],
-            cellLoc="left",
-            colLoc="left",
-            bbox=cast(Any, [0, 0.02, 1, 0.92]),
-        )
-        table.auto_set_font_size(False)
-        table.set_fontsize(8.5)
-        pdf.savefig(metrics_page)
-        plt.close(metrics_page)
-        return 2
 
     # -------------------------------------------------------------------------
     def _render_table_card(

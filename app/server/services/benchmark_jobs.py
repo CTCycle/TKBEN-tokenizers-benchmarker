@@ -42,14 +42,14 @@ class BenchmarkJobService:
             payload["created_at"] = (
                 datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             )
-            payload["report_version"] = 2
+            payload["report_version"] = 4
             payload["report_id"] = None
             return payload
 
         payload["created_at"] = (
             datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         )
-        payload["report_version"] = 2
+        payload["report_version"] = 4
         report_id = service.save_benchmark_report(payload)
         payload["report_id"] = int(report_id)
         return payload

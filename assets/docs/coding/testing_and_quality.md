@@ -1,10 +1,10 @@
 # Testing and Quality
-Last updated: 2026-07-15
+Last updated: 2026-07-29
 
 ## Tooling and Tests
 - Lint and format with Ruff, or the project-standard equivalent if it changes in the future.
 - Type check expectations are Pylance-compatible typing.
-- Run `app/server/.venv/Scripts/python.exe -m basedpyright` from the repository root; the gate requires zero errors and does not fail on warnings.
+- Run `app/server/.venv/Scripts/python.exe -m basedpyright -p app/server/pyrightconfig.json` from the repository root; the configured gate requires zero errors and does not fail on warnings.
 - Tests use pytest.
 - Minimum test impact coverage:
   - `tests/unit`

@@ -11,9 +11,9 @@ import { useBenchmarkDashboardLayout } from '../hooks/useBenchmarkDashboardLayou
 import { useBenchmarkWorkspace, type BenchmarkRunPayload } from '../hooks/useBenchmarkWorkspace';
 import type { BenchmarkDashboardWidgetData } from '../types/api';
 
-const SortableWidget = ({ widget, onKeyboardReorder }: { widget: BenchmarkDashboardWidgetData; onKeyboardReorder: (event: KeyboardEvent<HTMLDivElement>, widgetId: string) => void }) => {
+const SortableWidget = ({ widget, visualization, onVisualizationChange, onKeyboardReorder }: { widget: BenchmarkDashboardWidgetData; visualization: BenchmarkDashboardWidgetData['default_visualization']; onVisualizationChange: (visualization: BenchmarkDashboardWidgetData['default_visualization']) => void; onKeyboardReorder: (event: KeyboardEvent<HTMLDivElement>, widgetId: string) => void }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: widget.widget_id });
-  return <div ref={setNodeRef} className="benchmark-dashboard-sortable" style={{ transform: CSS.Transform.toString(transform), transition }} {...attributes} {...listeners} data-dragging={isDragging || undefined} onKeyDown={(event) => onKeyboardReorder(event, widget.widget_id)}><BenchmarkMetricWidget widget={widget} /></div>;
+  return <div ref={setNodeRef} className="benchmark-dashboard-sortable" style={{ transform: CSS.Transform.toString(transform), transition }} {...attributes} {...listeners} data-dragging={isDragging || undefined} onKeyDown={(event) => onKeyboardReorder(event, widget.widget_id)}><BenchmarkMetricWidget widget={widget} visualization={visualization} onVisualizationChange={onVisualizationChange} /></div>;
 };
 
 const Customizer = ({ widgets, visibleIds, onApply, onClose, trigger }: { widgets: BenchmarkDashboardWidgetData[]; visibleIds: string[]; onApply: (ids: string[]) => void; onClose: () => void; trigger: RefObject<HTMLButtonElement | null> }) => {
@@ -93,7 +93,7 @@ const Customizer = ({ widgets, visibleIds, onApply, onClose, trigger }: { widget
                   checked={draft.includes(widget.widget_id)}
                   onChange={() => setDraft((current) => current.includes(widget.widget_id) ? current.filter((id) => id !== widget.widget_id) : [...current, widget.widget_id])}
                 />
-                {widget.label} — {widget.description} ({widget.unit}, {widget.visualization})
+                {widget.label} — {widget.description} ({widget.unit}, {widget.default_visualization})
               </label>
             ))}
           </fieldset>
@@ -131,7 +131,7 @@ const CrossBenchmarkPage = () => {
     if (targetIndex >= 0 && targetIndex < layout.resolved.orderedWidgetIds.length) { const next = [...layout.resolved.orderedWidgetIds]; const [moved] = next.splice(currentIndex, 1); next.splice(targetIndex, 0, moved); layout.setOrder(next); }
   };
 
-  const payload = workspace.activeReport ? { report: workspace.activeReport, visible_widget_ids: layout.resolved.visibleWidgetIds, ordered_widget_ids: layout.resolved.orderedWidgetIds } : null;
+  const payload = workspace.activeReport ? { report: workspace.activeReport, visible_widget_ids: layout.resolved.visibleWidgetIds, ordered_widget_ids: layout.resolved.orderedWidgetIds, visualization_by_widget_id: layout.resolved.visualizationByWidgetId } : null;
 
   return (
     <section className="page-content cross-benchmark-page">
@@ -193,7 +193,7 @@ const CrossBenchmarkPage = () => {
           <main className="cross-benchmark-workspace-main">
             {workspace.activeReport && <>
               <div className="cross-benchmark-kpi-grid">
-                {layout.visibleWidgets.length ? <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}><SortableContext items={layout.visibleWidgets.map((widget) => widget.widget_id)} strategy={rectSortingStrategy}><div className="benchmark-dashboard-grid" aria-label="Benchmark metric widgets. Drag a widget or use Space then arrow keys to reorder it.">{layout.visibleWidgets.map((widget) => <SortableWidget key={widget.widget_id} widget={widget} onKeyboardReorder={handleKeyboardReorder} />)}</div></SortableContext></DndContext> : <p className="empty-state">No metric widgets are selected. Customize the dashboard to show one or more calculated metrics.</p>}
+                {layout.visibleWidgets.length ? <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}><SortableContext items={layout.visibleWidgets.map((widget) => widget.widget_id)} strategy={rectSortingStrategy}><div className="benchmark-dashboard-grid" aria-label="Benchmark metric widgets. Drag a widget or use Space then arrow keys to reorder it.">{layout.visibleWidgets.map((widget) => <SortableWidget key={widget.widget_id} widget={widget} visualization={layout.resolved.visualizationByWidgetId[widget.widget_id]} onVisualizationChange={(visualization) => layout.setVisualization(widget.widget_id, visualization)} onKeyboardReorder={handleKeyboardReorder} />)}</div></SortableContext></DndContext> : <p className="empty-state">No metric widgets are selected. Customize the dashboard to show one or more calculated metrics.</p>}
               </div>
               <p className="sr-only" aria-live="polite">{keyboardDragId ? 'Keyboard widget reordering active. Use arrow keys to move the widget, then Space to finish.' : ''}</p>
               <article className="cross-benchmark-drilldown-card"><h2>Run diagnostics</h2>{failed.length ? failed.map((item) => <p key={item.tokenizer}>{item.tokenizer}: {item.error_type ?? 'Failed'} — {item.error_message ?? 'No message'}</p>) : <p>No tokenizer failures recorded for this run.</p>}</article>
