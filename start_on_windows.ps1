@@ -327,6 +327,38 @@ function Sync-Dependencies {
     }
 }
 
+function Test-DependenciesReady {
+    $frontendPackage = Join-Path $ClientDir 'package.json'
+    $frontendLock = Join-Path $ClientDir 'package-lock.json'
+    $frontendModules = Join-Path $ClientDir 'node_modules'
+    $frontendRunner = Join-Path $frontendModules '.bin\vite.cmd'
+    $backendEntrypoint = Join-Path $AppDir 'server/app.py'
+
+    if (-not (Test-Path -LiteralPath $PythonExe) -or
+        -not (Test-Path -LiteralPath $UvExe) -or
+        -not (Test-Path -LiteralPath $NodeExe) -or
+        -not (Test-Path -LiteralPath $NpmCmd) -or
+        -not (Test-Path -LiteralPath $VenvPython) -or
+        -not (Test-Path -LiteralPath $backendEntrypoint) -or
+        -not (Test-Path -LiteralPath $frontendPackage) -or
+        -not (Test-Path -LiteralPath $frontendLock) -or
+        -not (Test-Path -LiteralPath (Join-Path $frontendModules '.package-lock.json')) -or
+        -not (Test-Path -LiteralPath $frontendRunner)) {
+        return $false
+    }
+
+    & $PythonExe --version *> $null
+    if ($LASTEXITCODE -ne 0) { return $false }
+    & $UvExe --version *> $null
+    if ($LASTEXITCODE -ne 0) { return $false }
+    & $NodeExe --version *> $null
+    if ($LASTEXITCODE -ne 0) { return $false }
+    & $VenvPython -c 'import fastapi, uvicorn' *> $null
+    if ($LASTEXITCODE -ne 0) { return $false }
+
+    return $true
+}
+
 function Stop-PortListeners([int]$Port) {
     $listeners = netstat -ano | Select-String -Pattern ":$Port\s+.*LISTENING\s+(\d+)\s*$"
     $processIds = @($listeners | ForEach-Object {
@@ -346,7 +378,22 @@ function Get-PortProcessId([int]$Port) {
 
 function Launch-Application {
     Import-Environment
-    Sync-Dependencies -BuildFrontend ($env:ALWAYS_REBUILD -ieq 'true') -UseCachedFrontendDependencies
+    if (-not (Test-DependenciesReady)) {
+        Write-Step 'Required application environments are missing or unusable; installing dependencies.'
+        Sync-Dependencies -BuildFrontend ($env:ALWAYS_REBUILD -ieq 'true')
+    }
+    else {
+        Write-Ok 'Application environments are ready; skipped dependency installation.'
+        if ($env:ALWAYS_REBUILD -ieq 'true') {
+            Push-Location $ClientDir
+            try {
+                $npmExitCode = Invoke-Npm run build
+                if ($npmExitCode -ne 0) { throw "Frontend build failed with exit code $npmExitCode." }
+            } finally {
+                Pop-Location
+            }
+        }
+    }
     Import-Environment
 
     $backendPort = [int]$env:FASTAPI_PORT
