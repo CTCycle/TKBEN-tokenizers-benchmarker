@@ -335,7 +335,7 @@ class BenchmarkResultBuilder:
                     summary = self._distribution_summary(values)
                     if summary is not None:
                         distributions.append(BenchmarkDashboardDistribution(tokenizer=result.tokenizer, **summary))
-            elif definition.visualization.value == "bucket_bar":
+            elif definition.default_visualization.value == "grouped_bar":
                 for result in successful:
                     for bucket in result.fragmentation.fragmentation_by_word_length_bucket:
                         if self._is_number(bucket.pieces_per_word_mean):
@@ -350,7 +350,7 @@ class BenchmarkResultBuilder:
                     points.append(BenchmarkDashboardPoint(tokenizer=result.tokenizer, value=float(value), interval_low=float(low) if self._is_number(low) else None, interval_high=float(high) if self._is_number(high) else None))
             if not points and not distributions and not buckets:
                 continue
-            widgets.append(BenchmarkDashboardWidgetData(widget_id=definition.widget_id, metric_keys=list(definition.required_metric_keys), category_key=definition.category_key, category_label=definition.category_label, label=definition.label, description=definition.description, unit=definition.unit, display_format=definition.display_format, visualization=definition.visualization.value, default_visible=definition.default_visible, width=definition.width.value, points=points, distributions=distributions, buckets=buckets))
+            widgets.append(BenchmarkDashboardWidgetData(widget_id=definition.widget_id, metric_keys=list(definition.required_metric_keys), category_key=definition.category_key, category_label=definition.category_label, label=definition.label, description=definition.description, unit=definition.unit, display_format=definition.display_format, default_visualization=definition.default_visualization, compatible_visualizations=list(definition.compatible_visualizations), default_visible=definition.default_visible, width=definition.width.value, points=points, distributions=distributions, buckets=buckets))
             available_keys.update(definition.required_metric_keys)
         return BenchmarkDashboardData(widgets=widgets, available_widget_ids=[widget.widget_id for widget in widgets], available_metric_keys=[definition.key for definition in BENCHMARK_METRIC_DEFINITIONS if definition.key in available_keys], unavailable_selected_metric_keys=[key for key in selected if key not in available_keys])
 

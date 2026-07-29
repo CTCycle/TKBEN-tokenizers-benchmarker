@@ -152,7 +152,7 @@ class BenchmarkServiceExecutionMixin:
                 spool.cleanup()
                 return BenchmarkRunResponse(
                     status="cancelled",
-                    schema_version=1,
+                    schema_version=BENCHMARK_SCHEMA_VERSION,
                     methodology_version="semantic_honesty",
                     run_name=normalized_run_name or None,
                     selected_metric_keys=resolved_metric_keys,

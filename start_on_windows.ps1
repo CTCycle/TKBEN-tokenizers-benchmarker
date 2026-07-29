@@ -228,8 +228,50 @@ function Install-Runtimes {
     Write-Ok "Node.js ready: $(& $NodeExe --version)"
 }
 
+function Get-FrontendDependencyFingerprint {
+    $manifestPaths = @(
+        (Join-Path $ClientDir 'package.json'),
+        (Join-Path $ClientDir 'package-lock.json')
+    ) | Where-Object { Test-Path -LiteralPath $_ }
+
+    if (-not $manifestPaths) { throw 'Frontend package manifests are missing.' }
+    return (($manifestPaths | ForEach-Object { (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash }) -join ':')
+}
+
+function Test-FrontendDependenciesReady {
+    $nodeModulesDir = Join-Path $ClientDir 'node_modules'
+    $stampPath = Join-Path $nodeModulesDir '.tkben-dependencies.json'
+    $npmLockPath = Join-Path $nodeModulesDir '.package-lock.json'
+
+    if (-not (Test-Path -LiteralPath $stampPath) -or -not (Test-Path -LiteralPath $npmLockPath)) {
+        return $false
+    }
+
+    try {
+        $stamp = Get-Content -LiteralPath $stampPath -Raw | ConvertFrom-Json
+        return (
+            $stamp.packageFingerprint -eq (Get-FrontendDependencyFingerprint) -and
+            $stamp.nodeVersion -eq (& $NodeExe --version).Trim() -and
+            (Test-Path -LiteralPath (Join-Path $nodeModulesDir '.bin\vite.cmd'))
+        )
+    } catch {
+        return $false
+    }
+}
+
+function Write-FrontendDependencyStamp {
+    $stampPath = Join-Path $ClientDir 'node_modules\.tkben-dependencies.json'
+    [ordered]@{
+        packageFingerprint = Get-FrontendDependencyFingerprint
+        nodeVersion = (& $NodeExe --version).Trim()
+    } | ConvertTo-Json | Set-Content -LiteralPath $stampPath -Encoding utf8
+}
+
 function Sync-Dependencies {
-    param([bool]$BuildFrontend = $true)
+    param(
+        [bool]$BuildFrontend = $true,
+        [switch]$UseCachedFrontendDependencies
+    )
 
     Import-Environment
     Install-Runtimes
@@ -257,15 +299,21 @@ function Sync-Dependencies {
         Pop-Location
     }
 
-    Write-Step 'Installing frontend dependencies.'
     Push-Location $ClientDir
     try {
-        if (Test-Path -LiteralPath (Join-Path $ClientDir 'package-lock.json')) {
-            $npmExitCode = Invoke-Npm ci
+        $frontendInstallRequired = -not $UseCachedFrontendDependencies -or -not (Test-FrontendDependenciesReady)
+        if ($frontendInstallRequired) {
+            Write-Step 'Installing frontend dependencies.'
+            if (Test-Path -LiteralPath (Join-Path $ClientDir 'package-lock.json')) {
+                $npmExitCode = Invoke-Npm ci
+            } else {
+                $npmExitCode = Invoke-Npm install
+            }
+            if ($npmExitCode -ne 0) { throw "npm dependency installation failed with exit code $npmExitCode." }
+            Write-FrontendDependencyStamp
         } else {
-            $npmExitCode = Invoke-Npm install
+            Write-Ok 'Frontend dependencies are unchanged; skipped clean install.'
         }
-        if ($npmExitCode -ne 0) { throw "npm dependency installation failed with exit code $npmExitCode." }
 
         if ($BuildFrontend) {
             Write-Step 'Building frontend.'
@@ -298,7 +346,7 @@ function Get-PortProcessId([int]$Port) {
 
 function Launch-Application {
     Import-Environment
-    Sync-Dependencies -BuildFrontend ($env:ALWAYS_REBUILD -ieq 'true')
+    Sync-Dependencies -BuildFrontend ($env:ALWAYS_REBUILD -ieq 'true') -UseCachedFrontendDependencies
     Import-Environment
 
     $backendPort = [int]$env:FASTAPI_PORT
@@ -411,6 +459,15 @@ function Wait-ForMenu {
     [Console]::ReadKey($true) | Out-Null
 }
 
+function Clear-MenuScreen {
+    if ([Console]::IsOutputRedirected) { return }
+    try {
+        Clear-Host
+    } catch {
+        # Hosts without a usable cursor handle can still render the menu.
+    }
+}
+
 function Write-MenuItem([string]$Number, [string]$Label, [string]$Description, [ConsoleColor]$Color = [ConsoleColor]::White) {
     Write-Host "  [$Number] " -NoNewline -ForegroundColor $Color
     Write-Host $Label -NoNewline -ForegroundColor White
@@ -419,8 +476,10 @@ function Write-MenuItem([string]$Number, [string]$Label, [string]$Description, [
 
 function Show-Menu {
     while ($true) {
-        Clear-Host
-        $host.UI.RawUI.WindowTitle = 'TKBEN | Tokenizers Benchmarker'
+        Clear-MenuScreen
+        if (-not [Console]::IsOutputRedirected) {
+            try { $host.UI.RawUI.WindowTitle = 'TKBEN | Tokenizers Benchmarker' } catch { }
+        }
         Write-Host
         Write-Host '  +----------------------------------------------------------+' -ForegroundColor DarkCyan
         Write-Host '  |' -NoNewline -ForegroundColor DarkCyan

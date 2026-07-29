@@ -121,7 +121,7 @@ def test_benchmark_list_and_by_id(monkeypatch) -> None:
         lambda self, limit=200: [
             {
                 "report_id": 1,
-                "report_version": 2,
+                "report_version": 4,
                 "created_at": "2026-01-01T00:00:00Z",
                 "run_name": "run",
                 "dataset_name": "custom/sample",
@@ -137,10 +137,10 @@ def test_benchmark_list_and_by_id(monkeypatch) -> None:
         "load_benchmark_report_by_id",
         lambda self, report_id: {
             "status": "success",
-            "schema_version": 1,
+            "schema_version": 2,
             "methodology_version": "semantic_honesty",
             "report_id": report_id,
-            "report_version": 2,
+            "report_version": 4,
             "created_at": "2026-01-01T00:00:00Z",
             "dataset_name": "custom/sample",
             "documents_processed": 2,
@@ -203,10 +203,10 @@ def test_benchmark_by_id_accepts_cancelled_contract(monkeypatch) -> None:
         "load_benchmark_report_by_id",
         lambda self, report_id: {
             "status": "cancelled",
-            "schema_version": 1,
+            "schema_version": 2,
             "methodology_version": "semantic_honesty",
             "report_id": report_id,
-            "report_version": 2,
+            "report_version": 4,
             "created_at": "2026-01-01T00:00:00Z",
             "dataset_name": "custom/sample",
             "documents_processed": 0,
