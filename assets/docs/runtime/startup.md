@@ -8,6 +8,13 @@ Windows recommended:
 .\start_on_windows.ps1
 ```
 
+For redirected or automated validation, launch the application directly while
+still using the same launcher:
+
+```powershell
+.\start_on_windows.ps1 -Launch
+```
+
 What it does:
 - opens the single combined launch-and-maintenance menu
 - installs pinned portable Python, uv, and Node.js on first use
