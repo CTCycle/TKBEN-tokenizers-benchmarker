@@ -113,7 +113,6 @@ function Import-Environment {
         UI_HOST = '127.0.0.1'
         UI_PORT = '8001'
         RELOAD = 'false'
-        OPTIONAL_DEPENDENCIES = 'false'
         ALWAYS_REBUILD = 'true'
         # Backend logs are visible by default when the setting is absent.
         BACKEND_LOGS_VISIBLE = 'true'
@@ -270,7 +269,9 @@ function Write-FrontendDependencyStamp {
 function Sync-Dependencies {
     param(
         [bool]$BuildFrontend = $true,
-        [switch]$UseCachedFrontendDependencies
+        [switch]$UseCachedFrontendDependencies,
+        [ValidateSet('Standard', 'Development')]
+        [string]$InstallationType = 'Standard'
     )
 
     Import-Environment
@@ -279,7 +280,7 @@ function Sync-Dependencies {
 
     Write-Step 'Installing Python dependencies.'
     $uvArguments = @('sync', '--python', $PythonExe)
-    if ($env:OPTIONAL_DEPENDENCIES -ieq 'true') { $uvArguments += '--all-extras' }
+    if ($InstallationType -eq 'Development') { $uvArguments += '--all-extras' }
     Push-Location $ServerDir
     try {
         $uvExitCode = 1
@@ -380,7 +381,7 @@ function Launch-Application {
     Import-Environment
     if (-not (Test-DependenciesReady)) {
         Write-Step 'Required application environments are missing or unusable; installing dependencies.'
-        Sync-Dependencies -BuildFrontend ($env:ALWAYS_REBUILD -ieq 'true')
+        Sync-Dependencies -BuildFrontend ($env:ALWAYS_REBUILD -ieq 'true') -InstallationType 'Standard'
     }
     else {
         Write-Ok 'Application environments are ready; skipped dependency installation.'
@@ -436,9 +437,19 @@ function Launch-Application {
 }
 
 function Install-Dependencies {
-    Sync-Dependencies
+    $installationType = Read-InstallationType
+    Sync-Dependencies -InstallationType $installationType
     if (Test-Path -LiteralPath $UvCacheDir) { Remove-Item -LiteralPath $UvCacheDir -Recurse -Force }
     Write-Ok 'Dependencies installed and frontend built.'
+}
+
+function Read-InstallationType {
+    $selection = (Read-Host 'Installation type [1=Development, 2=Standard]').Trim()
+    switch ($selection) {
+        '1' { return 'Development' }
+        '2' { return 'Standard' }
+        default { throw 'Invalid installation type. Enter 1 for Development or 2 for Standard.' }
+    }
 }
 
 function Initialize-Database {
