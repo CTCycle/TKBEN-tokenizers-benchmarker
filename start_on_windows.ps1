@@ -1,10 +1,18 @@
 [CmdletBinding()]
-param()
+param(
+    [switch]$Launch
+)
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
-$RepoRoot = [IO.Path]::GetFullPath($PSScriptRoot)
+$RepoRoot = if ($PSScriptRoot) {
+    [IO.Path]::GetFullPath($PSScriptRoot)
+} elseif ($PSCommandPath) {
+    [IO.Path]::GetFullPath((Split-Path -Parent $PSCommandPath))
+} else {
+    [IO.Path]::GetFullPath((Get-Location).Path)
+}
 $RuntimeDir = Join-Path $RepoRoot 'runtimes'
 $PythonDir = Join-Path $RuntimeDir 'python'
 $UvDir = Join-Path $RuntimeDir 'uv'
@@ -16,6 +24,7 @@ $NodeExe = Join-Path $NodeDir 'node.exe'
 $NpmCmd = Join-Path $NodeDir 'npm.cmd'
 $ServerDir = Join-Path $RepoRoot 'app\server'
 $ClientDir = Join-Path $RepoRoot 'app\client'
+$AppDir = Join-Path $RepoRoot 'app'
 $VenvDir = Join-Path $ServerDir '.venv'
 $VenvPython = Join-Path $VenvDir 'Scripts\python.exe'
 $EnvFile = Join-Path $RepoRoot 'settings\.env'
@@ -588,6 +597,11 @@ function Show-Menu {
         }
         Wait-ForMenu
     }
+}
+
+if ($Launch) {
+    Launch-Application
+    exit 0
 }
 
 Show-Menu

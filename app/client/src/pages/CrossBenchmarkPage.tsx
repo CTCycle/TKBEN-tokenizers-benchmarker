@@ -183,7 +183,7 @@ const CrossBenchmarkPage = () => {
                   <span>Reset</span>
                 </button>
                 <DashboardExportButton dashboardType="benchmark" reportName={workspace.activeReport?.run_name ?? 'benchmark-dashboard'} dashboardPayload={payload} label="Export" />
-                <button type="button" className="cross-benchmark-run-button" aria-label="Run benchmark" title="Run benchmark" disabled={!workspace.activeReport || workspace.loadingReport} onClick={() => setWizardOpen(true)}>
+                <button type="button" className="cross-benchmark-run-button" aria-label="Run benchmark" title="Run benchmark" disabled={workspace.loadingPage || workspace.loadingReport} onClick={() => setWizardOpen(true)}>
                   <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
                   <span>Run</span>
                 </button>
@@ -201,7 +201,7 @@ const CrossBenchmarkPage = () => {
           </main>
         </div>
       )}
-      {wizardOpen && <BenchmarkRunWizard isOpen={wizardOpen} categories={workspace.metricCategories} availableTokenizers={workspace.tokenizers} availableDatasets={workspace.datasets} defaultDatasetName={workspace.datasets[0] ?? null} defaultMaxDocuments={1000} running={workspace.runningBenchmark} onCancel={workspace.cancelBenchmark} onClose={() => setWizardOpen(false)} onRun={async (runPayload: BenchmarkRunPayload) => { await workspace.runFromWizard(runPayload); }} />}
+      {wizardOpen && <BenchmarkRunWizard isOpen={wizardOpen} categories={workspace.metricCategories} availableTokenizers={workspace.tokenizers} availableDatasets={workspace.datasets} defaultDatasetName={workspace.datasets[0] ?? null} defaultMaxDocuments={1000} running={workspace.runningBenchmark} onCancel={workspace.cancelBenchmark} onClose={() => setWizardOpen(false)} onRun={async (runPayload: BenchmarkRunPayload) => { if (await workspace.runFromWizard(runPayload)) setWizardOpen(false); }} />}
       {customizing && <Customizer widgets={layout.widgets} visibleIds={layout.resolved.visibleWidgetIds} onApply={layout.apply} onClose={() => setCustomizing(false)} trigger={customizeButton} />}
     </section>
   );
