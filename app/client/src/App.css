@@ -4148,6 +4148,7 @@ select:focus-visible {
   margin-bottom: 12px;
 }
 
+.benchmark-dashboard-widget > header > div:first-child { min-width: 0; }
 .benchmark-dashboard-widget > header .cross-benchmark-chart-note {
   margin: 0;
   margin-top: 4px;
@@ -4157,14 +4158,14 @@ select:focus-visible {
 .benchmark-visualization-button { display: grid; width: 35px; height: 35px; place-items: center; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--color-muted); font-size: 15px; line-height: 1; cursor: pointer; }
 .benchmark-visualization-button:hover, .benchmark-visualization-button[aria-pressed="true"] { background: var(--color-accent); color: #07131f; }
 .benchmark-visualization-button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
-.benchmark-chart-stage { min-height: 260px; height: 260px; }
-.benchmark-custom-chart { display: block; width: 100%; height: 100%; min-height: 220px; overflow: visible; }
+.benchmark-chart-stage { min-width: 0; min-height: 260px; height: 260px; overflow: hidden; }
+.benchmark-custom-chart { display: block; width: 100%; max-width: 100%; height: 100%; min-width: 0; min-height: 220px; overflow: hidden; }
 .benchmark-dashboard-empty { display: grid; min-height: 220px; place-items: center; color: var(--color-muted); }
 .benchmark-chart-tooltip { display: grid; gap: 4px; padding: 8px 10px; color: var(--color-text); }
 .benchmark-chart-tooltip span { color: var(--color-accent); font-variant-numeric: tabular-nums; }
-.benchmark-heatmap { display: grid; gap: 5px; min-height: 220px; overflow-x: auto; align-content: center; padding: 12px 4px; font-size: 12px; }
-.benchmark-heatmap > * { min-height: 34px; display: grid; place-items: center; padding: 5px 7px; border-radius: 5px; }
-.benchmark-heatmap strong { color: var(--color-muted); font-weight: 600; text-align: center; }
+.benchmark-heatmap { display: grid; gap: 5px; min-height: 220px; width: 100%; min-width: 0; overflow: hidden; align-content: center; padding: 12px 4px; font-size: 12px; }
+.benchmark-heatmap > * { min-width: 0; min-height: 34px; display: grid; place-items: center; padding: 5px 7px; border-radius: 5px; }
+.benchmark-heatmap strong { min-width: 0; overflow: hidden; color: var(--color-muted); font-weight: 600; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .benchmark-heatmap-corner { color: var(--color-muted); font-size: 11px; text-align: left; }
 .benchmark-heatmap-cell { color: var(--color-text); font-variant-numeric: tabular-nums; }
 .benchmark-heatmap-row { display: contents; }
@@ -4172,9 +4173,9 @@ select:focus-visible {
 .benchmark-heatmap-legend { display: flex; align-items: center; gap: 8px; color: var(--color-muted); font-size: 11px; }
 .benchmark-heatmap-legend i { display: block; width: 120px; height: 10px; border-radius: 999px; background: linear-gradient(90deg, var(--color-surface-subtle), var(--color-primary)); }
 .benchmark-heatmap-legend small { margin-left: auto; }
-.benchmark-histogram-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; height: 100%; }
-.benchmark-histogram-small-multiple { min-width: 0; }
-.benchmark-histogram-small-multiple > strong { display: block; margin: 2px 0 0 8px; color: var(--color-muted); font-size: 12px; }
+.benchmark-histogram-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 10px; width: 100%; height: 100%; min-width: 0; overflow: hidden; }
+.benchmark-histogram-small-multiple { min-width: 0; max-width: 100%; overflow: hidden; }
+.benchmark-histogram-small-multiple > strong { display: block; max-width: 100%; margin: 2px 0 0 8px; overflow: hidden; color: var(--color-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 700px) { .benchmark-dashboard-widget > header { flex-direction: column; } .benchmark-visualization-switcher { align-self: flex-start; } .benchmark-chart-stage { min-height: 240px; height: 240px; } .benchmark-visualization-button { width: 35px; height: 35px; } }
 
 .benchmark-dashboard-modal fieldset {

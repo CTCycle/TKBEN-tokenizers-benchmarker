@@ -5,7 +5,7 @@ export const BENCHMARK_DASHBOARD_STORAGE_KEY_V2 = 'tkben:cross-benchmark-dashboa
 export type BenchmarkDashboardLayoutState = { version: 3; ordered_widget_ids: string[]; hidden_widget_ids: string[]; known_widget_ids: string[]; visualization_by_widget_id: Record<string, BenchmarkVisualizationKind>; };
 export type ResolvedBenchmarkDashboardLayout = { orderedWidgetIds: string[]; visibleWidgetIds: string[]; visualizationByWidgetId: Record<string, BenchmarkVisualizationKind>; };
 
-const VISUALIZATIONS: BenchmarkVisualizationKind[] = ['bar', 'horizontal_bar', 'interval_bar', 'dot_whisker', 'box_plot', 'histogram', 'grouped_bar', 'heatmap'];
+const VISUALIZATIONS: BenchmarkVisualizationKind[] = ['bar', 'horizontal_bar', 'interval_bar', 'dot_whisker', 'box_plot', 'histogram', 'grouped_bar'];
 
 const unique = (values: string[]) => [...new Set(values.filter(Boolean))];
 export const validateStoredDashboardLayout = (value: unknown): BenchmarkDashboardLayoutState | null => {
@@ -30,7 +30,8 @@ export const resolveAvailableDashboardLayout = (stored: BenchmarkDashboardLayout
   const hidden = new Set(base.hidden_widget_ids); fresh.forEach((widget) => { if (!widget.default_visible) hidden.add(widget.widget_id); });
   const visualizationByWidgetId = Object.fromEntries(widgets.map((widget) => {
     const candidate = base.visualization_by_widget_id[widget.widget_id];
-    return [widget.widget_id, widget.compatible_visualizations.includes(candidate) ? candidate : widget.default_visualization];
+    const selectable = widget.compatible_visualizations.filter((choice) => choice !== 'heatmap');
+    return [widget.widget_id, selectable.includes(candidate) ? candidate : widget.default_visualization];
   })) as Record<string, BenchmarkVisualizationKind>;
   return { orderedWidgetIds, visibleWidgetIds: orderedWidgetIds.filter((id) => !hidden.has(id)), visualizationByWidgetId };
 };

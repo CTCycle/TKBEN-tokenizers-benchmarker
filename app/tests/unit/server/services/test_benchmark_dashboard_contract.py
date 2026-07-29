@@ -31,7 +31,7 @@ def test_metric_definitions_expose_only_strict_visualization_pairs() -> None:
         "bar": ("bar", "horizontal_bar"),
         "interval_bar": ("interval_bar", "dot_whisker"),
         "box_plot": ("box_plot", "histogram"),
-        "grouped_bar": ("grouped_bar", "heatmap"),
+        "grouped_bar": ("grouped_bar",),
     }
     for definition in BENCHMARK_METRIC_DEFINITIONS:
         assert definition.default_visualization.value in allowed
@@ -72,7 +72,7 @@ def test_builder_emits_payload_shape_compatible_visualization_choices() -> None:
     assert scalar.default_visualization == BenchmarkVisualizationKind.BAR
     assert scalar.compatible_visualizations == [BenchmarkVisualizationKind.BAR, BenchmarkVisualizationKind.HORIZONTAL_BAR]
     assert bucket.default_visualization == BenchmarkVisualizationKind.GROUPED_BAR
-    assert bucket.compatible_visualizations == [BenchmarkVisualizationKind.GROUPED_BAR, BenchmarkVisualizationKind.HEATMAP]
+    assert bucket.compatible_visualizations == [BenchmarkVisualizationKind.GROUPED_BAR]
 
 
 def test_builder_preserves_definition_width_for_dense_visualizations() -> None:
