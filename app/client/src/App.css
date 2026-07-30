@@ -4154,12 +4154,16 @@ select:focus-visible {
   margin-top: 4px;
 }
 
-.benchmark-visualization-switcher { display: inline-flex; flex: 0 0 auto; gap: 3px; padding: 3px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface-subtle); }
-.benchmark-visualization-button { display: grid; width: 35px; height: 35px; place-items: center; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--color-muted); font-size: 15px; line-height: 1; cursor: pointer; }
-.benchmark-visualization-button:hover, .benchmark-visualization-button[aria-pressed="true"] { background: var(--color-accent); color: #07131f; }
-.benchmark-visualization-button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
-.benchmark-chart-stage { min-width: 0; min-height: 260px; height: 260px; overflow: hidden; }
-.benchmark-custom-chart { display: block; width: 100%; max-width: 100%; height: 100%; min-width: 0; min-height: 220px; overflow: hidden; }
+.benchmark-visualization-switcher { display: inline-flex; flex: 0 0 auto; gap: var(--space-1); flex-wrap: nowrap; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.benchmark-visualization-button { display: grid; width: 32px; height: 32px; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--color-muted); font-size: 14px; line-height: 1; cursor: pointer; }
+.benchmark-visualization-button:hover { background: var(--color-surface-subtle); }
+.benchmark-visualization-button[aria-pressed="true"] { border-color: var(--color-accent); background: var(--color-surface-subtle); color: var(--color-accent); }
+.benchmark-visualization-button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.benchmark-chart-stage { display: grid; place-items: center; min-width: 0; min-height: 260px; height: 260px; overflow: hidden; }
+.benchmark-chart-stage__content { width: 100%; height: 100%; min-width: 0; min-height: 0; }
+.benchmark-chart-stage--data-point .benchmark-chart-stage__content { width: min(100%, 760px); }
+.benchmark-chart-stage--data-distribution .benchmark-chart-stage__content { width: min(92%, 1280px); }
+.benchmark-custom-chart { display: block; width: 100%; max-width: 100%; height: 100%; min-width: 0; overflow: hidden; }
 .benchmark-dashboard-empty { display: grid; min-height: 220px; place-items: center; color: var(--color-muted); }
 .benchmark-chart-tooltip { display: grid; gap: 4px; padding: 8px 10px; color: var(--color-text); }
 .benchmark-chart-tooltip span { color: var(--color-accent); font-variant-numeric: tabular-nums; }
@@ -4173,10 +4177,11 @@ select:focus-visible {
 .benchmark-heatmap-legend { display: flex; align-items: center; gap: 8px; color: var(--color-muted); font-size: 11px; }
 .benchmark-heatmap-legend i { display: block; width: 120px; height: 10px; border-radius: 999px; background: linear-gradient(90deg, var(--color-surface-subtle), var(--color-primary)); }
 .benchmark-heatmap-legend small { margin-left: auto; }
-.benchmark-histogram-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 10px; width: 100%; height: 100%; min-width: 0; overflow: hidden; }
-.benchmark-histogram-small-multiple { min-width: 0; max-width: 100%; overflow: hidden; }
-.benchmark-histogram-small-multiple > strong { display: block; max-width: 100%; margin: 2px 0 0 8px; overflow: hidden; color: var(--color-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-@media (max-width: 700px) { .benchmark-dashboard-widget > header { flex-direction: column; } .benchmark-visualization-switcher { align-self: flex-start; } .benchmark-chart-stage { min-height: 240px; height: 240px; } .benchmark-visualization-button { width: 35px; height: 35px; } }
+.benchmark-histogram-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 10px; width: 100%; height: 100%; min-width: 0; overflow: hidden; align-items: center; }
+.benchmark-histogram-small-multiple { display: grid; grid-template-rows: auto minmax(0, 1fr); align-items: center; justify-items: center; min-width: 0; min-height: 0; max-width: 100%; overflow: hidden; }
+.benchmark-histogram-small-multiple > strong { display: block; width: 100%; max-width: 100%; margin: 0; overflow: hidden; color: var(--color-muted); font-size: 12px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.benchmark-histogram-small-multiple > .benchmark-custom-chart { width: min(100%, 600px); max-width: 600px; min-height: 0; }
+@media (max-width: 700px) { .benchmark-dashboard-widget > header { flex-direction: column; } .benchmark-visualization-switcher { align-self: flex-start; } .benchmark-chart-stage { min-height: 240px; height: 240px; } .benchmark-chart-stage--data-point .benchmark-chart-stage__content, .benchmark-chart-stage--data-distribution .benchmark-chart-stage__content { width: 100%; } .benchmark-visualization-button { width: 34px; height: 34px; } }
 
 .benchmark-dashboard-modal fieldset {
   position: relative;
