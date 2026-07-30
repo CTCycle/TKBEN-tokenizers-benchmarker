@@ -26,7 +26,6 @@ class RawTokenizer:
     def encode(self, text: str) -> RawEncoding:
         return RawEncoding([1, 0] if text == "unknown" else [1, 2, 3])
 
-
 ###############################################################################
 class PaddingTokenizer:
     eos_token = "<eos>"
@@ -65,7 +64,6 @@ def test_adapter_accepts_raw_tokenizers_encoding_objects() -> None:
     assert encoded.input_ids_by_doc == [[1, 2, 3], [1, 0]]
     assert encoded.token_counts == [3, 2]
     assert encoded.unknown_counts == [0, 1]
-
 
 ###############################################################################
 def test_adapter_uses_eos_token_for_padding_when_pad_token_is_missing() -> None:

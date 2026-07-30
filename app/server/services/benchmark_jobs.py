@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from server.domain.benchmarks import BenchmarkRunResponse
+from server.common.constants import BENCHMARK_REPORT_VERSION
 from server.services.benchmarks import BenchmarkService
 from server.services.jobs import JobManager, JobProgressReporter, JobStopChecker
 
@@ -42,14 +43,14 @@ class BenchmarkJobService:
             payload["created_at"] = (
                 datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             )
-            payload["report_version"] = 2
+            payload["report_version"] = BENCHMARK_REPORT_VERSION
             payload["report_id"] = None
             return payload
 
         payload["created_at"] = (
             datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         )
-        payload["report_version"] = 2
+        payload["report_version"] = BENCHMARK_REPORT_VERSION
         report_id = service.save_benchmark_report(payload)
         payload["report_id"] = int(report_id)
         return payload

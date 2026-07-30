@@ -72,7 +72,6 @@ def test_tokenizers_service_report_prechecks(monkeypatch) -> None:
     assert service.get_tokenizer_report_vocabulary(1, 0, 10) is not None
     assert service.get_tokenizer_report_vocabulary(2, 0, 10) is None
 
-
 ###############################################################################
 def test_tokenizer_scan_keeps_only_supported_text_pipeline_models(monkeypatch) -> None:
     service = TokenizersService()
@@ -100,7 +99,6 @@ def test_tokenizer_scan_keeps_only_supported_text_pipeline_models(monkeypatch) -
     monkeypatch.setattr(service.key_service, "get_active_key", lambda: None)
 
     assert service.get_tokenizer_identifiers(limit=100) == ["bert-base-uncased"]
-
 
 ###############################################################################
 def test_failed_tokenizer_download_cleans_partial_cache_and_returns_reason(

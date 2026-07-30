@@ -55,7 +55,7 @@ def test_benchmark_report_contains_reproducibility_metadata(
     assert status.get("status") == "completed", status.get("error")
     result = status.get("result", {})
     assert result.get("status") == "success"
-    assert result.get("schema_version") == 1
+    assert result.get("schema_version") == 2
     assert result.get("methodology_version") == "semantic_honesty"
     assert result.get("dataset_name") == uploaded_dataset["dataset_name"]
     assert result.get("documents_processed") == 2

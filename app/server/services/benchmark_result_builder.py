@@ -13,6 +13,7 @@ from server.domain.benchmarks import (
     BenchmarkDashboardBucketPoint,
     BenchmarkDashboardData,
     BenchmarkDashboardDistribution,
+    BenchmarkDashboardHistogramBin,
     BenchmarkDashboardPoint,
     BenchmarkDashboardWidgetData,
     BenchmarkEfficiencyMetrics,
@@ -329,13 +330,17 @@ class BenchmarkResultBuilder:
             points: list[BenchmarkDashboardPoint] = []
             distributions: list[BenchmarkDashboardDistribution] = []
             buckets: list[BenchmarkDashboardBucketPoint] = []
+            histogram_bins: list[BenchmarkDashboardHistogramBin] = []
             if definition.distribution_source:
+                values_by_tokenizer: dict[str, list[float]] = {}
                 for result in successful:
                     values = self._dashboard_distribution_values(definition.distribution_source, result.tokenizer, raw_observations, per_document_by_tokenizer)
+                    values_by_tokenizer[result.tokenizer] = values
                     summary = self._distribution_summary(values)
                     if summary is not None:
                         distributions.append(BenchmarkDashboardDistribution(tokenizer=result.tokenizer, **summary))
-            elif definition.visualization.value == "bucket_bar":
+                histogram_bins = self._histogram_bins(values_by_tokenizer)
+            elif definition.default_visualization.value == "grouped_bar":
                 for result in successful:
                     for bucket in result.fragmentation.fragmentation_by_word_length_bucket:
                         if self._is_number(bucket.pieces_per_word_mean):
@@ -350,7 +355,10 @@ class BenchmarkResultBuilder:
                     points.append(BenchmarkDashboardPoint(tokenizer=result.tokenizer, value=float(value), interval_low=float(low) if self._is_number(low) else None, interval_high=float(high) if self._is_number(high) else None))
             if not points and not distributions and not buckets:
                 continue
-            widgets.append(BenchmarkDashboardWidgetData(widget_id=definition.widget_id, metric_keys=list(definition.required_metric_keys), category_key=definition.category_key, category_label=definition.category_label, label=definition.label, description=definition.description, unit=definition.unit, display_format=definition.display_format, visualization=definition.visualization.value, default_visible=definition.default_visible, width=definition.width.value, points=points, distributions=distributions, buckets=buckets))
+            tokenizer_count = len({point.tokenizer for point in points} | {point.tokenizer for point in distributions} | {point.tokenizer for point in buckets})
+            bucket_count = len({point.bucket for point in buckets})
+            data_width = "wide" if definition.width.value == "wide" or tokenizer_count > 4 or bucket_count > 5 else "standard"
+            widgets.append(BenchmarkDashboardWidgetData(widget_id=definition.widget_id, metric_keys=list(definition.required_metric_keys), category_key=definition.category_key, category_label=definition.category_label, label=definition.label, description=definition.description, unit=definition.unit, display_format=definition.display_format, default_visualization=definition.default_visualization, compatible_visualizations=list(definition.compatible_visualizations), default_visible=definition.default_visible, width=data_width, points=points, distributions=distributions, buckets=buckets, histogram_bins=histogram_bins))
             available_keys.update(definition.required_metric_keys)
         return BenchmarkDashboardData(widgets=widgets, available_widget_ids=[widget.widget_id for widget in widgets], available_metric_keys=[definition.key for definition in BENCHMARK_METRIC_DEFINITIONS if definition.key in available_keys], unavailable_selected_metric_keys=[key for key in selected if key not in available_keys])
 
@@ -381,5 +389,34 @@ class BenchmarkResultBuilder:
             return [(float(row["elapsed_ns"]) / 1_000_000.0) / max(1.0, float(row["documents"])) for row in raw.get(tokenizer, []) if isinstance(row, dict) and self._is_number(row.get("elapsed_ns")) and self._is_number(row.get("documents"))]
         values = getattr(stats.get(tokenizer), source, []) if tokenizer in stats else []
         return [float(value) for value in values if self._is_number(value)]
+
+    # -------------------------------------------------------------------------
+    def _histogram_bins(self, values_by_tokenizer: dict[str, list[float]]) -> list[BenchmarkDashboardHistogramBin]:
+        finite = [value for values in values_by_tokenizer.values() for value in values if self._is_number(value)]
+        if not finite:
+            return []
+        array = np.asarray(finite, dtype=float)
+        low = float(np.min(array))
+        high = float(np.max(array))
+        if low == high:
+            padding = max(abs(low) * 0.05, 0.5)
+            edges = np.asarray([low - padding, high + padding], dtype=float)
+        else:
+            edges = np.asarray(np.histogram_bin_edges(array, bins="auto"), dtype=float)
+            edges = np.unique(edges[np.isfinite(edges)])
+            if len(edges) < 2:
+                edges = np.asarray([low, high], dtype=float)
+            if len(edges) - 1 > 24:
+                edges = np.linspace(low, high, 25)
+        bins: list[BenchmarkDashboardHistogramBin] = []
+        for tokenizer, values in values_by_tokenizer.items():
+            finite_values = np.asarray([value for value in values if self._is_number(value)], dtype=float)
+            if finite_values.size == 0:
+                continue
+            counts, _ = np.histogram(finite_values, bins=edges)
+            total = int(finite_values.size)
+            for index, count in enumerate(counts.tolist()):
+                bins.append(BenchmarkDashboardHistogramBin(tokenizer=tokenizer, bin_low=float(edges[index]), bin_high=float(edges[index + 1]), count=int(count), proportion=float(count / total)))
+        return bins
 
     # -------------------------------------------------------------------------
