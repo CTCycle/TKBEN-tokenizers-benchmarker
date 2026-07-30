@@ -10,9 +10,8 @@ From project and runtime scripts:
 ## Local Distribution Strategy
 - The repository plus `start_on_windows.ps1` is the supported Windows operational path.
 - The launcher synchronizes Python dependencies, reuses unchanged frontend dependencies on application launch, builds the frontend when configured, then starts FastAPI and Vite preview locally.
-- The supported built-in security mode is local-only: keep `FASTAPI_HOST=127.0.0.1` or `localhost`.
+- The default launcher binds locally with `FASTAPI_HOST=127.0.0.1`.
 - Network-hosted deployments require an external authentication boundary before exposing key management or destructive API routes.
-- The backend refuses non-loopback binds by default. `TKBEN_ALLOW_UNAUTHENTICATED_NETWORK_BIND=true` is an explicit override for environments that provide their own access control.
 
 ## Constraints
 - The repository does not currently include an active Docker runtime configuration in the root.

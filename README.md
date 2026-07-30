@@ -1,4 +1,5 @@
 # TKBEN Tokenizer Benchmarker
+Last updated: 2026-07-30
 [![Release](https://img.shields.io/github/v/release/CTCycle/TKBEN-tokenizers-benchmarker?display_name=tag)](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.14-3776AB?logo=python&logoColor=white)
 ![Node.js](https://img.shields.io/badge/node.js-%3E%3D22-339933?logo=node.js&logoColor=white)
@@ -8,7 +9,7 @@
 
 ## 1. Project Overview
 
-TKBEN is a local web application for examining tokenizer assets, validating text datasets, and comparing tokenizer performance across repeatable benchmark runs. It keeps downloaded assets, validation reports, and benchmark results in the application workspace so that a later session can reopen and inspect the same evidence.
+TKBEN is a local web application for examining tokenizer assets, validating text datasets, and comparing tokenizer performance across repeatable benchmark runs. It keeps downloaded assets, validation reports, and benchmark results in the application workspace so that a later session can reopen and inspect the same evidence. The browser is the user interface, while a local FastAPI service performs processing and stores the resulting reports.
 
 The main workflows are:
 
@@ -27,6 +28,8 @@ Runtime model:
 
 Launcher-managed runs use `settings/.env` and repository resource paths; direct/manual development and tests use the same local configuration model.
 
+The normal workflow is sequential but flexible: validate at least one dataset, prepare one or more tokenizers, run a benchmark, and then compare or export the saved results. Each page can reopen persisted reports, so a completed validation or benchmark does not need to be repeated just to inspect it later.
+
 ## 2. Installation
 
 ### 2.1 Windows (One-Click Local Setup)
@@ -38,6 +41,8 @@ From the repository root, run the single application and maintenance entry point
 ```
 
 `start_on_windows.ps1` opens the combined eight-option menu. Choose **Launch application** to download pinned portable Python, uv, and Node.js runtimes when missing, synchronize Python dependencies, reuse unchanged frontend dependencies, build the frontend when enabled, and start FastAPI plus the Vite preview server. The launcher also waits for the backend health endpoint and frontend before reporting success.
+
+On the first launch, allow dependency setup to finish and note the URL printed by the launcher. Subsequent launches can reuse the local runtimes and unchanged frontend dependencies. Use the maintenance menu when you need to install or update dependencies, initialize the database, run tests, clean logs or caches, or uninstall the managed runtime.
 
 ### 2.2 macOS / Linux (Manual Local Setup)
 
@@ -74,6 +79,8 @@ Initialize from the single template:
 Copy-Item settings\.env.example settings\.env
 ```
 
+Most users can keep the generated defaults. Open `settings/.env` when you need to change local hosts or ports, choose whether the frontend is rebuilt at startup, or configure optional Hugging Face and database integration. Keep secrets and machine-specific values in this ignored file.
+
 ### 3.2 Local Webapp Mode (Default)
 
 ```powershell
@@ -91,25 +98,51 @@ Runtime addresses are taken from the user configuration:
 
 Load data from a Hugging Face preset or manual ID, or upload a local CSV/XLS/XLSX file. Select a dataset row to preview its document count, run the validation pipeline, and reopen the latest saved report for aggregate statistics, lexical metrics, histograms, and additional visual analysis.
 
+Use the catalog filters to narrow the available entries before selecting a dataset. Start validation after confirming the source and selected metrics, then open the saved report when the asynchronous job completes.
+
 **Tokenizers (`/tokenizers`)**
 
 Scan available text tokenizer IDs, download selected tokenizers, optionally upload a custom `tokenizer.json`, and open a report with vocabulary statistics and a paginated token preview.
 
+Downloaded tokenizers become available to the benchmark workflow; use the report view to confirm that vocabulary and token-length data were extracted correctly.
+
 **Cross Benchmark (`/cross-benchmark`)**
 
 Create benchmark runs by selecting a persisted dataset, tokenizer candidates, and metric categories. Review saved reports, compare normalized metrics in dashboard widgets, customize the widget layout, and export the report when the analysis is complete.
-### 3.4 Product Snapshots
+
+Wait for the benchmark job to complete before opening its saved report. You can reorder or customize dashboard widgets, and layout choices are saved locally for later visits.
+
+### 3.4 A Typical First Run
+
+1. Launch TKBEN and open the displayed local web address.
+2. Go to **Dataset**, choose a source, and run validation. Open the saved report when it is ready.
+3. Go to **Tokenizers**, scan or add tokenizer IDs, download the assets you need, and inspect their reports.
+4. Go to **Cross Benchmark**, select the validated dataset, choose the tokenizers and metrics, and start the benchmark.
+5. Review the dashboard, adjust its widgets if useful, and export a PDF report.
+
+### 3.5 Product Snapshots
 
 The following snapshots were captured in local webapp mode with backend and frontend running:
 
-- Dataset dashboard with a loaded persisted validation session, aggregate statistics, histograms, and word-cloud analytics.
-![Dataset workspace](assets/figures/release-v3.7.1-dataset.png)
+The settings view centralizes local runtime options such as hosts, ports, logging, and optional integrations. Values are read from the local configuration and should be changed carefully when a service is already using the configured ports.
 
-- Tokenizers dashboard with an opened tokenizer report, vocabulary statistics, and populated token preview table.
-![Tokenizers workspace](assets/figures/release-v3.7.1-tokenizers.png)
+![Settings](assets/figures/settings.png)
+*Settings page showing the local runtime, port, logging, and integration controls used by the launcher.*
 
-- Cross-benchmark dashboard with a loaded run summary and comparative metric panels.
-![Cross-benchmark dashboard](assets/figures/release-v3.7.1-cross-benchmark.png)
+Dataset dashboard with a loaded persisted validation session, aggregate statistics, histograms, and word-cloud analytics.
+
+![Dataset workspace](assets/figures/dataset.png)
+*Dataset workspace displaying a completed validation report with summary metrics and visual analysis.*
+
+Tokenizers dashboard with an opened tokenizer report, vocabulary statistics, and populated token preview table.
+
+![Tokenizers workspace](assets/figures/tokenizers-overview.png)
+*Tokenizer workspace showing vocabulary statistics and a paginated preview of extracted tokens.*
+
+Cross-benchmark dashboard with a loaded run summary and comparative metric panels.
+
+![Cross-benchmark dashboard](assets/figures/cross-benchmark.png)
+*Cross-benchmark dashboard comparing saved tokenizer results across normalized metric panels.*
 
 ## 4. Setup and Maintenance
 
@@ -142,9 +175,7 @@ Core runtime keys you will commonly edit:
 - `UI_HOST`, `UI_PORT`
 - `VITE_API_BASE_URL` (normally `/api`)
 - `RELOAD`
-- `ALWAYS_REBUILD` (`true` or `false`; controls the frontend build at application startup)
 - `BACKEND_LOGS_VISIBLE` (`true` or `false`; controls the dedicated backend log terminal)
-- `TKBEN_ALLOW_UNAUTHENTICATED_NETWORK_BIND`
 - `ALLOW_KEY_REVEAL`
 - `TKBEN_DATA_DIR`, `TKBEN_LOG_DIR`, `TKBEN_CONFIG_DIR`
 - `DATABASE_EMBEDDED`

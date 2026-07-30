@@ -9,7 +9,6 @@ Primary launcher runtime env file:
 ## Core Variables
 - `FASTAPI_HOST`
 - `FASTAPI_PORT`
-- `TKBEN_ALLOW_UNAUTHENTICATED_NETWORK_BIND`
 - `UI_HOST`
 - `UI_PORT`
 - `VITE_API_BASE_URL` (default `/api`)
@@ -62,5 +61,4 @@ Primary launcher runtime env file:
 ### Security Controls
 - `ALLOW_KEY_REVEAL=false` keeps plaintext Hugging Face key reveal disabled by default.
 - Hugging Face access-key encryption material is generated and persisted in the external JSON file configured by `HF_KEYS_ENCRYPTION_MATERIAL_FILE` (default `app/resources/hf-key-material.json`). Keep this file private and do not copy it into database backups.
-- `FASTAPI_HOST` should remain loopback (`127.0.0.1`, `localhost`, or `::1`) for the built-in unauthenticated local runtime.
-- Setting `TKBEN_ALLOW_UNAUTHENTICATED_NETWORK_BIND=true` bypasses the loopback startup guard and should only be used behind an external authentication boundary.
+- `FASTAPI_HOST` controls the interface on which the backend listens. Network exposure requires appropriate deployment-level access controls.

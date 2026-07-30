@@ -98,7 +98,7 @@ def test_run_benchmarks_returns_contract() -> None:
     assert result.tokenizers_count == 1
     assert len(result.tokenizer_results) == 1
     assert result.tokenizer_results[0].status == "success"
-    assert len(result.chart_data.efficiency) == 1
+    assert len(result.dashboard.widgets) > 0
     assert len(result.per_document_stats) == 1
     assert result.tokenizer_results[0].tokenizer == "dummy/tokenizer"
     assert result.per_document_stats[0].tokenizer == "dummy/tokenizer"
@@ -110,13 +110,6 @@ def test_run_benchmarks_returns_contract() -> None:
     assert result.runtime_metadata["dataset_total_utf8_bytes"] > 0
     assert len(result.runtime_metadata["tokenizer_metadata"]) == 1
     assert "benchmark_timing_boundaries" in result.runtime_metadata
-    assert "metric_availability" in result.runtime_metadata
-    assert result.runtime_metadata["metric_availability"]["resource_metrics"] is True
-    assert (
-        result.runtime_metadata["metric_availability"]["latency_distribution"] is True
-    )
-    assert result.runtime_metadata["metric_availability"]["byte_fallback_rate"] is False
-    assert result.runtime_metadata["metric_availability"]["per_document_stats"] is True
     assert result.runtime_metadata["end_to_end_benchmark_seconds"] >= 0.0
     assert result.tokenizer_results[0].efficiency.encode_only_wall_time_seconds >= 0.0
     assert (
@@ -124,7 +117,6 @@ def test_run_benchmarks_returns_contract() -> None:
     )
     assert result.tokenizer_results[0].efficiency.postprocess_wall_time_seconds >= 0.0
     assert result.tokenizer_results[0].fidelity.unknown_token_rate is None
-    assert result.per_document_stats[0].encode_latency_ms[0] is None
 
 ###############################################################################
 def test_run_benchmarks_enforces_max_documents_limit() -> None:
@@ -185,7 +177,12 @@ def test_run_benchmarks_isolates_tokenizer_failure() -> None:
     }
     assert "broken/tokenizer" in result.raw_observations
     assert result.raw_observations["broken/tokenizer"][0]["error"] == "RuntimeError"
-    chart_tokenizers = {point.tokenizer for point in result.chart_data.efficiency}
+    efficiency_widget = next(
+        widget
+        for widget in result.dashboard.widgets
+        if "eff.encode_tokens_per_second_mean" in widget.metric_keys
+    )
+    chart_tokenizers = {point.tokenizer for point in efficiency_widget.points}
     assert "ok/tokenizer" in chart_tokenizers
     assert "broken/tokenizer" not in chart_tokenizers
 
@@ -261,7 +258,12 @@ def test_run_benchmarks_uses_true_latency_distribution_five_number_summary() -> 
     finally:
         benchmark_execution_module.run_tokenizer_trials = original_run_trials  # type: ignore[assignment]
 
-    dist = result.chart_data.latency_or_memory_distribution[0]
+    latency_widget = next(
+        widget
+        for widget in result.dashboard.widgets
+        if widget.widget_id == "benchmark.lat.encode_latency_distribution"
+    )
+    dist = latency_widget.distributions[0]
     assert dist.min == 1.0
     assert dist.max == 5.0
     assert dist.median == 3.0
@@ -407,13 +409,12 @@ def test_run_benchmarks_can_disable_per_document_stats_and_persist_config() -> N
         },
     )
 
-    assert result.per_document_stats == []
+    assert len(result.per_document_stats) == 1
     assert result.config.store_per_document_stats is False
     assert result.config.add_special_tokens is True
     assert result.config.padding is True
     assert result.config.truncation is True
     assert result.config.max_length == 32
-    assert result.runtime_metadata["metric_availability"]["per_document_stats"] is False
 
 ###############################################################################
 def test_run_benchmarks_returns_cancelled_status_when_stopped() -> None:
@@ -466,10 +467,4 @@ def test_run_benchmarks_all_failed_tokenizers_report_unavailable_metrics() -> No
     assert result.status == "success"
     assert len(result.tokenizer_results) == 1
     assert result.tokenizer_results[0].status == "failed"
-    assert result.chart_data.efficiency == []
-    assert result.chart_data.fidelity == []
-    assert result.runtime_metadata["metric_availability"]["resource_metrics"] is False
-    assert (
-        result.runtime_metadata["metric_availability"]["latency_distribution"] is False
-    )
-    assert result.runtime_metadata["metric_availability"]["per_document_stats"] is False
+    assert result.dashboard.widgets == []

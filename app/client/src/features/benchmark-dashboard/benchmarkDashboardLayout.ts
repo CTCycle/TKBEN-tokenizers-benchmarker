@@ -31,7 +31,7 @@ export const resolveAvailableDashboardLayout = (stored: BenchmarkDashboardLayout
   const visualizationByWidgetId = Object.fromEntries(widgets.map((widget) => {
     const candidate = base.visualization_by_widget_id[widget.widget_id];
     const selectable = widget.compatible_visualizations.filter((choice) => choice !== 'heatmap');
-    return [widget.widget_id, selectable.includes(candidate) ? candidate : widget.default_visualization];
+    return [widget.widget_id, selectable.some((choice) => choice === candidate) ? candidate : widget.default_visualization];
   })) as Record<string, BenchmarkVisualizationKind>;
   return { orderedWidgetIds, visibleWidgetIds: orderedWidgetIds.filter((id) => !hidden.has(id)), visualizationByWidgetId };
 };
