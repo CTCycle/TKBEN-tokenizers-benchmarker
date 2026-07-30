@@ -5,13 +5,13 @@ from typing import Any
 import pytest
 
 from server.repositories.serialization.tokenizer_reports import TokenizerReportSerializer
-from server.services.tokenizers import TokenizersService
+from server.services.tokenizer_reporting import TokenizerReportingService
 
 ###############################################################################
 def test_compute_subword_word_stats_excludes_special_tokens_and_classifies_markers() -> (
     None
 ):
-    service = TokenizersService()
+    service = TokenizerReportingService()
     stats = service.compute_subword_word_stats(
         vocab_tokens=[
             "##ing",
@@ -40,7 +40,7 @@ def test_compute_subword_word_stats_excludes_special_tokens_and_classifies_marke
 def test_resolve_hf_repo_metadata_returns_link_when_description_unavailable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    service = TokenizersService()
+    service = TokenizerReportingService()
 
     def raise_model_info(*args: Any, **kwargs: Any) -> Any:
         raise RuntimeError("model info unavailable")
@@ -49,11 +49,11 @@ def test_resolve_hf_repo_metadata_returns_link_when_description_unavailable(
         raise RuntimeError("model card unavailable")
 
     monkeypatch.setattr(
-        "server.services.tokenizers.HfApi.model_info",
+        "server.services.tokenizer_reporting.HfApi.model_info",
         raise_model_info,
     )
     monkeypatch.setattr(
-        "server.services.tokenizers.ModelCard.load",
+        "server.services.tokenizer_reporting.ModelCard.load",
         raise_model_card,
     )
 
@@ -105,12 +105,12 @@ class DummyTokenizer:
 def test_generate_report_payload_includes_hf_url_and_subword_stats(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    service = TokenizersService()
+    service = TokenizerReportingService()
     captured_report: dict[str, Any] = {}
 
     monkeypatch.setattr(service, "has_cached_tokenizer", lambda tokenizer_name: True)
     monkeypatch.setattr(
-        "server.services.tokenizers.AutoTokenizer.from_pretrained",
+        "server.services.tokenizer_reporting.AutoTokenizer.from_pretrained",
         lambda *args, **kwargs: DummyTokenizer(),
     )
     monkeypatch.setattr(service, "find_cached_file", lambda *args, **kwargs: None)

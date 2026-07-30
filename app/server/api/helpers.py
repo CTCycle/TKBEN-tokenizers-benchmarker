@@ -90,11 +90,3 @@ async def read_upload_limited(
             )
         chunks.append(chunk)
     return b"".join(chunks)
-
-###############################################################################
-def validate_upload_size(content: bytes, max_upload_bytes: int) -> None:
-    if len(content) > max_upload_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-            detail=f"Uploaded file exceeds max allowed size ({max_upload_bytes} bytes).",
-        )

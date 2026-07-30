@@ -22,14 +22,10 @@ from server.common.constants import (
     API_ROUTER_PREFIX_BENCHMARKS,
 )
 from server.common.utils.logger import logger
+from server.api.helpers import ManagedJobHttpAdapter
 from server.services.benchmark_jobs import BenchmarkJobService
 from server.services.benchmarks import BenchmarkService
-from server.services.managed_jobs import (
-    ManagedJobConflictError,
-    ManagedJobInitializationError,
-    ManagedJobService,
-    ManagedJobSpec,
-)
+from server.services.managed_jobs import ManagedJobSpec
 
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_BENCHMARKS, tags=["benchmarks"])
@@ -111,22 +107,17 @@ async def run_benchmarks(
     request_payload = payload.model_dump()
     request_payload["custom_tokenizers"] = custom_tokenizers
 
-    try:
-        return ManagedJobService().start(
-            request.app.state.job_manager,
-            ManagedJobSpec(
-                job_type="benchmark_run",
-                runner=BenchmarkJobService().run_benchmark_job,
-                kwargs={"request_payload": request_payload},
-                conflict_detail="Benchmark run is already in progress.",
-                initialization_detail="Failed to initialize benchmark job.",
-                message="Benchmark job started.",
-            ),
-        )
-    except ManagedJobConflictError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-    except ManagedJobInitializationError as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+    return ManagedJobHttpAdapter.start(
+        request,
+        ManagedJobSpec(
+            job_type="benchmark_run",
+            runner=BenchmarkJobService().run_benchmark_job,
+            kwargs={"request_payload": request_payload},
+            conflict_detail="Benchmark run is already in progress.",
+            initialization_detail="Failed to initialize benchmark job.",
+            message="Benchmark job started.",
+        ),
+    )
 
 ###############################################################################
 @router.get(

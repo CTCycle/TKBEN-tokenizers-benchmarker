@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import statistics
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any, cast
+from typing import Any, TypeGuard, cast
 
 import numpy as np
 import pandas as pd
@@ -372,11 +372,11 @@ class BenchmarkResultBuilder:
         return current
 
     # -------------------------------------------------------------------------
-    def _is_number(self, value: object) -> bool:
+    def _is_number(self, value: object) -> TypeGuard[int | float]:
         return isinstance(value, int | float) and not isinstance(value, bool) and np.isfinite(float(value))
 
     # -------------------------------------------------------------------------
-    def _distribution_summary(self, values: list[float]) -> dict[str, float | int] | None:
+    def _distribution_summary(self, values: list[float]) -> dict[str, Any] | None:
         finite = [value for value in values if self._is_number(value)]
         if not finite:
             return None
@@ -386,7 +386,17 @@ class BenchmarkResultBuilder:
     # -------------------------------------------------------------------------
     def _dashboard_distribution_values(self, source: str, tokenizer: str, raw: dict[str, list[dict[str, object]]], stats: dict[str, BenchmarkPerDocumentTokenizerStats]) -> list[float]:
         if source == "raw_latency":
-            return [(float(row["elapsed_ns"]) / 1_000_000.0) / max(1.0, float(row["documents"])) for row in raw.get(tokenizer, []) if isinstance(row, dict) and self._is_number(row.get("elapsed_ns")) and self._is_number(row.get("documents"))]
+            values: list[float] = []
+            for row in raw.get(tokenizer, []):
+                elapsed_ns = row.get("elapsed_ns")
+                documents = row.get("documents")
+                if not (self._is_number(elapsed_ns) and self._is_number(documents)):
+                    continue
+                values.append(
+                    (float(elapsed_ns) / 1_000_000.0)
+                    / max(1.0, float(documents))
+                )
+            return values
         values = getattr(stats.get(tokenizer), source, []) if tokenizer in stats else []
         return [float(value) for value in values if self._is_number(value)]
 

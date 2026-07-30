@@ -540,11 +540,11 @@ class DashboardExportService(DashboardExportFormatting):
                 color=MUTED_TEXT,
             )
             if len(page_widgets) == 1:
-                axes = [fig.add_axes([0.07, 0.1, 0.88, 0.66])]
+                axes = [fig.add_axes((0.07, 0.1, 0.88, 0.66))]
             else:
                 axes = [
-                    fig.add_axes([0.07, 0.1, 0.4, 0.66]),
-                    fig.add_axes([0.55, 0.1, 0.4, 0.66]),
+                    fig.add_axes((0.07, 0.1, 0.4, 0.66)),
+                    fig.add_axes((0.55, 0.1, 0.4, 0.66)),
                 ]
             for axis, widget in zip(axes, page_widgets, strict=True):
                 self._render_normalized_benchmark_widget(axis, widget)
@@ -568,7 +568,7 @@ class DashboardExportService(DashboardExportFormatting):
             rows = [row for row in widget.get("distributions", []) if isinstance(row, dict)]
             if rows:
                 labels = [self._short_name(str(row.get("tokenizer") or "")) for row in rows]
-                stats = [{"label": label, "whislo": self._to_number(row.get("min")), "q1": self._to_number(row.get("q1")), "med": self._to_number(row.get("median")), "q3": self._to_number(row.get("q3")), "whishi": self._to_number(row.get("max")), "fliers": []} for label, row in zip(labels, rows, strict=True)]
+                stats: list[dict[str, Any]] = [{"label": label, "whislo": self._to_number(row.get("min")), "q1": self._to_number(row.get("q1")), "med": self._to_number(row.get("median")), "q3": self._to_number(row.get("q3")), "whishi": self._to_number(row.get("max")), "fliers": []} for label, row in zip(labels, rows, strict=True)]
                 ax.bxp(stats, orientation="horizontal", showfliers=False, patch_artist=True, boxprops={"facecolor": SECONDARY_COLOR, "alpha": 0.75}, medianprops={"color": PRIMARY_COLOR, "linewidth": 2})
                 minimum = min(stat["whislo"] for stat in stats)
                 maximum = max(stat["whishi"] for stat in stats)

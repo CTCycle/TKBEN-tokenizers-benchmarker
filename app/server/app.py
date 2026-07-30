@@ -85,11 +85,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     settings = get_server_settings()
-    terminal_retention_seconds = getattr(
-        getattr(settings, "jobs", None),
-        "terminal_retention_seconds",
-        3600.0,
-    )
+    terminal_retention_seconds = settings.jobs.terminal_retention_seconds
     application.state.job_manager = JobManager(
         terminal_retention_seconds=terminal_retention_seconds
     )

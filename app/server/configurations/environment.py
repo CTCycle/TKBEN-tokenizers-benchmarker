@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
 
 from dotenv import load_dotenv
 
+from server.common.constants import ALLOW_KEY_REVEAL_DEFAULT
+from server.common.utils.types import coerce_bool
 from server.common.path import ENV_FILE_PATH
 from server.common.utils.logger import logger
 from server.domain.bootstrap import EnvironmentBootstrapState
@@ -36,3 +39,10 @@ def reset_environment_bootstrap_for_tests() -> None:
     state = _bootstrap_state()
     with state.lock:
         state.bootstrapped = False
+
+###############################################################################
+def is_key_reveal_enabled() -> bool:
+    return coerce_bool(
+        os.getenv("ALLOW_KEY_REVEAL"),
+        ALLOW_KEY_REVEAL_DEFAULT,
+    )

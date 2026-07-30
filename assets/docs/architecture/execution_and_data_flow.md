@@ -1,5 +1,5 @@
 # Execution and Data Flow
-Last updated: 2026-07-20
+Last updated: 2026-07-30
 
 ## Layered Architecture
 Primary backend flow:
@@ -26,6 +26,10 @@ Primary backend flow:
 ## Service Notes
 - `services/tokenizer_storage.py`
   - Tokenizer identifier validation, cache path resolution, and Hugging Face URL construction shared by tokenizer workflows.
+- `services/tokenizer_reporting.py`
+  - Tokenizer metadata resolution, cached metadata loading, vocabulary analysis, histogram generation, report persistence, and report retrieval.
+- `services/dataset_statistics.py`
+  - Deterministic dataset length statistics and histogram construction used by `DatasetService`.
 - `services/dashboard_export_helpers.py`
   - Dashboard export payload parsing and value formatting helpers used by the PDF export service.
 - `services/benchmark_engine.py`
@@ -53,6 +57,8 @@ Primary backend flow:
 - Long-running operations such as download, analysis, benchmark, and report generation run in background threads via `JobManager`.
 - Job polling and cancel operations are synchronous handler functions over in-memory job state.
 - Repository and database operations are synchronous SQLAlchemy session usage.
+
+Tokenizer scan failures from Hugging Face are allowed to propagate through the service so the API can return its sanitized HTTP 500 response; an outage is never represented as a successful empty catalog. No legacy service aliases are retained after the reporting extraction.
 
 ## Constraint
 Async handlers must not execute CPU-heavy or blocking I/O inline. They should offload to threads or the job system.

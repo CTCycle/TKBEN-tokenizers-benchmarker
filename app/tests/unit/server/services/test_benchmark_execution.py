@@ -7,6 +7,7 @@ import server.services.benchmark_execution as benchmark_execution_module
 from server.domain.benchmark_observations import BatchObservation
 from server.domain.benchmarks import BenchmarkRunResponse
 from server.services.benchmarks import BenchmarkService
+from server.services.benchmark_execution import normalize_vocabulary_token
 
 ###############################################################################
 class DummyTokenizer:
@@ -55,6 +56,14 @@ class UnknownAwareTokenizer(DummyTokenizer):
         super().__init__()
         self._vocab = {"known": 1}
         self._id_to_token = {1: "known", 0: "[UNK]"}
+
+###############################################################################
+def test_normalize_vocabulary_token_removes_only_top_level_markers() -> None:
+    assert normalize_vocabulary_token("##tail") == "tail"
+    assert normalize_vocabulary_token("▁hello") == "hello"
+    assert normalize_vocabulary_token("Ġworld") == "world"
+    assert normalize_vocabulary_token("Garden") == "Garden"
+    assert normalize_vocabulary_token("word▁pieceĠtail##") == "word▁pieceĠtail##"
 
 ###############################################################################
 def test_run_benchmarks_returns_contract() -> None:

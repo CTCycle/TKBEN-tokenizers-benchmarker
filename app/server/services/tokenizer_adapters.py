@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from collections.abc import Mapping
-from typing import Any, Protocol, Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any, Protocol, cast
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -70,7 +70,13 @@ class UniversalTokenizerAdapter:
                 max_length=max_length,
             )
             input_ids = encoded["input_ids"] if isinstance(encoded, Mapping) else []
-            normalized_ids = [[int(value) for value in ids] for ids in input_ids]
+            if not isinstance(input_ids, Sequence):
+                input_ids = []
+            normalized_ids = [
+                [int(cast(int | str | float, value)) for value in ids]
+                for ids in input_ids
+                if isinstance(ids, Sequence)
+            ]
             token_counts = [len(ids) for ids in normalized_ids]
             unknown_counts = [
                 (None if unk_id is None else sum(1 for value in ids if value == unk_id))

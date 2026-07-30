@@ -1,7 +1,7 @@
 {
-  "include": ["app/server"],
-  "extraPaths": ["app"],
-  "venvPath": "app/server",
+  "include": ["."],
+  "extraPaths": [".."],
+  "venvPath": ".",
   "venv": ".venv",
   "pythonVersion": "3.14",
   "typeCheckingMode": "recommended",

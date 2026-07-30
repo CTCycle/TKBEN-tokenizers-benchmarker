@@ -48,6 +48,7 @@ from server.services.keys import (
     HFAccessKeyValidationError,
 )
 from server.services.tokenizer_jobs import TokenizerJobService
+from server.services.tokenizer_reporting import TokenizerReportingService
 from server.services.tokenizers import TokenizersService
 from server.services.managed_jobs import (
     ManagedJobSpec,
@@ -231,7 +232,7 @@ async def get_latest_tokenizer_report(tokenizer_name: str) -> TokenizerReportRes
             detail=str(exc),
         ) from exc
 
-    service = TokenizersService()
+    service = TokenizerReportingService()
     report = await asyncio.to_thread(
         service.get_latest_tokenizer_report, tokenizer_name
     )
@@ -249,7 +250,7 @@ async def get_latest_tokenizer_report(tokenizer_name: str) -> TokenizerReportRes
     status_code=status.HTTP_200_OK,
 )
 async def get_tokenizer_report_by_id(report_id: int) -> TokenizerReportResponse:
-    service = TokenizersService()
+    service = TokenizerReportingService()
     report = await asyncio.to_thread(service.get_tokenizer_report_by_id, report_id)
     if report is None:
         raise HTTPException(
@@ -269,7 +270,7 @@ async def get_tokenizer_report_vocabulary(
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=5000)] = 500,
 ) -> TokenizerVocabularyPageResponse:
-    service = TokenizersService()
+    service = TokenizerReportingService()
     page = await asyncio.to_thread(
         service.get_tokenizer_report_vocabulary,
         report_id,

@@ -178,3 +178,19 @@ def test_tokenizer_job_routes_return_202(monkeypatch) -> None:
     )
     assert report_resp.status_code == 202
     assert report_resp.json()["job_id"] == "job-xyz"
+
+###############################################################################
+def test_tokenizer_scan_returns_sanitized_500_on_upstream_failure(monkeypatch) -> None:
+    from server.services.tokenizers import TokenizersService
+
+    def fail_scan(self, limit: int):
+        del self, limit
+        raise RuntimeError("private upstream credentials and response details")
+
+    monkeypatch.setattr(TokenizersService, "get_tokenizer_identifiers", fail_scan)
+
+    response = TestClient(app).get("/api/tokenizers/scan")
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Failed to retrieve tokenizers from HuggingFace."
+    assert "private upstream" not in response.text
