@@ -4,11 +4,21 @@ import ast
 from pathlib import Path
 
 
-SERVER_ROOT = Path(__file__).parents[4] / "server"
+SERVER_ROOT = Path(__file__).parents[3] / "server"
 
 ###############################################################################
 def _python_files() -> list[Path]:
-    return [path for path in SERVER_ROOT.rglob("*.py") if "__pycache__" not in path.parts]
+    excluded_parts = {"__pycache__", ".venv", ".pytest_cache"}
+    return [
+        path
+        for path in SERVER_ROOT.rglob("*.py")
+        if not excluded_parts.intersection(path.parts)
+    ]
+
+###############################################################################
+def test_server_root_is_resolved() -> None:
+    assert SERVER_ROOT.is_dir()
+    assert (SERVER_ROOT / "app.py").is_file()
 
 ###############################################################################
 def test_api_modules_do_not_import_repositories() -> None:
@@ -24,6 +34,14 @@ def test_api_modules_do_not_import_repositories() -> None:
                     for alias in node.names
                     if alias.name.startswith("server.repositories")
                 )
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "getenv"
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == "os"
+            ):
+                violations.append(f"{path}:{node.lineno}: direct os.getenv")
     assert violations == []
 
 ###############################################################################

@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+from server.services.tokenizer_reporting import TokenizerReportingService
 from server.services.tokenizers import TokenizersService
 
 ###############################################################################
@@ -39,7 +42,7 @@ def test_tokenizers_service_uses_repository_layer(monkeypatch) -> None:
 
 ###############################################################################
 def test_tokenizers_service_report_prechecks(monkeypatch) -> None:
-    service = TokenizersService()
+    service = TokenizerReportingService()
     service.repository = FakeTokenizerRepository()  # type: ignore[assignment]
 
     monkeypatch.setattr(
@@ -99,6 +102,21 @@ def test_tokenizer_scan_keeps_only_supported_text_pipeline_models(monkeypatch) -
     monkeypatch.setattr(service.key_service, "get_active_key", lambda: None)
 
     assert service.get_tokenizer_identifiers(limit=100) == ["bert-base-uncased"]
+
+###############################################################################
+def test_tokenizer_scan_propagates_upstream_failure(monkeypatch) -> None:
+    service = TokenizersService()
+
+    class FailingApi:
+        def list_models(self, **kwargs):
+            del kwargs
+            raise RuntimeError("upstream outage details")
+
+    monkeypatch.setattr("server.services.tokenizers.HfApi", lambda **kwargs: FailingApi())
+    monkeypatch.setattr(service.key_service, "get_active_key", lambda: None)
+
+    with pytest.raises(RuntimeError, match="upstream outage details"):
+        service.get_tokenizer_identifiers(limit=100)
 
 ###############################################################################
 def test_failed_tokenizer_download_cleans_partial_cache_and_returns_reason(

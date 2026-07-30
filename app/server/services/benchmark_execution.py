@@ -44,6 +44,13 @@ def _as_float(value: object, default: float = 0.0) -> float:
     return float(value) if isinstance(value, int | float) else default
 
 ###############################################################################
+def normalize_vocabulary_token(token: object) -> str:
+    normalized = str(token)
+    for prefix in ("##", "▁", "Ġ"):
+        normalized = normalized.removeprefix(prefix)
+    return normalized
+
+###############################################################################
 @dataclass(frozen=True)
 class SpooledTextBatchFactory:
     spool: BenchmarkTextSpool
@@ -392,8 +399,7 @@ class BenchmarkServiceExecutionMixin:
                         vocab_tokens = {str(tok) for tok in vocab_result}
 
                     normalized_vocab_tokens = {
-                        str(token).replace("##", "").lstrip("?").lstrip("G")
-                        for token in vocab_tokens
+                        normalize_vocabulary_token(token) for token in vocab_tokens
                     }
                     dataset_chars = set()
                     for _, text_value in spool.iter_rows():

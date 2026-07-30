@@ -38,6 +38,30 @@ def test_run_download_job_delegates_to_service(monkeypatch) -> None:
     assert result["status"] == "success"
 
 ###############################################################################
+def test_run_report_job_delegates_to_reporting_service(monkeypatch) -> None:
+
+    ###############################################################################
+    class FakeTokenizerReportingService:
+
+        # -------------------------------------------------------------------------
+        def generate_and_store_report(self, **kwargs):
+            assert kwargs["tokenizer_name"] == "bert-base-uncased"
+            return {"report_id": 7}
+
+    monkeypatch.setattr(
+        "server.services.tokenizer_jobs.TokenizerReportingService",
+        FakeTokenizerReportingService,
+    )
+
+    service = TokenizerJobService()
+    result = service.run_report_job(
+        request_payload={"tokenizer_name": "bert-base-uncased"},
+        job_manager=DummyJobManager(),
+        job_id="job1",
+    )
+    assert result == {"status": "success", "report_id": 7}
+
+###############################################################################
 def test_upload_and_clear_custom_tokenizers(monkeypatch) -> None:
     state = {"cleared": False}
 

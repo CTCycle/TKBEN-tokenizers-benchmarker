@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-import os
 
 from fastapi import APIRouter, HTTPException, Query, status
 
 from server.common.constants import (
-    ALLOW_KEY_REVEAL_DEFAULT,
     API_ROUTE_KEYS_ACTIVATE,
     API_ROUTE_KEYS_CREATE,
     API_ROUTE_KEYS_DEACTIVATE,
@@ -15,7 +13,7 @@ from server.common.constants import (
     API_ROUTE_KEYS_REVEAL,
     API_ROUTER_PREFIX_KEYS,
 )
-from server.common.utils.types import coerce_bool
+from server.configurations import is_key_reveal_enabled
 from server.domain.keys import (
     HFAccessKeyActivateResponse,
     HFAccessKeyCreateRequest,
@@ -33,13 +31,6 @@ from server.services.keys import (
 
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_KEYS, tags=["keys"])
-
-###############################################################################
-def is_key_reveal_enabled() -> bool:
-    return coerce_bool(
-        os.getenv("ALLOW_KEY_REVEAL"),
-        ALLOW_KEY_REVEAL_DEFAULT,
-    )
 
 ###############################################################################
 @router.post(

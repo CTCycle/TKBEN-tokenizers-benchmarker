@@ -37,6 +37,10 @@ jobs:
       - name: Ruff checks
         run: python -m ruff check app/server app/tests
 
+      - name: BasedPyright
+        working-directory: app/server
+        run: python -m basedpyright
+
       - name: Unit tests
         run: python -m pytest app/tests/unit -q
 

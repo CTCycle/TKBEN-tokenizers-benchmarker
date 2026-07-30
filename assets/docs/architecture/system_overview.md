@@ -1,5 +1,5 @@
 # System Overview
-Last updated: 2026-07-20
+Last updated: 2026-07-30
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
@@ -60,6 +60,12 @@ Source-level structure, with generated folders omitted:
   - `app/client/src/components/AppShell.tsx` provides the branded header, primary route tabs, and Hugging Face key manager control.
 - Windows launcher:
   - `start_on_windows.ps1` is the single user-facing root entry point for the combined launch and maintenance menu.
+
+## Reporting Service Boundaries
+- `server.services.TokenizersService` owns Hugging Face discovery, catalog, download, cache, persistence, and custom-tokenizer workflows.
+- `server.services.TokenizerReportingService` owns tokenizer metadata, vocabulary analysis, report generation, and report retrieval.
+- `server.services.dataset_statistics` owns the focused `LengthStatistics` and `HistogramBuilder` components used by dataset analysis.
+- There are no legacy service aliases or compatibility forwarding methods between these boundaries.
 
 ## Runtime Interaction Topology
 - Local webapp mode:

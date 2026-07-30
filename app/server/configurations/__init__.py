@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from server.configurations.environment import (
     ensure_environment_loaded,
+    is_key_reveal_enabled,
     reset_environment_bootstrap_for_tests,
 )
 from server.configurations.management import ConfigurationManager
@@ -29,6 +30,7 @@ __all__ = [
     "ServerSettings",
     "TokenizerSettings",
     "ensure_environment_loaded",
+    "is_key_reveal_enabled",
     "get_configuration_manager",
     "reload_settings_for_tests",
     "reset_environment_bootstrap_for_tests",

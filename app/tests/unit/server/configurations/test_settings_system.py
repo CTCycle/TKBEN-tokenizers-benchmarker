@@ -6,9 +6,9 @@ import os
 from pathlib import Path
 
 import pytest
-from server.api.keys import is_key_reveal_enabled
 from server.common.utils.encryption import get_hf_key_cipher
 from server.configurations import environment as bootstrap
+from server.configurations import is_key_reveal_enabled
 from server.configurations.startup import (
     get_configuration_manager,
     get_server_settings,

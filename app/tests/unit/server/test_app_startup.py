@@ -70,7 +70,10 @@ def test_create_app_initializes_startup_state(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[str] = []
-    settings = SimpleNamespace(database=SimpleNamespace(embedded_database=True))
+    settings = SimpleNamespace(
+        database=SimpleNamespace(embedded_database=True),
+        jobs=SimpleNamespace(terminal_retention_seconds=3600.0),
+    )
 
     monkeypatch.setattr(app_module, "get_server_settings", lambda: settings)
     monkeypatch.setattr(
@@ -97,7 +100,13 @@ def test_create_app_initializes_startup_state(
 def test_create_app_redirects_root_to_docs(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(app_module, "get_server_settings", lambda: SimpleNamespace())
+    monkeypatch.setattr(
+        app_module,
+        "get_server_settings",
+        lambda: SimpleNamespace(
+            jobs=SimpleNamespace(terminal_retention_seconds=3600.0)
+        ),
+    )
     monkeypatch.setattr(app_module, "run_startup_validations", lambda: None)
     monkeypatch.setattr(app_module, "initialize_database", lambda: None)
 
