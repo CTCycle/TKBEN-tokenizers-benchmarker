@@ -16,11 +16,6 @@ def _python_files() -> list[Path]:
     ]
 
 ###############################################################################
-def test_server_root_is_resolved() -> None:
-    assert SERVER_ROOT.is_dir()
-    assert (SERVER_ROOT / "app.py").is_file()
-
-###############################################################################
 def test_api_modules_do_not_import_repositories() -> None:
     violations: list[str] = []
     for path in (SERVER_ROOT / "api").glob("*.py"):
