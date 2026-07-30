@@ -194,6 +194,8 @@ Determinism:
 
 ## 7. Releases and Repository Hygiene
 
+Current source release: `v3.7.1`.
+
 Continuous integration validates the locked backend and frontend sources. Keep `app/server/uv.lock` and `app/client/package-lock.json` tracked so installations remain reproducible.
 
 GitHub releases provide a versioned repository source ZIP for download. The archive contains tracked source files only; local environments, credentials, dependencies, caches, logs, and generated build output are excluded.
