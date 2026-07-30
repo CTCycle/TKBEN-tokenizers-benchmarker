@@ -390,6 +390,7 @@ class BenchmarkResultBuilder:
         values = getattr(stats.get(tokenizer), source, []) if tokenizer in stats else []
         return [float(value) for value in values if self._is_number(value)]
 
+    # -------------------------------------------------------------------------
     def _histogram_bins(self, values_by_tokenizer: dict[str, list[float]]) -> list[BenchmarkDashboardHistogramBin]:
         finite = [value for values in values_by_tokenizer.values() for value in values if self._is_number(value)]
         if not finite:
