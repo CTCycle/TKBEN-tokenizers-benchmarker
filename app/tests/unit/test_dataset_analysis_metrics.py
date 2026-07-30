@@ -322,15 +322,13 @@ def actual_dataset_metrics() -> dict[str, Any]:
     return _extract_metric_value_map()
 
 ###############################################################################
-def test_dataset_metric_catalog_has_expected_cardinality() -> None:
-    keys = _dataset_metric_keys()
-    assert len(keys) == 77, f"Expected 77 dataset metrics, found {len(keys)}"
-    assert len(set(keys)) == 77, "Dataset metric keys must be unique"
-
-###############################################################################
 def test_dataset_metric_expected_fixture_matches_catalog() -> None:
-    catalog_keys = set(_dataset_metric_keys())
+    catalog_key_list = _dataset_metric_keys()
+    catalog_keys = set(catalog_key_list)
     expected_keys = set(EXPECTED_DATASET_METRICS.keys())
+    assert len(catalog_key_list) == len(catalog_keys), (
+        "Dataset metric keys must be unique"
+    )
     assert expected_keys == catalog_keys, (
         "Expected dataset metric fixture does not align with catalog keys. "
         f"Missing={sorted(catalog_keys - expected_keys)} "

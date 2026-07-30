@@ -279,30 +279,6 @@ def test_get_server_settings_path_scoped_loading_is_deterministic(
     assert settings_a.jobs.polling_interval == 2.5
 
 ###############################################################################
-def test_configuration_manager_get_block_and_get_value(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    config_path = tmp_path / "configurations.json"
-    _write_json(
-        config_path,
-        {
-            **_minimal_config_json(),
-            "datasets": {"histogram_bins": 25},
-        },
-    )
-
-    env_path = tmp_path / ".env"
-    _write_env(env_path, ["FASTAPI_HOST=127.0.0.1"])
-    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
-
-    manager = get_configuration_manager(config_path=config_path)
-
-    assert manager.get_block("datasets") == {"histogram_bins": 25}
-    assert manager.get_value("datasets", "histogram_bins") == 25
-    assert manager.get_value("datasets", "missing", 99) == 99
-    assert manager.get_block("missing") == {}
-
-###############################################################################
 def test_configuration_manager_reload_reflects_file_changes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

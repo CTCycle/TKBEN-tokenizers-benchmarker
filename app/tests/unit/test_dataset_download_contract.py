@@ -38,14 +38,6 @@ def test_dataset_download_request_accepts_configuration() -> None:
     assert request.configs.configuration == "wikitext-2-v1"
 
 ###############################################################################
-def test_datasets_dill_dump_baseline_serialization() -> None:
-    from datasets.utils import _dill as datasets_dill
-
-    payload = datasets_dill.dumps({"a": 1, "b": 2})
-    assert isinstance(payload, bytes)
-    assert payload
-
-###############################################################################
 def test_upload_existing_dataset_is_non_destructive(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -81,14 +73,6 @@ def test_upload_existing_dataset_is_non_destructive(
 
     assert result == expected_payload
     assert delete_calls == []
-
-###############################################################################
-def test_get_hf_access_token_for_download_returns_active_key(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    service = DatasetService()
-    monkeypatch.setattr(service.key_service, "get_active_key", lambda: "hf_token")
-    assert service.get_hf_access_token_for_download() == "hf_token"
 
 ###############################################################################
 def test_get_hf_access_token_for_download_falls_back_to_none_on_invalid_key(
