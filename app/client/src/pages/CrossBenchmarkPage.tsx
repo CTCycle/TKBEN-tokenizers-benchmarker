@@ -1,5 +1,5 @@
-import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, rectSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable';
+import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import BenchmarkRunWizard from '../components/BenchmarkRunWizard';
@@ -11,9 +11,12 @@ import { useBenchmarkDashboardLayout } from '../hooks/useBenchmarkDashboardLayou
 import { useBenchmarkWorkspace, type BenchmarkRunPayload } from '../hooks/useBenchmarkWorkspace';
 import type { BenchmarkDashboardWidgetData } from '../types/api';
 
-const SortableWidget = ({ widget, onKeyboardReorder }: { widget: BenchmarkDashboardWidgetData; onKeyboardReorder: (event: KeyboardEvent<HTMLDivElement>, widgetId: string) => void }) => {
+const SortableWidget = ({ widget, visualization, onVisualizationChange, onKeyboardReorder }: { widget: BenchmarkDashboardWidgetData; visualization: BenchmarkDashboardWidgetData['default_visualization']; onVisualizationChange: (visualization: BenchmarkDashboardWidgetData['default_visualization']) => void; onKeyboardReorder: (event: KeyboardEvent<HTMLButtonElement>, widgetId: string) => void }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: widget.widget_id });
-  return <div ref={setNodeRef} className="benchmark-dashboard-sortable" style={{ transform: CSS.Transform.toString(transform), transition }} {...attributes} {...listeners} data-dragging={isDragging || undefined} onKeyDown={(event) => onKeyboardReorder(event, widget.widget_id)}><BenchmarkMetricWidget widget={widget} /></div>;
+  return <div ref={setNodeRef} className="benchmark-dashboard-sortable" style={{ transform: CSS.Transform.toString(transform), transition }} data-dragging={isDragging || undefined}>
+    <button type="button" className="benchmark-dashboard-drag-handle" {...attributes} {...listeners} aria-label={`Reorder ${widget.label} widget`} title="Drag to reorder" onKeyDown={(event) => onKeyboardReorder(event, widget.widget_id)}><span aria-hidden="true">⋮⋮</span></button>
+    <BenchmarkMetricWidget widget={widget} visualization={visualization} onVisualizationChange={onVisualizationChange} />
+  </div>;
 };
 
 const Customizer = ({ widgets, visibleIds, onApply, onClose, trigger }: { widgets: BenchmarkDashboardWidgetData[]; visibleIds: string[]; onApply: (ids: string[]) => void; onClose: () => void; trigger: RefObject<HTMLButtonElement | null> }) => {
@@ -93,7 +96,7 @@ const Customizer = ({ widgets, visibleIds, onApply, onClose, trigger }: { widget
                   checked={draft.includes(widget.widget_id)}
                   onChange={() => setDraft((current) => current.includes(widget.widget_id) ? current.filter((id) => id !== widget.widget_id) : [...current, widget.widget_id])}
                 />
-                {widget.label} — {widget.description} ({widget.unit}, {widget.visualization})
+                {widget.label} — {widget.description} ({widget.unit}, {widget.default_visualization})
               </label>
             ))}
           </fieldset>
@@ -116,22 +119,33 @@ const CrossBenchmarkPage = () => {
   const customizeButton = useRef<HTMLButtonElement>(null);
   const layout = useBenchmarkDashboardLayout(workspace.activeReport?.dashboard);
   const failed = workspace.activeReport?.tokenizer_results.filter((item) => item.status === 'failed') ?? [];
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     const next = moveDashboardWidget(layout.resolved.orderedWidgetIds, String(active.id), over ? String(over.id) : null);
     if (next !== layout.resolved.orderedWidgetIds) layout.setOrder(next);
   };
 
-  const handleKeyboardReorder = (event: KeyboardEvent<HTMLDivElement>, widgetId: string) => {
-    if (event.key === ' ' || event.code === 'Space') { event.preventDefault(); event.stopPropagation(); setKeyboardDragId((current) => current === widgetId ? null : widgetId); return; }
+  const handleKeyboardReorder = (event: KeyboardEvent<HTMLButtonElement>, widgetId: string) => {
+    if (event.key === ' ' || event.code === 'Space') {
+      event.preventDefault();
+      setKeyboardDragId((current) => current === widgetId ? null : widgetId);
+      return;
+    }
     if (keyboardDragId !== widgetId || !['ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowDown'].includes(event.key)) return;
-    event.preventDefault(); event.stopPropagation();
-    const currentIndex = layout.resolved.orderedWidgetIds.indexOf(widgetId); const direction = event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1; const targetIndex = currentIndex + direction;
-    if (targetIndex >= 0 && targetIndex < layout.resolved.orderedWidgetIds.length) { const next = [...layout.resolved.orderedWidgetIds]; const [moved] = next.splice(currentIndex, 1); next.splice(targetIndex, 0, moved); layout.setOrder(next); }
+    event.preventDefault();
+    const currentIndex = layout.resolved.orderedWidgetIds.indexOf(widgetId);
+    const direction = event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1;
+    const targetIndex = currentIndex + direction;
+    if (targetIndex >= 0 && targetIndex < layout.resolved.orderedWidgetIds.length) {
+      const next = [...layout.resolved.orderedWidgetIds];
+      const [moved] = next.splice(currentIndex, 1);
+      next.splice(targetIndex, 0, moved);
+      layout.setOrder(next);
+    }
   };
 
-  const payload = workspace.activeReport ? { report: workspace.activeReport, visible_widget_ids: layout.resolved.visibleWidgetIds, ordered_widget_ids: layout.resolved.orderedWidgetIds } : null;
+  const payload = workspace.activeReport ? { report: workspace.activeReport, visible_widget_ids: layout.resolved.visibleWidgetIds, ordered_widget_ids: layout.resolved.orderedWidgetIds, visualization_by_widget_id: layout.resolved.visualizationByWidgetId } : null;
 
   return (
     <section className="page-content cross-benchmark-page">
@@ -183,7 +197,7 @@ const CrossBenchmarkPage = () => {
                   <span>Reset</span>
                 </button>
                 <DashboardExportButton dashboardType="benchmark" reportName={workspace.activeReport?.run_name ?? 'benchmark-dashboard'} dashboardPayload={payload} label="Export" />
-                <button type="button" className="cross-benchmark-run-button" aria-label="Run benchmark" title="Run benchmark" disabled={!workspace.activeReport || workspace.loadingReport} onClick={() => setWizardOpen(true)}>
+                <button type="button" className="cross-benchmark-run-button" aria-label="Run benchmark" title="Run benchmark" disabled={workspace.loadingPage || workspace.loadingReport} onClick={() => setWizardOpen(true)}>
                   <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
                   <span>Run</span>
                 </button>
@@ -193,7 +207,7 @@ const CrossBenchmarkPage = () => {
           <main className="cross-benchmark-workspace-main">
             {workspace.activeReport && <>
               <div className="cross-benchmark-kpi-grid">
-                {layout.visibleWidgets.length ? <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}><SortableContext items={layout.visibleWidgets.map((widget) => widget.widget_id)} strategy={rectSortingStrategy}><div className="benchmark-dashboard-grid" aria-label="Benchmark metric widgets. Drag a widget or use Space then arrow keys to reorder it.">{layout.visibleWidgets.map((widget) => <SortableWidget key={widget.widget_id} widget={widget} onKeyboardReorder={handleKeyboardReorder} />)}</div></SortableContext></DndContext> : <p className="empty-state">No metric widgets are selected. Customize the dashboard to show one or more calculated metrics.</p>}
+                {layout.visibleWidgets.length ? <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}><SortableContext items={layout.visibleWidgets.map((widget) => widget.widget_id)} strategy={rectSortingStrategy}><div className="benchmark-dashboard-grid" aria-label="Benchmark metric widgets. Use the reorder buttons to drag a widget or use Space then arrow keys to reorder it.">{layout.visibleWidgets.map((widget) => <SortableWidget key={widget.widget_id} widget={widget} visualization={layout.resolved.visualizationByWidgetId[widget.widget_id]} onVisualizationChange={(visualization) => layout.setVisualization(widget.widget_id, visualization)} onKeyboardReorder={handleKeyboardReorder} />)}</div></SortableContext></DndContext> : <p className="empty-state">No metric widgets are selected. Customize the dashboard to show one or more calculated metrics.</p>}
               </div>
               <p className="sr-only" aria-live="polite">{keyboardDragId ? 'Keyboard widget reordering active. Use arrow keys to move the widget, then Space to finish.' : ''}</p>
               <article className="cross-benchmark-drilldown-card"><h2>Run diagnostics</h2>{failed.length ? failed.map((item) => <p key={item.tokenizer}>{item.tokenizer}: {item.error_type ?? 'Failed'} — {item.error_message ?? 'No message'}</p>) : <p>No tokenizer failures recorded for this run.</p>}</article>
@@ -201,7 +215,7 @@ const CrossBenchmarkPage = () => {
           </main>
         </div>
       )}
-      {wizardOpen && <BenchmarkRunWizard isOpen={wizardOpen} categories={workspace.metricCategories} availableTokenizers={workspace.tokenizers} availableDatasets={workspace.datasets} defaultDatasetName={workspace.datasets[0] ?? null} defaultMaxDocuments={1000} running={workspace.runningBenchmark} onCancel={workspace.cancelBenchmark} onClose={() => setWizardOpen(false)} onRun={async (runPayload: BenchmarkRunPayload) => { await workspace.runFromWizard(runPayload); }} />}
+      {wizardOpen && <BenchmarkRunWizard isOpen={wizardOpen} categories={workspace.metricCategories} availableTokenizers={workspace.tokenizers} availableDatasets={workspace.datasets} defaultDatasetName={workspace.datasets[0] ?? null} defaultMaxDocuments={1000} running={workspace.runningBenchmark} onCancel={workspace.cancelBenchmark} onClose={() => setWizardOpen(false)} onRun={async (runPayload: BenchmarkRunPayload) => { if (await workspace.runFromWizard(runPayload)) setWizardOpen(false); }} />}
       {customizing && <Customizer widgets={layout.widgets} visibleIds={layout.resolved.visibleWidgetIds} onApply={layout.apply} onClose={() => setCustomizing(false)} trigger={customizeButton} />}
     </section>
   );

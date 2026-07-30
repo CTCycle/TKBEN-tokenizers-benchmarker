@@ -148,7 +148,8 @@ def build_benchmark_payload() -> dict:
                         "label": "Vocabulary size",
                         "description": "Vocabulary size by tokenizer",
                         "unit": "tokens",
-                        "visualization": "bar",
+                        "default_visualization": "bar",
+                        "compatible_visualizations": ["bar", "horizontal_bar"],
                         "width": "standard",
                         "points": [
                             {"tokenizer": "bert-base-uncased", "value": 30522},
@@ -160,7 +161,8 @@ def build_benchmark_payload() -> dict:
                         "label": "Tokens per second",
                         "description": "Tokenization throughput",
                         "unit": "tokens/s",
-                        "visualization": "interval_bar",
+                        "default_visualization": "interval_bar",
+                        "compatible_visualizations": ["interval_bar", "dot_whisker"],
                         "width": "wide",
                         "points": [
                             {"tokenizer": "bert-base-uncased", "value": 11000, "interval_low": 10500, "interval_high": 11500},
@@ -172,7 +174,8 @@ def build_benchmark_payload() -> dict:
                         "label": "Hidden metric",
                         "description": "Must not be exported",
                         "unit": "ratio",
-                        "visualization": "bar",
+                        "default_visualization": "bar",
+                        "compatible_visualizations": ["bar", "horizontal_bar"],
                         "width": "standard",
                         "points": [{"tokenizer": "bert-base-uncased", "value": 1}],
                     },
@@ -182,6 +185,7 @@ def build_benchmark_payload() -> dict:
         "selected_distribution_tokenizer": "bert-base-uncased",
         "visible_widget_ids": ["benchmark.speed", "benchmark.vocabulary"],
         "ordered_widget_ids": ["benchmark.speed", "benchmark.hidden", "benchmark.vocabulary"],
+        "visualization_by_widget_id": {"benchmark.speed": "dot_whisker", "benchmark.vocabulary": "horizontal_bar"},
     }
 
 ###############################################################################

@@ -1,10 +1,18 @@
 [CmdletBinding()]
-param()
+param(
+    [switch]$Launch
+)
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
-$RepoRoot = [IO.Path]::GetFullPath($PSScriptRoot)
+$RepoRoot = if ($PSScriptRoot) {
+    [IO.Path]::GetFullPath($PSScriptRoot)
+} elseif ($PSCommandPath) {
+    [IO.Path]::GetFullPath((Split-Path -Parent $PSCommandPath))
+} else {
+    [IO.Path]::GetFullPath((Get-Location).Path)
+}
 $RuntimeDir = Join-Path $RepoRoot 'runtimes'
 $PythonDir = Join-Path $RuntimeDir 'python'
 $UvDir = Join-Path $RuntimeDir 'uv'
@@ -16,6 +24,7 @@ $NodeExe = Join-Path $NodeDir 'node.exe'
 $NpmCmd = Join-Path $NodeDir 'npm.cmd'
 $ServerDir = Join-Path $RepoRoot 'app\server'
 $ClientDir = Join-Path $RepoRoot 'app\client'
+$AppDir = Join-Path $RepoRoot 'app'
 $VenvDir = Join-Path $ServerDir '.venv'
 $VenvPython = Join-Path $VenvDir 'Scripts\python.exe'
 $EnvFile = Join-Path $RepoRoot 'settings\.env'
@@ -113,7 +122,6 @@ function Import-Environment {
         UI_HOST = '127.0.0.1'
         UI_PORT = '8001'
         RELOAD = 'false'
-        OPTIONAL_DEPENDENCIES = 'false'
         ALWAYS_REBUILD = 'true'
         # Backend logs are visible by default when the setting is absent.
         BACKEND_LOGS_VISIBLE = 'true'
@@ -228,8 +236,52 @@ function Install-Runtimes {
     Write-Ok "Node.js ready: $(& $NodeExe --version)"
 }
 
+function Get-FrontendDependencyFingerprint {
+    $manifestPaths = @(
+        (Join-Path $ClientDir 'package.json'),
+        (Join-Path $ClientDir 'package-lock.json')
+    ) | Where-Object { Test-Path -LiteralPath $_ }
+
+    if (-not $manifestPaths) { throw 'Frontend package manifests are missing.' }
+    return (($manifestPaths | ForEach-Object { (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash }) -join ':')
+}
+
+function Test-FrontendDependenciesReady {
+    $nodeModulesDir = Join-Path $ClientDir 'node_modules'
+    $stampPath = Join-Path $nodeModulesDir '.tkben-dependencies.json'
+    $npmLockPath = Join-Path $nodeModulesDir '.package-lock.json'
+
+    if (-not (Test-Path -LiteralPath $stampPath) -or -not (Test-Path -LiteralPath $npmLockPath)) {
+        return $false
+    }
+
+    try {
+        $stamp = Get-Content -LiteralPath $stampPath -Raw | ConvertFrom-Json
+        return (
+            $stamp.packageFingerprint -eq (Get-FrontendDependencyFingerprint) -and
+            $stamp.nodeVersion -eq (& $NodeExe --version).Trim() -and
+            (Test-Path -LiteralPath (Join-Path $nodeModulesDir '.bin\vite.cmd'))
+        )
+    } catch {
+        return $false
+    }
+}
+
+function Write-FrontendDependencyStamp {
+    $stampPath = Join-Path $ClientDir 'node_modules\.tkben-dependencies.json'
+    [ordered]@{
+        packageFingerprint = Get-FrontendDependencyFingerprint
+        nodeVersion = (& $NodeExe --version).Trim()
+    } | ConvertTo-Json | Set-Content -LiteralPath $stampPath -Encoding utf8
+}
+
 function Sync-Dependencies {
-    param([bool]$BuildFrontend = $true)
+    param(
+        [bool]$BuildFrontend = $true,
+        [switch]$UseCachedFrontendDependencies,
+        [ValidateSet('Standard', 'Development')]
+        [string]$InstallationType = 'Standard'
+    )
 
     Import-Environment
     Install-Runtimes
@@ -237,7 +289,7 @@ function Sync-Dependencies {
 
     Write-Step 'Installing Python dependencies.'
     $uvArguments = @('sync', '--python', $PythonExe)
-    if ($env:OPTIONAL_DEPENDENCIES -ieq 'true') { $uvArguments += '--all-extras' }
+    if ($InstallationType -eq 'Development') { $uvArguments += '--all-extras' }
     Push-Location $ServerDir
     try {
         $uvExitCode = 1
@@ -257,15 +309,21 @@ function Sync-Dependencies {
         Pop-Location
     }
 
-    Write-Step 'Installing frontend dependencies.'
     Push-Location $ClientDir
     try {
-        if (Test-Path -LiteralPath (Join-Path $ClientDir 'package-lock.json')) {
-            $npmExitCode = Invoke-Npm ci
+        $frontendInstallRequired = -not $UseCachedFrontendDependencies -or -not (Test-FrontendDependenciesReady)
+        if ($frontendInstallRequired) {
+            Write-Step 'Installing frontend dependencies.'
+            if (Test-Path -LiteralPath (Join-Path $ClientDir 'package-lock.json')) {
+                $npmExitCode = Invoke-Npm ci
+            } else {
+                $npmExitCode = Invoke-Npm install
+            }
+            if ($npmExitCode -ne 0) { throw "npm dependency installation failed with exit code $npmExitCode." }
+            Write-FrontendDependencyStamp
         } else {
-            $npmExitCode = Invoke-Npm install
+            Write-Ok 'Frontend dependencies are unchanged; skipped clean install.'
         }
-        if ($npmExitCode -ne 0) { throw "npm dependency installation failed with exit code $npmExitCode." }
 
         if ($BuildFrontend) {
             Write-Step 'Building frontend.'
@@ -277,6 +335,38 @@ function Sync-Dependencies {
     } finally {
         Pop-Location
     }
+}
+
+function Test-DependenciesReady {
+    $frontendPackage = Join-Path $ClientDir 'package.json'
+    $frontendLock = Join-Path $ClientDir 'package-lock.json'
+    $frontendModules = Join-Path $ClientDir 'node_modules'
+    $frontendRunner = Join-Path $frontendModules '.bin\vite.cmd'
+    $backendEntrypoint = Join-Path $AppDir 'server/app.py'
+
+    if (-not (Test-Path -LiteralPath $PythonExe) -or
+        -not (Test-Path -LiteralPath $UvExe) -or
+        -not (Test-Path -LiteralPath $NodeExe) -or
+        -not (Test-Path -LiteralPath $NpmCmd) -or
+        -not (Test-Path -LiteralPath $VenvPython) -or
+        -not (Test-Path -LiteralPath $backendEntrypoint) -or
+        -not (Test-Path -LiteralPath $frontendPackage) -or
+        -not (Test-Path -LiteralPath $frontendLock) -or
+        -not (Test-Path -LiteralPath (Join-Path $frontendModules '.package-lock.json')) -or
+        -not (Test-Path -LiteralPath $frontendRunner)) {
+        return $false
+    }
+
+    & $PythonExe --version *> $null
+    if ($LASTEXITCODE -ne 0) { return $false }
+    & $UvExe --version *> $null
+    if ($LASTEXITCODE -ne 0) { return $false }
+    & $NodeExe --version *> $null
+    if ($LASTEXITCODE -ne 0) { return $false }
+    & $VenvPython -c 'import fastapi, uvicorn' *> $null
+    if ($LASTEXITCODE -ne 0) { return $false }
+
+    return $true
 }
 
 function Stop-PortListeners([int]$Port) {
@@ -298,7 +388,22 @@ function Get-PortProcessId([int]$Port) {
 
 function Launch-Application {
     Import-Environment
-    Sync-Dependencies -BuildFrontend ($env:ALWAYS_REBUILD -ieq 'true')
+    if (-not (Test-DependenciesReady)) {
+        Write-Step 'Required application environments are missing or unusable; installing dependencies.'
+        Sync-Dependencies -BuildFrontend ($env:ALWAYS_REBUILD -ieq 'true') -InstallationType 'Standard'
+    }
+    else {
+        Write-Ok 'Application environments are ready; skipped dependency installation.'
+        if ($env:ALWAYS_REBUILD -ieq 'true') {
+            Push-Location $ClientDir
+            try {
+                $npmExitCode = Invoke-Npm run build
+                if ($npmExitCode -ne 0) { throw "Frontend build failed with exit code $npmExitCode." }
+            } finally {
+                Pop-Location
+            }
+        }
+    }
     Import-Environment
 
     $backendPort = [int]$env:FASTAPI_PORT
@@ -341,9 +446,19 @@ function Launch-Application {
 }
 
 function Install-Dependencies {
-    Sync-Dependencies
+    $installationType = Read-InstallationType
+    Sync-Dependencies -InstallationType $installationType
     if (Test-Path -LiteralPath $UvCacheDir) { Remove-Item -LiteralPath $UvCacheDir -Recurse -Force }
     Write-Ok 'Dependencies installed and frontend built.'
+}
+
+function Read-InstallationType {
+    $selection = (Read-Host 'Installation type [1=Development, 2=Standard]').Trim()
+    switch ($selection) {
+        '1' { return 'Development' }
+        '2' { return 'Standard' }
+        default { throw 'Invalid installation type. Enter 1 for Development or 2 for Standard.' }
+    }
 }
 
 function Initialize-Database {
@@ -411,6 +526,15 @@ function Wait-ForMenu {
     [Console]::ReadKey($true) | Out-Null
 }
 
+function Clear-MenuScreen {
+    if ([Console]::IsOutputRedirected) { return }
+    try {
+        Clear-Host
+    } catch {
+        # Hosts without a usable cursor handle can still render the menu.
+    }
+}
+
 function Write-MenuItem([string]$Number, [string]$Label, [string]$Description, [ConsoleColor]$Color = [ConsoleColor]::White) {
     Write-Host "  [$Number] " -NoNewline -ForegroundColor $Color
     Write-Host $Label -NoNewline -ForegroundColor White
@@ -419,8 +543,10 @@ function Write-MenuItem([string]$Number, [string]$Label, [string]$Description, [
 
 function Show-Menu {
     while ($true) {
-        Clear-Host
-        $host.UI.RawUI.WindowTitle = 'TKBEN | Tokenizers Benchmarker'
+        Clear-MenuScreen
+        if (-not [Console]::IsOutputRedirected) {
+            try { $host.UI.RawUI.WindowTitle = 'TKBEN | Tokenizers Benchmarker' } catch { }
+        }
         Write-Host
         Write-Host '  +----------------------------------------------------------+' -ForegroundColor DarkCyan
         Write-Host '  |' -NoNewline -ForegroundColor DarkCyan
@@ -471,6 +597,11 @@ function Show-Menu {
         }
         Wait-ForMenu
     }
+}
+
+if ($Launch) {
+    Launch-Application
+    exit 0
 }
 
 Show-Menu

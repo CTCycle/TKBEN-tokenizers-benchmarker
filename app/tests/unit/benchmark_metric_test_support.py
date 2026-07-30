@@ -107,7 +107,13 @@ def run_deterministic_benchmark() -> dict[str, Any]:
 ###############################################################################
 def build_benchmark_metric_value_map(result: dict[str, Any]) -> dict[str, Any]:
     tokenizer_result = result["tokenizer_results"][0]
-    efficiency_metrics = result["chart_data"]["efficiency"][0]
+    widgets = result["dashboard"]["widgets"]
+    efficiency_widget = next(
+        widget
+        for widget in widgets
+        if "eff.encode_tokens_per_second_mean" in widget["metric_keys"]
+    )
+    efficiency_metrics = efficiency_widget["points"][0]
     metric_availability = result.get("runtime_metadata", {}).get(
         "metric_availability", {}
     )
