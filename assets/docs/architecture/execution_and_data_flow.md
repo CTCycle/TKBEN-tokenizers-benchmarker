@@ -1,5 +1,5 @@
 # Execution and Data Flow
-Last updated: 2026-07-30
+Last updated: 2026-08-01
 
 ## Layered Architecture
 Primary backend flow:
@@ -35,7 +35,7 @@ Primary backend flow:
 - `services/benchmark_engine.py`
   - Warmup and timed trial batch runner with per-batch observations and cancellation checks.
 - `services/managed_jobs.py`
-  - Shared typed dispatcher for conflict checks, job start, initial status verification, polling metadata, and initialization failures.
+  - Shared typed dispatcher for conflict checks, job start, initial status verification, polling metadata, and initialization failures; `server.api.helpers.ManagedJobHttpAdapter` maps its errors to HTTP responses.
 - `repositories/database/backend.py`
   - `get_database()` is the single cached accessor for the configured backend; repositories receive or resolve this dependency instead of importing module-level database state.
 - `repositories/serialization/benchmark_reports.py`

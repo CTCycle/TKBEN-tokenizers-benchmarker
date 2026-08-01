@@ -1,5 +1,5 @@
 # TKBEN Tokenizer Benchmarker
-Last updated: 2026-07-30
+Last updated: 2026-08-01
 [![Release](https://img.shields.io/github/v/release/CTCycle/TKBEN-tokenizers-benchmarker?display_name=tag)](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.14-3776AB?logo=python&logoColor=white)
 ![Node.js](https://img.shields.io/badge/node.js-%3E%3D22-339933?logo=node.js&logoColor=white)
@@ -175,6 +175,7 @@ Core runtime keys you will commonly edit:
 - `UI_HOST`, `UI_PORT`
 - `VITE_API_BASE_URL` (normally `/api`)
 - `RELOAD`
+- `ALWAYS_REBUILD` (`true` or `false`; controls whether the launcher rebuilds the frontend at application start)
 - `BACKEND_LOGS_VISIBLE` (`true` or `false`; controls the dedicated backend log terminal)
 - `ALLOW_KEY_REVEAL`
 - `TKBEN_DATA_DIR`, `TKBEN_LOG_DIR`, `TKBEN_CONFIG_DIR`
@@ -186,7 +187,7 @@ Core runtime keys you will commonly edit:
 - `DATABASE_USERNAME`, `DATABASE_PASSWORD`
 - `DATABASE_SSL`, `DATABASE_SSL_CA`, `DATABASE_CONNECT_TIMEOUT`
 - `DATABASE_INSERT_BATCH_SIZE`
-- `HF_KEYS_ENCRYPTION_KEY`
+- `HF_KEYS_ENCRYPTION_MATERIAL_FILE`
 
 Determinism:
 - Backend lockfile: `app/server/uv.lock` (generated/updated directly by running `uv sync` from `app/server`).
