@@ -1,5 +1,5 @@
 # System Overview
-Last updated: 2026-07-30
+Last updated: 2026-08-01
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
@@ -10,13 +10,10 @@ TKBEN is a tokenizer benchmarking platform with:
 Backend APIs are mounted under `/api/*`. Frontend calls `/api` and relies on the Vite proxy in dev and preview modes.
 
 ## Repository Structure
-Source-level structure, with generated folders omitted:
+Source-level structure, with generated and environment-specific folders omitted:
 
 ```text
 .
-├─ app/server/
-│  ├─ .venv/
-│  └─ uv.lock
 ├─ assets/
 │  ├─ docs/
 │  └─ figures/
@@ -32,9 +29,10 @@ Source-level structure, with generated folders omitted:
 │  │  ├─ public/
 │  │  │  └─ tkben-logo.png
 │  │  ├─ src/
-│  │  └─ dist/
+│  │  └─ package-lock.json
 │  ├─ server/
 │  │  ├─ pyproject.toml
+│  │  ├─ uv.lock
 │  │  ├─ app.py
 │  │  ├─ api/
 │  │  ├─ configurations/
@@ -45,7 +43,7 @@ Source-level structure, with generated folders omitted:
 │  ├─ scripts/
 │  ├─ tests/
 │  └─ resources/
-└─ start_on_windows.ps1
+└─ LICENSE
 ```
 
 ## Application Entry Points
@@ -65,6 +63,7 @@ Source-level structure, with generated folders omitted:
 - `server.services.TokenizersService` owns Hugging Face discovery, catalog, download, cache, persistence, and custom-tokenizer workflows.
 - `server.services.TokenizerReportingService` owns tokenizer metadata, vocabulary analysis, report generation, and report retrieval.
 - `server.services.dataset_statistics` owns the focused `LengthStatistics` and `HistogramBuilder` components used by dataset analysis.
+- `server.services.ManagedJobService`, exposed to API handlers through `ManagedJobHttpAdapter`, centralizes job conflict checks, start-up, and initial status validation.
 - There are no legacy service aliases or compatibility forwarding methods between these boundaries.
 
 ## Runtime Interaction Topology

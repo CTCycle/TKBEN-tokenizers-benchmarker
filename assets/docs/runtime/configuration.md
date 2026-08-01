@@ -1,5 +1,5 @@
 # Configuration
-Last updated: 2026-07-21
+Last updated: 2026-08-01
 
 ## Environment File
 Primary launcher runtime env file:
@@ -13,7 +13,7 @@ Primary launcher runtime env file:
 - `UI_PORT`
 - `VITE_API_BASE_URL` (default `/api`)
 - `RELOAD`
-- `ALWAYS_REBUILD` (accepts only `true` or `false`; defaults to `true` and controls whether the frontend is rebuilt when the application starts)
+- `ALWAYS_REBUILD` (accepts only `true` or `false`; the launcher defaults to `true` when the setting is absent, while `settings/.env.example` sets it to `false`; controls whether the frontend is rebuilt when the application starts)
 - `BACKEND_LOGS_VISIBLE` (accepts only `true` or `false`; shows backend logs in a dedicated terminal when `true`, and defaults to `true` when absent)
 - `ALLOW_KEY_REVEAL`
 - `HF_KEYS_ENCRYPTION_MATERIAL_FILE`
