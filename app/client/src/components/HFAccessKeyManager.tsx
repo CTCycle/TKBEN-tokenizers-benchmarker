@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import DismissibleBanner from './DismissibleBanner';
 import HFAccessKeyRow from './HFAccessKeyRow';
+import ModalCloseButton from './ModalCloseButton';
 import { useHFAccessKeys } from '../hooks/useHFAccessKeys';
 
 type HFAccessKeyManagerProps = {
@@ -68,16 +69,10 @@ const HFAccessKeyManager = ({ isOpen, onClose }: HFAccessKeyManagerProps) => {
               Store access keys for gated Hugging Face downloads.
             </p>
           </div>
-          <button
-            type="button"
-            className="icon-button subtle modal-close-button"
+          <ModalCloseButton
+            ariaLabel="Close key manager"
             onClick={handleClose}
-            aria-label="Close key manager"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M6 6l12 12M18 6L6 18" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </button>
+          />
         </header>
 
         <div className="key-manager-add-row">

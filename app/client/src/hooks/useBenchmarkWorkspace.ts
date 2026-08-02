@@ -12,29 +12,8 @@ import type {
   BenchmarkMetricCatalogCategory,
   BenchmarkReportSummary,
   BenchmarkRunResponse,
+  BenchmarkRunWizardPayload,
 } from '../types/api';
-
-export type BenchmarkRunPayload = {
-  tokenizers: string[];
-  dataset_name: string;
-  config: {
-    max_documents?: number;
-    warmup_trials: number;
-    timed_trials: number;
-    batch_size: number;
-    seed: number;
-    parallelism: number;
-    include_lm_metrics: boolean;
-    add_special_tokens?: boolean;
-    padding?: boolean;
-    truncation?: boolean;
-    max_length?: number | null;
-    store_per_document_stats?: boolean;
-    per_document_sample_size?: number;
-  };
-  run_name: string;
-  selected_metric_keys: string[];
-};
 
 type BenchmarkWorkspaceResult = {
   tokenizers: string[];
@@ -50,7 +29,7 @@ type BenchmarkWorkspaceResult = {
   error: string | null;
   clearError: () => void;
   loadReportById: (reportId: number) => Promise<void>;
-  runFromWizard: (payload: BenchmarkRunPayload) => Promise<boolean>;
+  runFromWizard: (payload: BenchmarkRunWizardPayload) => Promise<boolean>;
 };
 
 const getErrorMessage = (error: unknown, fallback: string): string =>
@@ -132,7 +111,7 @@ export const useBenchmarkWorkspace = (): BenchmarkWorkspaceResult => {
     void loadInitial();
   }, [refreshReportSummaries]);
 
-  const runFromWizard = useCallback(async (payload: BenchmarkRunPayload) => {
+  const runFromWizard = useCallback(async (payload: BenchmarkRunWizardPayload) => {
     setRunningBenchmark(true);
     setError(null);
     try {

@@ -17,6 +17,7 @@ import CatalogFilterToolbar from '../components/CatalogFilterToolbar';
 import DashboardExportButton from '../components/DashboardExportButton';
 import DismissibleBanner from '../components/DismissibleBanner';
 import HistogramChartCard from '../components/HistogramChartCard';
+import ModalCloseButton from '../components/ModalCloseButton';
 import {
   CHART_AXIS_PROPS,
   CHART_COLORS,
@@ -27,12 +28,23 @@ import {
 } from '../common/chartStyles';
 import { useDataset } from '../contexts/DatasetContext';
 import { useWordCloudLayout } from '../hooks/useWordCloudLayout';
-import type {
-  DatasetAnalysisRequest,
-  HistogramData,
-  WordCloudTerm,
-  WordFrequency,
-} from '../types/api';
+import {
+  buildWordCloudFromWordFrequencies,
+  buildZipfCurveFromWordFrequencies,
+  hasMetricValue,
+  isRecord,
+  metricDisplayValue,
+  normalizeCount,
+  normalizePercent,
+  parseWordCloudTerms,
+  parseWordFrequencyItems,
+  parseZipfCurve,
+  toHistogramSeries,
+  toNumber,
+  tooltipCountFormatter,
+  tooltipPercentFormatter,
+} from '../features/dataset/datasetDashboardData';
+import type { DatasetAnalysisRequest } from '../types/api';
 
 type DatasetPreset = {
   id: string;
@@ -212,189 +224,6 @@ const PREDEFINED_DATASETS: DatasetGroup[] = [
 
 const DONUT_COLORS = DATASET_DONUT_COLORS;
 
-const toNumber = (value: unknown, fallback = 0): number => {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value;
-  }
-  if (typeof value === 'string') {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) {
-      return parsed;
-    }
-  }
-  return fallback;
-};
-
-const normalizePercent = (value: number): string => `${(value * 100).toFixed(2)}%`;
-
-const normalizeCount = (value: number): string => Math.round(value).toLocaleString();
-const hasMetricValue = (value: unknown): boolean => {
-  if (typeof value === 'number') {
-    return Number.isFinite(value);
-  }
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return false;
-    }
-    return Number.isFinite(Number(trimmed));
-  }
-  return false;
-};
-const metricDisplayValue = (
-  value: unknown,
-  formatter: (numeric: number) => string,
-): string => (
-  hasMetricValue(value)
-    ? formatter(toNumber(value))
-    : '—'
-);
-
-const toHistogramSeries = (histogram: HistogramData | null): Array<{ bin: string; count: number }> => {
-  if (!histogram) {
-    return [];
-  }
-  return histogram.counts.map((count, index) => ({
-    bin: histogram.bins[index] ?? String(index),
-    count,
-  }));
-};
-
-const parseJsonLike = (value: unknown): unknown => {
-  if (typeof value !== 'string') {
-    return value;
-  }
-  const candidate = value.trim();
-  if (!candidate) {
-    return null;
-  }
-  try {
-    return JSON.parse(candidate);
-  } catch {
-    return value;
-  }
-};
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const parseWordFrequencyItems = (value: unknown): WordFrequency[] => {
-  const parsed = parseJsonLike(value);
-  if (!Array.isArray(parsed)) {
-    return [];
-  }
-  return parsed
-    .map((item) => {
-      if (!isRecord(item)) {
-        return null;
-      }
-      const payload = item;
-      const word = typeof payload.word === 'string' ? payload.word : '';
-      if (!word) {
-        return null;
-      }
-      const count = Math.max(0, Math.round(toNumber(payload.count, 0)));
-      return { word, count };
-    })
-    .filter((item): item is WordFrequency => item !== null && item.count > 0);
-};
-
-const parseWordCloudTerms = (value: unknown): WordCloudTerm[] => {
-  const parsed = parseJsonLike(value);
-  if (!Array.isArray(parsed)) {
-    return [];
-  }
-
-  const terms = parsed
-    .map((item) => {
-      if (!isRecord(item)) {
-        return null;
-      }
-      const payload = item;
-      const word = typeof payload.word === 'string' ? payload.word : '';
-      if (!word) {
-        return null;
-      }
-      return {
-        word,
-        count: Math.max(0, Math.round(toNumber(payload.count, 0))),
-        weight: toNumber(payload.weight, 0),
-      };
-    })
-    .filter((item): item is WordCloudTerm => item !== null && item.count > 0);
-
-  if (!terms.length) {
-    return [];
-  }
-
-  const maxCount = Math.max(...terms.map((item) => item.count));
-  return terms.map((item) => ({
-    ...item,
-    weight: item.weight > 0
-      ? item.weight
-      : Math.max(1, Math.round((item.count / Math.max(1, maxCount)) * 100)),
-  }));
-};
-
-const parseZipfCurve = (value: unknown): Array<{ rank: number; frequency: number }> => {
-  const parsed = parseJsonLike(value);
-  if (!Array.isArray(parsed)) {
-    return [];
-  }
-  return parsed
-    .map((item, index) => {
-      if (!item || typeof item !== 'object') {
-        return null;
-      }
-      if (!isRecord(item)) {
-        return null;
-      }
-      const payload = item;
-      return {
-        rank: toNumber(payload.rank, index + 1),
-        frequency: toNumber(payload.frequency, 0),
-      };
-    })
-    .filter((item): item is { rank: number; frequency: number } => item !== null && item.rank > 0 && item.frequency > 0)
-    .sort((a, b) => a.rank - b.rank)
-    .slice(0, 200);
-};
-
-const tooltipPercentFormatter = (value: unknown): string =>
-  normalizePercent(toNumber(value, 0));
-
-const tooltipCountFormatter = (
-  value: unknown,
-): [string, 'count'] => [normalizeCount(toNumber(value, 0)), 'count'];
-
-const buildZipfCurveFromWordFrequencies = (
-  items: WordFrequency[],
-): Array<{ rank: number; frequency: number }> =>
-  items
-    .filter((item) => item.count > 0)
-    .sort((a, b) => b.count - a.count || a.word.localeCompare(b.word))
-    .map((item, index) => ({
-      rank: index + 1,
-      frequency: item.count,
-    }))
-    .slice(0, 200);
-
-const buildWordCloudFromWordFrequencies = (items: WordFrequency[]): WordCloudTerm[] => {
-  const ranked = items
-    .filter((item) => item.count > 0)
-    .sort((a, b) => b.count - a.count || a.word.localeCompare(b.word))
-    .slice(0, 120);
-  if (!ranked.length) {
-    return [];
-  }
-  const maxCount = Math.max(...ranked.map((item) => item.count));
-  return ranked.map((item) => ({
-    word: item.word,
-    count: item.count,
-    weight: Math.max(1, Math.round((item.count / Math.max(1, maxCount)) * 100)),
-  }));
-};
-
 const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProps) => {
   const {
     datasetName,
@@ -556,12 +385,9 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
     return buildWordCloudFromWordFrequencies(mostCommonWords);
   }, [aggregate, hasPersistedReport, mostCommonWords, validationReport]);
   const { wordCloudLayout, wordCloudRef } = useWordCloudLayout(wordCloudTerms);
-  const datasetExportReportName = useMemo(() => {
-    if (!validationReport?.dataset_name) {
-      return 'dataset-dashboard-report';
-    }
-    return `dataset-${validationReport.dataset_name}-report-${validationReport.report_id ?? 'latest'}`;
-  }, [validationReport]);
+  const datasetExportReportName = validationReport?.dataset_name
+    ? `dataset-${validationReport.dataset_name}-report-${validationReport.report_id ?? 'latest'}`
+    : 'dataset-dashboard-report';
 
   const handlePresetSelect = (preset: DatasetPreset) => {
     setSelectedPreset(preset.id);
@@ -645,13 +471,13 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                 sourceLabel="Source"
                 sourceValue={datasetSourceFilter}
                 sourceOptions={[{ value: 'all', label: 'All datasets' }, { value: 'public', label: 'Public' }, { value: 'custom', label: 'Custom' }]}
-                onSourceChange={(value) => setDatasetSourceFilter(value as 'all' | 'public' | 'custom')}
+                onSourceChange={setDatasetSourceFilter}
                 numericLabel="Documents"
                 numericValue={documentCountValue}
                 numericOperator={documentCountOperator}
                 numericPlaceholder="Any count"
                 onNumericValueChange={setDocumentCountValue}
-                onNumericOperatorChange={(value) => setDocumentCountOperator(value as 'at_least' | 'at_most')}
+                onNumericOperatorChange={setDocumentCountOperator}
                 addButtonLabel="Add dataset"
                 addButtonTitle="Add or import a dataset"
                 onAdd={() => setIsModalOpen(true)}
@@ -1085,20 +911,14 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
                     <path d="M4 19h16" strokeWidth="2" strokeLinecap="round" />
                   </svg>
                 </button>
-                <button
-                  type="button"
-                  className="icon-button subtle modal-close-button"
-                  aria-label="Close dataset selector"
+                <ModalCloseButton
+                  ariaLabel="Close dataset selector"
                   title="Close dataset selector"
                   onClick={() => {
                     setIsInsertByNameOpen(false);
                     setIsModalOpen(false);
                   }}
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M6 6l12 12M18 6L6 18" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                </button>
+                />
               </div>
             </header>
             <input

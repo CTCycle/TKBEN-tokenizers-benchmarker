@@ -81,6 +81,55 @@ class TestDatasetPage:
         expect(page.get_by_role("button", name="Add dataset")).to_be_visible()
 
     # -------------------------------------------------------------------------
+    def test_catalog_race_keeps_loading_owned_by_newest_request(
+        self, page: Page, base_url: str
+    ) -> None:
+        """An older catalog response must not clear loading for a newer request."""
+        page.add_init_script(
+            """
+            (() => {
+              const nativeFetch = globalThis.fetch.bind(globalThis);
+              globalThis.fetch = (input, init) => {
+                const requestUrl = new URL(
+                  typeof input === 'string' ? input : input.url,
+                  window.location.href,
+                );
+                if (!requestUrl.pathname.endsWith('/api/datasets/list')) {
+                  return nativeFetch(input, init);
+                }
+                const search = requestUrl.searchParams.get('search');
+                const delay = search === 'first' ? 500 : search === 'second' ? 1000 : 0;
+                const datasetName = search ? `custom/${search}` : 'custom/base';
+                return new Promise((resolve) => {
+                  window.setTimeout(() => resolve(new Response(JSON.stringify({
+                    datasets: [{ dataset_name: datasetName, document_count: 1 }],
+                    count: 1,
+                  }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                  })), delay);
+                });
+              };
+            })();
+            """
+        )
+        page.goto(f"{base_url}/dataset")
+        search_input = page.get_by_label("Search datasets")
+        expect(search_input).to_be_visible()
+
+        search_input.fill("first")
+        page.wait_for_timeout(300)
+        search_input.fill("second")
+        page.wait_for_timeout(500)
+
+        expect(page.get_by_text("Loading datasets...", exact=True)).to_be_visible()
+        expect(page.locator(".dataset-preview-row").filter(has_text="custom/second")).to_have_count(0)
+
+        page.wait_for_timeout(850)
+        expect(page.get_by_text("Loading datasets...", exact=True)).to_have_count(0)
+        expect(page.locator(".dataset-preview-row").filter(has_text="custom/second")).to_have_count(1)
+
+    # -------------------------------------------------------------------------
     def test_row_click_loads_latest_report_for_selected_dataset(
         self,
         page: Page,
@@ -210,9 +259,9 @@ class TestCrossBenchmarkPage:
     ) -> None:
         """Cross benchmark page should render control panel and report selector."""
         page.goto(f"{base_url}/cross-benchmark")
-        expect(page.get_by_text("Tokenizer Benchmark Dashboard", exact=True)).to_be_visible()
-        expect(page.get_by_role("button", name="Start benchmark")).to_be_visible()
-        expect(page.locator("#benchmark-report-selector")).to_be_visible()
+        expect(page.get_by_role("combobox", name="Select report")).to_be_visible()
+        expect(page.get_by_role("button", name="Run benchmark")).to_be_visible()
+        expect(page.locator("#cross-benchmark-report-select")).to_be_visible()
 
     # -------------------------------------------------------------------------
     def test_cross_benchmark_wizard_navigation_and_validation(
@@ -222,7 +271,7 @@ class TestCrossBenchmarkPage:
     ) -> None:
         """Wizard should open, navigate to step 2, and enforce required step-2 selections."""
         page.goto(f"{base_url}/cross-benchmark")
-        page.get_by_role("button", name="Start benchmark").click()
+        page.get_by_role("button", name="Run benchmark").click()
         expect(page.get_by_text("1. Metrics")).to_be_visible()
         expect(page.get_by_text("2. Inputs")).to_be_visible()
         expect(page.get_by_text("3. Summary")).to_be_visible()
@@ -336,12 +385,8 @@ class TestCrossBenchmarkPage:
         )
 
         page.goto(f"{base_url}/cross-benchmark")
-        report_selector = page.locator("#benchmark-report-selector")
+        report_selector = page.locator("#cross-benchmark-report-select")
         expect(report_selector).to_contain_text("mock run")
         report_selector.select_option("1")
         expect(page.get_by_text("Run Diagnostics")).to_be_visible()
-        expect(page.get_by_role("cell", name="broken/tokenizer").first).to_be_visible()
-        expect(page.get_by_text("RuntimeError")).to_be_visible()
-        latency_diag = page.get_by_text("Latency distribution:", exact=False)
-        expect(latency_diag).to_be_visible()
-        expect(latency_diag).to_contain_text("unavailable")
+        expect(page.get_by_text("broken/tokenizer: RuntimeError", exact=False)).to_be_visible()

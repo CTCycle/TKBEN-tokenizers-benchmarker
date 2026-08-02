@@ -11,7 +11,15 @@ export interface MetricSelectionCategory {
   metrics: MetricSelectionMetric[];
 }
 
-export function useMetricSelection(categories: MetricSelectionCategory[]) {
+export interface UseMetricSelectionResult {
+  selectedMetricKeys: string[];
+  toggleMetric: (metricKey: string, enabled: boolean) => void;
+  toggleCategoryByKeys: (metricKeys: string[], enabled: boolean) => void;
+  resetSelectionToAll: () => void;
+  ensureSelectionInitialized: () => void;
+}
+
+export function useMetricSelection(categories: MetricSelectionCategory[]): UseMetricSelectionResult {
   const [selectedMetricKeys, setSelectedMetricKeys] = useState<string[]>([]);
 
   const allMetricKeys = useMemo(
@@ -52,7 +60,6 @@ export function useMetricSelection(categories: MetricSelectionCategory[]) {
   }, []);
 
   return {
-    allMetricKeys,
     selectedMetricKeys,
     toggleMetric,
     toggleCategoryByKeys,

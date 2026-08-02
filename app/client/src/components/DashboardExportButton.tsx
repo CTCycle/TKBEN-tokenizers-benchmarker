@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
 import { exportDashboardPdf } from '../services/exportApi';
 import type { DashboardType } from '../types/api';
@@ -67,10 +67,7 @@ const DashboardExportButton = ({
     label,
 }: DashboardExportButtonProps) => {
     const fallbackStem = DEFAULT_FILE_STEMS[dashboardType];
-    const defaultStem = useMemo(
-        () => sanitizeFileStem(reportName, fallbackStem),
-        [fallbackStem, reportName],
-    );
+    const defaultStem = sanitizeFileStem(reportName, fallbackStem);
 
     const [submitting, setSubmitting] = useState(false);
     const [feedback, setFeedback] = useState<{ kind: 'error' | 'success'; message: string } | null>(null);

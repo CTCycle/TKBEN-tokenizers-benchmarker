@@ -9,6 +9,7 @@ import {
 } from '../common/chartStyles';
 import TokenizerStatusBanners from '../components/TokenizerStatusBanners';
 import CatalogFilterToolbar from '../components/CatalogFilterToolbar';
+import ModalCloseButton from '../components/ModalCloseButton';
 import { useTokenizers } from '../contexts/TokenizersContext';
 import {
   BarChart,
@@ -94,19 +95,16 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
     return () => window.clearTimeout(timeoutId);
   }, [refreshTokenizers, tokenizerSearch, tokenizerSourceFilter, vocabularySizeOperator, vocabularySizeValue]);
 
-  const chartStats = useMemo(
-    () => [
-      { label: 'Queued runs', value: tokenizers.length + (customTokenizerName ? 1 : 0) },
-      {
-        label: 'Avg. throughput',
-        value: benchmarkResult?.tokenizer_results?.[0]?.efficiency?.encode_tokens_per_second_mean
-          ? `${Math.round(benchmarkResult.tokenizer_results[0].efficiency.encode_tokens_per_second_mean).toLocaleString()} tok/s`
-          : '0 tok/s'
-      },
-      { label: 'Custom tokenizer', value: customTokenizerName ? 'loaded' : 'none' },
-    ],
-    [tokenizers.length, customTokenizerName, benchmarkResult],
-  );
+  const chartStats = [
+    { label: 'Queued runs', value: tokenizers.length + (customTokenizerName ? 1 : 0) },
+    {
+      label: 'Avg. throughput',
+      value: benchmarkResult?.tokenizer_results?.[0]?.efficiency?.encode_tokens_per_second_mean
+        ? `${Math.round(benchmarkResult.tokenizer_results[0].efficiency.encode_tokens_per_second_mean).toLocaleString()} tok/s`
+        : '0 tok/s'
+    },
+    { label: 'Custom tokenizer', value: customTokenizerName ? 'loaded' : 'none' },
+  ];
 
   const vocabularyChartData = useMemo(() => {
     const widget = benchmarkResult?.dashboard.widgets.find((item) => item.metric_keys.includes('meta.vocabulary_size'));
@@ -464,13 +462,13 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
                 sourceLabel="Source"
                 sourceValue={tokenizerSourceFilter}
                 sourceOptions={[{ value: 'all', label: 'All tokenizers' }, { value: 'huggingface', label: 'Hugging Face' }, { value: 'custom', label: 'Custom' }]}
-                onSourceChange={(value) => setTokenizerSourceFilter(value as 'all' | 'huggingface' | 'custom')}
+                onSourceChange={setTokenizerSourceFilter}
                 numericLabel="Vocabulary"
                 numericValue={vocabularySizeValue}
                 numericOperator={vocabularySizeOperator}
                 numericPlaceholder="Any size"
                 onNumericValueChange={setVocabularySizeValue}
-                onNumericOperatorChange={(value) => setVocabularySizeOperator(value as 'at_least' | 'at_most')}
+                onNumericOperatorChange={setVocabularySizeOperator}
                 addButtonLabel="Add tokenizer"
                 addButtonTitle="Open Tokenizer Manager"
                 onAdd={() => setIsTokenizerModalOpen(true)}
@@ -566,16 +564,10 @@ const TokenizersPage = ({ showDashboard = true, embedded = false }: TokenizersPa
                 <p id="tokenizer-manager-title" className="panel-label">Tokenizer Manager</p>
                 <p id="tokenizer-manager-description" className="panel-description">Download tokenizer IDs from text input or Hugging Face scan results.</p>
               </div>
-              <button
-                type="button"
-                className="icon-button subtle modal-close-button"
+              <ModalCloseButton
+                ariaLabel="Close tokenizer manager"
                 onClick={() => setIsTokenizerModalOpen(false)}
-                aria-label="Close tokenizer manager"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M6 6l12 12M18 6L6 18" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </button>
+              />
             </header>
 
             <TokenizerStatusBanners
