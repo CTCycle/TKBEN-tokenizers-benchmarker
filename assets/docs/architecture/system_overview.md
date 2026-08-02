@@ -1,5 +1,5 @@
 # System Overview
-Last updated: 2026-08-01
+Last updated: 2026-08-02
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
@@ -29,6 +29,9 @@ Source-level structure, with generated and environment-specific folders omitted:
 │  │  ├─ public/
 │  │  │  └─ tkben-logo.png
 │  │  ├─ src/
+│  │  │  ├─ common/
+│  │  │  ├─ features/
+│  │  │  └─ hooks/
 │  │  └─ package-lock.json
 │  ├─ server/
 │  │  ├─ pyproject.toml
@@ -56,6 +59,10 @@ Source-level structure, with generated and environment-specific folders omitted:
   - `app/client/src/App.tsx`
 - Frontend shell:
   - `app/client/src/components/AppShell.tsx` provides the branded header, primary route tabs, and Hugging Face key manager control.
+- Frontend data and interaction helpers:
+  - `app/client/src/features/dataset/datasetDashboardData.ts` owns dataset dashboard normalization and derived chart series.
+  - `app/client/src/features/benchmark-dashboard/benchmarkDashboardChartUtils.ts` owns benchmark widget data-shape classification.
+  - Shared hooks own catalog loading state, compact chart sizing, modal body scroll locking, and dashboard workspace orchestration.
 - Windows launcher:
   - `start_on_windows.ps1` is the single user-facing root entry point for the combined launch and maintenance menu.
 
@@ -69,4 +76,4 @@ Source-level structure, with generated and environment-specific folders omitted:
 ## Runtime Interaction Topology
 - Local webapp mode:
   - Browser -> Vite preview (`UI_HOST:UI_PORT`) -> proxied `/api` -> FastAPI (`FASTAPI_HOST:FASTAPI_PORT`)
-- The launcher uses the canonical backend environment at `app/server/.venv` and lockfile at `app/server/uv.lock`, builds the frontend, starts both services, and opens the configured UI URL.
+- The launcher uses the canonical backend environment at `app/server/.venv` and lockfile at `app/server/uv.lock`, builds the frontend when configured, starts both services, and opens the configured UI URL.

@@ -1,5 +1,5 @@
 # Experience
-Last updated: 2026-07-20
+Last updated: 2026-08-02
 
 ## Page Structure
 - `DatasetPage`
@@ -19,6 +19,7 @@ Catalog interactions:
 - Dataset and tokenizer preview catalogs support debounced search, source filtering, and numeric threshold filtering.
 - Filtering refreshes catalog results without changing the current benchmark selection.
 - Empty states distinguish an unfiltered empty catalog from a catalog with no matches.
+- Dataset dashboard data is normalized before chart rendering; invalid optional histogram, frequency, Zipf, and word-cloud payloads produce empty or unavailable states instead of breaking the page.
 
 ## User Experience Standards
 - Maintain workflow continuity:
@@ -41,6 +42,7 @@ Required behavior:
 - Multi-column dashboards collapse to fewer columns or a single column.
 - Header and nav paddings plus tab sizing adapt for narrow screens.
 - Modal dimensions and table overflow adjust for mobile and narrow viewports.
+- Open modals lock document scrolling and restore the previous scroll position when closed. Benchmark chart sizing also switches to compact behavior at `700px`.
 
 ## Accessibility
 - Preserve keyboard navigability for all controls.
@@ -60,3 +62,4 @@ Required behavior:
 - Check shell alignment, page gutters, panel edges, chart title/plot alignment, contained table overflow, and dialog viewport fit.
 - Treat populated, empty, loading, error, and long-identifier states as required visual states; visual polish must not hide existing diagnostics or controls.
 - Include filtered catalog loading and no-match states, plus the integrated header navigation and logo, in route-level visual review.
+- Include benchmark point, bucket, and distribution widgets, their data-table disclosures, modal scroll locking, and malformed/empty dataset chart payloads in focused component review.

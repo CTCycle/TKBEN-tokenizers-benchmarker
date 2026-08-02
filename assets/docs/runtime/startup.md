@@ -1,5 +1,5 @@
 # Startup
-Last updated: 2026-08-01
+Last updated: 2026-08-02
 
 ## Local Webapp Mode
 Windows recommended:
@@ -23,6 +23,7 @@ What it does:
 - starts FastAPI and the Vite preview server, waits for health checks, opens the browser, and prints ports and process IDs
 - optionally shows backend logs in a dedicated terminal when `BACKEND_LOGS_VISIBLE=true` (the default when absent; the only accepted values are `true` and `false`)
 - keeps the maintenance menu usable when stdin/stdout are redirected by skipping cursor-only screen repaint operations while preserving normal interactive clearing and window-title behavior
+- supports the direct `-Launch` path for automation while retaining the same dependency, health-check, and process-start logic as menu option 1
 
 ## Manual Local Mode
 Cross-platform manual startup:

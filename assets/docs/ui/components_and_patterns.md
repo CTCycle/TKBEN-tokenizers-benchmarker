@@ -1,5 +1,5 @@
 # Components and Patterns
-Last updated: 2026-07-20
+Last updated: 2026-08-02
 
 ## Navigation
 - Top tab navigation for:
@@ -31,6 +31,7 @@ Last updated: 2026-07-20
   - backdrop with dark overlay or blur
   - explicit close action
   - keyboard-focus-compatible controls
+  - shared `ModalCloseButton` and `useBodyScrollLock` behavior where the modal owns viewport interaction
 
 ## Feedback States
 - Loading:
@@ -50,3 +51,5 @@ Last updated: 2026-07-20
 - Dataset and tokenizer catalogs use the shared stateless `CatalogFilterToolbar`; search, source, and numeric filters are server-driven and must not alter benchmark selection.
 - Catalog filter changes are debounced, and filtered catalogs need distinct loading, no-match, and no-data messaging.
 - Tokenizer preview rows expose source and vocabulary metadata with independent report and benchmark-selection actions; custom tokenizers cannot open generated reports.
+- `CatalogFilterToolbar` is a generic typed control shared by dataset and tokenizer pages; it accepts only configured source and numeric-operator values from its option lists.
+- Dataset dashboard charts consume normalized helper output rather than parsing unknown API payloads inside each chart component. Benchmark widgets keep chart rendering, data-shape classification, and the accessible data table as separate responsibilities.
