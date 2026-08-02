@@ -21,18 +21,9 @@ import type {
     DatasetMetricCatalogCategory,
     DatasetPreviewItem,
     DatasetCatalogFilters,
-    HistogramData,
 } from '../types/api';
 import { useAvailableDatasets } from '../hooks/useAvailableDatasets';
 import { useFileInputControl } from '../hooks/useFileInputControl';
-
-interface DatasetStats {
-    documentCount: number;
-    meanLength: number;
-    medianLength: number;
-    minLength: number;
-    maxLength: number;
-}
 
 interface DatasetContextType {
     datasetName: string | null;
@@ -40,9 +31,6 @@ interface DatasetContextType {
     selectedConfig: string;
     loading: boolean;
     error: string | null;
-    datasetLoaded: boolean;
-    stats: DatasetStats | null;
-    histogram: HistogramData | null;
     loadProgress: number | null;
     validating: boolean;
     validationReport: DatasetAnalysisResponse | null;
@@ -50,15 +38,12 @@ interface DatasetContextType {
     fileInputRef: React.RefObject<HTMLInputElement | null>;
     availableDatasets: DatasetPreviewItem[];
     datasetsLoading: boolean;
-    datasetsInitialized: boolean;
     activeValidationDataset: string | null;
     activeReportLoadDataset: string | null;
     removingDataset: string | null;
     metricsCatalog: DatasetMetricCatalogCategory[];
     metricsCatalogLoading: boolean;
 
-    setSelectedCorpus: (corpus: string) => void;
-    setSelectedConfig: (config: string) => void;
     setError: (error: string | null) => void;
     handleCorpusChange: (value: string) => void;
     handleConfigChange: (value: string) => void;
@@ -93,9 +78,6 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
     const [selectedConfig, setSelectedConfig] = useState('wikitext-2-v1');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [datasetLoaded, setDatasetLoaded] = useState(false);
-    const [stats, setStats] = useState<DatasetStats | null>(null);
-    const [histogram, setHistogram] = useState<HistogramData | null>(null);
     const [loadProgress, setLoadProgress] = useState<number | null>(null);
     const [validating, setValidating] = useState(false);
     const [validationReport, setValidationReport] = useState<DatasetAnalysisResponse | null>(null);
@@ -144,16 +126,10 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
     const handleCorpusChange = useCallback((value: string) => {
         setSelectedCorpus(value);
         setSelectedConfig('');
-        setDatasetLoaded(false);
-        setStats(null);
-        setHistogram(null);
     }, []);
 
     const handleConfigChange = useCallback((value: string) => {
         setSelectedConfig(value);
-        setDatasetLoaded(false);
-        setStats(null);
-        setHistogram(null);
     }, []);
 
     const handleLoadDataset = useCallback(async () => {
@@ -173,16 +149,7 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
                 (status) => setLoadProgress(status.progress),
             );
 
-            setStats({
-                documentCount: response.document_count,
-                meanLength: response.histogram.mean_length,
-                medianLength: response.histogram.median_length,
-                minLength: response.histogram.min_length,
-                maxLength: response.histogram.max_length,
-            });
-            setHistogram(response.histogram);
             setDatasetName(response.dataset_name);
-            setDatasetLoaded(true);
             await refreshAvailableDatasets();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load dataset');
@@ -206,16 +173,7 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
                     setLoadProgress(status.progress),
                 );
 
-                setStats({
-                    documentCount: response.document_count,
-                    meanLength: response.histogram.mean_length,
-                    medianLength: response.histogram.median_length,
-                    minLength: response.histogram.min_length,
-                    maxLength: response.histogram.max_length,
-                });
-                setHistogram(response.histogram);
                 setDatasetName(response.dataset_name);
-                setDatasetLoaded(true);
                 await refreshAvailableDatasets();
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to upload dataset');
@@ -231,10 +189,6 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
     const handleSelectDataset = useCallback(
         (targetDataset: string) => {
             if (!targetDataset) return;
-            if (datasetName !== targetDataset) {
-                setStats(null);
-                setHistogram(null);
-            }
             if (
                 validationReport?.dataset_name &&
                 validationReport.dataset_name !== targetDataset
@@ -242,9 +196,8 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
                 setValidationReport(null);
             }
             setDatasetName(targetDataset);
-            setDatasetLoaded(true);
         },
-        [datasetName, validationReport],
+        [validationReport],
     );
 
     const handleValidateDataset = useCallback(async (
@@ -269,7 +222,6 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             );
             setValidationReport(response);
             setDatasetName(response.dataset_name);
-            setDatasetLoaded(true);
             window.localStorage.setItem(
                 LAST_DATASET_REPORT_STORAGE_KEY,
                 response.dataset_name,
@@ -296,7 +248,6 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             const response = await fetchLatestDatasetReport(targetDataset);
             setValidationReport(response);
             setDatasetName(response.dataset_name);
-            setDatasetLoaded(true);
             window.localStorage.setItem(
                 LAST_DATASET_REPORT_STORAGE_KEY,
                 response.dataset_name,
@@ -365,9 +316,6 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
                 }
                 if (datasetName === targetDataset) {
                     setDatasetName(null);
-                    setDatasetLoaded(false);
-                    setStats(null);
-                    setHistogram(null);
                 }
                 if (window.localStorage.getItem(LAST_DATASET_REPORT_STORAGE_KEY) === targetDataset) {
                     window.localStorage.removeItem(LAST_DATASET_REPORT_STORAGE_KEY);
@@ -389,9 +337,6 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             selectedConfig,
             loading,
             error,
-            datasetLoaded,
-            stats,
-            histogram,
             loadProgress,
             validating,
             validationReport,
@@ -399,14 +344,11 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             fileInputRef,
             availableDatasets,
             datasetsLoading,
-            datasetsInitialized,
             activeValidationDataset,
             activeReportLoadDataset,
             removingDataset,
             metricsCatalog,
             metricsCatalogLoading,
-            setSelectedCorpus,
-            setSelectedConfig,
             setError,
             handleCorpusChange,
             handleConfigChange,
@@ -426,9 +368,6 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             selectedConfig,
             loading,
             error,
-            datasetLoaded,
-            stats,
-            histogram,
             loadProgress,
             validating,
             validationReport,
@@ -436,7 +375,6 @@ export const DatasetProvider = ({ children }: { children: ReactNode }) => {
             fileInputRef,
             availableDatasets,
             datasetsLoading,
-            datasetsInitialized,
             activeValidationDataset,
             activeReportLoadDataset,
             removingDataset,

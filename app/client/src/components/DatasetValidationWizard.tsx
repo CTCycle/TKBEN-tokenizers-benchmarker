@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { DatasetAnalysisRequest, DatasetMetricCatalogCategory } from '../types/api';
 import MetricSelectionTree from './MetricSelectionTree';
+import ModalCloseButton from './ModalCloseButton';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useMetricSelection } from '../hooks/useMetricSelection';
 
 type DatasetValidationWizardProps = {
@@ -44,6 +46,8 @@ const DatasetValidationWizard = ({
   const [sessionName, setSessionName] = useState('');
   const catalogUnavailable = !loadingCategories && categories.length === 0;
 
+  useBodyScrollLock(isOpen);
+
   useEffect(() => {
     if (!isOpen) {
       return;
@@ -53,31 +57,6 @@ const DatasetValidationWizard = ({
     ensureSelectionInitialized();
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [ensureSelectionInitialized, isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-    const scrollY = window.scrollY;
-    const previousBodyOverflow = document.body.style.overflow;
-    const previousBodyPosition = document.body.style.position;
-    const previousBodyTop = document.body.style.top;
-    const previousBodyWidth = document.body.style.width;
-    const previousDocumentOverflow = document.documentElement.style.overflow;
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = '100%';
-    document.documentElement.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previousBodyOverflow;
-      document.body.style.position = previousBodyPosition;
-      document.body.style.top = previousBodyTop;
-      document.body.style.width = previousBodyWidth;
-      document.documentElement.style.overflow = previousDocumentOverflow;
-      window.scrollTo(0, scrollY);
-    };
-  }, [isOpen]);
 
   const runPipeline = async () => {
     if (!datasetName) return;
@@ -132,16 +111,10 @@ const DatasetValidationWizard = ({
               Configure metrics and sampling for dataset analysis.
             </p>
           </div>
-          <button
-            type="button"
-            className="icon-button subtle modal-close-button"
+          <ModalCloseButton
+            ariaLabel="Close validation wizard"
             onClick={onClose}
-            aria-label="Close validation wizard"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M6 6l12 12M18 6L6 18" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </button>
+          />
         </header>
 
         <div className="modal-wizard-steps">

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import type { WordCloudTerm } from '../types/api';
 
@@ -99,12 +99,9 @@ export const useWordCloudLayout = (terms: WordCloudTerm[]): UseWordCloudLayoutRe
     return () => worker.terminate();
   }, [terms, wordCloudSize.height, wordCloudSize.width]);
 
-  const normalizedLayout = useMemo(() => {
-    if (!terms.length || wordCloudSize.width <= 0 || wordCloudSize.height <= 0) {
-      return [];
-    }
-    return wordCloudLayout;
-  }, [terms, wordCloudLayout, wordCloudSize.height, wordCloudSize.width]);
+  const normalizedLayout = !terms.length || wordCloudSize.width <= 0 || wordCloudSize.height <= 0
+    ? []
+    : wordCloudLayout;
 
   return {
     wordCloudRef,

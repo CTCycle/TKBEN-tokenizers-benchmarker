@@ -26,7 +26,9 @@ export const useAvailableDatasets = (): UseAvailableDatasetsResult => {
       }
       return response.datasets;
     } finally {
-      setDatasetsLoading(false);
+      if (requestId === requestSequence.current) {
+        setDatasetsLoading(false);
+      }
     }
   }, []);
 

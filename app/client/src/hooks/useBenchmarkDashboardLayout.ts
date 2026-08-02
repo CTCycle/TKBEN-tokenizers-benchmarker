@@ -1,10 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { BenchmarkDashboardData, BenchmarkDashboardWidgetData } from '../types/api';
-import { BENCHMARK_DASHBOARD_STORAGE_KEY, BENCHMARK_DASHBOARD_STORAGE_KEY_V2, isDefaultDashboardLayout, resetDashboardLayout, resolveAvailableDashboardLayout, validateStoredDashboardLayout, type BenchmarkDashboardLayoutState } from '../features/benchmark-dashboard/benchmarkDashboardLayout';
-import type { BenchmarkVisualizationKind } from '../types/api';
+import type { BenchmarkDashboardData, BenchmarkDashboardWidgetData, BenchmarkVisualizationKind } from '../types/api';
+import { BENCHMARK_DASHBOARD_STORAGE_KEY, BENCHMARK_DASHBOARD_STORAGE_KEY_V2, isDefaultDashboardLayout, resetDashboardLayout, resolveAvailableDashboardLayout, validateStoredDashboardLayout, type BenchmarkDashboardLayoutState, type ResolvedBenchmarkDashboardLayout } from '../features/benchmark-dashboard/benchmarkDashboardLayout';
+
+export interface UseBenchmarkDashboardLayoutResult {
+  widgets: BenchmarkDashboardWidgetData[];
+  visibleWidgets: BenchmarkDashboardWidgetData[];
+  resolved: ResolvedBenchmarkDashboardLayout;
+  apply: (visibleIds: string[]) => void;
+  reset: () => void;
+  isDefault: boolean;
+  setOrder: (orderedWidgetIds: string[]) => void;
+  setVisualization: (widgetId: string, visualization: BenchmarkVisualizationKind) => void;
+}
 
 const readStored = (): BenchmarkDashboardLayoutState | null => { try { window.localStorage.removeItem(BENCHMARK_DASHBOARD_STORAGE_KEY_V2); return validateStoredDashboardLayout(JSON.parse(window.localStorage.getItem(BENCHMARK_DASHBOARD_STORAGE_KEY) ?? 'null')); } catch { return null; } };
-export const useBenchmarkDashboardLayout = (dashboard: BenchmarkDashboardData | undefined) => {
+export const useBenchmarkDashboardLayout = (dashboard: BenchmarkDashboardData | undefined): UseBenchmarkDashboardLayoutResult => {
   const widgets = useMemo(() => dashboard?.widgets ?? [], [dashboard]); const [layout, setLayout] = useState<BenchmarkDashboardLayoutState | null>(() => readStored());
   const resolved = useMemo(() => resolveAvailableDashboardLayout(layout, widgets), [layout, widgets]);
   useEffect(() => { if (layout) window.localStorage.setItem(BENCHMARK_DASHBOARD_STORAGE_KEY, JSON.stringify(layout)); }, [layout]);

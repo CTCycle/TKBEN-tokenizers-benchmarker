@@ -396,6 +396,14 @@ export interface BenchmarkRunRequest {
     selected_metric_keys?: string[] | null;
 }
 
+export type BenchmarkRunWizardPayload = Omit<
+    BenchmarkRunRequest,
+    'custom_tokenizer_name' | 'run_name' | 'selected_metric_keys'
+> & {
+    run_name: string;
+    selected_metric_keys: string[];
+};
+
 export interface BenchmarkPerDocumentTokenizerStats {
     tokenizer: string;
     tokens_count?: number[];

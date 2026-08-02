@@ -1,17 +1,25 @@
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
+import { useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import BenchmarkRunWizard from '../components/BenchmarkRunWizard';
 import { BenchmarkMetricWidget } from '../components/benchmark-dashboard/BenchmarkMetricWidget';
 import DashboardExportButton from '../components/DashboardExportButton';
 import DismissibleBanner from '../components/DismissibleBanner';
 import { moveDashboardWidget } from '../features/benchmark-dashboard/benchmarkDashboardLayout';
 import { useBenchmarkDashboardLayout } from '../hooks/useBenchmarkDashboardLayout';
-import { useBenchmarkWorkspace, type BenchmarkRunPayload } from '../hooks/useBenchmarkWorkspace';
-import type { BenchmarkDashboardWidgetData } from '../types/api';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useBenchmarkWorkspace } from '../hooks/useBenchmarkWorkspace';
+import type { BenchmarkDashboardWidgetData, BenchmarkRunWizardPayload } from '../types/api';
 
-const SortableWidget = ({ widget, visualization, onVisualizationChange, onKeyboardReorder }: { widget: BenchmarkDashboardWidgetData; visualization: BenchmarkDashboardWidgetData['default_visualization']; onVisualizationChange: (visualization: BenchmarkDashboardWidgetData['default_visualization']) => void; onKeyboardReorder: (event: KeyboardEvent<HTMLButtonElement>, widgetId: string) => void }) => {
+type SortableWidgetProps = {
+  widget: BenchmarkDashboardWidgetData;
+  visualization: BenchmarkDashboardWidgetData['default_visualization'];
+  onVisualizationChange: (visualization: BenchmarkDashboardWidgetData['default_visualization']) => void;
+  onKeyboardReorder: (event: KeyboardEvent<HTMLButtonElement>, widgetId: string) => void;
+};
+
+const SortableWidget = ({ widget, visualization, onVisualizationChange, onKeyboardReorder }: SortableWidgetProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: widget.widget_id });
   return <div ref={setNodeRef} className="benchmark-dashboard-sortable" style={{ transform: CSS.Transform.toString(transform), transition }} data-dragging={isDragging || undefined}>
     <button type="button" className="benchmark-dashboard-drag-handle" {...attributes} {...listeners} aria-label={`Reorder ${widget.label} widget`} title="Drag to reorder" onKeyDown={(event) => onKeyboardReorder(event, widget.widget_id)}><span aria-hidden="true">⋮⋮</span></button>
@@ -19,7 +27,15 @@ const SortableWidget = ({ widget, visualization, onVisualizationChange, onKeyboa
   </div>;
 };
 
-const Customizer = ({ widgets, visibleIds, onApply, onClose, trigger }: { widgets: BenchmarkDashboardWidgetData[]; visibleIds: string[]; onApply: (ids: string[]) => void; onClose: () => void; trigger: RefObject<HTMLButtonElement | null> }) => {
+type CustomizerProps = {
+  widgets: BenchmarkDashboardWidgetData[];
+  visibleIds: string[];
+  onApply: (ids: string[]) => void;
+  onClose: () => void;
+  trigger: RefObject<HTMLButtonElement | null>;
+};
+
+const Customizer = ({ widgets, visibleIds, onApply, onClose, trigger }: CustomizerProps) => {
   const [draft, setDraft] = useState(visibleIds);
   const groups = widgets.reduce<Record<string, BenchmarkDashboardWidgetData[]>>((result, widget) => {
     (result[widget.category_label] ??= []).push(widget);
@@ -30,27 +46,7 @@ const Customizer = ({ widgets, visibleIds, onApply, onClose, trigger }: { widget
     trigger.current?.focus();
   };
 
-  useEffect(() => {
-    const scrollY = window.scrollY;
-    const previousBodyOverflow = document.body.style.overflow;
-    const previousBodyPosition = document.body.style.position;
-    const previousBodyTop = document.body.style.top;
-    const previousBodyWidth = document.body.style.width;
-    const previousDocumentOverflow = document.documentElement.style.overflow;
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = '100%';
-    document.documentElement.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previousBodyOverflow;
-      document.body.style.position = previousBodyPosition;
-      document.body.style.top = previousBodyTop;
-      document.body.style.width = previousBodyWidth;
-      document.documentElement.style.overflow = previousDocumentOverflow;
-      window.scrollTo(0, scrollY);
-    };
-  }, []);
+  useBodyScrollLock(true);
 
   return (
     <div className="benchmark-dashboard-modal-backdrop" role="presentation" onMouseDown={close}>
@@ -215,7 +211,7 @@ const CrossBenchmarkPage = () => {
           </main>
         </div>
       )}
-      {wizardOpen && <BenchmarkRunWizard isOpen={wizardOpen} categories={workspace.metricCategories} availableTokenizers={workspace.tokenizers} availableDatasets={workspace.datasets} defaultDatasetName={workspace.datasets[0] ?? null} defaultMaxDocuments={1000} running={workspace.runningBenchmark} onCancel={workspace.cancelBenchmark} onClose={() => setWizardOpen(false)} onRun={async (runPayload: BenchmarkRunPayload) => { if (await workspace.runFromWizard(runPayload)) setWizardOpen(false); }} />}
+      {wizardOpen && <BenchmarkRunWizard isOpen={wizardOpen} categories={workspace.metricCategories} availableTokenizers={workspace.tokenizers} availableDatasets={workspace.datasets} defaultDatasetName={workspace.datasets[0] ?? null} defaultMaxDocuments={1000} running={workspace.runningBenchmark} onCancel={workspace.cancelBenchmark} onClose={() => setWizardOpen(false)} onRun={async (runPayload: BenchmarkRunWizardPayload) => { if (await workspace.runFromWizard(runPayload)) setWizardOpen(false); }} />}
       {customizing && <Customizer widgets={layout.widgets} visibleIds={layout.resolved.visibleWidgetIds} onApply={layout.apply} onClose={() => setCustomizing(false)} trigger={customizeButton} />}
     </section>
   );

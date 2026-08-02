@@ -1,12 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { BenchmarkMetricCatalogCategory, BenchmarkRunRequest } from '../types/api';
+import type { BenchmarkMetricCatalogCategory, BenchmarkRunWizardPayload } from '../types/api';
 import MetricSelectionTree from './MetricSelectionTree';
+import ModalCloseButton from './ModalCloseButton';
 import { useMetricSelection } from '../hooks/useMetricSelection';
-
-type BenchmarkRunWizardPayload = Omit<BenchmarkRunRequest, 'custom_tokenizer_name'> & {
-  run_name: string;
-  selected_metric_keys: string[];
-};
 
 type BenchmarkRunWizardProps = {
   isOpen: boolean;
@@ -168,17 +164,11 @@ const BenchmarkRunWizard = ({
               Configure metrics, inputs, and run metadata for a persisted benchmark report.
             </p>
           </div>
-          <button
-            type="button"
-            className="icon-button subtle modal-close-button"
+          <ModalCloseButton
+            ariaLabel="Close benchmark wizard"
             onClick={onClose}
-            aria-label="Close benchmark wizard"
             disabled={running}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M6 6l12 12M18 6L6 18" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </button>
+          />
         </header>
 
         <div className="modal-wizard-steps">
