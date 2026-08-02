@@ -1,5 +1,5 @@
 # Backend API
-Last updated: 2026-07-30
+Last updated: 2026-08-02
 
 ## API Prefix
 All routers are included with `prefix="/api"` during backend startup.
@@ -52,3 +52,7 @@ All routers are included with `prefix="/api"` during backend startup.
 - `POST /api/exports/dashboard/pdf` — benchmark payloads include `visualization_by_widget_id`; the server rejects unknown or incompatible visualization overrides
 
 Service ownership is explicit: tokenizer discovery/catalog/download/cache and custom-tokenizer workflows remain in `TokenizersService`, while report analysis/generation/retrieval is owned by `TokenizerReportingService`. No legacy service aliases or forwarding methods are part of the API architecture.
+
+Frontend API services keep endpoint construction centralized and pass responses
+through typed guards before page-level rendering. Invalid or non-finite metric
+values remain unavailable rather than being converted into synthetic zeroes.

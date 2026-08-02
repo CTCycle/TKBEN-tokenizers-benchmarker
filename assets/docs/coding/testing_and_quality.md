@@ -1,5 +1,5 @@
 # Testing and Quality
-Last updated: 2026-07-29
+Last updated: 2026-08-02
 
 ## Tooling and Tests
 - Lint and format with Ruff, or the project-standard equivalent if it changes in the future.
@@ -10,6 +10,12 @@ Last updated: 2026-07-29
   - `tests/unit`
   - relevant `tests/e2e` when behavior crosses API and UI boundaries
 - Browser/live validation uses Playwright or pytest-playwright; the in-app browser is not a validation path.
+
+The repository CI gate currently runs backend compileall, Ruff, BasedPyright,
+unit tests, and an OpenAPI smoke import, plus frontend `npm ci`, lint, and
+production build. The Windows `app/tests/run_tests.bat` runner additionally
+supports live backend/frontend startup, the configured pytest target, and
+optional frontend test scripts.
 
 ## Cross-language Quality Gates
 - Keep architecture layering intact: API -> service -> repository.

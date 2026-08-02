@@ -1,5 +1,5 @@
 # UI Standards
-Last updated: 2026-06-17
+Last updated: 2026-08-02
 
 ## Spacing and Layout
 - Use the existing spacing tokens:
@@ -39,6 +39,8 @@ Last updated: 2026-06-17
 - Loading states should use spinner plus concise status copy. Progress bars should expose live status text.
 - Error and warning banners should be dismissible only when the underlying issue is recoverable.
 - Modals must have a labelled dialog container, a close action, and scroll safely within the viewport.
+- Modal implementations should reuse the shared close-button component and body-scroll-lock hook so closing restores the user’s previous document position.
+- Keep chart input normalization in feature helpers and keep data tables payload-shaped; chart components should not each invent parsing or fallback rules.
 
 ## Do and Don't
 - Do reuse existing tokens before adding new values.

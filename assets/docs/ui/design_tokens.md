@@ -1,5 +1,5 @@
 # Design Tokens
-Last updated: 2026-07-12
+Last updated: 2026-08-02
 
 ## Typography
 - Base family:
@@ -60,3 +60,4 @@ Accessibility baseline:
 - Shared panels use `--color-glass` / `--color-glass-strong`, `--border-default`, `--shadow-panel`, and `--shadow-inset`.
 - Layout roles include `--page-max-width`, `--page-gutter`, `--section-gap`, `--panel-padding`, and `--card-gap`.
 - Cross-benchmark charts share centralized height and legend contracts from `src/common/chartStyles.ts`.
+- Current layout roles also include `--chart-min-height`, `--control-height`, modal radius/shadow tokens, and the page/header height tokens used by the fixed application chrome.

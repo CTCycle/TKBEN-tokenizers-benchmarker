@@ -1,5 +1,5 @@
 # Configuration
-Last updated: 2026-08-01
+Last updated: 2026-08-02
 
 ## Environment File
 Primary launcher runtime env file:
@@ -62,3 +62,8 @@ Primary launcher runtime env file:
 - `ALLOW_KEY_REVEAL=false` keeps plaintext Hugging Face key reveal disabled by default.
 - Hugging Face access-key encryption material is generated and persisted in the external JSON file configured by `HF_KEYS_ENCRYPTION_MATERIAL_FILE` (default `app/resources/hf-key-material.json`). Keep this file private and do not copy it into database backups.
 - `FASTAPI_HOST` controls the interface on which the backend listens. Network exposure requires appropriate deployment-level access controls.
+
+Boolean launcher settings are validated as `true` or `false`; invalid values
+fail fast. The launcher’s in-memory fallback values are `FASTAPI_PORT=8000`
+and `UI_PORT=8001`; a newly generated `settings/.env` then supplies the
+versioned template values `FASTAPI_PORT=5000` and `UI_PORT=8000`.

@@ -1,5 +1,5 @@
 # Benchmark Contract
-Last updated: 2026-07-29
+Last updated: 2026-08-02
 
 ## Benchmark Request Notes
 Benchmark run request config includes tokenizer behavior flags and per-document controls:
@@ -52,6 +52,11 @@ Benchmark efficiency payload includes boundary-separated timing fields:
 
 ## Reporting Rule
 Chart aggregations are derived from successful tokenizer results only (`status="success"`), so failed tokenizers do not appear as misleading zero-value bars.
+
+The frontend preserves that distinction at the rendering boundary: shared
+dashboard helpers validate render-facing metrics as finite, normalize numeric
+strings plus histogram and word-frequency payloads, and return empty or
+unavailable series for malformed optional data.
 
 ## Latency Notes
 - latency percentiles use all timed observations, normalized to per-document batch latency

@@ -1,5 +1,5 @@
 # Python Rules
-Last updated: 2026-07-15
+Last updated: 2026-08-02
 
 ## Runtime and Dependencies
 - Python target version: `>=3.14` from `pyproject.toml`.

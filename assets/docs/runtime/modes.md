@@ -1,5 +1,5 @@
 # Runtime Modes
-Last updated: 2026-07-22
+Last updated: 2026-08-02
 
 ## Supported Modes
 ### 1. Local webapp mode
@@ -19,6 +19,7 @@ Last updated: 2026-07-22
 - Frontend and backend communicate through HTTP JSON APIs under `/api/*`.
 - In local webapp mode, Vite proxy rewrites `/api/*` to the backend root.
 - The launcher starts the backend and frontend as separate local processes and points the browser to the configured UI URL.
+- `start_on_windows.ps1 -Launch` runs the launch path directly for redirected or automated validation; without the switch, the same script opens the eight-option maintenance menu.
 
 ## Limitations and Constraints
 - The automatic portable-runtime bootstrap is Windows-only.
