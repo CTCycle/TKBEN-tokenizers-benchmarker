@@ -8,13 +8,12 @@ from sqlalchemy.dialects.postgresql import insert
 
 from server.configurations import DatabaseSettings
 from server.repositories.database.base import RepositoryBase
-from server.repositories.schemas.models import Base
 
 ###############################################################################
 class PostgresRepository(RepositoryBase):
 
     # -------------------------------------------------------------------------
-    def __init__(self, settings: DatabaseSettings, initialize_schema: bool = False) -> None:
+    def __init__(self, settings: DatabaseSettings) -> None:
         if not settings.host or not settings.database_name or not settings.username:
             raise ValueError("PostgreSQL host, database name, and username are required")
         engine_name = (settings.engine or "").lower()
@@ -29,10 +28,6 @@ class PostgresRepository(RepositoryBase):
                 connect_args["sslrootcert"] = settings.ssl_ca
         engine = sqlalchemy.create_engine(f"{engine_name}://{username}:{password}@{settings.host}:{settings.port or 5432}/{settings.database_name}", future=True, connect_args=connect_args, pool_pre_ping=True)
         super().__init__(engine, settings.insert_batch_size)
-        if initialize_schema:
-            Base.metadata.create_all(self.engine)
-        else:
-            self.validate_schema()
 
     # -------------------------------------------------------------------------
     def _insert(self, table, records, *, ignore_duplicates: bool) -> None:  # type: ignore[no-untyped-def]

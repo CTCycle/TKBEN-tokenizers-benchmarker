@@ -11,6 +11,7 @@ from sqlalchemy import and_, delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from server.repositories.database.seeding import seed_metric_types
 from server.repositories.queries.data import DataRepositoryQueries
 from server.repositories.schemas.models import (
     AnalysisSession,
@@ -311,50 +312,7 @@ class DatasetSerializer:
 
     # -------------------------------------------------------------------------
     def ensure_metric_types_seeded(self, metric_catalog: list[dict[str, Any]]) -> None:
-        entries: list[dict[str, str]] = []
-        for category in metric_catalog:
-            category_key = str(category.get("category_key", "uncategorized"))
-            metrics = category.get("metrics")
-            if not isinstance(metrics, list):
-                continue
-            for metric in metrics:
-                if not isinstance(metric, dict):
-                    continue
-                key = metric.get("key")
-                label = metric.get("label")
-                if not key or not label:
-                    continue
-                entries.append(
-                    {
-                        "key": str(key),
-                        "category": category_key,
-                        "label": str(label),
-                        "description": str(metric.get("description") or ""),
-                        "scope": str(metric.get("scope") or "aggregate"),
-                        "value_kind": str(metric.get("value_kind") or "number"),
-                    }
-                )
-        if not entries:
-            return
-        metric_keys = [entry["key"] for entry in entries]
-        with self._session() as session:
-            existing_types = {
-                metric_type.key: metric_type
-                for metric_type in session.execute(
-                    select(MetricType).where(MetricType.key.in_(metric_keys))
-                ).scalars()
-            }
-            for entry in entries:
-                metric_type = existing_types.get(entry["key"])
-                if metric_type is None:
-                    session.add(MetricType(**entry))
-                    continue
-                metric_type.category = entry["category"]
-                metric_type.label = entry["label"]
-                metric_type.description = entry["description"]
-                metric_type.scope = entry["scope"]
-                metric_type.value_kind = entry["value_kind"]
-            session.commit()
+        seed_metric_types(self.queries.engine, metric_catalog)
 
     # -------------------------------------------------------------------------
     def get_metric_type_map(self) -> dict[str, int]:

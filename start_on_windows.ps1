@@ -465,7 +465,7 @@ function Initialize-Database {
     Import-Environment
     Install-Runtimes
     Write-Step 'Initializing database.'
-    & $UvExe run --project $ServerDir --python $PythonExe python (Join-Path $RepoRoot 'app\scripts\initialize_database.py') --drop-existing --seed-catalogs --force-reseed-catalogs
+    & $UvExe run --project $ServerDir --python $PythonExe python (Join-Path $RepoRoot 'app\scripts\initialize_database.py')
     if ($LASTEXITCODE -ne 0) { throw "Database initialization failed with exit code $LASTEXITCODE." }
     Write-Ok 'Database initialized.'
 }

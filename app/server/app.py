@@ -64,7 +64,7 @@ async def app_lifespan(application: FastAPI) -> AsyncIterator[None]:
     settings = get_server_settings()
 
     run_startup_validations()
-    initialize_database()
+    initialize_database(startup=True)
 
     application.state.settings = settings
     yield
