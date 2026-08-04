@@ -126,6 +126,7 @@ def build_benchmark_metric_value_map(result: dict[str, Any]) -> dict[str, Any]:
         tokenizer_result["fidelity"]["normalized_round_trip_rate"]
     )
     metric_values = {
+        "meta.vocabulary_size": int(tokenizer_result["vocabulary_size"]),
         "eff.encode_tokens_per_second_mean": encode_tps,
         "eff.encode_tokens_per_second_ci95": 0.0,
         "eff.encode_chars_per_second_mean": encode_cps,
