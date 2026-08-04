@@ -29,7 +29,6 @@ class SQLiteRepository(RepositoryBase):
         cursor = dbapi_connection.cursor()
         try:
             cursor.execute("PRAGMA foreign_keys=ON")
-            cursor.execute("PRAGMA journal_mode=WAL")
         finally:
             cursor.close()
 

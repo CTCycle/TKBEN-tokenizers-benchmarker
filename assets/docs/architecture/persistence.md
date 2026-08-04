@@ -41,7 +41,7 @@ projected summary columns; list queries do not select the full payload. Reports 
 
 ## Backend and transaction guarantees
 
-SQLite enables foreign keys and WAL at connection time. SQLite and PostgreSQL
+SQLite enables foreign keys at connection time. SQLite and PostgreSQL
 share the same repository transaction behavior: bounded inserts and upserts
 commit once per logical operation and roll back the whole operation on error.
 Hugging Face key activation is atomic and the database permits at most one

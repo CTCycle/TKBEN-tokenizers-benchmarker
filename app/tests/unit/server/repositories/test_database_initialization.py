@@ -5,7 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from sqlalchemy import create_engine, func, inspect, select
+from sqlalchemy import create_engine, func, inspect, select, text
 from sqlalchemy.orm import Session
 
 from server.configurations import DatabaseSettings
@@ -111,11 +111,18 @@ def test_sqlite_backend_does_not_validate_existing_database(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     database_path = tmp_path / "database.db"
-    database_path.write_bytes(b"not a schema")
+    seed_engine = create_engine(f"sqlite:///{database_path}", future=True)
+    Base.metadata.create_all(seed_engine)
+    seed_engine.dispose()
+    before = hashlib.sha256(database_path.read_bytes()).digest()
     _patch_sqlite_path(monkeypatch, database_path)
 
     backend = build_sqlite_backend(_sqlite_settings())
+    with backend.engine.connect() as connection:
+        connection.execute(text("SELECT 1"))
     backend.engine.dispose()
+
+    assert hashlib.sha256(database_path.read_bytes()).digest() == before
 
 
 def test_postgres_startup_uses_connection_check_only(
