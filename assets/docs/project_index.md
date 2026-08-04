@@ -1,13 +1,13 @@
 # Project Overview
-Last updated: 2026-08-02
+Last updated: 2026-08-04
 
 ## Purpose
 This file is the root index for `assets/docs`. Read it first to find the narrowest topic file for the task at hand.
 
 The current `develop` codebase uses schema-3/report-5 benchmark reports,
 typed frontend catalog controls, reusable dataset/dashboard data helpers, and
-responsive chart and modal hooks. The current public source release remains
-`v3.7.1`; `develop` may contain unreleased changes after that tag.
+responsive chart and modal hooks. The current public source release is
+`v3.8.0`; `develop` is release-ready for synchronization with `main`.
 
 ## How To Navigate
 1. Start with this file only.
