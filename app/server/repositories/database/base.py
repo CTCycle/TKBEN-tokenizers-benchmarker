@@ -4,7 +4,7 @@ import re
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
-from sqlalchemy import inspect, select
+from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from server.repositories.schemas.models import Base
@@ -34,12 +34,6 @@ class RepositoryBase:
             raise ValueError(f"Unknown canonical table: {table_name}") from exc
 
     # -------------------------------------------------------------------------
-    def validate_schema(self) -> None:
-        expected = set(Base.metadata.tables)
-        actual = set(inspect(self.engine).get_table_names())
-        if actual != expected:
-            raise RuntimeError(f"Schema mismatch: expected {sorted(expected)}, found {sorted(actual)}")
-
     # -------------------------------------------------------------------------
     def _batches(self, records: list[Mapping[str, Any]]) -> Iterable[list[Mapping[str, Any]]]:
         for start in range(0, len(records), self.insert_batch_size):

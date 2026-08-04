@@ -9,7 +9,6 @@ from sqlalchemy.dialects.sqlite import insert
 from server.common.path import DATABASE_PATH
 from server.configurations import DatabaseSettings
 from server.repositories.database.base import RepositoryBase
-from server.repositories.schemas.models import Base
 from server.repositories.database.utils import normalize_sqlite_path
 
 ###############################################################################
@@ -17,16 +16,12 @@ class SQLiteRepository(RepositoryBase):
     SQLITE_MAX_VARIABLES = 900
 
     # -------------------------------------------------------------------------
-    def __init__(self, settings: DatabaseSettings, initialize_schema: bool = False) -> None:
+    def __init__(self, settings: DatabaseSettings) -> None:
         self.db_path = normalize_sqlite_path(DATABASE_PATH)
         DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
         engine = sqlalchemy.create_engine(f"sqlite:///{self.db_path}", future=True)
         event.listen(engine, "connect", self.enable_foreign_keys)
         super().__init__(engine, settings.insert_batch_size)
-        if initialize_schema:
-            Base.metadata.create_all(self.engine)
-        else:
-            self.validate_schema()
 
     # -------------------------------------------------------------------------
     @staticmethod

@@ -3,11 +3,11 @@ from __future__ import annotations
 import os
 from server.common.path import (
     DATASETS_PATH,
-    ENV_FILE_PATH,
     LOGS_PATH,
     TEMPLATES_PATH,
     TOKENIZERS_PATH,
 )
+from server.configurations.environment import ensure_environment_loaded
 
 ###############################################################################
 def ensure_runtime_directories() -> None:
@@ -18,11 +18,6 @@ def ensure_runtime_directories() -> None:
         TEMPLATES_PATH,
     ):
         directory.mkdir(parents=True, exist_ok=True)
-
-###############################################################################
-def validate_runtime_files() -> None:
-    if not ENV_FILE_PATH.is_file():
-        raise RuntimeError(f"Environment file not found: {ENV_FILE_PATH}")
 
 ###############################################################################
 def build_cors_origins() -> list[str]:
@@ -39,7 +34,7 @@ def build_cors_origins() -> list[str]:
 
 ###############################################################################
 def run_startup_validations() -> None:
-    validate_runtime_files()
+    ensure_environment_loaded()
     ensure_runtime_directories()
 
 ###############################################################################

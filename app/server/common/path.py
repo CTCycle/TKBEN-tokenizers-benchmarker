@@ -21,6 +21,7 @@ TOKENIZERS_PATH = SOURCES_PATH / "tokenizers"
 LOGS_PATH = Path(os.getenv("TKBEN_LOG_DIR", RESOURCES_PATH / "logs")).resolve()
 TEMPLATES_PATH = RESOURCES_PATH / "templates"
 ENV_FILE_PATH = SETTINGS_DIR / ".env"
+ENV_EXAMPLE_FILE_PATH = SETTINGS_DIR / ".env.example"
 CONFIGURATIONS_FILE = SETTINGS_DIR / "configurations.json"
 DATABASE_PATH = RESOURCES_PATH / "database.db"
 __all__ = [
@@ -30,6 +31,7 @@ __all__ = [
     "CONFIGURATIONS_FILE",
     "DATABASE_PATH",
     "DATASETS_PATH",
+    "ENV_EXAMPLE_FILE_PATH",
     "ENV_FILE_PATH",
     "FIGURES_DIR",
     "LOGS_PATH",

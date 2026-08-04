@@ -1,5 +1,5 @@
 # Persistence
-Last updated: 2026-08-02
+Last updated: 2026-08-04
 
 ## Storage selection
 
@@ -9,9 +9,15 @@ PostgreSQL backend is selected with `DATABASE_EMBEDDED=false` and
 repository backend.
 
 The schema is canonical and intentionally has no migration or compatibility
-layer. Existing development databases must be deleted and recreated after a
-schema change. Startup validates the complete table set and fails on a
-mismatch.
+layer. Normal startup does not cross-validate, reset, recreate, or reseed an
+existing database.
+
+SQLite startup checks only whether `app/resources/database.db` exists. A
+missing file receives the canonical schema and the persisted dataset metric
+catalog seed once; an existing file is left untouched. PostgreSQL startup
+connects to the configured target with a read-only `SELECT 1` check. Database
+and schema creation for PostgreSQL is performed only by launcher menu option 3,
+which also applies the metric catalog seed.
 
 ## Canonical tables
 
@@ -59,6 +65,5 @@ transaction behavior.
 The SQLite persistence contract covers schema creation, foreign keys, lifecycle
 visibility, composite ownership, partial uniqueness, value-shape constraints,
 cascades, rollback, active-key uniqueness, and keyset document streaming.
-PostgreSQL validation is optional when `TKBEN_TEST_POSTGRES_URL` is absent and
-must be run against a disposable database before claiming PostgreSQL runtime
-equivalence.
+PostgreSQL integration validation must be run against a disposable database
+before claiming PostgreSQL runtime equivalence.

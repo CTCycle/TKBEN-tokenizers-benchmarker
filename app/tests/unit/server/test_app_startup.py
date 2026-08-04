@@ -34,15 +34,12 @@ def test_run_startup_validations_creates_runtime_directories(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    env_path = tmp_path / ".env"
-    env_path.write_text("FASTAPI_HOST=127.0.0.1\n", encoding="utf-8")
-
     logs_path = tmp_path / "logs"
     datasets_path = tmp_path / "datasets"
     tokenizers_path = tmp_path / "tokenizers"
     templates_path = tmp_path / "templates"
 
-    monkeypatch.setattr(startup_validation, "ENV_FILE_PATH", env_path)
+    monkeypatch.setattr(startup_validation, "ensure_environment_loaded", lambda: None)
     monkeypatch.setattr(startup_validation, "LOGS_PATH", logs_path)
     monkeypatch.setattr(startup_validation, "DATASETS_PATH", datasets_path)
     monkeypatch.setattr(startup_validation, "TOKENIZERS_PATH", tokenizers_path)
@@ -56,14 +53,32 @@ def test_run_startup_validations_creates_runtime_directories(
     assert templates_path.is_dir()
 
 ###############################################################################
-def test_run_startup_validations_requires_env_file(
+def test_run_startup_validations_loads_environment_and_creates_directories(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(startup_validation, "ENV_FILE_PATH", tmp_path / ".env")
+    calls: list[str] = []
+    monkeypatch.setattr(
+        startup_validation,
+        "ensure_environment_loaded",
+        lambda: calls.append("environment"),
+    )
+    monkeypatch.setattr(startup_validation, "LOGS_PATH", tmp_path / "logs")
+    monkeypatch.setattr(startup_validation, "DATASETS_PATH", tmp_path / "datasets")
+    monkeypatch.setattr(
+        startup_validation, "TOKENIZERS_PATH", tmp_path / "tokenizers"
+    )
+    monkeypatch.setattr(
+        startup_validation, "TEMPLATES_PATH", tmp_path / "templates"
+    )
 
-    with pytest.raises(RuntimeError, match="Environment file not found"):
-        startup_validation.run_startup_validations()
+    startup_validation.run_startup_validations()
+
+    assert calls == ["environment"]
+    assert (tmp_path / "logs").is_dir()
+    assert (tmp_path / "datasets").is_dir()
+    assert (tmp_path / "tokenizers").is_dir()
+    assert (tmp_path / "templates").is_dir()
 
 ###############################################################################
 def test_create_app_initializes_startup_state(
@@ -84,7 +99,7 @@ def test_create_app_initializes_startup_state(
     monkeypatch.setattr(
         app_module,
         "initialize_database",
-        lambda: calls.append("database"),
+        lambda **kwargs: calls.append(f"database:{kwargs['startup']}"),
     )
 
     application = app_module.create_app()
@@ -94,7 +109,7 @@ def test_create_app_initializes_startup_state(
 
     assert response.status_code in {200, 307}
     assert application.state.settings is settings
-    assert calls == ["validated", "database"]
+    assert calls == ["validated", "database:True"]
 
 ###############################################################################
 def test_create_app_redirects_root_to_docs(
@@ -108,7 +123,7 @@ def test_create_app_redirects_root_to_docs(
         ),
     )
     monkeypatch.setattr(app_module, "run_startup_validations", lambda: None)
-    monkeypatch.setattr(app_module, "initialize_database", lambda: None)
+    monkeypatch.setattr(app_module, "initialize_database", lambda **kwargs: None)
 
     application = app_module.create_app()
 

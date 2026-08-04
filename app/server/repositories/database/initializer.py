@@ -1,15 +1,21 @@
 from __future__ import annotations
 
+from pathlib import Path
 import urllib.parse
+
 import sqlalchemy
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql.elements import TextClause
 
+from server.common.path import DATABASE_PATH
+from server.common.utils.logger import logger
 from server.configurations import DatabaseSettings, get_server_settings
 from server.repositories.database.postgres import PostgresRepository
+from server.repositories.database.seeding import seed_metric_types
 from server.repositories.database.sqlite import SQLiteRepository
+from server.repositories.database.utils import normalize_sqlite_path
 from server.repositories.schemas.models import Base
-from server.common.utils.logger import logger
+from server.services.metrics.catalog import DATASET_METRIC_CATALOG
 
 SUPPORTED_POSTGRES_ENGINE = "postgresql+psycopg"
 
@@ -62,9 +68,25 @@ def build_postgres_create_database_sql(
 
 ###############################################################################
 def initialize_sqlite_database(settings: DatabaseSettings) -> None:
-    repository = SQLiteRepository(settings, initialize_schema=True)
-    repository.validate_schema()
+    database_path = Path(normalize_sqlite_path(DATABASE_PATH))
+    if database_path.is_file():
+        logger.info(
+            "SQLite database already exists at %s; skipping initialization.",
+            database_path,
+        )
+        return
+
+    repository = SQLiteRepository(settings)
+    Base.metadata.create_all(repository.engine)
+    seed_metric_types(repository.engine, DATASET_METRIC_CATALOG)
     logger.info("Initialized SQLite database at %s", repository.db_path)
+
+###############################################################################
+def connect_postgres_database(settings: DatabaseSettings) -> None:
+    repository = PostgresRepository(settings)
+    with repository.engine.connect() as connection:
+        connection.execute(sqlalchemy.text("SELECT 1"))
+    logger.info("Connected to PostgreSQL database %s.", settings.database_name)
 
 ###############################################################################
 def ensure_postgres_database(settings: DatabaseSettings) -> str:
@@ -102,20 +124,23 @@ def ensure_postgres_database(settings: DatabaseSettings) -> str:
     normalized_settings = clone_settings_with_database(settings, target_database)
     repository = PostgresRepository(normalized_settings)
     Base.metadata.create_all(repository.engine)
-    repository.validate_schema()
+    seed_metric_types(repository.engine, DATASET_METRIC_CATALOG)
     logger.info("Ensured PostgreSQL tables exist in %s", target_database)
 
     return target_database
 
 ###############################################################################
-def run_database_initialization() -> None:
+def run_database_initialization(*, startup: bool = False) -> None:
     settings = get_server_settings().database
     if settings.embedded_database:
         initialize_sqlite_database(settings)
         return
 
     _resolve_postgres_engine(settings.engine)
-    ensure_postgres_database(settings)
+    if startup:
+        connect_postgres_database(settings)
+    else:
+        ensure_postgres_database(settings)
 
 ###############################################################################
 def _resolve_postgres_engine(engine: str | None) -> str:
@@ -125,9 +150,9 @@ def _resolve_postgres_engine(engine: str | None) -> str:
     raise ValueError(f"Unsupported database engine: {engine}")
 
 ###############################################################################
-def initialize_database() -> None:
+def initialize_database(*, startup: bool = False) -> None:
     try:
-        run_database_initialization()
+        run_database_initialization(startup=startup)
     except (SQLAlchemyError, ValueError) as exc:
         logger.error("Database initialization failed: %s", exc)
         raise SystemExit(1) from exc

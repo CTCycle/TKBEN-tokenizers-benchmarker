@@ -58,6 +58,40 @@ def test_bootstrap_environment_overrides_existing_process_values(
     assert os.getenv("FASTAPI_HOST") == "from_dotenv"
 
 ###############################################################################
+def test_missing_environment_is_created_from_example(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env_path = tmp_path / ".env"
+    template_path = tmp_path / ".env.example"
+    template_bytes = b"FASTAPI_HOST=from_template\n"
+    template_path.write_bytes(template_bytes)
+
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
+    monkeypatch.setattr(bootstrap, "ENV_EXAMPLE_FILE_PATH", template_path)
+
+    assert bootstrap.ensure_environment_loaded() == env_path
+    assert env_path.read_bytes() == template_bytes
+    assert os.getenv("FASTAPI_HOST") == "from_template"
+
+###############################################################################
+def test_existing_environment_is_preserved(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env_path = tmp_path / ".env"
+    template_path = tmp_path / ".env.example"
+    existing_bytes = b"FASTAPI_HOST=existing\n"
+    env_path.write_bytes(existing_bytes)
+    template_path.write_bytes(b"FASTAPI_HOST=template\n")
+
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
+    monkeypatch.setattr(bootstrap, "ENV_EXAMPLE_FILE_PATH", template_path)
+
+    bootstrap.ensure_environment_loaded()
+
+    assert env_path.read_bytes() == existing_bytes
+    assert os.getenv("FASTAPI_HOST") == "existing"
+
+###############################################################################
 def test_bootstrap_is_idempotent_without_force(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

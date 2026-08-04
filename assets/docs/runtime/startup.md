@@ -1,5 +1,5 @@
 # Startup
-Last updated: 2026-08-02
+Last updated: 2026-08-04
 
 ## Local Webapp Mode
 Windows recommended:
@@ -39,6 +39,20 @@ npm run preview -- --host 127.0.0.1 --port 8000 --strictPort
 
 ## Maintenance Menu
 Use `.\start_on_windows.ps1` for dependency installation/update, database initialization, tests, log removal, cache cleanup, and uninstall operations.
+
+### Database initialization
+
+- SQLite is initialized automatically only when `app/resources/database.db` is
+  missing. Existing SQLite files are not schema-validated, recreated, reset, or
+  reseeded during startup.
+- PostgreSQL is never created or initialized by normal startup. Set
+  `DATABASE_EMBEDDED=false` and the PostgreSQL connection fields in
+  `settings/.env`, then choose menu option 3 (`Initialize database`). The
+  command creates the configured database and schema and seeds the persisted
+  metric catalog.
+- After PostgreSQL initialization, later launches perform only a connection
+  readiness check. Invalid or unavailable PostgreSQL settings stop the launch
+  or initialization command with a nonzero failure.
 
 ## Test Mode
 ```bat
