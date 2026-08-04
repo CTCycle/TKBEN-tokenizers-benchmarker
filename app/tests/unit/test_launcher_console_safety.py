@@ -19,6 +19,7 @@ def test_launcher_keeps_safe_database_initialization_command() -> None:
     source = LAUNCHER.resolve().read_text(encoding="utf-8")
 
     assert "Write-MenuItem '3' 'Initialize database'" in source
+    assert "$env:PYTHONPATH = $AppDir" in source
     assert "initialize_database.py')" in source
     assert "--drop-existing" not in source
     assert "--seed-catalogs" not in source
