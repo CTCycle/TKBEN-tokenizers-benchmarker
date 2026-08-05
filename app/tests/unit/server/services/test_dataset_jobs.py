@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from server.services.dataset_jobs import DatasetJobService
 
+###############################################################################
 def test_build_analysis_payload_preserves_contract() -> None:
     service = DatasetJobService()
     payload = service.build_analysis_payload(
