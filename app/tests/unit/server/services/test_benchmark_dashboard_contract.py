@@ -92,7 +92,6 @@ def test_builder_emits_payload_shape_compatible_visualization_choices() -> None:
     assert bucket.default_visualization == BenchmarkVisualizationKind.GROUPED_BAR
     assert bucket.compatible_visualizations == [BenchmarkVisualizationKind.GROUPED_BAR]
 
-
 ###############################################################################
 def test_builder_preserves_definition_width_for_dense_visualizations() -> None:
     from server.domain.benchmarks import BenchmarkTokenizerResult
@@ -110,7 +109,6 @@ def test_builder_preserves_definition_width_for_dense_visualizations() -> None:
     )
     assert next(widget for widget in dashboard.widgets if widget.widget_id == "benchmark.lat.encode_latency_distribution").width == "wide"
     assert next(widget for widget in dashboard.widgets if widget.widget_id == "benchmark.frag.fragmentation_by_word_length_bucket").width == "wide"
-
 
 ###############################################################################
 def test_histogram_bins_use_shared_capped_edges_and_constant_padding() -> None:

@@ -44,6 +44,7 @@ class TokenizerReportingService(TokenizerStorageMixin):
             )
             return None
 
+    # -------------------------------------------------------------------------
     def extract_model_card_summary(
         self,
         card_data: Any,

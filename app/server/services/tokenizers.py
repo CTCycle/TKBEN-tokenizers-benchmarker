@@ -40,7 +40,6 @@ class TokenizersService(TokenizerStorageMixin):
         "zero-shot-classification",
     ]
 
-
     # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.repository = TokenizerRepository()

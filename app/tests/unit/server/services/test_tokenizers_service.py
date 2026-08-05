@@ -107,7 +107,10 @@ def test_tokenizer_scan_keeps_only_supported_text_pipeline_models(monkeypatch) -
 def test_tokenizer_scan_propagates_upstream_failure(monkeypatch) -> None:
     service = TokenizersService()
 
+    ###############################################################################
     class FailingApi:
+
+        # -------------------------------------------------------------------------
         def list_models(self, **kwargs):
             del kwargs
             raise RuntimeError("upstream outage details")

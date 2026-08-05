@@ -158,7 +158,6 @@ class BenchmarkDashboardBucketPoint(BaseModel):
     bucket: str
     value: float
 
-
 ###############################################################################
 class BenchmarkDashboardHistogramBin(BaseModel):
     tokenizer: str

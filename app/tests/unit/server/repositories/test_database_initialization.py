@@ -16,6 +16,7 @@ from server.repositories.schemas.models import Base, MetricType
 from server.services.metrics.catalog import DATASET_METRIC_CATALOG
 
 
+###############################################################################
 def _sqlite_settings() -> DatabaseSettings:
     return DatabaseSettings(
         embedded_database=True,
@@ -32,6 +33,7 @@ def _sqlite_settings() -> DatabaseSettings:
     )
 
 
+###############################################################################
 def _postgres_settings(*, host: str | None = "127.0.0.1") -> DatabaseSettings:
     return DatabaseSettings(
         embedded_database=False,
@@ -48,6 +50,7 @@ def _postgres_settings(*, host: str | None = "127.0.0.1") -> DatabaseSettings:
     )
 
 
+###############################################################################
 def _patch_sqlite_path(
     monkeypatch: pytest.MonkeyPatch,
     database_path: Path,
@@ -56,6 +59,7 @@ def _patch_sqlite_path(
     monkeypatch.setattr(sqlite_repository, "DATABASE_PATH", database_path)
 
 
+###############################################################################
 def test_missing_sqlite_database_is_created_and_seeded(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -86,6 +90,7 @@ def test_missing_sqlite_database_is_created_and_seeded(
         engine.dispose()
 
 
+###############################################################################
 def test_existing_sqlite_database_is_not_opened_or_reseeded(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -106,6 +111,7 @@ def test_existing_sqlite_database_is_not_opened_or_reseeded(
     assert hashlib.sha256(database_path.read_bytes()).digest() == before
 
 
+###############################################################################
 def test_sqlite_backend_does_not_validate_existing_database(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -125,6 +131,7 @@ def test_sqlite_backend_does_not_validate_existing_database(
     assert hashlib.sha256(database_path.read_bytes()).digest() == before
 
 
+###############################################################################
 def test_postgres_startup_uses_connection_check_only(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -153,22 +160,31 @@ def test_postgres_startup_uses_connection_check_only(
     assert calls == ["tkben_test"]
 
 
+###############################################################################
 def test_postgres_connection_check_executes_select_one(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     statements: list[str] = []
 
+    ###############################################################################
     class FakeConnection:
+
+        # -------------------------------------------------------------------------
         def __enter__(self):
             return self
 
+        # -------------------------------------------------------------------------
         def __exit__(self, exc_type, exc_value, traceback):
             return False
 
+        # -------------------------------------------------------------------------
         def execute(self, statement):
             statements.append(str(statement))
 
+    ###############################################################################
     class FakeEngine:
+
+        # -------------------------------------------------------------------------
         def connect(self):
             return FakeConnection()
 
@@ -183,6 +199,7 @@ def test_postgres_connection_check_executes_select_one(
     assert statements == ["SELECT 1"]
 
 
+###############################################################################
 def test_postgres_initialization_failure_is_returned_as_process_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

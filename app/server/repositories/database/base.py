@@ -34,7 +34,6 @@ class RepositoryBase:
             raise ValueError(f"Unknown canonical table: {table_name}") from exc
 
     # -------------------------------------------------------------------------
-    # -------------------------------------------------------------------------
     def _batches(self, records: list[Mapping[str, Any]]) -> Iterable[list[Mapping[str, Any]]]:
         for start in range(0, len(records), self.insert_batch_size):
             yield records[start : start + self.insert_batch_size]
