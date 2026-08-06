@@ -15,7 +15,6 @@ from server.repositories.database.backend import build_sqlite_backend
 from server.repositories.schemas.models import Base, MetricType
 from server.services.metrics.catalog import DATASET_METRIC_CATALOG
 
-
 ###############################################################################
 def _sqlite_settings() -> DatabaseSettings:
     return DatabaseSettings(
@@ -31,7 +30,6 @@ def _sqlite_settings() -> DatabaseSettings:
         connect_timeout=1,
         insert_batch_size=100,
     )
-
 
 ###############################################################################
 def _postgres_settings(*, host: str | None = "127.0.0.1") -> DatabaseSettings:
@@ -49,7 +47,6 @@ def _postgres_settings(*, host: str | None = "127.0.0.1") -> DatabaseSettings:
         insert_batch_size=100,
     )
 
-
 ###############################################################################
 def _patch_sqlite_path(
     monkeypatch: pytest.MonkeyPatch,
@@ -57,7 +54,6 @@ def _patch_sqlite_path(
 ) -> None:
     monkeypatch.setattr(initializer, "DATABASE_PATH", database_path)
     monkeypatch.setattr(sqlite_repository, "DATABASE_PATH", database_path)
-
 
 ###############################################################################
 def test_missing_sqlite_database_is_created_and_seeded(
@@ -89,7 +85,6 @@ def test_missing_sqlite_database_is_created_and_seeded(
     finally:
         engine.dispose()
 
-
 ###############################################################################
 def test_existing_sqlite_database_is_not_opened_or_reseeded(
     tmp_path: Path,
@@ -110,7 +105,6 @@ def test_existing_sqlite_database_is_not_opened_or_reseeded(
 
     assert hashlib.sha256(database_path.read_bytes()).digest() == before
 
-
 ###############################################################################
 def test_sqlite_backend_does_not_validate_existing_database(
     tmp_path: Path,
@@ -129,7 +123,6 @@ def test_sqlite_backend_does_not_validate_existing_database(
     backend.engine.dispose()
 
     assert hashlib.sha256(database_path.read_bytes()).digest() == before
-
 
 ###############################################################################
 def test_postgres_startup_uses_connection_check_only(
@@ -158,7 +151,6 @@ def test_postgres_startup_uses_connection_check_only(
     initializer.run_database_initialization(startup=True)
 
     assert calls == ["tkben_test"]
-
 
 ###############################################################################
 def test_postgres_connection_check_executes_select_one(
@@ -197,7 +189,6 @@ def test_postgres_connection_check_executes_select_one(
     initializer.connect_postgres_database(_postgres_settings())
 
     assert statements == ["SELECT 1"]
-
 
 ###############################################################################
 def test_postgres_initialization_failure_is_returned_as_process_failure(
