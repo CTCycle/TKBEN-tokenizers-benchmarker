@@ -85,13 +85,16 @@ def test_list_benchmark_reports_returns_payload(
 def test_run_benchmarks_with_sample_dataset(
     api_context: APIRequestContext,
     uploaded_dataset: dict,
+    uploaded_tiny_tokenizer: dict,
     job_waiter,
 ) -> None:
-    """POST /api/benchmarks/run should return chart data for a small dataset."""
+    """POST /api/benchmarks/run should return a dashboard report for a small dataset."""
+    tokenizer_name = uploaded_tiny_tokenizer["tokenizer_name"]
     response = api_context.post(
         "/api/benchmarks/run",
         data={
-            "tokenizers": ["hf-internal-testing/tiny-random-bert"],
+            "tokenizers": [tokenizer_name],
+            "custom_tokenizer_name": tokenizer_name,
             "dataset_name": uploaded_dataset["dataset_name"],
             "max_documents": 2,
             "run_name": "e2e benchmark report",
@@ -117,7 +120,9 @@ def test_run_benchmarks_with_sample_dataset(
     assert data.get("status") == "success"
     assert data.get("tokenizers_count", 0) >= 1
     assert data.get("documents_processed", 0) >= 1
-    assert "chart_data" in data
+    dashboard = data.get("dashboard")
+    assert isinstance(dashboard, dict)
+    assert isinstance(dashboard.get("widgets"), list)
     assert data.get("report_id")
     report_id = int(data.get("report_id"))
     assert report_id > 0

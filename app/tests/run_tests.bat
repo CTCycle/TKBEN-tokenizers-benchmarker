@@ -136,7 +136,7 @@ if /i "%STANDARD_TEST_SKIP_LIVE_SERVERS%"=="false" if "%HAS_E2E%"=="1" (
       )
 
       echo [INFO] Starting frontend preview server...
-      start "" /B /D "%CLIENT_DIR%" "%NPM_CMD%" run preview -- --host %UI_HOST% --port %UI_PORT%
+      start "" /B /D "%CLIENT_DIR%" "%ComSpec%" /d /c ""%NPM_CMD%" run preview -- --host %UI_HOST% --port %UI_PORT%"
       set "STARTED_FRONTEND=1"
     )
   )
@@ -186,7 +186,7 @@ if errorlevel 1 (
 )
 popd
 echo [STEP] Running Python tests...
-"%PYTHON_CMD%" -m pytest "%PYTEST_TARGET%" -v --tb=short %*
+"%PYTHON_CMD%" -m pytest "%PYTEST_TARGET%" -v --tb=short --basetemp "%QA_DIR%\.pytest-basetemp" %*
 set "PYTEST_RC=%ERRORLEVEL%"
 if "%PYTEST_RC%"=="0" (
   set "PYTEST_PHASE=PASS"

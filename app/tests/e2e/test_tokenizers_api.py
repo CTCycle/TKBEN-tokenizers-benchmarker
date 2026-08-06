@@ -51,16 +51,19 @@ def test_get_tokenizer_settings(api_context: APIRequestContext) -> None:
 
 ###############################################################################
 @pytest.mark.skipif(not RUN_HF_SCAN, reason="Set E2E_RUN_HF_SCAN=1 to enable.")
-def test_scan_tokenizers_returns_identifiers(
+def test_scan_tokenizers_returns_consistent_catalog(
     api_context: APIRequestContext,
 ) -> None:
-    """GET /api/tokenizers/scan should return at least one tokenizer identifier."""
+    """GET /api/tokenizers/scan should return a self-consistent optional catalog."""
     response = api_context.get("/api/tokenizers/scan?limit=1")
     assert response.ok
     data = response.json()
     assert data.get("status") == "success"
-    assert isinstance(data.get("identifiers"), list)
-    assert data.get("count", 0) >= 1
+    identifiers = data.get("identifiers")
+    assert isinstance(identifiers, list)
+    assert data.get("count") == len(identifiers)
+    assert len(identifiers) <= 1
+    assert all(isinstance(identifier, str) and identifier for identifier in identifiers)
 
 ###############################################################################
 def test_upload_rejects_invalid_extension(api_context: APIRequestContext) -> None:

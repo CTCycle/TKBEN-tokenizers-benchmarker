@@ -16,12 +16,15 @@ RUN_BENCHMARKS = os.getenv("E2E_RUN_BENCHMARKS", "").lower() in ("1", "true", "y
 def test_benchmark_reports_round_trip_current_schema(
     api_context: APIRequestContext,
     uploaded_dataset: dict,
+    uploaded_tiny_tokenizer: dict,
     job_waiter,
 ) -> None:
+    tokenizer_name = uploaded_tiny_tokenizer["tokenizer_name"]
     run_response = api_context.post(
         "/api/benchmarks/run",
         data={
-            "tokenizers": ["hf-internal-testing/tiny-random-bert"],
+            "tokenizers": [tokenizer_name],
+            "custom_tokenizer_name": tokenizer_name,
             "dataset_name": uploaded_dataset["dataset_name"],
             "run_name": "e2e benchmark reports schema",
             "config": {
@@ -50,7 +53,8 @@ def test_benchmark_reports_round_trip_current_schema(
     result = job_status.get("result", {})
     assert result.get("status") == "success"
     assert isinstance(result.get("tokenizer_results"), list)
-    assert isinstance(result.get("chart_data"), dict)
+    assert isinstance(result.get("dashboard"), dict)
+    assert isinstance(result["dashboard"].get("widgets"), list)
     report_id = int(result.get("report_id", 0))
     assert report_id > 0
 
@@ -70,4 +74,5 @@ def test_benchmark_reports_round_trip_current_schema(
     assert int(by_id.get("report_id", 0)) == report_id
     assert by_id.get("dataset_name") == uploaded_dataset["dataset_name"]
     assert isinstance(by_id.get("tokenizer_results"), list)
-    assert isinstance(by_id.get("chart_data"), dict)
+    assert isinstance(by_id.get("dashboard"), dict)
+    assert isinstance(by_id["dashboard"].get("widgets"), list)
