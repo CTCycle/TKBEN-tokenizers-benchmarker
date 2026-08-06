@@ -234,6 +234,7 @@ function Install-Runtimes {
     if (-not (Test-Path -LiteralPath $NodeExe)) { throw "Node.js was not installed at $NodeExe" }
     if (-not (Test-Path -LiteralPath $NpmCmd)) { throw "npm was not installed at $NpmCmd" }
     Write-Ok "Node.js ready: $(& $NodeExe --version)"
+    Write-Ok 'Portable runtimes ready.'
 }
 
 function Get-FrontendDependencyFingerprint {
@@ -279,12 +280,13 @@ function Sync-Dependencies {
     param(
         [bool]$BuildFrontend = $true,
         [switch]$UseCachedFrontendDependencies,
+        [switch]$RuntimesReady,
         [ValidateSet('Standard', 'Development')]
         [string]$InstallationType = 'Standard'
     )
 
     Import-Environment
-    Install-Runtimes
+    if (-not $RuntimesReady) { Install-Runtimes }
     Stop-PortListeners -Port ([int]$env:UI_PORT)
 
     Write-Step 'Installing Python dependencies.'
@@ -446,18 +448,22 @@ function Launch-Application {
 }
 
 function Install-Dependencies {
+    Import-Environment
+    Install-Runtimes
     $installationType = Read-InstallationType
-    Sync-Dependencies -InstallationType $installationType
+    Sync-Dependencies -InstallationType $installationType -RuntimesReady
     if (Test-Path -LiteralPath $UvCacheDir) { Remove-Item -LiteralPath $UvCacheDir -Recurse -Force }
     Write-Ok 'Dependencies installed and frontend built.'
 }
 
 function Read-InstallationType {
-    $selection = (Read-Host 'Installation type [1=Development, 2=Standard]').Trim()
+    Write-Host '  [1] Development - include Ruff, Pyright, and pytest'
+    Write-Host '  [2] Standard    - install runtime dependencies only'
+    $selection = (Read-Host '  Select installation profile [1-2]').Trim()
     switch ($selection) {
         '1' { return 'Development' }
         '2' { return 'Standard' }
-        default { throw 'Invalid installation type. Enter 1 for Development or 2 for Standard.' }
+        default { throw 'Invalid installation profile. Enter 1 for Development or 2 for Standard.' }
     }
 }
 
