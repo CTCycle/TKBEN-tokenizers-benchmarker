@@ -155,57 +155,58 @@ def test_generate_report_payload_includes_hf_url_and_subword_stats(
 ###############################################################################
 def test_tokenizer_report_serializer_roundtrip_preserves_huggingface_url() -> None:
     serializer = TokenizerReportSerializer()
-    report_id = serializer.save_tokenizer_report(
-        {
-            "report_version": 1,
-            "created_at": "2026-02-17T00:00:00Z",
-            "tokenizer_name": "test/tokenizer-report-roundtrip",
-            "description": None,
-            "huggingface_url": "https://huggingface.co/test/tokenizer-report-roundtrip",
-            "global_stats": {
-                "vocabulary_size": 2,
-                "base_vocabulary_size": 2,
-                "model_max_length": 512,
-                "padding_side": "right",
-                "added_tokens_count": 0,
-                "special_tokens_ids_count": 1,
-                "subword_word_stats": {
-                    "heuristic": "hash_prefix_atat_suffix_sentencepiece_markers",
-                    "subword_count": 1,
-                    "word_count": 1,
-                    "considered_count": 2,
-                    "subword_percentage": 50.0,
-                    "word_percentage": 50.0,
-                    "subword_to_word_ratio": 1.0,
-                },
-                "vocabulary_stats": {
-                    "heuristic": "hash_prefix_atat_suffix_sentencepiece_markers",
-                    "min_token_length": 1,
-                    "mean_token_length": 1.0,
-                    "median_token_length": 1.0,
-                    "max_token_length": 1,
-                    "subword_like_count": 1,
-                    "subword_like_percentage": 50.0,
-                    "special_tokens_in_vocab_count": 0,
-                    "special_tokens_in_vocab_percentage": 0.0,
-                    "unique_token_lengths": 1,
-                    "empty_token_count": 0,
-                    "considered_non_special_count": 2,
-                },
-                "persistence_mode": "filesystem_required",
-                "persistence_reason": "test",
-            },
-            "token_length_histogram": {
-                "bins": ["1-1"],
-                "counts": [2],
-                "bin_edges": [1.0, 2.0],
-                "min_length": 1,
-                "max_length": 1,
-                "mean_length": 1.0,
-                "median_length": 1.0,
-            },
+    report = {
+        "report_version": 1,
+        "created_at": "2026-02-17T00:00:00Z",
+        "tokenizer_name": "test/tokenizer-report-roundtrip",
+        "description": None,
+        "huggingface_url": "https://huggingface.co/test/tokenizer-report-roundtrip",
+        "global_stats": {
             "vocabulary_size": 2,
-        }
+            "base_vocabulary_size": 2,
+            "model_max_length": 512,
+            "padding_side": "right",
+            "added_tokens_count": 0,
+            "special_tokens_ids_count": 1,
+            "subword_word_stats": {
+                "heuristic": "hash_prefix_atat_suffix_sentencepiece_markers",
+                "subword_count": 1,
+                "word_count": 1,
+                "considered_count": 2,
+                "subword_percentage": 50.0,
+                "word_percentage": 50.0,
+                "subword_to_word_ratio": 1.0,
+            },
+            "vocabulary_stats": {
+                "heuristic": "hash_prefix_atat_suffix_sentencepiece_markers",
+                "min_token_length": 1,
+                "mean_token_length": 1.0,
+                "median_token_length": 1.0,
+                "max_token_length": 1,
+                "subword_like_count": 1,
+                "subword_like_percentage": 50.0,
+                "special_tokens_in_vocab_count": 0,
+                "special_tokens_in_vocab_percentage": 0.0,
+                "unique_token_lengths": 1,
+                "empty_token_count": 0,
+                "considered_non_special_count": 2,
+            },
+            "persistence_mode": "filesystem_required",
+            "persistence_reason": "test",
+        },
+        "token_length_histogram": {
+            "bins": ["1-1"],
+            "counts": [2],
+            "bin_edges": [1.0, 2.0],
+            "min_length": 1,
+            "max_length": 1,
+            "mean_length": 1.0,
+            "median_length": 1.0,
+        },
+        "vocabulary_size": 2,
+    }
+    report_id = serializer.replace_report_and_vocabulary(
+        report["tokenizer_name"], report, []
     )
 
     loaded = serializer.load_tokenizer_report_by_id(report_id)

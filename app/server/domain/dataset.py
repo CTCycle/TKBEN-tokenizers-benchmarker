@@ -14,11 +14,6 @@ WORD_TOKEN_DESCRIPTION = "Word token"
 FREQUENCY_COUNT_DESCRIPTION = "Frequency count"
 
 ###############################################################################
-class DatasetPayload(BaseModel):
-    columns: list[str] = Field(default_factory=list)
-    records: list[dict[str, Any]] = Field(default_factory=list)
-
-###############################################################################
 class HistogramData(BaseModel):
     bins: list[str] = Field(
         default_factory=list, description="Bin labels for histogram"
@@ -61,32 +56,6 @@ class DatasetDownloadRequest(BaseModel):
     @classmethod
     def validate_corpus(cls, value: str) -> str:
         return normalize_identifier(value, "Dataset id", max_length=160)
-
-###############################################################################
-class DatasetDownloadResponse(BaseModel):
-    status: str = Field(default="success")
-    dataset_name: str = Field(..., description="Full dataset name (corpus/config)")
-    text_column: str = Field(..., description="Column used for text extraction")
-    document_count: int = Field(..., description="Total number of documents in dataset")
-    saved_count: int = Field(..., description="Number of documents saved to database")
-    histogram: HistogramData = Field(..., description="Document length distribution")
-
-###############################################################################
-class DatasetLoadResponse(BaseModel):
-    status: str = Field(default="success")
-    summary: str = Field(default="")
-    dataset: DatasetPayload | dict[str, Any] | None = None
-
-###############################################################################
-class CustomDatasetUploadResponse(BaseModel):
-    """Response schema for custom dataset file uploads."""
-
-    status: str = Field(default="success")
-    dataset_name: str = Field(..., description="Name derived from uploaded file")
-    text_column: str = Field(..., description="Column used for text extraction")
-    document_count: int = Field(..., description="Total documents in dataset")
-    saved_count: int = Field(..., description="Documents saved to database")
-    histogram: HistogramData = Field(..., description="Document length distribution")
 
 ###############################################################################
 class DatasetAnalysisRequest(BaseModel):
@@ -182,24 +151,6 @@ class PerDocumentStats(BaseModel):
     std_word_lengths: list[float] = Field(default_factory=list)
 
 ###############################################################################
-class DatasetStatisticsSummary(BaseModel):
-    """Summary of word-level statistics from dataset analysis."""
-
-    total_documents: int = Field(default=0, description="Number of analyzed documents")
-    mean_words_count: float = Field(
-        default=0.0, description="Mean word count per document"
-    )
-    median_words_count: float = Field(
-        default=0.0, description="Median word count per document"
-    )
-    mean_avg_word_length: float = Field(
-        default=0.0, description="Mean average word length"
-    )
-    mean_std_word_length: float = Field(
-        default=0.0, description="Mean std deviation of word length"
-    )
-
-###############################################################################
 class DatasetAnalysisResponse(BaseModel):
     """Response schema for dataset analysis endpoint."""
 
@@ -207,7 +158,7 @@ class DatasetAnalysisResponse(BaseModel):
     report_id: int | None = Field(
         default=None, description="Persisted report identifier"
     )
-    report_version: int = Field(default=1, description="Report payload version")
+    report_version: int = Field(default=2, description="Report payload version")
     created_at: str | None = Field(
         default=None, description="UTC ISO timestamp for report creation"
     )

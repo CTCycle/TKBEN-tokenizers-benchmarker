@@ -25,6 +25,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from server.repositories.serialization.datasets import DatasetSerializer
 from server.configurations import get_server_settings
+from server.common.constants import DATASET_REPORT_VERSION
 from server.common.path import DATASETS_PATH
 from server.common.utils.logger import logger
 from server.common.utils.security import (
@@ -99,7 +100,7 @@ DATASET_ID_FIELD = "Dataset id"
 ###############################################################################
 class DatasetService(DatasetServiceOperationsMixin):
     SUPPORTED_TEXT_FIELDS = ("text", "content", "sentence", "document", "tokens")
-    REPORT_VERSION = 2
+    REPORT_VERSION = DATASET_REPORT_VERSION
     WORD_LIST_LIMIT = 15
     WORD_CLOUD_LIMIT = 60
 

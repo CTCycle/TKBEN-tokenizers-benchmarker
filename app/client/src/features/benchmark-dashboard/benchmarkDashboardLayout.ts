@@ -1,7 +1,6 @@
 import type { BenchmarkDashboardWidgetData, BenchmarkVisualizationKind } from '../../types/api';
 
 export const BENCHMARK_DASHBOARD_STORAGE_KEY = 'tkben:cross-benchmark-dashboard-layout:v3';
-export const BENCHMARK_DASHBOARD_STORAGE_KEY_V2 = 'tkben:cross-benchmark-dashboard-layout:v2';
 export type BenchmarkDashboardLayoutState = { version: 3; ordered_widget_ids: string[]; hidden_widget_ids: string[]; known_widget_ids: string[]; visualization_by_widget_id: Record<string, BenchmarkVisualizationKind>; };
 export type ResolvedBenchmarkDashboardLayout = { orderedWidgetIds: string[]; visibleWidgetIds: string[]; visualizationByWidgetId: Record<string, BenchmarkVisualizationKind>; };
 
@@ -35,11 +34,7 @@ export const resolveAvailableDashboardLayout = (stored: BenchmarkDashboardLayout
   })) as Record<string, BenchmarkVisualizationKind>;
   return { orderedWidgetIds, visibleWidgetIds: orderedWidgetIds.filter((id) => !hidden.has(id)), visualizationByWidgetId };
 };
-export const serializeDashboardLayout = (layout: BenchmarkDashboardLayoutState): string => JSON.stringify(layout);
 export const moveDashboardWidget = (order: string[], activeId: string, overId: string | null): string[] => {
   if (!overId || activeId === overId || !order.includes(activeId) || !order.includes(overId)) return order;
   const next = order.filter((id) => id !== activeId); next.splice(next.indexOf(overId), 0, activeId); return next;
 };
-export const swapDashboardWidgets = (order: string[], first: string, second: string): string[] => { const next = [...order]; const a = next.indexOf(first); const b = next.indexOf(second); if (a < 0 || b < 0) return order; [next[a], next[b]] = [next[b], next[a]]; return next; };
-export const insertDashboardWidget = moveDashboardWidget;
-export const packDashboardGrid = (widgets: BenchmarkDashboardWidgetData[]): BenchmarkDashboardWidgetData[][] => { const rows: BenchmarkDashboardWidgetData[][] = []; let row: BenchmarkDashboardWidgetData[] = []; widgets.forEach((widget) => { if (widget.width === 'wide') { if (row.length) rows.push(row); rows.push([widget]); row = []; } else { row.push(widget); if (row.length === 2) { rows.push(row); row = []; } } }); if (row.length) rows.push(row); return rows; };

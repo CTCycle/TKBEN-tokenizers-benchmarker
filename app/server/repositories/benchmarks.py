@@ -138,13 +138,23 @@ class BenchmarkRepository:
         selected_metric_keys: list[str],
         payload: dict[str, Any],
     ) -> int:
-        schema_version = int(payload.get("schema_version", 1) or 1)
-        methodology_version = str(payload.get("methodology_version", "unknown") or "unknown")
-        status = str(payload.get("status", "completed") or "completed")
-        documents_processed = int(payload.get("documents_processed", payload.get("document_count", 0)) or 0)
-        tokenizers_processed = payload.get("tokenizers_processed", payload.get("tokenizers", []))
+        required_fields = (
+            "schema_version",
+            "methodology_version",
+            "status",
+            "documents_processed",
+            "tokenizers_processed",
+        )
+        if any(field not in payload for field in required_fields):
+            raise ValueError("Benchmark report payload is missing canonical fields.")
+
+        schema_version = int(payload["schema_version"])
+        methodology_version = str(payload["methodology_version"])
+        status = str(payload["status"])
+        documents_processed = int(payload["documents_processed"])
+        tokenizers_processed = payload["tokenizers_processed"]
         if not isinstance(tokenizers_processed, list):
-            tokenizers_processed = []
+            raise ValueError("Benchmark report tokenizers_processed must be a list.")
         report_row = BenchmarkReport(
             dataset_id=int(dataset_id),
             report_version=int(report_version),

@@ -46,7 +46,7 @@ class DatasetJobService:
         return {
             "status": "success",
             "report_id": result.get("report_id"),
-            "report_version": result.get("report_version", 2),
+            "report_version": result["report_version"],
             "created_at": result.get("created_at"),
             "dataset_name": result.get("dataset_name", ""),
             "session_name": result.get("session_name"),

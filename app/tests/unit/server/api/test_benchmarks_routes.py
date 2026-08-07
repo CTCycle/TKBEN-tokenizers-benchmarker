@@ -171,13 +171,7 @@ def test_benchmark_list_and_by_id(monkeypatch) -> None:
             },
             "trial_summary": {"warmup_trials": 2, "timed_trials": 8},
             "tokenizer_results": [],
-            "chart_data": {
-                "efficiency": [],
-                "fidelity": [],
-                "vocabulary": [],
-                "fragmentation": [],
-                "latency_or_memory_distribution": [],
-            },
+            "dashboard": {"widgets": []},
             "per_document_stats": [],
             "runtime_metadata": {},
             "raw_observations": {},
@@ -237,21 +231,9 @@ def test_benchmark_by_id_accepts_cancelled_contract(monkeypatch) -> None:
             },
             "trial_summary": {"warmup_trials": 0, "timed_trials": 0},
             "tokenizer_results": [],
-            "chart_data": {
-                "efficiency": [],
-                "fidelity": [],
-                "vocabulary": [],
-                "fragmentation": [],
-                "latency_or_memory_distribution": [],
-            },
+            "dashboard": {"widgets": []},
             "per_document_stats": [],
-            "runtime_metadata": {
-                "metric_availability": {
-                    "resource_metrics": False,
-                    "latency_distribution": False,
-                    "per_document_stats": False,
-                }
-            },
+            "runtime_metadata": {},
             "raw_observations": {},
         },
     )
@@ -262,6 +244,3 @@ def test_benchmark_by_id_accepts_cancelled_contract(monkeypatch) -> None:
     payload = by_id.json()
     assert payload["status"] == "cancelled"
     assert payload["report_id"] == 9
-    assert (
-        payload["runtime_metadata"]["metric_availability"]["resource_metrics"] is False
-    )

@@ -114,10 +114,6 @@ def build_benchmark_metric_value_map(result: dict[str, Any]) -> dict[str, Any]:
         if "eff.encode_tokens_per_second_mean" in widget["metric_keys"]
     )
     efficiency_metrics = efficiency_widget["points"][0]
-    metric_availability = result.get("runtime_metadata", {}).get(
-        "metric_availability", {}
-    )
-
     encode_tps = float(efficiency_metrics["value"])
     encode_cps = float(tokenizer_result["efficiency"]["encode_chars_per_second_mean"])
     wall_time_s = float(tokenizer_result["efficiency"]["end_to_end_wall_time_seconds"])
@@ -150,11 +146,11 @@ def build_benchmark_metric_value_map(result: dict[str, Any]) -> dict[str, Any]:
         ],
     }
 
-    if metric_availability.get("unknown_token_rate"):
+    if tokenizer_result["fidelity"]["unknown_token_rate"] is not None:
         metric_values["fid.unknown_token_rate"] = float(
             tokenizer_result["fidelity"]["unknown_token_rate"]
         )
-    if metric_availability.get("vocab_character_overlap"):
+    if tokenizer_result["fidelity"]["lossless_encodability_rate"] is not None:
         metric_values["fid.lossless_encodability_rate"] = tokenizer_result[
             "fidelity"
         ]["lossless_encodability_rate"]
