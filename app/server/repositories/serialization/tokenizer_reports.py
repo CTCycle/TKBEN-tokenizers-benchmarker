@@ -62,32 +62,6 @@ class TokenizerReportSerializer:
         return int(tokenizer_id)
 
     # -------------------------------------------------------------------------
-    def save_tokenizer_report(self, report: dict[str, Any]) -> int:
-        tokenizer_name = str(report.get("tokenizer_name") or "")
-        tokenizer_id = self.ensure_tokenizer_id(tokenizer_name)
-        global_stats = report.get("global_stats", {})
-        metadata_payload = dict(global_stats) if isinstance(global_stats, dict) else {}
-        if "huggingface_url" not in metadata_payload:
-            metadata_payload["huggingface_url"] = report.get("huggingface_url")
-        created_at = _parse_timestamp(report.get("created_at")) or pd.Timestamp.utcnow()
-        report_row = TokenizerReport(
-            tokenizer_id=int(tokenizer_id),
-            report_version=int(report.get("report_version", 1) or 1),
-            created_at=created_at.to_pydatetime(),
-            metadata_json=metadata_payload,
-            token_length_histogram=report.get("token_length_histogram", {}),
-            description=report.get("description"),
-        )
-        with self._session() as session:
-            session.execute(delete(TokenizerReport).where(TokenizerReport.tokenizer_id == int(tokenizer_id)))
-            session.add(report_row)
-            session.commit()
-            session.refresh(report_row)
-        if report_row.id is None:
-            raise ValueError("Failed to resolve saved tokenizer report id.")
-        return int(report_row.id)
-
-    # -------------------------------------------------------------------------
     def replace_report_and_vocabulary(
         self, tokenizer_name: str, report: dict[str, Any], vocabulary_rows: list[dict[str, Any]]
     ) -> int:
@@ -111,7 +85,7 @@ class TokenizerReportSerializer:
             metadata_payload = dict(global_stats) if isinstance(global_stats, dict) else {}
             metadata_payload.setdefault("huggingface_url", report.get("huggingface_url"))
             report_row = TokenizerReport(
-                tokenizer_id=int(tokenizer_id), report_version=int(report.get("report_version", 1) or 1),
+                tokenizer_id=int(tokenizer_id), report_version=int(report["report_version"]),
                 created_at=now, metadata_json=metadata_payload,
                 token_length_histogram=report.get("token_length_histogram", {}), description=report.get("description"),
             )
@@ -171,7 +145,7 @@ class TokenizerReportSerializer:
             huggingface_url = None
         return {
             "report_id": int(storage.get("id") or 0),
-            "report_version": int(storage.get("report_version", 1) or 1),
+            "report_version": int(storage["report_version"]),
             "created_at": created_at_iso,
             "tokenizer_name": storage.get("tokenizer_name", ""),
             "description": storage.get("description"),

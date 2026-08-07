@@ -119,23 +119,6 @@ class BenchmarkTokenizerResult(BaseModel):
     )
 
 ###############################################################################
-class BenchmarkSeriesPoint(BaseModel):
-    tokenizer: str
-    value: float = Field(default=0.0)
-    ci95_low: float | None = Field(default=None)
-    ci95_high: float | None = Field(default=None)
-
-###############################################################################
-class BenchmarkDistributionPoint(BaseModel):
-    tokenizer: str
-    min: float = Field(default=0.0)
-    q1: float = Field(default=0.0)
-    median: float = Field(default=0.0)
-    q3: float = Field(default=0.0)
-    max: float = Field(default=0.0)
-    sample_count: int = Field(default=0)
-
-###############################################################################
 class BenchmarkDashboardPoint(BaseModel):
     tokenizer: str
     value: float

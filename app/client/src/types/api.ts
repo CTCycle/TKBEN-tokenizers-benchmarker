@@ -353,23 +353,6 @@ export interface BenchmarkTokenizerResult {
     resources: BenchmarkResourceMetrics;
 }
 
-export interface BenchmarkSeriesPoint {
-    tokenizer: string;
-    value: number;
-    ci95_low?: number;
-    ci95_high?: number;
-}
-
-export interface BenchmarkDistributionPoint {
-    tokenizer: string;
-    min: number;
-    q1: number;
-    median: number;
-    q3: number;
-    max: number;
-    sample_count: number;
-}
-
 export interface BenchmarkDashboardPoint { tokenizer: string; value: number; interval_low: number | null; interval_high: number | null; }
 export interface BenchmarkDashboardDistribution { tokenizer: string; min: number; q1: number; median: number; q3: number; max: number; sample_count: number; }
 export interface BenchmarkDashboardBucketPoint { tokenizer: string; bucket: string; value: number; }

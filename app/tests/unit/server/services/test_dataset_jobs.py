@@ -9,6 +9,7 @@ def test_build_analysis_payload_preserves_contract() -> None:
         {
             "dataset_name": "custom/demo",
             "report_id": 1,
+            "report_version": 2,
             "document_length_histogram": {"bins": ["1-2"], "counts": [1]},
             "word_length_histogram": {"bins": ["1-2"], "counts": [1]},
         }

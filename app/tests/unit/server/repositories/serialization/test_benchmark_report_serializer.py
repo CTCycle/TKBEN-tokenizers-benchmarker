@@ -98,21 +98,10 @@ def _build_payload(dataset_name: str) -> dict:
                 },
             }
         ],
-        "chart_data": {
-            "efficiency": [],
-            "fidelity": [],
-            "vocabulary": [],
-            "fragmentation": [],
-            "latency_or_memory_distribution": [],
-        },
+        "dashboard": {"widgets": []},
         "per_document_stats": [],
         "runtime_metadata": {
             "python_version": "x",
-            "metric_availability": {
-                "resource_metrics": True,
-                "latency_distribution": True,
-                "per_document_stats": False,
-            },
         },
         "raw_observations": {},
     }

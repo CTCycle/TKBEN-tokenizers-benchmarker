@@ -43,7 +43,7 @@ def test_metric_values_require_one_value_and_dataset_safe_document(sqlite_sessio
     sqlite_session.add_all([first, second])
     sqlite_session.flush()
     document = DatasetDocument(dataset_id=first.id, ordinal=0, text="text")
-    session = AnalysisSession(dataset_id=first.id, status="completed", report_version=1, created_at=now, completed_at=now, parameters={}, selected_metric_keys=[])
+    session = AnalysisSession(dataset_id=first.id, status="completed", report_version=2, created_at=now, completed_at=now, parameters={}, selected_metric_keys=[])
     metric = MetricType(key="metric", category="test", label="Metric", scope="per_document", value_kind="number")
     sqlite_session.add_all([document, session, metric])
     sqlite_session.flush()

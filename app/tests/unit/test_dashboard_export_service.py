@@ -102,45 +102,6 @@ def build_benchmark_payload() -> dict:
             "dataset_name": "wikitext/wikitext-2-v1",
             "documents_processed": 3000,
             "tokenizers_count": 3,
-            "global_metrics": [
-                {
-                    "tokenizer": "bert-base-uncased",
-                    "oov_rate": 0.012,
-                    "round_trip_fidelity_rate": 0.98,
-                    "word_recovery_rate": 0.95,
-                    "character_coverage": 0.99,
-                    "subword_fertility": 1.32,
-                    "token_distribution_entropy": 7.01,
-                },
-                {
-                    "tokenizer": "gpt2",
-                    "oov_rate": 0.018,
-                    "round_trip_fidelity_rate": 0.96,
-                    "word_recovery_rate": 0.92,
-                    "character_coverage": 0.98,
-                    "subword_fertility": 1.41,
-                    "token_distribution_entropy": 6.71,
-                },
-            ],
-            "chart_data": {
-                "speed_metrics": [
-                    {"tokenizer": "bert-base-uncased", "tokens_per_second": 11000},
-                    {"tokenizer": "gpt2", "tokens_per_second": 9600},
-                ],
-                "vocabulary_stats": [
-                    {"tokenizer": "bert-base-uncased", "vocabulary_size": 30522},
-                    {"tokenizer": "gpt2", "vocabulary_size": 50257},
-                ],
-                "token_length_distributions": [
-                    {
-                        "tokenizer": "bert-base-uncased",
-                        "bins": [
-                            {"bin_start": 1, "bin_end": 2, "count": 230},
-                            {"bin_start": 3, "bin_end": 4, "count": 410},
-                        ],
-                    }
-                ],
-            },
             "dashboard": {
                 "widgets": [
                     {

@@ -31,10 +31,6 @@ from server.services.custom_tokenizers import get_custom_tokenizer_registry
 class BenchmarkTools:
 
     # -------------------------------------------------------------------------
-    def __call__(self) -> None:
-        pass
-
-    # -------------------------------------------------------------------------
     def process_tokens(self, text: str, tokenizer: Any) -> tuple[str, list[str]]:
         if not isinstance(text, str):
             text = str(text)

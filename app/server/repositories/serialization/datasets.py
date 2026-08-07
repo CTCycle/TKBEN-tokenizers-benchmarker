@@ -11,6 +11,7 @@ from sqlalchemy import and_, delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from server.common.constants import DATASET_REPORT_VERSION
 from server.repositories.database.seeding import seed_metric_types
 from server.repositories.queries.data import DataRepositoryQueries
 from server.repositories.schemas.models import (
@@ -328,7 +329,7 @@ class DatasetSerializer:
         session_name: str | None,
         selected_metric_keys: list[str],
         parameters: dict[str, Any],
-        report_version: int = 2,
+        report_version: int = DATASET_REPORT_VERSION,
     ) -> int:
         dataset_id = self.get_dataset_id(dataset_name)
         if dataset_id is None:
@@ -598,7 +599,7 @@ class DatasetSerializer:
 
         return {
             "report_id": session_id,
-            "report_version": int(session_row.get("report_version", 2) or 2),
+            "report_version": int(session_row["report_version"]),
             "created_at": created_at_iso,
             "dataset_name": str(session_row.get("dataset_name") or ""),
             "session_name": session_row.get("session_name"),
@@ -660,6 +661,7 @@ class DatasetSerializer:
             .where(
                 Dataset.name == dataset_name,
                 AnalysisSession.status == "completed",
+                AnalysisSession.report_version == DATASET_REPORT_VERSION,
             )
             .order_by(AnalysisSession.id.desc())
             .limit(1)
@@ -690,7 +692,10 @@ class DatasetSerializer:
         stmt = (
             select(AnalysisSession, Dataset.name.label("dataset_name"))
             .join(Dataset, Dataset.id == AnalysisSession.dataset_id)
-            .where(AnalysisSession.id == int(session_id))
+            .where(
+                AnalysisSession.id == int(session_id),
+                AnalysisSession.report_version == DATASET_REPORT_VERSION,
+            )
             .limit(1)
         )
         with self._session() as session:

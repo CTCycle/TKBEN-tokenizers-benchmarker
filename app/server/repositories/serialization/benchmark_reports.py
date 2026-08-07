@@ -30,6 +30,7 @@ class BenchmarkReportSerializer:
 
     # -------------------------------------------------------------------------
     def save_benchmark_report(self, report_payload: dict[str, Any]) -> int:
+        self._validate_current_contract(report_payload)
         dataset_name = str(report_payload.get("dataset_name") or "")
         dataset_id = self.repository.get_dataset_id(dataset_name)
         if dataset_id is None:
@@ -61,6 +62,17 @@ class BenchmarkReportSerializer:
             selected_metric_keys=selected_metric_keys,
             payload=report_payload,
         )
+
+    # -------------------------------------------------------------------------
+    def _validate_current_contract(self, payload: dict[str, Any]) -> None:
+        if payload.get("schema_version") != BENCHMARK_SCHEMA_VERSION:
+            raise ValueError("Benchmark report uses an incompatible schema version.")
+        if "methodology_version" not in payload:
+            raise ValueError(
+                "Benchmark report is missing required methodology_version."
+            )
+        if payload.get("report_version") != BENCHMARK_REPORT_VERSION:
+            raise ValueError("Benchmark report uses an incompatible report version.")
 
     # -------------------------------------------------------------------------
     def _parse_json(self, payload: Any, default: Any) -> Any:
@@ -96,12 +108,7 @@ class BenchmarkReportSerializer:
         ]
 
         normalized_payload = dict(payload)
-        if normalized_payload.get("schema_version") != BENCHMARK_SCHEMA_VERSION:
-            raise ValueError("Benchmark report uses an incompatible schema version.")
-        if "methodology_version" not in normalized_payload:
-            raise ValueError(
-                "Benchmark report is missing required methodology_version."
-            )
+        self._validate_current_contract(normalized_payload)
         normalized_payload["report_id"] = int(
             row.get("id") or normalized_payload.get("report_id") or 0
         )
