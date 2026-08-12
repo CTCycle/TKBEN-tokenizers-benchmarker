@@ -6,7 +6,6 @@ from typing import Any, cast
 
 import pandas as pd
 from sqlalchemy import delete, func, select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from server.repositories.queries.data import DataRepositoryQueries
@@ -25,8 +24,6 @@ class TokenizerReportSerializer:
     # -------------------------------------------------------------------------
     def __init__(self, queries: DataRepositoryQueries | None = None) -> None:
         self.queries = queries or DataRepositoryQueries()
-        self.tokenizer_table = Tokenizer.__tablename__
-        self.tokenizer_report_table = TokenizerReport.__tablename__
         self.tokenizer_vocabulary_table = TokenizerVocabulary.__tablename__
 
     # -------------------------------------------------------------------------
@@ -39,27 +36,6 @@ class TokenizerReportSerializer:
         with self._session() as session:
             tokenizer_id = session.execute(stmt).scalar_one_or_none()
         return int(tokenizer_id) if tokenizer_id is not None else None
-
-    # -------------------------------------------------------------------------
-    def ensure_tokenizer_id(self, tokenizer_name: str) -> int:
-        with self._session() as session:
-            tokenizer_id = session.execute(
-                select(Tokenizer.id).where(Tokenizer.name == tokenizer_name).limit(1)
-            ).scalar_one_or_none()
-            if tokenizer_id is None:
-                session.add(Tokenizer(name=tokenizer_name, created_at=datetime.now(timezone.utc)))
-                try:
-                    session.commit()
-                except IntegrityError:
-                    session.rollback()
-                tokenizer_id = session.execute(
-                    select(Tokenizer.id)
-                    .where(Tokenizer.name == tokenizer_name)
-                    .limit(1)
-                ).scalar_one_or_none()
-        if tokenizer_id is None:
-            raise ValueError(f"Failed to resolve tokenizer id for '{tokenizer_name}'")
-        return int(tokenizer_id)
 
     # -------------------------------------------------------------------------
     def replace_report_and_vocabulary(
@@ -93,20 +69,6 @@ class TokenizerReportSerializer:
             session.commit()
             session.refresh(report_row)
             return int(report_row.id)
-
-    # -------------------------------------------------------------------------
-    def replace_tokenizer_vocabulary(
-        self,
-        tokenizer_name: str,
-        vocabulary_rows: list[dict[str, Any]],
-    ) -> int:
-        tokenizer_id = self.ensure_tokenizer_id(tokenizer_name)
-        if not vocabulary_rows:
-            return tokenizer_id
-
-        records = [{"tokenizer_id": tokenizer_id, "token_id": int(row["token_id"]), "token": str(row.get("token", "")), "decoded_token": row.get("decoded_token")} for row in vocabulary_rows]
-        self.queries.upsert_records(self.tokenizer_vocabulary_table, records, ["tokenizer_id", "token_id"])
-        return tokenizer_id
 
     # -------------------------------------------------------------------------
     def _build_tokenizer_report_response(

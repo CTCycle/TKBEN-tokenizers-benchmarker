@@ -11,7 +11,7 @@ from server.repositories.database.backend import get_database
 from server.repositories.serialization.datasets import DatasetSerializer
 from server.repositories.schemas.models import Base, Dataset, Tokenizer
 from server.services.benchmarks import BenchmarkService
-from server.services.tokenizers import TokenizersService
+from server.repositories.tokenizers import TokenizerRepository
 
 ###############################################################################
 class FakeQueries:
@@ -35,17 +35,17 @@ def test_dataset_serializer_ensure_dataset_id_is_idempotent() -> None:
     assert int(count) == 1
 
 ###############################################################################
-def test_tokenizers_service_insert_if_missing_is_idempotent(
+def test_tokenizer_repository_insert_if_missing_is_idempotent(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     Base.metadata.create_all(engine, checkfirst=True)
     database = get_database()
     monkeypatch.setattr(database.backend, "engine", engine)
-    service = TokenizersService()
+    repository = TokenizerRepository()
 
-    service.insert_tokenizer_if_missing("bert-base-uncased")
-    service.insert_tokenizer_if_missing("bert-base-uncased")
+    repository.insert_if_missing("bert-base-uncased")
+    repository.insert_if_missing("bert-base-uncased")
 
     with Session(bind=engine) as session:
         rows = session.execute(select(Tokenizer)).scalars().all()

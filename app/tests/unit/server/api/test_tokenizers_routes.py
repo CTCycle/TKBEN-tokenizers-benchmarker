@@ -84,8 +84,8 @@ def test_tokenizer_upload_validation_and_custom_clear(monkeypatch) -> None:
         }
 
     monkeypatch.setattr(
-        tokenizers_api.TokenizerJobService,
-        "upload_custom_tokenizer",
+        tokenizers_api.TokenizersService,
+        "register_custom_tokenizer_from_upload",
         fake_upload,
     )
 
@@ -103,7 +103,7 @@ def test_tokenizer_upload_validation_and_custom_clear(monkeypatch) -> None:
         called["value"] = True
 
     monkeypatch.setattr(
-        tokenizers_api.TokenizerJobService,
+        tokenizers_api.TokenizersService,
         "clear_custom_tokenizers",
         fake_clear,
     )
@@ -134,8 +134,8 @@ def test_tokenizer_upload_rejects_oversized_file_before_service_call(monkeypatch
 
     monkeypatch.setattr(tokenizers_api, "get_server_settings", lambda: _Settings())
     monkeypatch.setattr(
-        tokenizers_api.TokenizerJobService,
-        "upload_custom_tokenizer",
+        tokenizers_api.TokenizersService,
+        "register_custom_tokenizer_from_upload",
         fake_upload,
     )
 

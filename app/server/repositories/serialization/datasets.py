@@ -38,7 +38,6 @@ class DatasetSerializer:
     # -------------------------------------------------------------------------
     def __init__(self, queries: DataRepositoryQueries | None = None) -> None:
         self.queries = queries or DataRepositoryQueries()
-        self.dataset_dimension_table = Dataset.__tablename__
         self.metric_value_table = MetricValue.__tablename__
         self.histogram_table = HistogramArtifact.__tablename__
 
@@ -58,33 +57,6 @@ class DatasetSerializer:
         if isinstance(value, (dict, list)):
             return value
         return default
-
-    # -------------------------------------------------------------------------
-    def serialize_series(self, col: Any) -> Any:
-        if isinstance(col, list):
-            return " ".join(map(str, col))
-        if isinstance(col, str):
-            return [int(value) for value in col.split() if value.strip()]
-        return []
-
-    # -------------------------------------------------------------------------
-    def serialize_json_columns(self, df: pd.DataFrame) -> pd.DataFrame:
-        if df.empty:
-            return df
-        df_copy = df.copy()
-        for col in df_copy.columns:
-            first_valid = (
-                df_copy[col].dropna().iloc[0]
-                if not df_copy[col].dropna().empty
-                else None
-            )
-            if isinstance(first_valid, (list, dict)):
-                df_copy[col] = df_copy[col].apply(
-                    lambda value: (
-                        json.dumps(value) if isinstance(value, (list, dict)) else value
-                    )
-                )
-        return df_copy
 
     # -------------------------------------------------------------------------
     def list_dataset_previews(
@@ -127,12 +99,6 @@ class DatasetSerializer:
             for dataset_name, document_count in rows
             if dataset_name is not None
         ]
-
-    # -------------------------------------------------------------------------
-    def list_dataset_names(self) -> list[str]:
-        stmt = select(Dataset.name).where(Dataset.status == "ready").order_by(Dataset.name.asc())
-        with self._session() as session:
-            return [str(name) for name in session.execute(stmt).scalars()]
 
     # -------------------------------------------------------------------------
     def get_dataset_id(self, dataset_name: str) -> int | None:

@@ -20,9 +20,6 @@ class DatabaseBackend(Protocol):
     # -------------------------------------------------------------------------
     def upsert_records(self, table_name: str, records: Sequence[Mapping[str, Any]], conflict_columns: list[str]) -> None: ...
 
-    # -------------------------------------------------------------------------
-    def get_distinct_values(self, table_name: str, column: str) -> list[Any]: ...
-
 ###############################################################################
 def build_sqlite_backend(settings: DatabaseSettings) -> DatabaseBackend:
     return SQLiteRepository(settings)

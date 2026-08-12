@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import re
-import time  # noqa: F401
-from collections.abc import Generator, Iterable, Mapping, Sequence
+from collections.abc import Generator, Iterable
 from pathlib import Path
 from typing import Any
 
@@ -190,63 +188,6 @@ class BenchmarkTools:
 
         call_method = getattr(tokenizer, "__call__", None)
         return callable(call_method)
-
-    # -------------------------------------------------------------------------
-    def boundary_preservation_score(
-        self, original_text: str, decoded_text: str
-    ) -> float:
-        if not original_text:
-            return 0.0
-
-        safe_original = str(original_text)
-        safe_decoded = str(decoded_text)
-        limit = min(len(safe_original), len(safe_decoded))
-        if limit == 0:
-            return 0.0
-
-        boundary_matches = 0
-        total_boundaries = 0
-        for idx in range(limit):
-            char_original = safe_original[idx]
-            if char_original.isspace() or re.match(r"[^\w\s]", char_original):
-                total_boundaries += 1
-                if char_original == safe_decoded[idx]:
-                    boundary_matches += 1
-
-        if total_boundaries == 0:
-            return 0.0
-
-        return boundary_matches / total_boundaries
-
-    # -------------------------------------------------------------------------
-    def jaccard_similarity(self, first: Sequence[str], second: Sequence[str]) -> float:
-        if not first and not second:
-            return 1.0
-        if not first or not second:
-            return 0.0
-
-        first_set = set(first)
-        second_set = set(second)
-        union_size = len(first_set.union(second_set))
-        if union_size == 0:
-            return 0.0
-
-        return len(first_set.intersection(second_set)) / union_size
-
-    # -------------------------------------------------------------------------
-    def token_entropy(self, counts: Mapping[str, int]) -> float:
-        if not counts:
-            return 0.0
-        values = np.fromiter(counts.values(), dtype=float)
-        total = values.sum()
-        if total <= 0:
-            return 0.0
-        probs = values / total
-        probs = probs[probs > 0]
-        if probs.size == 0:
-            return 0.0
-
-        return float(-np.sum(probs * np.log2(probs)))
 
 ###############################################################################
 class BenchmarkService(BenchmarkServiceExecutionMixin):

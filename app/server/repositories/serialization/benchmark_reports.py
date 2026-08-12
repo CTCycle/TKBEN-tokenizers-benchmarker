@@ -8,8 +8,6 @@ import pandas as pd
 from server.domain.benchmarks import BenchmarkReportSummary, BenchmarkRunResponse
 from server.common.utils.logger import logger
 from server.repositories.benchmarks import BenchmarkRepository
-from server.repositories.queries.data import DataRepositoryQueries
-from server.repositories.schemas.models import BenchmarkReport
 from server.common.constants import BENCHMARK_REPORT_VERSION, BENCHMARK_SCHEMA_VERSION
 
 ###############################################################################
@@ -23,9 +21,7 @@ def _parse_timestamp(value: object) -> pd.Timestamp | None:
 class BenchmarkReportSerializer:
 
     # -------------------------------------------------------------------------
-    def __init__(self, queries: DataRepositoryQueries | None = None) -> None:
-        self.queries = queries or DataRepositoryQueries()
-        self.benchmark_report_table = BenchmarkReport.__tablename__
+    def __init__(self) -> None:
         self.repository = BenchmarkRepository()
 
     # -------------------------------------------------------------------------

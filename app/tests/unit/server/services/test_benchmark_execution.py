@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import server.services.benchmarks as benchmarks_module
 import server.services.benchmark_execution as benchmark_execution_module
 from server.domain.benchmark_observations import BatchObservation
 from server.domain.benchmarks import BenchmarkRunResponse
@@ -79,18 +78,14 @@ def test_run_benchmarks_returns_contract() -> None:
     service.load_tokenizers = lambda tokenizer_ids: {
         "dummy/tokenizer": DummyTokenizer()
     }  # type: ignore[method-assign]
-    service.calculate_morphological_consistency = (  # type: ignore[method-assign]
-        lambda tokenizer, base_words: 0.5
-    )
-
-    original_perf_counter = benchmarks_module.time.perf_counter
+    original_perf_counter = benchmark_execution_module.time.perf_counter
     counter = {"calls": 0}
 
     def fake_perf_counter() -> float:
         counter["calls"] += 1
         return 100.0 + (counter["calls"] * 0.01)
 
-    benchmarks_module.time.perf_counter = fake_perf_counter
+    benchmark_execution_module.time.perf_counter = fake_perf_counter
     try:
         result = service.run_benchmarks(
             dataset_name="custom/ds",
@@ -98,7 +93,7 @@ def test_run_benchmarks_returns_contract() -> None:
             selected_metric_keys=None,
         )
     finally:
-        benchmarks_module.time.perf_counter = original_perf_counter
+        benchmark_execution_module.time.perf_counter = original_perf_counter
 
     assert isinstance(result, BenchmarkRunResponse)
     assert result.status == "success"

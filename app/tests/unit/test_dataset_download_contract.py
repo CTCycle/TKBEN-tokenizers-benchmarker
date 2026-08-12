@@ -129,7 +129,6 @@ def configure_download_success_mocks(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(service, "is_dataset_in_database", lambda dataset_name: False)
-    monkeypatch.setattr(service, "dataset_cached_on_disk", lambda cache_path: False)
     monkeypatch.setattr(service, "get_hf_access_token_for_download", lambda: None)
     monkeypatch.setattr(service, "find_text_column", lambda dataset: "text")
     monkeypatch.setattr(
@@ -352,13 +351,6 @@ def test_download_and_persist_uses_database_for_existence_not_filesystem(
         "is_dataset_in_database",
         lambda dataset_name: database_checks.append(dataset_name) or False,
     )
-    monkeypatch.setattr(
-        service,
-        "dataset_cached_on_disk",
-        lambda cache_path: (_ for _ in ()).throw(
-            AssertionError("filesystem existence checks must not be used")
-        ),
-    )
 
     def fake_load_dataset(
         corpus: str,
@@ -386,7 +378,6 @@ def test_download_and_persist_classifies_invalid_dataset_or_config(
 ) -> None:
     service = DatasetService()
     monkeypatch.setattr(service, "is_dataset_in_database", lambda dataset_name: False)
-    monkeypatch.setattr(service, "dataset_cached_on_disk", lambda cache_path: False)
     monkeypatch.setattr(service, "get_hf_access_token_for_download", lambda: None)
 
     def raise_not_found(*args, **kwargs):
@@ -410,7 +401,6 @@ def test_download_and_persist_classifies_unsupported_dataset_script(
 ) -> None:
     service = DatasetService()
     monkeypatch.setattr(service, "is_dataset_in_database", lambda dataset_name: False)
-    monkeypatch.setattr(service, "dataset_cached_on_disk", lambda cache_path: False)
     monkeypatch.setattr(service, "get_hf_access_token_for_download", lambda: None)
 
     def raise_script_error(*args, **kwargs):
@@ -434,7 +424,6 @@ def test_download_and_persist_classifies_gated_or_auth_errors(
 ) -> None:
     service = DatasetService()
     monkeypatch.setattr(service, "is_dataset_in_database", lambda dataset_name: False)
-    monkeypatch.setattr(service, "dataset_cached_on_disk", lambda cache_path: False)
     monkeypatch.setattr(service, "get_hf_access_token_for_download", lambda: None)
 
     def raise_gated(*args, **kwargs):
@@ -495,7 +484,6 @@ def test_download_and_persist_classifies_network_errors(
 ) -> None:
     service = DatasetService()
     monkeypatch.setattr(service, "is_dataset_in_database", lambda dataset_name: False)
-    monkeypatch.setattr(service, "dataset_cached_on_disk", lambda cache_path: False)
     monkeypatch.setattr(service, "get_hf_access_token_for_download", lambda: None)
 
     def raise_network(*args, **kwargs):
@@ -530,7 +518,7 @@ def test_download_and_persist_retries_transient_failures_with_backoff(
         return object()
 
     monkeypatch.setattr("server.services.datasets.load_dataset", fake_load_dataset)
-    monkeypatch.setattr("server.services.datasets.time.sleep", sleep_calls.append)
+    monkeypatch.setattr("server.services.dataset_operations.time.sleep", sleep_calls.append)
 
     result = service.download_and_persist(
         corpus="wikitext",
@@ -548,7 +536,6 @@ def test_download_and_persist_does_not_retry_non_transient_failures(
 ) -> None:
     service = DatasetService()
     monkeypatch.setattr(service, "is_dataset_in_database", lambda dataset_name: False)
-    monkeypatch.setattr(service, "dataset_cached_on_disk", lambda cache_path: False)
     monkeypatch.setattr(service, "get_hf_access_token_for_download", lambda: None)
     service.download_retry_attempts = 4
     sleep_calls: list[float] = []
@@ -559,7 +546,7 @@ def test_download_and_persist_does_not_retry_non_transient_failures(
         raise DataFilesNotFoundError("No (supported) data files found.")
 
     monkeypatch.setattr("server.services.datasets.load_dataset", raise_not_found)
-    monkeypatch.setattr("server.services.datasets.time.sleep", sleep_calls.append)
+    monkeypatch.setattr("server.services.dataset_operations.time.sleep", sleep_calls.append)
 
     with pytest.raises(RuntimeError) as exc_info:
         service.download_and_persist(

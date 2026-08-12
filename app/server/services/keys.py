@@ -52,10 +52,6 @@ class HFAccessKeyService:
         return "*" * len(encrypted_key)
 
     # -------------------------------------------------------------------------
-    def mask_key_full(self, raw_key: str) -> str:
-        return "*" * len(raw_key)
-
-    # -------------------------------------------------------------------------
     def get_decryption_error_message(self) -> str:
         return (
             "Stored Hugging Face key cannot be decrypted. "
@@ -116,10 +112,6 @@ class HFAccessKeyService:
         if row is None or not row.key_value:
             raise HFAccessKeyNotFoundError("Hugging Face key not found.")
         return str(row.key_value)
-
-    # -------------------------------------------------------------------------
-    def get_masked_key(self, key_id: int) -> str:
-        return self.mask_key_full(self.get_encrypted_key(key_id))
 
     # -------------------------------------------------------------------------
     def get_revealed_key(self, key_id: int) -> str:

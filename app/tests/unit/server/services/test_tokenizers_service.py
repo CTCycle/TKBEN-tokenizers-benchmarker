@@ -10,35 +10,12 @@ from server.services.tokenizers import TokenizersService
 ###############################################################################
 class FakeTokenizerRepository:
 
-    # -------------------------------------------------------------------------
-    def __init__(self) -> None:
-        self.inserted: list[str] = []
-
-    # -------------------------------------------------------------------------
-    def tokenizer_exists(self, tokenizer_id: str) -> bool:
-        return tokenizer_id == "exists"
-
-    # -------------------------------------------------------------------------
-    def insert_if_missing(self, tokenizer_id: str) -> None:
-        self.inserted.append(tokenizer_id)
-
-    # -------------------------------------------------------------------------
     def get_latest_tokenizer_report(self, tokenizer_name: str):
         return object() if tokenizer_name == "exists" else None
 
     # -------------------------------------------------------------------------
     def get_tokenizer_report_by_id(self, report_id: int):
         return object() if report_id == 1 else None
-
-###############################################################################
-def test_tokenizers_service_uses_repository_layer(monkeypatch) -> None:
-    service = TokenizersService()
-    fake_repo = FakeTokenizerRepository()
-    service.repository = fake_repo  # type: ignore[assignment]
-
-    assert service.is_tokenizer_persisted("exists") is True
-    service.insert_tokenizer_if_missing("new")
-    assert fake_repo.inserted == ["new"]
 
 ###############################################################################
 def test_tokenizers_service_report_prechecks(monkeypatch) -> None:
@@ -130,7 +107,7 @@ def test_failed_tokenizer_download_cleans_partial_cache_and_returns_reason(
     removed: list[str] = []
 
     monkeypatch.setattr(service.key_service, "get_active_key", lambda: None)
-    monkeypatch.setattr(service, "is_tokenizer_persisted", lambda _: False)
+    monkeypatch.setattr(service.repository, "tokenizer_exists", lambda _: False)
     monkeypatch.setattr(service, "get_tokenizer_cache_dir", lambda _: cache_dir)
     monkeypatch.setattr(service, "has_cached_tokenizer", lambda _: False)
     monkeypatch.setattr(
