@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -9,7 +9,6 @@ from server.repositories.database.backend import TKBENDatabase, get_database
 from server.repositories.schemas.models import (
     Tokenizer,
     TokenizerReport,
-    TokenizerVocabulary,
 )
 
 ###############################################################################
@@ -33,10 +32,6 @@ class TokenizerRepository:
         with self._session() as session:
             rows = session.execute(stmt).all()
         return [(str(name), report_id is not None, metadata) for name, report_id, metadata in rows]
-
-    # -------------------------------------------------------------------------
-    def list_downloaded_tokenizers(self) -> list[str]:
-        return [name for name, _, _ in self.list_downloaded_tokenizer_catalog()]
 
     # -------------------------------------------------------------------------
     def tokenizer_exists(self, tokenizer_id: str) -> bool:
@@ -93,44 +88,3 @@ class TokenizerRepository:
         )
         with self._session() as session:
             return session.execute(stmt).scalar_one_or_none()
-
-    # -------------------------------------------------------------------------
-    def get_tokenizer_name_by_id(self, tokenizer_id: int) -> str | None:
-        with self._session() as session:
-            value = session.execute(
-                select(Tokenizer.name).where(Tokenizer.id == int(tokenizer_id)).limit(1)
-            ).scalar_one_or_none()
-        return str(value) if value is not None else None
-
-    # -------------------------------------------------------------------------
-    def get_tokenizer_id_by_name(self, tokenizer_name: str) -> int | None:
-        with self._session() as session:
-            value = session.execute(
-                select(Tokenizer.id).where(Tokenizer.name == tokenizer_name).limit(1)
-            ).scalar_one_or_none()
-        return int(value) if value is not None else None
-
-    # -------------------------------------------------------------------------
-    def get_tokenizer_vocabulary_page(
-        self,
-        tokenizer_id: int,
-        offset: int,
-        limit: int,
-    ) -> tuple[int, list[tuple[int, str]]]:
-        count_stmt = select(func.count(TokenizerVocabulary.id)).where(
-            TokenizerVocabulary.tokenizer_id == int(tokenizer_id)
-        )
-        page_stmt = (
-            select(TokenizerVocabulary.token_id, TokenizerVocabulary.token)
-            .where(TokenizerVocabulary.tokenizer_id == int(tokenizer_id))
-            .order_by(TokenizerVocabulary.token_id.asc())
-            .limit(int(limit))
-            .offset(int(offset))
-        )
-        with self._session() as session:
-            total = int(session.execute(count_stmt).scalar_one_or_none() or 0)
-            rows = list(session.execute(page_stmt).all())
-        items = [
-            (int(token_id), str(token_value or "")) for token_id, token_value in rows
-        ]
-        return total, items

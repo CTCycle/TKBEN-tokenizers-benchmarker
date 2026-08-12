@@ -4,7 +4,6 @@ import re
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
-from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from server.repositories.schemas.models import Base
@@ -57,12 +56,3 @@ class RepositoryBase:
     # -------------------------------------------------------------------------
     def _upsert(self, table, records, conflict_columns):  # type: ignore[no-untyped-def]
         raise NotImplementedError
-
-    # -------------------------------------------------------------------------
-    def get_distinct_values(self, table_name: str, column: str) -> list[Any]:
-        table = self.get_table(table_name)
-        self.sanitize_identifier(column)
-        if column not in table.c:
-            raise ValueError(f"Unknown column: {column}")
-        with self.session_factory() as session:
-            return [value for value in session.execute(select(table.c[column]).distinct()).scalars() if value is not None]

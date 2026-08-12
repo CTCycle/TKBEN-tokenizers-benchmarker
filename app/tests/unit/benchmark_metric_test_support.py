@@ -91,10 +91,6 @@ def run_deterministic_benchmark() -> dict[str, Any]:
     service.load_tokenizers = lambda tokenizer_ids: {
         "dummy/tokenizer": DummyTokenizer()
     }  # type: ignore[method-assign]
-    service.calculate_morphological_consistency = (  # type: ignore[method-assign]
-        lambda tokenizer, base_words: 0.5
-    )
-
     result = service.run_benchmarks(
         dataset_name="custom/ds",
         tokenizer_ids=["dummy/tokenizer"],

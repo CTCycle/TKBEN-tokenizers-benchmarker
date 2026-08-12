@@ -105,22 +105,6 @@ class TokenizersService(TokenizerStorageMixin):
         self.custom_tokenizer_registry.clear()
 
     # -------------------------------------------------------------------------
-    def is_tokenizer_persisted(self, tokenizer_id: str) -> bool:
-        return self.repository.tokenizer_exists(tokenizer_id)
-
-    # -------------------------------------------------------------------------
-    def insert_tokenizer_if_missing(self, tokenizer_id: str) -> None:
-        self.repository.insert_if_missing(tokenizer_id)
-
-    # -------------------------------------------------------------------------
-    def list_downloaded_tokenizers(self) -> list[str]:
-        names: list[str] = []
-        for name in self.repository.list_downloaded_tokenizers():
-            if self.has_cached_tokenizer(name):
-                names.append(name)
-        return names
-
-    # -------------------------------------------------------------------------
     def remove_downloaded_tokenizer(self, tokenizer_id: str) -> bool:
         tokenizer_name = self.validate_tokenizer_identifier(tokenizer_id)
         removed = self.repository.delete_tokenizer(tokenizer_name)
@@ -260,7 +244,7 @@ class TokenizersService(TokenizerStorageMixin):
                 break
 
             try:
-                is_persisted = self.is_tokenizer_persisted(tokenizer_id)
+                is_persisted = self.repository.tokenizer_exists(tokenizer_id)
                 has_cached = self.has_cached_tokenizer(tokenizer_id)
                 if is_persisted and has_cached:
                     already_downloaded.append(tokenizer_id)
@@ -274,7 +258,7 @@ class TokenizersService(TokenizerStorageMixin):
                     )
                     # Keep cached tokenizer files because benchmark runs load
                     # tokenizers locally with local_files_only=True.
-                    self.insert_tokenizer_if_missing(tokenizer_id)
+                    self.repository.insert_if_missing(tokenizer_id)
                     downloaded.append(tokenizer_id)
             except Exception as exc:  # noqa: BLE001
                 cache_dir = Path(self.get_tokenizer_cache_dir(tokenizer_id))

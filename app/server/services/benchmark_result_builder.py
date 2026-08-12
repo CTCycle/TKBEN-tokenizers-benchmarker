@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import re
 import statistics
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any, TypeGuard, cast
 
 import numpy as np
 import pandas as pd
 
-from server.common.utils.logger import logger
 from server.domain.benchmarks import (
     BenchmarkDashboardBucketPoint,
     BenchmarkDashboardData,
@@ -54,98 +52,6 @@ class BenchmarkResultBuilder:
         if word_length <= 8:
             return "medium_5_8"
         return "long_9_plus"
-
-    # -------------------------------------------------------------------------
-    def tokenize_document(
-        self,
-        tokenizer: Any,
-        text_value: str,
-        uses_tokenize: bool,
-        tokenize_method: Callable[[Any], Any] | None,
-    ) -> tuple[str, list[str]]:
-        tokens_list: list[str] = []
-        decoded_text = ""
-
-        if uses_tokenize and tokenize_method is not None:
-            try:
-                raw_tokens = tokenize_method(text_value)
-                tokens_list = self.tools.normalize_token_output(raw_tokens)
-            except Exception:
-                logger.debug(
-                    "Tokenizer %s raised an exception while tokenizing text",
-                    getattr(tokenizer, "name_or_path", type(tokenizer).__name__),
-                    exc_info=True,
-                )
-                tokens_list = []
-
-        if not tokens_list:
-            decoded_text, tokens_list = self.tools.process_tokens(text_value, tokenizer)
-        else:
-            decoded_text = " ".join(tokens_list)
-
-        return decoded_text, tokens_list
-
-    # -------------------------------------------------------------------------
-    def calculate_morphological_consistency(
-        self, tokenizer: Any, base_words: set[str]
-    ) -> float:
-        if not base_words or not self.tools.is_tokenizer_compatible(tokenizer):
-            return 0.0
-
-        selected_words = [w for w in sorted(base_words) if re.match(r"^[A-Za-z]+$", w)][
-            :200
-        ]
-        if not selected_words:
-            return 0.0
-
-        scores: list[float] = []
-        for word in selected_words:
-            base_tokens = self.tools.process_tokens(word, tokenizer)[1]
-            if not base_tokens:
-                continue
-
-            for variant in (f"{word}s", f"{word}ed", f"{word}ing"):
-                variant_tokens = self.tools.process_tokens(variant, tokenizer)[1]
-                if not variant_tokens:
-                    continue
-                score = self.tools.jaccard_similarity(base_tokens, variant_tokens)
-                scores.append(score)
-
-        if not scores:
-            return 0.0
-
-        return float(np.mean(scores))
-
-    # -------------------------------------------------------------------------
-    def calculate_token_id_monotonicity(
-        self, vocab_result: Mapping[Any, Any] | Sequence[Any] | None
-    ) -> float:
-        token_id_pairs: list[tuple[int, str]] = []
-        if isinstance(vocab_result, Mapping):
-            for token, idx in vocab_result.items():
-                try:
-                    token_id_pairs.append((int(idx), str(token)))
-                except Exception:
-                    continue
-        elif isinstance(vocab_result, Sequence) and not isinstance(
-            vocab_result, (str, bytes)
-        ):
-            for idx, token in enumerate(vocab_result):
-                token_id_pairs.append((idx, str(token)))
-
-        if not token_id_pairs:
-            return 0.0
-
-        token_id_pairs.sort(key=lambda pair: pair[0])
-        lengths = [len(tok) for _, tok in token_id_pairs]
-        if len(lengths) < 2:
-            return 1.0
-
-        monotonic_steps = sum(
-            1 for i in range(1, len(lengths)) if lengths[i] >= lengths[i - 1]
-        )
-
-        return monotonic_steps / (len(lengths) - 1)
 
     # -------------------------------------------------------------------------
     def _extract_vocab_result(

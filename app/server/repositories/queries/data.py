@@ -26,7 +26,3 @@ class DataRepositoryQueries:
     # -------------------------------------------------------------------------
     def upsert_records(self, table_name: str, records: Sequence[Mapping[str, Any]], conflict_columns: list[str]) -> None:
         self.database.backend.upsert_records(table_name, records, conflict_columns)
-
-    # -------------------------------------------------------------------------
-    def get_distinct_values(self, table_name: str, column: str) -> list[Any]:
-        return self.database.backend.get_distinct_values(table_name, column)

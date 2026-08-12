@@ -77,16 +77,6 @@ class HFAccessKeyRepository:
             return True
 
     # -------------------------------------------------------------------------
-    def clear_active_flags(self, except_key_id: int | None = None) -> None:
-        stmt = update(HFAccessKey)
-        if except_key_id is not None:
-            stmt = stmt.where(HFAccessKey.id != int(except_key_id))
-        stmt = stmt.values(is_active=False)
-        with self._session() as session:
-            session.execute(stmt)
-            session.commit()
-
-    # -------------------------------------------------------------------------
     def activate(self, key_id: int) -> bool:
         with self._session() as session:
             row = session.execute(

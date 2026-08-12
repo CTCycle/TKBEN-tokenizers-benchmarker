@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import shutil
 import threading
-import time  # noqa: F401
-from collections import Counter
 from collections.abc import Callable, Generator, Iterator
 from dataclasses import dataclass
 from functools import partial
@@ -101,8 +99,6 @@ DATASET_ID_FIELD = "Dataset id"
 class DatasetService(DatasetServiceOperationsMixin):
     SUPPORTED_TEXT_FIELDS = ("text", "content", "sentence", "document", "tokens")
     REPORT_VERSION = DATASET_REPORT_VERSION
-    WORD_LIST_LIMIT = 15
-    WORD_CLOUD_LIMIT = 60
 
     # -------------------------------------------------------------------------
     def __init__(self) -> None:
@@ -631,20 +627,8 @@ class DatasetService(DatasetServiceOperationsMixin):
         return text if isinstance(text, str) else str(text)
 
     # -------------------------------------------------------------------------
-    def dataset_cached_on_disk(self, cache_path: str) -> bool:
-        path = Path(cache_path)
-        if not path.is_dir():
-            return False
-        return any(path.iterdir())
-
-    # -------------------------------------------------------------------------
     def is_dataset_in_database(self, dataset_name: str) -> bool:
         return self.dataset_serializer.dataset_exists(dataset_name)
-
-    # -------------------------------------------------------------------------
-    def get_available_datasets(self) -> list[str]:
-        """Get list of all unique dataset names in the database."""
-        return self.dataset_serializer.list_dataset_names()
 
     # -------------------------------------------------------------------------
     def get_dataset_previews(
@@ -807,51 +791,5 @@ class DatasetService(DatasetServiceOperationsMixin):
         histogram = builder.build()
         histogram["counts"] = list(histogram.get("counts", []))
         return histogram
-
-    # -------------------------------------------------------------------------
-    def build_word_length_items(
-        self,
-        word_counter: Counter[str],
-        descending: bool,
-    ) -> list[dict[str, Any]]:
-        # Ties are resolved lexicographically to keep output deterministic.
-        ranked = sorted(
-            (
-                {"word": word, "length": len(word), "count": int(count)}
-                for word, count in word_counter.items()
-                if isinstance(word, str) and word
-            ),
-            key=lambda item: (
-                -int(item["length"]) if descending else int(item["length"]),
-                item["word"],
-            ),
-        )
-        return ranked[: self.WORD_LIST_LIMIT]
-
-    # -------------------------------------------------------------------------
-    def build_word_cloud_terms(
-        self, word_counter: Counter[str]
-    ) -> list[dict[str, Any]]:
-        ranked = sorted(
-            (
-                (word, int(count))
-                for word, count in word_counter.items()
-                if isinstance(word, str) and word
-            ),
-            key=lambda item: (-item[1], item[0]),
-        )[: self.WORD_CLOUD_LIMIT]
-        if not ranked:
-            return []
-        max_count = max(count for _, count in ranked)
-        if max_count <= 0:
-            return []
-        return [
-            {
-                "word": word,
-                "count": count,
-                "weight": max(1, int(round((count / max_count) * 100))),
-            }
-            for word, count in ranked
-        ]
 
     # -------------------------------------------------------------------------

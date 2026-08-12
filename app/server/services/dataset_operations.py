@@ -634,35 +634,5 @@ class DatasetServiceOperationsMixin:
         return self.dataset_serializer.load_analysis_report_by_session_id(report_id)
 
     # -------------------------------------------------------------------------
-    def get_analysis_summary(self, dataset_name: str) -> dict[str, Any]:
-        report = self.dataset_serializer.load_latest_analysis_report(dataset_name)
-        if report is None:
-            return {
-                "total_documents": 0,
-                "mean_words_count": 0.0,
-                "median_words_count": 0.0,
-                "mean_avg_word_length": 0.0,
-                "mean_std_word_length": 0.0,
-            }
-        aggregate = report.get("aggregate_statistics", {})
-        return {
-            "total_documents": int(aggregate.get("corpus.document_count", 0) or 0),
-            "mean_words_count": float(aggregate.get("doc.length_mean", 0.0) or 0.0),
-            "median_words_count": float(aggregate.get("doc.length_p50", 0.0) or 0.0),
-            "mean_avg_word_length": float(
-                aggregate.get("words.length_mean", 0.0) or 0.0
-            ),
-            "mean_std_word_length": float(
-                aggregate.get("words.length_std", 0.0) or 0.0
-            ),
-        }
-
-    # -------------------------------------------------------------------------
-    def is_dataset_analyzed(self, dataset_name: str) -> bool:
-        """Check if a dataset has been analyzed."""
-        report = self.dataset_serializer.load_latest_analysis_report(dataset_name)
-        return report is not None
-
-    # -------------------------------------------------------------------------
     def remove_dataset(self, dataset_name: str) -> None:
         self.dataset_serializer.delete_dataset(dataset_name)

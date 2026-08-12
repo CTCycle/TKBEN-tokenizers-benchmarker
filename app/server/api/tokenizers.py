@@ -320,7 +320,7 @@ async def upload_custom_tokenizer(
 
     try:
         result = await asyncio.to_thread(
-            TokenizerJobService().upload_custom_tokenizer,
+            TokenizersService().register_custom_tokenizer_from_upload,
             content,
             normalized_filename,
             safe_stem,
@@ -340,7 +340,7 @@ async def upload_custom_tokenizer(
     status_code=status.HTTP_200_OK,
 )
 async def delete_custom_tokenizers() -> CustomTokenizersDeleteResponse:
-    await asyncio.to_thread(TokenizerJobService().clear_custom_tokenizers)
+    await asyncio.to_thread(TokenizersService().clear_custom_tokenizers)
     return CustomTokenizersDeleteResponse(
         status="success",
         message="Custom tokenizers cleared",

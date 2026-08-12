@@ -50,21 +50,3 @@ class TokenizerJobService:
         if job_manager.should_stop(job_id):
             return {}
         return {"status": "success", **result}
-
-    # -------------------------------------------------------------------------
-    def upload_custom_tokenizer(
-        self,
-        file_content: bytes,
-        normalized_filename: str,
-        safe_stem: str,
-    ) -> dict[str, Any]:
-        service = TokenizersService()
-        return service.register_custom_tokenizer_from_upload(
-            file_content=file_content,
-            normalized_filename=normalized_filename,
-            safe_stem=safe_stem,
-        )
-
-    # -------------------------------------------------------------------------
-    def clear_custom_tokenizers(self) -> None:
-        TokenizersService().clear_custom_tokenizers()
