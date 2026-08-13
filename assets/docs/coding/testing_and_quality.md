@@ -1,5 +1,5 @@
 # Testing and Quality
-Last updated: 2026-08-02
+Last updated: 2026-08-13
 
 ## Tooling and Tests
 - Lint and format with Ruff, or the project-standard equivalent if it changes in the future.
@@ -9,7 +9,7 @@ Last updated: 2026-08-02
 - Minimum test impact coverage:
   - `tests/unit`
   - relevant `tests/e2e` when behavior crosses API and UI boundaries
-- Browser/live validation uses Playwright or pytest-playwright; the in-app browser is not a validation path.
+- Browser/live validation uses the in-app browser for a quick visual and interaction smoke check, and uses Playwright or pytest-playwright for repeatable route/API coverage.
 
 The repository CI gate currently runs backend compileall, Ruff, BasedPyright,
 unit tests, and an OpenAPI smoke import, plus frontend `npm ci`, lint, and

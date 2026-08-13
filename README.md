@@ -1,5 +1,5 @@
 # TKBEN Tokenizer Benchmarker
-Last updated: 2026-08-04
+Last updated: 2026-08-13
 [![Release](https://img.shields.io/github/v/release/CTCycle/TKBEN-tokenizers-benchmarker?display_name=tag)](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.14-3776AB?logo=python&logoColor=white)
 ![Node.js](https://img.shields.io/badge/node.js-%3E%3D22-339933?logo=node.js&logoColor=white)
@@ -40,7 +40,7 @@ From the repository root, run the single application and maintenance entry point
 .\start_on_windows.ps1
 ```
 
-`start_on_windows.ps1` opens the combined eight-option menu. Choose **Launch application** to download pinned portable Python, uv, and Node.js runtimes when missing, synchronize Python dependencies, reuse unchanged frontend dependencies, build the frontend when enabled, and start FastAPI plus the Vite preview server. The launcher also waits for the backend health endpoint and frontend before reporting success.
+`start_on_windows.ps1` opens the combined eight-option menu. Choose **Launch application** to download pinned portable Python, uv, and Node.js runtimes when missing, synchronize Python dependencies, reuse unchanged frontend dependencies, build the frontend when enabled, and start FastAPI plus the Vite preview server. The launcher also waits for the backend health endpoint and frontend before reporting success. The dependency maintenance option offers a **Development** profile with Ruff, BasedPyright, and pytest extras, or a **Standard** profile with runtime dependencies only.
 
 On the first launch, allow dependency setup to finish and note the URL printed by the launcher. Subsequent launches can reuse the local runtimes and unchanged frontend dependencies. Use the maintenance menu when you need to install or update dependencies, initialize the database, run tests, clean logs or caches, or uninstall the managed runtime.
 
@@ -152,7 +152,7 @@ Run the unified menu:
 .\start_on_windows.ps1
 ```
 
-The menu contains launch, dependency installation/update, database initialization, test execution, log removal, cache cleanup, uninstall, and exit actions. Launching starts the backend and frontend, opens the browser, prints the active ports and process IDs, and then exits the menu.
+The menu contains launch, dependency installation/update, database initialization, test execution, log removal, cache cleanup, uninstall, and exit actions. Dependency installation prompts for the Development or Standard profile. Launching starts the backend and frontend, opens the browser, prints the active ports and process IDs, and then exits the menu.
 
 ## 5. Resources
 
@@ -163,6 +163,7 @@ Key paths:
 - `assets/docs/project_index.md`: Documentation root index and topic map.
 - `assets/docs/runtime/modes.md`: Supported runtime mode details.
 - `assets/docs/runtime/startup.md`: Startup procedures and launcher commands.
+- `assets/docs/runtime/release.md`: Source-release preparation, validation, and publication procedure.
 
 ## 6. Configuration
 
@@ -195,11 +196,11 @@ Determinism:
 
 ## 7. Releases and Repository Hygiene
 
-Current source release: `v3.8.0`.
+Current source release: `v3.9.0`.
 
 Continuous integration validates the locked backend and frontend sources. Keep `app/server/uv.lock` and `app/client/package-lock.json` tracked so installations remain reproducible.
 
-GitHub releases provide a versioned repository source ZIP for download. The archive contains tracked source files only; local environments, credentials, dependencies, caches, logs, and generated build output are excluded.
+GitHub releases provide a versioned repository source ZIP for download. The archive contains tracked source files only; local environments, credentials, dependencies, caches, logs, and generated build output are excluded. Follow [the release procedure](assets/docs/runtime/release.md) to review the delta, validate the application, synchronize `develop` and `main`, apply the coordinated minor version bump, and publish the annotated tag.
 
 Never commit `.env` files, credentials, databases, downloaded model/data caches, logs, virtual environments, Node dependencies, or generated frontend output. Keep configuration templates, scripts, workflows, migrations, and both application lockfiles tracked.
 
