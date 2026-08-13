@@ -41,6 +41,7 @@ class JSONObject(TypeDecorator[dict[str, Any]]):
         if value is not None and not isinstance(value, dict):
             raise ValueError("Expected a JSON object")
         return value
+
 ###############################################################################
 class JSONArray(TypeDecorator[list[Any]]):
     impl = JSON
