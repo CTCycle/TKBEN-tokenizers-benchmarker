@@ -1,13 +1,13 @@
 # Project Overview
-Last updated: 2026-08-04
+Last updated: 2026-08-13
 
 ## Purpose
 This file is the root index for `assets/docs`. Read it first to find the narrowest topic file for the task at hand.
 
-The current `develop` codebase uses schema-3/report-5 benchmark reports,
-typed frontend catalog controls, reusable dataset/dashboard data helpers, and
-responsive chart and modal hooks. The current public source release is
-`v3.8.0`; `develop` is release-ready for synchronization with `main`.
+The current codebase uses schema-3/report-5 benchmark reports, typed frontend
+catalog controls, reusable dataset/dashboard data helpers, and responsive chart
+and modal hooks. The current public source release is `v3.9.0`; `develop` and
+`main` are synchronized at the release commit.
 
 ## How To Navigate
 1. Start with this file only.
@@ -55,6 +55,8 @@ responsive chart and modal hooks. The current public source release is
   - Environment variables and structured settings.
 - `runtime/deployment.md`
   - Dependencies and local distribution notes.
+- `runtime/release.md`
+  - Source-release preparation, validation, branch synchronization, and publication.
 
 ### UI
 - `ui/design_tokens.md`
