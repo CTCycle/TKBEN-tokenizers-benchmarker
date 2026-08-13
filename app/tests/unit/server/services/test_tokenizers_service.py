@@ -10,6 +10,7 @@ from server.services.tokenizers import TokenizersService
 ###############################################################################
 class FakeTokenizerRepository:
 
+    # -------------------------------------------------------------------------
     def get_latest_tokenizer_report(self, tokenizer_name: str):
         return object() if tokenizer_name == "exists" else None
 
