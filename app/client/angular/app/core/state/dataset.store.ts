@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, catchError, debounceTime, distinctUntilChanged, map, of, switchMap } from 'rxjs';
 import { DatasetsApiService, type DatasetCatalogFilters } from '../api/datasets-api.service';
 import { errorMessage } from '../api/error-utils';
-import type { DatasetAnalysisRequest, DatasetAnalysisResponse, DatasetDownloadRequest, DatasetPreviewItem } from '../api/api.types';
+import type { DatasetAnalysisRequest, DatasetAnalysisResponse, DatasetDownloadRequest, DatasetMetricCatalogCategory, DatasetPreviewItem } from '../api/api.types';
 
 @Injectable({ providedIn: 'root' })
 export class DatasetStore {
@@ -15,6 +15,8 @@ export class DatasetStore {
   readonly selectedDataset = signal<string | null>(null);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
+  readonly metricCategories = signal<readonly DatasetMetricCatalogCategory[]>([]);
+  readonly loadingMetricCatalog = signal(false);
   readonly report = signal<DatasetAnalysisResponse | null>(null);
   readonly jobProgress = signal<number | null>(null);
   readonly busyAction = signal<string | null>(null);
@@ -45,7 +47,22 @@ export class DatasetStore {
     });
 
     this.restoreReport();
+    this.loadMetricCatalog();
     this.refresh();
+  }
+
+  loadMetricCatalog(): void {
+    this.loadingMetricCatalog.set(true);
+    this.api.metricsCatalog().pipe(
+      catchError((error: unknown) => {
+        this.error.set(errorMessage(error, 'Failed to fetch dataset metrics catalog.'));
+        return of({ categories: [] as DatasetMetricCatalogCategory[] });
+      }),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe((response) => {
+      this.metricCategories.set(response.categories ?? []);
+      this.loadingMetricCatalog.set(false);
+    });
   }
 
   refresh(filters: DatasetCatalogFilters = {}): void {

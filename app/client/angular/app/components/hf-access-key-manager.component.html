@@ -1,5 +1,5 @@
 <button class="key-manager-backdrop" type="button" aria-label="Close key manager" (click)="close()"></button>
-<section class="key-manager-popover" role="dialog" aria-modal="true" aria-labelledby="hf-key-title">
+<section class="key-manager-popover" role="dialog" aria-modal="true" aria-labelledby="hf-key-title" [appModalA11y]="true" (modalEscape)="close()">
   <header class="key-manager-header">
     <div>
       <p id="hf-key-title" class="panel-label">Hugging Face Keys</p>

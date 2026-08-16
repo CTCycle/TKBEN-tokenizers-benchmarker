@@ -20,9 +20,15 @@ body {
 .benchmark-svg-chart svg { display: block; width: 100%; height: 220px; overflow: visible; }
 .benchmark-svg-bar { fill: var(--color-accent); opacity: 0.84; }
 .benchmark-svg-bar:hover { opacity: 1; }
+.benchmark-chart-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; padding: 6px 8px 0; color: var(--color-muted); font-size: 11px; }
+.benchmark-chart-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.benchmark-chart-legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .dataset-histogram-chart { width: 100%; min-height: 190px; color: rgba(214, 224, 236, 0.42); }
 .dataset-histogram-chart svg { display: block; width: 100%; height: 190px; }
 .dataset-histogram-bar { fill: var(--color-accent); opacity: 0.78; }
+.dataset-histogram-bar:hover { opacity: 1; }
+.dataset-donut-chart { display: block; width: min(100%, 210px); height: 210px; margin: 0 auto 8px; }
+.dataset-zipf-chart { display: block; width: 100%; height: 220px; color: rgba(214, 224, 236, 0.42); }
 
 button,
 input,
