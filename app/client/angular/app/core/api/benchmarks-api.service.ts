@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, tap } from 'rxjs';
 import type {
   BenchmarkMetricCatalogResponse,
   BenchmarkReportListResponse,
@@ -28,8 +28,8 @@ export class BenchmarksApiService {
     return this.http.get<BenchmarkRunResponse>(`/api/benchmarks/reports/${reportId}`);
   }
 
-  run(request: BenchmarkRunRequest, onUpdate?: (status: JobStatusResponse) => void): Observable<BenchmarkRunResponse> {
+  run(request: BenchmarkRunRequest, onUpdate?: (status: JobStatusResponse) => void, onJobStart?: (job: JobStartResponse) => void): Observable<BenchmarkRunResponse> {
     const start$ = this.http.post<JobStartResponse>('/api/benchmarks/run', request);
-    return this.jobs.startAndPoll<BenchmarkRunResponse>(start$, { timeoutMs: 30 * 60 * 1000, onUpdate });
+    return this.jobs.startAndPoll<BenchmarkRunResponse>(start$.pipe(tap((job) => onJobStart?.(job))), { timeoutMs: 30 * 60 * 1000, onUpdate });
   }
 }

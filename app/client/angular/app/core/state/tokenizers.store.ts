@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, catchError, debounceTime, distinctUntilChanged, map, of, switchMap } from 'rxjs';
 import { TokenizersApiService, type TokenizerCatalogFilters } from '../api/tokenizers-api.service';
 import { errorMessage } from '../api/error-utils';
-import type { TokenizerListItem, TokenizerReportResponse, TokenizerVocabularyPageResponse, TokenizerDownloadRequest } from '../api/api.types';
+import type { TokenizerDownloadRequest, TokenizerListItem, TokenizerReportResponse, TokenizerVocabularyPageResponse } from '../api/api.types';
 
 @Injectable({ providedIn: 'root' })
 export class TokenizersStore {
@@ -19,6 +19,9 @@ export class TokenizersStore {
   readonly vocabulary = signal<TokenizerVocabularyPageResponse | null>(null);
   readonly busyAction = signal<string | null>(null);
   readonly jobProgress = signal<number | null>(null);
+  readonly scannedTokenizers = signal<readonly string[]>([]);
+  readonly scanLoading = signal(false);
+  readonly downloadWarning = signal<string | null>(null);
 
   constructor() {
     this.refreshRequests.pipe(
@@ -57,6 +60,15 @@ export class TokenizersStore {
     this.selectedTokenizer.set(tokenizerName);
   }
 
+  scan(): void {
+    this.scanLoading.set(true);
+    this.error.set(null);
+    this.api.scan().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (response) => { this.scannedTokenizers.set(response.identifiers ?? []); this.scanLoading.set(false); },
+      error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to scan Hugging Face tokenizers.')); this.scanLoading.set(false); },
+    });
+  }
+
   generateReport(tokenizerName: string): void {
     this.select(tokenizerName);
     this.busyAction.set(`report:${tokenizerName}`);
@@ -85,20 +97,26 @@ export class TokenizersStore {
     });
   }
 
-  download(request: TokenizerDownloadRequest): void {
-    this.busyAction.set('download');
-    this.jobProgress.set(0);
-    this.api.download(request, (status) => this.jobProgress.set(status.progress)).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: () => { this.refresh(); this.busyAction.set(null); this.jobProgress.set(100); },
-      error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to download tokenizers.')); this.busyAction.set(null); this.jobProgress.set(null); },
-    });
-  }
-
   upload(file: File): void {
     this.busyAction.set('upload');
     this.api.upload(file).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => { this.refresh(); this.busyAction.set(null); },
       error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to upload tokenizer.')); this.busyAction.set(null); },
+    });
+  }
+
+  download(request: TokenizerDownloadRequest): void {
+    this.busyAction.set('download');
+    this.jobProgress.set(0);
+    this.downloadWarning.set(null);
+    this.api.download(request, (status) => this.jobProgress.set(status.progress)).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (response) => {
+        this.refresh();
+        this.busyAction.set(null);
+        this.jobProgress.set(100);
+        if (response.failed?.length) this.downloadWarning.set(`Some tokenizers could not be downloaded: ${response.failed.join(', ')}`);
+      },
+      error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to download tokenizers.')); this.busyAction.set(null); this.jobProgress.set(null); },
     });
   }
 

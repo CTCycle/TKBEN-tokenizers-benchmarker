@@ -5,10 +5,11 @@ import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { KeysApiService } from '../core/api/keys-api.service';
 import { errorMessage } from '../core/api/error-utils';
 import type { HFAccessKeyListItem } from '../core/api/api.models';
+import { ModalA11yDirective } from '../core/ui/modal-a11y.directive';
 
 @Component({
   selector: 'app-hf-access-key-manager',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, ModalA11yDirective],
   templateUrl: './hf-access-key-manager.component.html',
 })
 export class HfAccessKeyManagerComponent {
