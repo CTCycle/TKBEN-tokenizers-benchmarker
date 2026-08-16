@@ -73,7 +73,7 @@ def test_benchmark_service_ensure_tokenizer_ids_returns_mapping(
     assert int(count) == 2
 
 ###############################################################################
-def test_session_report_rehydrates_json_metrics_when_numeric_is_nan(
+def test_session_report_preserves_native_json_metrics_when_numeric_is_nan(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     serializer = DatasetSerializer.__new__(DatasetSerializer)
@@ -122,8 +122,8 @@ def test_session_report_rehydrates_json_metrics_when_numeric_is_nan(
         "created_at": "2026-02-16T00:00:00Z",
         "dataset_name": "custom/tmp_zipf_cloud",
         "session_name": None,
-        "selected_metric_keys": "[]",
-        "parameters": "{}",
+        "selected_metric_keys": [],
+        "parameters": {},
     }
 
     report = serializer._build_session_report_response(session_row)
@@ -138,3 +138,22 @@ def test_session_report_rehydrates_json_metrics_when_numeric_is_nan(
         {"word": "hello", "count": 9}
     ]
     assert report["word_cloud_terms"] == [{"word": "hello", "count": 9, "weight": 100}]
+
+###############################################################################
+def test_session_report_rejects_json_encoded_storage(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    serializer = DatasetSerializer.__new__(DatasetSerializer)
+    monkeypatch.setattr(serializer, "_load_metric_rows_for_session", lambda session_id: [])
+    monkeypatch.setattr(serializer, "_load_histogram_rows_for_session", lambda session_id: {})
+
+    with pytest.raises(ValueError, match="native JSON array"):
+        serializer._build_session_report_response({
+            "id": 123,
+            "report_version": 2,
+            "created_at": "2026-02-16T00:00:00Z",
+            "dataset_name": "custom/encoded",
+            "session_name": None,
+            "selected_metric_keys": "[]",
+            "parameters": {},
+        })

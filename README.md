@@ -202,7 +202,7 @@ Continuous integration validates the locked backend and frontend sources. Keep `
 
 GitHub releases provide a versioned repository source ZIP for download. The archive contains tracked source files only; local environments, credentials, dependencies, caches, logs, and generated build output are excluded. Follow [the release procedure](assets/docs/runtime/release.md) to review the delta, validate the application, synchronize `develop` and `main`, apply the coordinated minor version bump, and publish the annotated tag.
 
-Never commit `.env` files, credentials, databases, downloaded model/data caches, logs, virtual environments, Node dependencies, or generated frontend output. Keep configuration templates, scripts, workflows, migrations, and both application lockfiles tracked.
+Never commit `.env` files, credentials, databases, downloaded model/data caches, logs, virtual environments, Node dependencies, or generated frontend output. Keep configuration templates, scripts, workflows, and both application lockfiles tracked.
 
 ## 8. License
 

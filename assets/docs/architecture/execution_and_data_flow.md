@@ -46,7 +46,7 @@ Primary backend flow:
   - `get_database()` is the single cached accessor for the configured backend; repositories receive or resolve this dependency instead of importing module-level database state.
 - `repositories/serialization/benchmark_reports.py`
   - Benchmark report persistence serialization and Pydantic response normalization.
-- `repositories/serialization/data.py` and `repositories/serialization/tokenizer_reports.py`
+- `repositories/serialization/datasets.py` and `repositories/serialization/tokenizer_reports.py`
   - Canonical dataset and tokenizer-report persistence serialization boundaries.
 - `repositories/frequencies.py`
   - Temporary SQLite-backed frequency persistence used by metrics services for large vocabularies.
@@ -56,7 +56,7 @@ Primary backend flow:
 - Pages keep filter input state locally and debounce changes by 250 ms before calling the typed API service.
 - The backend applies search, source, and numeric comparison filters in the catalog service and returns the filtered items plus a result count.
 - Dataset/tokenizer catalog refreshes use request sequence guards so an older response cannot replace a newer filter result; the filter state only changes catalog visibility, not benchmark selection.
-- Dataset page rendering uses shared pure data helpers so missing, string-encoded, malformed, or non-finite optional chart payloads degrade to empty states without duplicating parsing logic in the page component.
+- Dataset page rendering uses shared pure data helpers so missing, malformed, or non-finite optional chart payloads degrade to empty states without duplicating parsing logic in the page component.
 
 ## Async and Sync Behavior
 - FastAPI endpoints are mostly `async def`.

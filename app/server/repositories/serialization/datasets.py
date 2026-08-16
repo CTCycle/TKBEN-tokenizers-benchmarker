@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import math
 from collections.abc import Iterator
 from datetime import datetime, timezone
@@ -46,17 +45,22 @@ class DatasetSerializer:
         return Session(bind=self.queries.engine)
 
     # -------------------------------------------------------------------------
-    def parse_json(self, value: Any, default: Any | None = None) -> Any:
-        if default is None:
-            default = {}
-        if isinstance(value, str):
-            try:
-                return json.loads(value)
-            except (json.JSONDecodeError, TypeError):
-                return default
-        if isinstance(value, (dict, list)):
-            return value
-        return default
+    @staticmethod
+    def _native_json_list(value: Any, field_name: str) -> list[Any]:
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            raise ValueError(f"{field_name} must be a native JSON array.")
+        return value
+
+    # -------------------------------------------------------------------------
+    @staticmethod
+    def _native_json_object(value: Any, field_name: str) -> dict[str, Any]:
+        if value is None:
+            return {}
+        if not isinstance(value, dict):
+            raise ValueError(f"{field_name} must be a native JSON object.")
+        return value
 
     # -------------------------------------------------------------------------
     def list_dataset_previews(
@@ -479,9 +483,9 @@ class DatasetSerializer:
             median_value,
         ) in rows:
             key = str(key or "")
-            bins = self.parse_json(bins_value, default=[])
-            counts = self.parse_json(counts_value, default=[])
-            bin_edges = self.parse_json(edges_value, default=[])
+            bins = self._native_json_list(bins_value, f"{key}.bins")
+            counts = self._native_json_list(counts_value, f"{key}.counts")
+            bin_edges = self._native_json_list(edges_value, f"{key}.bin_edges")
             min_value = float(min_value or 0.0)
             max_value = float(max_value or 0.0)
             mean_value = float(mean_value or 0.0)
@@ -520,12 +524,14 @@ class DatasetSerializer:
             json_value = row.get("json_value")
             if isinstance(json_value, float) and pd.isna(json_value):
                 json_value = None
+            if json_value is not None and not isinstance(json_value, (dict, list)):
+                raise ValueError("Metric JSON values must be native JSON objects or arrays.")
 
             value: Any = numeric_value
             if value is None and text_value is not None:
                 value = text_value
             if value is None and json_value is not None:
-                value = self.parse_json(json_value, default={})
+                value = json_value
             document_id = row.get("document_id")
             if document_id is None:
                 aggregate_statistics[key] = value
@@ -563,18 +569,23 @@ class DatasetSerializer:
         created_at = _parse_timestamp(session_row.get("created_at"))
         created_at_iso = created_at.isoformat().replace("+00:00", "Z") if created_at else None
 
+        selected_metric_keys = self._native_json_list(
+            session_row.get("selected_metric_keys"),
+            "selected_metric_keys",
+        )
+        session_parameters = self._native_json_object(
+            session_row.get("parameters"),
+            "parameters",
+        )
+
         return {
             "report_id": session_id,
             "report_version": int(session_row["report_version"]),
             "created_at": created_at_iso,
             "dataset_name": str(session_row.get("dataset_name") or ""),
             "session_name": session_row.get("session_name"),
-            "selected_metric_keys": self.parse_json(
-                session_row.get("selected_metric_keys"), default=[]
-            ),
-            "session_parameters": self.parse_json(
-                session_row.get("parameters"), default={}
-            ),
+            "selected_metric_keys": selected_metric_keys,
+            "session_parameters": session_parameters,
             "document_count": int(
                 aggregate_statistics.get("corpus.document_count", 0) or 0
             ),
@@ -600,20 +611,25 @@ class DatasetSerializer:
             },
             "min_document_length": int(document_histogram.get("min_length", 0) or 0),
             "max_document_length": int(document_histogram.get("max_length", 0) or 0),
-            "most_common_words": self.parse_json(
-                aggregate_statistics.get("words.most_common"), default=[]
+            "most_common_words": self._native_json_list(
+                aggregate_statistics.get("words.most_common"),
+                "words.most_common",
             ),
-            "least_common_words": self.parse_json(
-                aggregate_statistics.get("words.least_common"), default=[]
+            "least_common_words": self._native_json_list(
+                aggregate_statistics.get("words.least_common"),
+                "words.least_common",
             ),
-            "longest_words": self.parse_json(
-                aggregate_statistics.get("words.longest"), default=[]
+            "longest_words": self._native_json_list(
+                aggregate_statistics.get("words.longest"),
+                "words.longest",
             ),
-            "shortest_words": self.parse_json(
-                aggregate_statistics.get("words.shortest"), default=[]
+            "shortest_words": self._native_json_list(
+                aggregate_statistics.get("words.shortest"),
+                "words.shortest",
             ),
-            "word_cloud_terms": self.parse_json(
-                aggregate_statistics.get("words.word_cloud"), default=[]
+            "word_cloud_terms": self._native_json_list(
+                aggregate_statistics.get("words.word_cloud"),
+                "words.word_cloud",
             ),
             "aggregate_statistics": aggregate_statistics,
             "per_document_stats": per_document_stats,

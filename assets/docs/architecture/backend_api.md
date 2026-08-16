@@ -28,6 +28,7 @@ All routers are included with `prefix="/api"` during backend startup.
 - `GET /api/tokenizers/reports/{report_id}/vocabulary`
 - `POST /api/tokenizers/upload`
 - `DELETE /api/tokenizers/custom`
+- `DELETE /api/tokenizers/delete?tokenizer_name={name}` — removes a downloaded tokenizer and its cached artifacts
 
 ## Benchmarks
 - `POST /api/benchmarks/run`

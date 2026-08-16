@@ -50,30 +50,14 @@ export const toHistogramSeries = (histogram: HistogramData | null): Array<{ bin:
   }));
 };
 
-const parseJsonLike = (value: unknown): unknown => {
-  if (typeof value !== 'string') {
-    return value;
-  }
-  const candidate = value.trim();
-  if (!candidate) {
-    return null;
-  }
-  try {
-    return JSON.parse(candidate);
-  } catch {
-    return value;
-  }
-};
-
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 export const parseWordFrequencyItems = (value: unknown): WordFrequency[] => {
-  const parsed = parseJsonLike(value);
-  if (!Array.isArray(parsed)) {
+  if (!Array.isArray(value)) {
     return [];
   }
-  return parsed
+  return value
     .map((item) => {
       if (!isRecord(item)) {
         return null;
@@ -89,12 +73,11 @@ export const parseWordFrequencyItems = (value: unknown): WordFrequency[] => {
 };
 
 export const parseWordCloudTerms = (value: unknown): WordCloudTerm[] => {
-  const parsed = parseJsonLike(value);
-  if (!Array.isArray(parsed)) {
+  if (!Array.isArray(value)) {
     return [];
   }
 
-  const terms = parsed
+  const terms = value
     .map((item) => {
       if (!isRecord(item)) {
         return null;
@@ -125,11 +108,10 @@ export const parseWordCloudTerms = (value: unknown): WordCloudTerm[] => {
 };
 
 export const parseZipfCurve = (value: unknown): Array<{ rank: number; frequency: number }> => {
-  const parsed = parseJsonLike(value);
-  if (!Array.isArray(parsed)) {
+  if (!Array.isArray(value)) {
     return [];
   }
-  return parsed
+  return value
     .map((item, index) => {
       if (!isRecord(item)) {
         return null;

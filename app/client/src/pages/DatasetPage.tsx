@@ -315,7 +315,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
 
   const zipfCurve = useMemo(() => {
     const parsed = parseZipfCurve(
-      aggregate['lexical.zipf_curve'],
+      aggregate['words.zipf_curve'],
     );
     if (parsed.length > 0) {
       return parsed;
@@ -326,10 +326,10 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
   const shannonEntropy = toNumber(aggregate['words.shannon_entropy']);
   const hasEntropyGauge = hasMetricValue(aggregate['words.normalized_entropy']);
   const hasShannonEntropy = hasMetricValue(aggregate['words.shannon_entropy']);
-  const duplicateRateRaw = aggregate['quality.duplicate_document_rate'];
-  const nearDuplicateRateRaw = aggregate['quality.near_duplicate_document_rate'];
-  const topKConcentrationRaw = aggregate['lexical.topk_concentration'];
-  const rareTailMassRaw = aggregate['lexical.tail_mass'];
+  const duplicateRateRaw = aggregate['quality.duplicate_rate'];
+  const nearDuplicateRateRaw = aggregate['quality.near_duplicate_rate'];
+  const topKConcentrationRaw = aggregate['words.topk_concentration'];
+  const rareTailMassRaw = aggregate['words.rare_tail_mass'];
   const duplicateRate = toNumber(duplicateRateRaw);
   const nearDuplicateRate = toNumber(nearDuplicateRateRaw);
   const topKConcentration = toNumber(topKConcentrationRaw);
@@ -365,7 +365,7 @@ const DatasetPage = ({ showDashboard = true, embedded = false }: DatasetPageProp
       { key: 'Uppercase', value: toNumber(aggregate['chars.uppercase_ratio']) },
       { key: 'Non-ASCII', value: toNumber(aggregate['chars.non_ascii_ratio']) },
       { key: 'Control', value: toNumber(aggregate['chars.control_ratio']) },
-      { key: 'Symbols', value: toNumber(aggregate['chars.symbol_ratio']) },
+      { key: 'Other', value: toNumber(aggregate['chars.other_ratio']) },
     ];
     return rows.filter((item) => item.value > 0);
   }, [aggregate]);
