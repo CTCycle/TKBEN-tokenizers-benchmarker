@@ -1,0 +1,9 @@
+<div class="benchmark-svg-chart" role="img" [attr.aria-label]="widget().label + ' chart'">
+  <svg viewBox="0 0 640 230" preserveAspectRatio="none" aria-hidden="true">
+    <line x1="32" y1="202" x2="628" y2="202" stroke="currentColor" stroke-opacity=".28" />
+    @for (point of widget().points; track point.tokenizer; let index = $index) {
+      <rect [attr.x]="48 + index * (570 / math.max(widget().points.length, 1))" [attr.y]="202 - (math.abs(point.value) / maxValue()) * 160" [attr.width]="math.min(36, math.max(8, 420 / math.max(widget().points.length, 1)))" [attr.height]="(math.abs(point.value) / maxValue()) * 160" rx="4" class="benchmark-svg-bar recharts-bar-rectangle"><title>{{ point.tokenizer }}: {{ point.value }}</title></rect>
+    }
+  </svg>
+</div>
+<table class="benchmark-data-table sr-only" aria-hidden="true"><caption>{{ widget().label }} values</caption><tbody>@for (point of widget().points; track point.tokenizer) { <tr><th>{{ point.tokenizer }}</th><td>{{ point.value }}</td></tr> }</tbody></table>
