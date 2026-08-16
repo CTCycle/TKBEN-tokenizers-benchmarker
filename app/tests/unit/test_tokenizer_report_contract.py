@@ -37,6 +37,23 @@ def test_compute_subword_word_stats_excludes_special_tokens_and_classifies_marke
     assert stats["word_percentage"] == pytest.approx(44.4444, rel=1e-3)
 
 ###############################################################################
+@pytest.mark.parametrize("field", ["metadata", "token_length_histogram"])
+def test_tokenizer_report_response_rejects_json_encoded_storage(field: str) -> None:
+    serializer = TokenizerReportSerializer.__new__(TokenizerReportSerializer)
+    storage = {
+        "id": 1,
+        "report_version": 1,
+        "created_at": None,
+        "tokenizer_name": "custom/test",
+        "metadata": {},
+        "token_length_histogram": {},
+    }
+    storage[field] = "{}"
+
+    with pytest.raises(ValueError, match="native JSON object"):
+        serializer._build_tokenizer_report_response(storage)
+
+###############################################################################
 def test_resolve_hf_repo_metadata_returns_link_when_description_unavailable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
 from typing import Any, cast
 
@@ -81,18 +80,18 @@ class TokenizerReportSerializer:
             else ""
         )
         metadata = storage.get("metadata", {})
-        if isinstance(metadata, str):
-            try:
-                metadata = json.loads(metadata)
-            except json.JSONDecodeError:
-                metadata = {}
-        metadata_payload = dict(metadata) if isinstance(metadata, dict) else {}
+        if metadata is None:
+            metadata = {}
+        if not isinstance(metadata, dict):
+            raise ValueError("Tokenizer report metadata must be a native JSON object.")
+        metadata_payload = dict(metadata)
         histogram = storage.get("token_length_histogram", {})
-        if isinstance(histogram, str):
-            try:
-                histogram = json.loads(histogram)
-            except json.JSONDecodeError:
-                histogram = {}
+        if histogram is None:
+            histogram = {}
+        if not isinstance(histogram, dict):
+            raise ValueError(
+                "Tokenizer report histogram must be a native JSON object."
+            )
         histogram_payload = {
             "bins": list(histogram.get("bins", [])),
             "counts": list(histogram.get("counts", [])),

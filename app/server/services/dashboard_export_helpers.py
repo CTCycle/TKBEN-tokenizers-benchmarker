@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from typing import Any
 
 ###############################################################################
@@ -8,19 +7,14 @@ class DashboardExportFormatting:
 
     # -------------------------------------------------------------------------
     def _parse_zipf_curve(self, value: Any) -> list[dict[str, float]]:
-        parsed = self._parse_json_like(value)
-        if not isinstance(parsed, list):
+        if not isinstance(value, list):
             return []
         points: list[dict[str, float]] = []
-        for index, item in enumerate(parsed):
-            if isinstance(item, list) and len(item) >= 2:
-                rank = self._to_number(item[0], index + 1)
-                freq = self._to_number(item[1], 0.0)
-            elif isinstance(item, dict):
-                rank = self._to_number(item.get("rank"), index + 1)
-                freq = self._to_number(item.get("frequency") or item.get("count"), 0.0)
-            else:
+        for index, item in enumerate(value):
+            if not isinstance(item, dict):
                 continue
+            rank = self._to_number(item.get("rank"), index + 1)
+            freq = self._to_number(item.get("frequency"), 0.0)
             if rank > 0 and freq > 0:
                 points.append({"rank": rank, "frequency": freq})
         points.sort(key=lambda item: item["rank"])
@@ -34,7 +28,7 @@ class DashboardExportFormatting:
         for item in value:
             if not isinstance(item, dict):
                 continue
-            word = str(item.get("word") or item.get("token") or "").strip()
+            word = str(item.get("word") or "").strip()
             if not word:
                 continue
             count = int(round(max(0.0, self._to_number(item.get("count"), 0.0))))
@@ -105,15 +99,3 @@ class DashboardExportFormatting:
         if numeric <= 1.0:
             numeric *= 100.0
         return f"{numeric:.2f}%"
-
-    # -------------------------------------------------------------------------
-    def _parse_json_like(self, value: Any) -> Any:
-        if not isinstance(value, str):
-            return value
-        candidate = value.strip()
-        if not candidate:
-            return None
-        try:
-            return json.loads(candidate)
-        except json.JSONDecodeError:
-            return value

@@ -151,3 +151,27 @@ def test_benchmark_report_serializer_rejects_v4_payload() -> None:
             "dataset_name": "custom/old",
             "payload": {"schema_version": 3, "methodology_version": "semantic_honesty", "dataset_name": "custom/old"},
         })
+
+###############################################################################
+def test_benchmark_report_serializer_rejects_json_encoded_storage() -> None:
+    serializer = BenchmarkReportSerializer()
+
+    with pytest.raises(ValueError, match="native JSON object"):
+        serializer._normalize_report_row({
+            "id": 3,
+            "report_version": 5,
+            "created_at": datetime.now(timezone.utc),
+            "run_name": "encoded",
+            "selected_metric_keys": [],
+            "payload": '{"schema_version": 3}',
+        })
+
+    with pytest.raises(ValueError, match="native JSON array"):
+        serializer._normalize_report_row({
+            "id": 3,
+            "report_version": 5,
+            "created_at": datetime.now(timezone.utc),
+            "run_name": "encoded",
+            "selected_metric_keys": '["metric"]',
+            "payload": {"schema_version": 3, "methodology_version": "semantic_honesty", "report_version": 5},
+        })

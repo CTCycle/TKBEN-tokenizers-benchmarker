@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from typing import Any, cast
 
 import pandas as pd
@@ -70,22 +69,10 @@ class BenchmarkReportSerializer:
         if payload.get("report_version") != BENCHMARK_REPORT_VERSION:
             raise ValueError("Benchmark report uses an incompatible report version.")
 
-    # -------------------------------------------------------------------------
-    def _parse_json(self, payload: Any, default: Any) -> Any:
-        if isinstance(payload, str):
-            try:
-                return json.loads(payload)
-            except json.JSONDecodeError:
-                return default
-        if payload is None:
-            return default
-        return payload
-
-    # -------------------------------------------------------------------------
     def _normalize_report_row(self, row: dict[str, Any]) -> dict[str, Any]:
-        payload = self._parse_json(row.get("payload"), {})
+        payload = row.get("payload")
         if not isinstance(payload, dict):
-            raise ValueError("Benchmark report payload must be a JSON object.")
+            raise ValueError("Benchmark report payload must be a native JSON object.")
         created_at = _parse_timestamp(row.get("created_at"))
         created_at_iso = (
             created_at.isoformat().replace("+00:00", "Z")
@@ -93,12 +80,13 @@ class BenchmarkReportSerializer:
             else None
         )
 
-        selected_metric_keys = self._parse_json(
-            row.get("selected_metric_keys"),
-            [],
-        )
-        if not isinstance(selected_metric_keys, list):
+        selected_metric_keys = row.get("selected_metric_keys")
+        if selected_metric_keys is None:
             selected_metric_keys = []
+        if not isinstance(selected_metric_keys, list):
+            raise ValueError(
+                "Benchmark report selected_metric_keys must be a native JSON array."
+            )
         selected_metric_keys = [
             str(key) for key in selected_metric_keys if isinstance(key, str) and key
         ]
