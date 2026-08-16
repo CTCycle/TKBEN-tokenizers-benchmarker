@@ -31,7 +31,7 @@ $EnvFile = Join-Path $RepoRoot 'settings\.env'
 $EnvTemplate = Join-Path $RepoRoot 'settings\.env.example'
 $UvCacheDir = Join-Path $RuntimeDir '.uv-cache'
 $PythonVersion = '3.14.2'
-$NodeVersion = '22.13.0'
+$NodeVersion = '22.23.1'
 
 function Write-Step([string]$Message) { Write-Host "[STEP] $Message" -ForegroundColor Cyan }
 function Write-Ok([string]$Message) { Write-Host "[OK] $Message" -ForegroundColor Green }
@@ -261,7 +261,7 @@ function Test-FrontendDependenciesReady {
         return (
             $stamp.packageFingerprint -eq (Get-FrontendDependencyFingerprint) -and
             $stamp.nodeVersion -eq (& $NodeExe --version).Trim() -and
-            (Test-Path -LiteralPath (Join-Path $nodeModulesDir '.bin\vite.cmd'))
+            (Test-Path -LiteralPath (Join-Path $nodeModulesDir '.bin\ng.cmd'))
         )
     } catch {
         return $false
@@ -343,7 +343,7 @@ function Test-DependenciesReady {
     $frontendPackage = Join-Path $ClientDir 'package.json'
     $frontendLock = Join-Path $ClientDir 'package-lock.json'
     $frontendModules = Join-Path $ClientDir 'node_modules'
-    $frontendRunner = Join-Path $frontendModules '.bin\vite.cmd'
+    $frontendRunner = Join-Path $frontendModules '.bin\ng.cmd'
     $backendEntrypoint = Join-Path $AppDir 'server/app.py'
 
     if (-not (Test-Path -LiteralPath $PythonExe) -or

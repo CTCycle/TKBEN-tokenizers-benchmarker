@@ -30,12 +30,12 @@ Primary backend flow:
   - Tokenizer metadata resolution, cached metadata loading, vocabulary analysis, histogram generation, report persistence, and report retrieval.
 - `services/dataset_statistics.py`
   - Deterministic dataset length statistics and histogram construction used by `DatasetService`.
-- `app/client/src/features/dataset/datasetDashboardData.ts`
+- `app/client/angular/app/core/utils/dataset-dashboard-data.ts`
   - Shared frontend normalization for numeric metrics, histograms, word frequencies, Zipf curves, and word-cloud terms before chart rendering.
-- `app/client/src/features/benchmark-dashboard/benchmarkDashboardChartUtils.ts`
+- `app/client/angular/app/core/utils/benchmark-dashboard-data.ts`
   - Pure classification of normalized dashboard widgets as point, bucket, or distribution data shapes.
-- `app/client/src/hooks/useAvailableDatasets.ts`, `useBodyScrollLock.ts`, and `useCompactChart.ts`
-  - Shared frontend lifecycle state for catalog loading, modal scroll restoration, and the `700px` compact-chart breakpoint.
+- `app/client/angular/app/core/state/*.store.ts` and the shared chart components
+  - Signal-based catalog, report, persistence, and modal state plus the shared chart rendering contracts.
 - `services/dashboard_export_helpers.py`
   - Dashboard export payload parsing and value formatting helpers used by the PDF export service.
 - `services/benchmark_engine.py`
@@ -52,7 +52,7 @@ Primary backend flow:
   - Temporary SQLite-backed frequency persistence used by metrics services for large vocabularies.
 
 ## Catalog Filtering Flow
-- Dataset and tokenizer catalog controls are rendered by the shared frontend `CatalogFilterToolbar`.
+- Dataset and tokenizer catalog controls are rendered by the Angular page templates and typed reactive forms.
 - Pages keep filter input state locally and debounce changes by 250 ms before calling the typed API service.
 - The backend applies search, source, and numeric comparison filters in the catalog service and returns the filtered items plus a result count.
 - Dataset/tokenizer catalog refreshes use request sequence guards so an older response cannot replace a newer filter result; the filter state only changes catalog visibility, not benchmark selection.
