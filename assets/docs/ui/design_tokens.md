@@ -59,5 +59,5 @@ Accessibility baseline:
 - Canvas uses `--color-canvas-top` and `--color-canvas-bottom` with restrained radial lighting.
 - Shared panels use `--color-glass` / `--color-glass-strong`, `--border-default`, `--shadow-panel`, and `--shadow-inset`.
 - Layout roles include `--page-max-width`, `--page-gutter`, `--section-gap`, `--panel-padding`, and `--card-gap`.
-- Cross-benchmark charts share centralized height and legend contracts from `src/common/chartStyles.ts`.
+- Cross-benchmark charts share centralized height and legend contracts from `app/client/angular/styles.css` and the Angular chart components.
 - Current layout roles also include `--chart-min-height`, `--control-height`, modal radius/shadow tokens, and the page/header height tokens used by the fixed application chrome.

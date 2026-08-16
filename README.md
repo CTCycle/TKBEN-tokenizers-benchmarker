@@ -40,7 +40,7 @@ From the repository root, run the single application and maintenance entry point
 .\start_on_windows.ps1
 ```
 
-`start_on_windows.ps1` opens the combined eight-option menu. Choose **Launch application** to download pinned portable Python, uv, and Node.js runtimes when missing, synchronize Python dependencies, reuse unchanged frontend dependencies, build the frontend when enabled, and start FastAPI plus the Vite preview server. The launcher also waits for the backend health endpoint and frontend before reporting success. The dependency maintenance option offers a **Development** profile with Ruff, BasedPyright, and pytest extras, or a **Standard** profile with runtime dependencies only.
+`start_on_windows.ps1` opens the combined eight-option menu. Choose **Launch application** to download pinned portable Python, uv, and Node.js runtimes when missing, synchronize Python dependencies, reuse unchanged frontend dependencies, build the Angular frontend when enabled, and start FastAPI plus the Angular production preview server. The launcher also waits for the backend health endpoint and frontend before reporting success. The dependency maintenance option offers a **Development** profile with Ruff, BasedPyright, and pytest extras, or a **Standard** profile with runtime dependencies only.
 
 On the first launch, allow dependency setup to finish and note the URL printed by the launcher. Subsequent launches can reuse the local runtimes and unchanged frontend dependencies. Use the maintenance menu when you need to install or update dependencies, initialize the database, run tests, clean logs or caches, or uninstall the managed runtime.
 

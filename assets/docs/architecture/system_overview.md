@@ -4,10 +4,10 @@ Last updated: 2026-08-02
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
 - FastAPI backend (`app/server`)
-- React + Vite frontend (`app/client`)
+- Angular 22 frontend (`app/client`)
 - Shared local resources and settings (`app/resources`, `settings`)
 
-Backend APIs are mounted under `/api/*`. Frontend calls `/api` and relies on the Vite proxy in dev and preview modes.
+Backend APIs are mounted under `/api/*`. Frontend calls `/api` and relies on the Angular proxy in dev and preview modes.
 
 ## Repository Structure
 Source-level structure, with generated and environment-specific folders omitted:
@@ -25,13 +25,12 @@ Source-level structure, with generated and environment-specific folders omitted:
 ├─ app/
 │  ├─ client/
 │  │  ├─ package.json
-│  │  ├─ vite.config.ts
+│  │  ├─ angular.json
 │  │  ├─ public/
 │  │  │  └─ tkben-logo.png
-│  │  ├─ src/
-│  │  │  ├─ common/
-│  │  │  ├─ features/
-│  │  │  └─ hooks/
+│  │  ├─ angular/
+│  │  │  ├─ app/
+│  │  │  └─ styles.css
 │  │  └─ package-lock.json
 │  ├─ server/
 │  │  ├─ pyproject.toml
@@ -54,15 +53,14 @@ Source-level structure, with generated and environment-specific folders omitted:
   - `server.app:create_app` constructs the FastAPI app and registers API and frontend routes.
   - `server.app:app` is the canonical ASGI entry point.
 - Frontend entry:
-  - `app/client/src/main.tsx`
+  - `app/client/angular/main.ts`
 - Frontend routing root:
-  - `app/client/src/App.tsx`
+  - `app/client/angular/app/app.routes.ts`
 - Frontend shell:
-  - `app/client/src/components/AppShell.tsx` provides the branded header, primary route tabs, and Hugging Face key manager control.
+  - `app/client/angular/app/components/app-shell.component.ts` provides the branded header, primary route tabs, and Hugging Face key manager control.
 - Frontend data and interaction helpers:
-  - `app/client/src/features/dataset/datasetDashboardData.ts` owns dataset dashboard normalization and derived chart series.
-  - `app/client/src/features/benchmark-dashboard/benchmarkDashboardChartUtils.ts` owns benchmark widget data-shape classification.
-  - Shared hooks own catalog loading state, compact chart sizing, modal body scroll locking, and dashboard workspace orchestration.
+  - Signal stores under `app/client/angular/app/core/state/` own catalog loading, report state, polling, persistence, and dashboard workspace orchestration.
+  - Pure normalization helpers under `app/client/angular/app/core/utils/` own dataset and chart payload shaping.
 - Windows launcher:
   - `start_on_windows.ps1` is the single user-facing root entry point for the combined launch and maintenance menu.
 
@@ -75,5 +73,5 @@ Source-level structure, with generated and environment-specific folders omitted:
 
 ## Runtime Interaction Topology
 - Local webapp mode:
-  - Browser -> Vite preview (`UI_HOST:UI_PORT`) -> proxied `/api` -> FastAPI (`FASTAPI_HOST:FASTAPI_PORT`)
+  - Browser -> Angular preview (`UI_HOST:UI_PORT`) -> proxied `/api` -> FastAPI (`FASTAPI_HOST:FASTAPI_PORT`)
 - The launcher uses the canonical backend environment at `app/server/.venv` and lockfile at `app/server/uv.lock`, builds the frontend when configured, starts both services, and opens the configured UI URL.

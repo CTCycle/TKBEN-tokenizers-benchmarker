@@ -40,7 +40,7 @@ Primary launcher runtime env file:
 
 ## Configuration Differences
 ### Dev and Local Webapp
-- Vite serves and proxies `/api` to the FastAPI host and port from the environment.
+- Angular serves and proxies `/api` to the FastAPI host and port from the environment.
 - `RELOAD=true` enables Uvicorn reload behavior.
 
 ### Persistence Toggle
