@@ -1,0 +1,76 @@
+<div class="app-shell">
+  <header class="app-header-bar">
+    <div class="app-brand">
+      <img class="app-brand-mark" src="/tkben-logo.png" alt="" aria-hidden="true" />
+      <div class="app-brand-copy">
+        <span class="app-brand-name">TKBEN</span>
+        <span class="app-brand-subtitle">Tokenizer Benchmarker</span>
+      </div>
+    </div>
+
+    <nav class="app-tab-nav" aria-label="Primary">
+      @for (item of navItems; track item.path) {
+        <button
+          type="button"
+          class="app-tab"
+          [routerLink]="item.path"
+          routerLinkActive="app-tab--active"
+          [routerLinkActiveOptions]="{ exact: false }"
+          #active="routerLinkActive"
+          [attr.aria-current]="active.isActive ? 'page' : null"
+        >
+          <span class="app-tab-icon">
+            @switch (item.icon) {
+              @case ('datasets') {
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="3" y="4" width="18" height="4" rx="1.5" />
+                  <rect x="3" y="10" width="18" height="4" rx="1.5" />
+                  <rect x="3" y="16" width="18" height="4" rx="1.5" />
+                </svg>
+              }
+              @case ('tokenizers') {
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="8" cy="8" r="3" />
+                  <circle cx="16" cy="8" r="3" />
+                  <rect x="6" y="13" width="12" height="7" rx="2" />
+                </svg>
+              }
+              @default {
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="4" y="4" width="7" height="7" rx="1.5" />
+                  <rect x="13" y="4" width="7" height="7" rx="1.5" />
+                  <rect x="4" y="13" width="7" height="7" rx="1.5" />
+                  <rect x="13" y="13" width="7" height="7" rx="1.5" />
+                </svg>
+              }
+            }
+          </span>
+          <span>{{ item.label }}</span>
+        </button>
+      }
+    </nav>
+
+    <button
+      type="button"
+      class="icon-button subtle app-header-key-button"
+      [class.accent]="keyManagerOpen()"
+      aria-label="Manage Hugging Face keys"
+      (click)="toggleKeyManager()"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="8" cy="12" r="3" fill="none" stroke-width="2" />
+        <path d="M11 12h10M18 12v3M21 12v2" stroke-width="2" stroke-linecap="round" fill="none" />
+      </svg>
+    </button>
+  </header>
+
+  <div class="app-main">
+    <section class="app-content">
+      <ng-content />
+    </section>
+  </div>
+
+  @if (keyManagerOpen()) {
+    <app-hf-access-key-manager (closed)="closeKeyManager()" />
+  }
+</div>
