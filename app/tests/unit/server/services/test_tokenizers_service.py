@@ -102,14 +102,19 @@ def test_tokenizer_scan_propagates_upstream_failure(monkeypatch) -> None:
 ###############################################################################
 def test_failed_tokenizer_download_cleans_partial_cache_and_returns_reason(
     monkeypatch,
+    tmp_path,
 ) -> None:
     service = TokenizersService()
-    cache_dir = "G:/TKBEN-test-cache/broken"
+    cache_dir = tmp_path / "broken"
     removed: list[str] = []
 
     monkeypatch.setattr(service.key_service, "get_active_key", lambda: None)
     monkeypatch.setattr(service.repository, "tokenizer_exists", lambda _: False)
-    monkeypatch.setattr(service, "get_tokenizer_cache_dir", lambda _: cache_dir)
+    monkeypatch.setattr(
+        service,
+        "get_tokenizer_cache_dir",
+        lambda _: str(cache_dir),
+    )
     monkeypatch.setattr(service, "has_cached_tokenizer", lambda _: False)
     monkeypatch.setattr(
         "server.services.tokenizers.shutil.rmtree",
