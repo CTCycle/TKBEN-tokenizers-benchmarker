@@ -25,6 +25,7 @@ export class CrossBenchmarkPageComponent {
   protected readonly visualizations = signal<Record<string, string>>({});
   protected readonly restoreDisabled = signal(false);
   protected readonly exportError = signal<string | null>(null);
+  protected readonly keyboardGrabbed = signal<string | null>(null);
   protected readonly runForm = new FormGroup({
     dataset: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     tokenizers: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
@@ -90,6 +91,24 @@ export class CrossBenchmarkPageComponent {
     const from = this.store.layout().indexOf(fromId);
     const to = this.store.layout().indexOf(toId);
     if (from >= 0 && to >= 0) this.store.reorder(from, to);
+  }
+
+  protected onWidgetKeydown(event: KeyboardEvent, index: number): void {
+    const widget = this.orderedWidgets()[index];
+    if (!widget) return;
+    if (event.key === ' ' || event.key === 'Enter') {
+      event.preventDefault();
+      this.keyboardGrabbed.update((current) => current === widget.widget_id ? null : widget.widget_id);
+      return;
+    }
+    if (this.keyboardGrabbed() !== widget.widget_id) return;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      this.moveWidget(index, -1);
+    } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.moveWidget(index, 1);
+    }
   }
 
   protected toggleTable(widgetId: string): void {
