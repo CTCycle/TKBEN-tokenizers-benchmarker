@@ -1,5 +1,5 @@
 # UI Standards
-Last updated: 2026-08-02
+Last updated: 2026-08-17
 
 ## Spacing and Layout
 - Use the existing spacing tokens:
@@ -27,7 +27,7 @@ Last updated: 2026-08-02
   - text: `--color-text`, `--color-muted`
   - accent: `--color-accent`
 - Use semantic tokens for danger, warning, and success states instead of raw one-off colors.
-- Use chart tokens for Recharts fills, axes, grids, and tooltips. Do not introduce unrelated chart palettes.
+- Use the existing chart tokens for SVG fills, axes, grids, and tooltips. Do not introduce unrelated chart palettes.
 - Do not rely on color alone for meaning; pair status colors with visible text.
 
 ## Components

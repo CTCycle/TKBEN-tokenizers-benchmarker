@@ -93,9 +93,10 @@ export class CrossBenchmarkPageComponent {
     const tokenizers = this.store.report()?.tokenizers_processed ?? [];
     this.runForm.patchValue({ dataset, tokenizers: tokenizers.join(','), runName: '', maxDocuments: this.store.report()?.config.max_documents ?? 1000 });
     this.runSelectedMetricKeys.set(this.store.metricCategories().flatMap((category) => category.metrics.map((metric) => metric.key)));
-    const available = this.store.availableTokenizers();
-    const matching = tokenizers.filter((tokenizer) => available.includes(tokenizer));
-    this.runSelectedTokenizers.set((matching.length ? matching : available).slice(0, 5));
+    // The dataset may be preselected, but tokenizers are intentionally left
+    // empty so the user explicitly chooses the benchmark inputs.
+    this.runSelectedTokenizers.set([]);
+    this.runForm.controls.tokenizers.setValue('');
     this.tokenizerQuery.set('');
     this.runStep.set(1);
     this.runOpen.set(true);
