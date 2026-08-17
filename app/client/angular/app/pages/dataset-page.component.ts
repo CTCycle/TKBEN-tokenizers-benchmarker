@@ -8,6 +8,7 @@ import { ExportApiService } from '../core/api/export-api.service';
 import { errorMessageAsync } from '../core/api/error-utils';
 import { WordCloudComponent } from '../components/word-cloud.component';
 import { ModalA11yDirective } from '../core/ui/modal-a11y.directive';
+import { formatBenchmarkAxisValue } from '../core/utils/benchmark-dashboard-data';
 import {
   buildWordCloudFromWordFrequencies,
   buildZipfCurveFromWordFrequencies,
@@ -141,11 +142,21 @@ export class DatasetPageComponent {
   protected readonly allMetricKeys = computed(() => this.store.metricCategories().flatMap((category) => category.metrics.map((metric) => metric.key)));
 
   protected readonly donutColors = ['#f59e0b', '#fb7185', '#38bdf8', '#34d399', '#a78bfa', '#f97316', '#64748b'];
+  protected readonly zipfAxisFractions = [0, 0.25, 0.5, 0.75, 1] as const;
+  protected readonly formatAxis = formatBenchmarkAxisValue;
+  protected readonly zipfMaxRank = computed(() => Math.max(1, ...this.zipfCurve().map((item) => item.rank)));
+  protected readonly zipfMaxFrequency = computed(() => Math.max(1, ...this.zipfCurve().map((item) => item.frequency)));
   protected readonly zipfPoints = computed(() => {
     const values = this.zipfCurve();
-    const max = Math.max(1, ...values.map((item) => item.frequency));
-    return values.map((item, index) => `${24 + (index / Math.max(values.length - 1, 1)) * 572},${166 - (item.frequency / max) * 140}`).join(' ');
+    const maxRank = this.zipfMaxRank();
+    const maxFrequency = this.zipfMaxFrequency();
+    return values.map((item) => `${24 + (item.rank / maxRank) * 572},${166 - (item.frequency / maxFrequency) * 140}`).join(' ');
   });
+
+  protected zipfX(fraction: number): number { return 24 + fraction * 572; }
+  protected zipfY(fraction: number): number { return 166 - fraction * 140; }
+  protected zipfRank(fraction: number): string { return Math.max(1, Math.round(this.zipfMaxRank() * fraction)).toLocaleString(); }
+  protected zipfFrequency(fraction: number): string { return this.formatAxis(this.zipfMaxFrequency() * fraction, 'number'); }
 
   protected donutPath(index: number): string {
     const slices = this.characterSlices();

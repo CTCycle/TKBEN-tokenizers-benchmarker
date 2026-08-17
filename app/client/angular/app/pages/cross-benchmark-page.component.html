@@ -43,7 +43,7 @@
       @for (widget of orderedWidgets(); track widget.widget_id; let index = $index) {
           <article class="benchmark-dashboard-widget" [class.benchmark-dashboard-widget--wide]="widget.width === 'wide'" cdkDrag tabindex="0" role="listitem" [attr.aria-label]="widget.label + ' widget'" [attr.aria-grabbed]="keyboardGrabbed() === widget.widget_id" (keydown)="onWidgetKeydown($event, index)">
           <header>
-            <div><h3>{{ widget.label }}</h3><p class="cross-benchmark-chart-note">{{ widget.description }} ({{ widget.unit }})</p></div>
+            <div><h3>{{ widget.label }}{{ widget.unit ? ' (' + widget.unit + ')' : '' }}</h3></div>
             <div class="benchmark-visualization-switcher" role="group" [attr.aria-label]="widget.label + ' visualization'" (pointerdown)="$event.stopPropagation()" (keydown)="$event.stopPropagation()">
               @for (choice of widget.compatible_visualizations; track choice) {
                 @if (choice !== 'heatmap') {

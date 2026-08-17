@@ -24,6 +24,26 @@ export const formatBenchmarkValue = (value: number, kind: string): string => {
   return value.toLocaleString(undefined, { maximumFractionDigits: 3 });
 };
 
+const compactAxisNumber = (value: number): string => {
+  const absolute = Math.abs(value);
+  const suffix = absolute >= 1_000_000_000 ? 'B' : absolute >= 1_000_000 ? 'M' : absolute >= 10_000 ? 'k' : '';
+  const divisor = suffix === 'B' ? 1_000_000_000 : suffix === 'M' ? 1_000_000 : suffix === 'k' ? 1_000 : 1;
+  const scaled = value / divisor;
+  const maximumFractionDigits = suffix ? (Math.abs(scaled) >= 100 ? 0 : Math.abs(scaled) >= 10 ? 1 : 2) : 3;
+  return `${scaled.toLocaleString(undefined, { maximumFractionDigits })}${suffix}`;
+};
+
+export const formatBenchmarkAxisValue = (value: number, kind: string): string => {
+  if (!Number.isFinite(value)) return 'N/A';
+  if (kind === 'percent') return `${(value <= 1 ? value * 100 : value).toFixed(2)}%`;
+  return compactAxisNumber(value);
+};
+
+export const formatBenchmarkTooltipValue = (value: number, kind: string, unit: string): string => {
+  const formatted = formatBenchmarkValue(value, kind);
+  return ['percent', 'milliseconds', 'seconds', 'megabytes'].includes(kind) ? formatted : `${formatted} ${unit}`;
+};
+
 export const shortBenchmarkLabel = (value: string): string => value.length > 16 ? `${value.slice(0, 14)}…` : value;
 
 const SERIES_COLORS = ['#4fc3f7', '#81c784', '#ffb74d', '#f06292', '#ba68c8', '#4db6ac'] as const;
