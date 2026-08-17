@@ -1,5 +1,5 @@
 # Configuration
-Last updated: 2026-08-02
+Last updated: 2026-08-18
 
 ## Environment File
 Primary launcher runtime env file:
@@ -17,7 +17,7 @@ Primary launcher runtime env file:
 - `BACKEND_LOGS_VISIBLE` (accepts only `true` or `false`; shows backend logs in a dedicated terminal when `true`, and defaults to `true` when absent)
 - `ALLOW_KEY_REVEAL`
 - `HF_KEYS_ENCRYPTION_MATERIAL_FILE`
-- `TKBEN_DATA_DIR` (mutable database, datasets, tokenizers, and exports)
+- `TKBEN_DATA_DIR` (resource root for the embedded database, datasets, tokenizers, and exports; defaults to `app/resources`)
 - `TKBEN_LOG_DIR` (runtime logs)
 - `TKBEN_CONFIG_DIR` (active `.env` and `configurations.json`)
 - `DATABASE_EMBEDDED`
@@ -46,7 +46,7 @@ Primary launcher runtime env file:
 ### Persistence Toggle
 - If `database` is present in `settings/configurations.json`, that block is authoritative for database mode and connection fields.
 - Otherwise the backend falls back to `DATABASE_*` environment variables.
-- `DATABASE_EMBEDDED=true` uses SQLite (`resources/database.db`).
+- `DATABASE_EMBEDDED=true` uses SQLite (`<TKBEN_DATA_DIR>/database.db`; defaults to `app/resources/database.db`).
 - `DATABASE_EMBEDDED=false` with `DATABASE_ENGINE=postgresql+psycopg` uses PostgreSQL.
 - `DATABASE_URL` may seed engine, host, port, name, user, and password values when no structured database block is supplied.
 

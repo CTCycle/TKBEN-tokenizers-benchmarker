@@ -1,5 +1,5 @@
 # TKBEN Tokenizer Benchmarker
-Last updated: 2026-08-13
+Last updated: 2026-08-18
 [![Release](https://img.shields.io/github/v/release/CTCycle/TKBEN-tokenizers-benchmarker?display_name=tag)](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.14-3776AB?logo=python&logoColor=white)
 ![Node.js](https://img.shields.io/badge/node.js-%3E%3D22-339933?logo=node.js&logoColor=white)
@@ -79,7 +79,7 @@ Initialize from the single template:
 Copy-Item settings\.env.example settings\.env
 ```
 
-Most users can keep the generated defaults. Open `settings/.env` when you need to change local hosts or ports, choose whether the frontend is rebuilt at startup, or configure optional Hugging Face and database integration. Keep secrets and machine-specific values in this ignored file.
+Most users can keep the generated defaults. Open `settings/.env` when you need to change local hosts or ports, choose whether the frontend is rebuilt at startup, set `TKBEN_DATA_DIR` to relocate the resource root (including the embedded SQLite database), or configure optional Hugging Face and database integration. Keep secrets and machine-specific values in this ignored file.
 
 ### 3.2 Local Webapp Mode (Default)
 

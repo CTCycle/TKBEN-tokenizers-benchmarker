@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 import pytest
+from server.common.path import ROOT_DIR
 from server.common.utils.encryption import get_hf_key_cipher
 from server.configurations import environment as bootstrap
 from server.configurations import is_key_reveal_enabled
@@ -72,6 +73,12 @@ def test_missing_environment_is_created_from_example(
     assert bootstrap.ensure_environment_loaded() == env_path
     assert env_path.read_bytes() == template_bytes
     assert os.getenv("FASTAPI_HOST") == "from_template"
+
+###############################################################################
+def test_environment_template_exposes_resource_directory() -> None:
+    example = (ROOT_DIR / "settings/.env.example").read_text(encoding="utf-8")
+
+    assert "TKBEN_DATA_DIR=app/resources" in example
 
 ###############################################################################
 def test_existing_environment_is_preserved(
