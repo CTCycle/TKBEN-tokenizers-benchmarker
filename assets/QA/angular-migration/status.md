@@ -1,6 +1,6 @@
 # Angular migration status
 
-Last updated: 2026-08-16
+Last updated: 2026-08-17
 
 | Area | Status | Evidence / next gate |
 | --- | --- | --- |
@@ -12,9 +12,10 @@ Last updated: 2026-08-16
 | Dataset route | browser verified | Catalog filters, selection, add/upload/download dialog, validation wizard, latest-report/delete actions, persisted report summary, character composition, histograms, Zipf curve, entropy/duplicate/concentration indicators, word cloud worker/fallback, and responsive layout verified. |
 | Tokenizer/key-management routes | browser verified | Catalog filtering, report/vocabulary controls, upload dialog, key list/add/reveal/activation/delete UI and responsive rendering verified; real key mutation remains intentionally limited to disposable/non-secret coverage. |
 | Cross-benchmark route | browser verified | Persisted report loading, payload-shaped tables, vertical/horizontal/interval/dot-whisker/box/histogram/grouped-bar/heatmap renderers, titles/tooltips, legends, run dialog, layout persistence, CDK drag/drop and Space/arrow/Space keyboard controls, customization/reset, mobile overflow, and export error handling verified. |
-| Automated tests | functionally verified | Angular lint, production build, clean `npm ci`, and the post-parity Vitest unit suite (5 files, 11 tests) passed. Complete Windows runner passed: 267 Python tests passed, 5 skipped, frontend unit tests passed; focused Angular E2E suites passed (11 app-flow, 1 dashboard). |
-| Final cleanup | migrated | React/Vite source, entrypoint, Vite config, and Node tsconfig removed; Angular preview/proxy, docs, launcher, and Node 22.23.1 pin updated. |
+| Automated tests | functionally verified | Clean `npm ci`, Angular lint, production build, and Vitest unit suite (5 files, 11 tests) passed. Final Windows runner passed: 267 Python tests passed, 5 skipped, frontend unit tests passed; focused Angular E2E suites passed after the final wizard/customizer parity fixes. |
+| Final parity pass | browser verified | All three Angular routes rendered from the production preview with zero console errors; wizard validation and customizer accessible names were rechecked after the final fixes. Existing parity captures cover Angular at 1920x1080, 1440x900, 1024x768, and 390x844, with React references at 1440x900 and 390x844. |
+| Final cleanup | migrated | React/Vite source, entrypoint, Vite config, and Node tsconfig removed; Angular preview/proxy, docs, launcher, and Node 22.23.1 pin updated. Legacy marker/dependency audit is complete except for intentional `VITE_API_BASE_URL`, the Angular CLI builder’s transitive Vite packages, stable `.recharts-bar-rectangle` test class, and QA/status references documenting the migration. |
 
-## Pause checkpoint
+## Final validation checkpoint
 
-Work is intentionally paused after the latest feature-parity checkpoint. The branch remains in progress; next session should complete a post-change clean install and full E2E rerun, repeat the final cross-route visual parity pass, and perform the final legacy-marker/obsolete-dependency audit before declaring the migration complete.
+The post-checkpoint clean install, full runner, focused E2E rerun, route smoke check, console check, and legacy audit have now passed. The branch is ready for final diff review and the completion commit; the React re-export limitation for the two additional reference viewports remains documented above.
