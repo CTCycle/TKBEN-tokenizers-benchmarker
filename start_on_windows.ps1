@@ -67,6 +67,50 @@ function Invoke-DownloadAndExtract {
     }
 }
 
+function Install-NodeRuntime {
+    $stagingDir = Join-Path $RuntimeDir ('.nodejs-staging-' + [guid]::NewGuid().ToString('N'))
+    $backupDir = Join-Path $RuntimeDir ('.nodejs-backup-' + [guid]::NewGuid().ToString('N'))
+    $oldRuntimeMoved = $false
+    $newRuntimeInstalled = $false
+
+    try {
+        Write-Step "Downloading Node.js $NodeVersion (portable x64)."
+        $nodeArchive = Join-Path $stagingDir "node-v$NodeVersion-win-x64.zip"
+        Invoke-DownloadAndExtract `
+            -Uri "https://nodejs.org/dist/v$NodeVersion/node-v$NodeVersion-win-x64.zip" `
+            -ArchivePath $nodeArchive `
+            -Destination $stagingDir
+
+        $nestedNodeDir = Join-Path $stagingDir "node-v$NodeVersion-win-x64"
+        if (-not (Test-Path -LiteralPath (Join-Path $nestedNodeDir 'node.exe'))) {
+            throw "Node.js was not found in the extracted archive at $nestedNodeDir"
+        }
+
+        if (Test-Path -LiteralPath $NodeDir) {
+            Move-Item -LiteralPath $NodeDir -Destination $backupDir -ErrorAction Stop
+            $oldRuntimeMoved = $true
+        }
+        Move-Item -LiteralPath $nestedNodeDir -Destination $NodeDir -ErrorAction Stop
+        $newRuntimeInstalled = $true
+
+        if (Test-Path -LiteralPath $backupDir) {
+            Remove-Item -LiteralPath $backupDir -Recurse -Force -ErrorAction Stop
+        }
+    } catch {
+        if ($newRuntimeInstalled -and (Test-Path -LiteralPath $NodeDir)) {
+            Remove-Item -LiteralPath $NodeDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        if ($oldRuntimeMoved -and (Test-Path -LiteralPath $backupDir) -and -not (Test-Path -LiteralPath $NodeDir)) {
+            Move-Item -LiteralPath $backupDir -Destination $NodeDir -ErrorAction SilentlyContinue
+        }
+        throw
+    } finally {
+        if (Test-Path -LiteralPath $stagingDir) {
+            Remove-Item -LiteralPath $stagingDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 function Invoke-PatchPth {
     param([Parameter(Mandatory)][string]$Path)
     if (-not (Test-Path -LiteralPath $Path)) { throw "Missing Python path file: $Path" }
@@ -219,17 +263,7 @@ function Install-Runtimes {
         }
     }
     if ($nodeNeedsInstall) {
-        Write-Step "Downloading Node.js $NodeVersion (portable x64)."
-        $nodeArchive = Join-Path $NodeDir "node-v$NodeVersion-win-x64.zip"
-        Invoke-DownloadAndExtract `
-            -Uri "https://nodejs.org/dist/v$NodeVersion/node-v$NodeVersion-win-x64.zip" `
-            -ArchivePath $nodeArchive `
-            -Destination $NodeDir
-        $nestedNodeDir = Join-Path $NodeDir "node-v$NodeVersion-win-x64"
-        if (Test-Path -LiteralPath (Join-Path $nestedNodeDir 'node.exe')) {
-            Get-ChildItem -LiteralPath $nestedNodeDir -Force | Move-Item -Destination $NodeDir -Force
-            Remove-Item -LiteralPath $nestedNodeDir -Recurse -Force
-        }
+        Install-NodeRuntime
     }
     if (-not (Test-Path -LiteralPath $NodeExe)) { throw "Node.js was not installed at $NodeExe" }
     if (-not (Test-Path -LiteralPath $NpmCmd)) { throw "npm was not installed at $NpmCmd" }

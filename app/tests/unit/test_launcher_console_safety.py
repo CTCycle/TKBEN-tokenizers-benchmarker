@@ -23,3 +23,14 @@ def test_launcher_keeps_safe_database_initialization_command() -> None:
     assert "--drop-existing" not in source
     assert "--seed-catalogs" not in source
     assert "--force-reseed-catalogs" not in source
+
+
+def test_launcher_stages_node_runtime_before_replacing_existing_runtime() -> None:
+    source = LAUNCHER.resolve().read_text(encoding="utf-8")
+
+    assert "function Install-NodeRuntime" in source
+    assert ".nodejs-staging-" in source
+    assert "-Destination $stagingDir" in source
+    assert "Move-Item -LiteralPath $NodeDir -Destination $backupDir" in source
+    assert "Move-Item -LiteralPath $nestedNodeDir -Destination $NodeDir" in source
+    assert "Remove-Item -LiteralPath $stagingDir -Recurse -Force" in source
