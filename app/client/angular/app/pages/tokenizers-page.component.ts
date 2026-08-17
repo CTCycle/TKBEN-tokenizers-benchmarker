@@ -3,20 +3,26 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime } from 'rxjs';
 import { TokenizersStore } from '../core/state/tokenizers.store';
+import { HistogramChartComponent } from '../components/histogram-chart.component';
+import { ExportApiService } from '../core/api/export-api.service';
+import { errorMessageAsync } from '../core/api/error-utils';
 import { ModalA11yDirective } from '../core/ui/modal-a11y.directive';
 
 @Component({
   selector: 'app-tokenizers-page',
-  imports: [ReactiveFormsModule, ModalA11yDirective],
+  imports: [ReactiveFormsModule, HistogramChartComponent, ModalA11yDirective],
   templateUrl: './tokenizers-page.component.html',
 })
 export class TokenizersPageComponent {
   protected readonly store = inject(TokenizersStore);
+  private readonly exportApi = inject(ExportApiService);
+  private readonly destroyRef = inject(DestroyRef);
   protected readonly addTokenizerOpen = signal(false);
   protected readonly manualTokenizerInput = signal('');
   protected readonly scanQuery = signal('');
   protected readonly manualTokenizerIds = computed(() => this.manualTokenizerInput().split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean));
   protected readonly selectedScannedTokenizers = signal<readonly string[]>([]);
+  protected readonly exportError = signal<string | null>(null);
   protected readonly filteredScannedTokenizers = computed(() => {
     const query = this.scanQuery().trim().toLowerCase();
     const values = this.store.scannedTokenizers();
@@ -30,8 +36,7 @@ export class TokenizersPageComponent {
   });
 
   constructor() {
-    const destroyRef = inject(DestroyRef);
-    this.filters.valueChanges.pipe(debounceTime(10), takeUntilDestroyed(destroyRef)).subscribe(() => this.refresh());
+    this.filters.valueChanges.pipe(debounceTime(10), takeUntilDestroyed(this.destroyRef)).subscribe(() => this.refresh());
   }
 
   protected refresh(): void {
@@ -64,8 +69,53 @@ export class TokenizersPageComponent {
     const tokenizers = [...this.selectedScannedTokenizers()];
     if (tokenizers.length) this.store.download({ tokenizers });
   }
-  protected generateReport(name: string): void { this.store.generateReport(name); }
+  protected openReport(name: string): void { this.store.openReport(name); }
   protected loadLatest(name: string): void { this.store.loadLatest(name); }
+  protected dashboardDescription(): string {
+    const report = this.store.report();
+    return report ? `Report ${report.report_id} for ${report.tokenizer_name}` : 'Open a tokenizer report from the preview list to populate this dashboard.';
+  }
+  protected formatNumber(value: number | null | undefined, digits = 2): string {
+    if (value === null || value === undefined || Number.isNaN(value)) return 'N/A';
+    if (Number.isInteger(value)) return value.toLocaleString();
+    return value.toFixed(digits);
+  }
+  protected formatPercent(value: number | null | undefined): string {
+    return value === null || value === undefined || Number.isNaN(value) ? 'N/A' : `${this.formatNumber(value, 2)}%`;
+  }
+  protected vocabularyOffset(): number { return this.store.vocabulary()?.offset ?? 0; }
+  protected vocabularyLimit(): number { return this.store.vocabulary()?.limit ?? 500; }
+  protected vocabularyTotal(): number { return this.store.vocabulary()?.total ?? 0; }
+  protected vocabularyStart(): number { return this.vocabularyTotal() > 0 ? this.vocabularyOffset() + 1 : 0; }
+  protected vocabularyEnd(): number { return this.vocabularyTotal() > 0 ? Math.min(this.vocabularyOffset() + (this.store.vocabulary()?.items.length ?? 0), this.vocabularyTotal()) : 0; }
+  protected canGoPrevious(): boolean { return this.vocabularyOffset() > 0; }
+  protected canGoNext(): boolean { return this.vocabularyOffset() + this.vocabularyLimit() < this.vocabularyTotal(); }
+  protected changeVocabularyPageSize(event: Event): void {
+    const value = Number((event.target as HTMLSelectElement).value);
+    this.store.loadVocabulary(0, Math.max(1, Math.min(5000, Math.floor(value || 500))));
+  }
+  protected previousVocabularyPage(): void {
+    if (!this.store.report() || !this.canGoPrevious()) return;
+    this.store.loadVocabulary(Math.max(0, this.vocabularyOffset() - this.vocabularyLimit()), this.vocabularyLimit());
+  }
+  protected nextVocabularyPage(): void {
+    if (!this.store.report() || !this.canGoNext()) return;
+    this.store.loadVocabulary(this.vocabularyOffset() + this.vocabularyLimit(), this.vocabularyLimit());
+  }
+  protected exportDashboard(): void {
+    const report = this.store.report();
+    if (!report) return;
+    this.exportError.set(null);
+    this.exportApi.dashboardPdf({
+      dashboardType: 'tokenizer',
+      reportName: `tokenizer-${report.tokenizer_name}-report-${report.report_id}`,
+      fileName: `tokenizer-${report.tokenizer_name}-report-${report.report_id}.pdf`,
+      dashboardPayload: { report, vocabulary_items: this.store.vocabulary()?.items ?? [] } as unknown as Record<string, unknown>,
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (result) => { const url = URL.createObjectURL(result.blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = result.fileName; anchor.click(); URL.revokeObjectURL(url); },
+      error: (error: unknown) => { void errorMessageAsync(error, 'Failed to export dashboard.').then((message) => this.exportError.set(message)); },
+    });
+  }
   protected removeTokenizer(name: string): void { if (window.confirm(`Remove ${name} from the database?`)) this.store.remove(name); }
   protected uploadFile(event: Event): void {
     const input = event.target as HTMLInputElement;

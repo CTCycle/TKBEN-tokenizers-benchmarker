@@ -18,7 +18,7 @@ body {
 
 .benchmark-svg-chart { width: 100%; min-height: 220px; color: rgba(214, 224, 236, 0.42); }
 .benchmark-svg-chart svg { display: block; width: 100%; height: 220px; overflow: visible; }
-.benchmark-svg-bar { fill: var(--color-accent); opacity: 0.84; }
+.benchmark-svg-bar { opacity: 1; }
 .benchmark-svg-bar:hover { opacity: 1; }
 .benchmark-chart-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; padding: 6px 8px 0; color: var(--color-muted); font-size: 11px; }
 .benchmark-chart-legend span { display: inline-flex; align-items: center; gap: 5px; }
@@ -27,7 +27,7 @@ body {
 .dataset-histogram-chart svg { display: block; width: 100%; height: 190px; }
 .dataset-histogram-bar { fill: var(--color-accent); opacity: 0.78; }
 .dataset-histogram-bar:hover { opacity: 1; }
-.dataset-donut-chart { display: block; width: min(100%, 210px); height: 210px; margin: 0 auto 8px; }
+.dataset-donut-chart { display: block; width: 100%; height: 280px; margin: 0 auto; }
 .dataset-zipf-chart { display: block; width: 100%; height: 220px; color: rgba(214, 224, 236, 0.42); }
 
 button,
@@ -2301,6 +2301,12 @@ app-root {
 .cross-benchmark-command-navbar .dashboard-export-trigger__label {
   font-size: 13px;
   font-weight: 500;
+}
+
+.cross-benchmark-command-navbar .dashboard-export-trigger svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 /* Remove dashboard grid top margin inside cross-benchmark */

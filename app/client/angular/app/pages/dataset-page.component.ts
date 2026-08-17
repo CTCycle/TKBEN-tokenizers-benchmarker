@@ -153,13 +153,19 @@ export class DatasetPageComponent {
     const start = slices.slice(0, index).reduce((sum, item) => sum + item.value, 0) / total * Math.PI * 2 - Math.PI / 2;
     const end = start + slices[index].value / total * Math.PI * 2;
     const large = end - start > Math.PI ? 1 : 0;
-    const outer = (angle: number) => `${100 + Math.cos(angle) * 76} ${100 + Math.sin(angle) * 76}`;
-    const inner = (angle: number) => `${100 + Math.cos(angle) * 44} ${100 + Math.sin(angle) * 44}`;
-    return `M ${outer(start)} A 76 76 0 ${large} 1 ${outer(end)} L ${inner(end)} A 44 44 0 ${large} 0 ${inner(start)} Z`;
+    const outer = (angle: number) => `${100 + Math.cos(angle) * 96} ${140 + Math.sin(angle) * 96}`;
+    const inner = (angle: number) => `${100 + Math.cos(angle) * 58} ${140 + Math.sin(angle) * 58}`;
+    return `M ${outer(start)} A 96 96 0 ${large} 1 ${outer(end)} L ${inner(end)} A 58 58 0 ${large} 0 ${inner(start)} Z`;
   }
 
   protected displayPercent(value: unknown): string { return normalizePercent(toNumber(value)); }
   protected hasAggregateMetric(key: string): boolean { return hasMetricValue(this.aggregate()[key]); }
+  protected dashboardDescription(): string {
+    const report = this.store.report();
+    if (!report) return 'Load a saved report or run validation to populate this dashboard.';
+    const timestamp = report.created_at ? ` (${new Date(report.created_at).toLocaleString()})` : '';
+    return `Latest persisted session for ${report.dataset_name}${timestamp}`;
+  }
 
   constructor() {
     this.filters.valueChanges.pipe(debounceTime(10), takeUntilDestroyed(this.destroyRef)).subscribe(() => this.refresh());
@@ -178,7 +184,7 @@ export class DatasetPageComponent {
   protected selectDataset(datasetName: string): void {
     this.store.select(datasetName);
     this.banner.set(null);
-    this.store.loadLatest(datasetName);
+    this.store.loadLatest(datasetName, { suppressNotFoundError: true });
   }
 
   protected openValidation(datasetName: string): void {
