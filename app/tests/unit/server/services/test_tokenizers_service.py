@@ -133,3 +133,54 @@ def test_failed_tokenizer_download_cleans_partial_cache_and_returns_reason(
     assert result["failed_count"] == 1
     assert "ValueError: Unrecognized model configuration" in result["failed_details"][0]
     assert removed == [str(Path(cache_dir))]
+
+###############################################################################
+def test_tokenizer_catalog_filters_cached_sources_search_and_vocabulary(
+    monkeypatch,
+) -> None:
+    service = TokenizersService()
+
+    class CustomTokenizer:
+        def get_vocab_size(self) -> int:
+            return 4
+
+    monkeypatch.setattr(
+        service.repository,
+        "list_downloaded_tokenizer_catalog",
+        lambda: [
+            ("zeta/model", True, {"vocabulary_size": 100}),
+            ("alpha/model", False, {"vocabulary_size": 3}),
+            ("uncached/model", False, {"vocabulary_size": 1}),
+        ],
+    )
+    monkeypatch.setattr(
+        service,
+        "has_cached_tokenizer",
+        lambda name: name != "uncached/model",
+    )
+    monkeypatch.setattr(
+        service.custom_tokenizer_registry,
+        "snapshot",
+        lambda: {"CUSTOM_demo": CustomTokenizer()},
+    )
+
+    assert [item["tokenizer_name"] for item in service.list_tokenizer_catalog()] == [
+        "alpha/model",
+        "CUSTOM_demo",
+        "zeta/model",
+    ]
+    assert service.list_tokenizer_catalog(
+        source="custom",
+        search="DEMO",
+        vocabulary_size_operator="at_most",
+        vocabulary_size=5,
+    ) == [{
+        "tokenizer_name": "CUSTOM_demo",
+        "source": "custom",
+        "has_report": False,
+        "vocabulary_size": 4,
+    }]
+    assert [item["tokenizer_name"] for item in service.list_tokenizer_catalog(
+        vocabulary_size_operator="at_least",
+        vocabulary_size=50,
+    )] == ["zeta/model"]

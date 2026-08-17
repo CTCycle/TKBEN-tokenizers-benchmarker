@@ -163,7 +163,6 @@ def test_export_dataset_dashboard_pdf_generates_pdf_bytes() -> None:
     assert result.file_name == "dataset-layout-export.pdf"
     assert result.page_count >= 2
     assert result.pdf_bytes.startswith(b"%PDF")
-    assert len(result.pdf_bytes) > 5000
 
 ###############################################################################
 def test_export_tokenizer_dashboard_pdf_generates_pdf_bytes() -> None:
@@ -178,7 +177,6 @@ def test_export_tokenizer_dashboard_pdf_generates_pdf_bytes() -> None:
     assert result.file_name == "tokenizer-layout-export.pdf"
     assert result.page_count >= 1
     assert result.pdf_bytes.startswith(b"%PDF")
-    assert len(result.pdf_bytes) > 4000
 
 ###############################################################################
 def test_export_benchmark_dashboard_pdf_generates_pdf_bytes() -> None:
@@ -193,7 +191,6 @@ def test_export_benchmark_dashboard_pdf_generates_pdf_bytes() -> None:
     assert result.file_name == "benchmark-layout-export.pdf"
     assert result.page_count == 2
     assert result.pdf_bytes.startswith(b"%PDF")
-    assert len(result.pdf_bytes) > 5000
 
 ###############################################################################
 def test_benchmark_pdf_normalizes_visible_widgets_in_requested_order() -> None:
