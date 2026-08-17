@@ -75,7 +75,13 @@ export class BenchmarkStore {
 
   loadReport(reportId: number): void {
     this.api.report(reportId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (report) => { this.report.set(report); if (!this.layout().length) this.layout.set(report.dashboard.widgets.map((widget) => widget.widget_id)); },
+      next: (report) => {
+        this.report.set(report);
+        if (!this.layout().length) {
+          this.layout.set(report.dashboard.widgets.map((widget) => widget.widget_id));
+          this.hiddenWidgetIds.set(report.dashboard.widgets.filter((widget) => !widget.default_visible).map((widget) => widget.widget_id));
+        }
+      },
       error: (error: unknown) => this.error.set(errorMessage(error, 'Failed to fetch benchmark report.')),
     });
   }
@@ -107,9 +113,10 @@ export class BenchmarkStore {
   }
 
   resetLayout(): void {
-    const defaults = this.report()?.dashboard.widgets.map((widget) => widget.widget_id) ?? [];
+    const widgets = this.report()?.dashboard.widgets ?? [];
+    const defaults = widgets.map((widget) => widget.widget_id);
     this.layout.set(defaults);
-    this.hiddenWidgetIds.set([]);
+    this.hiddenWidgetIds.set(widgets.filter((widget) => !widget.default_visible).map((widget) => widget.widget_id));
     this.persistLayout(defaults);
   }
 

@@ -20,7 +20,6 @@ export class CrossBenchmarkPageComponent {
   protected readonly store = inject(BenchmarkStore);
   private readonly exportApi = inject(ExportApiService);
   private readonly destroyRef = inject(DestroyRef);
-  protected readonly selectedReport = new FormControl<number | null>(null);
   protected readonly runOpen = signal(false);
   protected readonly runStep = signal<1 | 2 | 3>(1);
   protected readonly customizeOpen = signal(false);
@@ -28,7 +27,6 @@ export class CrossBenchmarkPageComponent {
   protected readonly runSelectedMetricKeys = signal<readonly string[]>([]);
   protected readonly runSelectedTokenizers = signal<readonly string[]>([]);
   protected readonly tokenizerQuery = signal('');
-  protected readonly tableOpen = signal<ReadonlySet<string>>(new Set());
   protected readonly visualizations = signal<Record<string, string>>({});
   protected readonly restoreDisabled = signal(false);
   protected readonly exportError = signal<string | null>(null);
@@ -208,12 +206,6 @@ export class CrossBenchmarkPageComponent {
       event.preventDefault();
       this.moveWidget(index, 1);
     }
-  }
-
-  protected toggleTable(widgetId: string): void {
-    const next = new Set(this.tableOpen());
-    if (next.has(widgetId)) next.delete(widgetId); else next.add(widgetId);
-    this.tableOpen.set(next);
   }
 
   protected setVisualization(widgetId: string, value: string): void {

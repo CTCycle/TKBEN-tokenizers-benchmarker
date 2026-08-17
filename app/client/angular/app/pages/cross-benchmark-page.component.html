@@ -1,56 +1,63 @@
-<main class="page-scroll cross-benchmark-scroll">
-  <section class="cross-benchmark-dashboard panel" aria-label="Cross benchmark controls and report overview">
-    <div class="cross-benchmark-dashboard-header">
-      <label class="cross-benchmark-report-picker">
-        <span class="field-label">Select report</span>
-        <select id="cross-benchmark-report-select" [formControl]="selectedReport" (change)="selectReport($any($event.target).value)" aria-label="Select report">
-          <option [ngValue]="null">Select a report</option>
-          @for (report of store.reports(); track report.report_id) { <option [value]="report.report_id">{{ report.run_name || ('Report ' + report.report_id) }}</option> }
-        </select>
-      </label>
-      <div class="cross-benchmark-overview-grid">
-        <article class="cross-benchmark-kpi-card"><span>Dataset</span><strong>{{ store.report()?.dataset_name || store.reports()[0]?.dataset_name || '—' }}</strong><small>Selected benchmark corpus</small></article>
-        <article class="cross-benchmark-kpi-card"><span>Documents</span><strong>{{ store.report()?.documents_processed ?? store.reports()[0]?.documents_processed ?? '—' }}</strong><small>Processed documents</small></article>
-        <article class="cross-benchmark-kpi-card"><span>Tokenizers</span><strong>{{ store.report()?.tokenizers_count ?? store.reports()[0]?.tokenizers_count ?? '—' }}</strong><small>Compared tokenizers</small></article>
+<main class="page-scroll">
+  <div class="cross-benchmark-workspace-shell">
+    <header class="cross-benchmark-control-surface" aria-label="Cross benchmark controls and report overview">
+      <div class="cross-benchmark-header-main">
+        @if (store.report(); as report) {
+          <div class="cross-benchmark-top-row">
+            <label class="cross-benchmark-report-picker">
+              <span class="field-label">Select report</span>
+              <select id="cross-benchmark-report-select" [value]="store.selectedReportId() ?? ''" (change)="selectReport($any($event.target).value)" aria-label="Select report">
+                <option value="" [selected]="store.selectedReportId() === null">Select a report</option>
+                @for (item of store.reports(); track item.report_id) { <option [value]="item.report_id" [selected]="item.report_id === store.selectedReportId()">{{ item.run_name || item.dataset_name }}</option> }
+              </select>
+            </label>
+            <div class="cross-benchmark-overview-grid" aria-label="Benchmark summary">
+              <article class="cross-benchmark-kpi-card"><span class="cross-benchmark-kpi-label">Dataset</span><strong class="cross-benchmark-kpi-value">{{ report.dataset_name }}</strong><small class="cross-benchmark-kpi-detail">Selected benchmark corpus</small></article>
+              <article class="cross-benchmark-kpi-card"><span class="cross-benchmark-kpi-label">Documents</span><strong class="cross-benchmark-kpi-value">{{ report.documents_processed | number }}</strong><small class="cross-benchmark-kpi-detail">Processed documents</small></article>
+              <article class="cross-benchmark-kpi-card"><span class="cross-benchmark-kpi-label">Tokenizers</span><strong class="cross-benchmark-kpi-value">{{ report.tokenizers_count }}</strong><small class="cross-benchmark-kpi-detail">Compared tokenizers</small></article>
+            </div>
+          </div>
+        }
       </div>
-      <div class="cross-benchmark-dashboard-controls" aria-label="Benchmark actions">
-        <span class="panel-label">Benchmark Actions</span>
-        <button class="secondary-button" type="button" aria-label="Customize benchmark dashboard" [disabled]="!store.report()" (click)="openCustomize()">⚙ Customize</button>
-        <button class="secondary-button" type="button" aria-label="Restore default layout" [disabled]="restoreDisabled()" (click)="restoreDefaults()">↶ Reset</button>
-        <button class="secondary-button" type="button" aria-label="Export dashboard report as PDF" [disabled]="!store.report()" (click)="exportDashboard()">⇩ Export</button>
-        <button class="primary-button" type="button" aria-label="Run benchmark" [disabled]="store.loadingWorkspace() || store.busy()" (click)="openRun()">▶ Run</button>
-      </div>
-    </div>
-  </section>
+      <nav class="cross-benchmark-command-navbar" aria-label="Benchmark controls">
+        <div class="cross-benchmark-command-navbar__header"><span class="cross-benchmark-command-navbar__title">Benchmark actions</span></div>
+        <div class="cross-benchmark-command-navbar__content" role="group" aria-label="Benchmark actions">
+          <button class="cross-benchmark-action-button" type="button" aria-label="Customize benchmark dashboard" title="Customize benchmark dashboard" [disabled]="!store.report()" (click)="openCustomize()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06A1.65 1.65 0 0015 19.4a1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg><span>Customize</span></button>
+          <button class="cross-benchmark-action-button" type="button" aria-label="Restore default layout" title="Restore default layout" [disabled]="restoreDisabled()" (click)="restoreDefaults()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 4v6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /><path d="M3.51 15a9 9 0 102.13-9.36L1 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg><span>Reset</span></button>
+          <div class="dashboard-export-control"><button class="dashboard-export-trigger" type="button" aria-label="Export dashboard report as PDF" title="Export dashboard report as PDF" [disabled]="!store.report()" (click)="exportDashboard()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><path d="M8 9l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /><path d="M5 16.5V20h14v-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg><span class="dashboard-export-trigger__label">Export</span></button></div>
+          <button class="cross-benchmark-run-button" type="button" aria-label="Run benchmark" title="Run benchmark" [disabled]="store.loadingWorkspace() || store.busy()" (click)="openRun()"><svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor" /></svg><span>Run</span></button>
+        </div>
+      </nav>
+    </header>
 
-  @if (exportError()) { <p class="error-banner" role="alert">{{ exportError() }}</p> }
-  @if (store.error()) { <p class="error-banner" role="alert">{{ store.error() }}</p> }
-  @if (store.loading()) {
-    <div class="loading-container"><span class="spinner" aria-hidden="true"></span><p>Loading benchmark reports...</p></div>
-  } @else if (store.reports().length === 0) {
-    <p class="empty-state">No benchmark reports available.</p>
-  } @else {
-    <section class="benchmark-dashboard-grid" aria-label="Benchmark metric widgets" cdkDropList (cdkDropListDropped)="dropWidget($event)">
+    @if (exportError()) { <p class="error-banner" role="alert">{{ exportError() }}</p> }
+    @if (store.error()) { <p class="error-banner" role="alert">{{ store.error() }}</p> }
+    @if (store.loading()) {
+      <div class="loading-container"><span class="spinner" aria-hidden="true"></span><p>Loading benchmark reports...</p></div>
+    } @else if (store.reports().length === 0) {
+      <p class="empty-state">No benchmark reports available.</p>
+    } @else {
+      <main class="cross-benchmark-workspace-main">
+        <div class="cross-benchmark-kpi-grid">
+          <section class="benchmark-dashboard-grid" aria-label="Benchmark metric widgets" cdkDropList (cdkDropListDropped)="dropWidget($event)">
       @for (widget of orderedWidgets(); track widget.widget_id; let index = $index) {
-        <article class="benchmark-dashboard-widget panel" cdkDrag tabindex="0" role="listitem" [attr.aria-label]="widget.label + ' widget'" [attr.aria-grabbed]="keyboardGrabbed() === widget.widget_id" (keydown)="onWidgetKeydown($event, index)">
+          <article class="benchmark-dashboard-widget" [class.benchmark-dashboard-widget--wide]="widget.width === 'wide'" cdkDrag tabindex="0" role="listitem" [attr.aria-label]="widget.label + ' widget'" [attr.aria-grabbed]="keyboardGrabbed() === widget.widget_id" (keydown)="onWidgetKeydown($event, index)">
           <header>
-            <div><h3>{{ widget.label }}</h3><p class="panel-description">{{ widget.description }} ({{ widget.unit }})</p></div>
+            <div><h3>{{ widget.label }}</h3><p class="cross-benchmark-chart-note">{{ widget.description }} ({{ widget.unit }})</p></div>
             <div class="benchmark-visualization-switcher" role="group" [attr.aria-label]="widget.label + ' visualization'" (pointerdown)="$event.stopPropagation()" (keydown)="$event.stopPropagation()">
               @for (choice of widget.compatible_visualizations; track choice) {
                 @if (choice !== 'heatmap') {
                   <button class="benchmark-visualization-button" type="button" [attr.aria-pressed]="isVisualization(widget, choice)" [attr.aria-label]="'Use ' + (choice === 'bar' ? 'Vertical bar chart' : choice === 'horizontal_bar' ? 'Horizontal bar chart' : choice === 'dot_whisker' ? 'Dot whisker chart' : choice === 'interval_bar' ? 'Interval bar chart' : choice === 'box_plot' ? 'Box plot' : choice === 'histogram' ? 'Histogram chart' : choice === 'grouped_bar' ? 'Grouped bar chart' : choice) + ' for ' + widget.label" [title]="choice" (click)="setVisualization(widget.widget_id, choice)">{{ choice === 'bar' ? '▮' : choice === 'horizontal_bar' ? '▰' : choice === 'dot_whisker' ? '⊙' : choice === 'box_plot' ? '▣' : choice === 'histogram' ? '▥' : choice === 'grouped_bar' ? '▤' : '▥' }}</button>
                 }
               }
-              <button class="benchmark-layout-button" type="button" [attr.aria-label]="'Move ' + widget.label + ' left'" (click)="moveWidget(index, -1)">←</button>
-              <button class="benchmark-layout-button" type="button" [attr.aria-label]="'Move ' + widget.label + ' right'" (click)="moveWidget(index, 1)">→</button>
             </div>
           </header>
           <div class="benchmark-chart-stage benchmark-chart-stage--data-{{ dataShape(widget) }} benchmark-chart-stage--{{ visualizationFor(widget) }}">
             <div class="benchmark-chart-stage__content"><app-benchmark-metric-chart [widget]="widget" [visualization]="visualizationFor(widget)" /></div>
           </div>
-          <button class="benchmark-data-table-toggle" type="button" [attr.aria-expanded]="tableOpen().has(widget.widget_id)" (click)="toggleTable(widget.widget_id)">{{ tableOpen().has(widget.widget_id) ? '▾ Hide data table' : '▸ View data table' }}</button>
-          @if (tableOpen().has(widget.widget_id)) {
-            <div class="benchmark-data-table-panel">
+          <details class="benchmark-dashboard-data-table">
+            <summary>View data table</summary>
+            <div>
               <table class="benchmark-data-table">
                 <caption>{{ widget.label }} {{ dataShape(widget) === 'distribution' ? 'distribution values' : dataShape(widget) === 'bucket' ? 'values by bucket' : 'values by tokenizer' }}</caption>
                 <thead>
@@ -67,14 +74,17 @@
                 </tbody>
               </table>
             </div>
-          }
+          </details>
         </article>
       } @empty { <p class="dataset-empty-label">Select a persisted report to render metrics.</p> }
-    </section>
-  }
+          </section>
+        </div>
+        <article class="cross-benchmark-drilldown-card"><h2>Run diagnostics</h2>@if (failedResults().length === 0) { <p>No tokenizer failures recorded for this run.</p> } @else { <div class="diagnostic-list">@for (failure of failedResults(); track failure.tokenizer) { <p>{{ failure.tokenizer }}: {{ failure.error_type || 'RuntimeError' }} — {{ failure.error_message || 'Tokenizer benchmark failed.' }}</p> }</div> }</article>
+      </main>
+    }
 
-  @if (store.busy()) { <p class="loading-container" role="status">Benchmark running{{ store.progress() !== null ? ' (' + store.progress() + '%)' : '…' }}</p> }
-  <article class="run-diagnostics panel"><h2>Run Diagnostics</h2>@if (failedResults().length === 0) { <p class="panel-description">No tokenizer failures recorded for this run.</p> } @else { <ul class="diagnostic-list">@for (failure of failedResults(); track failure.tokenizer) { <li>{{ failure.tokenizer }}: {{ failure.error_type || 'RuntimeError' }}<span>{{ failure.error_message || 'Tokenizer benchmark failed.' }}</span></li> }</ul> }</article>
+    @if (store.busy()) { <p class="loading-container" role="status">Benchmark running{{ store.progress() !== null ? ' (' + store.progress() + '%)' : '…' }}</p> }
+  </div>
 </main>
 
 @if (customizeOpen()) {

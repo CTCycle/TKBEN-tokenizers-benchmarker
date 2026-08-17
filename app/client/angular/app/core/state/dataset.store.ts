@@ -73,13 +73,19 @@ export class DatasetStore {
     this.selectedDataset.set(datasetName);
   }
 
-  loadLatest(datasetName: string): void {
+  loadLatest(datasetName: string, options: { suppressNotFoundError?: boolean } = {}): void {
     this.selectedDataset.set(datasetName);
     this.busyAction.set(`load:${datasetName}`);
     this.error.set(null);
     this.api.latestReport(datasetName).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (report) => { this.setReport(report); this.busyAction.set(null); },
-      error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to load latest dataset report.')); this.busyAction.set(null); },
+      error: (error: unknown) => {
+        const message = errorMessage(error, 'Failed to load latest dataset report.');
+        const isNoReportFound = message.toLowerCase().includes('no validation report found');
+        if (options.suppressNotFoundError && isNoReportFound) this.setReport(null);
+        else this.error.set(message);
+        this.busyAction.set(null);
+      },
     });
   }
 

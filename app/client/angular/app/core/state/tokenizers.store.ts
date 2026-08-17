@@ -79,6 +79,22 @@ export class TokenizersStore {
     });
   }
 
+  openReport(tokenizerName: string): void {
+    this.select(tokenizerName);
+    this.busyAction.set(`report:${tokenizerName}`);
+    this.jobProgress.set(0);
+    this.error.set(null);
+    this.api.latestReport(tokenizerName).pipe(
+      switchMap((report) => report
+        ? of(report)
+        : this.api.generateReport({ tokenizer_name: tokenizerName }, (status) => this.jobProgress.set(status.progress))),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: (report) => { this.setReport(report); this.busyAction.set(null); this.jobProgress.set(100); },
+      error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to open tokenizer report.')); this.busyAction.set(null); this.jobProgress.set(null); },
+    });
+  }
+
   loadLatest(tokenizerName: string): void {
     this.select(tokenizerName);
     this.busyAction.set(`load:${tokenizerName}`);
@@ -88,7 +104,7 @@ export class TokenizersStore {
     });
   }
 
-  loadVocabulary(offset = 0, limit = 100): void {
+  loadVocabulary(offset = 0, limit = 500): void {
     const reportId = this.report()?.report_id;
     if (reportId === undefined) return;
     this.api.vocabularyPage(reportId, offset, limit).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({

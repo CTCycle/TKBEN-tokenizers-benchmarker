@@ -25,7 +25,18 @@ export class BenchmarkMetricChartComponent {
   protected readonly buckets = computed(() => bucketViews(this.widget()));
   protected readonly histogramBins = computed(() => histogramViews(this.widget()));
   protected readonly tokenizers = computed(() => uniqueTokenizers(this.widget()));
-  protected readonly maxPointValue = computed(() => Math.max(1, ...this.points().map((item) => Math.abs(item.value))));
+  protected readonly axisFractions = [0, 0.25, 0.5, 0.75, 1] as const;
+  protected readonly maxPointValue = computed(() => {
+    const raw = Math.max(1, ...this.points().map((item) => Math.abs(item.value)));
+    if (raw <= 1) return 1;
+    const roughStep = raw / 4;
+    const magnitude = 10 ** Math.floor(Math.log10(roughStep));
+    const normalized = roughStep / magnitude;
+    const step = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 2.2 ? 2.5 : normalized <= 3 ? 3 : normalized <= 5 ? 5 : 10;
+    const intervalCount = Math.ceil(raw / (step * magnitude));
+    const exactMultiple = Math.abs(raw / (step * magnitude) - intervalCount) < Number.EPSILON;
+    return step * magnitude * (exactMultiple ? intervalCount + 1 : intervalCount);
+  });
   protected readonly maxBucketValue = computed(() => Math.max(1, ...this.buckets().map((item) => Math.abs(item.value))));
   protected readonly maxHistogramCount = computed(() => Math.max(1, ...this.histogramBins().map((item) => item.count)));
   protected readonly boxScale = computed(() => {
@@ -46,12 +57,16 @@ export class BenchmarkMetricChartComponent {
   protected readonly format = formatBenchmarkValue;
 
   protected pointX(index: number): number {
-    return 80 + index * (500 / Math.max(this.points().length - 1, 1));
+    return 108 + (index + 0.5) * (504 / Math.max(this.points().length, 1));
   }
 
   protected pointY(value: number): number {
-    return 198 - (Math.abs(value) / this.maxPointValue()) * 156;
+    return 200 - (Math.abs(value) / this.maxPointValue()) * 190;
   }
+
+  protected pointTickY(fraction: number): number { return 200 - fraction * 190; }
+  protected pointTickValue(fraction: number): number { return this.maxPointValue() * fraction; }
+  protected pointBarWidth(): number { return Math.min(70, Math.max(12, (504 / Math.max(this.points().length, 1)) * 0.74)); }
 
   protected horizontalY(index: number): number {
     return 46 + index * (140 / Math.max(this.points().length, 1));
