@@ -527,7 +527,7 @@ app-root {
 .dataset-filter-toolbar,
 .catalog-filter-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr) auto;
   gap: 8px;
   align-items: end;
   margin-top: 20px;
@@ -567,17 +567,26 @@ app-root {
 .dataset-filter-toolbar select,
 .catalog-filter-toolbar .text-input,
 .catalog-filter-toolbar select {
-  height: var(--control-height);
-  min-height: var(--control-height);
-  padding: 10px 12px;
-  font-size: var(--font-size-control);
+  height: 36px;
+  min-height: 36px;
+  padding: 8px;
+  font-size: 12px;
+  line-height: 1.2;
 }
 
 .dataset-document-filter-control,
 .catalog-number-filter-control {
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
   gap: 6px;
+  min-width: 0;
+}
+
+.dataset-document-filter-control select,
+.dataset-document-filter-control .text-input,
+.catalog-number-filter-control select,
+.catalog-number-filter-control .text-input {
+  width: 100%;
   min-width: 0;
 }
 
@@ -585,8 +594,8 @@ app-root {
 .catalog-add-button {
   width: auto;
   min-width: 34px;
-  height: var(--control-height);
-  min-height: var(--control-height);
+  height: 36px;
+  min-height: 36px;
   padding: 0;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -711,8 +720,13 @@ app-root {
 }
 
 .dataset-preview-row--header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   min-height: 34px;
   padding: 0 24px 8px 6px;
+  background: var(--color-panel-alt);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12);
   color: var(--color-muted);
   font-size: 11px;
   font-weight: 700;
@@ -723,14 +737,16 @@ app-root {
 
 .dataset-preview-row--header span:last-child {
   justify-self: end;
+  text-align: right;
 }
 
 .dataset-preview-row--header span:nth-child(2) {
   justify-self: end;
+  text-align: right;
 }
 
 .dataset-preview-row--header:hover {
-  background: transparent;
+  background: var(--color-panel-alt);
   border-color: transparent;
 }
 
@@ -780,13 +796,16 @@ app-root {
 }
 
 .dataset-preview-count {
+  justify-self: stretch;
   font-size: 13px;
   color: rgba(225, 232, 244, 0.9);
+  text-align: right;
 }
 
 .dataset-preview-actions {
   display: flex;
   gap: 8px;
+  justify-self: end;
 }
 
 .dataset-preview-row .icon-button {
@@ -1340,13 +1359,18 @@ app-root {
 }
 
 .tokenizer-preview-row--header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 77px 76px;
+  grid-template-columns: minmax(0, 1fr) 84px 76px;
   column-gap: 20px;
   align-items: center;
   min-height: 34px;
   padding: 0 24px 8px 6px;
+  background: var(--color-panel-alt);
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12);
   color: var(--color-muted);
   font-size: 11px;
   font-weight: 700;
@@ -1357,6 +1381,7 @@ app-root {
 .tokenizer-preview-row--header span:nth-child(2),
 .tokenizer-preview-row--header span:last-child {
   justify-self: end;
+  text-align: right;
 }
 
 .tokenizer-preview-table--empty .tokenizer-preview-row--header {
@@ -1371,7 +1396,7 @@ app-root {
 
 .tokenizer-preview-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 77px 76px;
+  grid-template-columns: minmax(0, 1fr) 84px 76px;
   column-gap: 20px;
   align-items: center;
   min-height: 52px;
@@ -1406,6 +1431,7 @@ app-root {
   align-items: center;
   gap: 8px;
   justify-content: flex-end;
+  justify-self: end;
   flex-shrink: 0;
 }
 
@@ -1748,7 +1774,8 @@ app-root {
   min-width: 0;
   font-size: 13px;
   color: var(--color-muted);
-  text-align: left;
+  justify-self: stretch;
+  text-align: right;
 }
 
 .tokenizer-empty-label {
@@ -4011,6 +4038,11 @@ select:focus-visible {
 }
 
 @media (max-width: 700px) {
+  .dataset-filter-toolbar,
+  .catalog-filter-toolbar {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  }
+
   .app-header-title {
     font-size: 16px;
   }
