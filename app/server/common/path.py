@@ -14,7 +14,19 @@ ASSETS_DIR = ROOT_DIR / "assets"
 FIGURES_DIR = ASSETS_DIR / "figures"
 QA_DIR = ROOT_DIR / "QA"
 SETTINGS_DIR = Path(os.getenv("TKBEN_CONFIG_DIR", ROOT_DIR / "settings")).resolve()
-RESOURCES_PATH = Path(os.getenv("TKBEN_DATA_DIR", APP_DIR / "resources")).resolve()
+
+
+def _resolve_resource_path(configured_path: str | None) -> Path:
+    if not configured_path:
+        return (APP_DIR / "resources").resolve()
+
+    resource_path = Path(configured_path).expanduser()
+    if not resource_path.is_absolute():
+        resource_path = ROOT_DIR / resource_path
+    return resource_path.resolve()
+
+
+RESOURCES_PATH = _resolve_resource_path(os.getenv("TKBEN_DATA_DIR"))
 SOURCES_PATH = RESOURCES_PATH / "sources"
 DATASETS_PATH = SOURCES_PATH / "datasets"
 TOKENIZERS_PATH = SOURCES_PATH / "tokenizers"

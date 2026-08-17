@@ -1,5 +1,5 @@
 # Startup
-Last updated: 2026-08-13
+Last updated: 2026-08-18
 
 ## Local Webapp Mode
 Windows recommended:
@@ -42,9 +42,9 @@ Use `.\start_on_windows.ps1` for dependency installation/update, database initia
 
 ### Database initialization
 
-- SQLite is initialized automatically only when `app/resources/database.db` is
-  missing. Existing SQLite files are not schema-validated, recreated, reset, or
-  reseeded during startup.
+- SQLite is initialized automatically only when `<TKBEN_DATA_DIR>/database.db`
+  is missing. `TKBEN_DATA_DIR` defaults to `app/resources`. Existing SQLite
+  files are not schema-validated, recreated, reset, or reseeded during startup.
 - PostgreSQL is never created or initialized by normal startup. Set
   `DATABASE_EMBEDDED=false` and the PostgreSQL connection fields in
   `settings/.env`, then choose menu option 3 (`Initialize database`). The
