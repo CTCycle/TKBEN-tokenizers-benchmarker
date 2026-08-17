@@ -91,3 +91,33 @@ def test_dataset_upload_rejects_oversized_file_before_job_dispatch(monkeypatch) 
 
     assert response.status_code == 413
     assert manager.started_jobs == 0
+
+###############################################################################
+def test_dataset_list_passes_catalog_filters_to_service(monkeypatch) -> None:
+    from server.services.datasets import DatasetService
+
+    captured: dict[str, object] = {}
+
+    def fake_previews(self, **filters):
+        del self
+        captured.update(filters)
+        return [{"dataset_name": "custom/demo", "document_count": 4}]
+
+    monkeypatch.setattr(DatasetService, "get_dataset_previews", fake_previews)
+
+    response = TestClient(app).get(
+        "/api/datasets/list?search= demo &source=custom"
+        "&document_count_operator=at_most&document_count=5"
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "datasets": [{"dataset_name": "custom/demo", "document_count": 4}],
+        "count": 1,
+    }
+    assert captured == {
+        "search": " demo ",
+        "source": "custom",
+        "document_count_operator": "at_most",
+        "document_count": 5,
+    }

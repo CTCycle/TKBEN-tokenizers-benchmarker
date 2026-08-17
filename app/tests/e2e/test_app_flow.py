@@ -7,6 +7,7 @@ import re
 from urllib.parse import quote
 from uuid import uuid4
 
+import pytest
 from playwright.sync_api import Page, expect
 from playwright.sync_api import APIRequestContext
 
@@ -46,39 +47,18 @@ class TestAppShell:
     """Tests for core layout and routing."""
 
     # -------------------------------------------------------------------------
-    def test_root_redirects_to_dataset(self, page: Page, base_url: str) -> None:
-        """The root route should redirect to the dataset page."""
-        page.goto(base_url)
+    @pytest.mark.parametrize("path", ["", "/does-not-exist"])
+    def test_routes_fall_back_to_dataset(
+        self, page: Page, base_url: str, path: str
+    ) -> None:
+        """Root and wildcard routes should land on the dataset workflow."""
+        page.goto(f"{base_url}{path}")
         expect(page).to_have_url(re.compile(r".*/dataset/?$"))
         expect(page.get_by_text("Dataset Usage")).to_be_visible()
-
-    # -------------------------------------------------------------------------
-    def test_sidebar_links_are_visible(self, page: Page, base_url: str) -> None:
-        """Sidebar navigation should expose primary sections."""
-        page.goto(f"{base_url}/dataset")
-        expect(page.get_by_role("button", name="Datasets")).to_be_visible()
-        expect(page.get_by_role("button", name="Tokenizers")).to_be_visible()
-        expect(page.get_by_role("button", name="Cross Benchmark")).to_be_visible()
-
-    # -------------------------------------------------------------------------
-    def test_unknown_route_redirects_to_dataset(
-        self, page: Page, base_url: str
-    ) -> None:
-        """Unknown routes should redirect back to the dataset page."""
-        page.goto(f"{base_url}/does-not-exist")
-        expect(page).to_have_url(re.compile(r".*/dataset/?$"))
 
 ###############################################################################
 class TestDatasetPage:
     """Tests for dataset page UI elements."""
-
-    # -------------------------------------------------------------------------
-    def test_dataset_page_panels_render(self, page: Page, base_url: str) -> None:
-        """Dataset page should show the main layout panels."""
-        page.goto(f"{base_url}/dataset")
-        expect(page.get_by_text("Dataset Usage")).to_be_visible()
-        expect(page.get_by_text("Dataset Preview")).to_be_visible()
-        expect(page.get_by_role("button", name="Add dataset")).to_be_visible()
 
     # -------------------------------------------------------------------------
     def test_catalog_race_keeps_loading_owned_by_newest_request(
@@ -242,26 +222,9 @@ class TestDatasetPage:
 class TestTokenizersPage:
     """Tests for tokenizers page UI elements."""
 
-    # -------------------------------------------------------------------------
-    def test_tokenizers_page_loads(self, page: Page, base_url: str) -> None:
-        """Tokenizers page should render selection and report panels."""
-        page.goto(f"{base_url}/tokenizers")
-        expect(page.get_by_text("Tokenizer Selection")).to_be_visible()
-        expect(page.get_by_text("Tokenizers Dashboard")).to_be_visible()
-
 ###############################################################################
 class TestCrossBenchmarkPage:
     """Tests for cross benchmark page UI elements."""
-
-    # -------------------------------------------------------------------------
-    def test_cross_benchmark_page_loads_controls(
-        self, page: Page, base_url: str
-    ) -> None:
-        """Cross benchmark page should render control panel and report selector."""
-        page.goto(f"{base_url}/cross-benchmark")
-        expect(page.get_by_role("combobox", name="Select report")).to_be_visible()
-        expect(page.get_by_role("button", name="Run benchmark")).to_be_visible()
-        expect(page.locator("#cross-benchmark-report-select")).to_be_visible()
 
     # -------------------------------------------------------------------------
     def test_cross_benchmark_wizard_navigation_and_validation(

@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   buildWordCloudFromWordFrequencies,
   buildZipfCurveFromWordFrequencies,
+  metricDisplayValue,
   parseWordCloudTerms,
   parseWordFrequencyItems,
   parseZipfCurve,
+  toHistogramSeries,
 } from './dataset-dashboard-data';
 
 describe('dataset dashboard normalization', () => {
@@ -25,5 +27,22 @@ describe('dataset dashboard normalization', () => {
     const terms = buildWordCloudFromWordFrequencies(Array.from({ length: 150 }, (_, index) => ({ word: `word-${index}`, count: 150 - index })));
     expect(terms).toHaveLength(120);
     expect(terms[0]?.weight).toBe(100);
+  });
+
+  it('keeps dashboard placeholders and histogram bins stable with incomplete payloads', () => {
+    expect(metricDisplayValue('not-a-number', (value) => String(value))).toBe('—');
+    expect(toHistogramSeries({
+      bins: ['0-1'],
+      counts: [3, 4],
+      bin_edges: [0, 1, 2],
+      min_length: 0,
+      max_length: 2,
+      mean_length: 1,
+      median_length: 1,
+    })).toEqual([
+      { bin: '0-1', count: 3 },
+      { bin: '1', count: 4 },
+    ]);
+    expect(parseZipfCurve(Array.from({ length: 250 }, (_, index) => ({ rank: index + 1, frequency: 1 })))).toHaveLength(200);
   });
 });

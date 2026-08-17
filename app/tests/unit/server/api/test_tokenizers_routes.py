@@ -194,3 +194,43 @@ def test_tokenizer_scan_returns_sanitized_500_on_upstream_failure(monkeypatch) -
     assert response.status_code == 500
     assert response.json()["detail"] == "Failed to retrieve tokenizers from HuggingFace."
     assert "private upstream" not in response.text
+
+###############################################################################
+def test_tokenizer_list_passes_catalog_filters_to_service(monkeypatch) -> None:
+    from server.services.tokenizers import TokenizersService
+
+    captured: dict[str, object] = {}
+
+    def fake_catalog(self, **filters):
+        del self
+        captured.update(filters)
+        return [{
+            "tokenizer_name": "CUSTOM_demo",
+            "source": "custom",
+            "has_report": False,
+            "vocabulary_size": 3,
+        }]
+
+    monkeypatch.setattr(TokenizersService, "list_tokenizer_catalog", fake_catalog)
+
+    response = TestClient(app).get(
+        "/api/tokenizers/list?search= demo &source=custom"
+        "&vocabulary_size_operator=at_most&vocabulary_size=5"
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "tokenizers": [{
+            "tokenizer_name": "CUSTOM_demo",
+            "source": "custom",
+            "has_report": False,
+            "vocabulary_size": 3,
+        }],
+        "count": 1,
+    }
+    assert captured == {
+        "search": " demo ",
+        "source": "custom",
+        "vocabulary_size_operator": "at_most",
+        "vocabulary_size": 5,
+    }
