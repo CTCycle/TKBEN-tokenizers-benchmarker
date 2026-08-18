@@ -222,6 +222,61 @@ class TestDatasetPage:
 class TestTokenizersPage:
     """Tests for tokenizers page UI elements."""
 
+    # -------------------------------------------------------------------------
+    def test_tokenizer_manager_discovery_controls_and_empty_state(
+        self, page: Page, base_url: str
+    ) -> None:
+        """Tokenizer discovery uses the structured backend contract and advanced filters."""
+        page.route(
+            "**/api/tokenizers/list*",
+            lambda route: route.fulfill(json={"tokenizers": [], "count": 0}),
+        )
+
+        def fulfill_discovery(route) -> None:
+            url = route.request.url
+            if "unlikely-query" in url:
+                route.fulfill(json={"items": [], "count": 0, "fetched_count": 0})
+                return
+            route.fulfill(json={
+                "items": [{
+                    "identifier": "google/bert-base-uncased",
+                    "pipeline_tag": "fill-mask",
+                    "library_name": "transformers",
+                    "downloads": 1234,
+                    "likes": 12,
+                    "last_modified": None,
+                    "gated": False,
+                    "tags": ["core"],
+                    "vocabulary_size": None,
+                }],
+                "count": 1,
+                "fetched_count": 1,
+            })
+
+        page.route("**/api/tokenizers/discover*", fulfill_discovery)
+        page.goto(f"{base_url}/tokenizers")
+        page.get_by_role("button", name="Add tokenizer").click()
+
+        dialog = page.get_by_role("dialog", name="Tokenizer Manager")
+        expect(dialog).to_be_visible()
+        expect(dialog.get_by_label("Search")).to_be_visible()
+        expect(dialog.get_by_role("spinbutton", name="Results")).to_be_visible()
+        expect(dialog.get_by_label("Category")).to_be_visible()
+        expect(dialog.get_by_label("Sort")).to_be_visible()
+        expect(dialog.get_by_role("button", name="Advanced filters")).to_have_attribute("aria-expanded", "false")
+        dialog.get_by_role("button", name="Advanced filters").click()
+        expect(dialog.get_by_label("Author")).to_be_visible()
+        expect(dialog.get_by_label("Required tags")).to_be_visible()
+
+        expect(dialog.get_by_text("google/bert-base-uncased", exact=True)).to_be_visible()
+        expect(dialog.get_by_text("Unknown", exact=True)).to_be_visible()
+        expect(dialog.get_by_text("1234 downloads", exact=True)).to_be_visible()
+
+        dialog.get_by_label("Search").fill("unlikely-query")
+        with page.expect_request(lambda request: "/api/tokenizers/discover" in request.url and "unlikely-query" in request.url):
+            dialog.get_by_role("button", name="Search Hugging Face").click()
+        expect(dialog.get_by_text("No tokenizer repositories match this query.", exact=True)).to_be_visible()
+
 ###############################################################################
 class TestCrossBenchmarkPage:
     """Tests for cross benchmark page UI elements."""
@@ -283,7 +338,7 @@ class TestCrossBenchmarkPage:
                     '{"reports":[{"report_id":1,"report_version":5,"created_at":"2026-01-01T00:00:00Z",'
                     '"run_name":"mock run","dataset_name":"custom/sample","documents_processed":2,'
                     '"tokenizers_count":2,"tokenizers_processed":["ok/tokenizer","broken/tokenizer"],'
-                    '"selected_metric_keys":["eff.encode_tokens_per_second_mean"]}]}'
+                    '"selected_metric_keys":["eff.encode_tokens_per_second_mean"]}],"total":1,"offset":0,"limit":25}'
                 ),
             ),
         )
@@ -344,8 +399,9 @@ class TestCrossBenchmarkPage:
         )
 
         page.goto(f"{base_url}/cross-benchmark")
-        report_selector = page.locator("#cross-benchmark-report-select")
-        expect(report_selector).to_contain_text("mock run")
-        report_selector.select_option("1")
+        expect(page.get_by_text("mock run", exact=True)).to_be_visible()
+        page.get_by_role("button", name=re.compile(r"Reports \(1\)" )).first.click()
+        expect(page.get_by_role("dialog", name="Benchmark Reports")).to_be_visible()
+        page.get_by_role("button", name=re.compile("mock run")).click()
         expect(page.get_by_text("Run Diagnostics")).to_be_visible()
         expect(page.get_by_text("broken/tokenizer: RuntimeError", exact=False)).to_be_visible()

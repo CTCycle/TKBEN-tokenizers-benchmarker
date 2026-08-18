@@ -8,6 +8,10 @@ import numpy as np
 from transformers import AutoTokenizer
 from transformers.utils.logging import set_verbosity_error
 
+from server.domain.benchmarks import (
+    BenchmarkReportListResponse,
+    BenchmarkReportQuery,
+)
 from server.repositories.benchmarks import BenchmarkRepository
 from server.repositories.serialization.benchmark_reports import (
     BenchmarkReportSerializer,
@@ -332,9 +336,15 @@ class BenchmarkService(BenchmarkServiceExecutionMixin):
         return BENCHMARK_METRIC_CATALOG
 
     # -------------------------------------------------------------------------
-    def list_benchmark_reports(self, limit: int = 200) -> list[dict[str, Any]]:
-        safe_limit = max(1, int(limit))
-        return self.report_serializer.list_benchmark_reports(safe_limit)
+    def list_benchmark_reports(
+        self,
+        query: BenchmarkReportQuery,
+    ) -> BenchmarkReportListResponse:
+        return self.report_serializer.list_benchmark_reports(query)
+
+    # -------------------------------------------------------------------------
+    def delete_benchmark_report(self, report_id: int) -> bool:
+        return self.report_serializer.delete_benchmark_report(report_id)
 
     # -------------------------------------------------------------------------
     def load_benchmark_report_by_id(self, report_id: int) -> dict[str, Any] | None:

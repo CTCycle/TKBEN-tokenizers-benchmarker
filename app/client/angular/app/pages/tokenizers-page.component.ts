@@ -7,6 +7,11 @@ import { HistogramChartComponent } from '../components/histogram-chart.component
 import { ExportApiService } from '../core/api/export-api.service';
 import { errorMessageAsync } from '../core/api/error-utils';
 import { ModalA11yDirective } from '../core/ui/modal-a11y.directive';
+import type {
+  SupportedTokenizerPipeline,
+  TokenizerDiscoverySort,
+  VocabularySort,
+} from '../core/api/api.models';
 
 @Component({
   selector: 'app-tokenizers-page',
@@ -19,20 +24,27 @@ export class TokenizersPageComponent {
   private readonly destroyRef = inject(DestroyRef);
   protected readonly addTokenizerOpen = signal(false);
   protected readonly manualTokenizerInput = signal('');
-  protected readonly scanQuery = signal('');
   protected readonly manualTokenizerIds = computed(() => this.manualTokenizerInput().split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean));
-  protected readonly selectedScannedTokenizers = signal<readonly string[]>([]);
+  protected readonly discoveryAdvancedOpen = signal(false);
   protected readonly exportError = signal<string | null>(null);
-  protected readonly filteredScannedTokenizers = computed(() => {
-    const query = this.scanQuery().trim().toLowerCase();
-    const values = this.store.scannedTokenizers();
-    return query ? values.filter((tokenizer) => tokenizer.toLowerCase().includes(query)) : values;
-  });
   protected readonly filters = new FormGroup({
     search: new FormControl('', { nonNullable: true }),
     source: new FormControl('', { nonNullable: true }),
     vocabularyOperator: new FormControl<'at_least' | 'at_most'>('at_least', { nonNullable: true }),
     vocabulary: new FormControl<number | null>(null),
+  });
+  protected readonly discoveryForm = new FormGroup({
+    search: new FormControl('', { nonNullable: true }),
+    limit: new FormControl(50, { nonNullable: true }),
+    pipelineTag: new FormControl<SupportedTokenizerPipeline | ''>('', { nonNullable: true }),
+    sort: new FormControl<TokenizerDiscoverySort>('downloads', { nonNullable: true }),
+    author: new FormControl('', { nonNullable: true }),
+    access: new FormControl<'all' | 'public' | 'gated'>('all', { nonNullable: true }),
+    includeTags: new FormControl('', { nonNullable: true }),
+    excludeTags: new FormControl('', { nonNullable: true }),
+    vocabularyOperator: new FormControl<'at_least' | 'at_most' | ''>('', { nonNullable: true }),
+    vocabularySize: new FormControl<number | null>(null),
+    vocabularySort: new FormControl<VocabularySort>('none', { nonNullable: true }),
   });
 
   constructor() {
@@ -53,21 +65,35 @@ export class TokenizersPageComponent {
     this.store.select(name);
   }
 
-  protected openAddTokenizer(): void { this.addTokenizerOpen.set(true); }
+  protected openAddTokenizer(): void { this.addTokenizerOpen.set(true); this.discoverTokenizers(); }
   protected closeAddTokenizer(): void { this.addTokenizerOpen.set(false); }
-  protected scanTokenizers(): void { this.store.scan(); }
-  protected toggleScannedTokenizer(tokenizer: string, enabled: boolean): void {
-    const next = new Set(this.selectedScannedTokenizers());
-    if (enabled) next.add(tokenizer); else next.delete(tokenizer);
-    this.selectedScannedTokenizers.set([...next]);
+  protected discoverTokenizers(): void {
+    const value = this.discoveryForm.getRawValue();
+    const splitTags = (raw: string): string[] => [...new Set(raw.split(/[\n,]/).map((tag) => tag.trim()).filter(Boolean))];
+    this.store.discover({
+      search: value.search,
+      limit: value.limit,
+      pipeline_tag: value.pipelineTag || undefined,
+      author: value.author,
+      include_tags: splitTags(value.includeTags),
+      exclude_tags: splitTags(value.excludeTags),
+      access: value.access,
+      sort: value.sort,
+      vocabulary_operator: value.vocabularyOperator || undefined,
+      vocabulary_size: value.vocabularySize ?? undefined,
+      vocabulary_sort: value.vocabularySort,
+    });
   }
   protected downloadManualTokenizers(): void {
     const tokenizers = this.manualTokenizerInput().split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean);
     if (tokenizers.length) this.store.download({ tokenizers });
   }
-  protected downloadScannedTokenizers(): void {
-    const tokenizers = [...this.selectedScannedTokenizers()];
+  protected downloadSelectedDiscoveryTokenizers(): void {
+    const tokenizers = [...this.store.selectedDiscoveryIds()];
     if (tokenizers.length) this.store.download({ tokenizers });
+  }
+  protected toggleDiscoveryTokenizer(identifier: string, enabled: boolean): void {
+    this.store.toggleDiscoverySelection(identifier, enabled);
   }
   protected openReport(name: string): void { this.store.openReport(name); }
   protected loadLatest(name: string): void { this.store.loadLatest(name); }

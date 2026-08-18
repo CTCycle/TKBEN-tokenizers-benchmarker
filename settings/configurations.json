@@ -1,8 +1,9 @@
 {
   "tokenizers": {
-    "default_scan_limit": 100,
-    "max_scan_limit": 1000,
-    "min_scan_limit": 1,
+    "default_discovery_limit": 50,
+    "max_discovery_limit": 250,
+    "max_discovery_candidates": 750,
+    "metadata_candidate_multiplier": 3,
     "max_upload_bytes": 10485760
   },
   "datasets": {

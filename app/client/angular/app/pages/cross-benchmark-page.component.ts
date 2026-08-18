@@ -6,7 +6,13 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { BenchmarkStore } from '../core/state/benchmark.store';
 import { BenchmarkMetricChartComponent } from '../components/benchmark-metric-chart.component';
 import { ExportApiService } from '../core/api/export-api.service';
-import type { BenchmarkDashboardWidgetData, BenchmarkMetricCatalogCategory, BenchmarkVisualizationKind } from '../core/api/api.models';
+import type {
+  BenchmarkDashboardWidgetData,
+  BenchmarkMetricCatalogCategory,
+  BenchmarkReportSort,
+  BenchmarkReportSummary,
+  BenchmarkVisualizationKind,
+} from '../core/api/api.models';
 import { errorMessageAsync } from '../core/api/error-utils';
 import { classifyBenchmarkDataShape, formatBenchmarkValue } from '../core/utils/benchmark-dashboard-data';
 import { ModalA11yDirective } from '../core/ui/modal-a11y.directive';
@@ -23,6 +29,8 @@ export class CrossBenchmarkPageComponent {
   protected readonly runOpen = signal(false);
   protected readonly runStep = signal<1 | 2 | 3>(1);
   protected readonly customizeOpen = signal(false);
+  protected readonly reportManagerOpen = signal(false);
+  protected readonly reportDeleteConfirmId = signal<number | null>(null);
   protected readonly customizeDraft = signal<readonly string[]>([]);
   protected readonly runSelectedMetricKeys = signal<readonly string[]>([]);
   protected readonly runSelectedTokenizers = signal<readonly string[]>([]);
@@ -73,10 +81,38 @@ export class CrossBenchmarkPageComponent {
     } catch { /* corrupted storage is ignored */ }
   }
 
-  protected selectReport(value: string): void {
-    const reportId = Number(value);
-    if (Number.isFinite(reportId)) this.store.selectReport(reportId);
+  protected openReportManager(): void { this.reportManagerOpen.set(true); }
+  protected closeReportManager(): void { this.reportManagerOpen.set(false); this.reportDeleteConfirmId.set(null); }
+  protected selectReportSummary(report: BenchmarkReportSummary): void {
+    this.store.selectReport(report.report_id);
+    this.closeReportManager();
   }
+  protected reportTitle(report: BenchmarkReportSummary): string {
+    return report.run_name?.trim() || `Benchmark run #${report.report_id}`;
+  }
+  protected reportDate(report: BenchmarkReportSummary): string {
+    return this.formatReportDate(report.created_at);
+  }
+  protected formatReportDate(value: string | null | undefined): string {
+    if (!value) return 'Unknown date';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? 'Unknown date' : date.toLocaleString();
+  }
+  protected reportRangeStart(): number {
+    return this.store.reportTotal() > 0 ? this.store.reportOffset() + 1 : 0;
+  }
+  protected reportRangeEnd(): number {
+    return Math.min(this.store.reportOffset() + this.store.reports().length, this.store.reportTotal());
+  }
+  protected updateReportSearch(event: Event): void {
+    this.store.setReportSearch((event.target as HTMLInputElement).value);
+  }
+  protected updateReportSort(event: Event): void {
+    this.store.setReportSort((event.target as HTMLSelectElement).value as BenchmarkReportSort);
+  }
+  protected askToDeleteReport(reportId: number): void { this.reportDeleteConfirmId.set(reportId); }
+  protected cancelDeleteReport(): void { this.reportDeleteConfirmId.set(null); }
+  protected deleteReport(reportId: number): void { this.store.deleteReport(reportId); }
 
   protected runBenchmark(): void {
     const value = this.runForm.getRawValue();

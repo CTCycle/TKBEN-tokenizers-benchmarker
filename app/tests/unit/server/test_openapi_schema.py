@@ -14,7 +14,7 @@ JSON_ROUTE_EXPECTATIONS = [
     ("/api/datasets/reports/{report_id}", "get", 200, "DatasetAnalysisResponse"),
     ("/api/datasets/delete", "delete", 200, "DatasetDeleteResponse"),
     ("/api/tokenizers/settings", "get", 200, "TokenizerSettingsResponse"),
-    ("/api/tokenizers/scan", "get", 200, "TokenizerScanResponse"),
+    ("/api/tokenizers/discover", "get", 200, "TokenizerDiscoveryResponse"),
     ("/api/tokenizers/list", "get", 200, "TokenizerListResponse"),
     ("/api/tokenizers/download", "post", 202, "JobStartResponse"),
     ("/api/tokenizers/reports/generate", "post", 202, "JobStartResponse"),
@@ -61,3 +61,6 @@ def test_openapi_generation_and_response_models() -> None:
             "application/json"
         ]["schema"]
         assert content.get("$ref", "").endswith(f"/{model_name}")
+
+    assert "delete" in paths["/api/benchmarks/reports/{report_id}"]
+    assert "204" in paths["/api/benchmarks/reports/{report_id}"]["delete"]["responses"]

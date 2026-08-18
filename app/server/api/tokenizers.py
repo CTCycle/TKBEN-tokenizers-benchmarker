@@ -3,18 +3,22 @@ from __future__ import annotations
 import asyncio
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
+from pydantic import ValidationError
 
 from server.domain.jobs import JobStartResponse
 from server.domain.tokenizers import (
     CustomTokenizersDeleteResponse,
     TokenizerDeleteResponse,
+    SupportedTokenizerPipeline,
     TokenizerDownloadRequest,
+    TokenizerDiscoveryQuery,
+    TokenizerDiscoveryResponse,
+    TokenizerDiscoverySort,
     TokenizerListItem,
     TokenizerListResponse,
     TokenizerReportGenerateRequest,
     TokenizerReportResponse,
-    TokenizerScanResponse,
     TokenizerSettingsResponse,
     TokenizerUploadResponse,
     TokenizerVocabularyPageResponse,
@@ -29,7 +33,7 @@ from server.common.constants import (
     API_ROUTE_TOKENIZERS_REPORT_GENERATE,
     API_ROUTE_TOKENIZERS_REPORT_LATEST,
     API_ROUTE_TOKENIZERS_REPORT_VOCABULARY,
-    API_ROUTE_TOKENIZERS_SCAN,
+    API_ROUTE_TOKENIZERS_DISCOVER,
     API_ROUTE_TOKENIZERS_SETTINGS,
     API_ROUTE_TOKENIZERS_UPLOAD,
     API_ROUTER_PREFIX_TOKENIZERS,
@@ -65,30 +69,62 @@ router = APIRouter(prefix=API_ROUTER_PREFIX_TOKENIZERS, tags=["tokenizers"])
 )
 async def get_tokenizer_settings() -> TokenizerSettingsResponse:
     return TokenizerSettingsResponse(
-        default_scan_limit=get_server_settings().tokenizers.default_scan_limit,
-        max_scan_limit=get_server_settings().tokenizers.max_scan_limit,
-        min_scan_limit=get_server_settings().tokenizers.min_scan_limit,
+        default_discovery_limit=get_server_settings().tokenizers.default_discovery_limit,
+        max_discovery_limit=get_server_settings().tokenizers.max_discovery_limit,
+        max_discovery_candidates=get_server_settings().tokenizers.max_discovery_candidates,
+        metadata_candidate_multiplier=get_server_settings().tokenizers.metadata_candidate_multiplier,
     )
 
 ###############################################################################
+def _build_tokenizer_discovery_query(
+    search: Annotated[str | None, Query(max_length=160)] = None,
+    limit: Annotated[int | None, Query(ge=1, le=250)] = None,
+    pipeline_tag: Annotated[SupportedTokenizerPipeline | None, Query()] = None,
+    author: Annotated[str | None, Query(max_length=160)] = None,
+    include_tags: Annotated[list[str] | None, Query()] = None,
+    exclude_tags: Annotated[list[str] | None, Query()] = None,
+    access: Annotated[Literal["all", "public", "gated"], Query()] = "all",
+    sort: Annotated[TokenizerDiscoverySort, Query()] = TokenizerDiscoverySort.DOWNLOADS,
+    vocabulary_operator: Annotated[Literal["at_least", "at_most"] | None, Query()] = None,
+    vocabulary_size: Annotated[int | None, Query(ge=0)] = None,
+    vocabulary_sort: Annotated[Literal["none", "ascending", "descending"], Query()] = "none",
+) -> TokenizerDiscoveryQuery:
+    settings = get_server_settings().tokenizers
+    try:
+        return TokenizerDiscoveryQuery(
+            search=search,
+            limit=settings.default_discovery_limit if limit is None else limit,
+            pipeline_tag=pipeline_tag,
+            author=author,
+            include_tags=include_tags or [],
+            exclude_tags=exclude_tags or [],
+            access=access,
+            sort=sort,
+            vocabulary_operator=vocabulary_operator,
+            vocabulary_size=vocabulary_size,
+            vocabulary_sort=vocabulary_sort,
+        )
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+###############################################################################
 @router.get(
-    API_ROUTE_TOKENIZERS_SCAN,
-    response_model=TokenizerScanResponse,
+    API_ROUTE_TOKENIZERS_DISCOVER,
+    response_model=TokenizerDiscoveryResponse,
     status_code=status.HTTP_200_OK,
 )
-async def scan_tokenizers(
-    limit: Annotated[int | None, Query()] = None,
-) -> TokenizerScanResponse:
-    min_limit = get_server_settings().tokenizers.min_scan_limit
-    max_limit = get_server_settings().tokenizers.max_scan_limit
-    default_limit = get_server_settings().tokenizers.default_scan_limit
-
-    limit = default_limit if limit is None else max(min_limit, min(limit, max_limit))
-    logger.info("Scanning HuggingFace for tokenizers (limit=%s)", limit)
+async def discover_tokenizers(
+    query: Annotated[TokenizerDiscoveryQuery, Depends(_build_tokenizer_discovery_query)],
+) -> TokenizerDiscoveryResponse:
+    logger.info("Discovering HuggingFace tokenizers (limit=%s)", query.limit)
 
     service = TokenizersService()
     try:
-        identifiers = await asyncio.to_thread(service.get_tokenizer_identifiers, limit)
+        response = await asyncio.to_thread(service.discover_tokenizers, query)
 
     except HFAccessKeyValidationError as exc:
         raise HTTPException(
@@ -96,17 +132,13 @@ async def scan_tokenizers(
             detail=str(exc),
         ) from exc
     except Exception as exc:  # noqa: BLE001
-        logger.exception("Failed to scan tokenizers from HuggingFace")
+        logger.exception("Failed to discover tokenizers from HuggingFace")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve tokenizers from HuggingFace.",
+            detail="Failed to discover tokenizers from HuggingFace.",
         ) from exc
 
-    return TokenizerScanResponse(
-        status="success",
-        identifiers=identifiers,
-        count=len(identifiers),
-    )
+    return response
 
 ###############################################################################
 @router.get(

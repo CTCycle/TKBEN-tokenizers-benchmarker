@@ -3,15 +3,17 @@ from __future__ import annotations
 import asyncio
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from pydantic import ValidationError
 
 from server.domain.benchmarks import (
     BenchmarkMetricCatalogCategory,
     BenchmarkMetricCatalogResponse,
+    BenchmarkReportQuery,
     BenchmarkReportListResponse,
-    BenchmarkReportSummary,
     BenchmarkRunRequest,
     BenchmarkRunResponse,
+    BenchmarkReportSort,
 )
 from server.domain.jobs import JobStartResponse
 from server.common.constants import (
@@ -29,6 +31,27 @@ from server.services.managed_jobs import ManagedJobSpec
 
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_BENCHMARKS, tags=["benchmarks"])
+
+###############################################################################
+def _build_benchmark_report_query(
+    search: Annotated[str | None, Query(max_length=160)] = None,
+    sort: Annotated[BenchmarkReportSort, Query()] = BenchmarkReportSort.NEWEST,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 25,
+) -> BenchmarkReportQuery:
+    try:
+        return BenchmarkReportQuery(
+            search=search,
+            sort=sort,
+            offset=offset,
+            limit=limit,
+        )
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
 
 ###############################################################################
 @router.post(
@@ -126,14 +149,25 @@ async def run_benchmarks(
     status_code=status.HTTP_200_OK,
 )
 async def list_benchmark_reports(
-    limit: Annotated[int, Query(ge=1, le=1000)] = 200,
+    query: Annotated[BenchmarkReportQuery, Depends(_build_benchmark_report_query)],
 ) -> BenchmarkReportListResponse:
     service = BenchmarkService()
-    reports = await asyncio.to_thread(service.list_benchmark_reports, limit)
-    report_summaries = [
-        BenchmarkReportSummary.model_validate(report) for report in reports
-    ]
-    return BenchmarkReportListResponse(reports=report_summaries)
+    return await asyncio.to_thread(service.list_benchmark_reports, query)
+
+
+###############################################################################
+@router.delete(
+    API_ROUTE_BENCHMARKS_REPORT_BY_ID,
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_benchmark_report(report_id: int) -> None:
+    service = BenchmarkService()
+    deleted = await asyncio.to_thread(service.delete_benchmark_report, report_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Benchmark report '{report_id}' not found.",
+        )
 
 ###############################################################################
 @router.get(

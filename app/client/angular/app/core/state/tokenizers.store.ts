@@ -3,7 +3,14 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, catchError, debounceTime, distinctUntilChanged, map, of, switchMap } from 'rxjs';
 import { TokenizersApiService, type TokenizerCatalogFilters } from '../api/tokenizers-api.service';
 import { errorMessage } from '../api/error-utils';
-import type { TokenizerDownloadRequest, TokenizerListItem, TokenizerReportResponse, TokenizerVocabularyPageResponse } from '../api/api.types';
+import type {
+  TokenizerDiscoveryItem,
+  TokenizerDiscoveryQuery,
+  TokenizerDownloadRequest,
+  TokenizerListItem,
+  TokenizerReportResponse,
+  TokenizerVocabularyPageResponse,
+} from '../api/api.types';
 
 @Injectable({ providedIn: 'root' })
 export class TokenizersStore {
@@ -19,9 +26,12 @@ export class TokenizersStore {
   readonly vocabulary = signal<TokenizerVocabularyPageResponse | null>(null);
   readonly busyAction = signal<string | null>(null);
   readonly jobProgress = signal<number | null>(null);
-  readonly scannedTokenizers = signal<readonly string[]>([]);
-  readonly scanLoading = signal(false);
+  readonly discoveryResults = signal<readonly TokenizerDiscoveryItem[]>([]);
+  readonly discoveryLoading = signal(false);
+  readonly discoveryError = signal<string | null>(null);
+  readonly selectedDiscoveryIds = signal<readonly string[]>([]);
   readonly downloadWarning = signal<string | null>(null);
+  private discoverySequence = 0;
 
   constructor() {
     this.refreshRequests.pipe(
@@ -60,12 +70,32 @@ export class TokenizersStore {
     this.selectedTokenizer.set(tokenizerName);
   }
 
-  scan(): void {
-    this.scanLoading.set(true);
-    this.error.set(null);
-    this.api.scan().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (response) => { this.scannedTokenizers.set(response.identifiers ?? []); this.scanLoading.set(false); },
-      error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to scan Hugging Face tokenizers.')); this.scanLoading.set(false); },
+  discover(query: TokenizerDiscoveryQuery): void {
+    const sequence = ++this.discoverySequence;
+    this.discoveryLoading.set(true);
+    this.discoveryError.set(null);
+    this.api.discover(query).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (response) => {
+        if (sequence !== this.discoverySequence) return;
+        const results = response.items ?? [];
+        const availableIds = new Set(results.map((item) => item.identifier));
+        this.discoveryResults.set(results);
+        this.selectedDiscoveryIds.update((selected) => selected.filter((id) => availableIds.has(id)));
+        this.discoveryLoading.set(false);
+      },
+      error: (error: unknown) => {
+        if (sequence !== this.discoverySequence) return;
+        this.discoveryError.set(errorMessage(error, 'Failed to discover Hugging Face tokenizers.'));
+        this.discoveryLoading.set(false);
+      },
+    });
+  }
+
+  toggleDiscoverySelection(identifier: string, enabled: boolean): void {
+    this.selectedDiscoveryIds.update((selected) => {
+      const next = new Set(selected);
+      if (enabled) next.add(identifier); else next.delete(identifier);
+      return [...next];
     });
   }
 

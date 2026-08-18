@@ -168,3 +168,12 @@ def test_benchmark_report_round_trip_includes_reproducibility_metadata(
         by_id_data.get("runtime_metadata", {}).get("benchmark_config", {})
         == runtime_metadata.get("benchmark_config")
     )
+
+    delete_response = api_context.delete(f"/api/benchmarks/reports/{report_id}")
+    assert delete_response.status == 204, delete_response.text()
+    assert api_context.get(f"/api/benchmarks/reports/{report_id}").status == 404
+    remaining = api_context.get(
+        f"/api/benchmarks/reports?search={run_payload['run_name'].replace(' ', '%20')}"
+    )
+    assert remaining.ok, remaining.text()
+    assert all(int(item.get("report_id", 0)) != report_id for item in remaining.json().get("reports", []))

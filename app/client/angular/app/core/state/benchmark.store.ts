@@ -1,12 +1,20 @@
 import { DestroyRef, Injectable, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { catchError, forkJoin, of } from 'rxjs';
+import { Subject, catchError, debounceTime, forkJoin, of, switchMap } from 'rxjs';
 import { BenchmarksApiService } from '../api/benchmarks-api.service';
 import { DatasetsApiService } from '../api/datasets-api.service';
 import { JobsApiService } from '../api/jobs-api.service';
 import { TokenizersApiService } from '../api/tokenizers-api.service';
 import { errorMessage } from '../api/error-utils';
-import type { BenchmarkMetricCatalogCategory, BenchmarkReportSummary, BenchmarkRunRequest, BenchmarkRunResponse } from '../api/api.types';
+import type {
+  BenchmarkMetricCatalogCategory,
+  BenchmarkReportListResponse,
+  BenchmarkReportQuery,
+  BenchmarkReportSort,
+  BenchmarkReportSummary,
+  BenchmarkRunRequest,
+  BenchmarkRunResponse,
+} from '../api/api.types';
 
 @Injectable({ providedIn: 'root' })
 export class BenchmarkStore {
@@ -15,10 +23,18 @@ export class BenchmarkStore {
   private readonly tokenizersApi = inject(TokenizersApiService);
   private readonly jobsApi = inject(JobsApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly reportRequests = new Subject<BenchmarkReportQuery>();
+  private reportLoadSequence = 0;
 
   readonly reports = signal<readonly BenchmarkReportSummary[]>([]);
+  readonly reportTotal = signal(0);
+  readonly reportOffset = signal(0);
+  readonly reportLimit = signal(25);
+  readonly reportSearch = signal('');
+  readonly reportSort = signal<BenchmarkReportSort>('newest');
+  readonly reportsLoading = signal(true);
+  readonly deletingReportId = signal<number | null>(null);
   readonly selectedReportId = signal<number | null>(null);
-  readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly report = signal<BenchmarkRunResponse | null>(null);
   readonly metricCategories = signal<readonly BenchmarkMetricCatalogCategory[]>([]);
@@ -35,6 +51,31 @@ export class BenchmarkStore {
   constructor() {
     this.restoreLayout();
     this.loadWorkspaceMeta();
+    this.reportRequests.pipe(
+      debounceTime(250),
+      switchMap((query) => {
+        this.reportsLoading.set(true);
+        this.error.set(null);
+        return this.api.reports(query).pipe(
+          catchError((error: unknown) => {
+            this.error.set(errorMessage(error, 'Failed to fetch benchmark reports.'));
+            return of<BenchmarkReportListResponse | null>(null);
+          }),
+        );
+      }),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe((response) => {
+      this.reportsLoading.set(false);
+      if (!response) return;
+      const reports = response.reports ?? [];
+      this.reports.set(reports);
+      this.reportTotal.set(response.total ?? 0);
+      this.reportOffset.set(response.offset ?? 0);
+      this.reportLimit.set(response.limit ?? 25);
+      if (this.selectedReportId() === null && reports[0]) {
+        this.selectReport(reports[0].report_id);
+      }
+    });
     this.refresh();
   }
 
@@ -53,19 +94,27 @@ export class BenchmarkStore {
   }
 
   refresh(): void {
-    this.loading.set(true);
-    this.api.reports().pipe(
-      catchError((error: unknown) => {
-        this.error.set(errorMessage(error, 'Failed to fetch benchmark reports.'));
-        return of({ reports: [] as readonly BenchmarkReportSummary[] });
-      }),
-    ).pipe(takeUntilDestroyed(this.destroyRef)).subscribe((response) => {
-      const reports = response.reports ?? [];
-      this.reports.set(reports);
-      if (this.selectedReportId() === null) this.selectedReportId.set(reports[0]?.report_id ?? null);
-      if (this.selectedReportId() !== null) this.loadReport(this.selectedReportId()!);
-      this.loading.set(false);
-    });
+    this.requestReportPage(this.reportOffset());
+  }
+
+  setReportSearch(search: string): void {
+    this.reportSearch.set(search);
+    this.requestReportPage(0);
+  }
+
+  setReportSort(sort: BenchmarkReportSort): void {
+    this.reportSort.set(sort);
+    this.requestReportPage(0);
+  }
+
+  nextReportsPage(): void {
+    if (this.reportOffset() + this.reportLimit() >= this.reportTotal()) return;
+    this.requestReportPage(this.reportOffset() + this.reportLimit());
+  }
+
+  previousReportsPage(): void {
+    if (this.reportOffset() <= 0) return;
+    this.requestReportPage(Math.max(0, this.reportOffset() - this.reportLimit()));
   }
 
   selectReport(reportId: number): void {
@@ -74,15 +123,56 @@ export class BenchmarkStore {
   }
 
   loadReport(reportId: number): void {
+    const sequence = ++this.reportLoadSequence;
     this.api.report(reportId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (report) => {
+        if (sequence !== this.reportLoadSequence || this.selectedReportId() !== reportId) return;
         this.report.set(report);
         if (!this.layout().length) {
           this.layout.set(report.dashboard.widgets.map((widget) => widget.widget_id));
           this.hiddenWidgetIds.set(report.dashboard.widgets.filter((widget) => !widget.default_visible).map((widget) => widget.widget_id));
         }
       },
-      error: (error: unknown) => this.error.set(errorMessage(error, 'Failed to fetch benchmark report.')),
+      error: (error: unknown) => {
+        if (sequence === this.reportLoadSequence) this.error.set(errorMessage(error, 'Failed to fetch benchmark report.'));
+      },
+    });
+  }
+
+  deleteReport(reportId: number): void {
+    if (this.deletingReportId() !== null) return;
+    this.deletingReportId.set(reportId);
+    this.error.set(null);
+    const visibleReports = [...this.reports()];
+    const deletedIndex = visibleReports.findIndex((item) => item.report_id === reportId);
+    const selected = this.selectedReportId() === reportId;
+    this.api.deleteReport(reportId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        const remaining = visibleReports.filter((item) => item.report_id !== reportId);
+        this.reports.set(remaining);
+        this.reportTotal.update((total) => Math.max(0, total - 1));
+        this.deletingReportId.set(null);
+
+        let nextOffset = this.reportOffset();
+        if (selected) {
+          const fallback = deletedIndex >= 0
+            ? visibleReports[deletedIndex + 1] ?? visibleReports[deletedIndex - 1]
+            : undefined;
+          this.clearDashboardReport();
+          if (fallback) {
+            this.selectedReportId.set(fallback.report_id);
+            this.loadReport(fallback.report_id);
+          } else {
+            this.selectedReportId.set(null);
+            if (nextOffset > 0) nextOffset = Math.max(0, nextOffset - this.reportLimit());
+          }
+        }
+        this.requestReportPage(nextOffset);
+      },
+      error: (error: unknown) => {
+        this.deletingReportId.set(null);
+        this.error.set(errorMessage(error, 'Failed to delete benchmark report.'));
+      },
     });
   }
 
@@ -90,7 +180,14 @@ export class BenchmarkStore {
     this.busy.set(true);
     this.progress.set(0);
     this.api.run(request, (status) => this.progress.set(status.progress), (job) => this.activeJobId.set(job.job_id)).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (report) => { this.report.set(report); this.busy.set(false); this.activeJobId.set(null); this.progress.set(100); this.refresh(); },
+      next: (report) => {
+        this.report.set(report);
+        if (report.report_id !== null) this.selectedReportId.set(report.report_id);
+        this.busy.set(false);
+        this.activeJobId.set(null);
+        this.progress.set(100);
+        this.refresh();
+      },
       error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to run benchmarks.')); this.busy.set(false); this.activeJobId.set(null); this.progress.set(null); },
     });
   }
@@ -150,5 +247,21 @@ export class BenchmarkStore {
   setHiddenWidgetIds(hidden: readonly string[]): void {
     this.hiddenWidgetIds.set([...new Set(hidden)]);
     this.persistLayout(this.layout());
+  }
+
+  private requestReportPage(offset: number): void {
+    this.reportOffset.set(Math.max(0, offset));
+    this.reportRequests.next({
+      search: this.reportSearch().trim() || undefined,
+      sort: this.reportSort(),
+      offset: Math.max(0, offset),
+      limit: this.reportLimit(),
+    });
+  }
+
+  private clearDashboardReport(): void {
+    this.report.set(null);
+    this.layout.set([]);
+    this.hiddenWidgetIds.set([]);
   }
 }

@@ -25,7 +25,7 @@ describe('TokenizersStore', () => {
   function createApi() {
     return {
       list: vi.fn().mockReturnValue(of({ tokenizers: [{ tokenizer_name: 'CUSTOM_demo' }], count: 1 })),
-      scan: vi.fn().mockReturnValue(of({ identifiers: ['alpha/model'] })),
+      discover: vi.fn().mockReturnValue(of({ items: [{ identifier: 'alpha/model' }], count: 1, fetched_count: 1 })),
       latestReport: vi.fn().mockReturnValue(of(report)),
       generateReport: vi.fn().mockReturnValue(of(report)),
       vocabularyPage: vi.fn().mockReturnValue(of({ report_id: 12, offset: 0, limit: 2, total: 1, items: [] })),

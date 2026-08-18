@@ -133,6 +133,17 @@ function Invoke-Npm {
     return [int]$LASTEXITCODE
 }
 
+function Get-LogTail {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [ValidateRange(1, 100)][int]$Lines = 12
+    )
+    if (-not (Test-Path -LiteralPath $Path)) { return $null }
+    $content = @(Get-Content -LiteralPath $Path -Tail $Lines -ErrorAction SilentlyContinue)
+    if (-not $content) { return $null }
+    return ($content -join [Environment]::NewLine)
+}
+
 function Invoke-FindUv {
     param([Parameter(Mandatory)][string]$SearchRoot)
     $match = Get-ChildItem -LiteralPath $SearchRoot -Recurse -Filter 'uv.exe' -File | Select-Object -First 1
@@ -143,7 +154,10 @@ function Invoke-HealthCheck {
     param(
         [Parameter(Mandatory)][uri]$Uri,
         [ValidateRange(1, 3600)][int]$Attempts = 60,
-        [ValidateRange(1, 60)][int]$IntervalSeconds = 1
+        [ValidateRange(1, 60)][int]$IntervalSeconds = 1,
+        [string]$Description = 'service',
+        [System.Diagnostics.Process]$ProcessToMonitor,
+        [string]$FailureLogPath
     )
     for ($attempt = 1; $attempt -le $Attempts; $attempt++) {
         try {
@@ -151,6 +165,25 @@ function Invoke-HealthCheck {
             if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 400) { return }
         } catch {
             if ($attempt -eq $Attempts) { break }
+        }
+
+        if ($ProcessToMonitor) {
+            try {
+                $ProcessToMonitor.Refresh()
+                if ($ProcessToMonitor.HasExited) {
+                    $details = if ($FailureLogPath) { Get-LogTail -Path $FailureLogPath } else { $null }
+                    $message = "$Description exited with code $($ProcessToMonitor.ExitCode) while waiting for $Uri."
+                    if ($details) { $message += " Output: $details" }
+                    throw $message
+                }
+            } catch [InvalidOperationException] {
+                # The process may exit between Refresh and HasExited; the next
+                # request or timeout still provides the final readiness result.
+            }
+        }
+
+        if ($attempt -eq 1 -or ($attempt % 10 -eq 0)) {
+            Write-Host "[WAIT] Waiting for $Description at $Uri ($attempt/$Attempts)." -ForegroundColor DarkGray
         }
         Start-Sleep -Seconds $IntervalSeconds
     }
@@ -464,21 +497,43 @@ function Launch-Application {
         $backendProcess = Start-Process -FilePath $VenvPython -ArgumentList $backendArgs -WorkingDirectory $RepoRoot -WindowStyle Hidden -PassThru
     }
 
-    Invoke-HealthCheck -Uri "http://$($env:FASTAPI_HOST):$backendPort/api/health" -Attempts 60 -IntervalSeconds 1
+    Invoke-HealthCheck `
+        -Uri "http://$($env:FASTAPI_HOST):$backendPort/api/health" `
+        -Description 'backend' `
+        -Attempts 60 `
+        -IntervalSeconds 1
     $backendPid = if ($backendProcess) { $backendProcess.Id } else { Get-PortProcessId -Port $backendPort }
 
     Write-Step 'Starting frontend preview.'
     $previewCommandLine = '"' + $NpmCmd + '" run preview -- --host ' + $env:UI_HOST + ' --port ' + $uiPort + ' --strictPort'
+    $frontendLogDir = Join-Path $AppDir 'resources\logs'
+    Ensure-Directory -Path $frontendLogDir
+    $frontendLogStem = Join-Path $frontendLogDir ('TKBEN_frontend_' + (Get-Date -Format 'yyyyMMdd_HHmmss_fff'))
+    $frontendStdoutLog = "$frontendLogStem.out.log"
+    $frontendStderrLog = "$frontendLogStem.err.log"
     $frontendProcess = Start-Process -FilePath 'cmd.exe' `
         -ArgumentList @('/d', '/c', $previewCommandLine) `
-        -WorkingDirectory $ClientDir -WindowStyle Hidden -PassThru
-    Invoke-HealthCheck -Uri "http://$($env:UI_HOST):$uiPort/" -Attempts 60 -IntervalSeconds 1
+        -WorkingDirectory $ClientDir -WindowStyle Hidden `
+        -RedirectStandardOutput $frontendStdoutLog `
+        -RedirectStandardError $frontendStderrLog `
+        -PassThru
+    Invoke-HealthCheck `
+        -Uri "http://$($env:UI_HOST):$uiPort/" `
+        -Description 'frontend preview' `
+        -ProcessToMonitor $frontendProcess `
+        -FailureLogPath $frontendStderrLog `
+        -Attempts 60 `
+        -IntervalSeconds 1
 
     $url = "http://$($env:UI_HOST):$uiPort"
-    Start-Process $url
     Write-Ok 'Application started successfully.'
     Write-Host "Backend: http://$($env:FASTAPI_HOST):$backendPort (PID $backendPid)"
     Write-Host "Frontend: $url (PID $($frontendProcess.Id))"
+    try {
+        Start-Process -FilePath $url -ErrorAction Stop | Out-Null
+    } catch {
+        Write-Host "[WARN] Could not open the browser automatically. Open $url manually." -ForegroundColor Yellow
+    }
 }
 
 function Install-Dependencies {
