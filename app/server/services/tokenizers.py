@@ -32,6 +32,13 @@ class TokenizersService(TokenizerStorageMixin):
     """
 
     SUPPORTED_PIPELINE_TAGS = tuple(item.value for item in SupportedTokenizerPipeline)
+    TOKENIZER_METADATA_FILES = frozenset({"config.json", "tokenizer_config.json"})
+    FAST_TOKENIZER_FILES = frozenset({"tokenizer.json"})
+    SENTENCEPIECE_TOKENIZER_FILES = frozenset({
+        "sentencepiece.bpe.model",
+        "spiece.model",
+        "tokenizer.model",
+    })
 
     # -------------------------------------------------------------------------
     def __init__(self) -> None:
@@ -182,22 +189,15 @@ class TokenizersService(TokenizerStorageMixin):
         self,
         query: TokenizerDiscoveryQuery,
     ) -> TokenizerDiscoveryResponse:
-        """Discover bounded Hugging Face model candidates for tokenizer use."""
+        """Discover bounded Hugging Face repositories with tokenizer artifacts."""
         settings = get_server_settings().tokenizers
         needs_vocabulary_metadata = (
             query.vocabulary_size is not None or query.vocabulary_sort != "none"
         )
-        needs_local_filtering = (
-            query.pipeline_tag is None
-            or bool(query.exclude_tags)
-            or needs_vocabulary_metadata
+        candidate_limit = min(
+            settings.max_discovery_candidates,
+            query.limit * settings.metadata_candidate_multiplier,
         )
-        candidate_limit = query.limit
-        if needs_local_filtering:
-            candidate_limit = min(
-                settings.max_discovery_candidates,
-                query.limit * settings.metadata_candidate_multiplier,
-            )
 
         hf_access_token = self.key_service.get_active_key()
         api = HfApi(token=hf_access_token)
@@ -216,22 +216,24 @@ class TokenizersService(TokenizerStorageMixin):
             provider_kwargs["filter"] = list(query.include_tags)
         if query.access != "all":
             provider_kwargs["gated"] = query.access == "gated"
+        provider_kwargs["expand"] = [
+            "siblings",
+            "pipeline_tag",
+            "library_name",
+            "downloads",
+            "likes",
+            "lastModified",
+            "gated",
+            "tags",
+        ]
         if needs_vocabulary_metadata:
-            provider_kwargs["fetch_config"] = True
-        else:
-            provider_kwargs["expand"] = [
-                "pipeline_tag",
-                "library_name",
-                "downloads",
-                "likes",
-                "lastModified",
-                "gated",
-                "tags",
-            ]
+            provider_kwargs["expand"].append("config")
 
         models = list(api.list_models(**provider_kwargs))
         items: list[TokenizerDiscoveryItem] = []
         for model in models:
+            if not self._has_usable_tokenizer_artifacts(model):
+                continue
             item = self._build_discovery_item(model)
             if not item.identifier:
                 continue
@@ -253,6 +255,47 @@ class TokenizersService(TokenizerStorageMixin):
             items=items[: query.limit],
             count=min(len(items), query.limit),
             fetched_count=len(models),
+        )
+
+    @classmethod
+    def _has_usable_tokenizer_artifacts(cls, model: Any) -> bool:
+        """Return whether expanded Hub metadata exposes a root tokenizer resource.
+
+        Discovery intentionally inspects repository metadata only. The download
+        workflow remains responsible for loading the selected repository with
+        ``AutoTokenizer`` and cleaning up an incompatible download.
+        """
+        siblings = getattr(model, "siblings", None)
+        if siblings is None and isinstance(model, dict):
+            siblings = model.get("siblings")
+        if not siblings:
+            return False
+
+        root_files: set[str] = set()
+        for sibling in siblings:
+            filename = getattr(sibling, "rfilename", None)
+            if filename is None and isinstance(sibling, dict):
+                filename = sibling.get("rfilename") or sibling.get("path")
+            if not isinstance(filename, str):
+                continue
+            normalized = filename.replace("\\", "/").strip("/")
+            if not normalized or "/" in normalized:
+                continue
+            root_files.add(normalized.casefold())
+
+        has_metadata = bool(root_files & cls.TOKENIZER_METADATA_FILES)
+        has_fast_tokenizer = bool(root_files & cls.FAST_TOKENIZER_FILES)
+        has_sentencepiece_tokenizer = bool(
+            root_files & cls.SENTENCEPIECE_TOKENIZER_FILES
+        )
+        has_bpe_tokenizer = {"vocab.json", "merges.txt"}.issubset(root_files)
+        has_wordpiece_tokenizer = "vocab.txt" in root_files
+
+        return (
+            (has_fast_tokenizer and has_metadata)
+            or (has_sentencepiece_tokenizer and has_metadata)
+            or has_bpe_tokenizer
+            or (has_wordpiece_tokenizer and has_metadata)
         )
 
     @staticmethod

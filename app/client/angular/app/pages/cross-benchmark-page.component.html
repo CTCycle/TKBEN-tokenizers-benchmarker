@@ -4,7 +4,7 @@
       <div class="cross-benchmark-header-main">
         @if (store.report(); as report) {
           <div class="cross-benchmark-top-row">
-            <section class="cross-benchmark-current-report" aria-label="Current report"><span class="field-label">Current report</span><strong [title]="report.run_name || ''">{{ report.run_name || ('Benchmark run #' + report.report_id) }}</strong><small>{{ formatReportDate(report.created_at) }}</small><button class="secondary-button" type="button" (click)="openReportManager()">Reports ({{ store.reportTotal() }})</button></section>
+            <section class="cross-benchmark-current-report" aria-label="Current report"><span class="field-label">Current report</span><strong [title]="report.run_name || ''">{{ report.run_name || ('Benchmark run #' + report.report_id) }}</strong><small>{{ formatReportDate(report.created_at) }}</small><button class="secondary-button cross-benchmark-report-selector" type="button" (click)="openReportManager()">Reports ({{ store.reportTotal() }})</button></section>
             <div class="cross-benchmark-overview-grid" aria-label="Benchmark summary">
               <article class="cross-benchmark-kpi-card"><span class="cross-benchmark-kpi-label">Dataset</span><strong class="cross-benchmark-kpi-value">{{ report.dataset_name }}</strong><small class="cross-benchmark-kpi-detail">Selected benchmark corpus</small></article>
               <article class="cross-benchmark-kpi-card"><span class="cross-benchmark-kpi-label">Documents</span><strong class="cross-benchmark-kpi-value">{{ report.documents_processed | number }}</strong><small class="cross-benchmark-kpi-detail">Processed documents</small></article>
@@ -12,7 +12,7 @@
             </div>
           </div>
         }
-        @if (!store.report()) { <section class="cross-benchmark-current-report cross-benchmark-current-report--empty" aria-label="Current report"><span class="field-label">Current report</span><strong>No report selected</strong><small>{{ store.reportTotal() }} reports available</small><button class="secondary-button" type="button" (click)="openReportManager()">Reports ({{ store.reportTotal() }})</button></section> }
+        @if (!store.report()) { <section class="cross-benchmark-current-report cross-benchmark-current-report--empty" aria-label="Current report"><span class="field-label">Current report</span><strong>No report selected</strong><small>{{ store.reportTotal() }} reports available</small><button class="secondary-button cross-benchmark-report-selector" type="button" (click)="openReportManager()">Reports ({{ store.reportTotal() }})</button></section> }
       </div>
       <nav class="cross-benchmark-command-navbar" aria-label="Benchmark controls">
         <div class="cross-benchmark-command-navbar__header"><span class="cross-benchmark-command-navbar__title">Benchmark actions</span></div>

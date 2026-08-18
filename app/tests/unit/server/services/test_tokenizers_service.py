@@ -19,6 +19,10 @@ class FakeTokenizerRepository:
     def get_tokenizer_report_by_id(self, report_id: int):
         return object() if report_id == 1 else None
 
+
+def tokenizer_siblings(*filenames: str) -> list[dict[str, str]]:
+    return [{"rfilename": filename} for filename in filenames]
+
 ###############################################################################
 def test_tokenizers_service_report_prechecks(monkeypatch) -> None:
     service = TokenizerReportingService()
@@ -72,6 +76,7 @@ def test_tokenizer_discovery_passes_native_filters_and_returns_structured_items(
             self.gated = False
             self.tags = ["core-model"]
             self.config = None
+            self.siblings = tokenizer_siblings("tokenizer.json", "config.json")
 
     ###############################################################################
     class FakeApi:
@@ -104,13 +109,14 @@ def test_tokenizer_discovery_passes_native_filters_and_returns_structured_items(
     assert fake_api.captured == {
         "sort": "downloads",
         "direction": -1,
-        "limit": 5,
+        "limit": 15,
         "search": "bert",
         "author": "google",
         "pipeline_tag": "fill-mask",
         "filter": ["core-model"],
         "gated": False,
         "expand": [
+            "siblings",
             "pipeline_tag",
             "library_name",
             "downloads",
@@ -158,13 +164,57 @@ def test_tokenizer_discovery_uses_bounded_overfetch_and_candidate_cap(monkeypatc
         vocabulary_sort="ascending",
     ))
     assert fake_api.captured["limit"] == 15
-    assert fake_api.captured["fetch_config"] is True
+    assert fake_api.captured["expand"][-1] == "config"
+    assert "fetch_config" not in fake_api.captured
 
     service.discover_tokenizers(TokenizerDiscoveryQuery(
         limit=250,
         vocabulary_sort="ascending",
     ))
     assert fake_api.captured["limit"] == 750
+    assert fake_api.captured["expand"][0] == "siblings"
+
+###############################################################################
+def test_tokenizer_discovery_accepts_supported_root_artifacts_only(monkeypatch) -> None:
+    service = TokenizersService()
+
+    class FakeModel:
+        def __init__(self, model_id: str, filenames: tuple[str, ...]) -> None:
+            self.modelId = model_id
+            self.pipeline_tag = "text-generation"
+            self.tags = []
+            self.siblings = tokenizer_siblings(*filenames)
+
+    class FakeApi:
+        def list_models(self, **kwargs):
+            assert kwargs["expand"][0] == "siblings"
+            return [
+                FakeModel("valid/fast", ("tokenizer.json", "tokenizer_config.json")),
+                FakeModel("valid/sentencepiece", ("tokenizer.model", "config.json")),
+                FakeModel("valid/spiece", ("spiece.model", "config.json")),
+                FakeModel("valid/bpe", ("vocab.json", "merges.txt")),
+                FakeModel("valid/wordpiece", ("vocab.txt", "config.json")),
+                FakeModel("invalid/weights-only", ("config.json", "model.safetensors")),
+                FakeModel("invalid/metadata-only", ("config.json", "tokenizer_config.json")),
+                FakeModel("invalid/nested-only", ("config.json", "nested/tokenizer.json")),
+                FakeModel("invalid/partial-vocab", ("vocab.json",)),
+                FakeModel("invalid/no-siblings", ()),
+            ]
+
+    monkeypatch.setattr("server.services.tokenizers.HfApi", lambda **kwargs: FakeApi())
+    monkeypatch.setattr(service.key_service, "get_active_key", lambda: None)
+
+    response = service.discover_tokenizers(TokenizerDiscoveryQuery(limit=20))
+
+    assert [item.identifier for item in response.items] == [
+        "valid/fast",
+        "valid/sentencepiece",
+        "valid/spiece",
+        "valid/bpe",
+        "valid/wordpiece",
+    ]
+    assert response.count == 5
+    assert response.fetched_count == 10
 
 ###############################################################################
 def test_tokenizer_discovery_filters_excluded_and_unsupported_models(monkeypatch) -> None:
@@ -175,6 +225,7 @@ def test_tokenizer_discovery_filters_excluded_and_unsupported_models(monkeypatch
             self.modelId = model_id
             self.pipeline_tag = pipeline_tag
             self.tags = tags
+            self.siblings = tokenizer_siblings("tokenizer.json", "config.json")
 
     class FakeApi:
         def list_models(self, **kwargs):
@@ -203,10 +254,11 @@ def test_tokenizer_discovery_extracts_and_filters_vocabulary_metadata(monkeypatc
             self.modelId = model_id
             self.pipeline_tag = "fill-mask"
             self.config = {"vocab_size": vocabulary_size} if vocabulary_size is not None else None
+            self.siblings = tokenizer_siblings("vocab.txt", "config.json")
 
     class FakeApi:
         def list_models(self, **kwargs):
-            assert kwargs["fetch_config"] is True
+            assert "config" in kwargs["expand"]
             return [FakeModel("small/model", 4), FakeModel("large/model", 12), FakeModel("unknown/model", None)]
 
     monkeypatch.setattr("server.services.tokenizers.HfApi", lambda **kwargs: FakeApi())
@@ -235,6 +287,7 @@ def test_tokenizer_discovery_orders_known_vocabulary_before_unknown(monkeypatch)
             self.modelId = model_id
             self.pipeline_tag = "fill-mask"
             self.config = {"vocab_size": vocabulary_size} if vocabulary_size is not None else None
+            self.siblings = tokenizer_siblings("vocab.json", "merges.txt")
 
     class FakeApi:
         def list_models(self, **kwargs):
