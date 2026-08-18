@@ -19,7 +19,10 @@ def _export_payload() -> dict[str, object]:
 def test_export_route_returns_pdf_headers_and_bytes(monkeypatch) -> None:
     from server.api import exports as exports_api
 
+    ###############################################################################
     class FakeExportService:
+
+        # -------------------------------------------------------------------------
         def export_dashboard_pdf(self, **kwargs):
             assert kwargs["dashboard_type"] == "benchmark"
             return SimpleNamespace(
@@ -42,7 +45,10 @@ def test_export_route_returns_pdf_headers_and_bytes(monkeypatch) -> None:
 def test_export_route_maps_expected_and_unexpected_service_failures(monkeypatch) -> None:
     from server.api import exports as exports_api
 
+    ###############################################################################
     class ValueErrorService:
+
+        # -------------------------------------------------------------------------
         def export_dashboard_pdf(self, **kwargs):
             del kwargs
             raise ValueError("unsupported visualization")
@@ -52,7 +58,10 @@ def test_export_route_maps_expected_and_unexpected_service_failures(monkeypatch)
     assert invalid.status_code == 400
     assert invalid.json()["detail"] == "unsupported visualization"
 
+    ###############################################################################
     class FailingService:
+
+        # -------------------------------------------------------------------------
         def export_dashboard_pdf(self, **kwargs):
             del kwargs
             raise RuntimeError("private rendering details")

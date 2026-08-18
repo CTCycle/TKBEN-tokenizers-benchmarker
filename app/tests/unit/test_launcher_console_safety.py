@@ -25,6 +25,7 @@ def test_launcher_keeps_safe_database_initialization_command() -> None:
     assert "--force-reseed-catalogs" not in source
 
 
+###############################################################################
 def test_launcher_stages_node_runtime_before_replacing_existing_runtime() -> None:
     source = LAUNCHER.resolve().read_text(encoding="utf-8")
 

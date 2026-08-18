@@ -257,6 +257,7 @@ class TokenizersService(TokenizerStorageMixin):
             fetched_count=len(models),
         )
 
+    # -------------------------------------------------------------------------
     @classmethod
     def _has_usable_tokenizer_artifacts(cls, model: Any) -> bool:
         """Return whether expanded Hub metadata exposes a root tokenizer resource.
@@ -298,6 +299,7 @@ class TokenizersService(TokenizerStorageMixin):
             or (has_wordpiece_tokenizer and has_metadata)
         )
 
+    # -------------------------------------------------------------------------
     @staticmethod
     def _build_discovery_item(model: Any) -> TokenizerDiscoveryItem:
         identifier = getattr(model, "modelId", None) or getattr(model, "id", None)
@@ -333,15 +335,18 @@ class TokenizersService(TokenizerStorageMixin):
             vocabulary_size=vocabulary_size,
         )
 
+    # -------------------------------------------------------------------------
     @staticmethod
     def _non_negative_int(value: object) -> int | None:
         return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
 
+    # -------------------------------------------------------------------------
     @staticmethod
     def _has_any_tag(tags: list[str], excluded: list[str]) -> bool:
         known = {tag.casefold() for tag in tags}
         return any(tag.casefold() in known for tag in excluded)
 
+    # -------------------------------------------------------------------------
     @staticmethod
     def _matches_vocabulary(
         item: TokenizerDiscoveryItem,
@@ -358,6 +363,7 @@ class TokenizersService(TokenizerStorageMixin):
             else item.vocabulary_size <= query.vocabulary_size
         )
 
+    # -------------------------------------------------------------------------
     @staticmethod
     def _sort_by_vocabulary(
         items: list[TokenizerDiscoveryItem],

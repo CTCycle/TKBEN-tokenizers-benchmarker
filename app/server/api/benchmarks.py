@@ -52,7 +52,6 @@ def _build_benchmark_report_query(
             detail=str(exc),
         ) from exc
 
-
 ###############################################################################
 @router.post(
     API_ROUTE_BENCHMARKS_RUN,
@@ -153,7 +152,6 @@ async def list_benchmark_reports(
 ) -> BenchmarkReportListResponse:
     service = BenchmarkService()
     return await asyncio.to_thread(service.list_benchmark_reports, query)
-
 
 ###############################################################################
 @router.delete(

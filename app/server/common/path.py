@@ -16,6 +16,7 @@ QA_DIR = ROOT_DIR / "QA"
 SETTINGS_DIR = Path(os.getenv("TKBEN_CONFIG_DIR", ROOT_DIR / "settings")).resolve()
 
 
+###############################################################################
 def _resolve_resource_path(configured_path: str | None) -> Path:
     if not configured_path:
         return (APP_DIR / "resources").resolve()

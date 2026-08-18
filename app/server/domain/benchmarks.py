@@ -267,12 +267,14 @@ class BenchmarkReportSort(StrEnum):
     OLDEST = "oldest"
 
 
+###############################################################################
 class BenchmarkReportQuery(BaseModel):
     search: str | None = Field(default=None, max_length=160)
     sort: BenchmarkReportSort = BenchmarkReportSort.NEWEST
     offset: int = Field(default=0, ge=0)
     limit: int = Field(default=25, ge=1, le=100)
 
+    # -------------------------------------------------------------------------
     @field_validator("search", mode="before")
     @classmethod
     def normalize_search(cls, value: object) -> str | None:
@@ -280,7 +282,6 @@ class BenchmarkReportQuery(BaseModel):
             return None
         normalized = str(value).strip()
         return normalized or None
-
 
 ###############################################################################
 class BenchmarkReportSummary(BaseModel):

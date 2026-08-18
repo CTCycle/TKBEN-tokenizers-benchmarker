@@ -23,20 +23,27 @@ def test_key_routes_keep_raw_values_out_of_list_and_map_lifecycle_calls(
 
     calls: list[tuple[str, object]] = []
 
+    ###############################################################################
     class FakeKeyService:
+
+        # -------------------------------------------------------------------------
         def add_key(self, raw_key: str):
             calls.append(("add", raw_key))
             return _key_item()
 
+        # -------------------------------------------------------------------------
         def list_keys(self):
             return [_key_item()]
 
+        # -------------------------------------------------------------------------
         def set_active_key(self, key_id: int) -> None:
             calls.append(("activate", key_id))
 
+        # -------------------------------------------------------------------------
         def clear_active_key(self, key_id: int) -> None:
             calls.append(("deactivate", key_id))
 
+        # -------------------------------------------------------------------------
         def delete_key(self, key_id: int, confirm: bool) -> None:
             calls.append(("delete", (key_id, confirm)))
 
