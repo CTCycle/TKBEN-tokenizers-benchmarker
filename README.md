@@ -176,7 +176,6 @@ Core runtime keys you will commonly edit:
 - `UI_HOST`, `UI_PORT`
 - `VITE_API_BASE_URL` (normally `/api`)
 - `RELOAD`
-- `ALWAYS_REBUILD` (`true` or `false`; controls whether the launcher rebuilds the frontend at application start)
 - `BACKEND_LOGS_VISIBLE` (`true` or `false`; controls the dedicated backend log terminal)
 - `ALLOW_KEY_REVEAL`
 - `TKBEN_DATA_DIR`, `TKBEN_LOG_DIR`, `TKBEN_CONFIG_DIR`
