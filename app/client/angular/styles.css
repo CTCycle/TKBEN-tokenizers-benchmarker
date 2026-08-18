@@ -1068,6 +1068,41 @@ app-root {
   transition: border var(--transition), background var(--transition);
 }
 
+.dataset-preset-group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dataset-preset-group-items[hidden] {
+  display: none;
+}
+
+.dataset-preset-select {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dataset-preset-select:focus-visible {
+  outline: 2px solid var(--color-border-strong);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.dataset-preset-download {
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+}
+
 .dataset-preset-row.selected {
   border-color: var(--color-accent);
   background: var(--color-surface-selected);
@@ -1494,64 +1529,6 @@ app-root {
   color: var(--color-warning-text);
 }
 
-.tokenizer-modal-columns {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 20px;
-  min-height: 0;
-}
-
-.tokenizer-modal-column {
-  display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
-  row-gap: 8px;
-  min-height: 0;
-  min-width: 0;
-}
-
-.tokenizer-modal-column--discovery {
-  border-left: 0;
-  padding-left: 0;
-}
-
-.tokenizer-modal-column-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-height: 32px;
-}
-
-.tokenizer-column-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.tokenizer-column-action {
-  width: 32px;
-  height: 32px;
-  border-radius: 7px;
-}
-
-.tokenizer-column-action .action-spinner {
-  width: 14px;
-  height: 14px;
-}
-
-.tokenizer-modal-column-description {
-  margin: 0;
-  line-height: 1.35;
-}
-
-.tokenizer-modal-column-content {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-height: 0;
-}
-
 .tokenizer-manual-input {
   flex: 1;
   width: 100%;
@@ -1624,21 +1601,6 @@ app-root {
   padding-right: 8px;
 }
 
-.tokenizer-discovery-controls {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) 92px minmax(0, 1fr) minmax(0, 1fr);
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.tokenizer-discovery-controls label,
-.tokenizer-discovery-advanced label,
-.benchmark-report-toolbar label {
-  display: grid;
-  min-width: 0;
-  gap: 4px;
-}
-
 .tokenizer-discovery-submit {
   flex: 0 0 auto;
   min-height: 32px;
@@ -1681,30 +1643,6 @@ app-root {
   color: var(--color-border-strong);
 }
 
-.tokenizer-discovery-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding-top: 8px;
-}
-
-.tokenizer-discovery-footer .secondary-button {
-  flex: 0 0 auto;
-}
-
-.tokenizer-selection-remove {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  flex-shrink: 0;
-}
-
-.tokenizer-selection-remove svg {
-  width: 14px;
-  height: 14px;
-}
-
 .tokenizer-modal-progress-row {
   display: flex;
   flex-direction: column;
@@ -1729,6 +1667,225 @@ app-root {
   height: 100%;
   background: linear-gradient(90deg, var(--color-accent-dark), var(--color-accent));
   transition: width 180ms ease;
+}
+
+/* Tokenizer Manager: fixed chrome with one flexible, scrollable workflow panel. */
+.tokenizer-modal-window {
+  width: min(980px, calc(100vw - 32px));
+  height: min(760px, calc(100vh - 32px));
+  max-height: calc(100vh - 32px);
+  padding: 20px;
+  gap: 0;
+}
+
+.tokenizer-modal-header,
+.tokenizer-manager-tabs,
+.tokenizer-manager-footer,
+.tokenizer-modal-progress-row {
+  flex: 0 0 auto;
+}
+
+.tokenizer-modal-header {
+  padding-bottom: 16px;
+}
+
+.tokenizer-manager-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tokenizer-manager-tab {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tokenizer-manager-tab:hover,
+.tokenizer-manager-tab[aria-selected='true'] {
+  color: var(--color-text);
+}
+
+.tokenizer-manager-tab[aria-selected='true'] {
+  border-bottom-color: var(--color-accent);
+}
+
+.tokenizer-manager-tab:focus-visible,
+.tokenizer-modal-panel:focus-visible {
+  outline: 2px solid var(--color-border-strong);
+  outline-offset: 2px;
+}
+
+.tokenizer-manager-panel {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 16px 0;
+  overflow: hidden;
+}
+
+.tokenizer-modal-panel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.tokenizer-modal-panel[hidden],
+.tokenizer-discovery-advanced[hidden] {
+  display: none;
+}
+
+.tokenizer-modal-panel--discover {
+  gap: 12px;
+}
+
+.tokenizer-modal-panel--focused {
+  align-items: stretch;
+  justify-content: center;
+  gap: 16px;
+  max-width: 680px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.tokenizer-discovery-form {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.tokenizer-discovery-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) 86px minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.tokenizer-discovery-field,
+.tokenizer-discovery-advanced label {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.tokenizer-discovery-field .text-input,
+.tokenizer-discovery-advanced .text-input {
+  min-width: 0;
+  width: 100%;
+}
+
+.tokenizer-discovery-submit {
+  min-height: 36px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.tokenizer-discovery-advanced-toggle {
+  align-self: flex-start;
+  margin-top: 0;
+}
+
+.tokenizer-discovery-advanced {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 0;
+}
+
+.tokenizer-discovery-results {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+}
+
+.tokenizer-discovery-result {
+  min-height: 52px;
+  align-items: center;
+}
+
+.tokenizer-manager-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.tokenizer-manager-footer .panel-description {
+  min-width: 0;
+}
+
+.tokenizer-manager-footer .primary-button {
+  flex: 0 0 auto;
+}
+
+.tokenizer-focused-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tokenizer-focused-copy .panel-label,
+.tokenizer-focused-copy .panel-description {
+  margin: 0;
+}
+
+.tokenizer-modal-panel--focused .tokenizer-manual-input {
+  flex: 1 1 auto;
+  min-height: 220px;
+  max-height: none;
+  resize: none;
+}
+
+.tokenizer-upload-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 24px;
+  border: 1px dashed var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface-subtle);
+  text-align: center;
+}
+
+.tokenizer-upload-card .panel-label,
+.tokenizer-upload-card .panel-description {
+  margin: 0;
+}
+
+.tokenizer-upload-card .panel-description {
+  max-width: 52ch;
+}
+
+.tokenizer-upload-icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid var(--color-accent);
+  border-radius: 50%;
+  color: var(--color-accent);
+  font-size: 24px;
+}
+
+.tokenizer-modal-progress-row {
+  margin-top: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
 }
 
 .analysis-panel {
@@ -2185,6 +2342,12 @@ app-root {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 150px;
   gap: 10px;
+}
+
+.benchmark-report-toolbar label {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
 }
 
 .benchmark-report-list {
@@ -4159,6 +4322,34 @@ select:focus-visible {
     grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
   }
 
+  .tokenizer-modal-window {
+    width: calc(100vw - 24px);
+    height: calc(100vh - 24px);
+    max-height: calc(100vh - 24px);
+    padding: 16px;
+  }
+
+  .tokenizer-manager-panel {
+    padding-block: 12px;
+  }
+
+  .tokenizer-manager-tab {
+    min-height: 36px;
+    padding-inline: 10px;
+    font-size: 12px;
+  }
+
+  .tokenizer-manager-footer {
+    align-items: stretch;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .tokenizer-manager-footer .primary-button {
+    width: 100%;
+  }
+
   .app-header-title {
     font-size: 16px;
   }
@@ -4273,20 +4464,16 @@ select:focus-visible {
   }
 }
 @media (max-width: 900px) {
-  .tokenizer-modal-columns {
-    grid-template-columns: 1fr;
+  .tokenizer-discovery-toolbar {
+    grid-template-columns: minmax(0, 1fr) 86px;
   }
 
-  .tokenizer-modal-column--discovery {
-    border-left: 0;
-    border-top: 1px solid var(--color-border);
-    padding-left: 0;
-    padding-top: 18px;
+  .tokenizer-discovery-field--search {
+    grid-column: 1 / -1;
   }
 
-  .tokenizer-discovery-controls,
   .tokenizer-discovery-advanced {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .tokenizer-discovery-result {
@@ -4367,6 +4554,17 @@ select:focus-visible {
 
   .cross-benchmark-boxplot-values {
     text-align: left;
+  }
+}
+
+@media (max-width: 700px) {
+  .tokenizer-discovery-toolbar,
+  .tokenizer-discovery-advanced {
+    grid-template-columns: 1fr;
+  }
+
+  .tokenizer-discovery-field--search {
+    grid-column: auto;
   }
 }
 

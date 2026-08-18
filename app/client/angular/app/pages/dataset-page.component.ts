@@ -30,6 +30,18 @@ interface DatasetFiltersForm {
   documents: FormControl<number | null>;
 }
 
+interface DatasetPreset {
+  id: string;
+  label: string;
+  description: string;
+  configuration?: string;
+}
+
+interface DatasetPresetGroup {
+  group: string;
+  datasets: readonly DatasetPreset[];
+}
+
 @Component({
   selector: 'app-dataset-page',
   imports: [ReactiveFormsModule, HistogramChartComponent, WordCloudComponent, ModalA11yDirective],
@@ -45,12 +57,70 @@ export class DatasetPageComponent {
   protected readonly validationStep = signal<0 | 1 | 2>(0);
   protected readonly selectedMetricKeys = signal<readonly string[]>([]);
   protected readonly banner = signal<string | null>(null);
-  protected readonly presets = [
-    { id: 'wikitext', label: 'wikitext', description: 'Clean Wikipedia articles, multiple sizes, common baseline.', configuration: 'wikitext-2-v1' },
-    { id: 'c4', label: 'c4', description: 'Colossal Clean Crawled Corpus, large filtered web crawl.' },
-    { id: 'ag_news', label: 'ag_news', description: 'Short news classification dataset.' },
-    { id: 'imdb', label: 'imdb', description: 'Long-form movie reviews.' },
-  ] as const;
+  protected readonly presets: readonly DatasetPresetGroup[] = [
+    {
+      group: 'General Corpora',
+      datasets: [
+        { id: 'wikitext', label: 'wikitext', description: 'Clean Wikipedia articles, multiple sizes, common baseline.', configuration: 'wikitext-2-v1' },
+        { id: 'c4', label: 'c4', description: 'Colossal Clean Crawled Corpus, large filtered web crawl.' },
+        { id: 'oscar', label: 'oscar', description: 'Multilingual web corpus filtered by language.' },
+        { id: 'cc_news', label: 'cc_news', description: 'News articles from Common Crawl.' },
+        { id: 'openwebtext', label: 'openwebtext', description: 'Reddit-linked web pages, GPT-style corpus.' },
+        { id: 'bookcorpus', label: 'bookcorpus', description: 'Fiction books, long-form narrative text.' },
+      ],
+    },
+    {
+      group: 'News and Formal Writing',
+      datasets: [
+        { id: 'ag_news', label: 'ag_news', description: 'Short news classification dataset.' },
+        { id: 'cnn_dailymail', label: 'cnn_dailymail', description: 'News articles with summaries, long documents.' },
+        { id: 'gigaword', label: 'gigaword', description: 'Newswire text, headline-style language.' },
+        { id: 'multi_news', label: 'multi_news', description: 'Multi-document news summarization.' },
+      ],
+    },
+    {
+      group: 'Question Answering and Reading Comprehension',
+      datasets: [
+        { id: 'squad', label: 'squad', description: 'Wikipedia-based QA dataset.' },
+        { id: 'natural_questions', label: 'natural_questions', description: 'Real Google search questions with long answers.' },
+        { id: 'hotpot_qa', label: 'hotpot_qa', description: 'Multi-hop reasoning over multiple passages.' },
+      ],
+    },
+    {
+      group: 'Instruction, Dialogue, and Conversational Data',
+      datasets: [
+        { id: 'daily_dialog', label: 'daily_dialog', description: 'Clean, human-written conversations.' },
+        { id: 'empathetic_dialogues', label: 'empathetic_dialogues', description: 'Emotion-focused conversations.' },
+        { id: 'openassistant_oasst1', label: 'openassistant_oasst1', description: 'Instruction-following and assistant responses.' },
+      ],
+    },
+    {
+      group: 'Reviews and Informal Text',
+      datasets: [
+        { id: 'yelp_review_full', label: 'yelp_review_full', description: 'User reviews of varying length.' },
+        { id: 'amazon_reviews_multi', label: 'amazon_reviews_multi', description: 'Multilingual product reviews.' },
+        { id: 'imdb', label: 'imdb', description: 'Long-form movie reviews.' },
+      ],
+    },
+    {
+      group: 'Academic and Long-Form Text',
+      datasets: [
+        { id: 'arxiv', label: 'arxiv', description: 'Scientific papers.' },
+        { id: 'pubmed', label: 'pubmed', description: 'Biomedical abstracts and articles.' },
+      ],
+    },
+    {
+      group: 'Multilingual Benchmarks',
+      datasets: [
+        { id: 'flores', label: 'flores', description: 'High-quality multilingual parallel text.' },
+        { id: 'wiki40b', label: 'wiki40b', description: 'Large multilingual Wikipedia corpus.' },
+        { id: 'opus_books', label: 'opus_books', description: 'Parallel book translations.' },
+      ],
+    },
+  ];
+  protected readonly selectedPreset = signal<string | null>('wikitext');
+  protected readonly collapsedPresetGroups = signal<Readonly<Record<string, boolean>>>({});
+  protected readonly manualDatasetOpen = signal(false);
   protected readonly downloadForm = new FormGroup({
     corpus: new FormControl('wikitext', { nonNullable: true, validators: [Validators.required] }),
     configuration: new FormControl('wikitext-2-v1', { nonNullable: true }),
@@ -262,14 +332,27 @@ export class DatasetPageComponent {
     if (window.confirm(`Remove ${datasetName} from the database?`)) this.store.remove(datasetName);
   }
 
-  protected choosePreset(preset: { id: string; configuration?: string }): void {
+  protected choosePreset(preset: DatasetPreset): void {
+    this.selectedPreset.set(preset.id);
     this.downloadForm.patchValue({ corpus: preset.id, configuration: preset.configuration ?? '' });
+  }
+
+  protected downloadPreset(preset: DatasetPreset): void {
+    this.choosePreset(preset);
+    this.downloadSelected();
+  }
+
+  protected togglePresetGroup(group: string): void {
+    this.collapsedPresetGroups.update((groups) => ({ ...groups, [group]: !groups[group] }));
+  }
+
+  protected isPresetGroupCollapsed(group: string): boolean {
+    return this.collapsedPresetGroups()[group] ?? false;
   }
 
   protected downloadSelected(): void {
     const value = this.downloadForm.getRawValue();
     this.store.download({ corpus: value.corpus, configs: { configuration: value.configuration || null } });
-    this.addDatasetOpen.set(false);
   }
 
   protected uploadFile(event: Event): void {
@@ -277,7 +360,6 @@ export class DatasetPageComponent {
     const file = input.files?.[0];
     if (file) {
       this.store.upload(file);
-      this.addDatasetOpen.set(false);
       input.value = '';
     }
   }

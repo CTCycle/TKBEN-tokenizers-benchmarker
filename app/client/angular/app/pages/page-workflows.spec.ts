@@ -71,6 +71,55 @@ describe('DatasetPageComponent workflow', () => {
       metric_parameters: {},
     });
   });
+
+  it('restores the grouped preset catalogue and keeps manual/upload actions available', () => {
+    const store = {
+      report: signal(null),
+      metricCategories: signal(metricCategories),
+      busyAction: signal<string | null>(null),
+      refresh: vi.fn(),
+      select: vi.fn(),
+      loadLatest: vi.fn(),
+      download: vi.fn(),
+      upload: vi.fn(),
+      remove: vi.fn(),
+    };
+    TestBed.configureTestingModule({ providers: [
+      { provide: DatasetStore, useValue: store },
+      { provide: ExportApiService, useValue: {} },
+    ] });
+    const page = TestBed.runInInjectionContext(() => new DatasetPageComponent()) as unknown as {
+      presets: readonly { group: string; datasets: readonly { id: string; configuration?: string }[] }[];
+      selectedPreset: () => string | null;
+      manualDatasetOpen: { (): boolean; set: (value: boolean) => void };
+      isPresetGroupCollapsed: (group: string) => boolean;
+      togglePresetGroup: (group: string) => void;
+      choosePreset: (preset: { id: string; label: string; description: string; configuration?: string }) => void;
+      downloadSelected: () => void;
+      downloadForm: FormGroup;
+      uploadFile: (event: Event) => void;
+    };
+
+    expect(page.presets).toHaveLength(7);
+    expect(page.presets.flatMap((group) => group.datasets)).toHaveLength(24);
+    expect(page.presets.every((group) => !page.isPresetGroupCollapsed(group.group))).toBe(true);
+    expect(page.manualDatasetOpen()).toBe(false);
+
+    page.manualDatasetOpen.set(true);
+    expect(page.manualDatasetOpen()).toBe(true);
+    page.togglePresetGroup('General Corpora');
+    expect(page.isPresetGroupCollapsed('General Corpora')).toBe(true);
+
+    page.choosePreset({ id: 'squad', label: 'squad', description: 'Wikipedia-based QA dataset.' });
+    expect(page.selectedPreset()).toBe('squad');
+    expect(page.downloadForm.getRawValue()).toMatchObject({ corpus: 'squad', configuration: '' });
+    page.downloadSelected();
+    expect(store.download).toHaveBeenCalledWith({ corpus: 'squad', configs: { configuration: null } });
+
+    const file = new File(['text'], 'custom.csv', { type: 'text/csv' });
+    page.uploadFile({ target: { files: [file], value: 'custom.csv' } } as unknown as Event);
+    expect(store.upload).toHaveBeenCalledWith(file);
+  });
 });
 
 describe('TokenizersPageComponent workflow', () => {
@@ -79,6 +128,7 @@ describe('TokenizersPageComponent workflow', () => {
       report: signal(null),
       vocabulary: signal(null),
       discoveryResults: signal([{ identifier: 'alpha/model' }, { identifier: 'beta/model' }]),
+      busyAction: signal<string | null>(null),
       refresh: vi.fn(),
       select: vi.fn(),
       discover: vi.fn(),
@@ -119,6 +169,70 @@ describe('TokenizersPageComponent workflow', () => {
       vocabularyOperator: 'at_most',
       vocabulary: 5000,
     });
+  });
+
+  it('opens on Discover, preserves tab form state, and supports keyboard tab navigation', () => {
+    const store = {
+      report: signal(null),
+      vocabulary: signal(null),
+      discoveryResults: signal([]),
+      discoveryLoading: signal(false),
+      discoveryError: signal<string | null>(null),
+      error: signal<string | null>(null),
+      downloadWarning: signal<string | null>(null),
+      busyAction: signal<string | null>(null),
+      selectedDiscoveryIds: signal<readonly string[]>(['alpha/model']),
+      refresh: vi.fn(),
+      select: vi.fn(),
+      discover: vi.fn(),
+      toggleDiscoverySelection: vi.fn(),
+      download: vi.fn(),
+      openReport: vi.fn(),
+      loadLatest: vi.fn(),
+      loadVocabulary: vi.fn(),
+      remove: vi.fn(),
+      upload: vi.fn(),
+    };
+    TestBed.configureTestingModule({ providers: [
+      { provide: TokenizersStore, useValue: store },
+      { provide: ExportApiService, useValue: {} },
+    ] });
+    const page = TestBed.runInInjectionContext(() => new TokenizersPageComponent()) as unknown as {
+      activeTokenizerTab: () => string;
+      openAddTokenizer: () => void;
+      selectTokenizerTab: (tab: string) => void;
+      handleTokenizerTabKeydown: (event: KeyboardEvent, tab: string) => void;
+      discoveryForm: FormGroup;
+      discoveryAdvancedOpen: () => boolean;
+      toggleDiscoveryAdvanced: () => void;
+      downloadSelectedDiscoveryTokenizers: () => void;
+      downloadProgressVisible: () => boolean;
+    };
+
+    expect(page.activeTokenizerTab()).toBe('discover');
+    page.discoveryForm.patchValue({ search: 'long/repository', author: 'owner' });
+    page.selectTokenizerTab('add-by-name');
+    expect(page.activeTokenizerTab()).toBe('add-by-name');
+    page.selectTokenizerTab('discover');
+    expect(page.discoveryForm.getRawValue()).toMatchObject({ search: 'long/repository', author: 'owner' });
+    expect(page.discoveryAdvancedOpen()).toBe(false);
+    page.toggleDiscoveryAdvanced();
+    expect(page.discoveryAdvancedOpen()).toBe(true);
+
+    page.handleTokenizerTabKeydown(new KeyboardEvent('keydown', { key: 'ArrowRight' }), 'discover');
+    expect(page.activeTokenizerTab()).toBe('add-by-name');
+    page.handleTokenizerTabKeydown(new KeyboardEvent('keydown', { key: 'End' }), 'add-by-name');
+    expect(page.activeTokenizerTab()).toBe('upload-json');
+    page.openAddTokenizer();
+    expect(page.activeTokenizerTab()).toBe('discover');
+    expect(store.discover).toHaveBeenCalled();
+
+    page.selectTokenizerTab('discover');
+    page.downloadSelectedDiscoveryTokenizers();
+    expect(store.download).toHaveBeenCalledWith({ tokenizers: ['alpha/model'] });
+    expect(page.downloadProgressVisible()).toBe(false);
+    store.busyAction.set('download');
+    expect(page.downloadProgressVisible()).toBe(true);
   });
 });
 

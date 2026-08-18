@@ -13,6 +13,8 @@ import type {
   VocabularySort,
 } from '../core/api/api.models';
 
+type TokenizerManagerTab = 'discover' | 'add-by-name' | 'upload-json';
+
 @Component({
   selector: 'app-tokenizers-page',
   imports: [ReactiveFormsModule, HistogramChartComponent, ModalA11yDirective],
@@ -23,9 +25,11 @@ export class TokenizersPageComponent {
   private readonly exportApi = inject(ExportApiService);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly addTokenizerOpen = signal(false);
+  protected readonly activeTokenizerTab = signal<TokenizerManagerTab>('discover');
   protected readonly manualTokenizerInput = signal('');
   protected readonly manualTokenizerIds = computed(() => this.manualTokenizerInput().split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean));
   protected readonly discoveryAdvancedOpen = signal(false);
+  protected readonly downloadProgressVisible = computed(() => this.store.busyAction() === 'download');
   protected readonly exportError = signal<string | null>(null);
   protected readonly filters = new FormGroup({
     search: new FormControl('', { nonNullable: true }),
@@ -65,8 +69,28 @@ export class TokenizersPageComponent {
     this.store.select(name);
   }
 
-  protected openAddTokenizer(): void { this.addTokenizerOpen.set(true); this.discoverTokenizers(); }
+  protected openAddTokenizer(): void {
+    this.activeTokenizerTab.set('discover');
+    this.addTokenizerOpen.set(true);
+    this.discoverTokenizers();
+  }
   protected closeAddTokenizer(): void { this.addTokenizerOpen.set(false); }
+  protected selectTokenizerTab(tab: TokenizerManagerTab): void { this.activeTokenizerTab.set(tab); }
+  protected toggleDiscoveryAdvanced(): void { this.discoveryAdvancedOpen.update((open) => !open); }
+  protected handleTokenizerTabKeydown(event: KeyboardEvent, tab: TokenizerManagerTab): void {
+    const tabs: readonly TokenizerManagerTab[] = ['discover', 'add-by-name', 'upload-json'];
+    const index = tabs.indexOf(tab);
+    let nextIndex: number | null = null;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (index + 1) % tabs.length;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (index - 1 + tabs.length) % tabs.length;
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = tabs.length - 1;
+    if (nextIndex === null) return;
+    event.preventDefault();
+    const nextTab = tabs[nextIndex];
+    this.activeTokenizerTab.set(nextTab);
+    document.getElementById(`tokenizer-tab-${nextTab}`)?.focus();
+  }
   protected discoverTokenizers(): void {
     const value = this.discoveryForm.getRawValue();
     const splitTags = (raw: string): string[] => [...new Set(raw.split(/[\n,]/).map((tag) => tag.trim()).filter(Boolean))];
