@@ -17,6 +17,7 @@ class TokenizerStorageMixin:
         "spiece.model",
         "sentencepiece.bpe.model",
         "vocab.json",
+        "vocab.txt",
     )
 
     # -------------------------------------------------------------------------

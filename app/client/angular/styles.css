@@ -1763,7 +1763,7 @@ app-root {
   display: flex;
   flex-direction: column;
   flex: 0 0 auto;
-  gap: 8px;
+  gap: 6px;
 }
 
 .tokenizer-discovery-toolbar {
@@ -1784,16 +1784,26 @@ app-root {
 .tokenizer-discovery-advanced .text-input {
   min-width: 0;
   width: 100%;
+  height: 34px;
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 13px;
 }
 
-.tokenizer-discovery-submit {
-  min-height: 36px;
-  padding: 0 12px;
+.tokenizer-discovery-form .tokenizer-discovery-submit {
+  height: 34px;
+  min-height: 34px;
+  padding: 6px 12px;
+  font-size: 12px;
   white-space: nowrap;
 }
 
-.tokenizer-discovery-advanced-toggle {
+.tokenizer-discovery-form .tokenizer-discovery-advanced-toggle {
   align-self: flex-start;
+  height: 32px;
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 12px;
   margin-top: 0;
 }
 
@@ -1819,8 +1829,8 @@ app-root {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 52px;
-  padding-top: 12px;
+  min-height: 44px;
+  padding-top: 8px;
   border-top: 1px solid var(--color-border);
 }
 
@@ -1829,6 +1839,10 @@ app-root {
 }
 
 .tokenizer-manager-footer .primary-button {
+  height: 34px;
+  min-height: 34px;
+  padding: 6px 12px;
+  font-size: 12px;
   flex: 0 0 auto;
 }
 
@@ -1850,36 +1864,40 @@ app-root {
   resize: none;
 }
 
-.tokenizer-upload-card {
+.tokenizer-upload-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 32px 24px;
-  border: 1px dashed var(--color-border);
-  border-radius: 12px;
-  background: var(--color-surface-subtle);
+  gap: 8px;
+  padding: 20px 12px;
   text-align: center;
 }
 
-.tokenizer-upload-card .panel-label,
-.tokenizer-upload-card .panel-description {
+.tokenizer-upload-content .panel-label,
+.tokenizer-upload-content .panel-description {
   margin: 0;
 }
 
-.tokenizer-upload-card .panel-description {
+.tokenizer-upload-content .panel-description {
   max-width: 52ch;
 }
 
 .tokenizer-upload-icon {
   display: grid;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   place-items: center;
   border: 1px solid var(--color-accent);
   border-radius: 50%;
   color: var(--color-accent);
-  font-size: 24px;
+  font-size: 20px;
+}
+
+.tokenizer-modal-panel--focused .tokenizer-upload-button {
+  height: 34px;
+  min-height: 34px;
+  padding: 6px 12px;
+  font-size: 12px;
 }
 
 .tokenizer-modal-progress-row {
@@ -2279,13 +2297,13 @@ app-root {
 
 .cross-benchmark-control-surface {
   display: grid;
-  grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
-  gap: var(--space-4);
-  align-items: stretch;
+  grid-template-columns: minmax(0, 1.8fr) minmax(360px, 1fr);
+  gap: var(--space-3);
+  align-items: start;
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
-  padding: 10px var(--space-3);
+  padding: 8px var(--space-3);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
   background: var(--color-surface-subtle);
@@ -2299,26 +2317,26 @@ app-root {
 .cross-benchmark-top-row {
   display: grid;
   grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1.7fr);
-  gap: var(--space-3);
-  align-items: stretch;
+  gap: 10px;
+  align-items: start;
 }
 
 .cross-benchmark-current-report {
   display: grid;
   min-width: 0;
-  align-content: center;
+  align-content: start;
   justify-items: start;
-  gap: 4px;
-  padding: 10px 12px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-subtle);
+  gap: 3px;
+  padding: 2px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .cross-benchmark-current-report strong {
   max-width: 100%;
   overflow: hidden;
-  font-size: 16px;
+  font-size: 15px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2328,8 +2346,29 @@ app-root {
   font-size: 12px;
 }
 
-.cross-benchmark-current-report .secondary-button {
-  margin-top: 4px;
+.cross-benchmark-current-report .cross-benchmark-report-selector {
+  height: 30px;
+  min-height: 30px;
+  margin-top: 1px;
+  padding: 4px 0;
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-accent);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.cross-benchmark-current-report .cross-benchmark-report-selector:hover:not(:disabled) {
+  border-bottom-color: var(--color-accent);
+  background: transparent;
+  color: var(--color-accent);
+}
+
+.cross-benchmark-current-report .cross-benchmark-report-selector:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
 }
 
 .benchmark-report-manager {
@@ -2471,27 +2510,27 @@ app-root {
 .cross-benchmark-overview-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-3);
+  gap: 8px;
 }
 
 .cross-benchmark-kpi-card {
   display: flex;
   flex-direction: column;
-  padding: var(--space-1) var(--space-3);
+  padding: 2px 12px;
   min-width: 0;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-subtle);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .cross-benchmark-command-navbar {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
   min-width: 0;
-  border-left: 1px solid var(--color-border);
-  padding-left: var(--space-2);
+  border-left: 0;
+  padding-left: 0;
 }
 
 .cross-benchmark-command-navbar__header {
@@ -2515,7 +2554,7 @@ app-root {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: center;
   gap: var(--space-2);
-  align-self: stretch;
+  align-self: auto;
   width: 100%;
   min-width: 0;
 }
@@ -2567,7 +2606,7 @@ app-root {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  height: 40px;
+  height: 36px;
   padding: 0 var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-control);
@@ -2606,7 +2645,7 @@ app-root {
   align-items: center;
   gap: var(--space-2);
   min-width: 156px;
-  height: 40px;
+  height: 36px;
   padding: 0 var(--space-2);
   border: 1px solid var(--color-accent);
   border-radius: var(--radius-control);
@@ -2647,7 +2686,7 @@ app-root {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  height: 40px;
+  height: 36px;
   padding: 0 var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-control);
@@ -2697,9 +2736,11 @@ app-root {
   }
 
   .cross-benchmark-command-navbar {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
     border-left: 0;
     padding-left: 0;
-    padding-top: var(--space-4);
+    padding-top: 8px;
     border-top: 1px solid var(--color-border);
   }
 }
@@ -4793,6 +4834,11 @@ app-benchmark-metric-chart { display: block; width: 100%; height: 100%; min-widt
 
   .cross-benchmark-command-navbar__content {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cross-benchmark-command-navbar {
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
 }
 
