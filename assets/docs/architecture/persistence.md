@@ -40,6 +40,7 @@ indexes for aggregate and per-document values. Tokenizer reports are
 current-only: replacing a report replaces its vocabulary and report as one
 logical operation. Benchmark reports keep immutable schema-3/report-5 JSON snapshots plus
 projected summary columns; list queries do not select the full payload. Reports from older contracts are filtered out and never migrated; dashboard histogram bins remain inside the immutable payload snapshot.
+Report deletion removes the `benchmark_report` row physically in one repository transaction. There is no soft-delete record or compatibility tombstone; subsequent list and load queries no longer return the deleted report, including after restart.
 
 ## Backend and transaction guarantees
 

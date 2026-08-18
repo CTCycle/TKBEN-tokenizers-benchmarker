@@ -21,17 +21,19 @@ const report = {
 
 describe('BenchmarkStore', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     localStorage.clear();
   });
 
   afterEach(() => {
     TestBed.resetTestingModule();
+    vi.useRealTimers();
     localStorage.clear();
   });
 
   function createApi() {
     return {
-      reports: vi.fn().mockReturnValue(of({ reports: [{ report_id: 5 }] })),
+      reports: vi.fn().mockReturnValue(of({ reports: [{ report_id: 5 }], total: 1, offset: 0, limit: 25 })),
       metricsCatalog: vi.fn().mockReturnValue(of({ categories: [] })),
       report: vi.fn().mockReturnValue(of(report)),
       run: vi.fn((
@@ -57,6 +59,7 @@ describe('BenchmarkStore', () => {
       { provide: JobsApiService, useValue: jobsApi },
     ] });
     const store = TestBed.inject(BenchmarkStore);
+    vi.advanceTimersByTime(250);
     return { api, datasetsApi, tokenizersApi, jobsApi, store };
   }
 
@@ -68,13 +71,14 @@ describe('BenchmarkStore', () => {
     expect(store.selectedReportId()).toBe(5);
     expect(store.layout()).toEqual(['visible', 'hidden']);
     expect(store.hiddenWidgetIds()).toEqual(['hidden']);
-    expect(store.loading()).toBe(false);
+    expect(store.reportsLoading()).toBe(false);
   });
 
   it('propagates job progress, refreshes after success, and cancels the active job', () => {
     const { api, jobsApi, store } = createStore();
 
     store.run({ dataset_name: 'custom/demo' } as never);
+    vi.advanceTimersByTime(250);
 
     expect(store.report()).toBe(report);
     expect(store.progress()).toBe(100);

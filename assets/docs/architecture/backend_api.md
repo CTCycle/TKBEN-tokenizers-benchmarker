@@ -1,5 +1,5 @@
 # Backend API
-Last updated: 2026-08-02
+Last updated: 2026-08-18
 
 ## API Prefix
 All routers are included with `prefix="/api"` during backend startup.
@@ -19,7 +19,8 @@ All routers are included with `prefix="/api"` during backend startup.
 
 ## Tokenizers
 - `GET /api/tokenizers/settings`
-- `GET /api/tokenizers/scan` — returns Hugging Face models with supported text pipeline tags only; multimodal, image, audio, and untyped repositories are excluded. If Hugging Face discovery fails, the endpoint returns a sanitized HTTP 500 rather than a false successful empty result.
+- `GET /api/tokenizers/discover` — performs bounded Hugging Face model discovery. `search`, `author`, `pipeline_tag`, required `include_tags`, `access=all|public|gated`, `sort`, and `limit` are passed to the installed Hub API where supported. `exclude_tags`, any-text-task filtering, and vocabulary comparison/order are bounded local post-filters over the candidate set. Vocabulary metadata is nullable and is enriched from top-level `config.vocab_size` only when needed; tokenizer weights are never downloaded. The response is `{items, count, fetched_count}` with structured repository metadata. Hugging Face failures return a sanitized HTTP 500 rather than a false successful empty result.
+- `GET /api/tokenizers/settings` — returns discovery and metadata candidate limits plus the tokenizer upload limit.
 - `GET /api/tokenizers/list` — returns `{tokenizers, count}`; each item includes `tokenizer_name`, `source=huggingface|custom`, `has_report`, and nullable `vocabulary_size`. Optional `search` (trimmed, max 160 characters), `source=all|huggingface|custom`, `vocabulary_size_operator=at_least|at_most`, and non-negative `vocabulary_size` filters are applied server-side.
 - `POST /api/tokenizers/download` — background result includes `failed_details` with sanitized exception summaries; failed downloads remove incomplete cache artifacts.
 - `POST /api/tokenizers/reports/generate`
@@ -32,8 +33,9 @@ All routers are included with `prefix="/api"` during backend startup.
 
 ## Benchmarks
 - `POST /api/benchmarks/run`
-- `GET /api/benchmarks/reports`
+- `GET /api/benchmarks/reports` — returns `{reports, total, offset, limit}`. Optional `search` is applied server-side to `run_name` and `Dataset.name`; `sort=newest|oldest`, `offset`, and `limit` provide deterministic server pagination. List queries fetch summary columns only and never select the JSON payload.
 - `GET /api/benchmarks/reports/{report_id}`
+- `DELETE /api/benchmarks/reports/{report_id}` — physically deletes the persisted report and returns `204`; nonexistent reports return `404`.
 - `GET /api/benchmarks/metrics/catalog`
   - dashboard widgets use report-v5/schema-3 `default_visualization`, ordered `compatible_visualizations`, and persisted `histogram_bins`; older reports are not listed or loaded
 

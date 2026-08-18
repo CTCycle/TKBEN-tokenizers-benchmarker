@@ -298,7 +298,7 @@ def test_get_server_settings_path_scoped_loading_is_deterministic(
                 "insert_batch_size": 1000,
             },
             "datasets": {"histogram_bins": 30},
-            "tokenizers": {"default_scan_limit": 150},
+            "tokenizers": {"default_discovery_limit": 150},
             "benchmarks": {"streaming_batch_size": 2000},
             "jobs": {"polling_interval": 2.5},
         },
@@ -315,7 +315,7 @@ def test_get_server_settings_path_scoped_loading_is_deterministic(
     assert settings_a.database.embedded_database is False
     assert settings_a.database.engine == "postgresql+psycopg"
     assert settings_a.datasets.histogram_bins == 30
-    assert settings_a.tokenizers.default_scan_limit == 150
+    assert settings_a.tokenizers.default_discovery_limit == 150
     assert settings_a.benchmarks.streaming_batch_size == 2000
     assert settings_a.jobs.polling_interval == 2.5
 

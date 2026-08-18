@@ -262,6 +262,27 @@ class BenchmarkMetricCatalogResponse(BaseModel):
     categories: list[BenchmarkMetricCatalogCategory] = Field(default_factory=list)
 
 ###############################################################################
+class BenchmarkReportSort(StrEnum):
+    NEWEST = "newest"
+    OLDEST = "oldest"
+
+
+class BenchmarkReportQuery(BaseModel):
+    search: str | None = Field(default=None, max_length=160)
+    sort: BenchmarkReportSort = BenchmarkReportSort.NEWEST
+    offset: int = Field(default=0, ge=0)
+    limit: int = Field(default=25, ge=1, le=100)
+
+    @field_validator("search", mode="before")
+    @classmethod
+    def normalize_search(cls, value: object) -> str | None:
+        if value is None:
+            return None
+        normalized = str(value).strip()
+        return normalized or None
+
+
+###############################################################################
 class BenchmarkReportSummary(BaseModel):
     report_id: int
     report_version: int
@@ -276,6 +297,9 @@ class BenchmarkReportSummary(BaseModel):
 ###############################################################################
 class BenchmarkReportListResponse(BaseModel):
     reports: list[BenchmarkReportSummary] = Field(default_factory=list)
+    total: int = Field(default=0, ge=0)
+    offset: int = Field(default=0, ge=0)
+    limit: int = Field(default=25, ge=1, le=100)
 
 ###############################################################################
 class BenchmarkPerDocumentTokenizerStats(BaseModel):

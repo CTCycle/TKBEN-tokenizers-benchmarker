@@ -1,6 +1,6 @@
 """
 E2E tests for tokenizer API endpoints.
-Covers /api/tokenizers/settings, /api/tokenizers/scan, /api/tokenizers/upload, /api/tokenizers/custom.
+Covers /api/tokenizers/settings, /api/tokenizers/discover, /api/tokenizers/upload, /api/tokenizers/custom.
 """
 
 import json
@@ -10,7 +10,7 @@ import pytest
 from playwright.sync_api import APIRequestContext
 
 
-RUN_HF_SCAN = os.getenv("E2E_RUN_HF_SCAN", "").lower() in ("1", "true", "yes")
+RUN_HF_DISCOVERY = os.getenv("E2E_RUN_HF_DISCOVERY", "").lower() in ("1", "true", "yes")
 RUN_TOKENIZER_REPORT_FLOW = os.getenv("E2E_RUN_TOKENIZER_REPORT_FLOW", "").lower() in (
     "1",
     "true",
@@ -38,32 +38,44 @@ def _build_wordlevel_tokenizer_json() -> bytes:
 
 ###############################################################################
 def test_get_tokenizer_settings(api_context: APIRequestContext) -> None:
-    """GET /api/tokenizers/settings should return configured scan limits."""
+    """GET /api/tokenizers/settings should return configured discovery limits."""
     response = api_context.get("/api/tokenizers/settings")
     assert response.ok
     data = response.json()
-    assert "default_scan_limit" in data
-    assert "max_scan_limit" in data
-    assert "min_scan_limit" in data
+    assert "default_discovery_limit" in data
+    assert "max_discovery_limit" in data
+    assert "max_discovery_candidates" in data
+    assert "metadata_candidate_multiplier" in data
     assert (
-        data["min_scan_limit"] <= data["default_scan_limit"] <= data["max_scan_limit"]
+        1 <= data["default_discovery_limit"] <= data["max_discovery_limit"]
     )
 
 ###############################################################################
-@pytest.mark.skipif(not RUN_HF_SCAN, reason="Set E2E_RUN_HF_SCAN=1 to enable.")
-def test_scan_tokenizers_returns_consistent_catalog(
+@pytest.mark.skipif(not RUN_HF_DISCOVERY, reason="Set E2E_RUN_HF_DISCOVERY=1 to enable.")
+def test_discover_tokenizers_returns_bounded_structured_catalog(
     api_context: APIRequestContext,
 ) -> None:
-    """GET /api/tokenizers/scan should return a self-consistent optional catalog."""
-    response = api_context.get("/api/tokenizers/scan?limit=1")
+    """GET /api/tokenizers/discover should return bounded structured results."""
+    response = api_context.get(
+        "/api/tokenizers/discover?search=bert&limit=5&pipeline_tag=fill-mask&sort=downloads"
+    )
     assert response.ok
     data = response.json()
-    assert data.get("status") == "success"
-    identifiers = data.get("identifiers")
-    assert isinstance(identifiers, list)
-    assert data.get("count") == len(identifiers)
-    assert len(identifiers) <= 1
-    assert all(isinstance(identifier, str) and identifier for identifier in identifiers)
+    items = data.get("items")
+    assert isinstance(items, list)
+    assert data.get("count") == len(items)
+    assert len(items) <= 5
+    assert all(isinstance(item.get("identifier"), str) and item["identifier"] for item in items)
+    assert all("vocabulary_size" in item for item in items)
+
+###############################################################################
+@pytest.mark.skipif(not RUN_HF_DISCOVERY, reason="Set E2E_RUN_HF_DISCOVERY=1 to enable.")
+def test_discover_tokenizers_supports_empty_result(api_context: APIRequestContext) -> None:
+    response = api_context.get(
+        "/api/tokenizers/discover?search=tkben-no-such-repository-8f72&limit=5"
+    )
+    assert response.ok
+    assert response.json().get("items") == []
 
 ###############################################################################
 def test_upload_rejects_invalid_extension(api_context: APIRequestContext) -> None:

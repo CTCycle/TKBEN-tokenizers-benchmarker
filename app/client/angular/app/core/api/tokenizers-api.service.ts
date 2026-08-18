@@ -6,9 +6,10 @@ import type {
   JobStatusResponse,
   TokenizerDownloadRequest,
   TokenizerDownloadResponse,
+  TokenizerDiscoveryQuery,
+  TokenizerDiscoveryResponse,
   TokenizerListResponse,
   TokenizerReportResponse,
-  TokenizerScanResponse,
   TokenizerUploadResponse,
   TokenizerValidationGenerateRequest,
   TokenizerVocabularyPageResponse,
@@ -36,8 +37,20 @@ export class TokenizersApiService {
     return this.http.get<TokenizerListResponse>('/api/tokenizers/list', { params });
   }
 
-  scan(limit?: number): Observable<TokenizerScanResponse> {
-    return this.http.get<TokenizerScanResponse>('/api/tokenizers/scan', { params: limit === undefined ? {} : { limit } });
+  discover(query: TokenizerDiscoveryQuery = {}): Observable<TokenizerDiscoveryResponse> {
+    let params = new HttpParams();
+    if (query.search?.trim()) params = params.set('search', query.search.trim());
+    if (query.limit !== undefined) params = params.set('limit', query.limit);
+    if (query.pipeline_tag) params = params.set('pipeline_tag', query.pipeline_tag);
+    if (query.author?.trim()) params = params.set('author', query.author.trim());
+    for (const tag of query.include_tags ?? []) params = params.append('include_tags', tag);
+    for (const tag of query.exclude_tags ?? []) params = params.append('exclude_tags', tag);
+    if (query.access && query.access !== 'all') params = params.set('access', query.access);
+    if (query.sort) params = params.set('sort', query.sort);
+    if (query.vocabulary_operator) params = params.set('vocabulary_operator', query.vocabulary_operator);
+    if (query.vocabulary_size !== undefined) params = params.set('vocabulary_size', query.vocabulary_size);
+    if (query.vocabulary_sort && query.vocabulary_sort !== 'none') params = params.set('vocabulary_sort', query.vocabulary_sort);
+    return this.http.get<TokenizerDiscoveryResponse>('/api/tokenizers/discover', { params });
   }
 
   download(request: TokenizerDownloadRequest, onUpdate?: (status: JobStatusResponse) => void): Observable<TokenizerDownloadResponse> {

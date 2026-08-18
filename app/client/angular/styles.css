@@ -1509,7 +1509,7 @@ app-root {
   min-width: 0;
 }
 
-.tokenizer-modal-column--scan {
+.tokenizer-modal-column--discovery {
   border-left: 0;
   padding-left: 0;
 }
@@ -1569,23 +1569,23 @@ app-root {
   font-family: monospace;
 }
 
-.tokenizer-scan-list {
+.tokenizer-discovery-results {
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background: var(--color-panel-alt);
   flex: 1;
   min-height: 12em;
-  max-height: 22em;
+  max-height: 24em;
   overflow-y: auto;
 }
 
-.tokenizer-scan-empty {
+.tokenizer-discovery-empty {
   color: var(--color-muted);
   font-size: 13px;
   padding: 14px 12px;
 }
 
-.tokenizer-scan-row {
+.tokenizer-discovery-result {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -1596,29 +1596,24 @@ app-root {
   transition: background var(--transition), border-color var(--transition);
 }
 
-.tokenizer-scan-row:first-child {
+.tokenizer-discovery-result:first-child {
   border-top: 0;
 }
 
-.tokenizer-scan-row:hover {
+.tokenizer-discovery-result:hover {
   background: rgba(255, 255, 255, 0.03);
 }
 
-.tokenizer-scan-row.selected {
+.tokenizer-discovery-result.selected {
   background: rgba(255, 232, 31, 0.09);
 }
 
-.tokenizer-scan-row.downloaded .tokenizer-scan-id {
-  font-style: italic;
-  color: rgba(225, 232, 244, 0.65);
-}
-
-.tokenizer-scan-row:focus-visible {
+.tokenizer-discovery-result:focus-within {
   outline: 2px solid var(--color-border-strong);
   outline-offset: 2px;
 }
 
-.tokenizer-scan-id {
+.tokenizer-discovery-result-name {
   flex: 1;
   min-width: 0;
   font-size: 13px;
@@ -1627,6 +1622,75 @@ app-root {
   overflow-wrap: anywhere;
   word-break: break-word;
   padding-right: 8px;
+}
+
+.tokenizer-discovery-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) 92px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.tokenizer-discovery-controls label,
+.tokenizer-discovery-advanced label,
+.benchmark-report-toolbar label {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.tokenizer-discovery-submit {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.tokenizer-discovery-advanced-toggle {
+  margin-top: 8px;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
+.tokenizer-discovery-advanced {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  background: var(--color-surface-subtle);
+}
+
+.tokenizer-discovery-result-meta {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px 10px;
+  max-width: 52%;
+  color: var(--color-muted);
+  font-size: 11px;
+  text-align: right;
+}
+
+.tokenizer-discovery-result-meta span + span::before {
+  content: '·';
+  margin-right: 10px;
+  color: var(--color-border-strong);
+}
+
+.tokenizer-discovery-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 8px;
+}
+
+.tokenizer-discovery-footer .secondary-button {
+  flex: 0 0 auto;
 }
 
 .tokenizer-selection-remove {
@@ -1988,80 +2052,6 @@ app-root {
   max-width: 100%;
 }
 
-.cross-benchmark-report-context {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-  min-width: 0;
-  padding: 12px 14px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-subtle);
-}
-
-.cross-benchmark-report-context span,
-.cross-benchmark-report-context small {
-  color: var(--color-muted);
-  font-size: 12px;
-}
-
-.cross-benchmark-report-context strong {
-  overflow-wrap: anywhere;
-  font-size: 16px;
-}
-
-
-
-.cross-benchmark-report-select {
-  width: 100%;
-  min-width: 0;
-  max-width: none;
-  height: 34px;
-}
-
-.cross-benchmark-report-select-wrap {
-  position: relative;
-  width: clamp(240px, 24vw, 360px);
-  min-width: 240px;
-  max-width: 320px;
-}
-
-.cross-benchmark-report-select--empty {
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-}
-
-.cross-benchmark-report-empty-label {
-  position: absolute;
-  inset: 0 32px 0 10px;
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-  color: var(--color-text);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.2;
-  white-space: nowrap;
-  pointer-events: none;
-}
-
-.cross-benchmark-report-select:disabled {
-  opacity: 1;
-  color: var(--color-text);
-  -webkit-text-fill-color: var(--color-text);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.2;
-  cursor: default;
-}
-
-.cross-benchmark-report-select--empty:disabled {
-  font-size: 0;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-}
-
 .cross-benchmark-dashboard {
   display: flex;
   flex-direction: column;
@@ -2156,24 +2146,163 @@ app-root {
   align-items: stretch;
 }
 
-.cross-benchmark-report-picker {
+.cross-benchmark-current-report {
+  display: grid;
+  min-width: 0;
+  align-content: center;
+  justify-items: start;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-subtle);
+}
+
+.cross-benchmark-current-report strong {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cross-benchmark-current-report small {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.cross-benchmark-current-report .secondary-button {
+  margin-top: 4px;
+}
+
+.benchmark-report-manager {
+  width: min(780px, 94vw);
+  max-height: min(88vh, 820px);
+  overflow: hidden;
+}
+
+.benchmark-report-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 10px;
+}
+
+.benchmark-report-list {
   display: flex;
+  min-height: 180px;
+  max-height: 52vh;
   flex-direction: column;
   gap: 6px;
-  min-width: 0;
+  overflow-y: auto;
+  margin-top: 12px;
+  padding: 2px;
 }
 
-.cross-benchmark-report-picker .field-label {
-  margin: 0;
-  white-space: nowrap;
+.benchmark-report-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  background: var(--color-panel-alt);
+}
+
+.benchmark-report-row-select {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.benchmark-report-row-select:hover strong,
+.benchmark-report-row-select:focus-visible strong {
   color: var(--color-accent);
-  font-size: var(--font-size-sm);
-  letter-spacing: 0.08em;
 }
 
-.cross-benchmark-report-picker select {
-  width: 100%;
+.benchmark-report-row-select strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.benchmark-report-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
   min-width: 0;
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.benchmark-report-row-meta span {
+  overflow-wrap: anywhere;
+}
+
+.benchmark-report-delete {
+  align-self: start;
+}
+
+.benchmark-report-delete-confirm {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border-subtle);
+  color: var(--color-warning-text);
+  font-size: 12px;
+}
+
+.benchmark-report-delete-confirm > div,
+.benchmark-report-pagination > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.danger-button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--color-danger-border);
+  border-radius: 7px;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+  cursor: pointer;
+}
+
+.danger-button:hover,
+.danger-button:focus-visible {
+  filter: brightness(1.12);
+}
+
+.danger-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.benchmark-report-empty {
+  margin: auto;
+  padding: 20px 8px;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.benchmark-report-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border-subtle);
 }
 
 .cross-benchmark-overview-grid {
@@ -2417,10 +2546,6 @@ app-root {
   .cross-benchmark-top-row {
     grid-template-columns: 1fr;
     gap: var(--space-3);
-  }
-
-  .cross-benchmark-report-picker {
-    flex-direction: column;
   }
 
   .cross-benchmark-command-navbar__content {
@@ -4023,17 +4148,8 @@ select:focus-visible {
     min-width: 34px;
   }
 
-  .cross-benchmark-dashboard-controls .cross-benchmark-report-picker {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 6px;
-    min-width: min(320px, 100%);
-  }
-
-  .cross-benchmark-dashboard-controls .cross-benchmark-report-select {
+  .cross-benchmark-current-report {
     width: 100%;
-    min-width: 0;
-    max-width: none;
   }
 }
 
@@ -4117,23 +4233,6 @@ select:focus-visible {
     justify-content: flex-start;
   }
 
-  .cross-benchmark-report-picker {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 6px;
-    width: 100%;
-  }
-
-  .cross-benchmark-report-picker .field-label {
-    white-space: normal;
-  }
-
-  .cross-benchmark-report-select {
-    width: 100%;
-    min-width: 0;
-    max-width: none;
-  }
-
   .cross-benchmark-kpi-card {
     padding: 10px 12px;
   }
@@ -4178,11 +4277,37 @@ select:focus-visible {
     grid-template-columns: 1fr;
   }
 
-  .tokenizer-modal-column--scan {
+  .tokenizer-modal-column--discovery {
     border-left: 0;
     border-top: 1px solid var(--color-border);
     padding-left: 0;
     padding-top: 18px;
+  }
+
+  .tokenizer-discovery-controls,
+  .tokenizer-discovery-advanced {
+    grid-template-columns: 1fr;
+  }
+
+  .tokenizer-discovery-result {
+    flex-wrap: wrap;
+  }
+
+  .tokenizer-discovery-result-meta {
+    flex-basis: calc(100% - 28px);
+    justify-content: flex-start;
+    max-width: none;
+    padding-left: 28px;
+    text-align: left;
+  }
+
+  .benchmark-report-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .benchmark-report-delete-confirm {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .dataset-insert-row {

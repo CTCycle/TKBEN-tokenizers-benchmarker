@@ -1,5 +1,5 @@
 # Execution and Data Flow
-Last updated: 2026-08-02
+Last updated: 2026-08-18
 
 ## Layered Architecture
 Primary backend flow:
@@ -56,6 +56,8 @@ Primary backend flow:
 - Pages keep filter input state locally and debounce changes by 250 ms before calling the typed API service.
 - The backend applies search, source, and numeric comparison filters in the catalog service and returns the filtered items plus a result count.
 - Dataset/tokenizer catalog refreshes use request sequence guards so an older response cannot replace a newer filter result; the filter state only changes catalog visibility, not benchmark selection.
+- Hugging Face tokenizer discovery builds one provider query from the validated domain contract. Hub-native filters are sent to `HfApi.list_models`; only bounded candidates are locally checked for supported any-text-task categories, excluded tags, and optional vocabulary metadata/order. Vocabulary enrichment uses `fetch_config=True` only for the constrained candidate set and reads only top-level `config.vocab_size`.
+- Benchmark report management requests one server page at a time. Search and sort are debounced in the Angular store, `switchMap` prevents stale responses from replacing newer pages, and deletion updates the visible page immediately before refreshing persisted state.
 - Dataset page rendering uses shared pure data helpers so missing, malformed, or non-finite optional chart payloads degrade to empty states without duplicating parsing logic in the page component.
 
 ## Async and Sync Behavior
@@ -65,7 +67,7 @@ Primary backend flow:
 - Job polling and cancel operations are synchronous handler functions over in-memory job state.
 - Repository and database operations are synchronous SQLAlchemy session usage.
 
-Tokenizer scan failures from Hugging Face are allowed to propagate through the service so the API can return its sanitized HTTP 500 response; an outage is never represented as a successful empty catalog. No legacy service aliases are retained after the reporting extraction.
+Hugging Face discovery failures are allowed to propagate through the service so the API can return its sanitized HTTP 500 response; an outage is never represented as a successful empty catalog. Benchmark report list/load/save/delete operations remain on the API -> service -> serializer -> repository path.
 
 ## Constraint
 Async handlers must not execute CPU-heavy or blocking I/O inline. They should offload to threads or the job system.

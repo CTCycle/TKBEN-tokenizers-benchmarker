@@ -4,7 +4,12 @@ from typing import Any, cast
 
 import pandas as pd
 
-from server.domain.benchmarks import BenchmarkReportSummary, BenchmarkRunResponse
+from server.domain.benchmarks import (
+    BenchmarkReportListResponse,
+    BenchmarkReportQuery,
+    BenchmarkReportSummary,
+    BenchmarkRunResponse,
+)
 from server.common.utils.logger import logger
 from server.repositories.benchmarks import BenchmarkRepository
 from server.common.constants import BENCHMARK_REPORT_VERSION, BENCHMARK_SCHEMA_VERSION
@@ -113,24 +118,41 @@ class BenchmarkReportSerializer:
         )
 
     # -------------------------------------------------------------------------
-    def list_benchmark_reports(self, limit: int = 200) -> list[dict[str, Any]]:
-        rows = self.repository.list_benchmark_reports(limit)
+    def list_benchmark_reports(
+        self,
+        query: BenchmarkReportQuery,
+    ) -> BenchmarkReportListResponse:
+        page = self.repository.list_benchmark_reports(
+            search=query.search,
+            sort=query.sort,
+            offset=query.offset,
+            limit=query.limit,
+        )
 
-        summaries: list[dict[str, Any]] = []
-        for report_row, dataset_name in rows:
-            created_at = pd.to_datetime(report_row.created_at, utc=True, errors="coerce")
+        summaries: list[BenchmarkReportSummary] = []
+        for row in page.rows:
+            created_at = _parse_timestamp(row.get("created_at"))
             summaries.append(BenchmarkReportSummary.model_validate({
-                "report_id": int(report_row.id),
-                "report_version": int(report_row.report_version),
-                "created_at": created_at.isoformat().replace("+00:00", "Z") if not pd.isna(created_at) else None,
-                "run_name": report_row.run_name,
-                "dataset_name": str(dataset_name),
-                "documents_processed": int(report_row.documents_processed),
-                "tokenizers_count": int(report_row.tokenizers_count),
-                "tokenizers_processed": list(report_row.tokenizers_processed or []),
-                "selected_metric_keys": list(report_row.selected_metric_keys or []),
-            }).model_dump(mode="json"))
-        return summaries
+                "report_id": int(row["id"]),
+                "report_version": int(row["report_version"]),
+                "created_at": created_at.isoformat().replace("+00:00", "Z") if created_at is not None else None,
+                "run_name": row.get("run_name"),
+                "dataset_name": str(row["dataset_name"]),
+                "documents_processed": int(row["documents_processed"]),
+                "tokenizers_count": int(row["tokenizers_count"]),
+                "tokenizers_processed": list(row.get("tokenizers_processed") or []),
+                "selected_metric_keys": list(row.get("selected_metric_keys") or []),
+            }))
+        return BenchmarkReportListResponse(
+            reports=summaries,
+            total=page.total,
+            offset=page.offset,
+            limit=page.limit,
+        )
+
+    # -------------------------------------------------------------------------
+    def delete_benchmark_report(self, report_id: int) -> bool:
+        return self.repository.delete_benchmark_report(report_id)
 
     # -------------------------------------------------------------------------
     def load_benchmark_report_by_id(self, report_id: int) -> dict[str, Any] | None:

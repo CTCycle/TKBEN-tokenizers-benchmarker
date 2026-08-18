@@ -79,4 +79,60 @@
   </div>
 </main>
 
-@if (addTokenizerOpen()) { <button class="modal-overlay" type="button" aria-label="Close tokenizer selector" (click)="closeAddTokenizer()"></button><section class="modal-card tokenizer-modal-window" role="dialog" aria-modal="true" aria-labelledby="tokenizer-selector-title" [appModalA11y]="true" (modalEscape)="closeAddTokenizer()"><header class="tokenizer-modal-header"><div><p id="tokenizer-selector-title" class="panel-label">Tokenizer Manager</p><p class="panel-description">Download tokenizer IDs from text input or Hugging Face scan results.</p></div><button class="icon-button subtle" type="button" aria-label="Close tokenizer selector" (click)="closeAddTokenizer()">×</button></header>@if (store.error()) { <p class="error-banner" role="alert">{{ store.error() }}</p> } @if (store.downloadWarning()) { <p class="tokenizer-warning-banner" role="alert">{{ store.downloadWarning() }}</p> }<div class="tokenizer-modal-columns"><section class="tokenizer-modal-column tokenizer-modal-column--manual"><div class="tokenizer-modal-column-header"><p class="panel-label">Manual Input</p><button class="icon-button subtle" type="button" aria-label="Download tokenizers from manual input" [disabled]="!manualTokenizerIds().length || store.busyAction() === 'download'" (click)="downloadManualTokenizers()">⇩</button></div><p class="panel-description">Add one tokenizer name per line, then download all entries in a single batch or upload a custom tokenizer JSON.</p><textarea class="tokenizer-manual-input" aria-label="Tokenizer names" [value]="manualTokenizerInput()" (input)="manualTokenizerInput.set($any($event.target).value)" placeholder="Tokenizer names, one per line"></textarea><label class="secondary-button file-button">Upload tokenizer JSON<input type="file" accept=".json" (change)="uploadFile($event)" /></label></section><section class="tokenizer-modal-column tokenizer-modal-column--scan"><div class="tokenizer-modal-column-header"><p class="panel-label">Hugging Face Selection</p><div class="tokenizer-column-actions"><button class="icon-button subtle" type="button" aria-label="Scan Hugging Face tokenizers" [disabled]="store.scanLoading()" (click)="scanTokenizers()">{{ store.scanLoading() ? '…' : '⌕' }}</button><button class="icon-button subtle" type="button" aria-label="Download selected scanned tokenizers" [disabled]="!selectedScannedTokenizers().length || store.busyAction() === 'download'" (click)="downloadScannedTokenizers()">⇩</button></div></div><p class="panel-description">Fetch tokenizer IDs from the Hugging Face index and select one or more rows to download.</p><input class="text-input" aria-label="Search scanned tokenizers" [value]="scanQuery()" (input)="scanQuery.set($any($event.target).value)" placeholder="Filter scan results" /><div class="tokenizer-scan-list">@for (tokenizer of filteredScannedTokenizers(); track tokenizer) { <label class="tokenizer-scan-row" [class.selected]="selectedScannedTokenizers().includes(tokenizer)"><input type="checkbox" [checked]="selectedScannedTokenizers().includes(tokenizer)" (change)="toggleScannedTokenizer(tokenizer, $any($event.target).checked)" /><span>{{ tokenizer }}</span></label> } @empty { <div class="tokenizer-scan-empty">Run scan to load Hugging Face tokenizer IDs.</div> }</div></section></div><div class="tokenizer-modal-progress-row" role="status" aria-live="polite"><span>Download progress: {{ store.jobProgress() === null ? '0%' : store.jobProgress() + '%' }}</span><div class="tokenizer-modal-progress-track" aria-hidden="true"><div class="tokenizer-modal-progress-fill" [style.width.%]="store.jobProgress() ?? 0"></div></div></div></section> }
+@if (addTokenizerOpen()) {
+  <button class="modal-overlay" type="button" aria-label="Close tokenizer selector" (click)="closeAddTokenizer()"></button>
+  <section class="modal-card tokenizer-modal-window" role="dialog" aria-modal="true" aria-labelledby="tokenizer-selector-title" [appModalA11y]="true" (modalEscape)="closeAddTokenizer()">
+    <header class="tokenizer-modal-header">
+      <div><p id="tokenizer-selector-title" class="panel-label">Tokenizer Manager</p><p class="panel-description">Download tokenizer IDs manually, upload custom JSON, or discover compatible Hugging Face repositories.</p></div>
+      <button class="icon-button subtle" type="button" aria-label="Close tokenizer selector" (click)="closeAddTokenizer()">×</button>
+    </header>
+    @if (store.error()) { <p class="error-banner" role="alert">{{ store.error() }}</p> }
+    @if (store.discoveryError()) { <p class="error-banner" role="alert">{{ store.discoveryError() }}</p> }
+    @if (store.downloadWarning()) { <p class="tokenizer-warning-banner" role="alert">{{ store.downloadWarning() }}</p> }
+    <div class="tokenizer-modal-columns">
+      <section class="tokenizer-modal-column tokenizer-modal-column--manual">
+        <div class="tokenizer-modal-column-header"><p class="panel-label">Manual Input</p><button class="icon-button subtle" type="button" aria-label="Download tokenizers from manual input" [disabled]="!manualTokenizerIds().length || store.busyAction() === 'download'" (click)="downloadManualTokenizers()">⇩</button></div>
+        <p class="panel-description">Add one tokenizer name per line, then download all entries in a single batch or upload a custom tokenizer JSON.</p>
+        <textarea class="tokenizer-manual-input" aria-label="Tokenizer names" [value]="manualTokenizerInput()" (input)="manualTokenizerInput.set($any($event.target).value)" placeholder="Tokenizer names, one per line"></textarea>
+        <label class="secondary-button file-button">Upload tokenizer JSON<input type="file" accept=".json" (change)="uploadFile($event)" /></label>
+      </section>
+      <section class="tokenizer-modal-column tokenizer-modal-column--discovery">
+        <form [formGroup]="discoveryForm" (ngSubmit)="discoverTokenizers()">
+          <div class="tokenizer-modal-column-header"><p class="panel-label">Hugging Face Discovery</p><button class="primary-button tokenizer-discovery-submit" type="submit" [disabled]="store.discoveryLoading()">{{ store.discoveryLoading() ? 'Searching…' : 'Search Hugging Face' }}</button></div>
+          <div class="tokenizer-discovery-controls">
+            <label><span class="field-label">Search</span><input class="text-input" type="search" formControlName="search" placeholder="Repository name or namespace" /></label>
+            <label><span class="field-label">Results</span><input class="text-input" type="number" formControlName="limit" min="1" max="250" /></label>
+            <label><span class="field-label">Category</span><select formControlName="pipelineTag"><option value="">Any text task</option><option value="text-generation">Text generation</option><option value="fill-mask">Fill mask</option><option value="text-classification">Text classification</option><option value="token-classification">Token classification</option><option value="text2text-generation">Text to text</option><option value="question-answering">Question answering</option><option value="sentence-similarity">Sentence similarity</option><option value="translation">Translation</option><option value="summarization">Summarization</option><option value="zero-shot-classification">Zero-shot classification</option></select></label>
+            <label><span class="field-label">Sort</span><select formControlName="sort"><option value="downloads">Most downloaded</option><option value="likes">Most liked</option><option value="last_modified">Recently modified</option><option value="created_at">Recently created</option></select></label>
+          </div>
+          <button class="secondary-button tokenizer-discovery-advanced-toggle" type="button" [attr.aria-expanded]="discoveryAdvancedOpen()" (click)="discoveryAdvancedOpen.update((open) => !open)">Advanced filters</button>
+          @if (discoveryAdvancedOpen()) {
+            <div class="tokenizer-discovery-advanced">
+              <label><span class="field-label">Author</span><input class="text-input" formControlName="author" placeholder="User or organization" /></label>
+              <label><span class="field-label">Access</span><select formControlName="access"><option value="all">All</option><option value="public">Public</option><option value="gated">Gated</option></select></label>
+              <label><span class="field-label">Required tags</span><input class="text-input" formControlName="includeTags" placeholder="tag-a, tag-b" /></label>
+              <label><span class="field-label">Excluded tags</span><input class="text-input" formControlName="excludeTags" placeholder="tag-a, tag-b" /></label>
+              <label><span class="field-label">Vocabulary comparison</span><select formControlName="vocabularyOperator"><option value="">No filter</option><option value="at_least">At least</option><option value="at_most">At most</option></select></label>
+              <label><span class="field-label">Vocabulary size</span><input class="text-input" type="number" min="0" formControlName="vocabularySize" placeholder="Unknown allowed only without filter" /></label>
+              <label><span class="field-label">Vocabulary ordering</span><select formControlName="vocabularySort"><option value="none">No vocabulary ordering</option><option value="ascending">Smallest vocabulary</option><option value="descending">Largest vocabulary</option></select></label>
+            </div>
+          }
+        </form>
+        <div class="tokenizer-discovery-results" role="list" aria-label="Hugging Face tokenizer discovery results">
+          @if (store.discoveryLoading()) { <div class="loading-container"><span class="spinner" aria-hidden="true"></span><p>Searching Hugging Face…</p></div> }
+          @else {
+            @for (item of store.discoveryResults(); track item.identifier) {
+              <label class="tokenizer-discovery-result" [class.selected]="store.selectedDiscoveryIds().includes(item.identifier)">
+                <input type="checkbox" [checked]="store.selectedDiscoveryIds().includes(item.identifier)" (change)="toggleDiscoveryTokenizer(item.identifier, $any($event.target).checked)" />
+                <span class="tokenizer-discovery-result-name" [title]="item.identifier">{{ item.identifier }}</span>
+                <span class="tokenizer-discovery-result-meta"><span>{{ item.pipeline_tag ?? 'Unknown category' }}</span><span>{{ item.vocabulary_size === null ? 'Unknown' : formatNumber(item.vocabulary_size, 0) }}</span><span>{{ item.downloads === null ? '—' : formatNumber(item.downloads, 0) }} downloads</span></span>
+              </label>
+            } @empty { <div class="tokenizer-discovery-empty">No tokenizer repositories match this query.</div> }
+          }
+        </div>
+        <div class="tokenizer-discovery-footer"><span class="panel-description">{{ store.selectedDiscoveryIds().length }} selected</span><button class="secondary-button" type="button" [disabled]="!store.selectedDiscoveryIds().length || store.busyAction() === 'download'" (click)="downloadSelectedDiscoveryTokenizers()">Download selected</button></div>
+      </section>
+    </div>
+    <div class="tokenizer-modal-progress-row" role="status" aria-live="polite"><span>Download progress: {{ store.jobProgress() === null ? '0%' : store.jobProgress() + '%' }}</span><div class="tokenizer-modal-progress-track" aria-hidden="true"><div class="tokenizer-modal-progress-fill" [style.width.%]="store.jobProgress() ?? 0"></div></div></div>
+  </section>
+}

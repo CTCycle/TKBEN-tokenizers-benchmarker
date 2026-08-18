@@ -1,10 +1,49 @@
-/**
- * Response from the tokenizer scan endpoint
- */
-export interface TokenizerScanResponse {
-    status: string;
-    identifiers: string[];
+export type SupportedTokenizerPipeline =
+    | 'text-generation'
+    | 'fill-mask'
+    | 'text-classification'
+    | 'token-classification'
+    | 'text2text-generation'
+    | 'question-answering'
+    | 'sentence-similarity'
+    | 'translation'
+    | 'summarization'
+    | 'zero-shot-classification';
+
+export type TokenizerDiscoverySort = 'downloads' | 'likes' | 'last_modified' | 'created_at';
+export type TokenizerDiscoveryAccess = 'all' | 'public' | 'gated';
+export type VocabularySort = 'none' | 'ascending' | 'descending';
+
+export interface TokenizerDiscoveryQuery {
+    search?: string;
+    limit?: number;
+    pipeline_tag?: SupportedTokenizerPipeline;
+    author?: string;
+    include_tags?: string[];
+    exclude_tags?: string[];
+    access?: TokenizerDiscoveryAccess;
+    sort?: TokenizerDiscoverySort;
+    vocabulary_operator?: ComparisonOperator;
+    vocabulary_size?: number;
+    vocabulary_sort?: VocabularySort;
+}
+
+export interface TokenizerDiscoveryItem {
+    identifier: string;
+    pipeline_tag: string | null;
+    library_name: string | null;
+    downloads: number | null;
+    likes: number | null;
+    last_modified: string | null;
+    gated: boolean | string | null;
+    tags: string[];
+    vocabulary_size: number | null;
+}
+
+export interface TokenizerDiscoveryResponse {
+    items: TokenizerDiscoveryItem[];
     count: number;
+    fetched_count: number;
 }
 
 /**
@@ -433,8 +472,19 @@ export interface BenchmarkReportSummary {
     selected_metric_keys: string[];
 }
 
+export type BenchmarkReportSort = 'newest' | 'oldest';
+export interface BenchmarkReportQuery {
+    search?: string;
+    sort?: BenchmarkReportSort;
+    offset?: number;
+    limit?: number;
+}
+
 export interface BenchmarkReportListResponse {
     reports: BenchmarkReportSummary[];
+    total: number;
+    offset: number;
+    limit: number;
 }
 
 /**

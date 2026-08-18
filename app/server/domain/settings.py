@@ -41,9 +41,10 @@ class DatasetSettings:
 ###############################################################################
 @dataclass(frozen=True)
 class TokenizerSettings:
-    default_scan_limit: int
-    max_scan_limit: int
-    min_scan_limit: int
+    default_discovery_limit: int
+    max_discovery_limit: int
+    max_discovery_candidates: int
+    metadata_candidate_multiplier: int
     max_upload_bytes: int
 
 ###############################################################################
@@ -296,25 +297,22 @@ class JsonDatasetSettings(BaseModel):
 
 ###############################################################################
 class JsonTokenizerSettings(BaseModel):
-    default_scan_limit: int = Field(default=100, ge=1)
-    max_scan_limit: int = Field(default=1000, ge=1)
-    min_scan_limit: int = Field(default=1, ge=1)
+    default_discovery_limit: int = Field(default=50, ge=1, le=250)
+    max_discovery_limit: int = Field(default=250, ge=1, le=250)
+    max_discovery_candidates: int = Field(default=750, ge=1)
+    metadata_candidate_multiplier: int = Field(default=3, ge=1, le=10)
     max_upload_bytes: int = Field(default=10 * 1024 * 1024, ge=1)
 
     # -------------------------------------------------------------------------
     @model_validator(mode="after")
-    def validate_scan_limits(self) -> "JsonTokenizerSettings":
-        if self.max_scan_limit < self.min_scan_limit:
+    def validate_discovery_limits(self) -> "JsonTokenizerSettings":
+        if self.default_discovery_limit > self.max_discovery_limit:
             raise ValueError(
-                "tokenizers.max_scan_limit must be >= tokenizers.min_scan_limit"
+                "tokenizers.default_discovery_limit must be <= tokenizers.max_discovery_limit"
             )
-        if self.default_scan_limit < self.min_scan_limit:
+        if self.max_discovery_candidates < self.max_discovery_limit:
             raise ValueError(
-                "tokenizers.default_scan_limit must be >= tokenizers.min_scan_limit"
-            )
-        if self.default_scan_limit > self.max_scan_limit:
-            raise ValueError(
-                "tokenizers.default_scan_limit must be <= tokenizers.max_scan_limit"
+                "tokenizers.max_discovery_candidates must be >= tokenizers.max_discovery_limit"
             )
         return self
 
@@ -380,9 +378,10 @@ class JsonConfiguration(BaseModel):
                 download_retry_backoff_seconds=self.datasets.download_retry_backoff_seconds,
             ),
             tokenizers=TokenizerSettings(
-                default_scan_limit=self.tokenizers.default_scan_limit,
-                max_scan_limit=self.tokenizers.max_scan_limit,
-                min_scan_limit=self.tokenizers.min_scan_limit,
+                default_discovery_limit=self.tokenizers.default_discovery_limit,
+                max_discovery_limit=self.tokenizers.max_discovery_limit,
+                max_discovery_candidates=self.tokenizers.max_discovery_candidates,
+                metadata_candidate_multiplier=self.tokenizers.metadata_candidate_multiplier,
                 max_upload_bytes=self.tokenizers.max_upload_bytes,
             ),
             benchmarks=BenchmarkSettings(

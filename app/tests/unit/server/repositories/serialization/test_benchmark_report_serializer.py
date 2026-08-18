@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 import pytest
 
+from server.domain.benchmarks import BenchmarkReportQuery
 from server.repositories.database.backend import get_database
 from server.repositories.schemas.models import Base, Dataset
 from server.repositories.serialization.benchmark_reports import (
@@ -124,7 +125,7 @@ def test_benchmark_report_serializer_round_trip(monkeypatch) -> None:
 
     report_id = serializer.save_benchmark_report(payload)
     stored = serializer.load_benchmark_report_by_id(report_id)
-    summaries = serializer.list_benchmark_reports(limit=10)
+    summaries = serializer.list_benchmark_reports(BenchmarkReportQuery(limit=10))
 
     assert stored is not None
     assert stored["report_id"] == report_id
@@ -135,8 +136,56 @@ def test_benchmark_report_serializer_round_trip(monkeypatch) -> None:
         stored["tokenizer_results"][0]["efficiency"]["encode_only_wall_time_seconds"]
         == 1.0
     )
-    assert summaries[0]["report_id"] == report_id
-    assert summaries[0]["dataset_name"] == dataset_name
+    assert summaries.reports[0].report_id == report_id
+    assert summaries.reports[0].dataset_name == dataset_name
+    assert summaries.total == 1
+
+###############################################################################
+def test_benchmark_report_serializer_search_sort_pagination_and_delete(monkeypatch) -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    Base.metadata.create_all(engine, checkfirst=True)
+    database = get_database()
+    monkeypatch.setattr(database.backend, "engine", engine)
+
+    now = datetime.now(timezone.utc)
+    datasets = ["custom/alpha", "custom/beta"]
+    with Session(bind=engine) as session:
+        for dataset_name in datasets:
+            session.add(Dataset(name=dataset_name, status="ready", created_at=now, updated_at=now, ready_at=now))
+        session.commit()
+
+    serializer = BenchmarkReportSerializer()
+    older = _build_payload("custom/alpha")
+    older.update({"run_name": "alpha older", "created_at": "2026-01-01T00:00:00Z"})
+    middle = _build_payload("custom/beta")
+    middle.update({"run_name": "beta middle", "created_at": "2026-01-02T00:00:00Z"})
+    newer = _build_payload("custom/alpha")
+    newer.update({"run_name": "alpha newer", "created_at": "2026-01-03T00:00:00Z"})
+    older_id = serializer.save_benchmark_report(older)
+    middle_id = serializer.save_benchmark_report(middle)
+    newer_id = serializer.save_benchmark_report(newer)
+
+    newest = serializer.list_benchmark_reports(BenchmarkReportQuery(limit=2))
+    assert [item.report_id for item in newest.reports] == [newer_id, middle_id]
+    assert newest.total == 3
+    assert newest.offset == 0
+    assert newest.limit == 2
+
+    oldest = serializer.list_benchmark_reports(BenchmarkReportQuery(sort="oldest", offset=1, limit=1))
+    assert [item.report_id for item in oldest.reports] == [middle_id]
+    assert oldest.total == 3
+
+    run_search = serializer.list_benchmark_reports(BenchmarkReportQuery(search="newer"))
+    assert [item.report_id for item in run_search.reports] == [newer_id]
+    dataset_search = serializer.list_benchmark_reports(BenchmarkReportQuery(search="beta"))
+    assert [item.report_id for item in dataset_search.reports] == [middle_id]
+
+    assert serializer.delete_benchmark_report(middle_id) is True
+    assert serializer.delete_benchmark_report(middle_id) is False
+    assert serializer.load_benchmark_report_by_id(middle_id) is None
+    remaining = serializer.list_benchmark_reports(BenchmarkReportQuery(limit=10))
+    assert remaining.total == 2
+    assert [item.report_id for item in remaining.reports] == [newer_id, older_id]
 
 ###############################################################################
 def test_benchmark_report_serializer_rejects_v4_payload() -> None:

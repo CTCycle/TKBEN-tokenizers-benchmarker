@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from server.common.utils.security import normalize_identifier
 
@@ -18,14 +19,96 @@ class TokenizerSignature(BaseModel):
         return normalize_identifier(value, "Tokenizer identifier", max_length=160)
 
 ###############################################################################
-class TokenizerScanRequest(BaseModel):
-    limit: int = Field(default=100, ge=1, le=1000)
+class SupportedTokenizerPipeline(StrEnum):
+    TEXT_GENERATION = "text-generation"
+    FILL_MASK = "fill-mask"
+    TEXT_CLASSIFICATION = "text-classification"
+    TOKEN_CLASSIFICATION = "token-classification"
+    TEXT2TEXT_GENERATION = "text2text-generation"
+    QUESTION_ANSWERING = "question-answering"
+    SENTENCE_SIMILARITY = "sentence-similarity"
+    TRANSLATION = "translation"
+    SUMMARIZATION = "summarization"
+    ZERO_SHOT_CLASSIFICATION = "zero-shot-classification"
+
+
+class TokenizerDiscoverySort(StrEnum):
+    DOWNLOADS = "downloads"
+    LIKES = "likes"
+    LAST_MODIFIED = "last_modified"
+    CREATED_AT = "created_at"
+
 
 ###############################################################################
-class TokenizerScanResponse(BaseModel):
-    status: str = Field(default="success")
-    identifiers: list[str] = Field(default_factory=list)
-    count: int = Field(default=0)
+class TokenizerDiscoveryQuery(BaseModel):
+    search: str | None = Field(default=None, max_length=160)
+    limit: int = Field(default=50, ge=1, le=250)
+    pipeline_tag: SupportedTokenizerPipeline | None = None
+    author: str | None = Field(default=None, max_length=160)
+    include_tags: list[str] = Field(default_factory=list)
+    exclude_tags: list[str] = Field(default_factory=list)
+    access: Literal["all", "public", "gated"] = "all"
+    sort: TokenizerDiscoverySort = TokenizerDiscoverySort.DOWNLOADS
+    vocabulary_operator: Literal["at_least", "at_most"] | None = None
+    vocabulary_size: int | None = Field(default=None, ge=0)
+    vocabulary_sort: Literal["none", "ascending", "descending"] = "none"
+
+    @field_validator("search", "author", mode="before")
+    @classmethod
+    def normalize_optional_text(cls, value: object) -> str | None:
+        if value is None:
+            return None
+        normalized = str(value).strip()
+        return normalized or None
+
+    @field_validator("include_tags", "exclude_tags", mode="before")
+    @classmethod
+    def normalize_tags(cls, value: object) -> list[str]:
+        raw_values = value if isinstance(value, list) else [value]
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for raw_value in raw_values:
+            if not isinstance(raw_value, str):
+                raise ValueError("Tokenizer discovery tags must be strings.")
+            for tag in raw_value.replace("\n", ",").split(","):
+                cleaned = tag.strip()
+                key = cleaned.casefold()
+                if cleaned and key not in seen:
+                    seen.add(key)
+                    normalized.append(cleaned)
+        if len(normalized) > 8:
+            raise ValueError("Tokenizer discovery supports at most 8 tags per list.")
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_discovery_query(self) -> "TokenizerDiscoveryQuery":
+        include = {tag.casefold() for tag in self.include_tags}
+        exclude = {tag.casefold() for tag in self.exclude_tags}
+        if include & exclude:
+            raise ValueError("A tokenizer discovery tag cannot be both required and excluded.")
+        if self.vocabulary_operator is not None and self.vocabulary_size is None:
+            raise ValueError("Vocabulary operator requires a vocabulary size.")
+        return self
+
+
+###############################################################################
+class TokenizerDiscoveryItem(BaseModel):
+    identifier: str
+    pipeline_tag: str | None = None
+    library_name: str | None = None
+    downloads: int | None = Field(default=None, ge=0)
+    likes: int | None = Field(default=None, ge=0)
+    last_modified: str | None = None
+    gated: bool | str | None = None
+    tags: list[str] = Field(default_factory=list)
+    vocabulary_size: int | None = Field(default=None, ge=0)
+
+
+###############################################################################
+class TokenizerDiscoveryResponse(BaseModel):
+    items: list[TokenizerDiscoveryItem] = Field(default_factory=list)
+    count: int = Field(default=0, ge=0)
+    fetched_count: int = Field(default=0, ge=0)
 
 ###############################################################################
 class TokenizerListItem(BaseModel):
@@ -80,9 +163,10 @@ class TokenizerDownloadResponse(BaseModel):
 
 ###############################################################################
 class TokenizerSettingsResponse(BaseModel):
-    default_scan_limit: int
-    max_scan_limit: int
-    min_scan_limit: int
+    default_discovery_limit: int
+    max_discovery_limit: int
+    max_discovery_candidates: int
+    metadata_candidate_multiplier: int
 
 ###############################################################################
 class TokenizerUploadResponse(BaseModel):

@@ -3,6 +3,7 @@ from __future__ import annotations
 import shutil
 import tempfile
 from collections.abc import Sized
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -10,7 +11,14 @@ from huggingface_hub import HfApi
 from tokenizers import Tokenizer as FastTokenizer
 from transformers import AutoTokenizer
 
+from server.configurations import get_server_settings
 from server.common.utils.logger import logger
+from server.domain.tokenizers import (
+    SupportedTokenizerPipeline,
+    TokenizerDiscoveryItem,
+    TokenizerDiscoveryQuery,
+    TokenizerDiscoveryResponse,
+)
 from server.repositories.tokenizers import TokenizerRepository
 from server.services.benchmarks import BenchmarkTools
 from server.services.custom_tokenizers import get_custom_tokenizer_registry
@@ -20,25 +28,10 @@ from server.services.tokenizer_storage import TokenizerStorageMixin
 ###############################################################################
 class TokenizersService(TokenizerStorageMixin):
     """
-    Service for fetching tokenizer information from HuggingFace.
-
-    Service for tokenizer scanning and metadata retrieval
-    from HuggingFace.
+    Service for fetching tokenizer discovery and catalog information from HuggingFace.
     """
 
-    PIPELINE_TAGS = [
-        "text-generation",
-        "fill-mask",
-        "text-classification",
-        "token-classification",
-        "text2text-generation",
-        "question-answering",
-        "sentence-similarity",
-        "translation",
-        "summarization",
-        "conversational",
-        "zero-shot-classification",
-    ]
+    SUPPORTED_PIPELINE_TAGS = tuple(item.value for item in SupportedTokenizerPipeline)
 
     # -------------------------------------------------------------------------
     def __init__(self) -> None:
@@ -185,32 +178,155 @@ class TokenizersService(TokenizerStorageMixin):
         return sorted(filtered, key=lambda item: str(item["tokenizer_name"]).casefold())
 
     # -------------------------------------------------------------------------
-    def get_tokenizer_identifiers(self, limit: int = 100) -> list[Any]:
-        """
-        Retrieve the most downloaded tokenizer identifiers from Hugging Face.
+    def discover_tokenizers(
+        self,
+        query: TokenizerDiscoveryQuery,
+    ) -> TokenizerDiscoveryResponse:
+        """Discover bounded Hugging Face model candidates for tokenizer use."""
+        settings = get_server_settings().tokenizers
+        needs_vocabulary_metadata = (
+            query.vocabulary_size is not None or query.vocabulary_sort != "none"
+        )
+        needs_local_filtering = (
+            query.pipeline_tag is None
+            or bool(query.exclude_tags)
+            or needs_vocabulary_metadata
+        )
+        candidate_limit = query.limit
+        if needs_local_filtering:
+            candidate_limit = min(
+                settings.max_discovery_candidates,
+                query.limit * settings.metadata_candidate_multiplier,
+            )
 
-        Args:
-            limit: Maximum number of identifiers to request (default 100).
-
-        Returns:
-            List with the identifiers of the retrieved tokenizers ordered by
-            popularity (downloads).
-        """
         hf_access_token = self.key_service.get_active_key()
         api = HfApi(token=hf_access_token)
+        provider_kwargs: dict[str, Any] = {
+            "sort": query.sort.value,
+            "direction": -1,
+            "limit": candidate_limit,
+        }
+        if query.search:
+            provider_kwargs["search"] = query.search
+        if query.author:
+            provider_kwargs["author"] = query.author
+        if query.pipeline_tag is not None:
+            provider_kwargs["pipeline_tag"] = query.pipeline_tag.value
+        if query.include_tags:
+            provider_kwargs["filter"] = list(query.include_tags)
+        if query.access != "all":
+            provider_kwargs["gated"] = query.access == "gated"
+        if needs_vocabulary_metadata:
+            provider_kwargs["fetch_config"] = True
+        else:
+            provider_kwargs["expand"] = [
+                "pipeline_tag",
+                "library_name",
+                "downloads",
+                "likes",
+                "lastModified",
+                "gated",
+                "tags",
+            ]
 
-        models = api.list_models(
-            search="tokenizer", sort="downloads", direction=-1, limit=limit
+        models = list(api.list_models(**provider_kwargs))
+        items: list[TokenizerDiscoveryItem] = []
+        for model in models:
+            item = self._build_discovery_item(model)
+            if not item.identifier:
+                continue
+            if query.pipeline_tag is None:
+                if item.pipeline_tag not in self.SUPPORTED_PIPELINE_TAGS:
+                    continue
+            elif item.pipeline_tag != query.pipeline_tag.value:
+                continue
+            if query.exclude_tags and self._has_any_tag(item.tags, query.exclude_tags):
+                continue
+            if not self._matches_vocabulary(item, query):
+                continue
+            items.append(item)
+
+        if query.vocabulary_sort != "none":
+            items = self._sort_by_vocabulary(items, query.vocabulary_sort)
+
+        return TokenizerDiscoveryResponse(
+            items=items[: query.limit],
+            count=min(len(items), query.limit),
+            fetched_count=len(models),
         )
 
-        identifiers = [
-            model_id
-            for model in models
-            if isinstance(model_id := getattr(model, "modelId", None), str)
-            and getattr(model, "pipeline_tag", None) in self.PIPELINE_TAGS
-        ]
+    @staticmethod
+    def _build_discovery_item(model: Any) -> TokenizerDiscoveryItem:
+        identifier = getattr(model, "modelId", None) or getattr(model, "id", None)
+        identifier = identifier if isinstance(identifier, str) else ""
+        pipeline_tag = getattr(model, "pipeline_tag", None)
+        pipeline_tag = pipeline_tag if isinstance(pipeline_tag, str) else None
+        library_name = getattr(model, "library_name", None)
+        library_name = library_name if isinstance(library_name, str) else None
+        last_modified = getattr(model, "lastModified", None)
+        if last_modified is None:
+            last_modified = getattr(model, "last_modified", None)
+        if isinstance(last_modified, datetime):
+            last_modified = last_modified.isoformat()
+        elif last_modified is not None and not isinstance(last_modified, str):
+            last_modified = str(last_modified)
+        tags = getattr(model, "tags", None)
+        normalized_tags = [tag for tag in tags or [] if isinstance(tag, str)]
+        config = getattr(model, "config", None)
+        vocabulary_size = None
+        if isinstance(config, dict):
+            configured_size = config.get("vocab_size")
+            if isinstance(configured_size, int) and not isinstance(configured_size, bool) and configured_size >= 0:
+                vocabulary_size = configured_size
+        return TokenizerDiscoveryItem(
+            identifier=identifier,
+            pipeline_tag=pipeline_tag,
+            library_name=library_name,
+            downloads=TokenizersService._non_negative_int(getattr(model, "downloads", None)),
+            likes=TokenizersService._non_negative_int(getattr(model, "likes", None)),
+            last_modified=last_modified,
+            gated=getattr(model, "gated", None),
+            tags=normalized_tags,
+            vocabulary_size=vocabulary_size,
+        )
 
-        return identifiers
+    @staticmethod
+    def _non_negative_int(value: object) -> int | None:
+        return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+
+    @staticmethod
+    def _has_any_tag(tags: list[str], excluded: list[str]) -> bool:
+        known = {tag.casefold() for tag in tags}
+        return any(tag.casefold() in known for tag in excluded)
+
+    @staticmethod
+    def _matches_vocabulary(
+        item: TokenizerDiscoveryItem,
+        query: TokenizerDiscoveryQuery,
+    ) -> bool:
+        if query.vocabulary_size is None:
+            return True
+        if item.vocabulary_size is None:
+            return False
+        operator = query.vocabulary_operator or "at_least"
+        return (
+            item.vocabulary_size >= query.vocabulary_size
+            if operator == "at_least"
+            else item.vocabulary_size <= query.vocabulary_size
+        )
+
+    @staticmethod
+    def _sort_by_vocabulary(
+        items: list[TokenizerDiscoveryItem],
+        ordering: Literal["ascending", "descending"],
+    ) -> list[TokenizerDiscoveryItem]:
+        known = [item for item in items if item.vocabulary_size is not None]
+        unknown = [item for item in items if item.vocabulary_size is None]
+        known.sort(
+            key=lambda item: item.vocabulary_size or 0,
+            reverse=ordering == "descending",
+        )
+        return known + unknown
 
     # -------------------------------------------------------------------------
     def download_and_persist(
