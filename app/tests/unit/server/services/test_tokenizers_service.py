@@ -20,6 +20,7 @@ class FakeTokenizerRepository:
         return object() if report_id == 1 else None
 
 
+###############################################################################
 def tokenizer_siblings(*filenames: str) -> list[dict[str, str]]:
     return [{"rfilename": filename} for filename in filenames]
 
@@ -178,14 +179,20 @@ def test_tokenizer_discovery_uses_bounded_overfetch_and_candidate_cap(monkeypatc
 def test_tokenizer_discovery_accepts_supported_root_artifacts_only(monkeypatch) -> None:
     service = TokenizersService()
 
+    ###############################################################################
     class FakeModel:
+
+        # -------------------------------------------------------------------------
         def __init__(self, model_id: str, filenames: tuple[str, ...]) -> None:
             self.modelId = model_id
             self.pipeline_tag = "text-generation"
             self.tags = []
             self.siblings = tokenizer_siblings(*filenames)
 
+    ###############################################################################
     class FakeApi:
+
+        # -------------------------------------------------------------------------
         def list_models(self, **kwargs):
             assert kwargs["expand"][0] == "siblings"
             return [
@@ -220,14 +227,20 @@ def test_tokenizer_discovery_accepts_supported_root_artifacts_only(monkeypatch) 
 def test_tokenizer_discovery_filters_excluded_and_unsupported_models(monkeypatch) -> None:
     service = TokenizersService()
 
+    ###############################################################################
     class FakeModel:
+
+        # -------------------------------------------------------------------------
         def __init__(self, model_id: str, pipeline_tag: str, tags: list[str]) -> None:
             self.modelId = model_id
             self.pipeline_tag = pipeline_tag
             self.tags = tags
             self.siblings = tokenizer_siblings("tokenizer.json", "config.json")
 
+    ###############################################################################
     class FakeApi:
+
+        # -------------------------------------------------------------------------
         def list_models(self, **kwargs):
             del kwargs
             return [
@@ -249,14 +262,20 @@ def test_tokenizer_discovery_filters_excluded_and_unsupported_models(monkeypatch
 def test_tokenizer_discovery_extracts_and_filters_vocabulary_metadata(monkeypatch) -> None:
     service = TokenizersService()
 
+    ###############################################################################
     class FakeModel:
+
+        # -------------------------------------------------------------------------
         def __init__(self, model_id: str, vocabulary_size: object) -> None:
             self.modelId = model_id
             self.pipeline_tag = "fill-mask"
             self.config = {"vocab_size": vocabulary_size} if vocabulary_size is not None else None
             self.siblings = tokenizer_siblings("vocab.txt", "config.json")
 
+    ###############################################################################
     class FakeApi:
+
+        # -------------------------------------------------------------------------
         def list_models(self, **kwargs):
             assert "config" in kwargs["expand"]
             return [FakeModel("small/model", 4), FakeModel("large/model", 12), FakeModel("unknown/model", None)]
@@ -282,14 +301,20 @@ def test_tokenizer_discovery_extracts_and_filters_vocabulary_metadata(monkeypatc
 def test_tokenizer_discovery_orders_known_vocabulary_before_unknown(monkeypatch) -> None:
     service = TokenizersService()
 
+    ###############################################################################
     class FakeModel:
+
+        # -------------------------------------------------------------------------
         def __init__(self, model_id: str, vocabulary_size: int | None) -> None:
             self.modelId = model_id
             self.pipeline_tag = "fill-mask"
             self.config = {"vocab_size": vocabulary_size} if vocabulary_size is not None else None
             self.siblings = tokenizer_siblings("vocab.json", "merges.txt")
 
+    ###############################################################################
     class FakeApi:
+
+        # -------------------------------------------------------------------------
         def list_models(self, **kwargs):
             del kwargs
             return [FakeModel("unknown/model", None), FakeModel("large/model", 12), FakeModel("small/model", 4)]
@@ -306,7 +331,10 @@ def test_tokenizer_discovery_orders_known_vocabulary_before_unknown(monkeypatch)
 def test_tokenizer_discovery_propagates_upstream_failure(monkeypatch) -> None:
     service = TokenizersService()
 
+    ###############################################################################
     class FailingApi:
+
+        # -------------------------------------------------------------------------
         def list_models(self, **kwargs):
             del kwargs
             raise RuntimeError("upstream outage details")
@@ -358,7 +386,10 @@ def test_tokenizer_catalog_filters_cached_sources_search_and_vocabulary(
 ) -> None:
     service = TokenizersService()
 
+    ###############################################################################
     class CustomTokenizer:
+
+        # -------------------------------------------------------------------------
         def get_vocab_size(self) -> int:
             return 4
 

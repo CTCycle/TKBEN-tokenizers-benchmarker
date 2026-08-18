@@ -17,12 +17,17 @@ def _job_status(job_id: str, status: str) -> dict[str, object]:
 
 ###############################################################################
 def test_job_routes_distinguish_missing_terminal_and_running_jobs(monkeypatch) -> None:
+
+    ###############################################################################
     class FakeJobManager:
+
+        # -------------------------------------------------------------------------
         def get_job_status(self, job_id: str):
             if job_id == "missing":
                 return None
             return _job_status(job_id, "completed" if job_id == "done" else "running")
 
+        # -------------------------------------------------------------------------
         def request_stop(self, job_id: str):
             if job_id == "missing":
                 return None

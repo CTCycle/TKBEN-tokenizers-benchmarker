@@ -74,6 +74,7 @@ class BenchmarkReportSerializer:
         if payload.get("report_version") != BENCHMARK_REPORT_VERSION:
             raise ValueError("Benchmark report uses an incompatible report version.")
 
+    # -------------------------------------------------------------------------
     def _normalize_report_row(self, row: dict[str, Any]) -> dict[str, Any]:
         payload = row.get("payload")
         if not isinstance(payload, dict):

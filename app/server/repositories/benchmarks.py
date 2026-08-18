@@ -25,7 +25,6 @@ class BenchmarkReportPage:
     offset: int
     limit: int
 
-
 ###############################################################################
 class BenchmarkRepository:
 

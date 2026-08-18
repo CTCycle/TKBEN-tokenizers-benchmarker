@@ -110,7 +110,6 @@ def _build_tokenizer_discovery_query(
             detail=str(exc),
         ) from exc
 
-
 ###############################################################################
 @router.get(
     API_ROUTE_TOKENIZERS_DISCOVER,

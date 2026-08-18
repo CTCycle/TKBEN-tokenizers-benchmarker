@@ -32,12 +32,12 @@ class SupportedTokenizerPipeline(StrEnum):
     ZERO_SHOT_CLASSIFICATION = "zero-shot-classification"
 
 
+###############################################################################
 class TokenizerDiscoverySort(StrEnum):
     DOWNLOADS = "downloads"
     LIKES = "likes"
     LAST_MODIFIED = "last_modified"
     CREATED_AT = "created_at"
-
 
 ###############################################################################
 class TokenizerDiscoveryQuery(BaseModel):
@@ -53,6 +53,7 @@ class TokenizerDiscoveryQuery(BaseModel):
     vocabulary_size: int | None = Field(default=None, ge=0)
     vocabulary_sort: Literal["none", "ascending", "descending"] = "none"
 
+    # -------------------------------------------------------------------------
     @field_validator("search", "author", mode="before")
     @classmethod
     def normalize_optional_text(cls, value: object) -> str | None:
@@ -61,6 +62,7 @@ class TokenizerDiscoveryQuery(BaseModel):
         normalized = str(value).strip()
         return normalized or None
 
+    # -------------------------------------------------------------------------
     @field_validator("include_tags", "exclude_tags", mode="before")
     @classmethod
     def normalize_tags(cls, value: object) -> list[str]:
@@ -80,6 +82,7 @@ class TokenizerDiscoveryQuery(BaseModel):
             raise ValueError("Tokenizer discovery supports at most 8 tags per list.")
         return normalized
 
+    # -------------------------------------------------------------------------
     @model_validator(mode="after")
     def validate_discovery_query(self) -> "TokenizerDiscoveryQuery":
         include = {tag.casefold() for tag in self.include_tags}
@@ -89,7 +92,6 @@ class TokenizerDiscoveryQuery(BaseModel):
         if self.vocabulary_operator is not None and self.vocabulary_size is None:
             raise ValueError("Vocabulary operator requires a vocabulary size.")
         return self
-
 
 ###############################################################################
 class TokenizerDiscoveryItem(BaseModel):
@@ -102,7 +104,6 @@ class TokenizerDiscoveryItem(BaseModel):
     gated: bool | str | None = None
     tags: list[str] = Field(default_factory=list)
     vocabulary_size: int | None = Field(default=None, ge=0)
-
 
 ###############################################################################
 class TokenizerDiscoveryResponse(BaseModel):
