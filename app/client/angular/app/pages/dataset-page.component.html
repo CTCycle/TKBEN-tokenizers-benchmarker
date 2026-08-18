@@ -1,7 +1,7 @@
 <main class="page-scroll dataset-page-layout">
   <section class="dataset-top-section"><div class="dataset-top-row">
     <section class="dataset-intro-panel"><header class="panel-header"><div><p class="panel-label">Dataset Usage</p><p class="panel-description">Download or upload datasets, then run the validation pipeline to persist advanced quality and lexical metrics for dashboard analysis.</p></div></header>
-      <form class="dataset-filter-toolbar" [formGroup]="filters" aria-label="Dataset filters"><label class="dataset-filter-field dataset-filter-field--search"><span class="field-label">Search datasets</span><input class="text-input" type="search" formControlName="search" placeholder="Name or namespace" aria-label="Search datasets" /></label><label class="dataset-filter-field"><span class="field-label">Source</span><select formControlName="source" aria-label="Source"><option value="">All datasets</option><option value="public">Public</option><option value="custom">Custom</option></select></label><label class="dataset-filter-field"><span class="field-label">Documents</span><div class="dataset-document-filter-control"><select formControlName="documentsOperator" aria-label="Documents comparison"><option value="at_least">At least</option><option value="at_most">At most</option></select><input class="text-input" type="number" min="0" formControlName="documents" placeholder="Any count" aria-label="Document count" /></div></label><button class="dataset-add-button" type="button" aria-label="Add dataset" title="Add or import a dataset" (click)="addDatasetOpen.set(true)"><span aria-hidden="true">+</span><span class="sr-only">Add dataset</span></button></form>
+      <form class="dataset-filter-toolbar" [formGroup]="filters" aria-label="Dataset filters"><label class="dataset-filter-field dataset-filter-field--search"><span class="field-label">Search datasets</span><input class="text-input" type="search" formControlName="search" placeholder="Name or namespace" aria-label="Search datasets" /></label><label class="dataset-filter-field"><span class="field-label">Source</span><select formControlName="source" aria-label="Source"><option value="">All datasets</option><option value="public">Public</option><option value="custom">Custom</option></select></label><label class="dataset-filter-field"><span class="field-label">Documents</span><div class="dataset-document-filter-control"><select formControlName="documentsOperator" aria-label="Documents comparison"><option value="at_least">At least</option><option value="at_most">At most</option></select><input class="text-input" type="number" min="0" formControlName="documents" placeholder="Any count" aria-label="Document count" /></div></label><button class="dataset-add-button" type="button" aria-label="Add dataset" title="Add or import a dataset" (click)="openAddDataset()"><span aria-hidden="true">+</span><span class="sr-only">Add dataset</span></button></form>
     </section>
     <section class="dataset-preview-panel"><header class="panel-header"><div><p class="panel-label">Dataset Preview</p><p class="panel-description">Select a dataset and run validation sessions with custom metric selections.</p></div></header><div class="dataset-preview-body">
       @if (store.loading()) { <div class="loading-container"><span class="spinner" aria-hidden="true"></span><p>Loading datasets...</p></div> } @else if (store.datasets().length === 0) { <p class="dataset-preview-empty">No datasets match the current filters.</p> } @else { <div class="dataset-preview-table" role="table" aria-label="Dataset preview"><div class="dataset-preview-row dataset-preview-row--header" role="row"><span>Dataset</span><span>Documents</span><span>Actions</span></div>@for (dataset of store.datasets(); track dataset.dataset_name) { <div class="dataset-preview-row" [class.selected]="store.selectedDataset() === dataset.dataset_name" role="row" tabindex="0" (click)="selectDataset(dataset.dataset_name)" (keydown.enter)="selectDataset(dataset.dataset_name)"><button class="dataset-preview-select" type="button" [attr.aria-pressed]="store.selectedDataset() === dataset.dataset_name" (click)="$event.stopPropagation(); selectDataset(dataset.dataset_name)"><span class="dataset-preview-name">{{ dataset.dataset_name }}</span></button><span class="dataset-preview-count">{{ dataset.document_count ?? '—' }}</span><div class="dataset-preview-actions"><button class="icon-button subtle dataset-run-pipeline-button" type="button" [attr.aria-label]="'Run validation pipeline for ' + dataset.dataset_name" title="Run validation pipeline" (click)="$event.stopPropagation(); openValidation(dataset.dataset_name)"><svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor" /></svg></button><button class="icon-button subtle" type="button" aria-label="Load latest saved report" title="Load latest saved report" (click)="$event.stopPropagation(); loadLatest(dataset.dataset_name)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h8l4 4v12H6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /><path d="M14 4v4h4M9 13h6M9 16h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg></button><button class="icon-button danger" type="button" aria-label="Remove dataset" title="Delete dataset from database" [disabled]="store.busyAction() !== null" (click)="$event.stopPropagation(); removeDataset(dataset.dataset_name)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><rect x="7" y="7" width="10" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2" /></svg></button></div></div> }</div> }
@@ -36,65 +36,66 @@
     <header class="dataset-modal-header">
       <div>
         <p id="dataset-selector-title" class="panel-label">Add dataset</p>
-        <p id="dataset-selector-description" class="panel-description">Choose a predefined dataset or add one from Hugging Face or a local CSV/Excel file.</p>
+        <p id="dataset-selector-description" class="panel-description">Choose a predefined dataset, enter a Hugging Face dataset name, or upload a local CSV/Excel file.</p>
       </div>
       <div class="dataset-modal-actions">
-        <button class="icon-button subtle" type="button" [class.accent]="manualDatasetOpen()" aria-label="Enter dataset ID manually" [attr.aria-expanded]="manualDatasetOpen()" aria-controls="dataset-manual-insert-panel" title="Enter a Hugging Face dataset ID" (click)="manualDatasetOpen.update((open) => !open)">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h8M4 17h8" stroke-width="2" stroke-linecap="round" /><path d="M16 12h4M18 10v4" stroke-width="2" stroke-linecap="round" /></svg>
-        </button>
-        <button class="icon-button subtle" type="button" aria-label="Upload custom dataset" title="Upload a CSV or Excel dataset file" (click)="datasetFileInput.click()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V5" stroke-width="2" stroke-linecap="round" /><path d="m8 9 4-4 4 4" stroke-width="2" stroke-linecap="round" /><path d="M4 19h16" stroke-width="2" stroke-linecap="round" /></svg>
-        </button>
-        <input #datasetFileInput id="dataset-file-upload" class="hidden-file-input" type="file" accept=".csv,.xls,.xlsx" aria-label="Upload custom dataset file" (change)="uploadFile($event)" />
         <button class="icon-button subtle" type="button" aria-label="Close dataset selector" (click)="closeAddDataset()">×</button>
       </div>
     </header>
 
-    @if (manualDatasetOpen()) {
-      <section id="dataset-manual-insert-panel" class="dataset-manual-panel" role="region" aria-label="Manual dataset input">
-        <p class="dataset-manual-help">Enter a Hugging Face dataset ID and optional configuration.</p>
-        <form [formGroup]="downloadForm" (ngSubmit)="downloadSelected()" class="dataset-insert-row">
+    <div class="dataset-manager-tabs" role="tablist" aria-label="Dataset manager workflows">
+      <button id="dataset-tab-predefined" class="dataset-manager-tab" type="button" role="tab" aria-controls="dataset-panel-predefined" [attr.aria-selected]="activeDatasetTab() === 'predefined'" [attr.tabindex]="activeDatasetTab() === 'predefined' ? 0 : -1" (click)="selectDatasetTab('predefined')" (keydown)="handleDatasetTabKeydown($event, 'predefined')">Predefined</button>
+      <button id="dataset-tab-add-by-name" class="dataset-manager-tab" type="button" role="tab" aria-controls="dataset-panel-add-by-name" [attr.aria-selected]="activeDatasetTab() === 'add-by-name'" [attr.tabindex]="activeDatasetTab() === 'add-by-name' ? 0 : -1" (click)="selectDatasetTab('add-by-name')" (keydown)="handleDatasetTabKeydown($event, 'add-by-name')">Add by name</button>
+      <button id="dataset-tab-custom" class="dataset-manager-tab" type="button" role="tab" aria-controls="dataset-panel-custom" [attr.aria-selected]="activeDatasetTab() === 'custom'" [attr.tabindex]="activeDatasetTab() === 'custom' ? 0 : -1" (click)="selectDatasetTab('custom')" (keydown)="handleDatasetTabKeydown($event, 'custom')">Custom dataset</button>
+    </div>
+
+    <div class="dataset-manager-panel">
+      <section id="dataset-panel-predefined" class="dataset-modal-panel dataset-modal-panel--predefined" role="tabpanel" aria-labelledby="dataset-tab-predefined" tabindex="0" [hidden]="activeDatasetTab() !== 'predefined'">
+        <div class="dataset-preset-list-shell">
+          <div class="dataset-preset-list" aria-label="Predefined datasets">
+            @for (group of presets; track group.group; let groupIndex = $index) {
+              <section class="dataset-preset-group">
+                <h2 class="sr-only">{{ group.group }}</h2>
+                <button class="dataset-preset-heading" type="button" [attr.aria-expanded]="!isPresetGroupCollapsed(group.group)" [attr.aria-controls]="'dataset-preset-group-' + groupIndex" (click)="togglePresetGroup(group.group)">
+                  <span>{{ group.group }}</span><span class="dataset-preset-heading-icon" aria-hidden="true">{{ isPresetGroupCollapsed(group.group) ? '+' : '−' }}</span>
+                </button>
+                <div class="dataset-preset-group-items" [id]="'dataset-preset-group-' + groupIndex" [hidden]="isPresetGroupCollapsed(group.group)">
+                  @for (preset of group.datasets; track preset.id) {
+                    <div class="dataset-preset-row" [class.selected]="selectedPreset() === preset.id">
+                      <button class="dataset-preset-select" type="button" [attr.aria-pressed]="selectedPreset() === preset.id" (click)="choosePreset(preset)">
+                        <span class="dataset-preset-info"><span class="dataset-preset-name">{{ preset.label }}</span><span class="dataset-preset-description">{{ preset.description }}</span></span>
+                      </button>
+                      @if (selectedPreset() === preset.id) {
+                        <button class="icon-button subtle dataset-preset-download" type="button" [disabled]="store.busyAction() !== null" [attr.aria-label]="'Download ' + preset.label" [title]="'Download ' + preset.label" (click)="downloadPreset(preset)">
+                          @if (store.busyAction() === 'download') { <span class="action-spinner" aria-hidden="true"></span> } @else { <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12" stroke-width="2" stroke-linecap="round" /><path d="m7 10 5 5 5-5" stroke-width="2" stroke-linecap="round" /><path d="M5 19h14" stroke-width="2" stroke-linecap="round" /></svg> }
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+              </section>
+            }
+          </div>
+        </div>
+      </section>
+
+      <section id="dataset-panel-add-by-name" class="dataset-modal-panel dataset-modal-panel--focused" role="tabpanel" aria-labelledby="dataset-tab-add-by-name" tabindex="0" [hidden]="activeDatasetTab() !== 'add-by-name'">
+        <div class="dataset-focused-copy"><p class="panel-label">Add a Hugging Face dataset by name</p><p class="panel-description">Enter the dataset repository ID and optional configuration. Your form stays populated while you switch between workflows.</p></div>
+        <form [formGroup]="downloadForm" (ngSubmit)="downloadSelected()" class="dataset-manual-form">
           <label class="input-stack"><span class="field-label">Dataset ID</span><input id="dataset-corpus" class="text-input" formControlName="corpus" placeholder="organization/dataset" /></label>
           <label class="input-stack"><span class="field-label">Configuration (optional)</span><input id="dataset-configuration" class="text-input" formControlName="configuration" placeholder="default" /></label>
-          <button class="icon-button accent" type="submit" [disabled]="downloadForm.invalid || store.busyAction() === 'download'" aria-label="Download dataset" title="Download dataset from Hugging Face">
-            @if (store.busyAction() === 'download') { <span class="action-spinner" aria-hidden="true"></span> } @else { <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12" stroke-width="2" stroke-linecap="round" /><path d="m7 10 5 5 5-5" stroke-width="2" stroke-linecap="round" /><path d="M5 19h14" stroke-width="2" stroke-linecap="round" /></svg> }
-          </button>
+          <button class="primary-button dataset-download-button" type="submit" [disabled]="downloadForm.invalid || store.busyAction() === 'download'">{{ store.busyAction() === 'download' ? 'Downloading…' : 'Download dataset' }}</button>
         </form>
       </section>
-    }
+
+      <section id="dataset-panel-custom" class="dataset-modal-panel dataset-modal-panel--focused" role="tabpanel" aria-labelledby="dataset-tab-custom" tabindex="0" [hidden]="activeDatasetTab() !== 'custom'">
+        <div class="dataset-upload-content"><div class="dataset-upload-icon" aria-hidden="true">↑</div><p class="panel-label">Upload a custom dataset</p><p class="panel-description">Choose a CSV or Excel file. The existing upload workflow will validate it, persist the dataset, and add it to the local catalogue.</p><input #datasetFileInput id="dataset-file-upload" class="hidden-file-input" type="file" accept=".csv,.xls,.xlsx" aria-label="Upload custom dataset file" (change)="uploadFile($event)" /><button class="primary-button dataset-upload-button" type="button" [disabled]="store.busyAction() === 'upload'" (click)="datasetFileInput.click()">{{ store.busyAction() === 'upload' ? 'Uploading…' : 'Choose CSV or Excel file' }}</button></div>
+      </section>
+    </div>
 
     @if (store.busyAction() === 'download' || store.busyAction() === 'upload') {
       <div class="dataset-modal-progress" role="status" aria-live="polite">{{ store.busyAction() === 'upload' ? 'Uploading dataset' : 'Downloading dataset' }}{{ store.jobProgress() !== null ? ' (' + store.jobProgress() + '%)' : '…' }}</div>
     }
-
-    <div class="dataset-modal-content">
-      <div class="dataset-preset-list-shell">
-        <div class="dataset-preset-list" aria-label="Predefined datasets">
-          @for (group of presets; track group.group; let groupIndex = $index) {
-            <section class="dataset-preset-group">
-              <h2 class="sr-only">{{ group.group }}</h2>
-              <button class="dataset-preset-heading" type="button" [attr.aria-expanded]="!isPresetGroupCollapsed(group.group)" [attr.aria-controls]="'dataset-preset-group-' + groupIndex" (click)="togglePresetGroup(group.group)">
-                <span>{{ group.group }}</span><span class="dataset-preset-heading-icon" aria-hidden="true">{{ isPresetGroupCollapsed(group.group) ? '+' : '−' }}</span>
-              </button>
-              <div class="dataset-preset-group-items" [id]="'dataset-preset-group-' + groupIndex" [hidden]="isPresetGroupCollapsed(group.group)">
-                @for (preset of group.datasets; track preset.id) {
-                  <div class="dataset-preset-row" [class.selected]="selectedPreset() === preset.id">
-                    <button class="dataset-preset-select" type="button" [attr.aria-pressed]="selectedPreset() === preset.id" (click)="choosePreset(preset)">
-                      <span class="dataset-preset-info"><span class="dataset-preset-name">{{ preset.label }}</span><span class="dataset-preset-description">{{ preset.description }}</span></span>
-                    </button>
-                    @if (selectedPreset() === preset.id) {
-                      <button class="icon-button subtle dataset-preset-download" type="button" [disabled]="store.busyAction() !== null" [attr.aria-label]="'Download ' + preset.label" [title]="'Download ' + preset.label" (click)="downloadPreset(preset)">
-                        @if (store.busyAction() === 'download') { <span class="action-spinner" aria-hidden="true"></span> } @else { <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12" stroke-width="2" stroke-linecap="round" /><path d="m7 10 5 5 5-5" stroke-width="2" stroke-linecap="round" /><path d="M5 19h14" stroke-width="2" stroke-linecap="round" /></svg> }
-                      </button>
-                    }
-                  </div>
-                }
-              </div>
-            </section>
-          }
-        </div>
-      </div>
-    </div>
   </section>
 }
 @if (validationOpen()) {

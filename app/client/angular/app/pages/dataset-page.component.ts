@@ -42,6 +42,8 @@ interface DatasetPresetGroup {
   datasets: readonly DatasetPreset[];
 }
 
+type DatasetManagerTab = 'predefined' | 'add-by-name' | 'custom';
+
 @Component({
   selector: 'app-dataset-page',
   imports: [ReactiveFormsModule, HistogramChartComponent, WordCloudComponent, ModalA11yDirective],
@@ -120,7 +122,7 @@ export class DatasetPageComponent {
   ];
   protected readonly selectedPreset = signal<string | null>('wikitext');
   protected readonly collapsedPresetGroups = signal<Readonly<Record<string, boolean>>>({});
-  protected readonly manualDatasetOpen = signal(false);
+  protected readonly activeDatasetTab = signal<DatasetManagerTab>('predefined');
   protected readonly downloadForm = new FormGroup({
     corpus: new FormControl('wikitext', { nonNullable: true, validators: [Validators.required] }),
     configuration: new FormControl('wikitext-2-v1', { nonNullable: true }),
@@ -260,6 +262,30 @@ export class DatasetPageComponent {
       documentsOperator: value.documentsOperator,
       documents: value.documents ?? undefined,
     });
+  }
+
+  protected openAddDataset(): void {
+    this.activeDatasetTab.set('predefined');
+    this.addDatasetOpen.set(true);
+  }
+
+  protected selectDatasetTab(tab: DatasetManagerTab): void {
+    this.activeDatasetTab.set(tab);
+  }
+
+  protected handleDatasetTabKeydown(event: KeyboardEvent, tab: DatasetManagerTab): void {
+    const tabs: readonly DatasetManagerTab[] = ['predefined', 'add-by-name', 'custom'];
+    const index = tabs.indexOf(tab);
+    let nextIndex: number | null = null;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (index + 1) % tabs.length;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (index - 1 + tabs.length) % tabs.length;
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = tabs.length - 1;
+    if (nextIndex === null) return;
+    event.preventDefault();
+    const nextTab = tabs[nextIndex];
+    this.activeDatasetTab.set(nextTab);
+    document.getElementById(`dataset-tab-${nextTab}`)?.focus();
   }
 
   protected selectDataset(datasetName: string): void {
