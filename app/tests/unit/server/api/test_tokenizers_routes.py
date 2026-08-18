@@ -113,6 +113,53 @@ def test_tokenizer_upload_validation_and_custom_clear(monkeypatch) -> None:
     assert called["value"] is True
 
 ###############################################################################
+def test_tokenizer_delete_supports_encoded_and_custom_names_and_returns_404(monkeypatch) -> None:
+    from server.api import tokenizers as tokenizers_api
+
+    deleted: list[str] = []
+
+    available = {"google-bert/bert-base-uncased", "CUSTOM_sample"}
+
+    def fake_remove(self, name: str) -> bool:
+        del self
+        deleted.append(name)
+        if name in available:
+            available.remove(name)
+            return True
+        return False
+
+    monkeypatch.setattr(
+        tokenizers_api.TokenizersService,
+        "remove_downloaded_tokenizer",
+        fake_remove,
+    )
+
+    client = TestClient(app)
+    downloaded = client.delete(
+        "/api/tokenizers/delete",
+        params={"tokenizer_name": "google-bert/bert-base-uncased"},
+    )
+    custom = client.delete(
+        "/api/tokenizers/delete",
+        params={"tokenizer_name": "CUSTOM_sample"},
+    )
+    missing = client.delete(
+        "/api/tokenizers/delete",
+        params={"tokenizer_name": "CUSTOM_sample"},
+    )
+
+    assert downloaded.status_code == 200
+    assert custom.status_code == 200
+    assert missing.status_code == 404
+    assert downloaded.json()["tokenizer_name"] == "google-bert/bert-base-uncased"
+    assert missing.json()["detail"] == "Tokenizer 'CUSTOM_sample' is not downloaded."
+    assert deleted == [
+        "google-bert/bert-base-uncased",
+        "CUSTOM_sample",
+        "CUSTOM_sample",
+    ]
+
+###############################################################################
 def test_tokenizer_upload_rejects_oversized_file_before_service_call(monkeypatch) -> None:
     from server.api import tokenizers as tokenizers_api
 

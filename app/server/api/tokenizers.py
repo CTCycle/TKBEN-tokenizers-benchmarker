@@ -401,6 +401,11 @@ async def delete_tokenizer(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
     if not removed:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

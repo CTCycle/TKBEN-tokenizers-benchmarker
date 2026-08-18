@@ -107,13 +107,28 @@ class TokenizersService(TokenizerStorageMixin):
     # -------------------------------------------------------------------------
     def remove_downloaded_tokenizer(self, tokenizer_id: str) -> bool:
         tokenizer_name = self.validate_tokenizer_identifier(tokenizer_id)
-        removed = self.repository.delete_tokenizer(tokenizer_name)
-        if not removed:
-            return False
+        if self.custom_tokenizer_registry.delete(tokenizer_name):
+            # Custom tokenizers are normally registry-only, but remove a
+            # matching persisted row as well if a report created one.
+            self.repository.delete_tokenizer(tokenizer_name)
+            return True
+
         cache_dir = Path(self.get_tokenizer_cache_dir(tokenizer_name))
         if cache_dir.exists():
-            shutil.rmtree(cache_dir)
-        return True
+            try:
+                shutil.rmtree(cache_dir)
+            except OSError as exc:
+                logger.warning(
+                    "Failed to remove tokenizer cache for %s; keeping database row: %s",
+                    tokenizer_name,
+                    exc,
+                )
+                raise RuntimeError(
+                    f"Failed to remove downloaded tokenizer files for '{tokenizer_name}'."
+                ) from exc
+
+        # Commit the database deletion only after filesystem cleanup succeeds.
+        return self.repository.delete_tokenizer(tokenizer_name)
 
     # -------------------------------------------------------------------------
     def list_tokenizer_catalog(

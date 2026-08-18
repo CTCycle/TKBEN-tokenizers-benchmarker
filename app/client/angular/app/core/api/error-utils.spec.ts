@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { errorMessage, errorMessageAsync, formatApiError } from './error-utils';
+import { errorMessage, errorMessageAsync, formatApiError, isNotFoundError } from './error-utils';
 
 describe('API error normalization', () => {
   it('formats FastAPI array details with field locations', () => {
@@ -18,5 +18,10 @@ describe('API error normalization', () => {
         'fallback',
       ),
     ).resolves.toBe('Export unavailable');
+  });
+
+  it('recognizes expected missing-resource responses', () => {
+    expect(isNotFoundError({ status: 404 })).toBe(true);
+    expect(isNotFoundError({ status: 500 })).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, catchError, of, throwError } from 'rxjs';
 import type {
   JobStartResponse,
   JobStatusResponse,
@@ -15,6 +15,7 @@ import type {
   TokenizerVocabularyPageResponse,
 } from './api.models';
 import { JobsApiService } from './jobs-api.service';
+import { isNotFoundError } from './error-utils';
 
 export interface TokenizerCatalogFilters {
   readonly search?: string;
@@ -78,7 +79,9 @@ export class TokenizersApiService {
   }
 
   latestReport(tokenizerName: string): Observable<TokenizerReportResponse | null> {
-    return this.http.get<TokenizerReportResponse>(`/api/tokenizers/reports/latest?tokenizer_name=${encodeURIComponent(tokenizerName)}`);
+    return this.http.get<TokenizerReportResponse>(`/api/tokenizers/reports/latest?tokenizer_name=${encodeURIComponent(tokenizerName)}`).pipe(
+      catchError((error: unknown) => isNotFoundError(error) ? of(null) : throwError(() => error)),
+    );
   }
 
   vocabularyPage(reportId: number, offset = 0, limit = 500): Observable<TokenizerVocabularyPageResponse> {

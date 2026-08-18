@@ -1,15 +1,22 @@
 import { DestroyRef, Injectable, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subject, catchError, debounceTime, distinctUntilChanged, map, of, switchMap } from 'rxjs';
+import { Subject, catchError, debounce, distinctUntilChanged, map, of, switchMap, timer } from 'rxjs';
 import { DatasetsApiService, type DatasetCatalogFilters } from '../api/datasets-api.service';
-import { errorMessage } from '../api/error-utils';
+import { errorMessage, isNotFoundError } from '../api/error-utils';
 import type { DatasetAnalysisRequest, DatasetAnalysisResponse, DatasetDownloadRequest, DatasetMetricCatalogCategory, DatasetPreviewItem } from '../api/api.types';
+
+interface DatasetRefreshRequest {
+  readonly filters: DatasetCatalogFilters;
+  readonly force: boolean;
+}
 
 @Injectable({ providedIn: 'root' })
 export class DatasetStore {
   private readonly api = inject(DatasetsApiService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly refreshRequests = new Subject<DatasetCatalogFilters>();
+  private readonly refreshRequests = new Subject<DatasetRefreshRequest>();
+  private lastFilters: DatasetCatalogFilters = {};
+  private reportLoadSequence = 0;
 
   readonly datasets = signal<readonly DatasetPreviewItem[]>([]);
   readonly selectedDataset = signal<string | null>(null);
@@ -23,10 +30,13 @@ export class DatasetStore {
 
   constructor() {
     this.refreshRequests.pipe(
-      debounceTime(250),
-      map((filters) => ({ ...filters, search: filters.search?.trim() || undefined })),
-      distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
-      switchMap((filters) => {
+      debounce((request) => request.force ? of(0) : timer(250)),
+      map(({ filters, force }) => ({
+        filters: { ...filters, search: filters.search?.trim() || undefined },
+        force,
+      })),
+      distinctUntilChanged((a, b) => !a.force && !b.force && JSON.stringify(a.filters) === JSON.stringify(b.filters)),
+      switchMap(({ filters }) => {
         this.loading.set(true);
         this.error.set(null);
         return this.api.list(filters).pipe(
@@ -65,8 +75,13 @@ export class DatasetStore {
     });
   }
 
-  refresh(filters: DatasetCatalogFilters = {}): void {
-    this.refreshRequests.next(filters);
+  refresh(filters: DatasetCatalogFilters = this.lastFilters): void {
+    this.lastFilters = { ...filters };
+    this.refreshRequests.next({ filters: this.lastFilters, force: false });
+  }
+
+  private refreshAfterMutation(): void {
+    this.refreshRequests.next({ filters: this.lastFilters, force: true });
   }
 
   select(datasetName: string): void {
@@ -74,14 +89,25 @@ export class DatasetStore {
   }
 
   loadLatest(datasetName: string, options: { suppressNotFoundError?: boolean } = {}): void {
+    const sequence = ++this.reportLoadSequence;
     this.selectedDataset.set(datasetName);
+    if (this.report()?.dataset_name !== datasetName) this.setReport(null);
     this.busyAction.set(`load:${datasetName}`);
     this.error.set(null);
     this.api.latestReport(datasetName).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (report) => { this.setReport(report); this.busyAction.set(null); },
+      next: (report) => {
+        if (sequence !== this.reportLoadSequence) return;
+        if (report) this.setReport(report);
+        else {
+          this.setReport(null);
+          if (!options.suppressNotFoundError) this.error.set('No validation report found.');
+        }
+        this.busyAction.set(null);
+      },
       error: (error: unknown) => {
+        if (sequence !== this.reportLoadSequence) return;
         const message = errorMessage(error, 'Failed to load latest dataset report.');
-        const isNoReportFound = message.toLowerCase().includes('no validation report found');
+        const isNoReportFound = isNotFoundError(error) || message.toLowerCase().includes('no validation report found');
         if (options.suppressNotFoundError && isNoReportFound) this.setReport(null);
         else this.error.set(message);
         this.busyAction.set(null);
@@ -90,12 +116,13 @@ export class DatasetStore {
   }
 
   analyze(request: DatasetAnalysisRequest): void {
+    const sequence = ++this.reportLoadSequence;
     this.busyAction.set(`analyze:${request.dataset_name}`);
     this.jobProgress.set(0);
     this.error.set(null);
     this.api.analyze(request, (status) => this.jobProgress.set(status.progress)).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (report) => { this.setReport(report); this.busyAction.set(null); this.jobProgress.set(100); },
-      error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to analyze dataset.')); this.busyAction.set(null); this.jobProgress.set(null); },
+      next: (report) => { if (sequence !== this.reportLoadSequence) return; this.setReport(report); this.busyAction.set(null); this.jobProgress.set(100); },
+      error: (error: unknown) => { if (sequence !== this.reportLoadSequence) return; this.error.set(errorMessage(error, 'Failed to analyze dataset.')); this.busyAction.set(null); this.jobProgress.set(null); },
     });
   }
 
@@ -103,7 +130,7 @@ export class DatasetStore {
     this.busyAction.set('download');
     this.jobProgress.set(0);
     this.api.download(request, (status) => this.jobProgress.set(status.progress)).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (response) => { this.refresh(); this.selectedDataset.set(response.dataset_name); this.busyAction.set(null); this.jobProgress.set(100); },
+      next: (response) => { this.refreshAfterMutation(); this.selectedDataset.set(response.dataset_name); this.busyAction.set(null); this.jobProgress.set(100); },
       error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to download dataset.')); this.busyAction.set(null); this.jobProgress.set(null); },
     });
   }
@@ -112,17 +139,35 @@ export class DatasetStore {
     this.busyAction.set('upload');
     this.jobProgress.set(0);
     this.api.upload(file, (status) => this.jobProgress.set(status.progress)).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (response) => { this.refresh(); this.selectedDataset.set(response.dataset_name); this.busyAction.set(null); this.jobProgress.set(100); },
+      next: (response) => { this.refreshAfterMutation(); this.selectedDataset.set(response.dataset_name); this.busyAction.set(null); this.jobProgress.set(100); },
       error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to upload dataset.')); this.busyAction.set(null); this.jobProgress.set(null); },
     });
   }
 
   remove(datasetName: string): void {
+    if (this.busyAction() !== null) return;
+    ++this.reportLoadSequence;
     this.busyAction.set(`remove:${datasetName}`);
+    this.error.set(null);
     this.api.delete(datasetName).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: () => { if (this.selectedDataset() === datasetName) this.selectedDataset.set(null); if (this.report()?.dataset_name === datasetName) this.setReport(null); this.refresh(); this.busyAction.set(null); },
-      error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to delete dataset.')); this.busyAction.set(null); },
+      next: () => { this.removeFromState(datasetName); this.refreshAfterMutation(); this.busyAction.set(null); },
+      error: (error: unknown) => {
+        if (isNotFoundError(error)) {
+          this.removeFromState(datasetName);
+          this.refreshAfterMutation();
+        } else this.error.set(errorMessage(error, 'Failed to delete dataset.'));
+        this.busyAction.set(null);
+      },
     });
+  }
+
+  private removeFromState(datasetName: string): void {
+    this.datasets.update((datasets) => datasets.filter((dataset) => dataset.dataset_name !== datasetName));
+    if (this.selectedDataset() === datasetName) this.selectedDataset.set(null);
+    if (this.report()?.dataset_name === datasetName) {
+      ++this.reportLoadSequence;
+      this.setReport(null);
+    }
   }
 
   private setReport(report: DatasetAnalysisResponse | null): void {

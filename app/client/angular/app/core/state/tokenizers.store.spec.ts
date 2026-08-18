@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TokenizersApiService } from '../api/tokenizers-api.service';
 import type { TokenizerReportResponse } from '../api/api.types';
@@ -86,5 +86,49 @@ describe('TokenizersStore', () => {
     api.vocabularyPage.mockReturnValue(throwError(() => new Error('vocabulary failed')));
     store.loadVocabulary(14, 10);
     expect(store.error()).toBe('vocabulary failed');
+  });
+
+  it('removes a custom tokenizer immediately, clears report state, and ignores duplicate deletes', () => {
+    const api = createApi();
+    let authoritative = [{ tokenizer_name: 'CUSTOM_demo' }];
+    api.list.mockImplementation(() => of({ tokenizers: authoritative, count: authoritative.length }));
+    const { store } = createStore(api);
+    store.openReport('CUSTOM_demo');
+
+    const deletion = new Subject<void>();
+    api.delete.mockReturnValue(deletion.asObservable());
+    store.remove('CUSTOM_demo');
+    store.remove('CUSTOM_demo');
+
+    expect(api.delete).toHaveBeenCalledTimes(1);
+    expect(store.busyAction()).toBe('remove:CUSTOM_demo');
+
+    authoritative = [];
+    deletion.next();
+    deletion.complete();
+
+    expect(store.tokenizers()).toEqual([]);
+    expect(store.selectedTokenizer()).toBeNull();
+    expect(store.report()).toBeNull();
+    expect(store.vocabulary()).toBeNull();
+    expect(store.busyAction()).toBeNull();
+  });
+
+  it('forces a refetch using the active catalog filters after tokenizer deletion', () => {
+    const api = createApi();
+    let authoritative = [{ tokenizer_name: 'CUSTOM_demo' }];
+    api.list.mockImplementation((filters: { search?: string; source?: string }) => of({ tokenizers: authoritative, count: authoritative.length, filters }));
+    const { store } = createStore(api);
+
+    store.refresh({ search: ' demo ', source: 'custom' });
+    vi.advanceTimersByTime(250);
+    expect(api.list).toHaveBeenLastCalledWith({ search: 'demo', source: 'custom' });
+
+    api.delete.mockReturnValue(of(undefined));
+    authoritative = [];
+    store.remove('CUSTOM_demo');
+
+    expect(api.list).toHaveBeenLastCalledWith({ search: 'demo', source: 'custom' });
+    expect(store.tokenizers()).toEqual([]);
   });
 });
