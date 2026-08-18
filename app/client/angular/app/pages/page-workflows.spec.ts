@@ -91,7 +91,11 @@ describe('DatasetPageComponent workflow', () => {
     const page = TestBed.runInInjectionContext(() => new DatasetPageComponent()) as unknown as {
       presets: readonly { group: string; datasets: readonly { id: string; configuration?: string }[] }[];
       selectedPreset: () => string | null;
-      manualDatasetOpen: { (): boolean; set: (value: boolean) => void };
+      addDatasetOpen: () => boolean;
+      activeDatasetTab: () => string;
+      openAddDataset: () => void;
+      selectDatasetTab: (tab: string) => void;
+      handleDatasetTabKeydown: (event: KeyboardEvent, tab: string) => void;
       isPresetGroupCollapsed: (group: string) => boolean;
       togglePresetGroup: (group: string) => void;
       choosePreset: (preset: { id: string; label: string; description: string; configuration?: string }) => void;
@@ -103,10 +107,21 @@ describe('DatasetPageComponent workflow', () => {
     expect(page.presets).toHaveLength(7);
     expect(page.presets.flatMap((group) => group.datasets)).toHaveLength(24);
     expect(page.presets.every((group) => !page.isPresetGroupCollapsed(group.group))).toBe(true);
-    expect(page.manualDatasetOpen()).toBe(false);
+    expect(page.activeDatasetTab()).toBe('predefined');
 
-    page.manualDatasetOpen.set(true);
-    expect(page.manualDatasetOpen()).toBe(true);
+    page.openAddDataset();
+    expect(page.addDatasetOpen()).toBe(true);
+    expect(page.activeDatasetTab()).toBe('predefined');
+    page.downloadForm.patchValue({ corpus: 'organization/custom-dataset', configuration: 'main' });
+    page.selectDatasetTab('add-by-name');
+    page.selectDatasetTab('predefined');
+    expect(page.downloadForm.getRawValue()).toMatchObject({ corpus: 'organization/custom-dataset', configuration: 'main' });
+    page.handleDatasetTabKeydown(new KeyboardEvent('keydown', { key: 'ArrowRight' }), 'predefined');
+    expect(page.activeDatasetTab()).toBe('add-by-name');
+    page.handleDatasetTabKeydown(new KeyboardEvent('keydown', { key: 'End' }), 'add-by-name');
+    expect(page.activeDatasetTab()).toBe('custom');
+    page.handleDatasetTabKeydown(new KeyboardEvent('keydown', { key: 'Home' }), 'custom');
+    expect(page.activeDatasetTab()).toBe('predefined');
     page.togglePresetGroup('General Corpora');
     expect(page.isPresetGroupCollapsed('General Corpora')).toBe(true);
 
