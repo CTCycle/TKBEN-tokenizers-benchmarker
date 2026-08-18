@@ -199,7 +199,6 @@ function Import-Environment {
         UI_HOST = '127.0.0.1'
         UI_PORT = '8001'
         RELOAD = 'false'
-        ALWAYS_REBUILD = 'true'
         # Backend logs are visible by default when the setting is absent.
         BACKEND_LOGS_VISIBLE = 'true'
     }
@@ -229,14 +228,6 @@ function Import-Environment {
         $env:BACKEND_LOGS_VISIBLE = 'false'
     } else {
         throw "BACKEND_LOGS_VISIBLE must be either 'true' or 'false'."
-    }
-
-    if ($env:ALWAYS_REBUILD -ieq 'true') {
-        $env:ALWAYS_REBUILD = 'true'
-    } elseif ($env:ALWAYS_REBUILD -ieq 'false') {
-        $env:ALWAYS_REBUILD = 'false'
-    } else {
-        throw "ALWAYS_REBUILD must be either 'true' or 'false'."
     }
 
     $env:UV_CACHE_DIR = $UvCacheDir
@@ -345,7 +336,7 @@ function Write-FrontendDependencyStamp {
 
 function Sync-Dependencies {
     param(
-        [bool]$BuildFrontend = $true,
+        [switch]$BuildFrontend,
         [switch]$UseCachedFrontendDependencies,
         [switch]$RuntimesReady,
         [ValidateSet('Standard', 'Development')]
@@ -398,8 +389,6 @@ function Sync-Dependencies {
             Write-Step 'Building frontend.'
             $npmExitCode = Invoke-Npm run build
             if ($npmExitCode -ne 0) { throw "Frontend build failed with exit code $npmExitCode." }
-        } else {
-            Write-Step 'Skipping frontend build because ALWAYS_REBUILD=false.'
         }
     } finally {
         Pop-Location
@@ -459,19 +448,10 @@ function Launch-Application {
     Import-Environment
     if (-not (Test-DependenciesReady)) {
         Write-Step 'Required application environments are missing or unusable; installing dependencies.'
-        Sync-Dependencies -BuildFrontend ($env:ALWAYS_REBUILD -ieq 'true') -InstallationType 'Standard'
+        Sync-Dependencies -InstallationType 'Standard'
     }
     else {
         Write-Ok 'Application environments are ready; skipped dependency installation.'
-        if ($env:ALWAYS_REBUILD -ieq 'true') {
-            Push-Location $ClientDir
-            try {
-                $npmExitCode = Invoke-Npm run build
-                if ($npmExitCode -ne 0) { throw "Frontend build failed with exit code $npmExitCode." }
-            } finally {
-                Pop-Location
-            }
-        }
     }
     Import-Environment
 
@@ -540,7 +520,7 @@ function Install-Dependencies {
     Import-Environment
     Install-Runtimes
     $installationType = Read-InstallationType
-    Sync-Dependencies -InstallationType $installationType -RuntimesReady
+    Sync-Dependencies -BuildFrontend -InstallationType $installationType -RuntimesReady
     if (Test-Path -LiteralPath $UvCacheDir) { Remove-Item -LiteralPath $UvCacheDir -Recurse -Force }
     Write-Ok 'Dependencies installed and frontend built.'
 }
