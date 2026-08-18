@@ -1,15 +1,26 @@
 from __future__ import annotations
 
 import math
+from datetime import datetime, timezone
 
 import pytest
 import sqlalchemy
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session
 
 from server.repositories.database.backend import get_database
 from server.repositories.serialization.datasets import DatasetSerializer
-from server.repositories.schemas.models import Base, Dataset, Tokenizer
+from server.repositories.database.sqlite import SQLiteRepository
+from server.repositories.schemas.models import (
+    AnalysisSession,
+    Base,
+    BenchmarkReport,
+    Dataset,
+    DatasetDocument,
+    Tokenizer,
+    TokenizerReport,
+    TokenizerVocabulary,
+)
 from server.services.benchmarks import BenchmarkService
 from server.repositories.tokenizers import TokenizerRepository
 
@@ -51,6 +62,95 @@ def test_tokenizer_repository_insert_if_missing_is_idempotent(
         rows = session.execute(select(Tokenizer)).scalars().all()
     assert len(rows) == 1
     assert rows[0].name == "bert-base-uncased"
+
+###############################################################################
+def test_dataset_delete_cascades_documents_sessions_and_benchmark_reports() -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    event.listen(engine, "connect", SQLiteRepository.enable_foreign_keys)
+    Base.metadata.create_all(engine, checkfirst=True)
+    serializer = DatasetSerializer(queries=FakeQueries(engine))
+    now = datetime.now(timezone.utc)
+
+    with Session(bind=engine) as session:
+        dataset = Dataset(
+            name="custom/cascade",
+            status="ready",
+            document_count=1,
+            created_at=now,
+            updated_at=now,
+            ready_at=now,
+        )
+        session.add(dataset)
+        session.flush()
+        session.add(DatasetDocument(dataset_id=dataset.id, ordinal=0, text="hello"))
+        session.add(AnalysisSession(
+            dataset_id=dataset.id,
+            status="completed",
+            report_version=2,
+            created_at=now,
+            completed_at=now,
+            parameters={},
+            selected_metric_keys=[],
+        ))
+        session.add(BenchmarkReport(
+            dataset_id=dataset.id,
+            report_version=1,
+            schema_version=1,
+            methodology_version="test",
+            created_at=now,
+            status="completed",
+            documents_processed=1,
+            tokenizers_count=0,
+            tokenizers_processed=[],
+            selected_metric_keys=[],
+            payload={},
+        ))
+        session.commit()
+
+    serializer.delete_dataset("custom/cascade")
+
+    with Session(bind=engine) as session:
+        assert session.execute(select(Dataset)).scalars().all() == []
+        assert session.execute(select(DatasetDocument)).scalars().all() == []
+        assert session.execute(select(AnalysisSession)).scalars().all() == []
+        assert session.execute(select(BenchmarkReport)).scalars().all() == []
+
+###############################################################################
+def test_tokenizer_delete_cascades_reports_and_vocabulary(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    event.listen(engine, "connect", SQLiteRepository.enable_foreign_keys)
+    Base.metadata.create_all(engine, checkfirst=True)
+    database = get_database()
+    monkeypatch.setattr(database.backend, "engine", engine)
+    repository = TokenizerRepository()
+    now = datetime.now(timezone.utc)
+
+    with Session(bind=engine) as session:
+        tokenizer = Tokenizer(name="custom/cascade", created_at=now)
+        session.add(tokenizer)
+        session.flush()
+        session.add(TokenizerReport(
+            tokenizer_id=tokenizer.id,
+            report_version=1,
+            created_at=now,
+            metadata_json={},
+            token_length_histogram={},
+        ))
+        session.add(TokenizerVocabulary(
+            tokenizer_id=tokenizer.id,
+            token_id=0,
+            token="hello",
+        ))
+        session.commit()
+
+    assert repository.delete_tokenizer("custom/cascade") is True
+    assert repository.delete_tokenizer("custom/cascade") is False
+    with Session(bind=engine) as session:
+        assert session.execute(select(Tokenizer)).scalars().all() == []
+        assert session.execute(select(TokenizerReport)).scalars().all() == []
+        assert session.execute(select(TokenizerVocabulary)).scalars().all() == []
 
 ###############################################################################
 def test_benchmark_service_ensure_tokenizer_ids_returns_mapping(

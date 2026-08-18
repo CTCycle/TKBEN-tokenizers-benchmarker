@@ -5,6 +5,7 @@ Covers /api/tokenizers/settings, /api/tokenizers/discover, /api/tokenizers/uploa
 
 import json
 import os
+from uuid import uuid4
 
 import pytest
 from playwright.sync_api import APIRequestContext
@@ -141,6 +142,48 @@ def test_clear_custom_tokenizers(api_context: APIRequestContext) -> None:
     assert response.ok
     data = response.json()
     assert data.get("status") == "success"
+
+###############################################################################
+def test_custom_tokenizer_can_be_deleted_and_repeated_delete_is_not_found(
+    api_context: APIRequestContext,
+    tiny_tokenizer_json: bytes,
+) -> None:
+    """Per-item deletion removes custom registry entries without changing the clear-all endpoint."""
+    stem = f"qa_delete_custom_{uuid4().hex[:8]}"
+    upload = api_context.post(
+        "/api/tokenizers/upload",
+        multipart={
+            "file": {
+                "name": f"{stem}.json",
+                "mimeType": "application/json",
+                "buffer": tiny_tokenizer_json,
+            }
+        },
+    )
+    assert upload.ok, upload.text()
+    tokenizer_name = upload.json()["tokenizer_name"]
+
+    listed = api_context.get("/api/tokenizers/list")
+    assert listed.ok
+    assert tokenizer_name in {
+        str(item.get("tokenizer_name")) for item in listed.json().get("tokenizers", [])
+    }
+
+    deleted = api_context.delete(
+        f"/api/tokenizers/delete?tokenizer_name={tokenizer_name}"
+    )
+    assert deleted.status == 200, deleted.text()
+
+    refreshed = api_context.get("/api/tokenizers/list")
+    assert refreshed.ok
+    assert tokenizer_name not in {
+        str(item.get("tokenizer_name")) for item in refreshed.json().get("tokenizers", [])
+    }
+
+    repeated = api_context.delete(
+        f"/api/tokenizers/delete?tokenizer_name={tokenizer_name}"
+    )
+    assert repeated.status == 404
 
 ###############################################################################
 @pytest.mark.skipif(

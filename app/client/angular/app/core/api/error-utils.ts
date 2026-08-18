@@ -25,6 +25,10 @@ export function errorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+export function isNotFoundError(error: unknown): boolean {
+  return isRecord(error) && error['status'] === 404;
+}
+
 export async function errorMessageAsync(error: unknown, fallback: string): Promise<string> {
   if (isRecord(error) && error['error'] instanceof Blob) {
     try {

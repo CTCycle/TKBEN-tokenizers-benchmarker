@@ -121,3 +121,42 @@ def test_dataset_list_passes_catalog_filters_to_service(monkeypatch) -> None:
         "document_count_operator": "at_most",
         "document_count": 5,
     }
+
+###############################################################################
+def test_dataset_delete_normalizes_identifier_and_returns_not_found_for_repeat(monkeypatch) -> None:
+    from server.services.datasets import DatasetService
+
+    calls: list[tuple[str, str]] = []
+    available = {"custom/foo"}
+
+    monkeypatch.setattr(
+        DatasetService,
+        "is_dataset_in_database",
+        lambda self, name: calls.append(("exists", name)) or name in available,
+    )
+    monkeypatch.setattr(
+        DatasetService,
+        "remove_dataset",
+        lambda self, name: (calls.append(("remove", name)), available.remove(name)),
+    )
+
+    client = TestClient(app)
+    deleted = client.delete(
+        "/api/datasets/delete",
+        params={"dataset_name": "custom/foo"},
+    )
+
+    assert deleted.status_code == 200
+    assert deleted.json() == {
+        "status": "success",
+        "dataset_name": "custom/foo",
+        "message": "Dataset removed.",
+    }
+    assert calls == [("exists", "custom/foo"), ("remove", "custom/foo")]
+
+    repeated = client.delete(
+        "/api/datasets/delete",
+        params={"dataset_name": "custom/foo"},
+    )
+    assert repeated.status_code == 404
+    assert repeated.json()["detail"] == "Dataset 'custom/foo' not found."

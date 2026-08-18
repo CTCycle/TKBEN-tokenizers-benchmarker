@@ -142,6 +142,71 @@ def test_tokenizer_discovery_passes_native_filters_and_returns_structured_items(
     }
 
 ###############################################################################
+def test_remove_custom_tokenizer_removes_registry_entry_and_persisted_row(monkeypatch) -> None:
+    service = TokenizersService()
+    registry = service.custom_tokenizer_registry
+    registry.clear()
+    registry.set("CUSTOM_sample", object())
+
+    deleted: list[str] = []
+
+    class FakeRepository:
+
+        def delete_tokenizer(self, name: str) -> bool:
+            deleted.append(name)
+            return True
+
+    service.repository = FakeRepository()  # type: ignore[assignment]
+
+    assert service.remove_downloaded_tokenizer("CUSTOM_sample") is True
+    assert registry.get("CUSTOM_sample") is None
+    assert deleted == ["CUSTOM_sample"]
+
+###############################################################################
+def test_remove_downloaded_tokenizer_cleans_cache_before_database_delete(tmp_path, monkeypatch) -> None:
+    service = TokenizersService()
+    cache_dir = tmp_path / "google-bert__bert-base-uncased"
+    cache_dir.mkdir()
+    (cache_dir / "tokenizer.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(service, "get_tokenizer_cache_dir", lambda name: str(cache_dir))
+
+    calls: list[str] = []
+
+    class FakeRepository:
+
+        def delete_tokenizer(self, name: str) -> bool:
+            assert not cache_dir.exists()
+            calls.append(name)
+            return True
+
+    service.repository = FakeRepository()  # type: ignore[assignment]
+
+    assert service.remove_downloaded_tokenizer("google-bert/bert-base-uncased") is True
+    assert calls == ["google-bert/bert-base-uncased"]
+
+###############################################################################
+def test_remove_downloaded_tokenizer_keeps_database_row_when_cache_cleanup_fails(monkeypatch) -> None:
+    service = TokenizersService()
+    monkeypatch.setattr(service, "get_tokenizer_cache_dir", lambda name: "cache")
+    monkeypatch.setattr("server.services.tokenizers.Path.exists", lambda self: True)
+    monkeypatch.setattr("server.services.tokenizers.shutil.rmtree", lambda path: (_ for _ in ()).throw(OSError("locked")))
+
+    deleted = False
+
+    class FakeRepository:
+
+        def delete_tokenizer(self, name: str) -> bool:
+            nonlocal deleted
+            deleted = True
+            return True
+
+    service.repository = FakeRepository()  # type: ignore[assignment]
+
+    with pytest.raises(RuntimeError, match="Failed to remove downloaded tokenizer files"):
+        service.remove_downloaded_tokenizer("google-bert/bert-base-uncased")
+    assert deleted is False
+
+###############################################################################
 def test_tokenizer_discovery_uses_bounded_overfetch_and_candidate_cap(monkeypatch) -> None:
     service = TokenizersService()
 

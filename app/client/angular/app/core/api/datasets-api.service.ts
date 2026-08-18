@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, catchError, of, throwError } from 'rxjs';
 import type {
   CustomDatasetUploadResponse,
   DatasetAnalysisRequest,
@@ -13,6 +13,7 @@ import type {
   JobStatusResponse,
 } from './api.models';
 import { JobsApiService } from './jobs-api.service';
+import { isNotFoundError } from './error-utils';
 
 export interface DatasetCatalogFilters {
   readonly search?: string;
@@ -56,8 +57,10 @@ export class DatasetsApiService {
     return this.http.get<DatasetMetricCatalogResponse>('/api/datasets/metrics/catalog');
   }
 
-  latestReport(datasetName: string): Observable<DatasetAnalysisResponse> {
-    return this.http.get<DatasetAnalysisResponse>(`/api/datasets/reports/latest?dataset_name=${encodeURIComponent(datasetName)}`);
+  latestReport(datasetName: string): Observable<DatasetAnalysisResponse | null> {
+    return this.http.get<DatasetAnalysisResponse>(`/api/datasets/reports/latest?dataset_name=${encodeURIComponent(datasetName)}`).pipe(
+      catchError((error: unknown) => isNotFoundError(error) ? of(null) : throwError(() => error)),
+    );
   }
 
   delete(datasetName: string): Observable<{ status: string; dataset_name: string; message: string }> {

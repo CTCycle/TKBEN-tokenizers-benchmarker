@@ -218,6 +218,52 @@ class TestDatasetPage:
             "No validation report found"
         )
 
+    # -------------------------------------------------------------------------
+    def test_dataset_without_report_can_be_deleted_and_disappears_from_catalog(
+        self,
+        page: Page,
+        base_url: str,
+        api_context: APIRequestContext,
+        job_waiter,
+    ) -> None:
+        """A no-report dataset remains selectable and is removed from UI and API state."""
+        dataset_name = _upload_dataset_for_ui_test(
+            api_context=api_context,
+            job_waiter=job_waiter,
+            stem=f"qa_delete_noreport_{uuid4().hex[:8]}",
+        )
+
+        page.goto(f"{base_url}/dataset")
+        row = page.locator(".dataset-preview-row").filter(has_text=dataset_name).first
+        expect(row).to_be_visible()
+
+        delete_count = 0
+
+        def count_delete(request) -> None:
+            nonlocal delete_count
+            if request.method == "DELETE" and "/api/datasets/delete" in request.url:
+                delete_count += 1
+
+        page.on("request", count_delete)
+        page.once("dialog", lambda dialog: dialog.accept())
+        with page.expect_response(
+            lambda response: (
+                response.request.method == "DELETE"
+                and "/api/datasets/delete" in response.url
+                and response.status == 200
+            )
+        ):
+            row.get_by_role("button", name="Remove dataset").click()
+
+        expect(page.locator(".dataset-preview-row").filter(has_text=dataset_name)).to_have_count(0)
+        assert delete_count == 1
+
+        refreshed = api_context.get("/api/datasets/list")
+        assert refreshed.ok
+        assert dataset_name not in {
+            str(item.get("dataset_name")) for item in refreshed.json().get("datasets", [])
+        }
+
 ###############################################################################
 class TestTokenizersPage:
     """Tests for tokenizers page UI elements."""
@@ -277,6 +323,50 @@ class TestTokenizersPage:
             dialog.get_by_role("button", name="Search Hugging Face").click()
         expect(dialog.get_by_text("No tokenizer repositories match this query.", exact=True)).to_be_visible()
 
+    # -------------------------------------------------------------------------
+    def test_custom_tokenizer_delete_removes_preview_row_and_backend_item(
+        self,
+        page: Page,
+        base_url: str,
+        api_context: APIRequestContext,
+        tiny_tokenizer_json: bytes,
+    ) -> None:
+        """Confirmed custom-tokenizer deletion updates the preview without a reload."""
+        stem = f"qa_ui_delete_custom_{uuid4().hex[:8]}"
+        upload = api_context.post(
+            "/api/tokenizers/upload",
+            multipart={
+                "file": {
+                    "name": f"{stem}.json",
+                    "mimeType": "application/json",
+                    "buffer": tiny_tokenizer_json,
+                }
+            },
+        )
+        assert upload.ok, upload.text()
+        tokenizer_name = upload.json()["tokenizer_name"]
+
+        page.goto(f"{base_url}/tokenizers")
+        row = page.locator(".tokenizer-preview-row").filter(has_text=tokenizer_name).first
+        expect(row).to_be_visible()
+
+        page.once("dialog", lambda dialog: dialog.accept())
+        with page.expect_response(
+            lambda response: (
+                response.request.method == "DELETE"
+                and "/api/tokenizers/delete" in response.url
+                and response.status == 200
+            )
+        ):
+            row.get_by_role("button", name=f"Remove {tokenizer_name}").click()
+
+        expect(page.locator(".tokenizer-preview-row").filter(has_text=tokenizer_name)).to_have_count(0)
+        refreshed = api_context.get("/api/tokenizers/list")
+        assert refreshed.ok
+        assert tokenizer_name not in {
+            str(item.get("tokenizer_name")) for item in refreshed.json().get("tokenizers", [])
+        }
+
 ###############################################################################
 class TestCrossBenchmarkPage:
     """Tests for cross benchmark page UI elements."""
@@ -296,6 +386,31 @@ class TestCrossBenchmarkPage:
         page.get_by_role("button", name="Next").click()
         expect(page.get_by_role("button", name="Back")).to_be_enabled()
         expect(page.get_by_role("button", name="Next")).to_be_disabled()
+
+    # -------------------------------------------------------------------------
+    @pytest.mark.parametrize("viewport", [(1440, 900), (1024, 900), (390, 844)])
+    def test_benchmark_actions_title_has_own_row_without_overflow(
+        self,
+        page: Page,
+        base_url: str,
+        viewport: tuple[int, int],
+    ) -> None:
+        """The shared command navbar keeps its title above the responsive action grid."""
+        page.set_viewport_size({"width": viewport[0], "height": viewport[1]})
+        page.goto(f"{base_url}/cross-benchmark")
+        navbar = page.locator(".cross-benchmark-command-navbar")
+        title = page.locator(".cross-benchmark-command-navbar__title")
+        content = page.locator(".cross-benchmark-command-navbar__content")
+        expect(title).to_be_visible()
+        expect(content).to_be_visible()
+
+        navbar_box = navbar.bounding_box()
+        title_box = title.bounding_box()
+        content_box = content.bounding_box()
+        assert navbar_box and title_box and content_box
+        assert content_box["y"] >= title_box["y"] + title_box["height"]
+        assert content_box["x"] >= navbar_box["x"]
+        assert content_box["x"] + content_box["width"] <= navbar_box["x"] + navbar_box["width"] + 1
 
     # -------------------------------------------------------------------------
     def test_cross_benchmark_shows_diagnostics_for_failed_tokenizer_report(
