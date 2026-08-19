@@ -17,6 +17,11 @@ All routers are included with `prefix="/api"` during backend startup.
 - `GET /api/datasets/reports/{report_id}`
 - `DELETE /api/datasets/delete`
 
+The predefined `c4` dataset maps to `allenai/c4`, configuration `en`, and the
+streaming `train` split capped at the first 10,000 documents so the preset is
+usable in the local SQLite workflow. The full repository remains available
+through the manual Hugging Face dataset-ID workflow.
+
 ## Tokenizers
 - `GET /api/tokenizers/settings`
 - `GET /api/tokenizers/discover` — performs bounded Hugging Face repository discovery. `search`, `author`, `pipeline_tag`, required `include_tags`, `access=all|public|gated`, `sort`, and `limit` are passed to the installed Hub API where supported. The query requests `siblings` metadata and locally requires a usable root-level tokenizer artifact: `tokenizer.json` or a SentencePiece file with tokenizer/config metadata, `vocab.json` plus `merges.txt`, or `vocab.txt` with tokenizer/config metadata. Weight-only, metadata-only, nested-only, and artifact-less repositories are discarded before the response is built. Because artifact validation and existing `exclude_tags`, any-text-task, and vocabulary comparison/order filters are local, the provider query uses bounded overfetch and the configured candidate cap. Discovery remains metadata-only; tokenizer weights are never downloaded or model-loaded. The existing download loader remains the final `AutoTokenizer` compatibility check and removes failed cache artifacts. The response is `{items, count, fetched_count}` with structured repository metadata. Hugging Face failures return a sanitized HTTP 500 rather than a false successful empty result.

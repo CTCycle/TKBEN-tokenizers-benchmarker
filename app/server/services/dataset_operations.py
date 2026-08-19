@@ -10,7 +10,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any, ClassVar, cast
 
 import pandas as pd
-from datasets import Dataset, DatasetDict
+from datasets import Dataset, DatasetDict, IterableDataset
 
 from server.common.path import DATASETS_PATH
 from server.common.utils.logger import logger
@@ -171,11 +171,14 @@ class DatasetServiceOperationsMixin:
         hf_access_token = self.get_hf_access_token_for_download()
 
         max_attempts = max(1, int(self.download_retry_attempts))
-        dataset: Dataset | DatasetDict | None = None
+        dataset: Dataset | DatasetDict | IterableDataset | None = None
         last_exc: Exception | None = None
         last_category = "unknown"
 
         for attempt in range(1, max_attempts + 1):
+            if self.stop_requested(should_stop):
+                self.cleanup_cancelled_dataset(dataset_name)
+                return {}
             try:
                 dataset = self.load_dataset_with_progress(
                     hf_dataset_id=target.hf_dataset_id,
@@ -184,7 +187,12 @@ class DatasetServiceOperationsMixin:
                     hf_access_token=hf_access_token,
                     split=target.split,
                     progress_callback=progress_callback,
+                    streaming=target.streaming,
+                    max_documents=target.max_documents,
                 )
+                if self.stop_requested(should_stop):
+                    self.cleanup_cancelled_dataset(dataset_name)
+                    return {}
                 break
             except Exception as exc:  # noqa: BLE001
                 last_exc = exc
@@ -204,6 +212,9 @@ class DatasetServiceOperationsMixin:
                     resolved_dataset_name,
                     exc_info=True,
                 )
+                if self.stop_requested(should_stop):
+                    self.cleanup_cancelled_dataset(dataset_name)
+                    return {}
                 if not should_retry:
                     break
                 delay_seconds = self.retry_delay_seconds(attempt)
@@ -215,7 +226,18 @@ class DatasetServiceOperationsMixin:
                     max_attempts,
                 )
                 if delay_seconds > 0.0:
-                    time.sleep(delay_seconds)
+                    if should_stop is None:
+                        time.sleep(delay_seconds)
+                    else:
+                        deadline = time.monotonic() + delay_seconds
+                        while True:
+                            if self.stop_requested(should_stop):
+                                self.cleanup_cancelled_dataset(dataset_name)
+                                return {}
+                            remaining = deadline - time.monotonic()
+                            if remaining <= 0.0:
+                                break
+                            time.sleep(min(0.25, remaining))
 
         if dataset is None:
             failure_exc = (

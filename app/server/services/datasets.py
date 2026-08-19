@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import shutil
 import threading
 from collections.abc import Callable, Generator, Iterator
@@ -9,7 +10,7 @@ from pathlib import Path
 from typing import Any, cast
 
 import pandas as pd
-from datasets import Dataset, DatasetDict, load_dataset
+from datasets import Dataset, DatasetDict, IterableDataset, load_dataset
 from datasets.exceptions import DataFilesNotFoundError, DatasetNotFoundError
 from huggingface_hub.errors import (
     GatedRepoError,
@@ -42,6 +43,8 @@ class DatasetAlias:
     hf_dataset_id: str
     default_config: str | None = None
     default_split: str | None = None
+    streaming: bool = False
+    max_documents: int | None = None
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -51,11 +54,27 @@ class ResolvedDatasetDownload:
     hf_dataset_id: str
     hf_config: str | None
     split: str | None
+    streaming: bool
+    max_documents: int | None
+
+
+###############################################################################
+class DatasetDownloadTimeoutError(TimeoutError):
+    """Raised when a dataset provider load exceeds the configured timeout."""
 
 
 HF_DATASET_ALIASES: dict[str, DatasetAlias] = {
     "wikitext": DatasetAlias(hf_dataset_id="wikitext", default_config="wikitext-2-v1"),
-    "c4": DatasetAlias(hf_dataset_id="allenai/c4", default_config="en"),
+    # The full C4/en corpus is approximately 327 GB. The predefined preset
+    # intentionally streams a usable 10,000-document sample; the raw
+    # allenai/c4 repository remains available through the manual ID workflow.
+    "c4": DatasetAlias(
+        hf_dataset_id="allenai/c4",
+        default_config="en",
+        default_split="train",
+        streaming=True,
+        max_documents=10000,
+    ),
     "oscar": DatasetAlias(
         hf_dataset_id="oscar-corpus/oscar",
         default_config="unshuffled_deduplicated_en",
@@ -94,6 +113,9 @@ HF_DATASET_ALIASES: dict[str, DatasetAlias] = {
 
 DATASET_CONFIGURATION_FIELD = "Dataset configuration"
 DATASET_ID_FIELD = "Dataset id"
+DATASET_SPLIT_PATTERN = re.compile(
+    r"^[A-Za-z0-9][A-Za-z0-9._-]*(?:\[(?:[0-9]*):(?:[0-9]*)\])?$"
+)
 
 ###############################################################################
 class DatasetService(DatasetServiceOperationsMixin):
@@ -137,9 +159,19 @@ class DatasetService(DatasetServiceOperationsMixin):
     # -------------------------------------------------------------------------
     def validate_non_empty_text(self, value: str, field_name: str) -> str:
         max_length = 160
-        if field_name == "Dataset split":
-            max_length = 120
         return normalize_identifier(value, field_name, max_length=max_length)
+
+    # -------------------------------------------------------------------------
+    def validate_dataset_split(self, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Dataset split must not be empty.")
+        if len(normalized) > 120 or not DATASET_SPLIT_PATTERN.fullmatch(normalized):
+            raise ValueError(
+                "Dataset split contains unsupported characters. "
+                "Use a split name or a numeric slice such as 'train[:10000]'."
+            )
+        return normalized
 
     # -------------------------------------------------------------------------
     def resolve_dataset_download(
@@ -173,7 +205,7 @@ class DatasetService(DatasetServiceOperationsMixin):
                 hf_config, DATASET_CONFIGURATION_FIELD
             )
         if split is not None:
-            split = self.validate_non_empty_text(split, "Dataset split")
+            split = self.validate_dataset_split(split)
 
         return ResolvedDatasetDownload(
             requested_corpus=requested_corpus,
@@ -181,11 +213,15 @@ class DatasetService(DatasetServiceOperationsMixin):
             hf_dataset_id=hf_dataset_id,
             hf_config=hf_config,
             split=split,
+            streaming=alias.streaming if alias is not None else False,
+            max_documents=alias.max_documents if alias is not None else None,
         )
 
     # -------------------------------------------------------------------------
     def classify_download_exception(self, exc: Exception) -> str:
         message = str(exc).lower()
+        if isinstance(exc, DatasetDownloadTimeoutError):
+            return "provider_timeout"
         if self.is_gated_or_auth_error(exc):
             return "gated_or_auth"
 
@@ -296,6 +332,13 @@ class DatasetService(DatasetServiceOperationsMixin):
                 f"fetching '{requested_dataset_name}' (resolved HF id '{resolved_dataset_name}'). "
                 "Check connectivity and retry."
             )
+        if category == "provider_timeout":
+            return (
+                f"Dataset download failed (job={job_label}): Hugging Face did not finish "
+                f"loading '{requested_dataset_name}' (resolved HF id '{resolved_dataset_name}') "
+                f"within {self.download_timeout_seconds:.1f} seconds. "
+                "Use a bounded or streaming dataset selection, or increase the dataset timeout."
+            )
         if category == "unsupported_dataset_script":
             script_hint = ""
             if (
@@ -361,7 +404,7 @@ class DatasetService(DatasetServiceOperationsMixin):
     # -------------------------------------------------------------------------
     @staticmethod
     def _load_dataset_worker(
-        result_holder: dict[str, Dataset | DatasetDict],
+        result_holder: dict[str, Dataset | DatasetDict | IterableDataset],
         error_holder: dict[str, Exception],
         hf_dataset_id: str,
         hf_config: str | None,
@@ -381,6 +424,40 @@ class DatasetService(DatasetServiceOperationsMixin):
             error_holder["error"] = exc
 
     # -------------------------------------------------------------------------
+    @staticmethod
+    def _cleanup_dataset_cache_after_timeout(
+        worker_thread: threading.Thread,
+        cache_path: str,
+    ) -> None:
+        worker_thread.join()
+        shutil.rmtree(cache_path, ignore_errors=True)
+
+    # -------------------------------------------------------------------------
+    @staticmethod
+    def _limit_loaded_dataset(
+        dataset: Dataset | DatasetDict | IterableDataset,
+        max_documents: int | None,
+    ) -> Dataset | DatasetDict | IterableDataset:
+        if max_documents is None:
+            return dataset
+        if max_documents <= 0:
+            raise ValueError("Maximum dataset documents must be positive.")
+        if isinstance(dataset, DatasetDict):
+            return DatasetDict(
+                {
+                    split_name: split.select(
+                        range(min(max_documents, len(split)))
+                    )
+                    for split_name, split in dataset.items()
+                }
+            )
+        if isinstance(dataset, Dataset):
+            return dataset.select(range(min(max_documents, len(dataset))))
+        if isinstance(dataset, IterableDataset):
+            return dataset.take(max_documents)
+        return dataset
+
+    # -------------------------------------------------------------------------
     def load_dataset_with_progress(
         self,
         hf_dataset_id: str,
@@ -389,7 +466,9 @@ class DatasetService(DatasetServiceOperationsMixin):
         hf_access_token: str | None,
         split: str | None,
         progress_callback: Callable[[float], None] | None = None,
-    ) -> Dataset | DatasetDict:
+        streaming: bool = False,
+        max_documents: int | None = None,
+    ) -> Dataset | DatasetDict | IterableDataset:
         heartbeat_stop = threading.Event()
         heartbeat_thread: threading.Thread | None = None
 
@@ -403,11 +482,11 @@ class DatasetService(DatasetServiceOperationsMixin):
             heartbeat_thread.start()
 
         try:
-            load_kwargs: dict[str, str] = {}
+            load_kwargs: dict[str, Any] = {"streaming": streaming}
             if split is not None:
                 load_kwargs["split"] = split
 
-            result_holder: dict[str, Dataset | DatasetDict] = {}
+            result_holder: dict[str, Dataset | DatasetDict | IterableDataset] = {}
             error_holder: dict[str, Exception] = {}
 
             worker_thread = threading.Thread(
@@ -427,7 +506,13 @@ class DatasetService(DatasetServiceOperationsMixin):
             worker_thread.join(timeout=float(self.download_timeout_seconds))
 
             if worker_thread.is_alive():
-                raise TimeoutError(
+                cleanup_thread = threading.Thread(
+                    target=self._cleanup_dataset_cache_after_timeout,
+                    args=(worker_thread, cache_path),
+                    daemon=True,
+                )
+                cleanup_thread.start()
+                raise DatasetDownloadTimeoutError(
                     f"Dataset download timed out after {self.download_timeout_seconds:.1f} seconds."
                 )
 
@@ -440,7 +525,7 @@ class DatasetService(DatasetServiceOperationsMixin):
                 raise RuntimeError(
                     "Dataset download failed before producing a dataset result."
                 )
-            return dataset
+            return self._limit_loaded_dataset(dataset, max_documents)
         finally:
             if heartbeat_thread is not None:
                 heartbeat_stop.set()

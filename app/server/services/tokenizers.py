@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shutil
 import tempfile
+import threading
 from collections.abc import Sized
 from datetime import datetime
 from pathlib import Path
@@ -26,6 +27,11 @@ from server.services.keys import HFAccessKeyService
 from server.services.tokenizer_storage import TokenizerStorageMixin
 
 ###############################################################################
+class TokenizerDownloadTimeoutError(TimeoutError):
+    """Raised when a tokenizer provider load exceeds the job timeout."""
+
+
+###############################################################################
 class TokenizersService(TokenizerStorageMixin):
     """
     Service for fetching tokenizer discovery and catalog information from HuggingFace.
@@ -39,6 +45,7 @@ class TokenizersService(TokenizerStorageMixin):
         "spiece.model",
         "tokenizer.model",
     })
+    TOKENIZER_DOWNLOAD_TIMEOUT_SECONDS = 120.0
 
     # -------------------------------------------------------------------------
     def __init__(self) -> None:
@@ -401,6 +408,57 @@ class TokenizersService(TokenizerStorageMixin):
         return known + unknown
 
     # -------------------------------------------------------------------------
+    @staticmethod
+    def _cleanup_tokenizer_cache_after_timeout(
+        worker_thread: threading.Thread,
+        cache_dir: Path,
+    ) -> None:
+        worker_thread.join()
+        shutil.rmtree(cache_dir, ignore_errors=True)
+
+    # -------------------------------------------------------------------------
+    def _load_tokenizer_with_timeout(
+        self,
+        tokenizer_id: str,
+        cache_dir: str,
+        hf_access_token: str | None,
+    ) -> Any:
+        result_holder: dict[str, Any] = {}
+        error_holder: dict[str, BaseException] = {}
+
+        def load() -> None:
+            try:
+                result_holder["tokenizer"] = AutoTokenizer.from_pretrained(
+                    tokenizer_id,
+                    cache_dir=cache_dir,
+                    token=hf_access_token,
+                )
+            except BaseException as exc:  # noqa: BLE001
+                error_holder["error"] = exc
+
+        worker_thread = threading.Thread(target=load, daemon=True)
+        worker_thread.start()
+        worker_thread.join(timeout=self.TOKENIZER_DOWNLOAD_TIMEOUT_SECONDS)
+        if worker_thread.is_alive():
+            threading.Thread(
+                target=self._cleanup_tokenizer_cache_after_timeout,
+                args=(worker_thread, Path(cache_dir)),
+                daemon=True,
+            ).start()
+            raise TokenizerDownloadTimeoutError(
+                "Tokenizer download timed out after "
+                f"{self.TOKENIZER_DOWNLOAD_TIMEOUT_SECONDS:.1f} seconds."
+            )
+
+        error = error_holder.get("error")
+        if error is not None:
+            raise error
+        tokenizer = result_holder.get("tokenizer")
+        if tokenizer is None:
+            raise RuntimeError("Tokenizer download produced no tokenizer result.")
+        return tokenizer
+
+    # -------------------------------------------------------------------------
     def download_and_persist(
         self,
         tokenizers: list[str],
@@ -439,10 +497,10 @@ class TokenizersService(TokenizerStorageMixin):
                 else:
                     cache_dir = self.get_tokenizer_cache_dir(tokenizer_id)
                     Path(cache_dir).mkdir(parents=True, exist_ok=True)
-                    AutoTokenizer.from_pretrained(
+                    self._load_tokenizer_with_timeout(
                         tokenizer_id,
-                        cache_dir=cache_dir,
-                        token=hf_access_token,
+                        cache_dir,
+                        hf_access_token,
                     )
                     # Keep cached tokenizer files because benchmark runs load
                     # tokenizers locally with local_files_only=True.
@@ -450,7 +508,8 @@ class TokenizersService(TokenizerStorageMixin):
                     downloaded.append(tokenizer_id)
             except Exception as exc:  # noqa: BLE001
                 cache_dir = Path(self.get_tokenizer_cache_dir(tokenizer_id))
-                shutil.rmtree(cache_dir, ignore_errors=True)
+                if not isinstance(exc, TokenizerDownloadTimeoutError):
+                    shutil.rmtree(cache_dir, ignore_errors=True)
                 reason = f"{type(exc).__name__}: {str(exc).splitlines()[0][:240]}"
                 logger.warning(
                     "Failed to download tokenizer %s (%s)", tokenizer_id, reason

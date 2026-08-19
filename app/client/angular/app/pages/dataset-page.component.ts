@@ -64,7 +64,7 @@ export class DatasetPageComponent {
       group: 'General Corpora',
       datasets: [
         { id: 'wikitext', label: 'wikitext', description: 'Clean Wikipedia articles, multiple sizes, common baseline.', configuration: 'wikitext-2-v1' },
-        { id: 'c4', label: 'c4', description: 'Colossal Clean Crawled Corpus, large filtered web crawl.' },
+        { id: 'c4', label: 'c4 (10k sample)', description: 'First 10,000 English training documents from the Colossal Clean Crawled Corpus.' },
         { id: 'oscar', label: 'oscar', description: 'Multilingual web corpus filtered by language.' },
         { id: 'cc_news', label: 'cc_news', description: 'News articles from Common Crawl.' },
         { id: 'openwebtext', label: 'openwebtext', description: 'Reddit-linked web pages, GPT-style corpus.' },
