@@ -30,7 +30,6 @@ from server.services.tokenizer_storage import TokenizerStorageMixin
 class TokenizerDownloadTimeoutError(TimeoutError):
     """Raised when a tokenizer provider load exceeds the job timeout."""
 
-
 ###############################################################################
 class TokenizersService(TokenizerStorageMixin):
     """

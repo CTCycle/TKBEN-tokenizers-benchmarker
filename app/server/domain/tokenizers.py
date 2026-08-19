@@ -31,7 +31,6 @@ class SupportedTokenizerPipeline(StrEnum):
     SUMMARIZATION = "summarization"
     ZERO_SHOT_CLASSIFICATION = "zero-shot-classification"
 
-
 ###############################################################################
 class TokenizerDiscoverySort(StrEnum):
     DOWNLOADS = "downloads"
