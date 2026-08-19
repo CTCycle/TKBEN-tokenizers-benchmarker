@@ -62,5 +62,5 @@ def test_resolve_custom_tokenizer_selection(monkeypatch) -> None:
         service.tools, "is_tokenizer_compatible", lambda tokenizer: True
     )
 
-    resolved = service.resolve_custom_tokenizer_selection("CUSTOM_demo")
+    resolved = service.resolve_custom_tokenizer_selection(["CUSTOM_demo"])
     assert "CUSTOM_demo" in resolved

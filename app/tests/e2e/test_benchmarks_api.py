@@ -82,7 +82,6 @@ def test_benchmark_report_round_trip_includes_reproducibility_metadata(
     tokenizer_name = uploaded_tiny_tokenizer["tokenizer_name"]
     run_payload = {
         "tokenizers": [tokenizer_name],
-        "custom_tokenizer_name": tokenizer_name,
         "dataset_name": uploaded_dataset["dataset_name"],
         "run_name": "e2e deterministic benchmark report",
         "selected_metric_keys": [

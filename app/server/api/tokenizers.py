@@ -219,11 +219,11 @@ async def generate_tokenizer_report(
         )
 
     service = TokenizersService()
-    tokenizer_cached = await asyncio.to_thread(
-        service.has_cached_tokenizer,
+    tokenizer_available = await asyncio.to_thread(
+        service.has_available_tokenizer,
         tokenizer_name,
     )
-    if not tokenizer_cached:
+    if not tokenizer_available:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=(

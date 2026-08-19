@@ -105,6 +105,13 @@ class TokenizersService(TokenizerStorageMixin):
         self.custom_tokenizer_registry.clear()
 
     # -------------------------------------------------------------------------
+    def has_available_tokenizer(self, tokenizer_id: str) -> bool:
+        """Return whether a tokenizer can be loaded for reports or benchmarks."""
+        return self.has_cached_tokenizer(tokenizer_id) or (
+            self.custom_tokenizer_registry.get(tokenizer_id) is not None
+        )
+
+    # -------------------------------------------------------------------------
     def remove_downloaded_tokenizer(self, tokenizer_id: str) -> bool:
         tokenizer_name = self.validate_tokenizer_identifier(tokenizer_id)
         if self.custom_tokenizer_registry.delete(tokenizer_name):
@@ -176,7 +183,8 @@ class TokenizersService(TokenizerStorageMixin):
             catalog.append({
                 "tokenizer_name": name,
                 "source": "custom",
-                "has_report": False,
+                "has_report": self.repository.get_latest_tokenizer_report(name)
+                is not None,
                 "vocabulary_size": parsed_size,
             })
 

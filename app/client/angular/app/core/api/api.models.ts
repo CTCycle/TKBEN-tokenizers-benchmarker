@@ -413,14 +413,13 @@ export interface BenchmarkRunRequest {
     tokenizers: string[];
     dataset_name: string;
     config: BenchmarkRunConfig;
-    custom_tokenizer_name?: string;
     run_name?: string | null;
     selected_metric_keys?: string[] | null;
 }
 
 export type BenchmarkRunWizardPayload = Omit<
     BenchmarkRunRequest,
-    'custom_tokenizer_name' | 'run_name' | 'selected_metric_keys'
+    'run_name' | 'selected_metric_keys'
 > & {
     run_name: string;
     selected_metric_keys: string[];

@@ -34,7 +34,9 @@ def test_benchmark_run_route_returns_202(monkeypatch) -> None:
     from server.services.benchmarks import BenchmarkService
 
     monkeypatch.setattr(
-        BenchmarkService, "resolve_custom_tokenizer_selection", lambda self, name: {}
+        BenchmarkService,
+        "resolve_custom_tokenizer_selection",
+        lambda self, selected: {},
     )
     monkeypatch.setattr(
         BenchmarkService, "get_dataset_document_count", lambda self, dataset_name: 3
@@ -80,7 +82,11 @@ def test_benchmark_run_accepts_selected_custom_tokenizer_without_persisted_cache
     monkeypatch.setattr(
         BenchmarkService,
         "resolve_custom_tokenizer_selection",
-        lambda self, name: {"CUSTOM_demo": object()} if name == "CUSTOM_demo" else {},
+        lambda self, selected: (
+            {"CUSTOM_demo": object()}
+            if "CUSTOM_demo" in selected
+            else {}
+        ),
     )
     monkeypatch.setattr(
         BenchmarkService, "get_dataset_document_count", lambda self, dataset_name: 3
@@ -103,13 +109,26 @@ def test_benchmark_run_accepts_selected_custom_tokenizer_without_persisted_cache
         json={
             "tokenizers": ["CUSTOM_demo"],
             "dataset_name": "custom/sample",
-            "custom_tokenizer_name": "CUSTOM_demo",
             "config": {"max_documents": 2},
         },
     )
 
     assert resp.status_code == 202
     assert missing_checked["tokenizers"] == []
+
+###############################################################################
+def test_benchmark_run_rejects_removed_custom_tokenizer_field() -> None:
+    response = TestClient(app).post(
+        "/api/benchmarks/run",
+        json={
+            "tokenizers": ["CUSTOM_demo"],
+            "dataset_name": "custom/sample",
+            "custom_tokenizer_name": "CUSTOM_demo",
+        },
+    )
+
+    assert response.status_code == 422
+    assert "custom_tokenizer_name" in response.text
 
 ###############################################################################
 def test_benchmark_list_and_by_id(monkeypatch) -> None:

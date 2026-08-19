@@ -83,7 +83,8 @@ async def run_benchmarks(
 
     service = BenchmarkService(max_documents=payload.config.max_documents)
     custom_tokenizers = await asyncio.to_thread(
-        service.resolve_custom_tokenizer_selection, payload.custom_tokenizer_name
+        service.resolve_custom_tokenizer_selection,
+        payload.tokenizers,
     )
 
     doc_count = await asyncio.to_thread(

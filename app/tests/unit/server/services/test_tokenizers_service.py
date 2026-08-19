@@ -477,6 +477,11 @@ def test_tokenizer_catalog_filters_cached_sources_search_and_vocabulary(
         "snapshot",
         lambda: {"CUSTOM_demo": CustomTokenizer()},
     )
+    monkeypatch.setattr(
+        service.repository,
+        "get_latest_tokenizer_report",
+        lambda _: None,
+    )
 
     assert [item["tokenizer_name"] for item in service.list_tokenizer_catalog()] == [
         "alpha/model",
