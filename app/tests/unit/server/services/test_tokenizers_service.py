@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 import pytest
@@ -444,6 +445,36 @@ def test_failed_tokenizer_download_cleans_partial_cache_and_returns_reason(
     assert result["failed_count"] == 1
     assert "ValueError: Unrecognized model configuration" in result["failed_details"][0]
     assert removed == [str(Path(cache_dir))]
+
+###############################################################################
+def test_tokenizer_download_timeout_returns_failure_without_blocking_job(
+    monkeypatch,
+) -> None:
+    service = TokenizersService()
+    service.TOKENIZER_DOWNLOAD_TIMEOUT_SECONDS = 0.01
+    cache_dir = Path("timeout-cache")
+
+    monkeypatch.setattr(service.key_service, "get_active_key", lambda: None)
+    monkeypatch.setattr(service.repository, "tokenizer_exists", lambda _: False)
+    monkeypatch.setattr(service, "get_tokenizer_cache_dir", lambda _: str(cache_dir))
+    monkeypatch.setattr(service, "has_cached_tokenizer", lambda _: False)
+
+    def slow_load(*args, **kwargs):
+        del args, kwargs
+        time.sleep(0.05)
+        return object()
+
+    monkeypatch.setattr(
+        "server.services.tokenizers.AutoTokenizer.from_pretrained",
+        slow_load,
+    )
+
+    started = time.monotonic()
+    result = service.download_and_persist(["slow/model"])
+
+    assert time.monotonic() - started < 0.04
+    assert result["failed"] == ["slow/model"]
+    assert "TokenizerDownloadTimeoutError" in result["failed_details"][0]
 
 ###############################################################################
 def test_tokenizer_catalog_filters_cached_sources_search_and_vocabulary(
