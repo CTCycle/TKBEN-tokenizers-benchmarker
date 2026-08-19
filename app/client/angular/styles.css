@@ -199,7 +199,7 @@ app-root {
   height: var(--app-header-height);
   padding: 10px var(--page-gutter) 8px;
   border-bottom: 1px solid var(--border-default);
-  background: linear-gradient(180deg, rgba(24, 34, 47, 0.96), rgba(16, 23, 32, 0.94));
+  background: var(--color-canvas-top);
   box-shadow: var(--shadow-inset), 0 8px 24px rgba(0, 0, 0, 0.16);
   z-index: 1100;
 }
@@ -2380,12 +2380,12 @@ app-root {
 .cross-benchmark-kpi-label {
   margin: 0;
   color: var(--color-muted);
-  font-size: 15px;
+  font-size: 13px;
 }
 
 .cross-benchmark-kpi-value {
   margin: 4px 0 0;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 600;
   overflow-wrap: anywhere;
   line-height: 1.3;
@@ -2407,31 +2407,31 @@ app-root {
 
 .cross-benchmark-control-surface {
   display: grid;
-  grid-template-columns: minmax(0, 2.4fr) minmax(280px, 0.7fr);
-  gap: var(--space-3);
+  grid-template-columns: minmax(0, 2.55fr) minmax(252px, 0.65fr);
+  gap: 10px;
   align-items: stretch;
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
-  padding: 24px 28px;
+  padding: 8px 12px;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--color-surface-subtle);
   box-shadow: none;
 }
 
 .cross-benchmark-header-main {
   min-width: 0;
-  padding-right: 28px;
+  padding-right: 12px;
   border-right: 1px solid var(--color-border);
 }
 
 .cross-benchmark-top-row {
   display: grid;
-  grid-template-columns: minmax(360px, 1fr) minmax(0, 1.75fr);
+  grid-template-columns: minmax(300px, 0.8fr) minmax(0, 1.8fr);
   gap: 0;
   align-items: stretch;
-  min-height: 160px;
+  min-height: 0;
 }
 
 .cross-benchmark-current-report {
@@ -2439,9 +2439,9 @@ app-root {
   min-width: 0;
   align-content: start;
   justify-items: start;
-  gap: 18px;
-  justify-content: center;
-  padding: 12px 28px 12px 0;
+  gap: 8px;
+  justify-content: normal;
+  padding: 0 12px 8px 0;
   border: 0;
   border-right: 1px solid var(--color-border);
   border-radius: 0;
@@ -2454,35 +2454,36 @@ app-root {
   justify-content: space-between;
   width: 100%;
   min-width: 0;
+  min-height: 24px;
   gap: 8px;
 }
 
 .cross-benchmark-current-report strong {
   max-width: 100%;
   overflow: hidden;
-  font-size: 19px;
-  letter-spacing: -0.015em;
+  font-size: 16px;
+  letter-spacing: -0.01em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .cross-benchmark-current-report small {
   color: var(--color-muted);
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .cross-benchmark-current-report .cross-benchmark-report-selector {
-  height: 30px;
-  min-height: 30px;
+  height: 24px;
+  min-height: 24px;
   flex-shrink: 0;
   margin-top: 0;
-  padding: 4px 0 4px 24px;
+  padding: 2px 0 2px 12px;
   border: 0;
   border-left: 1px solid var(--color-border);
   border-radius: 0;
   background: transparent;
   color: var(--color-accent);
-  font-size: 14px;
+  font-size: 12px;
   letter-spacing: 0.04em;
 }
 
@@ -2638,15 +2639,15 @@ app-root {
   grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 0.95fr);
   gap: 0;
   align-items: stretch;
-  padding-left: 28px;
+  padding-left: 12px;
 }
 
 .cross-benchmark-kpi-card {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 18px;
-  padding: 12px 14px;
+  justify-content: flex-start;
+  gap: 4px;
+  padding: 0 10px 8px;
   min-width: 0;
   border: 0;
   border-radius: 0;
@@ -2660,13 +2661,14 @@ app-root {
 .cross-benchmark-kpi-heading {
   display: flex;
   align-items: center;
-  gap: 12px;
+  min-height: 24px;
+  gap: 8px;
   min-width: 0;
 }
 
 .cross-benchmark-kpi-icon {
-  width: 24px;
-  height: 24px;
+  width: 18px;
+  height: 18px;
   flex: 0 0 auto;
   color: var(--color-muted);
 }
@@ -2675,10 +2677,10 @@ app-root {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  align-content: center;
-  gap: 22px;
+  align-content: start;
+  gap: 6px;
   min-width: 0;
-  padding-left: 28px;
+  padding-left: 12px;
 }
 
 .cross-benchmark-command-navbar__header {
@@ -2701,7 +2703,7 @@ app-root {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
-  gap: 14px;
+  gap: 6px;
   align-self: auto;
   width: 100%;
   min-width: 0;
@@ -2718,8 +2720,8 @@ app-root {
 
 .cross-benchmark-command-navbar__content > .cross-benchmark-action-button,
 .cross-benchmark-command-navbar__content > .dashboard-export-control .dashboard-export-trigger {
-  height: 84px;
-  padding: 0 22px;
+  height: 36px;
+  padding: 0 10px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-control);
   background: var(--color-surface-subtle);
@@ -2728,15 +2730,15 @@ app-root {
 
 .cross-benchmark-command-navbar__content > .cross-benchmark-run-button {
   min-width: 0;
-  height: 84px;
-  padding: 0 22px;
+  height: 36px;
+  padding: 0 10px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-control);
   box-shadow: none;
   background: var(--color-surface-subtle);
   color: var(--color-text);
-  font-size: 15px;
-  gap: 12px;
+  font-size: 13px;
+  gap: 6px;
 }
 
 .cross-benchmark-command-navbar__content > .cross-benchmark-run-button:hover:not(:disabled) {
@@ -2759,13 +2761,13 @@ app-root {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  height: 84px;
-  padding: 0 22px;
+  height: 36px;
+  padding: 0 10px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-control);
   background: var(--color-surface-subtle);
   color: var(--color-text);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
@@ -2773,8 +2775,8 @@ app-root {
 }
 
 .cross-benchmark-action-button svg {
-  width: 26px;
-  height: 26px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
 }
 
@@ -2839,8 +2841,8 @@ app-root {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  height: 84px;
-  padding: 0 22px;
+  height: 36px;
+  padding: 0 10px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-control);
   background: var(--color-surface-subtle);
@@ -2867,13 +2869,13 @@ app-root {
 }
 
 .cross-benchmark-command-navbar .dashboard-export-trigger__label {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
 }
 
 .cross-benchmark-command-navbar .dashboard-export-trigger svg {
-  width: 26px;
-  height: 26px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
 }
 
@@ -2886,7 +2888,7 @@ app-root {
 @media (max-width: 1100px) {
   .cross-benchmark-control-surface {
     grid-template-columns: 1fr;
-    padding: 18px;
+    padding: 12px;
   }
 
   .cross-benchmark-header-main {
@@ -2943,8 +2945,8 @@ app-root {
   .cross-benchmark-command-navbar__content > .cross-benchmark-action-button,
   .cross-benchmark-command-navbar__content > .dashboard-export-control .dashboard-export-trigger,
   .cross-benchmark-command-navbar__content > .cross-benchmark-run-button {
-    height: 48px;
-    padding: 0 14px;
+    height: 36px;
+    padding: 0 10px;
     font-size: 13px;
   }
 

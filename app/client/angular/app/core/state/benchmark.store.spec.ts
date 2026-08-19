@@ -110,4 +110,14 @@ describe('BenchmarkStore', () => {
     expect(saved.ordered_widget_ids).toEqual(['hidden', 'visible']);
     expect(saved.visualization_by_widget_id).toEqual({ visible: 'bar' });
   });
+
+  it('reorders visible widgets without moving hidden panel slots', () => {
+    const { store } = createStore();
+    store.layout.set(['first', 'hidden-a', 'second', 'hidden-b', 'third']);
+    store.hiddenWidgetIds.set(['hidden-a', 'hidden-b']);
+
+    store.reorderVisible(0, 1);
+
+    expect(store.layout()).toEqual(['second', 'hidden-a', 'first', 'hidden-b', 'third']);
+  });
 });
