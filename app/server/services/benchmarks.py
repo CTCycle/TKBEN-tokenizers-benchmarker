@@ -260,7 +260,10 @@ class BenchmarkService(BenchmarkServiceExecutionMixin):
         )
 
         missing: list[str] = []
+        custom_registry = get_custom_tokenizer_registry()
         for tokenizer_name in unique_requested:
+            if custom_registry.get(tokenizer_name) is not None:
+                continue
             if tokenizer_name in missing_names:
                 missing.append(tokenizer_name)
                 continue
@@ -275,18 +278,21 @@ class BenchmarkService(BenchmarkServiceExecutionMixin):
     # -------------------------------------------------------------------------
     def resolve_custom_tokenizer_selection(
         self,
-        custom_tokenizer_name: str | None,
+        selected_tokenizer_names: list[str],
     ) -> dict[str, Any]:
-        if (
-            not isinstance(custom_tokenizer_name, str)
-            or not custom_tokenizer_name.strip()
-        ):
-            return {}
-        selected_name = custom_tokenizer_name.strip()
-        tokenizer = get_custom_tokenizer_registry().get(selected_name)
-        if tokenizer is None or not self.tools.is_tokenizer_compatible(tokenizer):
-            return {}
-        return {selected_name: tokenizer}
+        selected_names: list[str] = []
+        for tokenizer_name in selected_tokenizer_names:
+            normalized_name = str(tokenizer_name).strip()
+            if normalized_name:
+                selected_names.append(normalized_name)
+
+        resolved: dict[str, Any] = {}
+        registry = get_custom_tokenizer_registry()
+        for selected_name in dict.fromkeys(selected_names):
+            tokenizer = registry.get(selected_name)
+            if tokenizer is not None and self.tools.is_tokenizer_compatible(tokenizer):
+                resolved[selected_name] = tokenizer
+        return resolved
 
     # -------------------------------------------------------------------------
     def load_tokenizers(self, tokenizer_ids: list[str]) -> dict[str, Any]:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from server.common.utils.security import contains_control_chars, normalize_identifier
 
@@ -177,10 +177,11 @@ class BenchmarkDashboardData(BaseModel):
 
 ###############################################################################
 class BenchmarkRunRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     tokenizers: list[str] = Field(..., description="List of tokenizer IDs to benchmark")
     dataset_name: str = Field(..., description="Name of the dataset to use")
     config: BenchmarkRunConfig = Field(default_factory=BenchmarkRunConfig)
-    custom_tokenizer_name: str | None = Field(default=None)
     run_name: str | None = Field(default=None)
     selected_metric_keys: list[str] | None = Field(default=None)
 
@@ -211,13 +212,6 @@ class BenchmarkRunRequest(BaseModel):
         return normalize_identifier(value, "Dataset name", max_length=200)
 
     # -------------------------------------------------------------------------
-    @field_validator("custom_tokenizer_name")
-    @classmethod
-    def validate_custom_tokenizer_name(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        return normalize_identifier(value, "Custom tokenizer name", max_length=160)
-
     # -
 
     # -------------------------------------------------------------------------
