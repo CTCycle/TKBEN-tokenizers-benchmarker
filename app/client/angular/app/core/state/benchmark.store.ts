@@ -209,6 +209,21 @@ export class BenchmarkStore {
     this.persistLayout(next);
   }
 
+  reorderVisible(from: number, to: number): void {
+    const next = [...this.layout()];
+    const hidden = new Set(this.hiddenWidgetIds());
+    const visiblePositions = next.flatMap((widgetId, index) => hidden.has(widgetId) ? [] : [index]);
+    if (from < 0 || from >= visiblePositions.length || to < 0 || to >= visiblePositions.length || from === to) return;
+
+    const visibleIds = visiblePositions.map((position) => next[position]);
+    const [item] = visibleIds.splice(from, 1);
+    if (!item) return;
+    visibleIds.splice(to, 0, item);
+    visiblePositions.forEach((position, index) => next[position] = visibleIds[index]);
+    this.layout.set(next);
+    this.persistLayout(next);
+  }
+
   resetLayout(): void {
     const widgets = this.report()?.dashboard.widgets ?? [];
     const defaults = widgets.map((widget) => widget.widget_id);

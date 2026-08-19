@@ -1,4 +1,4 @@
-import { CdkDrag, CdkDragDrop, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
+import { CdkDrag, CdkDragDrop, CdkDropList } from '@angular/cdk/drag-drop';
 import { DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -209,21 +209,13 @@ export class CrossBenchmarkPageComponent {
   }
 
   protected dropWidget(event: CdkDragDrop<unknown[]>): void {
-    const ids = this.orderedWidgets().map((widget) => widget.widget_id);
-    moveItemInArray(ids, event.previousIndex, event.currentIndex);
-    const from = this.store.layout().indexOf(ids[event.currentIndex]);
-    if (from >= 0) this.store.reorder(from, event.currentIndex);
+    this.store.reorderVisible(event.previousIndex, event.currentIndex);
   }
 
   protected moveWidget(index: number, direction: -1 | 1): void {
     const target = index + direction;
     if (target < 0 || target >= this.orderedWidgets().length) return;
-    const ids = this.orderedWidgets().map((widget) => widget.widget_id);
-    const fromId = ids[index];
-    const toId = ids[target];
-    const from = this.store.layout().indexOf(fromId);
-    const to = this.store.layout().indexOf(toId);
-    if (from >= 0 && to >= 0) this.store.reorder(from, to);
+    this.store.reorderVisible(index, target);
   }
 
   protected onWidgetKeydown(event: KeyboardEvent, index: number): void {
