@@ -345,8 +345,6 @@ function Sync-Dependencies {
 
     Import-Environment
     if (-not $RuntimesReady) { Install-Runtimes }
-    Stop-PortListeners -Port ([int]$env:UI_PORT)
-
     Write-Step 'Installing Python dependencies.'
     $uvArguments = @('sync', '--python', $PythonExe)
     if ($InstallationType -eq 'Development') { $uvArguments += '--all-extras' }
@@ -369,6 +367,16 @@ function Sync-Dependencies {
         Pop-Location
     }
 
+    Sync-Frontend -BuildFrontend:$BuildFrontend -UseCachedFrontendDependencies:$UseCachedFrontendDependencies
+}
+
+function Sync-Frontend {
+    param(
+        [switch]$BuildFrontend,
+        [switch]$UseCachedFrontendDependencies
+    )
+
+    Stop-PortListeners -Port ([int]$env:UI_PORT)
     Push-Location $ClientDir
     try {
         $frontendInstallRequired = -not $UseCachedFrontendDependencies -or -not (Test-FrontendDependenciesReady)
@@ -525,6 +533,13 @@ function Install-Dependencies {
     Write-Ok 'Dependencies installed and frontend built.'
 }
 
+function Rebuild-Frontend {
+    Import-Environment
+    Install-Runtimes
+    Sync-Frontend -BuildFrontend -UseCachedFrontendDependencies
+    Write-Ok 'Frontend rebuilt.'
+}
+
 function Read-InstallationType {
     Write-Host '  [1] Development - include Ruff, Pyright, and pytest'
     Write-Host '  [2] Standard    - install runtime dependencies only'
@@ -637,36 +652,38 @@ function Show-Menu {
         Write-Host
         Write-Host '  SETUP & VALIDATION' -ForegroundColor DarkCyan
         Write-MenuItem '2' 'Install / update dependencies' 'Sync the required local tooling'
-        Write-MenuItem '3' 'Initialize database' 'Create or update the local database'
-        Write-MenuItem '4' 'Run test suite' 'Validate backend and frontend checks'
+        Write-MenuItem '3' 'Rebuild frontend' 'Build the Angular production output only'
+        Write-MenuItem '4' 'Initialize database' 'Create or update the local database'
+        Write-MenuItem '5' 'Run test suite' 'Validate backend and frontend checks'
         Write-Host
         Write-Host '  MAINTENANCE' -ForegroundColor DarkCyan
-        Write-MenuItem '5' 'Remove logs' 'Clear generated application logs'
-        Write-MenuItem '6' 'Clear cache' 'Remove downloaded and generated caches'
-        Write-MenuItem '7' 'Uninstall application' 'Remove local runtimes and dependencies' Yellow
+        Write-MenuItem '6' 'Remove logs' 'Clear generated application logs'
+        Write-MenuItem '7' 'Clear cache' 'Remove downloaded and generated caches'
+        Write-MenuItem '8' 'Uninstall application' 'Remove local runtimes and dependencies' Yellow
         Write-Host
         Write-Host '  +----------------------------------------------------------+' -ForegroundColor DarkCyan
-        Write-MenuItem '8' 'Exit' 'Close this launcher' DarkGray
+        Write-MenuItem '9' 'Exit' 'Close this launcher' DarkGray
         Write-Host '  +----------------------------------------------------------+' -ForegroundColor DarkCyan
         Write-Host
-        $selection = (Read-Host '  Select an option [1-8]').Trim()
+        $selection = (Read-Host '  Select an option [1-9]').Trim()
 
-        if ($selection -notmatch '^[1-8]$') {
-            Write-Fatal 'Invalid option. Enter a number from 1 through 8.'
+        if ($selection -notmatch '^[1-9]$') {
+            Write-Fatal 'Invalid option. Enter a number from 1 through 9.'
             Wait-ForMenu
             continue
         }
-        if ($selection -eq '8') { break }
+        if ($selection -eq '9') { break }
 
         try {
             switch ($selection) {
                 '1' { Launch-Application; exit 0 }
                 '2' { Install-Dependencies }
-                '3' { Initialize-Database }
-                '4' { Run-TestSuite }
-                '5' { Remove-Logs }
-                '6' { Clear-Cache }
-                '7' { Uninstall-Application }
+                '3' { Rebuild-Frontend }
+                '4' { Initialize-Database }
+                '5' { Run-TestSuite }
+                '6' { Remove-Logs }
+                '7' { Clear-Cache }
+                '8' { Uninstall-Application }
             }
         } catch {
             Write-Fatal $_.Exception.Message
