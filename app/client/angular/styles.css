@@ -2367,12 +2367,12 @@ app-root {
 .cross-benchmark-kpi-label {
   margin: 0;
   color: var(--color-muted);
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .cross-benchmark-kpi-value {
   margin: 4px 0 0;
-  font-size: 14px;
+  font-size: 20px;
   font-weight: 600;
   overflow-wrap: anywhere;
   line-height: 1.3;
@@ -2394,28 +2394,31 @@ app-root {
 
 .cross-benchmark-control-surface {
   display: grid;
-  grid-template-columns: minmax(0, 1.8fr) minmax(360px, 1fr);
+  grid-template-columns: minmax(0, 2.4fr) minmax(280px, 0.7fr);
   gap: var(--space-3);
-  align-items: start;
+  align-items: stretch;
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
-  padding: 8px var(--space-3);
+  padding: 24px 28px;
   border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-md);
+  border-radius: 14px;
   background: var(--color-surface-subtle);
   box-shadow: none;
 }
 
 .cross-benchmark-header-main {
   min-width: 0;
+  padding-right: 28px;
+  border-right: 1px solid var(--color-border);
 }
 
 .cross-benchmark-top-row {
   display: grid;
-  grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1.7fr);
-  gap: 10px;
-  align-items: start;
+  grid-template-columns: minmax(360px, 1fr) minmax(0, 1.75fr);
+  gap: 0;
+  align-items: stretch;
+  min-height: 160px;
 }
 
 .cross-benchmark-current-report {
@@ -2423,42 +2426,55 @@ app-root {
   min-width: 0;
   align-content: start;
   justify-items: start;
-  gap: 3px;
-  padding: 2px 0;
+  gap: 18px;
+  justify-content: center;
+  padding: 12px 28px 12px 0;
   border: 0;
+  border-right: 1px solid var(--color-border);
   border-radius: 0;
   background: transparent;
+}
+
+.cross-benchmark-report-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-width: 0;
+  gap: 8px;
 }
 
 .cross-benchmark-current-report strong {
   max-width: 100%;
   overflow: hidden;
-  font-size: 15px;
+  font-size: 19px;
+  letter-spacing: -0.015em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .cross-benchmark-current-report small {
   color: var(--color-muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .cross-benchmark-current-report .cross-benchmark-report-selector {
   height: 30px;
   min-height: 30px;
-  margin-top: 1px;
-  padding: 4px 0;
+  flex-shrink: 0;
+  margin-top: 0;
+  padding: 4px 0 4px 24px;
   border: 0;
-  border-bottom: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-border);
   border-radius: 0;
   background: transparent;
   color: var(--color-accent);
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 0.04em;
 }
 
 .cross-benchmark-current-report .cross-benchmark-report-selector:hover:not(:disabled) {
-  border-bottom-color: var(--color-accent);
+  border-left-color: var(--color-accent);
   background: transparent;
   color: var(--color-accent);
 }
@@ -2606,28 +2622,50 @@ app-root {
 
 .cross-benchmark-overview-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 0.95fr);
+  gap: 0;
+  align-items: stretch;
+  padding-left: 28px;
 }
 
 .cross-benchmark-kpi-card {
   display: flex;
   flex-direction: column;
-  padding: 2px 12px;
+  justify-content: center;
+  gap: 18px;
+  padding: 12px 14px;
   min-width: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
 }
 
+.cross-benchmark-kpi-card + .cross-benchmark-kpi-card {
+  border-left: 1px solid var(--color-border);
+}
+
+.cross-benchmark-kpi-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.cross-benchmark-kpi-icon {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  color: var(--color-muted);
+}
+
 .cross-benchmark-command-navbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: 12px;
+  align-content: center;
+  gap: 22px;
   min-width: 0;
-  border-left: 0;
-  padding-left: 0;
+  padding-left: 28px;
 }
 
 .cross-benchmark-command-navbar__header {
@@ -2648,9 +2686,9 @@ app-root {
 
 .cross-benchmark-command-navbar__content {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
-  gap: var(--space-2);
+  gap: 14px;
   align-self: auto;
   width: 100%;
   min-width: 0;
@@ -2662,30 +2700,35 @@ app-root {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .cross-benchmark-command-navbar__content > .cross-benchmark-action-button,
 .cross-benchmark-command-navbar__content > .dashboard-export-control .dashboard-export-trigger {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
+  height: 84px;
+  padding: 0 22px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-subtle);
   box-shadow: none;
 }
 
 .cross-benchmark-command-navbar__content > .cross-benchmark-run-button {
-  border-radius: 0;
+  min-width: 0;
+  height: 84px;
+  padding: 0 22px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
   box-shadow: none;
-  background: transparent;
-  border-color: transparent;
+  background: var(--color-surface-subtle);
   color: var(--color-text);
-  font-size: 11px;
-  gap: 4px;
+  font-size: 15px;
+  gap: 12px;
 }
 
 .cross-benchmark-command-navbar__content > .cross-benchmark-run-button:hover:not(:disabled) {
   background: var(--color-surface-hover);
-  border-color: transparent;
+  border-color: var(--color-accent);
   color: var(--color-text);
 }
 
@@ -2696,29 +2739,29 @@ app-root {
 .cross-benchmark-command-navbar__content > .dashboard-export-control .dashboard-export-trigger {
   width: 100%;
   box-sizing: border-box;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .cross-benchmark-action-button {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  height: 36px;
-  padding: 0 var(--space-3);
+  height: 84px;
+  padding: 0 22px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-control);
   background: var(--color-surface-subtle);
   color: var(--color-text);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
   transition: border-color var(--transition), background var(--transition);
 }
 
 .cross-benchmark-action-button svg {
-  width: 16px;
-  height: 16px;
+  width: 26px;
+  height: 26px;
   flex-shrink: 0;
 }
 
@@ -2783,8 +2826,8 @@ app-root {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  height: 36px;
-  padding: 0 var(--space-3);
+  height: 84px;
+  padding: 0 22px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-control);
   background: var(--color-surface-subtle);
@@ -2811,13 +2854,13 @@ app-root {
 }
 
 .cross-benchmark-command-navbar .dashboard-export-trigger__label {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .cross-benchmark-command-navbar .dashboard-export-trigger svg {
-  width: 16px;
-  height: 16px;
+  width: 26px;
+  height: 26px;
   flex-shrink: 0;
 }
 
@@ -2830,6 +2873,16 @@ app-root {
 @media (max-width: 1100px) {
   .cross-benchmark-control-surface {
     grid-template-columns: 1fr;
+    padding: 18px;
+  }
+
+  .cross-benchmark-header-main {
+    padding-right: 0;
+    border-right: 0;
+  }
+
+  .cross-benchmark-command-navbar {
+    padding-left: 0;
   }
 
   .cross-benchmark-command-navbar {
@@ -2847,6 +2900,17 @@ app-root {
   .cross-benchmark-top-row {
     grid-template-columns: 1fr;
     gap: var(--space-3);
+    min-height: 0;
+  }
+
+  .cross-benchmark-current-report {
+    padding: 0 0 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .cross-benchmark-overview-grid {
+    padding-left: 0;
   }
 
   .cross-benchmark-command-navbar__content {
@@ -2863,6 +2927,21 @@ app-root {
     font-size: 12px;
   }
 
+  .cross-benchmark-command-navbar__content > .cross-benchmark-action-button,
+  .cross-benchmark-command-navbar__content > .dashboard-export-control .dashboard-export-trigger,
+  .cross-benchmark-command-navbar__content > .cross-benchmark-run-button {
+    height: 48px;
+    padding: 0 14px;
+    font-size: 13px;
+  }
+
+  .cross-benchmark-action-button svg,
+  .cross-benchmark-command-navbar .dashboard-export-trigger svg,
+  .cross-benchmark-run-button svg {
+    width: 18px;
+    height: 18px;
+  }
+
   .cross-benchmark-run-button {
     height: 36px;
     min-width: 0;
@@ -2874,6 +2953,15 @@ app-root {
 @media (max-width: 700px) {
   .cross-benchmark-overview-grid {
     grid-template-columns: 1fr;
+  }
+
+  .cross-benchmark-kpi-card {
+    padding: 12px 0;
+  }
+
+  .cross-benchmark-kpi-card + .cross-benchmark-kpi-card {
+    border-top: 1px solid var(--color-border);
+    border-left: 0;
   }
 
   .cross-benchmark-command-navbar__content {
