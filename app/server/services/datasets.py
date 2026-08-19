@@ -57,7 +57,6 @@ class ResolvedDatasetDownload:
     streaming: bool
     max_documents: int | None
 
-
 ###############################################################################
 class DatasetDownloadTimeoutError(TimeoutError):
     """Raised when a dataset provider load exceeds the configured timeout."""

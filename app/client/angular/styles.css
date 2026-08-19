@@ -2060,6 +2060,19 @@ app-root {
   min-height: 270px;
 }
 
+.tokenizer-report-card .tokenizer-meta-table {
+  width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
+}
+
+.tokenizer-report-card .tokenizer-meta-table th,
+.tokenizer-report-card .tokenizer-meta-table td {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .tokenizer-report-card--basics {
   grid-area: basics;
 }

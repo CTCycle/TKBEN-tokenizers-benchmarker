@@ -260,7 +260,6 @@ class BenchmarkReportSort(StrEnum):
     NEWEST = "newest"
     OLDEST = "oldest"
 
-
 ###############################################################################
 class BenchmarkReportQuery(BaseModel):
     search: str | None = Field(default=None, max_length=160)

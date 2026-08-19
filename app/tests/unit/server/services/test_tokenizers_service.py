@@ -20,7 +20,6 @@ class FakeTokenizerRepository:
     def get_tokenizer_report_by_id(self, report_id: int):
         return object() if report_id == 1 else None
 
-
 ###############################################################################
 def tokenizer_siblings(*filenames: str) -> list[dict[str, str]]:
     return [{"rfilename": filename} for filename in filenames]
@@ -151,8 +150,10 @@ def test_remove_custom_tokenizer_removes_registry_entry_and_persisted_row(monkey
 
     deleted: list[str] = []
 
+    ###############################################################################
     class FakeRepository:
 
+        # -------------------------------------------------------------------------
         def delete_tokenizer(self, name: str) -> bool:
             deleted.append(name)
             return True
@@ -173,8 +174,10 @@ def test_remove_downloaded_tokenizer_cleans_cache_before_database_delete(tmp_pat
 
     calls: list[str] = []
 
+    ###############################################################################
     class FakeRepository:
 
+        # -------------------------------------------------------------------------
         def delete_tokenizer(self, name: str) -> bool:
             assert not cache_dir.exists()
             calls.append(name)
@@ -194,8 +197,10 @@ def test_remove_downloaded_tokenizer_keeps_database_row_when_cache_cleanup_fails
 
     deleted = False
 
+    ###############################################################################
     class FakeRepository:
 
+        # -------------------------------------------------------------------------
         def delete_tokenizer(self, name: str) -> bool:
             nonlocal deleted
             deleted = True
