@@ -133,7 +133,7 @@ def test_benchmark_run_rejects_removed_custom_tokenizer_field() -> None:
 ###############################################################################
 def test_benchmark_list_and_by_id(monkeypatch) -> None:
     from server.contracts.benchmarks import BenchmarkReportListResponse
-    from server.services.benchmarks import BenchmarkService
+    from server.services.benchmark_reports import BenchmarkReportService
 
     captured = {}
 
@@ -158,12 +158,12 @@ def test_benchmark_list_and_by_id(monkeypatch) -> None:
         })
 
     monkeypatch.setattr(
-        BenchmarkService,
+        BenchmarkReportService,
         "list_benchmark_reports",
         fake_list,
     )
     monkeypatch.setattr(
-        BenchmarkService,
+        BenchmarkReportService,
         "load_benchmark_report_by_id",
         lambda self, report_id: {
             "status": "success",
@@ -222,9 +222,9 @@ def test_benchmark_list_and_by_id(monkeypatch) -> None:
 
 ###############################################################################
 def test_benchmark_report_delete_route_returns_204_or_404(monkeypatch) -> None:
-    from server.services.benchmarks import BenchmarkService
+    from server.services.benchmark_reports import BenchmarkReportService
 
-    monkeypatch.setattr(BenchmarkService, "delete_benchmark_report", lambda self, report_id: report_id == 4)
+    monkeypatch.setattr(BenchmarkReportService, "delete_benchmark_report", lambda self, report_id: report_id == 4)
     client = TestClient(app)
     assert client.delete("/api/benchmarks/reports/4").status_code == 204
     missing = client.delete("/api/benchmarks/reports/9")
@@ -232,10 +232,10 @@ def test_benchmark_report_delete_route_returns_204_or_404(monkeypatch) -> None:
 
 ###############################################################################
 def test_benchmark_by_id_accepts_cancelled_contract(monkeypatch) -> None:
-    from server.services.benchmarks import BenchmarkService
+    from server.services.benchmark_reports import BenchmarkReportService
 
     monkeypatch.setattr(
-        BenchmarkService,
+        BenchmarkReportService,
         "load_benchmark_report_by_id",
         lambda self, report_id: {
             "status": "cancelled",

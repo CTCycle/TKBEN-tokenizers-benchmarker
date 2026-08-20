@@ -9,7 +9,7 @@ from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session
 
 from server.repositories.database.backend import get_database
-from server.repositories.serialization.datasets import DatasetSerializer
+from server.repositories.datasets import DatasetRepository
 from server.repositories.database.sqlite import SQLiteRepository
 from server.repositories.schemas.models import (
     AnalysisSession,
@@ -32,13 +32,13 @@ class FakeQueries:
         self.engine = engine
 
 ###############################################################################
-def test_dataset_serializer_ensure_dataset_id_is_idempotent() -> None:
+def test_dataset_repository_ensure_dataset_id_is_idempotent() -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     Base.metadata.create_all(engine, checkfirst=True)
-    serializer = DatasetSerializer(queries=FakeQueries(engine))
+    repository = DatasetRepository(queries=FakeQueries(engine))
 
-    first_id = serializer.ensure_dataset_id("wikitext/wikitext-2-v1")
-    second_id = serializer.ensure_dataset_id("wikitext/wikitext-2-v1")
+    first_id = repository.ensure_dataset_id("wikitext/wikitext-2-v1")
+    second_id = repository.ensure_dataset_id("wikitext/wikitext-2-v1")
 
     assert first_id == second_id
     with Session(bind=engine) as session:
@@ -68,7 +68,7 @@ def test_dataset_delete_cascades_documents_sessions_and_benchmark_reports() -> N
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     event.listen(engine, "connect", SQLiteRepository.enable_foreign_keys)
     Base.metadata.create_all(engine, checkfirst=True)
-    serializer = DatasetSerializer(queries=FakeQueries(engine))
+    repository = DatasetRepository(queries=FakeQueries(engine))
     now = datetime.now(timezone.utc)
 
     with Session(bind=engine) as session:
@@ -107,7 +107,7 @@ def test_dataset_delete_cascades_documents_sessions_and_benchmark_reports() -> N
         ))
         session.commit()
 
-    serializer.delete_dataset("custom/cascade")
+    repository.delete_dataset("custom/cascade")
 
     with Session(bind=engine) as session:
         assert session.execute(select(Dataset)).scalars().all() == []
@@ -176,10 +176,10 @@ def test_benchmark_service_ensure_tokenizer_ids_returns_mapping(
 def test_session_report_preserves_native_json_metrics_when_numeric_is_nan(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    serializer = DatasetSerializer.__new__(DatasetSerializer)
+    repository = DatasetRepository.__new__(DatasetRepository)
 
     monkeypatch.setattr(
-        serializer,
+        repository,
         "_load_metric_rows_for_session",
         lambda session_id: [
             {
@@ -213,7 +213,7 @@ def test_session_report_preserves_native_json_metrics_when_numeric_is_nan(
         ],
     )
     monkeypatch.setattr(
-        serializer, "_load_histogram_rows_for_session", lambda session_id: {}
+        repository, "_load_histogram_rows_for_session", lambda session_id: {}
     )
 
     session_row = {
@@ -226,7 +226,7 @@ def test_session_report_preserves_native_json_metrics_when_numeric_is_nan(
         "parameters": {},
     }
 
-    report = serializer._build_session_report_response(session_row)
+    report = repository._build_session_report_response(session_row)
 
     assert report["aggregate_statistics"]["words.zipf_curve"] == [
         {"rank": 1, "frequency": 9}
@@ -243,12 +243,12 @@ def test_session_report_preserves_native_json_metrics_when_numeric_is_nan(
 def test_session_report_rejects_json_encoded_storage(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    serializer = DatasetSerializer.__new__(DatasetSerializer)
-    monkeypatch.setattr(serializer, "_load_metric_rows_for_session", lambda session_id: [])
-    monkeypatch.setattr(serializer, "_load_histogram_rows_for_session", lambda session_id: {})
+    repository = DatasetRepository.__new__(DatasetRepository)
+    monkeypatch.setattr(repository, "_load_metric_rows_for_session", lambda session_id: [])
+    monkeypatch.setattr(repository, "_load_histogram_rows_for_session", lambda session_id: {})
 
     with pytest.raises(ValueError, match="native JSON array"):
-        serializer._build_session_report_response({
+        repository._build_session_report_response({
             "id": 123,
             "report_version": 2,
             "created_at": "2026-02-16T00:00:00Z",

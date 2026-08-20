@@ -32,7 +32,7 @@ def _parse_timestamp(value: object) -> pd.Timestamp | None:
     return parsed if isinstance(parsed, pd.Timestamp) and not pd.isna(parsed) else None
 
 ###############################################################################
-class DatasetSerializer:
+class DatasetRepository:
 
     # -------------------------------------------------------------------------
     def __init__(self, queries: DataRepositoryQueries | None = None) -> None:

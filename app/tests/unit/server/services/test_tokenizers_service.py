@@ -30,17 +30,17 @@ def test_tokenizers_service_report_prechecks(monkeypatch) -> None:
     service.repository = FakeTokenizerRepository()  # type: ignore[assignment]
 
     monkeypatch.setattr(
-        service.report_serializer,
+        service.report_repository,
         "load_latest_tokenizer_report",
         lambda tokenizer_name: {"tokenizer_name": tokenizer_name},
     )
     monkeypatch.setattr(
-        service.report_serializer,
+        service.report_repository,
         "load_tokenizer_report_by_id",
         lambda report_id: {"report_id": report_id},
     )
     monkeypatch.setattr(
-        service.report_serializer,
+        service.report_repository,
         "load_tokenizer_vocabulary_page",
         lambda report_id, offset, limit: {
             "report_id": report_id,

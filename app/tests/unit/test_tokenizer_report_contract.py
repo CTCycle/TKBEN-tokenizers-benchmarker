@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from server.repositories.serialization.tokenizer_reports import TokenizerReportSerializer
+from server.repositories.tokenizer_reports import TokenizerReportRepository
 from server.services.tokenizer_reporting import TokenizerReportingService
 
 ###############################################################################
@@ -39,7 +39,7 @@ def test_compute_subword_word_stats_excludes_special_tokens_and_classifies_marke
 ###############################################################################
 @pytest.mark.parametrize("field", ["metadata", "token_length_histogram"])
 def test_tokenizer_report_response_rejects_json_encoded_storage(field: str) -> None:
-    serializer = TokenizerReportSerializer.__new__(TokenizerReportSerializer)
+    repository = TokenizerReportRepository.__new__(TokenizerReportRepository)
     storage = {
         "id": 1,
         "report_version": 1,
@@ -51,7 +51,7 @@ def test_tokenizer_report_response_rejects_json_encoded_storage(field: str) -> N
     storage[field] = "{}"
 
     with pytest.raises(ValueError, match="native JSON object"):
-        serializer._build_tokenizer_report_response(storage)
+        repository._build_tokenizer_report_response(storage)
 
 ###############################################################################
 def test_resolve_hf_repo_metadata_returns_link_when_description_unavailable(
@@ -139,7 +139,7 @@ def test_generate_report_payload_includes_hf_url_and_subword_stats(
     )
 
     monkeypatch.setattr(
-        service.report_serializer,
+        service.report_repository,
         "replace_report_and_vocabulary",
         lambda tokenizer_name, report, vocabulary_rows: (
             captured_report.update(report) or 123
@@ -170,8 +170,8 @@ def test_generate_report_payload_includes_hf_url_and_subword_stats(
     )
 
 ###############################################################################
-def test_tokenizer_report_serializer_roundtrip_preserves_huggingface_url() -> None:
-    serializer = TokenizerReportSerializer()
+def test_tokenizer_report_repository_roundtrip_preserves_huggingface_url() -> None:
+    repository = TokenizerReportRepository()
     report = {
         "report_version": 1,
         "created_at": "2026-02-17T00:00:00Z",
@@ -222,11 +222,11 @@ def test_tokenizer_report_serializer_roundtrip_preserves_huggingface_url() -> No
         },
         "vocabulary_size": 2,
     }
-    report_id = serializer.replace_report_and_vocabulary(
+    report_id = repository.replace_report_and_vocabulary(
         report["tokenizer_name"], report, []
     )
 
-    loaded = serializer.load_tokenizer_report_by_id(report_id)
+    loaded = repository.load_tokenizer_report_by_id(report_id)
 
     assert loaded is not None
     assert (

@@ -22,7 +22,7 @@ from requests.exceptions import ConnectionError as RequestsConnectionError
 from requests.exceptions import RequestException, Timeout
 from sqlalchemy.exc import SQLAlchemyError
 
-from server.repositories.serialization.datasets import DatasetSerializer
+from server.repositories.datasets import DatasetRepository
 from server.configurations import get_server_settings
 from server.common.constants import DATASET_REPORT_VERSION
 from server.common.path import DATASETS_PATH
@@ -134,7 +134,7 @@ class DatasetService(DatasetServiceOperationsMixin):
         self.download_retry_backoff_seconds = (
             self.settings.download_retry_backoff_seconds
         )
-        self.dataset_serializer = DatasetSerializer()
+        self.dataset_repository = DatasetRepository()
 
     # -------------------------------------------------------------------------
     def get_hf_access_token_for_download(self) -> str | None:
@@ -539,7 +539,7 @@ class DatasetService(DatasetServiceOperationsMixin):
     # -------------------------------------------------------------------------
     def cleanup_cancelled_dataset(self, dataset_name: str) -> None:
         try:
-            self.dataset_serializer.delete_dataset(dataset_name)
+            self.dataset_repository.delete_dataset(dataset_name)
             logger.info(
                 "Removed partially persisted dataset after cancellation: %s",
                 dataset_name,
@@ -712,7 +712,7 @@ class DatasetService(DatasetServiceOperationsMixin):
 
     # -------------------------------------------------------------------------
     def is_dataset_in_database(self, dataset_name: str) -> bool:
-        return self.dataset_serializer.dataset_exists(dataset_name)
+        return self.dataset_repository.dataset_exists(dataset_name)
 
     # -------------------------------------------------------------------------
     def get_dataset_previews(
@@ -722,7 +722,7 @@ class DatasetService(DatasetServiceOperationsMixin):
         document_count_operator: str = "at_least",
         document_count: int | None = None,
     ) -> list[dict[str, Any]]:
-        return self.dataset_serializer.list_dataset_previews(
+        return self.dataset_repository.list_dataset_previews(
             search=search,
             source=source,
             document_count_operator=document_count_operator,
@@ -761,7 +761,7 @@ class DatasetService(DatasetServiceOperationsMixin):
         dataset_name: str,
         batch_size: int,
     ) -> Iterator[int]:
-        for batch in self.dataset_serializer.iterate_dataset_batches(
+        for batch in self.dataset_repository.iterate_dataset_batches(
             dataset_name, batch_size
         ):
             for text in batch:

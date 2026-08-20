@@ -8,9 +8,7 @@ import pytest
 from server.contracts.benchmarks import BenchmarkReportQuery
 from server.repositories.database.backend import get_database
 from server.repositories.schemas.models import Base, Dataset
-from server.repositories.serialization.benchmark_reports import (
-    BenchmarkReportSerializer,
-)
+from server.services.benchmark_reports import BenchmarkReportService
 
 ###############################################################################
 def _build_payload(dataset_name: str) -> dict:
@@ -108,7 +106,7 @@ def _build_payload(dataset_name: str) -> dict:
     }
 
 ###############################################################################
-def test_benchmark_report_serializer_round_trip(monkeypatch) -> None:
+def test_benchmark_report_service_round_trip(monkeypatch) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     Base.metadata.create_all(engine, checkfirst=True)
     database = get_database()
@@ -120,12 +118,12 @@ def test_benchmark_report_serializer_round_trip(monkeypatch) -> None:
         session.add(Dataset(name=dataset_name, status="ready", created_at=now, updated_at=now, ready_at=now))
         session.commit()
 
-    serializer = BenchmarkReportSerializer()
+    report_service = BenchmarkReportService()
     payload = _build_payload(dataset_name)
 
-    report_id = serializer.save_benchmark_report(payload)
-    stored = serializer.load_benchmark_report_by_id(report_id)
-    summaries = serializer.list_benchmark_reports(BenchmarkReportQuery(limit=10))
+    report_id = report_service.save_benchmark_report(payload)
+    stored = report_service.load_benchmark_report_by_id(report_id)
+    summaries = report_service.list_benchmark_reports(BenchmarkReportQuery(limit=10))
 
     assert stored is not None
     assert stored["report_id"] == report_id
@@ -141,7 +139,7 @@ def test_benchmark_report_serializer_round_trip(monkeypatch) -> None:
     assert summaries.total == 1
 
 ###############################################################################
-def test_benchmark_report_serializer_search_sort_pagination_and_delete(monkeypatch) -> None:
+def test_benchmark_report_service_search_sort_pagination_and_delete(monkeypatch) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     Base.metadata.create_all(engine, checkfirst=True)
     database = get_database()
@@ -154,44 +152,44 @@ def test_benchmark_report_serializer_search_sort_pagination_and_delete(monkeypat
             session.add(Dataset(name=dataset_name, status="ready", created_at=now, updated_at=now, ready_at=now))
         session.commit()
 
-    serializer = BenchmarkReportSerializer()
+    report_service = BenchmarkReportService()
     older = _build_payload("custom/alpha")
     older.update({"run_name": "alpha older", "created_at": "2026-01-01T00:00:00Z"})
     middle = _build_payload("custom/beta")
     middle.update({"run_name": "beta middle", "created_at": "2026-01-02T00:00:00Z"})
     newer = _build_payload("custom/alpha")
     newer.update({"run_name": "alpha newer", "created_at": "2026-01-03T00:00:00Z"})
-    older_id = serializer.save_benchmark_report(older)
-    middle_id = serializer.save_benchmark_report(middle)
-    newer_id = serializer.save_benchmark_report(newer)
+    older_id = report_service.save_benchmark_report(older)
+    middle_id = report_service.save_benchmark_report(middle)
+    newer_id = report_service.save_benchmark_report(newer)
 
-    newest = serializer.list_benchmark_reports(BenchmarkReportQuery(limit=2))
+    newest = report_service.list_benchmark_reports(BenchmarkReportQuery(limit=2))
     assert [item.report_id for item in newest.reports] == [newer_id, middle_id]
     assert newest.total == 3
     assert newest.offset == 0
     assert newest.limit == 2
 
-    oldest = serializer.list_benchmark_reports(BenchmarkReportQuery(sort="oldest", offset=1, limit=1))
+    oldest = report_service.list_benchmark_reports(BenchmarkReportQuery(sort="oldest", offset=1, limit=1))
     assert [item.report_id for item in oldest.reports] == [middle_id]
     assert oldest.total == 3
 
-    run_search = serializer.list_benchmark_reports(BenchmarkReportQuery(search="newer"))
+    run_search = report_service.list_benchmark_reports(BenchmarkReportQuery(search="newer"))
     assert [item.report_id for item in run_search.reports] == [newer_id]
-    dataset_search = serializer.list_benchmark_reports(BenchmarkReportQuery(search="beta"))
+    dataset_search = report_service.list_benchmark_reports(BenchmarkReportQuery(search="beta"))
     assert [item.report_id for item in dataset_search.reports] == [middle_id]
 
-    assert serializer.delete_benchmark_report(middle_id) is True
-    assert serializer.delete_benchmark_report(middle_id) is False
-    assert serializer.load_benchmark_report_by_id(middle_id) is None
-    remaining = serializer.list_benchmark_reports(BenchmarkReportQuery(limit=10))
+    assert report_service.delete_benchmark_report(middle_id) is True
+    assert report_service.delete_benchmark_report(middle_id) is False
+    assert report_service.load_benchmark_report_by_id(middle_id) is None
+    remaining = report_service.list_benchmark_reports(BenchmarkReportQuery(limit=10))
     assert remaining.total == 2
     assert [item.report_id for item in remaining.reports] == [newer_id, older_id]
 
 ###############################################################################
-def test_benchmark_report_serializer_rejects_v4_payload() -> None:
-    serializer = BenchmarkReportSerializer()
+def test_benchmark_report_service_rejects_v4_payload() -> None:
+    report_service = BenchmarkReportService()
     with pytest.raises(ValueError, match="incompatible report version"):
-        serializer._normalize_report_row({
+        report_service._normalize_report_row({
             "id": 3,
             "report_version": 4,
             "created_at": datetime.now(timezone.utc),
@@ -202,11 +200,11 @@ def test_benchmark_report_serializer_rejects_v4_payload() -> None:
         })
 
 ###############################################################################
-def test_benchmark_report_serializer_rejects_json_encoded_storage() -> None:
-    serializer = BenchmarkReportSerializer()
+def test_benchmark_report_service_rejects_json_encoded_storage() -> None:
+    report_service = BenchmarkReportService()
 
     with pytest.raises(ValueError, match="native JSON object"):
-        serializer._normalize_report_row({
+        report_service._normalize_report_row({
             "id": 3,
             "report_version": 5,
             "created_at": datetime.now(timezone.utc),
@@ -216,7 +214,7 @@ def test_benchmark_report_serializer_rejects_json_encoded_storage() -> None:
         })
 
     with pytest.raises(ValueError, match="native JSON array"):
-        serializer._normalize_report_row({
+        report_service._normalize_report_row({
             "id": 3,
             "report_version": 5,
             "created_at": datetime.now(timezone.utc),
