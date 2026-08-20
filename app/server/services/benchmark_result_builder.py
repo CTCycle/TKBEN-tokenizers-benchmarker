@@ -7,7 +7,7 @@ from typing import Any, TypeGuard, cast
 import numpy as np
 import pandas as pd
 
-from server.domain.benchmarks import (
+from server.contracts.benchmarks import (
     BenchmarkDashboardBucketPoint,
     BenchmarkDashboardData,
     BenchmarkDashboardDistribution,

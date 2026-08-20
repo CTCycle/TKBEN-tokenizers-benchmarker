@@ -6,7 +6,7 @@ from collections.abc import Callable
 from fastapi import HTTPException, Request, UploadFile, status
 
 from server.common.utils.security import normalize_upload_stem
-from server.domain.jobs import JobStartResponse
+from server.contracts.jobs import JobStartResponse
 from server.services.managed_jobs import (
     ManagedJobConflictError,
     ManagedJobInitializationError,

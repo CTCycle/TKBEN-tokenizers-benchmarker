@@ -5,7 +5,7 @@ from pathlib import Path
 from server.common.path import CONFIGURATIONS_FILE
 from server.configurations.environment import ensure_environment_loaded
 from server.configurations.management import ConfigurationManager
-from server.domain.settings import ServerSettings
+from server.configurations.settings import ServerSettings
 
 ###############################################################################
 def _resolve_config_path(config_path: str | Path | None = None) -> Path:

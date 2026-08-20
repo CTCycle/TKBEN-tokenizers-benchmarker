@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from server.domain.benchmarks import BenchmarkVisualizationKind
+from server.contracts.benchmarks import BenchmarkVisualizationKind
 
 ###############################################################################
 class BenchmarkWidgetWidth(StrEnum):

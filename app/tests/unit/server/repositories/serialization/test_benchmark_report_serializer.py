@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 import pytest
 
-from server.domain.benchmarks import BenchmarkReportQuery
+from server.contracts.benchmarks import BenchmarkReportQuery
 from server.repositories.database.backend import get_database
 from server.repositories.schemas.models import Base, Dataset
 from server.repositories.serialization.benchmark_reports import (

@@ -6,8 +6,8 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from pydantic import ValidationError
 
-from server.domain.jobs import JobStartResponse
-from server.domain.tokenizers import (
+from server.contracts.jobs import JobStartResponse
+from server.contracts.tokenizers import (
     CustomTokenizersDeleteResponse,
     TokenizerDeleteResponse,
     SupportedTokenizerPipeline,

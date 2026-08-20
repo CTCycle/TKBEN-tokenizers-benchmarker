@@ -7,7 +7,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from server.domain.benchmarks import BenchmarkReportSort
+from server.contracts.benchmarks import BenchmarkReportSort
 from server.repositories.database.backend import TKBENDatabase, get_database
 from server.repositories.schemas.models import (
     BenchmarkReport,

@@ -6,7 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import ValidationError
 
-from server.domain.benchmarks import (
+from server.contracts.benchmarks import (
     BenchmarkMetricCatalogCategory,
     BenchmarkMetricCatalogResponse,
     BenchmarkReportQuery,
@@ -15,7 +15,7 @@ from server.domain.benchmarks import (
     BenchmarkRunResponse,
     BenchmarkReportSort,
 )
-from server.domain.jobs import JobStartResponse
+from server.contracts.jobs import JobStartResponse
 from server.common.constants import (
     API_ROUTE_BENCHMARKS_METRICS_CATALOG,
     API_ROUTE_BENCHMARKS_REPORT_BY_ID,

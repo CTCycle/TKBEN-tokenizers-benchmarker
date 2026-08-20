@@ -14,7 +14,7 @@ from transformers import AutoTokenizer
 
 from server.configurations import get_server_settings
 from server.common.utils.logger import logger
-from server.domain.tokenizers import (
+from server.contracts.tokenizers import (
     SupportedTokenizerPipeline,
     TokenizerDiscoveryItem,
     TokenizerDiscoveryQuery,
