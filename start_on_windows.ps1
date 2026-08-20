@@ -541,8 +541,9 @@ function Install-Dependencies {
     Install-Runtimes
     $installationType = Read-InstallationType
     Sync-Dependencies -BuildFrontend -InstallationType $installationType -RuntimesReady
+    Invoke-DatabaseInitialization
     if (Test-Path -LiteralPath $UvCacheDir) { Remove-Item -LiteralPath $UvCacheDir -Recurse -Force }
-    Write-Ok 'Dependencies installed and frontend built.'
+    Write-Ok 'Dependencies installed, frontend built, and database synchronized.'
 }
 
 function Rebuild-Frontend {
@@ -563,14 +564,18 @@ function Read-InstallationType {
     }
 }
 
-function Initialize-Database {
-    Import-Environment
-    Install-Runtimes
+function Invoke-DatabaseInitialization {
     Write-Step 'Initializing database.'
     $env:PYTHONPATH = $AppDir
     & $UvExe run --project $ServerDir --python $PythonExe python (Join-Path $RepoRoot 'app\scripts\initialize_database.py')
     if ($LASTEXITCODE -ne 0) { throw "Database initialization failed with exit code $LASTEXITCODE." }
-    Write-Ok 'Database initialized.'
+    Write-Ok 'Database synchronized with the latest Alembic revision.'
+}
+
+function Initialize-Database {
+    Import-Environment
+    Install-Runtimes
+    Invoke-DatabaseInitialization
 }
 
 function Run-TestSuite {
@@ -683,7 +688,7 @@ function Show-Menu {
         Write-MenuItem '1' 'Launch application' 'Start the local benchmark workspace' Cyan
         Write-Host
         Write-Host '  SETUP & VALIDATION' -ForegroundColor DarkCyan
-        Write-MenuItem '2' 'Install / update dependencies' 'Sync the required local tooling'
+        Write-MenuItem '2' 'Install / update dependencies' 'Sync tooling and the database'
         Write-MenuItem '3' 'Rebuild frontend' 'Build the Angular production output only'
         Write-MenuItem '4' 'Initialize database' 'Create or update the local database'
         Write-MenuItem '5' 'Run test suite' 'Validate backend and frontend checks'

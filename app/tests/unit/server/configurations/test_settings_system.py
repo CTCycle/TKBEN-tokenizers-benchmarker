@@ -155,7 +155,7 @@ def test_invalid_configuration_file_fails_fast(
         _ = get_server_settings(config_path=config_path)
 
 ###############################################################################
-def test_json_owned_db_embedded_ignores_environment_overlap(
+def test_environment_database_settings_override_json_database_block(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     config_path = tmp_path / "configurations.json"
@@ -165,20 +165,21 @@ def test_json_owned_db_embedded_ignores_environment_overlap(
     _write_env(
         env_path,
         [
-            "DB_EMBEDDED=false",
-            "DB_ENGINE=postgresql+psycopg",
-            "DB_HOST=remote-db",
-            "DB_NAME=remote_db",
-            "DB_USER=remote_user",
+            "DATABASE_EMBEDDED=false",
+            "DATABASE_ENGINE=postgresql+psycopg",
+            "DATABASE_HOST=remote-db",
+            "DATABASE_NAME=remote_db",
+            "DATABASE_USERNAME=remote_user",
         ],
     )
     monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
 
     settings = get_server_settings(config_path=config_path)
 
-    assert settings.database.embedded_database is True
-    assert settings.database.engine is None
-    assert settings.database.host is None
+    assert settings.database.embedded_database is False
+    assert settings.database.engine == "postgresql+psycopg"
+    assert settings.database.host == "remote-db"
+    assert settings.database.database_name == "remote_db"
 
 ###############################################################################
 def test_absent_json_database_block_uses_environment_database_settings(
@@ -216,7 +217,7 @@ def test_absent_json_database_block_uses_environment_database_settings(
     assert settings.database.database_name == "tkben_test"
 
 ###############################################################################
-def test_structured_database_block_overrides_environment_database_settings(
+def test_json_database_block_cannot_select_embedded_database(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     config_path = tmp_path / "configurations.json"
@@ -246,9 +247,32 @@ def test_structured_database_block_overrides_environment_database_settings(
 
     settings = get_server_settings(config_path=config_path)
 
+    assert settings.database.embedded_database is False
+    assert settings.database.engine == "postgresql+psycopg"
+    assert settings.database.database_name == "tkben_test"
+
+###############################################################################
+def test_invalid_legacy_json_database_block_is_ignored(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "configurations.json"
+    _write_json(
+        config_path,
+        {
+            "database": {"embedded_database": False, "port": 0},
+            "datasets": {},
+            "tokenizers": {},
+            "benchmarks": {},
+            "jobs": {},
+        },
+    )
+    env_path = tmp_path / ".env"
+    _write_env(env_path, ["DATABASE_EMBEDDED=true"])
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
+
+    settings = get_server_settings(config_path=config_path)
+
     assert settings.database.embedded_database is True
-    assert settings.database.engine is None
-    assert settings.database.database_name is None
 
 ###############################################################################
 def test_external_database_requires_host_name_and_user(
@@ -267,7 +291,17 @@ def test_external_database_requires_host_name_and_user(
     )
 
     env_path = tmp_path / ".env"
-    _write_env(env_path, ["FASTAPI_HOST=127.0.0.1"])
+    _write_env(
+        env_path,
+        [
+            "FASTAPI_HOST=127.0.0.1",
+            "DATABASE_EMBEDDED=false",
+            "DATABASE_ENGINE=postgresql+psycopg",
+            "DATABASE_HOST=",
+            "DATABASE_NAME=",
+            "DATABASE_USERNAME=",
+        ],
+    )
     monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
 
     with pytest.raises(
@@ -305,7 +339,19 @@ def test_get_server_settings_path_scoped_loading_is_deterministic(
     )
 
     env_path = tmp_path / ".env"
-    _write_env(env_path, ["FASTAPI_HOST=0.0.0.0"])
+    _write_env(
+        env_path,
+        [
+            "FASTAPI_HOST=0.0.0.0",
+            "DATABASE_EMBEDDED=false",
+            "DATABASE_ENGINE=postgresql+psycopg",
+            "DATABASE_HOST=127.0.0.1",
+            "DATABASE_PORT=5432",
+            "DATABASE_NAME=app",
+            "DATABASE_USERNAME=postgres",
+            "DATABASE_PASSWORD=secret",
+        ],
+    )
     monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
 
     settings_a = get_server_settings(config_path=config_path)
@@ -333,7 +379,12 @@ def test_configuration_manager_reload_reflects_file_changes(
     )
 
     env_path = tmp_path / ".env"
-    _write_env(env_path, ["FASTAPI_HOST=127.0.0.1"])
+    _write_env(
+        env_path,
+        [
+            "FASTAPI_HOST=127.0.0.1",
+        ],
+    )
     monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
 
     manager = get_configuration_manager(config_path=config_path)
@@ -391,7 +442,18 @@ def test_external_database_rejects_legacy_engine_aliases(
         },
     )
     env_path = tmp_path / ".env"
-    _write_env(env_path, ["FASTAPI_HOST=127.0.0.1"])
+    _write_env(
+        env_path,
+        [
+            "FASTAPI_HOST=127.0.0.1",
+            "DATABASE_EMBEDDED=false",
+            f"DATABASE_ENGINE={engine}",
+            "DATABASE_HOST=127.0.0.1",
+            "DATABASE_PORT=5432",
+            "DATABASE_NAME=app",
+            "DATABASE_USERNAME=postgres",
+        ],
+    )
     monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
 
     settings = get_server_settings(config_path=config_path)

@@ -12,6 +12,7 @@ from server.configurations import DatabaseSettings
 from server.repositories.database import initializer
 from server.repositories.database import sqlite as sqlite_repository
 from server.repositories.database.backend import build_sqlite_backend
+from server.repositories.database.migrations import DatabaseMigrationError
 from server.repositories.schemas.models import Base, MetricType
 from server.services.metrics.catalog import DATASET_METRIC_CATALOG
 
@@ -74,7 +75,17 @@ def test_missing_sqlite_database_is_created_and_seeded(
     assert database_path.is_file()
     engine = create_engine(f"sqlite:///{database_path}", future=True)
     try:
-        assert set(inspect(engine).get_table_names()) == set(Base.metadata.tables)
+        assert set(inspect(engine).get_table_names()) == {
+            *Base.metadata.tables,
+            "alembic_version",
+        }
+        with engine.connect() as connection:
+            assert (
+                connection.execute(
+                    text("SELECT version_num FROM alembic_version")
+                ).scalar_one()
+                == "0002_current_schema"
+            )
         with Session(engine) as session:
             seeded_count = session.scalar(select(func.count(MetricType.id)))
         expected_count = sum(
@@ -86,7 +97,7 @@ def test_missing_sqlite_database_is_created_and_seeded(
         engine.dispose()
 
 ###############################################################################
-def test_existing_sqlite_database_is_not_opened_or_reseeded(
+def test_unknown_existing_sqlite_database_is_rejected_without_changes(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -101,7 +112,8 @@ def test_existing_sqlite_database_is_not_opened_or_reseeded(
         lambda: SimpleNamespace(database=settings),
     )
 
-    initializer.run_database_initialization()
+    with pytest.raises(DatabaseMigrationError):
+        initializer.run_database_initialization()
 
     assert hashlib.sha256(database_path.read_bytes()).digest() == before
 
@@ -112,6 +124,8 @@ def test_sqlite_backend_does_not_validate_existing_database(
 ) -> None:
     database_path = tmp_path / "database.db"
     seed_engine = create_engine(f"sqlite:///{database_path}", future=True)
+    # This fixture intentionally bypasses Alembic to verify that constructing
+    # a repository does not mutate an existing database.
     Base.metadata.create_all(seed_engine)
     seed_engine.dispose()
     before = hashlib.sha256(database_path.read_bytes()).digest()
@@ -125,7 +139,7 @@ def test_sqlite_backend_does_not_validate_existing_database(
     assert hashlib.sha256(database_path.read_bytes()).digest() == before
 
 ###############################################################################
-def test_postgres_startup_uses_connection_check_only(
+def test_postgres_startup_runs_the_same_migration_workflow(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     settings = _postgres_settings()
@@ -138,19 +152,36 @@ def test_postgres_startup_uses_connection_check_only(
     monkeypatch.setattr(
         initializer,
         "connect_postgres_database",
-        lambda received: calls.append(received.database_name or ""),
+        lambda received: pytest.fail(
+            f"connection-only check was used for {received.database_name}"
+        ),
     )
     monkeypatch.setattr(
         initializer,
         "ensure_postgres_database",
-        lambda received: pytest.fail(
-            f"explicit initialization was called for {received.database_name}"
+        lambda received: calls.append(f"ensure:{received.database_name}"),
+    )
+
+    class FakeEngine:
+        def dispose(self) -> None:
+            calls.append("dispose")
+
+    monkeypatch.setattr(
+        initializer,
+        "PostgresRepository",
+        lambda received: SimpleNamespace(engine=FakeEngine()),
+    )
+    monkeypatch.setattr(
+        initializer,
+        "run_locked_migrations",
+        lambda engine, received, label, *, postgres: calls.append(
+            f"migrate:{label}:{postgres}"
         ),
     )
 
     initializer.run_database_initialization(startup=True)
 
-    assert calls == ["tkben_test"]
+    assert calls == ["ensure:tkben_test", "migrate:tkben_test:True", "dispose"]
 
 ###############################################################################
 def test_postgres_connection_check_executes_select_one(
@@ -180,6 +211,9 @@ def test_postgres_connection_check_executes_select_one(
         def connect(self):
             return FakeConnection()
 
+        def dispose(self):
+            return None
+
     monkeypatch.setattr(
         initializer,
         "PostgresRepository",
@@ -201,7 +235,5 @@ def test_postgres_initialization_failure_is_returned_as_process_failure(
         lambda: SimpleNamespace(database=settings),
     )
 
-    with pytest.raises(SystemExit) as error:
+    with pytest.raises(DatabaseMigrationError):
         initializer.initialize_database()
-
-    assert error.value.code == 1

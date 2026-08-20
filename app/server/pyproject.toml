@@ -12,6 +12,7 @@ dependencies = [
     "numpy==2.4.1",
     "pandas==3.0.0",
     "tqdm==4.67.1",
+    "alembic==1.19.1",
     "SQLAlchemy==2.0.46",
     "pydantic-settings==2.11.0",
     "psycopg[binary]==3.3.1",
@@ -37,3 +38,9 @@ test = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["server"]
+
+[tool.alembic]
+script_location = "%(here)s/migrations"
+prepend_sys_path = ["."]
+version_table = "alembic_version"
+version_table_pk = true
