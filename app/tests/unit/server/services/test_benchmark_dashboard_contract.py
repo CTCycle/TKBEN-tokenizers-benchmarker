@@ -7,7 +7,7 @@ from pydantic import ValidationError
 from server.contracts.benchmarks import BenchmarkDashboardWidgetData, BenchmarkVisualizationKind
 from server.services.benchmark_result_builder import BenchmarkResultBuilder
 from server.services.export import DashboardExportService
-from server.services.metrics.benchmark_definitions import BENCHMARK_METRIC_DEFINITIONS, benchmark_metric_catalog
+from server.common.benchmark_metric_definitions import BENCHMARK_METRIC_DEFINITIONS, benchmark_metric_catalog
 
 ###############################################################################
 def _widget(visualization: str, *, compatible: list[str], points: list[dict] | None = None, distributions: list[dict] | None = None, buckets: list[dict] | None = None) -> dict:

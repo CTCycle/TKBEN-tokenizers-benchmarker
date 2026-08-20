@@ -32,7 +32,7 @@ from server.common.utils.security import (
     normalize_identifier,
     normalize_optional_identifier,
 )
-from server.services.metrics.catalog import DATASET_METRIC_CATALOG
+from server.common.metric_catalog import DATASET_METRIC_CATALOG
 from server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
 from server.services.dataset_operations import DatasetServiceOperationsMixin
 from server.services.dataset_statistics import HistogramBuilder, LengthStatistics

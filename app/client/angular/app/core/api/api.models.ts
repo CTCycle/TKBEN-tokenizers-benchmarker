@@ -329,28 +329,28 @@ export interface BenchmarkTrialSummary {
 }
 
 export interface BenchmarkEfficiencyMetrics {
-    encode_tokens_per_second_mean: number;
-    encode_tokens_per_second_ci95_low: number;
-    encode_tokens_per_second_ci95_high: number;
-    encode_chars_per_second_mean: number;
-    encode_bytes_per_second_mean: number;
-    encode_only_wall_time_seconds: number;
-    dataset_stream_wall_time_seconds: number;
-    postprocess_wall_time_seconds: number;
-    end_to_end_wall_time_seconds: number;
-    load_time_seconds: number;
+    encode_tokens_per_second_mean: number | null;
+    encode_tokens_per_second_ci95_low: number | null;
+    encode_tokens_per_second_ci95_high: number | null;
+    encode_chars_per_second_mean: number | null;
+    encode_bytes_per_second_mean: number | null;
+    encode_only_wall_time_seconds: number | null;
+    dataset_stream_wall_time_seconds: number | null;
+    postprocess_wall_time_seconds: number | null;
+    end_to_end_wall_time_seconds: number | null;
+    load_time_seconds: number | null;
 }
 
 export interface BenchmarkLatencyMetrics {
-    encode_latency_p50_ms: number;
-    encode_latency_p95_ms: number;
-    encode_latency_p99_ms: number;
-    sample_count: number;
+    encode_latency_p50_ms: number | null;
+    encode_latency_p95_ms: number | null;
+    encode_latency_p99_ms: number | null;
+    sample_count: number | null;
 }
 
 export interface BenchmarkFidelityMetrics {
-    exact_round_trip_rate: number;
-    normalized_round_trip_rate: number;
+    exact_round_trip_rate: number | null;
+    normalized_round_trip_rate: number | null;
     unknown_token_rate: number | null;
     byte_fallback_rate: number | null;
     lossless_encodability_rate: number | null;
@@ -362,17 +362,17 @@ export interface BenchmarkFragmentationBucket {
 }
 
 export interface BenchmarkFragmentationMetrics {
-    tokens_per_character: number;
-    characters_per_token: number;
-    tokens_per_byte: number;
-    bytes_per_token: number;
-    pieces_per_word_mean: number;
+    tokens_per_character: number | null;
+    characters_per_token: number | null;
+    tokens_per_byte: number | null;
+    bytes_per_token: number | null;
+    pieces_per_word_mean: number | null;
     fragmentation_by_word_length_bucket: BenchmarkFragmentationBucket[];
 }
 
 export interface BenchmarkResourceMetrics {
-    peak_rss_mb: number;
-    memory_delta_mb: number;
+    peak_rss_mb: number | null;
+    memory_delta_mb: number | null;
 }
 
 export interface BenchmarkTokenizerResult {
@@ -427,11 +427,11 @@ export type BenchmarkRunWizardPayload = Omit<
 
 export interface BenchmarkPerDocumentTokenizerStats {
     tokenizer: string;
-    tokens_count?: number[];
-    pieces_per_word?: (number | null)[];
+    tokens_count: number[];
+    pieces_per_word: (number | null)[];
     bytes_per_token: number[];
-    encode_latency_ms?: (number | null)[];
-    peak_rss_mb?: (number | null)[];
+    encode_latency_ms: (number | null)[];
+    peak_rss_mb: (number | null)[];
 }
 
 export interface BenchmarkMetricCatalogMetric {
