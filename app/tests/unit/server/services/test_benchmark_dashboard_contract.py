@@ -4,10 +4,10 @@ import matplotlib.pyplot as plt
 import pytest
 from pydantic import ValidationError
 
-from server.domain.benchmarks import BenchmarkDashboardWidgetData, BenchmarkVisualizationKind
+from server.contracts.benchmarks import BenchmarkDashboardWidgetData, BenchmarkVisualizationKind
 from server.services.benchmark_result_builder import BenchmarkResultBuilder
 from server.services.export import DashboardExportService
-from server.services.metrics.benchmark_definitions import BENCHMARK_METRIC_DEFINITIONS, benchmark_metric_catalog
+from server.common.benchmark_metric_definitions import BENCHMARK_METRIC_DEFINITIONS, benchmark_metric_catalog
 
 ###############################################################################
 def _widget(visualization: str, *, compatible: list[str], points: list[dict] | None = None, distributions: list[dict] | None = None, buckets: list[dict] | None = None) -> dict:
@@ -82,7 +82,7 @@ def test_builder_emits_payload_shape_compatible_visualization_choices() -> None:
         "vocabulary_size": 10,
         "fragmentation": {"fragmentation_by_word_length_bucket": [{"bucket": "short_1_4", "pieces_per_word_mean": 1.2}]},
     }
-    from server.domain.benchmarks import BenchmarkTokenizerResult
+    from server.contracts.benchmarks import BenchmarkTokenizerResult
 
     dashboard = BenchmarkResultBuilder(None).build_dashboard_data([BenchmarkTokenizerResult.model_validate(result)], {})
     scalar = next(widget for widget in dashboard.widgets if widget.widget_id == "benchmark.meta.vocabulary_size")
@@ -94,7 +94,7 @@ def test_builder_emits_payload_shape_compatible_visualization_choices() -> None:
 
 ###############################################################################
 def test_builder_preserves_definition_width_for_dense_visualizations() -> None:
-    from server.domain.benchmarks import BenchmarkTokenizerResult
+    from server.contracts.benchmarks import BenchmarkTokenizerResult
 
     result = BenchmarkTokenizerResult.model_validate({
         "tokenizer": "alpha",

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from server.repositories.database.backend import get_database
 from server.repositories.schemas.models import Base, Dataset, DatasetDocument
-from server.repositories.serialization.datasets import DatasetSerializer
+from server.repositories.datasets import DatasetRepository
 
 ###############################################################################
 def test_streaming_preserves_empty_and_unicode_rows(monkeypatch) -> None:
@@ -30,8 +30,8 @@ def test_streaming_preserves_empty_and_unicode_rows(monkeypatch) -> None:
         )
         session.commit()
 
-    serializer = DatasetSerializer()
+    repository = DatasetRepository()
     rows = list(
-        serializer.iterate_dataset_rows_for_benchmarks("custom/stream", batch_size=2)
+        repository.iterate_dataset_rows_for_benchmarks("custom/stream", batch_size=2)
     )
     assert [text for _, text in rows] == ["", " ", "emoji 😀", "CJK 漢字"]

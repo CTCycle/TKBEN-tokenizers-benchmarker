@@ -1,4 +1,6 @@
 # Project-specific generated/runtime artifacts
+assets/cache/**
+!assets/cache/.gitkeep
 runtimes/**
 app/resources/sources/datasets/**
 app/resources/sources/tokenizers/**
@@ -53,6 +55,10 @@ Thumbs.db
 *.sqlite*
 *.exe
 !.gitkeep
+
+# Alembic revision-generation templates
+*.mako
+!app/server/migrations/script.py.mako
 
 # Local configuration
 settings/.env

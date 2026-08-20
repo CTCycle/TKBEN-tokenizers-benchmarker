@@ -93,6 +93,17 @@ echo.
 set "PYTEST_TARGET=%TESTS_DIR%"
 if not "%STANDARD_TEST_PYTEST_TARGET%"=="" set "PYTEST_TARGET=%STANDARD_TEST_PYTEST_TARGET%"
 set "QA_DIR=%PROJECT_ROOT%\assets\QA"
+set "CACHE_DIR=%PROJECT_ROOT%\assets\cache"
+if not exist "%CACHE_DIR%" mkdir "%CACHE_DIR%" >nul 2>&1
+for %%D in (uv pip npm ruff mypy pycache coverage playwright pytest pytest-basetemp angular) do if not exist "%CACHE_DIR%\%%D" mkdir "%CACHE_DIR%\%%D" >nul 2>&1
+set "UV_CACHE_DIR=%CACHE_DIR%\uv"
+set "PIP_CACHE_DIR=%CACHE_DIR%\pip"
+set "NPM_CONFIG_CACHE=%CACHE_DIR%\npm"
+set "RUFF_CACHE_DIR=%CACHE_DIR%\ruff"
+set "MYPY_CACHE_DIR=%CACHE_DIR%\mypy"
+set "PYTHONPYCACHEPREFIX=%CACHE_DIR%\pycache"
+set "COVERAGE_FILE=%CACHE_DIR%\coverage\.coverage"
+set "PLAYWRIGHT_BROWSERS_PATH=%CACHE_DIR%\playwright"
 set "HAS_E2E=0"
 if exist "%TESTS_DIR%\e2e" set "HAS_E2E=1"
 if not exist "%QA_DIR%" mkdir "%QA_DIR%" >nul 2>&1
@@ -186,7 +197,7 @@ if errorlevel 1 (
 )
 popd
 echo [STEP] Running Python tests...
-"%PYTHON_CMD%" -m pytest "%PYTEST_TARGET%" -v --tb=short --basetemp "%QA_DIR%\.pytest-basetemp" %*
+"%PYTHON_CMD%" -m pytest "%PYTEST_TARGET%" -v --tb=short --basetemp "%CACHE_DIR%\pytest-basetemp" %*
 set "PYTEST_RC=%ERRORLEVEL%"
 if "%PYTEST_RC%"=="0" (
   set "PYTEST_PHASE=PASS"

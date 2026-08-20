@@ -1,12 +1,12 @@
 # Project Overview
-Last updated: 2026-08-13
+Last updated: 2026-08-20
 
 ## Purpose
 This file is the root index for `assets/docs`. Read it first to find the narrowest topic file for the task at hand.
 
 The current codebase uses schema-3/report-5 benchmark reports, typed frontend
 catalog controls, reusable dataset/dashboard data helpers, and responsive chart
-and modal hooks. The current public source release is `v3.9.0`; `develop` and
+and modal hooks. The current public source release is `v4.0.0`; `develop` and
 `main` are synchronized at the release commit.
 
 ## How To Navigate
@@ -27,8 +27,10 @@ and modal hooks. The current public source release is `v3.9.0`; `develop` and
   - Entry point and index for the full documentation tree.
 
 ### Architecture
+- `architecture/architecture_review.md`
+  - Implementation-derived architecture findings, target state, remediation status, and risks.
 - `architecture/system_overview.md`
-  - Repository layout, entry points, and runtime interaction topology.
+  - Repository layout, entry points, and high-level runtime interaction topology.
 - `architecture/backend_api.md`
   - API surface, catalog filter parameters, and response contracts.
 - `architecture/execution_and_data_flow.md`

@@ -29,9 +29,10 @@ $VenvDir = Join-Path $ServerDir '.venv'
 $VenvPython = Join-Path $VenvDir 'Scripts\python.exe'
 $EnvFile = Join-Path $RepoRoot 'settings\.env'
 $EnvTemplate = Join-Path $RepoRoot 'settings\.env.example'
-$UvCacheDir = Join-Path $RuntimeDir '.uv-cache'
+$CacheDir = Join-Path $RepoRoot 'assets\cache'
+$UvCacheDir = Join-Path $CacheDir 'uv'
 $PythonVersion = '3.14.2'
-$NodeVersion = '22.13.0'
+$NodeVersion = '22.23.1'
 
 function Write-Step([string]$Message) { Write-Host "[STEP] $Message" -ForegroundColor Cyan }
 function Write-Ok([string]$Message) { Write-Host "[OK] $Message" -ForegroundColor Green }
@@ -67,6 +68,50 @@ function Invoke-DownloadAndExtract {
     }
 }
 
+function Install-NodeRuntime {
+    $stagingDir = Join-Path $RuntimeDir ('.nodejs-staging-' + [guid]::NewGuid().ToString('N'))
+    $backupDir = Join-Path $RuntimeDir ('.nodejs-backup-' + [guid]::NewGuid().ToString('N'))
+    $oldRuntimeMoved = $false
+    $newRuntimeInstalled = $false
+
+    try {
+        Write-Step "Downloading Node.js $NodeVersion (portable x64)."
+        $nodeArchive = Join-Path $stagingDir "node-v$NodeVersion-win-x64.zip"
+        Invoke-DownloadAndExtract `
+            -Uri "https://nodejs.org/dist/v$NodeVersion/node-v$NodeVersion-win-x64.zip" `
+            -ArchivePath $nodeArchive `
+            -Destination $stagingDir
+
+        $nestedNodeDir = Join-Path $stagingDir "node-v$NodeVersion-win-x64"
+        if (-not (Test-Path -LiteralPath (Join-Path $nestedNodeDir 'node.exe'))) {
+            throw "Node.js was not found in the extracted archive at $nestedNodeDir"
+        }
+
+        if (Test-Path -LiteralPath $NodeDir) {
+            Move-Item -LiteralPath $NodeDir -Destination $backupDir -ErrorAction Stop
+            $oldRuntimeMoved = $true
+        }
+        Move-Item -LiteralPath $nestedNodeDir -Destination $NodeDir -ErrorAction Stop
+        $newRuntimeInstalled = $true
+
+        if (Test-Path -LiteralPath $backupDir) {
+            Remove-Item -LiteralPath $backupDir -Recurse -Force -ErrorAction Stop
+        }
+    } catch {
+        if ($newRuntimeInstalled -and (Test-Path -LiteralPath $NodeDir)) {
+            Remove-Item -LiteralPath $NodeDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        if ($oldRuntimeMoved -and (Test-Path -LiteralPath $backupDir) -and -not (Test-Path -LiteralPath $NodeDir)) {
+            Move-Item -LiteralPath $backupDir -Destination $NodeDir -ErrorAction SilentlyContinue
+        }
+        throw
+    } finally {
+        if (Test-Path -LiteralPath $stagingDir) {
+            Remove-Item -LiteralPath $stagingDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 function Invoke-PatchPth {
     param([Parameter(Mandatory)][string]$Path)
     if (-not (Test-Path -LiteralPath $Path)) { throw "Missing Python path file: $Path" }
@@ -89,6 +134,17 @@ function Invoke-Npm {
     return [int]$LASTEXITCODE
 }
 
+function Get-LogTail {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [ValidateRange(1, 100)][int]$Lines = 12
+    )
+    if (-not (Test-Path -LiteralPath $Path)) { return $null }
+    $content = @(Get-Content -LiteralPath $Path -Tail $Lines -ErrorAction SilentlyContinue)
+    if (-not $content) { return $null }
+    return ($content -join [Environment]::NewLine)
+}
+
 function Invoke-FindUv {
     param([Parameter(Mandatory)][string]$SearchRoot)
     $match = Get-ChildItem -LiteralPath $SearchRoot -Recurse -Filter 'uv.exe' -File | Select-Object -First 1
@@ -99,7 +155,10 @@ function Invoke-HealthCheck {
     param(
         [Parameter(Mandatory)][uri]$Uri,
         [ValidateRange(1, 3600)][int]$Attempts = 60,
-        [ValidateRange(1, 60)][int]$IntervalSeconds = 1
+        [ValidateRange(1, 60)][int]$IntervalSeconds = 1,
+        [string]$Description = 'service',
+        [System.Diagnostics.Process]$ProcessToMonitor,
+        [string]$FailureLogPath
     )
     for ($attempt = 1; $attempt -le $Attempts; $attempt++) {
         try {
@@ -107,6 +166,25 @@ function Invoke-HealthCheck {
             if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 400) { return }
         } catch {
             if ($attempt -eq $Attempts) { break }
+        }
+
+        if ($ProcessToMonitor) {
+            try {
+                $ProcessToMonitor.Refresh()
+                if ($ProcessToMonitor.HasExited) {
+                    $details = if ($FailureLogPath) { Get-LogTail -Path $FailureLogPath } else { $null }
+                    $message = "$Description exited with code $($ProcessToMonitor.ExitCode) while waiting for $Uri."
+                    if ($details) { $message += " Output: $details" }
+                    throw $message
+                }
+            } catch [InvalidOperationException] {
+                # The process may exit between Refresh and HasExited; the next
+                # request or timeout still provides the final readiness result.
+            }
+        }
+
+        if ($attempt -eq 1 -or ($attempt % 10 -eq 0)) {
+            Write-Host "[WAIT] Waiting for $Description at $Uri ($attempt/$Attempts)." -ForegroundColor DarkGray
         }
         Start-Sleep -Seconds $IntervalSeconds
     }
@@ -122,7 +200,6 @@ function Import-Environment {
         UI_HOST = '127.0.0.1'
         UI_PORT = '8001'
         RELOAD = 'false'
-        ALWAYS_REBUILD = 'true'
         # Backend logs are visible by default when the setting is absent.
         BACKEND_LOGS_VISIBLE = 'true'
     }
@@ -154,15 +231,18 @@ function Import-Environment {
         throw "BACKEND_LOGS_VISIBLE must be either 'true' or 'false'."
     }
 
-    if ($env:ALWAYS_REBUILD -ieq 'true') {
-        $env:ALWAYS_REBUILD = 'true'
-    } elseif ($env:ALWAYS_REBUILD -ieq 'false') {
-        $env:ALWAYS_REBUILD = 'false'
-    } else {
-        throw "ALWAYS_REBUILD must be either 'true' or 'false'."
+    Ensure-Directory $CacheDir
+    foreach ($cacheName in @('uv', 'pip', 'npm', 'ruff', 'mypy', 'pycache', 'coverage', 'playwright', 'pytest', 'pytest-basetemp', 'angular')) {
+        Ensure-Directory (Join-Path $CacheDir $cacheName)
     }
-
     $env:UV_CACHE_DIR = $UvCacheDir
+    $env:PIP_CACHE_DIR = Join-Path $CacheDir 'pip'
+    $env:NPM_CONFIG_CACHE = Join-Path $CacheDir 'npm'
+    $env:RUFF_CACHE_DIR = Join-Path $CacheDir 'ruff'
+    $env:MYPY_CACHE_DIR = Join-Path $CacheDir 'mypy'
+    $env:PYTHONPYCACHEPREFIX = Join-Path $CacheDir 'pycache'
+    $env:COVERAGE_FILE = Join-Path (Join-Path $CacheDir 'coverage') '.coverage'
+    $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path $CacheDir 'playwright'
     $env:UV_PROJECT_ENVIRONMENT = $VenvDir
     $env:UV_LINK_MODE = 'copy'
     Remove-Item Env:PYTHONHOME -ErrorAction SilentlyContinue
@@ -219,17 +299,7 @@ function Install-Runtimes {
         }
     }
     if ($nodeNeedsInstall) {
-        Write-Step "Downloading Node.js $NodeVersion (portable x64)."
-        $nodeArchive = Join-Path $NodeDir "node-v$NodeVersion-win-x64.zip"
-        Invoke-DownloadAndExtract `
-            -Uri "https://nodejs.org/dist/v$NodeVersion/node-v$NodeVersion-win-x64.zip" `
-            -ArchivePath $nodeArchive `
-            -Destination $NodeDir
-        $nestedNodeDir = Join-Path $NodeDir "node-v$NodeVersion-win-x64"
-        if (Test-Path -LiteralPath (Join-Path $nestedNodeDir 'node.exe')) {
-            Get-ChildItem -LiteralPath $nestedNodeDir -Force | Move-Item -Destination $NodeDir -Force
-            Remove-Item -LiteralPath $nestedNodeDir -Recurse -Force
-        }
+        Install-NodeRuntime
     }
     if (-not (Test-Path -LiteralPath $NodeExe)) { throw "Node.js was not installed at $NodeExe" }
     if (-not (Test-Path -LiteralPath $NpmCmd)) { throw "npm was not installed at $NpmCmd" }
@@ -261,7 +331,7 @@ function Test-FrontendDependenciesReady {
         return (
             $stamp.packageFingerprint -eq (Get-FrontendDependencyFingerprint) -and
             $stamp.nodeVersion -eq (& $NodeExe --version).Trim() -and
-            (Test-Path -LiteralPath (Join-Path $nodeModulesDir '.bin\vite.cmd'))
+            (Test-Path -LiteralPath (Join-Path $nodeModulesDir '.bin\ng.cmd'))
         )
     } catch {
         return $false
@@ -278,7 +348,7 @@ function Write-FrontendDependencyStamp {
 
 function Sync-Dependencies {
     param(
-        [bool]$BuildFrontend = $true,
+        [switch]$BuildFrontend,
         [switch]$UseCachedFrontendDependencies,
         [switch]$RuntimesReady,
         [ValidateSet('Standard', 'Development')]
@@ -287,8 +357,6 @@ function Sync-Dependencies {
 
     Import-Environment
     if (-not $RuntimesReady) { Install-Runtimes }
-    Stop-PortListeners -Port ([int]$env:UI_PORT)
-
     Write-Step 'Installing Python dependencies.'
     $uvArguments = @('sync', '--python', $PythonExe)
     if ($InstallationType -eq 'Development') { $uvArguments += '--all-extras' }
@@ -311,6 +379,16 @@ function Sync-Dependencies {
         Pop-Location
     }
 
+    Sync-Frontend -BuildFrontend:$BuildFrontend -UseCachedFrontendDependencies:$UseCachedFrontendDependencies
+}
+
+function Sync-Frontend {
+    param(
+        [switch]$BuildFrontend,
+        [switch]$UseCachedFrontendDependencies
+    )
+
+    Stop-PortListeners -Port ([int]$env:UI_PORT)
     Push-Location $ClientDir
     try {
         $frontendInstallRequired = -not $UseCachedFrontendDependencies -or -not (Test-FrontendDependenciesReady)
@@ -331,8 +409,6 @@ function Sync-Dependencies {
             Write-Step 'Building frontend.'
             $npmExitCode = Invoke-Npm run build
             if ($npmExitCode -ne 0) { throw "Frontend build failed with exit code $npmExitCode." }
-        } else {
-            Write-Step 'Skipping frontend build because ALWAYS_REBUILD=false.'
         }
     } finally {
         Pop-Location
@@ -343,7 +419,7 @@ function Test-DependenciesReady {
     $frontendPackage = Join-Path $ClientDir 'package.json'
     $frontendLock = Join-Path $ClientDir 'package-lock.json'
     $frontendModules = Join-Path $ClientDir 'node_modules'
-    $frontendRunner = Join-Path $frontendModules '.bin\vite.cmd'
+    $frontendRunner = Join-Path $frontendModules '.bin\ng.cmd'
     $backendEntrypoint = Join-Path $AppDir 'server/app.py'
 
     if (-not (Test-Path -LiteralPath $PythonExe) -or
@@ -392,19 +468,10 @@ function Launch-Application {
     Import-Environment
     if (-not (Test-DependenciesReady)) {
         Write-Step 'Required application environments are missing or unusable; installing dependencies.'
-        Sync-Dependencies -BuildFrontend ($env:ALWAYS_REBUILD -ieq 'true') -InstallationType 'Standard'
+        Sync-Dependencies -InstallationType 'Standard'
     }
     else {
         Write-Ok 'Application environments are ready; skipped dependency installation.'
-        if ($env:ALWAYS_REBUILD -ieq 'true') {
-            Push-Location $ClientDir
-            try {
-                $npmExitCode = Invoke-Npm run build
-                if ($npmExitCode -ne 0) { throw "Frontend build failed with exit code $npmExitCode." }
-            } finally {
-                Pop-Location
-            }
-        }
     }
     Import-Environment
 
@@ -430,30 +497,60 @@ function Launch-Application {
         $backendProcess = Start-Process -FilePath $VenvPython -ArgumentList $backendArgs -WorkingDirectory $RepoRoot -WindowStyle Hidden -PassThru
     }
 
-    Invoke-HealthCheck -Uri "http://$($env:FASTAPI_HOST):$backendPort/api/health" -Attempts 60 -IntervalSeconds 1
+    Invoke-HealthCheck `
+        -Uri "http://$($env:FASTAPI_HOST):$backendPort/api/health" `
+        -Description 'backend' `
+        -Attempts 60 `
+        -IntervalSeconds 1
     $backendPid = if ($backendProcess) { $backendProcess.Id } else { Get-PortProcessId -Port $backendPort }
 
     Write-Step 'Starting frontend preview.'
     $previewCommandLine = '"' + $NpmCmd + '" run preview -- --host ' + $env:UI_HOST + ' --port ' + $uiPort + ' --strictPort'
+    $frontendLogDir = Join-Path $AppDir 'resources\logs'
+    Ensure-Directory -Path $frontendLogDir
+    $frontendLogStem = Join-Path $frontendLogDir ('TKBEN_frontend_' + (Get-Date -Format 'yyyyMMdd_HHmmss_fff'))
+    $frontendStdoutLog = "$frontendLogStem.out.log"
+    $frontendStderrLog = "$frontendLogStem.err.log"
     $frontendProcess = Start-Process -FilePath 'cmd.exe' `
         -ArgumentList @('/d', '/c', $previewCommandLine) `
-        -WorkingDirectory $ClientDir -WindowStyle Hidden -PassThru
-    Invoke-HealthCheck -Uri "http://$($env:UI_HOST):$uiPort/" -Attempts 60 -IntervalSeconds 1
+        -WorkingDirectory $ClientDir -WindowStyle Hidden `
+        -RedirectStandardOutput $frontendStdoutLog `
+        -RedirectStandardError $frontendStderrLog `
+        -PassThru
+    Invoke-HealthCheck `
+        -Uri "http://$($env:UI_HOST):$uiPort/" `
+        -Description 'frontend preview' `
+        -ProcessToMonitor $frontendProcess `
+        -FailureLogPath $frontendStderrLog `
+        -Attempts 60 `
+        -IntervalSeconds 1
 
     $url = "http://$($env:UI_HOST):$uiPort"
-    Start-Process $url
     Write-Ok 'Application started successfully.'
     Write-Host "Backend: http://$($env:FASTAPI_HOST):$backendPort (PID $backendPid)"
     Write-Host "Frontend: $url (PID $($frontendProcess.Id))"
+    try {
+        Start-Process -FilePath $url -ErrorAction Stop | Out-Null
+    } catch {
+        Write-Host "[WARN] Could not open the browser automatically. Open $url manually." -ForegroundColor Yellow
+    }
 }
 
 function Install-Dependencies {
     Import-Environment
     Install-Runtimes
     $installationType = Read-InstallationType
-    Sync-Dependencies -InstallationType $installationType -RuntimesReady
+    Sync-Dependencies -BuildFrontend -InstallationType $installationType -RuntimesReady
+    Invoke-DatabaseInitialization
     if (Test-Path -LiteralPath $UvCacheDir) { Remove-Item -LiteralPath $UvCacheDir -Recurse -Force }
-    Write-Ok 'Dependencies installed and frontend built.'
+    Write-Ok 'Dependencies installed, frontend built, and database synchronized.'
+}
+
+function Rebuild-Frontend {
+    Import-Environment
+    Install-Runtimes
+    Sync-Frontend -BuildFrontend -UseCachedFrontendDependencies
+    Write-Ok 'Frontend rebuilt.'
 }
 
 function Read-InstallationType {
@@ -467,14 +564,18 @@ function Read-InstallationType {
     }
 }
 
-function Initialize-Database {
-    Import-Environment
-    Install-Runtimes
+function Invoke-DatabaseInitialization {
     Write-Step 'Initializing database.'
     $env:PYTHONPATH = $AppDir
     & $UvExe run --project $ServerDir --python $PythonExe python (Join-Path $RepoRoot 'app\scripts\initialize_database.py')
     if ($LASTEXITCODE -ne 0) { throw "Database initialization failed with exit code $LASTEXITCODE." }
-    Write-Ok 'Database initialized.'
+    Write-Ok 'Database synchronized with the latest Alembic revision.'
+}
+
+function Initialize-Database {
+    Import-Environment
+    Install-Runtimes
+    Invoke-DatabaseInitialization
 }
 
 function Run-TestSuite {
@@ -499,10 +600,28 @@ function Remove-PythonCaches {
         Remove-Item -Recurse -Force
 }
 
+function Remove-LegacyDevelopmentCaches {
+    Get-ChildItem -LiteralPath $RepoRoot -Directory -Recurse -Force -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.Name -in @('.pytest_cache', '.ruff_cache', '.mypy_cache', '.angular') -and
+            $_.FullName -notlike "$CacheDir*"
+        } |
+        Sort-Object FullName -Descending |
+        Remove-Item -Recurse -Force
+}
+
+function Clear-ManagedCache {
+    Ensure-Directory $CacheDir
+    Get-ChildItem -LiteralPath $CacheDir -Force -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -ne '.gitkeep' } |
+        Remove-Item -Recurse -Force
+}
+
 function Clear-Cache {
-    Write-Step 'Removing Python and uv caches.'
+    Write-Step 'Removing development caches and temporary artifacts.'
     Remove-PythonCaches
-    if (Test-Path -LiteralPath $UvCacheDir) { Remove-Item -LiteralPath $UvCacheDir -Recurse -Force }
+    Remove-LegacyDevelopmentCaches
+    Clear-ManagedCache
     Write-Ok 'Caches cleared.'
 }
 
@@ -523,6 +642,8 @@ function Uninstall-Application {
         if (Test-Path -LiteralPath $lockfile) { Remove-Item -LiteralPath $lockfile -Force }
     }
     Remove-PythonCaches
+    Remove-LegacyDevelopmentCaches
+    Clear-ManagedCache
     Write-Ok 'Application dependencies and generated files removed. Settings and user data were preserved.'
 }
 
@@ -567,37 +688,39 @@ function Show-Menu {
         Write-MenuItem '1' 'Launch application' 'Start the local benchmark workspace' Cyan
         Write-Host
         Write-Host '  SETUP & VALIDATION' -ForegroundColor DarkCyan
-        Write-MenuItem '2' 'Install / update dependencies' 'Sync the required local tooling'
-        Write-MenuItem '3' 'Initialize database' 'Create or update the local database'
-        Write-MenuItem '4' 'Run test suite' 'Validate backend and frontend checks'
+        Write-MenuItem '2' 'Install / update dependencies' 'Sync tooling and the database'
+        Write-MenuItem '3' 'Rebuild frontend' 'Build the Angular production output only'
+        Write-MenuItem '4' 'Initialize database' 'Create or update the local database'
+        Write-MenuItem '5' 'Run test suite' 'Validate backend and frontend checks'
         Write-Host
         Write-Host '  MAINTENANCE' -ForegroundColor DarkCyan
-        Write-MenuItem '5' 'Remove logs' 'Clear generated application logs'
-        Write-MenuItem '6' 'Clear cache' 'Remove downloaded and generated caches'
-        Write-MenuItem '7' 'Uninstall application' 'Remove local runtimes and dependencies' Yellow
+        Write-MenuItem '6' 'Remove logs' 'Clear generated application logs'
+        Write-MenuItem '7' 'Clear cache' 'Remove downloaded and generated caches'
+        Write-MenuItem '8' 'Uninstall application' 'Remove local runtimes and dependencies' Yellow
         Write-Host
         Write-Host '  +----------------------------------------------------------+' -ForegroundColor DarkCyan
-        Write-MenuItem '8' 'Exit' 'Close this launcher' DarkGray
+        Write-MenuItem '9' 'Exit' 'Close this launcher' DarkGray
         Write-Host '  +----------------------------------------------------------+' -ForegroundColor DarkCyan
         Write-Host
-        $selection = (Read-Host '  Select an option [1-8]').Trim()
+        $selection = (Read-Host '  Select an option [1-9]').Trim()
 
-        if ($selection -notmatch '^[1-8]$') {
-            Write-Fatal 'Invalid option. Enter a number from 1 through 8.'
+        if ($selection -notmatch '^[1-9]$') {
+            Write-Fatal 'Invalid option. Enter a number from 1 through 9.'
             Wait-ForMenu
             continue
         }
-        if ($selection -eq '8') { break }
+        if ($selection -eq '9') { break }
 
         try {
             switch ($selection) {
                 '1' { Launch-Application; exit 0 }
                 '2' { Install-Dependencies }
-                '3' { Initialize-Database }
-                '4' { Run-TestSuite }
-                '5' { Remove-Logs }
-                '6' { Clear-Cache }
-                '7' { Uninstall-Application }
+                '3' { Rebuild-Frontend }
+                '4' { Initialize-Database }
+                '5' { Run-TestSuite }
+                '6' { Remove-Logs }
+                '7' { Clear-Cache }
+                '8' { Uninstall-Application }
             }
         } catch {
             Write-Fatal $_.Exception.Message

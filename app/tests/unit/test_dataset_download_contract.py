@@ -1,16 +1,18 @@
 from __future__ import annotations
 
 import time
+from unittest.mock import MagicMock
 
 import pandas as pd
 import pytest
+from datasets import IterableDataset
 from datasets.exceptions import DataFilesNotFoundError
 from huggingface_hub.errors import GatedRepoError
 from pydantic import ValidationError
 from requests import Response
 from requests.exceptions import ConnectionError as RequestsConnectionError
 
-from server.domain.dataset import DatasetDownloadRequest
+from server.contracts.dataset import DatasetDownloadRequest
 from server.services.datasets import (
     HF_DATASET_ALIASES,
     DatasetService,
@@ -62,7 +64,7 @@ def test_upload_existing_dataset_is_non_destructive(
         lambda dataset_name, text_column="text": expected_payload,
     )
     monkeypatch.setattr(
-        service.dataset_serializer,
+        service.dataset_repository,
         "delete_dataset",
         lambda dataset_name: delete_calls.append(dataset_name),
     )
@@ -115,6 +117,16 @@ def test_preselected_dataset_aliases_cover_all_ui_presets() -> None:
         "opus_books",
     }
     assert expected_presets.issubset(set(HF_DATASET_ALIASES.keys()))
+
+###############################################################################
+def test_c4_preset_uses_bounded_streaming_training_sample() -> None:
+    target = DatasetService().resolve_dataset_download(corpus="c4", config=None)
+
+    assert target.hf_dataset_id == "allenai/c4"
+    assert target.hf_config == "en"
+    assert target.split == "train"
+    assert target.streaming is True
+    assert target.max_documents == 10000
 
 ###############################################################################
 def test_the_pile_preset_is_disabled_with_clear_error() -> None:
@@ -190,7 +202,7 @@ def test_download_and_persist_maps_c4_friendly_name(
 ) -> None:
     service = DatasetService()
     configure_download_success_mocks(service, monkeypatch)
-    captured: dict[str, str | None] = {}
+    captured: dict[str, object] = {}
 
     def fake_load_dataset(
         corpus: str,
@@ -203,6 +215,7 @@ def test_download_and_persist_maps_c4_friendly_name(
         captured["config"] = config
         captured["cache_dir"] = cache_dir
         captured["token"] = token
+        captured["kwargs"] = kwargs
         return object()
 
     monkeypatch.setattr("server.services.datasets.load_dataset", fake_load_dataset)
@@ -215,6 +228,7 @@ def test_download_and_persist_maps_c4_friendly_name(
 
     assert captured["corpus"] == "allenai/c4"
     assert captured["config"] == "en"
+    assert captured["kwargs"] == {"split": "train", "streaming": True}
     assert result["dataset_name"] == "c4/en"
 
 ###############################################################################
@@ -479,6 +493,70 @@ def test_load_dataset_with_progress_reports_stage_progress(
     assert progress_values[-1] == 15.0
 
 ###############################################################################
+def test_load_dataset_with_progress_limits_streaming_datasets(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = DatasetService()
+
+    streaming_dataset = MagicMock(spec=IterableDataset)
+    limited_streaming_dataset = object()
+    streaming_dataset.take.return_value = limited_streaming_dataset
+    captured: dict[str, object] = {}
+
+    def fake_load_dataset(*args, **kwargs):
+        captured.update(kwargs)
+        return streaming_dataset
+
+    monkeypatch.setattr("server.services.datasets.load_dataset", fake_load_dataset)
+
+    limited_dataset = service.load_dataset_with_progress(
+        hf_dataset_id="allenai/c4",
+        hf_config="en",
+        cache_path="tmp",
+        hf_access_token=None,
+        split="train",
+        streaming=True,
+        max_documents=2,
+    )
+
+    assert captured["split"] == "train"
+    assert captured["streaming"] is True
+    streaming_dataset.take.assert_called_once_with(2)
+    assert limited_dataset is limited_streaming_dataset
+
+###############################################################################
+def test_download_and_persist_stops_before_retry_when_cancelled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = DatasetService()
+    configure_download_success_mocks(service, monkeypatch)
+    service.download_retry_attempts = 3
+    state = {"attempts": 0}
+    cleanup_calls: list[str] = []
+
+    def raise_network(*args, **kwargs):
+        state["attempts"] += 1
+        raise RequestsConnectionError("Connection reset by peer")
+
+    monkeypatch.setattr(service, "load_dataset_with_progress", raise_network)
+    monkeypatch.setattr(
+        service,
+        "cleanup_cancelled_dataset",
+        lambda dataset_name: cleanup_calls.append(dataset_name),
+    )
+
+    result = service.download_and_persist(
+        corpus="wikitext",
+        config="wikitext-2-v1",
+        should_stop=lambda: state["attempts"] > 0,
+        job_id="job-cancelled-download",
+    )
+
+    assert result == {}
+    assert state["attempts"] == 1
+    assert cleanup_calls == ["wikitext/wikitext-2-v1"]
+
+###############################################################################
 def test_download_and_persist_classifies_network_errors(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -560,7 +638,7 @@ def test_download_and_persist_does_not_retry_non_transient_failures(
     assert sleep_calls == []
 
 ###############################################################################
-def test_download_and_persist_timeout_is_reported_as_transient_failure(
+def test_download_and_persist_timeout_is_reported_as_provider_timeout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     service = DatasetService()
@@ -582,7 +660,7 @@ def test_download_and_persist_timeout_is_reported_as_transient_failure(
         )
 
     message = str(exc_info.value)
-    assert "network/transient error" in message
+    assert "did not finish loading" in message
     assert "job=job-timeout" in message
 
 ###############################################################################

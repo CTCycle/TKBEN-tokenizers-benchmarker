@@ -15,9 +15,19 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PYTHONPATH: app
+      UV_CACHE_DIR: ${{ github.workspace }}/assets/cache/uv
+      PIP_CACHE_DIR: ${{ github.workspace }}/assets/cache/pip
+      RUFF_CACHE_DIR: ${{ github.workspace }}/assets/cache/ruff
+      MYPY_CACHE_DIR: ${{ github.workspace }}/assets/cache/mypy
+      PYTHONPYCACHEPREFIX: ${{ github.workspace }}/assets/cache/pycache
+      COVERAGE_FILE: ${{ github.workspace }}/assets/cache/coverage/.coverage
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/assets/cache/playwright
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Prepare development cache directories
+        run: mkdir -p assets/cache/{uv,pip,ruff,mypy,pycache,coverage,playwright,pytest,pytest-basetemp}
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -27,31 +37,40 @@ jobs:
       - name: Install test dependencies
         working-directory: app/server
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install .[test]
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install '.[test]'
 
       - name: Compile backend modules
         working-directory: app/server
-        run: python -m compileall app.py api common configurations domain repositories services
+        run: .venv/bin/python -m compileall app.py api common configurations contracts repositories services
 
       - name: Ruff checks
-        run: python -m ruff check app/server app/tests
+        run: app/server/.venv/bin/python -m ruff check app/server app/tests
 
       - name: BasedPyright
         working-directory: app/server
-        run: python -m basedpyright
+        run: .venv/bin/python -m basedpyright
+
+      - name: Initialize embedded database
+        run: app/server/.venv/bin/python app/scripts/initialize_database.py
 
       - name: Unit tests
-        run: python -m pytest app/tests/unit -q
+        run: app/server/.venv/bin/python -m pytest app/tests/unit -q
 
       - name: OpenAPI smoke
-        run: python -c "from server.app import app; app.openapi()"
+        run: app/server/.venv/bin/python -c "from server.app import app; app.openapi()"
 
   frontend-validation:
     runs-on: ubuntu-latest
+    env:
+      NPM_CONFIG_CACHE: ${{ github.workspace }}/assets/cache/npm
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Prepare development cache directory
+        run: mkdir -p assets/cache/npm
 
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -71,6 +90,10 @@ jobs:
       - name: Lint frontend
         working-directory: app/client
         run: npm run lint
+
+      - name: Unit tests
+        working-directory: app/client
+        run: npm run test:unit
 
       - name: Build frontend
         working-directory: app/client

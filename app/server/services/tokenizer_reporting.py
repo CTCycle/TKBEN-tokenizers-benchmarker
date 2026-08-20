@@ -14,7 +14,8 @@ from transformers import AutoTokenizer
 from server.common.utils.logger import logger
 from server.configurations import get_server_settings
 from server.repositories.tokenizers import TokenizerRepository
-from server.repositories.serialization.tokenizer_reports import TokenizerReportSerializer
+from server.repositories.tokenizer_reports import TokenizerReportRepository
+from server.services.custom_tokenizers import get_custom_tokenizer_registry
 from server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
 from server.services.tokenizer_storage import TokenizerStorageMixin
 
@@ -26,7 +27,8 @@ class TokenizerReportingService(TokenizerStorageMixin):
     def __init__(self) -> None:
         self.repository = TokenizerRepository()
         self.key_service = HFAccessKeyService()
-        self.report_serializer = TokenizerReportSerializer()
+        self.report_repository = TokenizerReportRepository()
+        self.custom_tokenizer_registry = get_custom_tokenizer_registry()
         self.histogram_bins = max(5, int(get_server_settings().datasets.histogram_bins))
         self.special_token_pattern = re.compile(
             r"^(?:\[[^\]]{0,200}\]|<[^>]{0,200}>|\{[^}]{0,200}\}|</?s>|</?pad>|UNK|PAD)$",
@@ -502,8 +504,15 @@ class TokenizerReportingService(TokenizerStorageMixin):
         tokenizer_name: str,
         cache_dir: str,
     ) -> dict[str, str]:
-        _ = tokenizer_name
         _ = cache_dir
+        if self.custom_tokenizer_registry.get(tokenizer_name) is not None:
+            return {
+                "persistence_mode": "memory_registry",
+                "persistence_reason": (
+                    "Custom tokenizer is loaded from the in-memory registry; "
+                    "the uploaded tokenizer JSON is not persisted as a filesystem cache."
+                ),
+            }
         # Downloaded tokenizer loading relies on AutoTokenizer.from_pretrained(..., local_files_only=True)
         # in benchmark/report paths, so filesystem artifacts are required today.
         # DB-only mode is intentionally not selected because there is no DB reconstruction path.
@@ -603,7 +612,8 @@ class TokenizerReportingService(TokenizerStorageMixin):
             raise ValueError("Tokenizer name must be provided.")
 
         cache_dir = self.get_tokenizer_cache_dir(name)
-        if not self.has_cached_tokenizer(name):
+        custom_tokenizer = self.custom_tokenizer_registry.get(name)
+        if custom_tokenizer is None and not self.has_cached_tokenizer(name):
             raise ValueError(
                 f"Tokenizer '{name}' is not downloaded. Download it before validation."
             )
@@ -611,11 +621,14 @@ class TokenizerReportingService(TokenizerStorageMixin):
         if progress_callback:
             progress_callback(5.0)
 
-        tokenizer = AutoTokenizer.from_pretrained(
-            name,
-            cache_dir=cache_dir,
-            local_files_only=True,
-        )
+        if custom_tokenizer is not None:
+            tokenizer = custom_tokenizer
+        else:
+            tokenizer = AutoTokenizer.from_pretrained(
+                name,
+                cache_dir=cache_dir,
+                local_files_only=True,
+            )
 
         if callable(should_stop) and should_stop():
             return {}
@@ -727,7 +740,7 @@ class TokenizerReportingService(TokenizerStorageMixin):
             "vocabulary_size": int(len(vocab_pairs)),
         }
 
-        report_id = self.report_serializer.replace_report_and_vocabulary(
+        report_id = self.report_repository.replace_report_and_vocabulary(
             name, report_payload, vocabulary_rows
         )
         report_payload["report_id"] = int(report_id)
@@ -741,13 +754,13 @@ class TokenizerReportingService(TokenizerStorageMixin):
     def get_latest_tokenizer_report(self, tokenizer_name: str) -> dict[str, Any] | None:
         if self.repository.get_latest_tokenizer_report(tokenizer_name) is None:
             return None
-        return self.report_serializer.load_latest_tokenizer_report(tokenizer_name)
+        return self.report_repository.load_latest_tokenizer_report(tokenizer_name)
 
     # -------------------------------------------------------------------------
     def get_tokenizer_report_by_id(self, report_id: int) -> dict[str, Any] | None:
         if self.repository.get_tokenizer_report_by_id(report_id) is None:
             return None
-        return self.report_serializer.load_tokenizer_report_by_id(report_id)
+        return self.report_repository.load_tokenizer_report_by_id(report_id)
 
     # -------------------------------------------------------------------------
     def get_tokenizer_report_vocabulary(
@@ -758,7 +771,7 @@ class TokenizerReportingService(TokenizerStorageMixin):
     ) -> dict[str, Any] | None:
         if self.repository.get_tokenizer_report_by_id(report_id) is None:
             return None
-        return self.report_serializer.load_tokenizer_vocabulary_page(
+        return self.report_repository.load_tokenizer_vocabulary_page(
             report_id=report_id,
             offset=offset,
             limit=limit,

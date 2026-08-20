@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 import server.services.benchmark_execution as benchmark_execution_module
-from server.domain.benchmark_observations import BatchObservation
-from server.domain.benchmarks import BenchmarkRunResponse
+from server.services.benchmark_observations import BatchObservation
+from server.contracts.benchmarks import BenchmarkRunResponse
 from server.services.benchmarks import BenchmarkService
 from server.services.benchmark_execution import normalize_vocabulary_token
 

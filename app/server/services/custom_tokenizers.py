@@ -28,6 +28,11 @@ class CustomTokenizerRegistry:
             return dict(self._tokenizers)
 
     # -------------------------------------------------------------------------
+    def delete(self, tokenizer_name: str) -> bool:
+        with self._lock:
+            return self._tokenizers.pop(tokenizer_name, None) is not None
+
+    # -------------------------------------------------------------------------
     def clear(self) -> None:
         with self._lock:
             self._tokenizers.clear()

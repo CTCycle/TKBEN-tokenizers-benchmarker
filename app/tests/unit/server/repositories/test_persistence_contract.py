@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import create_engine, event, inspect
@@ -15,6 +16,8 @@ from server.repositories.schemas.models import (
     MetricType,
     MetricValue,
 )
+from server.repositories.queries.data import DataRepositoryQueries
+from server.repositories.datasets import DatasetRepository
 
 ###############################################################################
 @pytest.fixture()
@@ -51,3 +54,31 @@ def test_metric_values_require_one_value_and_dataset_safe_document(sqlite_sessio
         sqlite_session.add(MetricValue(session_id=session.id, dataset_id=second.id, metric_type_id=metric.id, document_id=document.id, numeric_value=1.0, created_at=now))
         sqlite_session.flush()
     sqlite_session.rollback()
+
+###############################################################################
+def test_dataset_catalog_filters_ready_rows_by_source_search_and_count(
+    sqlite_session: Session,
+) -> None:
+    now = datetime.now(timezone.utc)
+    sqlite_session.add_all([
+        Dataset(name="public/corpus", status="ready", document_count=12, created_at=now, updated_at=now, ready_at=now),
+        Dataset(name="custom/small", status="ready", document_count=3, created_at=now, updated_at=now, ready_at=now),
+        Dataset(name="custom/large", status="ready", document_count=20, created_at=now, updated_at=now, ready_at=now),
+        Dataset(name="custom/loading", status="loading", document_count=1, created_at=now, updated_at=now),
+    ])
+    sqlite_session.commit()
+
+    database = SimpleNamespace(
+        backend=SimpleNamespace(engine=sqlite_session.bind),
+    )
+    repository = DatasetRepository(DataRepositoryQueries(database))
+
+    assert repository.list_dataset_previews(
+        source="custom",
+        document_count_operator="at_most",
+        document_count=5,
+    ) == [{"dataset_name": "custom/small", "document_count": 3}]
+    assert repository.list_dataset_previews(
+        search="PUBLIC",
+        source="public",
+    ) == [{"dataset_name": "public/corpus", "document_count": 12}]

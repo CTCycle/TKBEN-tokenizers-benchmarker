@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 from server.common.utils.security import contains_control_chars
-from server.domain.exports import DashboardType
-from server.domain.benchmarks import BenchmarkVisualizationKind
+from server.contracts.exports import DashboardType
+from server.contracts.benchmarks import BenchmarkVisualizationKind
 from server.services.dashboard_export_helpers import DashboardExportFormatting
 
 

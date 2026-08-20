@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from dataclasses import dataclass
 from typing import Any
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, load_only
+from sqlalchemy.orm import Session
 
+from server.contracts.benchmarks import BenchmarkReportSort
 from server.repositories.database.backend import TKBENDatabase, get_database
 from server.repositories.schemas.models import (
     BenchmarkReport,
@@ -14,6 +16,14 @@ from server.repositories.schemas.models import (
     Tokenizer,
 )
 from server.common.constants import BENCHMARK_REPORT_VERSION
+
+###############################################################################
+@dataclass(frozen=True)
+class BenchmarkReportPage:
+    rows: list[dict[str, Any]]
+    total: int
+    offset: int
+    limit: int
 
 ###############################################################################
 class BenchmarkRepository:
@@ -52,30 +62,76 @@ class BenchmarkRepository:
 
     # -------------------------------------------------------------------------
     def list_benchmark_reports(
-        self, limit: int = 200
-    ) -> list[tuple[BenchmarkReport, str]]:
-        capped_limit = max(1, min(1000, int(limit or 200)))
+        self,
+        *,
+        search: str | None,
+        sort: BenchmarkReportSort,
+        offset: int,
+        limit: int,
+    ) -> BenchmarkReportPage:
+        safe_offset = max(0, int(offset))
+        safe_limit = max(1, min(100, int(limit)))
+        filters = [BenchmarkReport.report_version == BENCHMARK_REPORT_VERSION]
+        if search:
+            pattern = f"%{search}%"
+            filters.append(
+                or_(
+                    BenchmarkReport.run_name.ilike(pattern),
+                    Dataset.name.ilike(pattern),
+                )
+            )
+
+        total_stmt = (
+            select(func.count(BenchmarkReport.id))
+            .join(Dataset, Dataset.id == BenchmarkReport.dataset_id)
+            .where(*filters)
+        )
+        order = (
+            (BenchmarkReport.created_at.asc(), BenchmarkReport.id.asc())
+            if sort == BenchmarkReportSort.OLDEST
+            else (BenchmarkReport.created_at.desc(), BenchmarkReport.id.desc())
+        )
         stmt = (
-            select(BenchmarkReport, Dataset.name.label("dataset_name"))
-            .options(load_only(
+            select(
                 BenchmarkReport.id,
                 BenchmarkReport.report_version,
                 BenchmarkReport.created_at,
                 BenchmarkReport.run_name,
-                BenchmarkReport.status,
                 BenchmarkReport.documents_processed,
                 BenchmarkReport.tokenizers_count,
                 BenchmarkReport.tokenizers_processed,
                 BenchmarkReport.selected_metric_keys,
-            ))
+                Dataset.name.label("dataset_name"),
+            )
             .join(Dataset, Dataset.id == BenchmarkReport.dataset_id)
-            .where(BenchmarkReport.report_version == BENCHMARK_REPORT_VERSION)
-            .order_by(BenchmarkReport.id.desc())
-            .limit(capped_limit)
+            .where(*filters)
+            .order_by(*order)
+            .offset(safe_offset)
+            .limit(safe_limit)
         )
         with self._session() as session:
-            rows = session.execute(stmt).all()
-        return [(row[0], str(row[1])) for row in rows]
+            total = int(session.execute(total_stmt).scalar_one() or 0)
+            rows = [dict(row) for row in session.execute(stmt).mappings().all()]
+        return BenchmarkReportPage(
+            rows=rows,
+            total=total,
+            offset=safe_offset,
+            limit=safe_limit,
+        )
+
+    # -------------------------------------------------------------------------
+    def delete_benchmark_report(self, report_id: int) -> bool:
+        with self._session() as session:
+            row = session.execute(
+                select(BenchmarkReport)
+                .where(BenchmarkReport.id == int(report_id))
+                .limit(1)
+            ).scalar_one_or_none()
+            if row is None:
+                return False
+            session.delete(row)
+            session.commit()
+        return True
 
     # -------------------------------------------------------------------------
     def get_benchmark_report_by_id(

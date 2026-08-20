@@ -1,5 +1,5 @@
 # TKBEN Tokenizer Benchmarker
-Last updated: 2026-08-13
+Last updated: 2026-08-20
 [![Release](https://img.shields.io/github/v/release/CTCycle/TKBEN-tokenizers-benchmarker?display_name=tag)](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.14-3776AB?logo=python&logoColor=white)
 ![Node.js](https://img.shields.io/badge/node.js-%3E%3D22-339933?logo=node.js&logoColor=white)
@@ -40,7 +40,7 @@ From the repository root, run the single application and maintenance entry point
 .\start_on_windows.ps1
 ```
 
-`start_on_windows.ps1` opens the combined eight-option menu. Choose **Launch application** to download pinned portable Python, uv, and Node.js runtimes when missing, synchronize Python dependencies, reuse unchanged frontend dependencies, build the frontend when enabled, and start FastAPI plus the Vite preview server. The launcher also waits for the backend health endpoint and frontend before reporting success. The dependency maintenance option offers a **Development** profile with Ruff, BasedPyright, and pytest extras, or a **Standard** profile with runtime dependencies only.
+`start_on_windows.ps1` opens the combined nine-option menu. Choose **Launch application** to download pinned portable Python, uv, and Node.js runtimes when missing, synchronize Python dependencies, reuse unchanged frontend dependencies, and start FastAPI plus the Angular production preview server. Use **Rebuild frontend** when only the Angular production output needs to be refreshed; it does not synchronize Python dependencies. The launcher also waits for the backend health endpoint and frontend before reporting success. The dependency maintenance option offers a **Development** profile with Ruff, BasedPyright, and pytest extras, or a **Standard** profile with runtime dependencies only.
 
 On the first launch, allow dependency setup to finish and note the URL printed by the launcher. Subsequent launches can reuse the local runtimes and unchanged frontend dependencies. Use the maintenance menu when you need to install or update dependencies, initialize the database, run tests, clean logs or caches, or uninstall the managed runtime.
 
@@ -79,7 +79,7 @@ Initialize from the single template:
 Copy-Item settings\.env.example settings\.env
 ```
 
-Most users can keep the generated defaults. Open `settings/.env` when you need to change local hosts or ports, choose whether the frontend is rebuilt at startup, or configure optional Hugging Face and database integration. Keep secrets and machine-specific values in this ignored file.
+Most users can keep the generated defaults. Open `settings/.env` when you need to change local hosts or ports, choose whether the frontend is rebuilt at startup, set `TKBEN_DATA_DIR` to relocate the resource root (including the embedded SQLite database), or configure optional Hugging Face and database integration. Keep secrets and machine-specific values in this ignored file.
 
 ### 3.2 Local Webapp Mode (Default)
 
@@ -122,7 +122,7 @@ Wait for the benchmark job to complete before opening its saved report. You can 
 
 ### 3.5 Product Snapshots
 
-The following snapshots were captured in local webapp mode with backend and frontend running:
+The following full-page captures were taken from the live local webapp with real persisted C4 validation and benchmark data. Open an image at its original size to inspect the complete page.
 
 The settings view centralizes local runtime options such as hosts, ports, logging, and optional integrations. Values are read from the local configuration and should be changed carefully when a service is already using the configured ports.
 
@@ -132,17 +132,17 @@ The settings view centralizes local runtime options such as hosts, ports, loggin
 Dataset dashboard with a loaded persisted validation session, aggregate statistics, histograms, and word-cloud analytics.
 
 ![Dataset workspace](assets/figures/dataset.png)
-*Dataset workspace displaying a completed validation report with summary metrics and visual analysis.*
+*Full-page dataset dashboard for a 200-document C4 validation. Review dataset health, lexical metrics, distributions, entropy, concentration, and word-cloud signals before benchmarking.*
 
 Tokenizers dashboard with an opened tokenizer report, vocabulary statistics, and populated token preview table.
 
 ![Tokenizers workspace](assets/figures/tokenizers-overview.png)
-*Tokenizer workspace showing vocabulary statistics and a paginated preview of extracted tokens.*
+*Full-page GPT-2 tokenizer report showing model metadata, a 50,257-token vocabulary, token-length distribution, and a paginated token preview.*
 
 Cross-benchmark dashboard with a loaded run summary and comparative metric panels.
 
 ![Cross-benchmark dashboard](assets/figures/cross-benchmark.png)
-*Cross-benchmark dashboard comparing saved tokenizer results across normalized metric panels.*
+*Full-page C4 cross-benchmark report comparing GPT-2 and RoBERTa across throughput, vocabulary, latency, round-trip fidelity, memory, and run diagnostics.*
 
 ## 4. Setup and Maintenance
 
@@ -152,7 +152,7 @@ Run the unified menu:
 .\start_on_windows.ps1
 ```
 
-The menu contains launch, dependency installation/update, database initialization, test execution, log removal, cache cleanup, uninstall, and exit actions. Dependency installation prompts for the Development or Standard profile. Launching starts the backend and frontend, opens the browser, prints the active ports and process IDs, and then exits the menu.
+The menu contains launch, dependency installation/update, frontend rebuild, database initialization, test execution, log removal, cache cleanup, uninstall, and exit actions. Dependency installation prompts for the Development or Standard profile, then runs the same Alembic-backed database initializer used by the explicit database option. Launching starts the backend and frontend, opens the browser, prints the active ports and process IDs, and then exits the menu.
 
 ## 5. Resources
 
@@ -160,7 +160,10 @@ Key paths:
 - `app/resources`: SQLite database, downloaded sources, logs, and mutable application data.
 - `settings`: Local `.env` plus versioned structured configuration and environment templates.
 - `runtimes`: Portable Windows runtimes.
+- `assets/cache`: Centralized development-tool caches and temporary test artifacts.
 - `assets/docs/project_index.md`: Documentation root index and topic map.
+- `assets/docs/architecture/architecture_review.md`: Current architecture findings, remediation scope, and ownership diagram.
+- `assets/docs/architecture/system_overview.md`: Implemented system layers and runtime component map.
 - `assets/docs/runtime/modes.md`: Supported runtime mode details.
 - `assets/docs/runtime/startup.md`: Startup procedures and launcher commands.
 - `assets/docs/runtime/release.md`: Source-release preparation, validation, and publication procedure.
@@ -169,14 +172,13 @@ Key paths:
 
 Configuration is split between:
 - `settings/.env.example`: Versioned configuration template; `settings/.env` must never be committed.
-- `settings/configurations.json`: Backend structured settings for datasets, tokenizers, benchmarks, jobs, and optional database overrides.
+- `settings/configurations.json`: Backend structured settings for datasets, tokenizers, benchmarks, and jobs. Database connection settings are not read from this file.
 
 Core runtime keys you will commonly edit:
 - `FASTAPI_HOST`, `FASTAPI_PORT`
 - `UI_HOST`, `UI_PORT`
 - `VITE_API_BASE_URL` (normally `/api`)
 - `RELOAD`
-- `ALWAYS_REBUILD` (`true` or `false`; controls whether the launcher rebuilds the frontend at application start)
 - `BACKEND_LOGS_VISIBLE` (`true` or `false`; controls the dedicated backend log terminal)
 - `ALLOW_KEY_REVEAL`
 - `TKBEN_DATA_DIR`, `TKBEN_LOG_DIR`, `TKBEN_CONFIG_DIR`
@@ -190,19 +192,35 @@ Core runtime keys you will commonly edit:
 - `DATABASE_INSERT_BATCH_SIZE`
 - `HF_KEYS_ENCRYPTION_MATERIAL_FILE`
 
+Database schema management is owned by Alembic. The TOML-only configuration is
+loaded explicitly from `app/server` with the existing project environment:
+
+```powershell
+uv run python -c 'from alembic.config import Config; from alembic import command; command.current(Config(toml_file="pyproject.toml"), check_heads=True)'
+uv run python -c 'from alembic.config import Config; from alembic import command; command.upgrade(Config(toml_file="pyproject.toml"), "head")'
+uv run python -c 'from alembic.config import Config; from alembic import command; command.check(Config(toml_file="pyproject.toml"))'
+uv run python -c 'from alembic.config import Config; from alembic import command; command.revision(Config(toml_file="pyproject.toml"), message="<change>", autogenerate=True)'
+```
+
+Review every generated revision before applying it. The database initializer
+and FastAPI startup use the `DATABASE_*` values from `settings/.env`; a
+PostgreSQL role must have `CREATEDB` permission when the configured target does
+not yet exist. Production schema evolution must use migrations rather than
+`Base.metadata.create_all()`.
+
 Determinism:
 - Backend lockfile: `app/server/uv.lock` (generated/updated directly by running `uv sync` from `app/server`).
 - Frontend lockfile: committed `app/client/package-lock.json`; setup uses `npm ci`, while application launch reuses a verified unchanged dependency tree.
 
 ## 7. Releases and Repository Hygiene
 
-Current source release: `v3.9.0`.
+Current source release: `v4.0.0`.
 
 Continuous integration validates the locked backend and frontend sources. Keep `app/server/uv.lock` and `app/client/package-lock.json` tracked so installations remain reproducible.
 
-GitHub releases provide a versioned repository source ZIP for download. The archive contains tracked source files only; local environments, credentials, dependencies, caches, logs, and generated build output are excluded. Follow [the release procedure](assets/docs/runtime/release.md) to review the delta, validate the application, synchronize `develop` and `main`, apply the coordinated minor version bump, and publish the annotated tag.
+GitHub releases provide a versioned repository source ZIP for download. The archive contains tracked source files only; local environments, credentials, dependencies, caches, logs, and generated build output are excluded. Follow [the release procedure](assets/docs/runtime/release.md) to review the delta, validate the application, synchronize `develop` and `main`, apply the coordinated major version bump, and publish the annotated tag.
 
-Never commit `.env` files, credentials, databases, downloaded model/data caches, logs, virtual environments, Node dependencies, or generated frontend output. Keep configuration templates, scripts, workflows, migrations, and both application lockfiles tracked.
+Never commit `.env` files, credentials, databases, downloaded model/data caches, logs, virtual environments, Node dependencies, or generated frontend output. Keep configuration templates, scripts, workflows, and both application lockfiles tracked.
 
 ## 8. License
 

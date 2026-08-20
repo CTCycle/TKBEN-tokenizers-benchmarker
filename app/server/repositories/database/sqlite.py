@@ -16,21 +16,57 @@ class SQLiteRepository(RepositoryBase):
     SQLITE_MAX_VARIABLES = 900
 
     # -------------------------------------------------------------------------
-    def __init__(self, settings: DatabaseSettings) -> None:
+    def __init__(
+        self,
+        settings: DatabaseSettings,
+        *,
+        enforce_foreign_keys: bool = True,
+        begin_immediate: bool = False,
+    ) -> None:
         self.db_path = normalize_sqlite_path(DATABASE_PATH)
         DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        engine = sqlalchemy.create_engine(f"sqlite:///{self.db_path}", future=True)
-        event.listen(engine, "connect", self.enable_foreign_keys)
+        engine = sqlalchemy.create_engine(
+            f"sqlite:///{self.db_path}",
+            future=True,
+            connect_args={
+                "autocommit": False,
+                "timeout": settings.connect_timeout,
+            },
+        )
+        if enforce_foreign_keys:
+            event.listen(engine, "connect", self.enable_foreign_keys)
+        if begin_immediate:
+            event.listen(engine, "begin", self.begin_immediate)
         super().__init__(engine, settings.insert_batch_size)
 
     # -------------------------------------------------------------------------
     @staticmethod
     def enable_foreign_keys(dbapi_connection: Any, connection_record: Any) -> None:
+        previous_autocommit = getattr(dbapi_connection, "autocommit", None)
+        if previous_autocommit is not None:
+            dbapi_connection.autocommit = True
         cursor = dbapi_connection.cursor()
         try:
             cursor.execute("PRAGMA foreign_keys=ON")
         finally:
             cursor.close()
+            if previous_autocommit is not None:
+                dbapi_connection.autocommit = previous_autocommit
+
+    # -------------------------------------------------------------------------
+    @staticmethod
+    def begin_immediate(connection: Any) -> None:
+        # Python's modern sqlite3 transaction mode opens an initial deferred
+        # transaction as soon as a connection is created.  Temporarily switch
+        # the DB-API connection to autocommit so the explicit writer lock can
+        # replace that deferred transaction without a nested-BEGIN error.
+        dbapi_connection = connection.connection.driver_connection
+        previous_autocommit = dbapi_connection.autocommit
+        dbapi_connection.autocommit = True
+        try:
+            dbapi_connection.execute("BEGIN IMMEDIATE")
+        finally:
+            dbapi_connection.autocommit = previous_autocommit
 
     # -------------------------------------------------------------------------
     def _insert(self, table, records, *, ignore_duplicates: bool) -> None:  # type: ignore[no-untyped-def]

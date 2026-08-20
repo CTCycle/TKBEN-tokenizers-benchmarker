@@ -1,0 +1,9 @@
+@if (!terms().length) {
+  <p class="dataset-empty-label dataset-word-cloud-empty">No word cloud terms in persisted report.</p>
+} @else {
+  <div #canvas class="dataset-word-cloud-canvas" [attr.data-layout-fallback]="fallback() ? 'true' : null">
+    @for (term of layout(); track term.word + '-' + term.count) {
+      <span class="dataset-word-cloud-term" [style.left.px]="term.x" [style.top.px]="term.y" [style.font-size.px]="term.fontSize" [style.transform]="'translate(-50%, -50%) rotate(' + term.rotate + 'deg)'" [title]="term.word + ': ' + term.count">{{ term.word }}</span>
+    }
+  </div>
+}

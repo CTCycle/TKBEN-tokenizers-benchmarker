@@ -11,7 +11,7 @@ from server.configurations.startup import (
     get_server_settings,
     reload_settings_for_tests,
 )
-from server.domain.settings import (
+from server.configurations.settings import (
     BenchmarkSettings,
     DatabaseSettings,
     DatasetSettings,

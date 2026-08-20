@@ -1,15 +1,26 @@
 from __future__ import annotations
 
 import math
+from datetime import datetime, timezone
 
 import pytest
 import sqlalchemy
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session
 
 from server.repositories.database.backend import get_database
-from server.repositories.serialization.datasets import DatasetSerializer
-from server.repositories.schemas.models import Base, Dataset, Tokenizer
+from server.repositories.datasets import DatasetRepository
+from server.repositories.database.sqlite import SQLiteRepository
+from server.repositories.schemas.models import (
+    AnalysisSession,
+    Base,
+    BenchmarkReport,
+    Dataset,
+    DatasetDocument,
+    Tokenizer,
+    TokenizerReport,
+    TokenizerVocabulary,
+)
 from server.services.benchmarks import BenchmarkService
 from server.repositories.tokenizers import TokenizerRepository
 
@@ -21,13 +32,13 @@ class FakeQueries:
         self.engine = engine
 
 ###############################################################################
-def test_dataset_serializer_ensure_dataset_id_is_idempotent() -> None:
+def test_dataset_repository_ensure_dataset_id_is_idempotent() -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     Base.metadata.create_all(engine, checkfirst=True)
-    serializer = DatasetSerializer(queries=FakeQueries(engine))
+    repository = DatasetRepository(queries=FakeQueries(engine))
 
-    first_id = serializer.ensure_dataset_id("wikitext/wikitext-2-v1")
-    second_id = serializer.ensure_dataset_id("wikitext/wikitext-2-v1")
+    first_id = repository.ensure_dataset_id("wikitext/wikitext-2-v1")
+    second_id = repository.ensure_dataset_id("wikitext/wikitext-2-v1")
 
     assert first_id == second_id
     with Session(bind=engine) as session:
@@ -53,6 +64,95 @@ def test_tokenizer_repository_insert_if_missing_is_idempotent(
     assert rows[0].name == "bert-base-uncased"
 
 ###############################################################################
+def test_dataset_delete_cascades_documents_sessions_and_benchmark_reports() -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    event.listen(engine, "connect", SQLiteRepository.enable_foreign_keys)
+    Base.metadata.create_all(engine, checkfirst=True)
+    repository = DatasetRepository(queries=FakeQueries(engine))
+    now = datetime.now(timezone.utc)
+
+    with Session(bind=engine) as session:
+        dataset = Dataset(
+            name="custom/cascade",
+            status="ready",
+            document_count=1,
+            created_at=now,
+            updated_at=now,
+            ready_at=now,
+        )
+        session.add(dataset)
+        session.flush()
+        session.add(DatasetDocument(dataset_id=dataset.id, ordinal=0, text="hello"))
+        session.add(AnalysisSession(
+            dataset_id=dataset.id,
+            status="completed",
+            report_version=2,
+            created_at=now,
+            completed_at=now,
+            parameters={},
+            selected_metric_keys=[],
+        ))
+        session.add(BenchmarkReport(
+            dataset_id=dataset.id,
+            report_version=1,
+            schema_version=1,
+            methodology_version="test",
+            created_at=now,
+            status="completed",
+            documents_processed=1,
+            tokenizers_count=0,
+            tokenizers_processed=[],
+            selected_metric_keys=[],
+            payload={},
+        ))
+        session.commit()
+
+    repository.delete_dataset("custom/cascade")
+
+    with Session(bind=engine) as session:
+        assert session.execute(select(Dataset)).scalars().all() == []
+        assert session.execute(select(DatasetDocument)).scalars().all() == []
+        assert session.execute(select(AnalysisSession)).scalars().all() == []
+        assert session.execute(select(BenchmarkReport)).scalars().all() == []
+
+###############################################################################
+def test_tokenizer_delete_cascades_reports_and_vocabulary(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    event.listen(engine, "connect", SQLiteRepository.enable_foreign_keys)
+    Base.metadata.create_all(engine, checkfirst=True)
+    database = get_database()
+    monkeypatch.setattr(database.backend, "engine", engine)
+    repository = TokenizerRepository()
+    now = datetime.now(timezone.utc)
+
+    with Session(bind=engine) as session:
+        tokenizer = Tokenizer(name="custom/cascade", created_at=now)
+        session.add(tokenizer)
+        session.flush()
+        session.add(TokenizerReport(
+            tokenizer_id=tokenizer.id,
+            report_version=1,
+            created_at=now,
+            metadata_json={},
+            token_length_histogram={},
+        ))
+        session.add(TokenizerVocabulary(
+            tokenizer_id=tokenizer.id,
+            token_id=0,
+            token="hello",
+        ))
+        session.commit()
+
+    assert repository.delete_tokenizer("custom/cascade") is True
+    assert repository.delete_tokenizer("custom/cascade") is False
+    with Session(bind=engine) as session:
+        assert session.execute(select(Tokenizer)).scalars().all() == []
+        assert session.execute(select(TokenizerReport)).scalars().all() == []
+        assert session.execute(select(TokenizerVocabulary)).scalars().all() == []
+
+###############################################################################
 def test_benchmark_service_ensure_tokenizer_ids_returns_mapping(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -73,13 +173,13 @@ def test_benchmark_service_ensure_tokenizer_ids_returns_mapping(
     assert int(count) == 2
 
 ###############################################################################
-def test_session_report_rehydrates_json_metrics_when_numeric_is_nan(
+def test_session_report_preserves_native_json_metrics_when_numeric_is_nan(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    serializer = DatasetSerializer.__new__(DatasetSerializer)
+    repository = DatasetRepository.__new__(DatasetRepository)
 
     monkeypatch.setattr(
-        serializer,
+        repository,
         "_load_metric_rows_for_session",
         lambda session_id: [
             {
@@ -113,7 +213,7 @@ def test_session_report_rehydrates_json_metrics_when_numeric_is_nan(
         ],
     )
     monkeypatch.setattr(
-        serializer, "_load_histogram_rows_for_session", lambda session_id: {}
+        repository, "_load_histogram_rows_for_session", lambda session_id: {}
     )
 
     session_row = {
@@ -122,11 +222,11 @@ def test_session_report_rehydrates_json_metrics_when_numeric_is_nan(
         "created_at": "2026-02-16T00:00:00Z",
         "dataset_name": "custom/tmp_zipf_cloud",
         "session_name": None,
-        "selected_metric_keys": "[]",
-        "parameters": "{}",
+        "selected_metric_keys": [],
+        "parameters": {},
     }
 
-    report = serializer._build_session_report_response(session_row)
+    report = repository._build_session_report_response(session_row)
 
     assert report["aggregate_statistics"]["words.zipf_curve"] == [
         {"rank": 1, "frequency": 9}
@@ -138,3 +238,22 @@ def test_session_report_rehydrates_json_metrics_when_numeric_is_nan(
         {"word": "hello", "count": 9}
     ]
     assert report["word_cloud_terms"] == [{"word": "hello", "count": 9, "weight": 100}]
+
+###############################################################################
+def test_session_report_rejects_json_encoded_storage(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = DatasetRepository.__new__(DatasetRepository)
+    monkeypatch.setattr(repository, "_load_metric_rows_for_session", lambda session_id: [])
+    monkeypatch.setattr(repository, "_load_histogram_rows_for_session", lambda session_id: {})
+
+    with pytest.raises(ValueError, match="native JSON array"):
+        repository._build_session_report_response({
+            "id": 123,
+            "report_version": 2,
+            "created_at": "2026-02-16T00:00:00Z",
+            "dataset_name": "custom/encoded",
+            "session_name": None,
+            "selected_metric_keys": "[]",
+            "parameters": {},
+        })
