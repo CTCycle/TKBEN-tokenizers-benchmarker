@@ -1,5 +1,5 @@
 # Testing and Quality
-Last updated: 2026-08-13
+Last updated: 2026-08-20
 
 ## Tooling and Tests
 - Lint and format with Ruff, or the project-standard equivalent if it changes in the future.
@@ -16,6 +16,15 @@ unit tests, and an OpenAPI smoke import, plus frontend `npm ci`, lint, and
 production build. The Windows `app/tests/run_tests.bat` runner additionally
 supports live backend/frontend startup, the configured pytest target, and
 optional frontend test scripts.
+
+## Development Cache and Artifact Locations
+- Pytest’s collection cache and temporary test directory are under
+  `assets/cache/pytest` and `assets/cache/pytest-basetemp`.
+- Ruff, mypy, Python bytecode, coverage, Playwright, uv, pip, npm, and Angular
+  persistent-build caches are under their respective `assets/cache` folders.
+- `app/client/dist`, `app/server/.venv`, and `app/client/node_modules` remain in
+  their established locations because they are the runtime build output or
+  installed dependency trees rather than tool caches.
 
 ## Cross-language Quality Gates
 - Keep architecture layering intact: API -> service -> repository.

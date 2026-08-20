@@ -15,9 +15,19 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PYTHONPATH: app
+      UV_CACHE_DIR: ${{ github.workspace }}/assets/cache/uv
+      PIP_CACHE_DIR: ${{ github.workspace }}/assets/cache/pip
+      RUFF_CACHE_DIR: ${{ github.workspace }}/assets/cache/ruff
+      MYPY_CACHE_DIR: ${{ github.workspace }}/assets/cache/mypy
+      PYTHONPYCACHEPREFIX: ${{ github.workspace }}/assets/cache/pycache
+      COVERAGE_FILE: ${{ github.workspace }}/assets/cache/coverage/.coverage
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/assets/cache/playwright
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Prepare development cache directories
+        run: mkdir -p assets/cache/{uv,pip,ruff,mypy,pycache,coverage,playwright,pytest,pytest-basetemp}
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -49,9 +59,14 @@ jobs:
 
   frontend-validation:
     runs-on: ubuntu-latest
+    env:
+      NPM_CONFIG_CACHE: ${{ github.workspace }}/assets/cache/npm
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Prepare development cache directory
+        run: mkdir -p assets/cache/npm
 
       - name: Set up Node
         uses: actions/setup-node@v6

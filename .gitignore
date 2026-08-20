@@ -1,4 +1,6 @@
 # Project-specific generated/runtime artifacts
+assets/cache/**
+!assets/cache/.gitkeep
 runtimes/**
 app/resources/sources/datasets/**
 app/resources/sources/tokenizers/**
