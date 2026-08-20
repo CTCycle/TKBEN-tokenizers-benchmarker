@@ -6,9 +6,8 @@ This file is the root index for `assets/docs`. Read it first to find the narrowe
 
 The current codebase uses schema-3/report-5 benchmark reports, typed frontend
 catalog controls, reusable dataset/dashboard data helpers, and responsive chart
-and modal hooks. The current public source release is `v3.9.0`; ongoing
-architecture work is tracked on `develop` and is not assumed to be present on
-the public release branch.
+and modal hooks. The current public source release is `v4.0.0`; `develop` and
+`main` are synchronized at the release commit.
 
 ## How To Navigate
 1. Start with this file only.
