@@ -42,7 +42,7 @@ jobs:
 
       - name: Compile backend modules
         working-directory: app/server
-        run: python -m compileall app.py api common configurations domain repositories services
+        run: python -m compileall app.py api common configurations contracts repositories services
 
       - name: Ruff checks
         run: python -m ruff check app/server app/tests
@@ -86,6 +86,10 @@ jobs:
       - name: Lint frontend
         working-directory: app/client
         run: npm run lint
+
+      - name: Unit tests
+        working-directory: app/client
+        run: npm run test:unit
 
       - name: Build frontend
         working-directory: app/client
