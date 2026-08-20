@@ -6,7 +6,7 @@ import { ExportApiService } from '../core/api/export-api.service';
 import { DatasetStore } from '../core/state/dataset.store';
 import { TokenizersStore } from '../core/state/tokenizers.store';
 import { BenchmarkStore } from '../core/state/benchmark.store';
-import type { DatasetMetricCatalogCategory } from '../core/api/api.types';
+import type { DatasetMetricCatalogCategory } from '../core/api/api.models';
 import { DatasetPageComponent } from './dataset-page.component';
 import { TokenizersPageComponent } from './tokenizers-page.component';
 import { CrossBenchmarkPageComponent } from './cross-benchmark-page.component';
