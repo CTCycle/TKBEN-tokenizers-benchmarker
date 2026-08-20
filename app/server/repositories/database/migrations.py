@@ -15,7 +15,7 @@ from server.common.utils.logger import logger
 from server.configurations import DatabaseSettings
 from server.repositories.database.seeding import seed_metric_types
 from server.repositories.schemas.models import Base
-from server.services.metrics.catalog import DATASET_METRIC_CATALOG
+from server.common.metric_catalog import DATASET_METRIC_CATALOG
 
 ALEMBIC_CONFIG_PATH = SERVER_DIR / "pyproject.toml"
 ALEMBIC_VERSION_TABLE = "alembic_version"

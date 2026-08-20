@@ -11,7 +11,7 @@ from transformers.utils.logging import set_verbosity_error
 from server.contracts.benchmarks import BenchmarkRunRequest
 from server.repositories.benchmarks import BenchmarkRepository
 from server.repositories.datasets import DatasetRepository
-from server.services.metrics.catalog import BENCHMARK_METRIC_CATALOG
+from server.common.metric_catalog import BENCHMARK_METRIC_CATALOG
 from server.configurations import get_server_settings
 from server.common.path import TOKENIZERS_PATH
 from server.common.utils.logger import logger

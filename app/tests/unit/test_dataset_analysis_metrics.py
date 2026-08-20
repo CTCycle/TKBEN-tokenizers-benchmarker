@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from server.services.metrics.catalog import DATASET_METRIC_CATALOG
+from server.common.metric_catalog import DATASET_METRIC_CATALOG
 from server.services.metrics.engine import DatasetMetricsEngine
 
 

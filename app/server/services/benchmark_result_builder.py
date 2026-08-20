@@ -23,7 +23,7 @@ from server.contracts.benchmarks import (
     BenchmarkResourceMetrics,
     BenchmarkTokenizerResult,
 )
-from server.services.metrics.benchmark_definitions import BENCHMARK_METRIC_DEFINITIONS
+from server.common.benchmark_metric_definitions import BENCHMARK_METRIC_DEFINITIONS
 
 ###############################################################################
 class BenchmarkResultBuilder:

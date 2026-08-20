@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
-from server.services.metrics.benchmark_definitions import benchmark_metric_catalog
+from server.common.benchmark_metric_definitions import benchmark_metric_catalog
 
 
 ###############################################################################

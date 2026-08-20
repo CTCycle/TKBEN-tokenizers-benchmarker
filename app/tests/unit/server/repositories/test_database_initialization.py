@@ -14,7 +14,7 @@ from server.repositories.database import sqlite as sqlite_repository
 from server.repositories.database.backend import build_sqlite_backend
 from server.repositories.database.migrations import DatabaseMigrationError
 from server.repositories.schemas.models import Base, MetricType
-from server.services.metrics.catalog import DATASET_METRIC_CATALOG
+from server.common.metric_catalog import DATASET_METRIC_CATALOG
 
 ###############################################################################
 def _sqlite_settings() -> DatabaseSettings:

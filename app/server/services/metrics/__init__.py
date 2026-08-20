@@ -1,4 +1,4 @@
-from server.services.metrics.catalog import (
+from server.common.metric_catalog import (
     DATASET_METRIC_CATALOG,
     default_selected_metric_keys,
     flatten_metric_keys,

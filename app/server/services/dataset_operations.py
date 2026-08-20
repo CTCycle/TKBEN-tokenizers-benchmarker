@@ -16,7 +16,7 @@ from server.common.path import DATASETS_PATH
 from server.common.utils.logger import logger
 from server.common.utils.security import normalize_upload_stem
 from server.repositories.datasets import DatasetRepository
-from server.services.metrics.catalog import default_selected_metric_keys
+from server.common.metric_catalog import default_selected_metric_keys
 from server.services.metrics.engine import DatasetMetricsEngine
 
 ###############################################################################
