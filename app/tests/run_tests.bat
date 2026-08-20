@@ -93,12 +93,15 @@ echo.
 set "PYTEST_TARGET=%TESTS_DIR%"
 if not "%STANDARD_TEST_PYTEST_TARGET%"=="" set "PYTEST_TARGET=%STANDARD_TEST_PYTEST_TARGET%"
 set "QA_DIR=%PROJECT_ROOT%\assets\QA"
-set "CACHE_DIR=%PROJECT_ROOT%\assets\cache"
+set "RUNTIME_CACHE_DIR=%PROJECT_ROOT%\runtimes\cache"
+set "CACHE_DIR=%TESTS_DIR%\cache"
+if not exist "%RUNTIME_CACHE_DIR%" mkdir "%RUNTIME_CACHE_DIR%" >nul 2>&1
+for %%D in (uv pip npm) do if not exist "%RUNTIME_CACHE_DIR%\%%D" mkdir "%RUNTIME_CACHE_DIR%\%%D" >nul 2>&1
 if not exist "%CACHE_DIR%" mkdir "%CACHE_DIR%" >nul 2>&1
-for %%D in (uv pip npm ruff mypy pycache coverage playwright pytest pytest-basetemp angular) do if not exist "%CACHE_DIR%\%%D" mkdir "%CACHE_DIR%\%%D" >nul 2>&1
-set "UV_CACHE_DIR=%CACHE_DIR%\uv"
-set "PIP_CACHE_DIR=%CACHE_DIR%\pip"
-set "NPM_CONFIG_CACHE=%CACHE_DIR%\npm"
+for %%D in (ruff mypy pycache coverage playwright pytest pytest-basetemp angular) do if not exist "%CACHE_DIR%\%%D" mkdir "%CACHE_DIR%\%%D" >nul 2>&1
+set "UV_CACHE_DIR=%RUNTIME_CACHE_DIR%\uv"
+set "PIP_CACHE_DIR=%RUNTIME_CACHE_DIR%\pip"
+set "NPM_CONFIG_CACHE=%RUNTIME_CACHE_DIR%\npm"
 set "RUFF_CACHE_DIR=%CACHE_DIR%\ruff"
 set "MYPY_CACHE_DIR=%CACHE_DIR%\mypy"
 set "PYTHONPYCACHEPREFIX=%CACHE_DIR%\pycache"

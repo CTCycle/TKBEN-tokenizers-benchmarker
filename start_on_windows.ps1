@@ -25,12 +25,15 @@ $NpmCmd = Join-Path $NodeDir 'npm.cmd'
 $ServerDir = Join-Path $RepoRoot 'app\server'
 $ClientDir = Join-Path $RepoRoot 'app\client'
 $AppDir = Join-Path $RepoRoot 'app'
+$TestsDir = Join-Path $AppDir 'tests'
 $VenvDir = Join-Path $ServerDir '.venv'
 $VenvPython = Join-Path $VenvDir 'Scripts\python.exe'
 $EnvFile = Join-Path $RepoRoot 'settings\.env'
 $EnvTemplate = Join-Path $RepoRoot 'settings\.env.example'
-$CacheDir = Join-Path $RepoRoot 'assets\cache'
-$UvCacheDir = Join-Path $CacheDir 'uv'
+$RuntimeCacheDir = Join-Path $RuntimeDir 'cache'
+$ToolCacheDir = Join-Path $TestsDir 'cache'
+$LegacyCacheDir = Join-Path $RepoRoot 'assets\cache'
+$UvCacheDir = Join-Path $RuntimeCacheDir 'uv'
 $PythonVersion = '3.14.2'
 $NodeVersion = '22.23.1'
 
@@ -231,18 +234,22 @@ function Import-Environment {
         throw "BACKEND_LOGS_VISIBLE must be either 'true' or 'false'."
     }
 
-    Ensure-Directory $CacheDir
-    foreach ($cacheName in @('uv', 'pip', 'npm', 'ruff', 'mypy', 'pycache', 'coverage', 'playwright', 'pytest', 'pytest-basetemp', 'angular')) {
-        Ensure-Directory (Join-Path $CacheDir $cacheName)
+    Ensure-Directory $RuntimeCacheDir
+    foreach ($cacheName in @('uv', 'pip', 'npm')) {
+        Ensure-Directory (Join-Path $RuntimeCacheDir $cacheName)
+    }
+    Ensure-Directory $ToolCacheDir
+    foreach ($cacheName in @('ruff', 'mypy', 'pycache', 'coverage', 'playwright', 'pytest', 'pytest-basetemp', 'angular')) {
+        Ensure-Directory (Join-Path $ToolCacheDir $cacheName)
     }
     $env:UV_CACHE_DIR = $UvCacheDir
-    $env:PIP_CACHE_DIR = Join-Path $CacheDir 'pip'
-    $env:NPM_CONFIG_CACHE = Join-Path $CacheDir 'npm'
-    $env:RUFF_CACHE_DIR = Join-Path $CacheDir 'ruff'
-    $env:MYPY_CACHE_DIR = Join-Path $CacheDir 'mypy'
-    $env:PYTHONPYCACHEPREFIX = Join-Path $CacheDir 'pycache'
-    $env:COVERAGE_FILE = Join-Path (Join-Path $CacheDir 'coverage') '.coverage'
-    $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path $CacheDir 'playwright'
+    $env:PIP_CACHE_DIR = Join-Path $RuntimeCacheDir 'pip'
+    $env:NPM_CONFIG_CACHE = Join-Path $RuntimeCacheDir 'npm'
+    $env:RUFF_CACHE_DIR = Join-Path $ToolCacheDir 'ruff'
+    $env:MYPY_CACHE_DIR = Join-Path $ToolCacheDir 'mypy'
+    $env:PYTHONPYCACHEPREFIX = Join-Path $ToolCacheDir 'pycache'
+    $env:COVERAGE_FILE = Join-Path (Join-Path $ToolCacheDir 'coverage') '.coverage'
+    $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path $ToolCacheDir 'playwright'
     $env:UV_PROJECT_ENVIRONMENT = $VenvDir
     $env:UV_LINK_MODE = 'copy'
     Remove-Item Env:PYTHONHOME -ErrorAction SilentlyContinue
@@ -370,7 +377,7 @@ function Sync-Dependencies {
             if ($attempt -eq 1) {
                 Write-Step 'uv sync failed; clearing the managed uv cache and retrying once.'
                 if (Test-Path -LiteralPath $UvCacheDir) {
-                    Remove-Item -LiteralPath $UvCacheDir -Recurse -Force
+                    Remove-PathBestEffort -Path $UvCacheDir | Out-Null
                 }
             }
         }
@@ -542,7 +549,7 @@ function Install-Dependencies {
     $installationType = Read-InstallationType
     Sync-Dependencies -BuildFrontend -InstallationType $installationType -RuntimesReady
     Invoke-DatabaseInitialization
-    if (Test-Path -LiteralPath $UvCacheDir) { Remove-Item -LiteralPath $UvCacheDir -Recurse -Force }
+    if (Test-Path -LiteralPath $UvCacheDir) { Remove-PathBestEffort -Path $UvCacheDir | Out-Null }
     Write-Ok 'Dependencies installed, frontend built, and database synchronized.'
 }
 
@@ -590,39 +597,92 @@ function Run-TestSuite {
 function Remove-Logs {
     $logDir = Join-Path $RepoRoot 'app\resources\logs'
     $logs = @(Get-ChildItem -LiteralPath $logDir -Filter '*.log' -File -ErrorAction SilentlyContinue)
-    $logs | Remove-Item -Force
-    Write-Ok "Removed $($logs.Count) log file(s)."
+    $summary = @($logs | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
+    $removed = [int](($summary | Measure-Object -Property Removed -Sum).Sum)
+    $skipped = [int](($summary | Measure-Object -Property Skipped -Sum).Sum)
+    Write-Ok "Removed $removed log file(s); skipped $skipped locked or inaccessible file(s)."
+}
+
+function Remove-PathBestEffort {
+    param([Parameter(Mandatory)][string]$Path)
+
+    $removed = 0
+    $skipped = 0
+    $root = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+    if (-not $root) {
+        return [pscustomobject]@{ Removed = 0; Skipped = 0 }
+    }
+
+    $enumerationErrors = @()
+    $items = if ($root.PSIsContainer) {
+        @(Get-ChildItem -LiteralPath $root.FullName -Force -Recurse -ErrorAction SilentlyContinue -ErrorVariable enumerationErrors |
+            Sort-Object { $_.FullName.Length } -Descending) + @($root)
+    } else {
+        @($root)
+    }
+
+    foreach ($enumerationError in $enumerationErrors) {
+        $skipped++
+        Write-Host "[WARN] Skipped inaccessible cache path below ${Path}: $($enumerationError.Exception.Message)" -ForegroundColor Yellow
+    }
+
+    foreach ($item in $items) {
+        try {
+            Remove-Item -LiteralPath $item.FullName -Force -ErrorAction Stop
+            $removed++
+        } catch {
+            $skipped++
+            Write-Host "[WARN] Skipped locked or inaccessible path: $($item.FullName)" -ForegroundColor Yellow
+        }
+    }
+
+    return [pscustomobject]@{ Removed = $removed; Skipped = $skipped }
 }
 
 function Remove-PythonCaches {
-    Get-ChildItem -LiteralPath $RepoRoot -Directory -Filter '__pycache__' -Recurse -Force -ErrorAction SilentlyContinue |
-        Sort-Object FullName -Descending |
-        Remove-Item -Recurse -Force
+    $cacheDirectories = @(Get-ChildItem -LiteralPath $RepoRoot -Directory -Filter '__pycache__' -Recurse -Force -ErrorAction SilentlyContinue |
+        Sort-Object FullName -Descending)
+    @($cacheDirectories | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
 }
 
 function Remove-LegacyDevelopmentCaches {
-    Get-ChildItem -LiteralPath $RepoRoot -Directory -Recurse -Force -ErrorAction SilentlyContinue |
+    $cacheDirectories = @(Get-ChildItem -LiteralPath $RepoRoot -Directory -Recurse -Force -ErrorAction SilentlyContinue |
         Where-Object {
             $_.Name -in @('.pytest_cache', '.ruff_cache', '.mypy_cache', '.angular') -and
-            $_.FullName -notlike "$CacheDir*"
-        } |
-        Sort-Object FullName -Descending |
-        Remove-Item -Recurse -Force
+            $_.FullName -notlike "$RuntimeCacheDir*" -and
+            $_.FullName -notlike "$ToolCacheDir*"
+        } | Sort-Object FullName -Descending)
+    @($cacheDirectories | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
 }
 
 function Clear-ManagedCache {
-    Ensure-Directory $CacheDir
-    Get-ChildItem -LiteralPath $CacheDir -Force -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -ne '.gitkeep' } |
-        Remove-Item -Recurse -Force
+    $summaries = @()
+    foreach ($cacheRoot in @($RuntimeCacheDir, $ToolCacheDir)) {
+        Ensure-Directory $cacheRoot
+        $entries = @(Get-ChildItem -LiteralPath $cacheRoot -Force -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -ne '.gitkeep' })
+        $summaries += @($entries | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
+    }
+
+    if (Test-Path -LiteralPath $LegacyCacheDir) {
+        $summaries += @(Remove-PathBestEffort -Path $LegacyCacheDir)
+    }
+    $summaries
 }
 
 function Clear-Cache {
     Write-Step 'Removing development caches and temporary artifacts.'
-    Remove-PythonCaches
-    Remove-LegacyDevelopmentCaches
-    Clear-ManagedCache
-    Write-Ok 'Caches cleared.'
+    $summaries = @(
+        Remove-PythonCaches
+        Remove-LegacyDevelopmentCaches
+        Clear-ManagedCache
+    )
+    $skipped = [int](($summaries | Measure-Object -Property Skipped -Sum).Sum)
+    if ($skipped -gt 0) {
+        Write-Ok "Caches cleared where permitted; skipped $skipped locked or inaccessible path(s)."
+    } else {
+        Write-Ok 'Caches cleared.'
+    }
 }
 
 function Uninstall-Application {
@@ -636,10 +696,10 @@ function Uninstall-Application {
         (Join-Path $ClientDir 'dist')
     )
     foreach ($directory in $directories) {
-        if (Test-Path -LiteralPath $directory) { Remove-Item -LiteralPath $directory -Recurse -Force }
+        if (Test-Path -LiteralPath $directory) { Remove-PathBestEffort -Path $directory | Out-Null }
     }
     foreach ($lockfile in @((Join-Path $ClientDir 'package-lock.json'), (Join-Path $ServerDir 'uv.lock'), (Join-Path $RepoRoot 'uv.lock'))) {
-        if (Test-Path -LiteralPath $lockfile) { Remove-Item -LiteralPath $lockfile -Force }
+        if (Test-Path -LiteralPath $lockfile) { Remove-PathBestEffort -Path $lockfile | Out-Null }
     }
     Remove-PythonCaches
     Remove-LegacyDevelopmentCaches

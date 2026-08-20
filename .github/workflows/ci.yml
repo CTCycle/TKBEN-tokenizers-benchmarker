@@ -15,19 +15,19 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PYTHONPATH: app
-      UV_CACHE_DIR: ${{ github.workspace }}/assets/cache/uv
-      PIP_CACHE_DIR: ${{ github.workspace }}/assets/cache/pip
-      RUFF_CACHE_DIR: ${{ github.workspace }}/assets/cache/ruff
-      MYPY_CACHE_DIR: ${{ github.workspace }}/assets/cache/mypy
-      PYTHONPYCACHEPREFIX: ${{ github.workspace }}/assets/cache/pycache
-      COVERAGE_FILE: ${{ github.workspace }}/assets/cache/coverage/.coverage
-      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/assets/cache/playwright
+      UV_CACHE_DIR: ${{ github.workspace }}/runtimes/cache/uv
+      PIP_CACHE_DIR: ${{ github.workspace }}/runtimes/cache/pip
+      RUFF_CACHE_DIR: ${{ github.workspace }}/app/tests/cache/ruff
+      MYPY_CACHE_DIR: ${{ github.workspace }}/app/tests/cache/mypy
+      PYTHONPYCACHEPREFIX: ${{ github.workspace }}/app/tests/cache/pycache
+      COVERAGE_FILE: ${{ github.workspace }}/app/tests/cache/coverage/.coverage
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/app/tests/cache/playwright
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
       - name: Prepare development cache directories
-        run: mkdir -p assets/cache/{uv,pip,ruff,mypy,pycache,coverage,playwright,pytest,pytest-basetemp}
+        run: mkdir -p runtimes/cache/{uv,pip,npm} app/tests/cache/{ruff,mypy,pycache,coverage,playwright,pytest,pytest-basetemp,angular}
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -64,13 +64,13 @@ jobs:
   frontend-validation:
     runs-on: ubuntu-latest
     env:
-      NPM_CONFIG_CACHE: ${{ github.workspace }}/assets/cache/npm
+      NPM_CONFIG_CACHE: ${{ github.workspace }}/runtimes/cache/npm
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
       - name: Prepare development cache directory
-        run: mkdir -p assets/cache/npm
+        run: mkdir -p runtimes/cache/npm
 
       - name: Set up Node
         uses: actions/setup-node@v6
