@@ -64,7 +64,7 @@ class DatasetServiceOperationsMixin:
     # -------------------------------------------------------------------------
     def persist_dataset(
         self,
-        dataset: Dataset | DatasetDict,
+        dataset: Dataset | DatasetDict | IterableDataset,
         dataset_name: str,
         text_column: str,
         stats: Any,
