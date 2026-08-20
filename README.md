@@ -192,14 +192,14 @@ Core runtime keys you will commonly edit:
 - `DATABASE_INSERT_BATCH_SIZE`
 - `HF_KEYS_ENCRYPTION_MATERIAL_FILE`
 
-Database schema management is owned by Alembic. From `app/server`, inspect or
-apply the repository head with:
+Database schema management is owned by Alembic. The TOML-only configuration is
+loaded explicitly from `app/server` with the existing project environment:
 
 ```powershell
-uv run alembic current --check-heads
-uv run alembic upgrade head
-uv run alembic check
-uv run alembic revision --autogenerate -m "<change>"
+uv run python -c 'from alembic.config import Config; from alembic import command; command.current(Config(toml_file="pyproject.toml"), check_heads=True)'
+uv run python -c 'from alembic.config import Config; from alembic import command; command.upgrade(Config(toml_file="pyproject.toml"), "head")'
+uv run python -c 'from alembic.config import Config; from alembic import command; command.check(Config(toml_file="pyproject.toml"))'
+uv run python -c 'from alembic.config import Config; from alembic import command; command.revision(Config(toml_file="pyproject.toml"), message="<change>", autogenerate=True)'
 ```
 
 Review every generated revision before applying it. The database initializer
