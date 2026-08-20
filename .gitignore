@@ -38,7 +38,6 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 package-lock.json
-!app/client/package-lock.json
 yarn.lock
 
 # IDE / OS
@@ -61,5 +60,6 @@ Thumbs.db
 !app/server/migrations/script.py.mako
 
 # Local configuration
+ruff.toml
 settings/.env
 app/resources/hf-key-material.json

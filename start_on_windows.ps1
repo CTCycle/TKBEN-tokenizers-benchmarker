@@ -686,7 +686,7 @@ function Clear-Cache {
 }
 
 function Uninstall-Application {
-    Write-Step 'Removing downloaded runtimes, dependencies, build output, lockfiles, and Python caches.'
+    Write-Step 'Removing downloaded runtimes, dependencies, build output, generated dependency metadata, and Python caches.'
     $directories = @(
         $RuntimeDir,
         $VenvDir,
@@ -698,8 +698,8 @@ function Uninstall-Application {
     foreach ($directory in $directories) {
         if (Test-Path -LiteralPath $directory) { Remove-PathBestEffort -Path $directory | Out-Null }
     }
-    foreach ($lockfile in @((Join-Path $ClientDir 'package-lock.json'), (Join-Path $ServerDir 'uv.lock'), (Join-Path $RepoRoot 'uv.lock'))) {
-        if (Test-Path -LiteralPath $lockfile) { Remove-PathBestEffort -Path $lockfile | Out-Null }
+    foreach ($generatedFile in @((Join-Path $ClientDir 'package-lock.json'), (Join-Path $ServerDir 'uv.lock'), (Join-Path $RepoRoot 'uv.lock'), (Join-Path $RepoRoot 'ruff.toml'))) {
+        if (Test-Path -LiteralPath $generatedFile) { Remove-PathBestEffort -Path $generatedFile | Out-Null }
     }
     Remove-PythonCaches
     Remove-LegacyDevelopmentCaches
