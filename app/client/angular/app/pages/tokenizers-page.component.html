@@ -1,0 +1,161 @@
+<main class="page-scroll tokenizer-exam-scroll">
+  <div class="tokenizer-exam-layout">
+    <div class="merged-page-row">
+      <section class="tokenizer-top-section">
+        <div class="tokenizer-top-row">
+          <section class="tokenizer-intro-panel">
+            <header class="panel-header"><div><p class="panel-label">Tokenizer Selection</p><p class="panel-description">Manage tokenizer identifiers and custom JSON tokenizers from a single popup window.</p></div></header>
+            <form class="catalog-filter-toolbar" [formGroup]="filters" aria-label="Tokenizer filters">
+              <label class="catalog-filter-field catalog-filter-field--search"><span class="field-label">Search tokenizers</span><input class="text-input" type="search" formControlName="search" placeholder="Name or namespace" aria-label="Search tokenizers" /></label>
+              <label class="catalog-filter-field"><span class="field-label">Source</span><select formControlName="source" aria-label="Source"><option value="">All tokenizers</option><option value="hugging_face">Hugging Face</option><option value="custom">Custom</option></select></label>
+              <label class="catalog-filter-field"><span class="field-label">Vocabulary</span><div class="catalog-number-filter-control"><select formControlName="vocabularyOperator" aria-label="Vocabulary comparison"><option value="at_least">At least</option><option value="at_most">At most</option></select><input class="text-input" type="number" min="0" formControlName="vocabulary" placeholder="Any size" aria-label="Vocabulary size" /></div></label>
+              <button class="catalog-add-button" type="button" aria-label="Add tokenizer" title="Open Tokenizer Manager" (click)="openAddTokenizer()"><span aria-hidden="true">+</span><span class="sr-only">Add tokenizer</span></button>
+            </form>
+          </section>
+          <section class="tokenizer-preview-panel">
+            <header class="panel-header"><div><p class="panel-label">Tokenizer Preview</p><p class="panel-description">Review selected tokenizers and open persisted reports.</p></div></header>
+            <div class="tokenizer-preview-body">
+              @if (store.loading() && store.tokenizers().length === 0) { <p class="tokenizer-preview-empty-label">Loading tokenizers...</p> }
+              @else if (store.tokenizers().length === 0) {
+                <div class="tokenizer-preview-table tokenizer-preview-table--empty" role="table" aria-label="Selected tokenizers"><div class="tokenizer-preview-row--header" role="row"><span role="columnheader">Tokenizer</span><span role="columnheader">Vocabulary</span><span role="columnheader">Actions</span></div></div>
+                <p class="tokenizer-preview-empty-label">No tokenizers match the current filters.</p>
+              }
+              @else {
+                <div class="tokenizer-preview-table" role="table" aria-label="Selected tokenizers">
+                  <div class="tokenizer-preview-row--header" role="row"><span role="columnheader">Tokenizer</span><span role="columnheader">Vocabulary</span><span role="columnheader">Actions</span></div>
+                  @for (tokenizer of store.tokenizers(); track tokenizer.tokenizer_name) {
+                    <div class="tokenizer-preview-row selected" role="row">
+                      <span class="tokenizer-preview-name">{{ tokenizer.tokenizer_name }}</span>
+                      <span class="tokenizer-preview-vocabulary">{{ tokenizer.vocabulary_size ?? '—' }}</span>
+                      <div class="tokenizer-preview-actions">
+                        <button class="icon-button subtle" type="button" [attr.aria-label]="'Generate or open tokenizer report for ' + tokenizer.tokenizer_name" title="Generate report if missing, otherwise open latest report" [disabled]="store.busyAction() !== null" (click)="openReport(tokenizer.tokenizer_name)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v4H5z" /><path d="M5 12h14v8H5z" /></svg></button>
+                        <button class="icon-button danger" type="button" [attr.aria-label]="'Remove ' + tokenizer.tokenizer_name" title="Remove tokenizer" [disabled]="store.busyAction() !== null" (click)="removeTokenizer(tokenizer.tokenizer_name)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14" stroke-width="2" stroke-linecap="round" /><path d="M9 7V5h6v2" stroke-width="2" stroke-linecap="round" /><rect x="7" y="7" width="10" height="12" rx="2" /></svg></button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </section>
+        </div>
+      </section>
+    </div>
+
+    @if (store.error()) { <p class="error-banner" role="alert">{{ store.error() }}</p> }
+    @if (exportError()) { <p class="error-banner" role="alert">{{ exportError() }}</p> }
+
+    <div class="tokenizer-report-split">
+      <section class="panel dashboard-panel dashboard-plain tokenizer-report-left" aria-label="Tokenizers Dashboard">
+        <header class="panel-header"><div><p class="panel-label">Tokenizers Dashboard</p><p class="panel-description">{{ dashboardDescription() }}</p></div></header>
+        @if (!store.report()) {
+          <div class="tokenizer-report-grid">
+            <article class="tokenizer-report-card tokenizer-report-card--basics"><p class="panel-label">Basics</p><table class="tokenizer-meta-table"><tbody><tr><th>Tokenizer</th><td>—</td></tr><tr><th>Family</th><td>—</td></tr><tr><th>Backend</th><td>—</td></tr><tr><th>Vocabulary size</th><td>—</td></tr><tr><th>Model max length</th><td>—</td></tr></tbody></table></article>
+            <article class="tokenizer-report-card tokenizer-report-card--histogram"><p class="panel-label">Token Length Histogram</p><p class="tokenizer-empty-label">No tokenizer report loaded.</p></article>
+            <article class="tokenizer-report-card tokenizer-report-card--vocabulary"><p class="panel-label">Vocabulary Stats</p><table class="tokenizer-meta-table tokenizer-meta-table-compact"><tbody><tr><th>Mean token length</th><td>—</td></tr><tr><th>Median token length</th><td>—</td></tr><tr><th>Special tokens</th><td>—</td></tr><tr><th>Vocabulary density</th><td>—</td></tr></tbody></table></article>
+          </div>
+        }
+        @if (store.report(); as report) {
+          <div class="tokenizer-report-grid">
+            <article class="tokenizer-report-card tokenizer-report-card--basics"><p class="panel-label">Basics</p><table class="tokenizer-meta-table"><tbody><tr><th>Tokenizer</th><td>{{ report.tokenizer_name }}</td></tr><tr><th>Family</th><td>{{ report.global_stats.tokenizer_family ?? 'N/A' }}</td></tr><tr><th>Backend</th><td>{{ report.global_stats.runtime_backend ?? 'N/A' }}</td></tr><tr><th>Vocabulary size</th><td>{{ formatNumber(report.vocabulary_size, 0) }}</td></tr><tr><th>Base vocabulary size</th><td>{{ formatNumber(report.global_stats.base_vocabulary_size, 0) }}</td></tr><tr><th>Model max length</th><td>{{ formatNumber(report.global_stats.model_max_length, 0) }}</td></tr><tr><th>Normalization</th><td>{{ report.global_stats.normalization_policy ?? 'N/A' }}</td></tr><tr><th>Pretokenization</th><td>{{ report.global_stats.pretokenization_policy ?? 'N/A' }}</td></tr><tr><th>Fallback policy</th><td>{{ report.global_stats.fallback_policy ?? 'N/A' }}</td></tr><tr><th>Special tokens count</th><td>{{ formatNumber(report.global_stats.special_tokens_count, 0) }}</td></tr><tr><th>Added tokens count</th><td>{{ formatNumber(report.global_stats.added_tokens_count, 0) }}</td></tr><tr><th>Hugging Face</th><td>@if (report.huggingface_url; as url) { <a [href]="url" target="_blank" rel="noreferrer">{{ url }}</a> } @else { N/A }</td></tr></tbody></table></article>
+            <article class="tokenizer-report-card tokenizer-report-card--histogram"><p class="panel-label">Token Length Histogram</p>@if (report.token_length_histogram.counts.length > 0) { <app-histogram-chart [histogram]="report.token_length_histogram" label="Token length histogram" /> } @else { <p class="tokenizer-empty-label">No histogram data in this report.</p> }<table class="tokenizer-meta-table tokenizer-meta-table-compact"><tbody><tr><th>Min length</th><td>{{ formatNumber(report.token_length_histogram.min_length, 0) }}</td></tr><tr><th>Max length</th><td>{{ formatNumber(report.token_length_histogram.max_length, 0) }}</td></tr><tr><th>Mean length</th><td>{{ formatNumber(report.token_length_histogram.mean_length) }}</td></tr><tr><th>Median length</th><td>{{ formatNumber(report.token_length_histogram.median_length) }}</td></tr></tbody></table></article>
+            <article class="tokenizer-report-card tokenizer-report-card--vocabulary"><p class="panel-label">Vocabulary Stats</p><table class="tokenizer-meta-table tokenizer-meta-table-compact"><tbody><tr><th>Min token length</th><td>{{ formatNumber(report.global_stats.vocabulary_stats?.min_token_length, 0) }}</td></tr><tr><th>Mean token length</th><td>{{ formatNumber(report.global_stats.vocabulary_stats?.mean_token_length) }}</td></tr><tr><th>Median token length</th><td>{{ formatNumber(report.global_stats.vocabulary_stats?.median_token_length) }}</td></tr><tr><th>Max token length</th><td>{{ formatNumber(report.global_stats.vocabulary_stats?.max_token_length, 0) }}</td></tr><tr><th>Mean token bytes</th><td>{{ formatNumber(report.global_stats.vocabulary_stats?.mean_token_bytes) }}</td></tr><tr><th>Token string entropy</th><td>{{ formatNumber(report.global_stats.vocabulary_stats?.token_string_entropy, 4) }}</td></tr><tr><th>Special tokens in vocab</th><td>{{ formatNumber(report.global_stats.vocabulary_stats?.special_tokens_in_vocab_count, 0) }}</td></tr><tr><th>Special in vocab %</th><td>{{ formatPercent(report.global_stats.vocabulary_stats?.special_tokens_in_vocab_percentage) }}</td></tr><tr><th>Byte fallback support</th><td>{{ report.global_stats.vocabulary_stats?.byte_fallback_support === null ? 'N/A' : (report.global_stats.vocabulary_stats?.byte_fallback_support ? 'Yes' : 'No') }}</td></tr><tr><th>Unknown token representation</th><td>{{ report.global_stats.vocabulary_stats?.unknown_token_representation ?? 'N/A' }}</td></tr><tr><th>Normalization behavior</th><td>{{ report.global_stats.vocabulary_stats?.normalization_behavior ?? 'N/A' }}</td></tr><tr><th>Vocabulary density</th><td>{{ formatNumber(report.global_stats.vocabulary_stats?.vocabulary_density, 4) }}</td></tr></tbody></table></article>
+          </div>
+        }
+      </section>
+
+      <aside class="panel dashboard-panel dashboard-plain tokenizer-report-right" aria-label="Vocabulary Preview">
+        <header class="panel-header"><div><p class="panel-label">Vocabulary Preview</p><p class="panel-description">Offset {{ vocabularyOffset().toLocaleString() }} | Limit {{ vocabularyLimit().toLocaleString() }} | Total {{ vocabularyTotal().toLocaleString() }}</p></div><div class="tokenizer-vocabulary-header-actions"><div class="tokenizer-vocabulary-controls"><label for="tokenizer-page-size" class="panel-description">Page size</label><select id="tokenizer-page-size" class="text-input" [value]="vocabularyLimit()" (change)="changeVocabularyPageSize($event)"><option value="100">100</option><option value="250">250</option><option value="500">500</option><option value="1000">1000</option></select></div><button class="icon-button subtle dashboard-export-trigger" type="button" aria-label="Export dashboard report as PDF" title="Export dashboard report as PDF" [disabled]="!store.report()" (click)="exportDashboard()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v10" stroke-width="2" stroke-linecap="round" /><path d="M8 9l4 4 4-4" stroke-width="2" stroke-linecap="round" /><path d="M5 16.5V20h14v-3.5" stroke-width="2" stroke-linecap="round" /></svg></button></div></header>
+        @if (!store.report()) {
+          <article class="tokenizer-report-card tokenizer-report-card--vocabulary tokenizer-vocabulary-empty-card" role="status">
+            <p class="panel-label">Vocabulary</p>
+            <p class="tokenizer-empty-label">Open a tokenizer report to populate the vocabulary preview.</p>
+          </article>
+        }
+        @if (store.report(); as report) {
+          <div class="tokenizer-vocabulary-table-shell" role="table" aria-label="Tokenizer vocabulary preview"><div class="tokenizer-vocabulary-table-header" role="row"><span role="columnheader">token_id</span><span role="columnheader">token</span><span role="columnheader">length</span></div><div class="tokenizer-vocabulary-list tokenizer-vocabulary-list--paged" role="rowgroup">@if (store.vocabulary(); as page) { @for (item of page.items; track item.token_id) { <div class="tokenizer-vocabulary-row tokenizer-vocabulary-row--paged" role="row"><span class="tokenizer-vocabulary-id" role="cell">{{ item.token_id }}</span><span class="tokenizer-vocabulary-token" role="cell">{{ item.token }}</span><span class="tokenizer-vocabulary-length" role="cell">{{ item.length }}</span></div> } @if (page.items.length === 0) { <div class="word-frequency-empty">No vocabulary rows loaded.</div> } } @else { <div class="word-frequency-empty">Loading vocabulary...</div> }</div><div class="tokenizer-vocabulary-footer"><span class="panel-description">Showing {{ vocabularyStart().toLocaleString() }}-{{ vocabularyEnd().toLocaleString() }} of {{ vocabularyTotal().toLocaleString() }}</span><div class="tokenizer-vocabulary-actions"><button type="button" class="secondary-button" [disabled]="!canGoPrevious()" (click)="previousVocabularyPage()">Previous</button><button type="button" class="secondary-button" [disabled]="!canGoNext()" (click)="nextVocabularyPage()">Next</button></div></div></div>
+        }
+      </aside>
+    </div>
+  </div>
+</main>
+
+@if (addTokenizerOpen()) {
+  <button class="modal-overlay" type="button" aria-label="Close tokenizer manager" (click)="closeAddTokenizer()"></button>
+  <section class="modal-card tokenizer-modal-window" role="dialog" aria-modal="true" aria-labelledby="tokenizer-selector-title" aria-describedby="tokenizer-selector-description" [appModalA11y]="true" (modalEscape)="closeAddTokenizer()">
+    <header class="tokenizer-modal-header">
+      <div><p id="tokenizer-selector-title" class="panel-label">Tokenizer Manager</p><p id="tokenizer-selector-description" class="panel-description">Discover compatible Hugging Face repositories, add names in batches, or upload a custom tokenizer JSON.</p></div>
+      <button class="icon-button subtle" type="button" aria-label="Close tokenizer manager" (click)="closeAddTokenizer()">×</button>
+    </header>
+
+    @if (store.error()) { <p class="error-banner" role="alert">{{ store.error() }}</p> }
+    @if (store.discoveryError()) { <p class="error-banner" role="alert">{{ store.discoveryError() }}</p> }
+    @if (store.downloadWarning()) { <p class="tokenizer-warning-banner" role="alert">{{ store.downloadWarning() }}</p> }
+
+    <div class="tokenizer-manager-tabs" role="tablist" aria-label="Tokenizer manager workflows">
+      <button id="tokenizer-tab-discover" class="tokenizer-manager-tab" type="button" role="tab" aria-controls="tokenizer-panel-discover" [attr.aria-selected]="activeTokenizerTab() === 'discover'" [attr.tabindex]="activeTokenizerTab() === 'discover' ? 0 : -1" (click)="selectTokenizerTab('discover')" (keydown)="handleTokenizerTabKeydown($event, 'discover')">Discover</button>
+      <button id="tokenizer-tab-add-by-name" class="tokenizer-manager-tab" type="button" role="tab" aria-controls="tokenizer-panel-add-by-name" [attr.aria-selected]="activeTokenizerTab() === 'add-by-name'" [attr.tabindex]="activeTokenizerTab() === 'add-by-name' ? 0 : -1" (click)="selectTokenizerTab('add-by-name')" (keydown)="handleTokenizerTabKeydown($event, 'add-by-name')">Add by name</button>
+      <button id="tokenizer-tab-upload-json" class="tokenizer-manager-tab" type="button" role="tab" aria-controls="tokenizer-panel-upload-json" [attr.aria-selected]="activeTokenizerTab() === 'upload-json'" [attr.tabindex]="activeTokenizerTab() === 'upload-json' ? 0 : -1" (click)="selectTokenizerTab('upload-json')" (keydown)="handleTokenizerTabKeydown($event, 'upload-json')">Upload JSON</button>
+    </div>
+
+    <div class="tokenizer-manager-panel">
+      <section id="tokenizer-panel-discover" class="tokenizer-modal-panel tokenizer-modal-panel--discover" role="tabpanel" aria-labelledby="tokenizer-tab-discover" tabindex="0" [hidden]="activeTokenizerTab() !== 'discover'">
+          <form [formGroup]="discoveryForm" (ngSubmit)="discoverTokenizers()" class="tokenizer-discovery-form">
+            <div class="tokenizer-discovery-toolbar">
+              <label class="tokenizer-discovery-field tokenizer-discovery-field--search"><span class="field-label">Search</span><input class="text-input" type="search" formControlName="search" placeholder="Repository name or namespace" /></label>
+              <label class="tokenizer-discovery-field tokenizer-discovery-field--limit"><span class="field-label">Results</span><input class="text-input" type="number" formControlName="limit" min="1" max="250" /></label>
+              <label class="tokenizer-discovery-field"><span class="field-label">Category</span><select class="text-input" formControlName="pipelineTag"><option value="">Any text task</option><option value="text-generation">Text generation</option><option value="fill-mask">Fill mask</option><option value="text-classification">Text classification</option><option value="token-classification">Token classification</option><option value="text2text-generation">Text to text</option><option value="question-answering">Question answering</option><option value="sentence-similarity">Sentence similarity</option><option value="translation">Translation</option><option value="summarization">Summarization</option><option value="zero-shot-classification">Zero-shot classification</option></select></label>
+              <label class="tokenizer-discovery-field"><span class="field-label">Sort</span><select class="text-input" formControlName="sort"><option value="downloads">Most downloaded</option><option value="likes">Most liked</option><option value="last_modified">Recently modified</option><option value="created_at">Recently created</option></select></label>
+              <button class="primary-button tokenizer-discovery-submit" type="submit" [disabled]="store.discoveryLoading()">{{ store.discoveryLoading() ? 'Searching…' : 'Search Hugging Face' }}</button>
+            </div>
+            <button id="tokenizer-advanced-toggle" class="secondary-button tokenizer-discovery-advanced-toggle" type="button" [attr.aria-expanded]="discoveryAdvancedOpen()" aria-controls="tokenizer-advanced-filters" (click)="toggleDiscoveryAdvanced()">Advanced filters</button>
+            <div id="tokenizer-advanced-filters" class="tokenizer-discovery-advanced" role="region" aria-label="Advanced tokenizer discovery filters" [hidden]="!discoveryAdvancedOpen()">
+                <label><span class="field-label">Author</span><input class="text-input" formControlName="author" placeholder="User or organization" /></label>
+                <label><span class="field-label">Access</span><select class="text-input" formControlName="access"><option value="all">All</option><option value="public">Public</option><option value="gated">Gated</option></select></label>
+                <label><span class="field-label">Required tags</span><input class="text-input" formControlName="includeTags" placeholder="tag-a, tag-b" /></label>
+                <label><span class="field-label">Excluded tags</span><input class="text-input" formControlName="excludeTags" placeholder="tag-a, tag-b" /></label>
+                <label><span class="field-label">Vocabulary comparison</span><select class="text-input" formControlName="vocabularyOperator"><option value="">No filter</option><option value="at_least">At least</option><option value="at_most">At most</option></select></label>
+                <label><span class="field-label">Vocabulary size</span><input class="text-input" type="number" min="0" formControlName="vocabularySize" placeholder="Any size" /></label>
+                <label><span class="field-label">Vocabulary ordering</span><select class="text-input" formControlName="vocabularySort"><option value="none">No vocabulary ordering</option><option value="ascending">Smallest vocabulary</option><option value="descending">Largest vocabulary</option></select></label>
+            </div>
+          </form>
+
+          <div class="tokenizer-discovery-results" role="list" aria-label="Hugging Face tokenizer discovery results">
+            @if (store.discoveryLoading()) { <div class="loading-container"><span class="spinner" aria-hidden="true"></span><p>Searching Hugging Face…</p></div> }
+            @else {
+              @for (item of store.discoveryResults(); track item.identifier) {
+                <label class="tokenizer-discovery-result" [class.selected]="store.selectedDiscoveryIds().includes(item.identifier)">
+                  <input type="checkbox" [checked]="store.selectedDiscoveryIds().includes(item.identifier)" (change)="toggleDiscoveryTokenizer(item.identifier, $any($event.target).checked)" />
+                  <span class="tokenizer-discovery-result-name" [title]="item.identifier">{{ item.identifier }}</span>
+                  <span class="tokenizer-discovery-result-meta"><span>{{ item.pipeline_tag ?? 'Unknown category' }}</span><span>{{ item.vocabulary_size === null ? 'Unknown' : formatNumber(item.vocabulary_size, 0) }}</span><span>{{ item.downloads === null ? '—' : formatNumber(item.downloads, 0) }} downloads</span></span>
+                </label>
+              } @empty { <div class="tokenizer-discovery-empty">No tokenizer repositories match this query.</div> }
+            }
+          </div>
+        </section>
+
+      <section id="tokenizer-panel-add-by-name" class="tokenizer-modal-panel tokenizer-modal-panel--focused" role="tabpanel" aria-labelledby="tokenizer-tab-add-by-name" tabindex="0" [hidden]="activeTokenizerTab() !== 'add-by-name'">
+          <div class="tokenizer-focused-copy"><p class="panel-label">Add tokenizers by name</p><p class="panel-description">Paste one Hugging Face repository ID per line. The entries stay here while you switch workflows and download together as one batch.</p></div>
+          <label class="sr-only" for="tokenizer-manual-input">Tokenizer names</label>
+          <textarea id="tokenizer-manual-input" class="tokenizer-manual-input" [value]="manualTokenizerInput()" (input)="manualTokenizerInput.set($any($event.target).value)" placeholder="e.g. gpt2&#10;bert-base-uncased&#10;org/custom-tokenizer"></textarea>
+        </section>
+
+      <section id="tokenizer-panel-upload-json" class="tokenizer-modal-panel tokenizer-modal-panel--focused" role="tabpanel" aria-labelledby="tokenizer-tab-upload-json" tabindex="0" [hidden]="activeTokenizerTab() !== 'upload-json'">
+          <div class="tokenizer-upload-content"><div class="tokenizer-upload-icon" aria-hidden="true">↑</div><p class="panel-label">Upload a custom tokenizer</p><p class="panel-description">Choose a tokenizer.json file exported from your tokenizer tooling. The uploaded tokenizer will appear in the local catalogue after validation.</p><input #tokenizerUploadInput id="tokenizer-json-upload" class="hidden-file-input" type="file" accept=".json" aria-label="Upload tokenizer JSON file" (change)="uploadFile($event)" /><button class="primary-button tokenizer-upload-button" type="button" [disabled]="store.busyAction() === 'upload'" (click)="tokenizerUploadInput.click()">{{ store.busyAction() === 'upload' ? 'Uploading…' : 'Choose tokenizer.json' }}</button></div>
+        </section>
+    </div>
+
+    <footer class="tokenizer-manager-footer">
+      @if (activeTokenizerTab() === 'discover') {
+        <span class="panel-description">{{ store.selectedDiscoveryIds().length }} selected</span><button class="primary-button" type="button" [disabled]="!store.selectedDiscoveryIds().length || store.busyAction() === 'download'" (click)="downloadSelectedDiscoveryTokenizers()">Download selected</button>
+      } @else if (activeTokenizerTab() === 'add-by-name') {
+        <span class="panel-description">{{ manualTokenizerIds().length }} tokenizer{{ manualTokenizerIds().length === 1 ? '' : 's' }} ready</span><button class="primary-button" type="button" [disabled]="!manualTokenizerIds().length || store.busyAction() === 'download'" (click)="downloadManualTokenizers()">Download tokenizers</button>
+      } @else {
+        <span class="panel-description">JSON files are added to the local tokenizer catalogue.</span><span></span>
+      }
+    </footer>
+
+    @if (downloadProgressVisible()) {
+      <div class="tokenizer-modal-progress-row" role="status" aria-live="polite"><span class="tokenizer-modal-progress-label">Download progress: {{ store.jobProgress() ?? 0 }}%</span><div class="tokenizer-modal-progress-track" aria-hidden="true"><div class="tokenizer-modal-progress-fill" [style.width.%]="store.jobProgress() ?? 0"></div></div></div>
+    }
+  </section>
+}

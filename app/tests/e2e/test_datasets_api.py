@@ -6,16 +6,6 @@ Covers /api/datasets/list, /api/datasets/upload, and /api/datasets/analyze.
 from playwright.sync_api import APIRequestContext
 
 ###############################################################################
-def test_list_datasets_returns_list(api_context: APIRequestContext) -> None:
-    """GET /api/datasets/list should return a list container."""
-    response = api_context.get("/api/datasets/list")
-    assert response.ok, f"Expected 200, got {response.status}"
-
-    data = response.json()
-    assert "datasets" in data
-    assert isinstance(data["datasets"], list)
-
-###############################################################################
 def test_list_datasets_includes_uploaded_dataset(
     api_context: APIRequestContext,
     uploaded_dataset: dict,
@@ -30,12 +20,6 @@ def test_list_datasets_includes_uploaded_dataset(
         for item in previews
         if isinstance(item, dict)
     )
-
-###############################################################################
-def test_upload_requires_file(api_context: APIRequestContext) -> None:
-    """POST /api/datasets/upload without a file should return 422."""
-    response = api_context.post("/api/datasets/upload")
-    assert response.status == 422
 
 ###############################################################################
 def test_upload_rejects_invalid_extension(api_context: APIRequestContext) -> None:

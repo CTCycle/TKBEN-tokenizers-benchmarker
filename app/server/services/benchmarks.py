@@ -8,12 +8,10 @@ import numpy as np
 from transformers import AutoTokenizer
 from transformers.utils.logging import set_verbosity_error
 
+from server.contracts.benchmarks import BenchmarkRunRequest
 from server.repositories.benchmarks import BenchmarkRepository
-from server.repositories.serialization.benchmark_reports import (
-    BenchmarkReportSerializer,
-)
-from server.repositories.serialization.datasets import DatasetSerializer
-from server.services.metrics.catalog import BENCHMARK_METRIC_CATALOG
+from server.repositories.datasets import DatasetRepository
+from server.common.metric_catalog import BENCHMARK_METRIC_CATALOG
 from server.configurations import get_server_settings
 from server.common.path import TOKENIZERS_PATH
 from server.common.utils.logger import logger
@@ -204,8 +202,7 @@ class BenchmarkService(BenchmarkServiceExecutionMixin):
         self.tools = BenchmarkTools()
         self.result_builder = BenchmarkResultBuilder(self.tools)
         self.repository = BenchmarkRepository()
-        self.report_serializer = BenchmarkReportSerializer()
-        self.dataset_serializer = DatasetSerializer()
+        self.dataset_repository = DatasetRepository()
 
         # Load settings from config
         self.streaming_batch_size = (
@@ -256,7 +253,10 @@ class BenchmarkService(BenchmarkServiceExecutionMixin):
         )
 
         missing: list[str] = []
+        custom_registry = get_custom_tokenizer_registry()
         for tokenizer_name in unique_requested:
+            if custom_registry.get(tokenizer_name) is not None:
+                continue
             if tokenizer_name in missing_names:
                 missing.append(tokenizer_name)
                 continue
@@ -271,18 +271,58 @@ class BenchmarkService(BenchmarkServiceExecutionMixin):
     # -------------------------------------------------------------------------
     def resolve_custom_tokenizer_selection(
         self,
-        custom_tokenizer_name: str | None,
+        selected_tokenizer_names: list[str],
     ) -> dict[str, Any]:
-        if (
-            not isinstance(custom_tokenizer_name, str)
-            or not custom_tokenizer_name.strip()
-        ):
-            return {}
-        selected_name = custom_tokenizer_name.strip()
-        tokenizer = get_custom_tokenizer_registry().get(selected_name)
-        if tokenizer is None or not self.tools.is_tokenizer_compatible(tokenizer):
-            return {}
-        return {selected_name: tokenizer}
+        selected_names: list[str] = []
+        for tokenizer_name in selected_tokenizer_names:
+            normalized_name = str(tokenizer_name).strip()
+            if normalized_name:
+                selected_names.append(normalized_name)
+
+        resolved: dict[str, Any] = {}
+        registry = get_custom_tokenizer_registry()
+        for selected_name in dict.fromkeys(selected_names):
+            tokenizer = registry.get(selected_name)
+            if tokenizer is not None and self.tools.is_tokenizer_compatible(tokenizer):
+                resolved[selected_name] = tokenizer
+        return resolved
+
+    # -------------------------------------------------------------------------
+    def prepare_run(self, payload: BenchmarkRunRequest) -> dict[str, Any]:
+        """Validate admission state and normalize a benchmark job payload."""
+        if not payload.tokenizers:
+            raise ValueError("At least one tokenizer must be specified.")
+        if not payload.dataset_name:
+            raise ValueError("Dataset name must be specified.")
+
+        custom_tokenizers = self.resolve_custom_tokenizer_selection(
+            payload.tokenizers
+        )
+        if self.get_dataset_document_count(payload.dataset_name) == 0:
+            raise ValueError(
+                f"Dataset '{payload.dataset_name}' not found or empty"
+            )
+
+        persisted_tokenizers = [
+            tokenizer
+            for tokenizer in payload.tokenizers
+            if tokenizer not in custom_tokenizers
+        ]
+        missing_tokenizers = self.get_missing_persisted_tokenizers(
+            persisted_tokenizers
+        )
+        if missing_tokenizers:
+            missing_display = ", ".join(missing_tokenizers[:5])
+            if len(missing_tokenizers) > 5:
+                missing_display = f"{missing_display}, ..."
+            raise ValueError(
+                "Tokenizers must be downloaded before benchmarking. "
+                f"Missing: {missing_display}"
+            )
+
+        request_payload = payload.model_dump()
+        request_payload["custom_tokenizers"] = custom_tokenizers
+        return request_payload
 
     # -------------------------------------------------------------------------
     def load_tokenizers(self, tokenizer_ids: list[str]) -> dict[str, Any]:
@@ -314,7 +354,7 @@ class BenchmarkService(BenchmarkServiceExecutionMixin):
         self, dataset_name: str
     ) -> Generator[tuple[int, str], None, None]:
         count = 0
-        for row_id, text in self.dataset_serializer.iterate_dataset_rows_for_benchmarks(
+        for row_id, text in self.dataset_repository.iterate_dataset_rows_for_benchmarks(
             dataset_name=dataset_name,
             batch_size=self.streaming_batch_size,
         ):
@@ -330,20 +370,6 @@ class BenchmarkService(BenchmarkServiceExecutionMixin):
     # -------------------------------------------------------------------------
     def get_metric_catalog(self) -> list[dict[str, Any]]:
         return BENCHMARK_METRIC_CATALOG
-
-    # -------------------------------------------------------------------------
-    def list_benchmark_reports(self, limit: int = 200) -> list[dict[str, Any]]:
-        safe_limit = max(1, int(limit))
-        return self.report_serializer.list_benchmark_reports(safe_limit)
-
-    # -------------------------------------------------------------------------
-    def load_benchmark_report_by_id(self, report_id: int) -> dict[str, Any] | None:
-        return self.report_serializer.load_benchmark_report_by_id(report_id)
-
-    # -------------------------------------------------------------------------
-    def save_benchmark_report(self, payload: dict[str, Any]) -> int:
-        report_id = self.report_serializer.save_benchmark_report(payload)
-        return int(report_id)
 
     # -------------------------------------------------------------------------
     def default_selected_metric_keys(self) -> list[str]:

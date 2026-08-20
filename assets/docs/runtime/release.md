@@ -1,5 +1,5 @@
 # Release Procedure
-Last updated: 2026-08-13
+Last updated: 2026-08-20
 
 ## Release model
 
@@ -10,23 +10,23 @@ add packaging as part of a source release.
 The public release version and component versions use the existing repository
 convention:
 
-| Surface | `v3.8.0` | `v3.9.0` |
+| Surface | `v3.9.0` | `v4.0.0` |
 | --- | ---: | ---: |
-| Public Git tag and GitHub Release | `3.8.0` | `3.9.0` |
-| Backend package (`app/server/pyproject.toml`, `app/server/uv.lock`) | `2.3.0` | `2.4.0` |
-| Frontend package and lockfile | `1.3.0` | `1.4.0` |
+| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` |
+| Backend package (`app/server/pyproject.toml`, `app/server/uv.lock`) | `2.4.0` | `3.0.0` |
+| Frontend package and lockfile | `1.4.0` | `2.0.0` |
 
 ## Preparation and validation
 
-1. Start from the latest `main` and inspect `git status`, the previous release
+1. Start from the current `develop`, inspect `git status`, the previous release
    tag, and the commits on `develop` since that tag. Preserve unrelated local
-   work.
+   work and do not make release-preparation edits directly on `main`.
 2. Update the README, `assets/docs`, and this release procedure before the
    final branch synchronization. Keep documentation version references
    consistent with the release being prepared.
-3. Build the intended release surfaces: `npm --prefix app/client run lint`,
-   `npm --prefix app/client run build`, and backend compile/test checks using
-   `app/server/.venv` or the managed launcher environment.
+3. Run the CI-equivalent checks for the intended release surfaces: backend
+   compileall, Ruff, BasedPyright, unit tests, and OpenAPI smoke; frontend
+   `npm run lint`, `npm run test:unit`, and `npm run build` from `app/client`.
 4. Launch with `start_on_windows.ps1 -Launch`, verify the backend health
    endpoint and frontend, then exercise Dataset, Tokenizers, and Cross
    Benchmark routes. Prioritize flows changed since the previous release,
@@ -40,10 +40,12 @@ convention:
 
 ## Versioning and synchronization
 
-After validation is release-ready, apply the coordinated minor bump to the
+After validation is release-ready, apply the coordinated major bump to the
 public tag version, backend package and lockfile, frontend package and
-lockfile, README, and relevant documentation. Commit all release-preparation
-changes on `develop` before synchronizing branches.
+lockfile, README, and relevant documentation. For this release, the public
+version is `v4.0.0`, the backend package is `3.0.0`, and the frontend package is
+`2.0.0`. Commit all release-preparation changes on `develop` before
+synchronizing branches.
 
 Synchronize `main` from the validated `develop` commit so the branches point to
 the same tree. Verify both branch tips and the clean worktree before creating

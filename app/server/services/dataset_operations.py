@@ -10,20 +10,20 @@ from pathlib import Path, PurePosixPath
 from typing import Any, ClassVar, cast
 
 import pandas as pd
-from datasets import Dataset, DatasetDict
+from datasets import Dataset, DatasetDict, IterableDataset
 
 from server.common.path import DATASETS_PATH
 from server.common.utils.logger import logger
 from server.common.utils.security import normalize_upload_stem
-from server.repositories.serialization.datasets import DatasetSerializer
-from server.services.metrics.catalog import default_selected_metric_keys
+from server.repositories.datasets import DatasetRepository
+from server.common.metric_catalog import default_selected_metric_keys
 from server.services.metrics.engine import DatasetMetricsEngine
 
 ###############################################################################
 class DatasetServiceOperationsMixin:
     """Dataset operation slice with an explicit concrete-host contract."""
 
-    dataset_serializer: DatasetSerializer = cast(DatasetSerializer, cast(object, None))
+    dataset_repository: DatasetRepository = cast(DatasetRepository, cast(object, None))
     streaming_batch_size: int = 0
     log_interval: int = 0
     histogram_bins: int = 0
@@ -64,7 +64,7 @@ class DatasetServiceOperationsMixin:
     # -------------------------------------------------------------------------
     def persist_dataset(
         self,
-        dataset: Dataset | DatasetDict,
+        dataset: Dataset | DatasetDict | IterableDataset,
         dataset_name: str,
         text_column: str,
         stats: Any,
@@ -74,7 +74,7 @@ class DatasetServiceOperationsMixin:
         progress_base: float = 0.0,
         progress_span: float = 100.0,
     ) -> tuple[dict[str, Any], int]:
-        dataset_id = self.dataset_serializer.ensure_dataset_id(dataset_name)
+        dataset_id = self.dataset_repository.ensure_dataset_id(dataset_name)
         batch_size = self.streaming_batch_size
         batch: list[dict[str, Any]] = []
         saved_count = 0
@@ -84,14 +84,14 @@ class DatasetServiceOperationsMixin:
 
         for text in self._iterate_texts(dataset, text_column, remove_invalid):
             if should_stop and should_stop():
-                self.dataset_serializer.delete_incomplete_dataset(dataset_id)
+                self.dataset_repository.delete_incomplete_dataset(dataset_id)
                 return self.histogram_from_counts(stats, length_counts), saved_count
             text_length = len(text)
             length_counts[text_length] = length_counts.get(text_length, 0) + 1
             batch.append({"dataset_id": dataset_id, "ordinal": saved_count + len(batch), "text": text})
 
             if len(batch) >= batch_size:
-                self.dataset_serializer.save_document_batch(batch)
+                self.dataset_repository.save_document_batch(batch)
                 saved_count += len(batch)
                 if saved_count - last_logged >= self.log_interval:
                     logger.info("Saved %d documents so far...", saved_count)
@@ -104,7 +104,7 @@ class DatasetServiceOperationsMixin:
                 batch.clear()
 
         if batch:
-            self.dataset_serializer.save_document_batch(batch)
+            self.dataset_repository.save_document_batch(batch)
             saved_count += len(batch)
             if progress_callback:
                 progress_value = (
@@ -115,7 +115,7 @@ class DatasetServiceOperationsMixin:
         logger.info("Completed saving %d documents to database", saved_count)
         if progress_callback and stats.document_count == 0:
             progress_callback(progress_base + progress_span)
-        self.dataset_serializer.finalize_dataset_import(dataset_id, saved_count)
+        self.dataset_repository.finalize_dataset_import(dataset_id, saved_count)
         return self.histogram_from_counts(stats, length_counts), saved_count
 
     # -------------------------------------------------------------------------
@@ -171,11 +171,14 @@ class DatasetServiceOperationsMixin:
         hf_access_token = self.get_hf_access_token_for_download()
 
         max_attempts = max(1, int(self.download_retry_attempts))
-        dataset: Dataset | DatasetDict | None = None
+        dataset: Dataset | DatasetDict | IterableDataset | None = None
         last_exc: Exception | None = None
         last_category = "unknown"
 
         for attempt in range(1, max_attempts + 1):
+            if self.stop_requested(should_stop):
+                self.cleanup_cancelled_dataset(dataset_name)
+                return {}
             try:
                 dataset = self.load_dataset_with_progress(
                     hf_dataset_id=target.hf_dataset_id,
@@ -184,7 +187,12 @@ class DatasetServiceOperationsMixin:
                     hf_access_token=hf_access_token,
                     split=target.split,
                     progress_callback=progress_callback,
+                    streaming=target.streaming,
+                    max_documents=target.max_documents,
                 )
+                if self.stop_requested(should_stop):
+                    self.cleanup_cancelled_dataset(dataset_name)
+                    return {}
                 break
             except Exception as exc:  # noqa: BLE001
                 last_exc = exc
@@ -204,6 +212,9 @@ class DatasetServiceOperationsMixin:
                     resolved_dataset_name,
                     exc_info=True,
                 )
+                if self.stop_requested(should_stop):
+                    self.cleanup_cancelled_dataset(dataset_name)
+                    return {}
                 if not should_retry:
                     break
                 delay_seconds = self.retry_delay_seconds(attempt)
@@ -215,7 +226,18 @@ class DatasetServiceOperationsMixin:
                     max_attempts,
                 )
                 if delay_seconds > 0.0:
-                    time.sleep(delay_seconds)
+                    if should_stop is None:
+                        time.sleep(delay_seconds)
+                    else:
+                        deadline = time.monotonic() + delay_seconds
+                        while True:
+                            if self.stop_requested(should_stop):
+                                self.cleanup_cancelled_dataset(dataset_name)
+                                return {}
+                            remaining = deadline - time.monotonic()
+                            if remaining <= 0.0:
+                                break
+                            time.sleep(min(0.25, remaining))
 
         if dataset is None:
             failure_exc = (
@@ -375,7 +397,7 @@ class DatasetServiceOperationsMixin:
         saved_count = 0
         last_logged = 0
         length_counts: dict[int, int] = {}
-        dataset_id = self.dataset_serializer.ensure_dataset_id(dataset_name)
+        dataset_id = self.dataset_repository.ensure_dataset_id(dataset_name)
         cancelled = False
 
         for text in self._iterate_dataframe_texts(df, text_column, remove_invalid):
@@ -387,7 +409,7 @@ class DatasetServiceOperationsMixin:
             batch.append({"dataset_id": dataset_id, "ordinal": saved_count + len(batch), "text": text})
 
             if len(batch) >= batch_size:
-                self.dataset_serializer.save_document_batch(batch)
+                self.dataset_repository.save_document_batch(batch)
                 saved_count += len(batch)
                 if saved_count - last_logged >= self.log_interval:
                     logger.info("Saved %d documents so far...", saved_count)
@@ -400,7 +422,7 @@ class DatasetServiceOperationsMixin:
                 batch.clear()
 
         if batch:
-            self.dataset_serializer.save_document_batch(batch)
+            self.dataset_repository.save_document_batch(batch)
             saved_count += len(batch)
             if progress_callback:
                 progress_value = (
@@ -409,11 +431,11 @@ class DatasetServiceOperationsMixin:
                 progress_callback(progress_value)
 
         if cancelled and saved_count < stats.document_count:
-            self.dataset_serializer.delete_incomplete_dataset(dataset_id)
+            self.dataset_repository.delete_incomplete_dataset(dataset_id)
             return {}
 
         logger.info("Completed saving %d documents from uploaded file", saved_count)
-        self.dataset_serializer.finalize_dataset_import(dataset_id, saved_count)
+        self.dataset_repository.finalize_dataset_import(dataset_id, saved_count)
 
         return {
             "dataset_name": dataset_name,
@@ -464,7 +486,7 @@ class DatasetServiceOperationsMixin:
             or parameter_overrides
         )
 
-        cached_report = self.dataset_serializer.load_latest_analysis_report(
+        cached_report = self.dataset_repository.load_latest_analysis_report(
             dataset_name
         )
         if use_cached and not has_custom_request and cached_report is not None:
@@ -472,7 +494,7 @@ class DatasetServiceOperationsMixin:
                 progress_callback(100.0)
             return cached_report
 
-        if not self.dataset_serializer.dataset_exists(dataset_name):
+        if not self.dataset_repository.dataset_exists(dataset_name):
             raise ValueError(f"Dataset '{dataset_name}' not found.")
 
         selected_keys = (
@@ -487,14 +509,14 @@ class DatasetServiceOperationsMixin:
         parameters = self.get_default_analysis_parameters()
         parameters.update(parameter_overrides)
 
-        self.dataset_serializer.ensure_metric_types_seeded(self.get_metric_catalog())
+        self.dataset_repository.ensure_metric_types_seeded(self.get_metric_catalog())
 
         session_parameters = {
             "sampling": sampling_config,
             "filters": filter_config,
             "metric_parameters": parameters,
         }
-        session_id = self.dataset_serializer.create_analysis_session(
+        session_id = self.dataset_repository.create_analysis_session(
             dataset_name=dataset_name,
             session_name=session_name,
             selected_metric_keys=sorted(selected_key_set),
@@ -521,7 +543,7 @@ class DatasetServiceOperationsMixin:
 
         engine = DatasetMetricsEngine(parameters=parameters)
         per_doc_buffer: list[dict[str, Any]] = []
-        aggregate_total = self.dataset_serializer.count_dataset_documents(dataset_name)
+        aggregate_total = self.dataset_repository.count_dataset_documents(dataset_name)
         expected_total = aggregate_total
         if normalized_count is not None:
             expected_total = min(expected_total, normalized_count)
@@ -532,7 +554,7 @@ class DatasetServiceOperationsMixin:
 
         analyzed = 0
         persisted = 0
-        for batch in self.dataset_serializer.iterate_dataset_rows(
+        for batch in self.dataset_repository.iterate_dataset_rows(
             dataset_name=dataset_name,
             batch_size=self.streaming_batch_size,
             min_length=min_length if isinstance(min_length, int) else None,
@@ -540,7 +562,7 @@ class DatasetServiceOperationsMixin:
             exclude_empty=exclude_empty,
         ):
             if self.stop_requested(should_stop):
-                self.dataset_serializer.complete_analysis_session(
+                self.dataset_repository.complete_analysis_session(
                     session_id, status="cancelled"
                 )
                 return {}
@@ -568,14 +590,14 @@ class DatasetServiceOperationsMixin:
                 if normalized_count is not None and analyzed >= normalized_count:
                     break
                 if len(per_doc_buffer) >= self.streaming_batch_size:
-                    self.dataset_serializer.save_metric_values_batch(
+                    self.dataset_repository.save_metric_values_batch(
                         session_id, per_doc_buffer
                     )
                     persisted += len(per_doc_buffer)
                     per_doc_buffer.clear()
 
             if per_doc_buffer and len(per_doc_buffer) >= self.streaming_batch_size:
-                self.dataset_serializer.save_metric_values_batch(
+                self.dataset_repository.save_metric_values_batch(
                     session_id, per_doc_buffer
                 )
                 persisted += len(per_doc_buffer)
@@ -587,7 +609,7 @@ class DatasetServiceOperationsMixin:
                 progress_callback(min(95.0, (analyzed / float(expected_total)) * 95.0))
 
         if per_doc_buffer:
-            self.dataset_serializer.save_metric_values_batch(session_id, per_doc_buffer)
+            self.dataset_repository.save_metric_values_batch(session_id, per_doc_buffer)
             persisted += len(per_doc_buffer)
 
         finalized = engine.finalize(histogram_bins=self.histogram_bins)
@@ -596,22 +618,22 @@ class DatasetServiceOperationsMixin:
             for row in finalized.get("metric_rows", [])
             if row.get("metric_key") in selected_key_set
         ]
-        self.dataset_serializer.save_metric_values_batch(session_id, aggregate_rows)
-        self.dataset_serializer.save_histogram_artifact(
+        self.dataset_repository.save_metric_values_batch(session_id, aggregate_rows)
+        self.dataset_repository.save_histogram_artifact(
             session_id=session_id,
             metric_key="hist.document_length",
             histogram=finalized.get("document_histogram", {}),
         )
-        self.dataset_serializer.save_histogram_artifact(
+        self.dataset_repository.save_histogram_artifact(
             session_id=session_id,
             metric_key="hist.word_length",
             histogram=finalized.get("word_histogram", {}),
         )
-        self.dataset_serializer.complete_analysis_session(
+        self.dataset_repository.complete_analysis_session(
             session_id, status="completed"
         )
 
-        report = self.dataset_serializer.load_analysis_report_by_session_id(session_id)
+        report = self.dataset_repository.load_analysis_report_by_session_id(session_id)
         if report is None:
             raise ValueError("Failed to load persisted analysis report.")
         logger.info(
@@ -627,12 +649,12 @@ class DatasetServiceOperationsMixin:
 
     # -------------------------------------------------------------------------
     def get_latest_validation_report(self, dataset_name: str) -> dict[str, Any] | None:
-        return self.dataset_serializer.load_latest_analysis_report(dataset_name)
+        return self.dataset_repository.load_latest_analysis_report(dataset_name)
 
     # -------------------------------------------------------------------------
     def get_validation_report_by_id(self, report_id: int) -> dict[str, Any] | None:
-        return self.dataset_serializer.load_analysis_report_by_session_id(report_id)
+        return self.dataset_repository.load_analysis_report_by_session_id(report_id)
 
     # -------------------------------------------------------------------------
     def remove_dataset(self, dataset_name: str) -> None:
-        self.dataset_serializer.delete_dataset(dataset_name)
+        self.dataset_repository.delete_dataset(dataset_name)

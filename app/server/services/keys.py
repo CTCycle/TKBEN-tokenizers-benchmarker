@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from server.common.utils.encryption import SymmetricCipher, get_hf_key_cipher
 from server.common.utils.logger import logger
 from server.repositories.hf_access_keys import HFAccessKeyRepository
-from server.domain.keys import HFAccessKeyListItem
+from server.contracts.keys import HFAccessKeyListItem
 
 ###############################################################################
 class HFAccessKeyError(Exception):

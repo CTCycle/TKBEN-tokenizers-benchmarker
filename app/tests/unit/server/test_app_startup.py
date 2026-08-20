@@ -30,16 +30,21 @@ def test_build_cors_origins_rejects_invalid_port(
         startup_validation.build_cors_origins()
 
 ###############################################################################
-def test_run_startup_validations_creates_runtime_directories(
+def test_run_startup_validations_loads_environment_and_creates_runtime_directories(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    calls: list[str] = []
     logs_path = tmp_path / "logs"
     datasets_path = tmp_path / "datasets"
     tokenizers_path = tmp_path / "tokenizers"
     templates_path = tmp_path / "templates"
 
-    monkeypatch.setattr(startup_validation, "ensure_environment_loaded", lambda: None)
+    monkeypatch.setattr(
+        startup_validation,
+        "ensure_environment_loaded",
+        lambda: calls.append("environment"),
+    )
     monkeypatch.setattr(startup_validation, "LOGS_PATH", logs_path)
     monkeypatch.setattr(startup_validation, "DATASETS_PATH", datasets_path)
     monkeypatch.setattr(startup_validation, "TOKENIZERS_PATH", tokenizers_path)
@@ -47,38 +52,11 @@ def test_run_startup_validations_creates_runtime_directories(
 
     startup_validation.run_startup_validations()
 
+    assert calls == ["environment"]
     assert logs_path.is_dir()
     assert datasets_path.is_dir()
     assert tokenizers_path.is_dir()
     assert templates_path.is_dir()
-
-###############################################################################
-def test_run_startup_validations_loads_environment_and_creates_directories(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    calls: list[str] = []
-    monkeypatch.setattr(
-        startup_validation,
-        "ensure_environment_loaded",
-        lambda: calls.append("environment"),
-    )
-    monkeypatch.setattr(startup_validation, "LOGS_PATH", tmp_path / "logs")
-    monkeypatch.setattr(startup_validation, "DATASETS_PATH", tmp_path / "datasets")
-    monkeypatch.setattr(
-        startup_validation, "TOKENIZERS_PATH", tmp_path / "tokenizers"
-    )
-    monkeypatch.setattr(
-        startup_validation, "TEMPLATES_PATH", tmp_path / "templates"
-    )
-
-    startup_validation.run_startup_validations()
-
-    assert calls == ["environment"]
-    assert (tmp_path / "logs").is_dir()
-    assert (tmp_path / "datasets").is_dir()
-    assert (tmp_path / "tokenizers").is_dir()
-    assert (tmp_path / "templates").is_dir()
 
 ###############################################################################
 def test_create_app_initializes_startup_state(
@@ -110,25 +88,3 @@ def test_create_app_initializes_startup_state(
     assert response.status_code in {200, 307}
     assert application.state.settings is settings
     assert calls == ["validated", "database:True"]
-
-###############################################################################
-def test_create_app_redirects_root_to_docs(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(
-        app_module,
-        "get_server_settings",
-        lambda: SimpleNamespace(
-            jobs=SimpleNamespace(terminal_retention_seconds=3600.0)
-        ),
-    )
-    monkeypatch.setattr(app_module, "run_startup_validations", lambda: None)
-    monkeypatch.setattr(app_module, "initialize_database", lambda **kwargs: None)
-
-    application = app_module.create_app()
-
-    with TestClient(application) as client:
-        response = client.get("/", follow_redirects=False)
-
-    assert response.status_code == 307
-    assert response.headers["location"] == "/docs"

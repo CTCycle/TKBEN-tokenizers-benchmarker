@@ -11,7 +11,7 @@ from typing import Any, ClassVar, cast
 import numpy as np
 import pandas as pd
 
-from server.domain.benchmarks import (
+from server.contracts.benchmarks import (
     BenchmarkDashboardData,
     BenchmarkFragmentationBucket,
     BenchmarkHardwareProfile,
@@ -23,7 +23,7 @@ from server.domain.benchmarks import (
 )
 from server.common.constants import BENCHMARK_REPORT_VERSION, BENCHMARK_SCHEMA_VERSION
 from server.common.utils.logger import logger
-from server.domain.benchmark_observations import TokenizerRunConfig
+from server.services.benchmark_observations import TokenizerRunConfig
 from server.services.benchmark_result_builder import BenchmarkResultBuilder
 from server.services.benchmark_engine import (
     run_tokenizer_trials,

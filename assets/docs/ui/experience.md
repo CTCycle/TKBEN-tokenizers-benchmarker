@@ -1,5 +1,5 @@
 # Experience
-Last updated: 2026-08-02
+Last updated: 2026-08-19
 
 ## Page Structure
 - `DatasetPage`
@@ -19,6 +19,7 @@ Catalog interactions:
 - Dataset and tokenizer preview catalogs support debounced search, source filtering, and numeric threshold filtering.
 - Filtering refreshes catalog results without changing the current benchmark selection.
 - Empty states distinguish an unfiltered empty catalog from a catalog with no matches.
+- The dataset-add dialog separates predefined datasets, Hugging Face name entry, and custom CSV/Excel upload into keyboard-navigable tabs.
 - Dataset dashboard data is normalized before chart rendering; invalid optional histogram, frequency, Zipf, and word-cloud payloads produce empty or unavailable states instead of breaking the page.
 
 ## User Experience Standards

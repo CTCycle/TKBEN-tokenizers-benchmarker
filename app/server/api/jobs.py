@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request, status
 
-from server.domain.jobs import JobStatusResponse
+from server.contracts.jobs import JobStatusResponse
 from server.common.constants import (
     API_ROUTE_JOBS_CANCEL,
     API_ROUTE_JOBS_STATUS,

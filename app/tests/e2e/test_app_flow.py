@@ -7,6 +7,7 @@ import re
 from urllib.parse import quote
 from uuid import uuid4
 
+import pytest
 from playwright.sync_api import Page, expect
 from playwright.sync_api import APIRequestContext
 
@@ -46,39 +47,18 @@ class TestAppShell:
     """Tests for core layout and routing."""
 
     # -------------------------------------------------------------------------
-    def test_root_redirects_to_dataset(self, page: Page, base_url: str) -> None:
-        """The root route should redirect to the dataset page."""
-        page.goto(base_url)
+    @pytest.mark.parametrize("path", ["", "/does-not-exist"])
+    def test_routes_fall_back_to_dataset(
+        self, page: Page, base_url: str, path: str
+    ) -> None:
+        """Root and wildcard routes should land on the dataset workflow."""
+        page.goto(f"{base_url}{path}")
         expect(page).to_have_url(re.compile(r".*/dataset/?$"))
         expect(page.get_by_text("Dataset Usage")).to_be_visible()
-
-    # -------------------------------------------------------------------------
-    def test_sidebar_links_are_visible(self, page: Page, base_url: str) -> None:
-        """Sidebar navigation should expose primary sections."""
-        page.goto(f"{base_url}/dataset")
-        expect(page.get_by_role("button", name="Datasets")).to_be_visible()
-        expect(page.get_by_role("button", name="Tokenizers")).to_be_visible()
-        expect(page.get_by_role("button", name="Cross Benchmark")).to_be_visible()
-
-    # -------------------------------------------------------------------------
-    def test_unknown_route_redirects_to_dataset(
-        self, page: Page, base_url: str
-    ) -> None:
-        """Unknown routes should redirect back to the dataset page."""
-        page.goto(f"{base_url}/does-not-exist")
-        expect(page).to_have_url(re.compile(r".*/dataset/?$"))
 
 ###############################################################################
 class TestDatasetPage:
     """Tests for dataset page UI elements."""
-
-    # -------------------------------------------------------------------------
-    def test_dataset_page_panels_render(self, page: Page, base_url: str) -> None:
-        """Dataset page should show the main layout panels."""
-        page.goto(f"{base_url}/dataset")
-        expect(page.get_by_text("Dataset Usage")).to_be_visible()
-        expect(page.get_by_text("Dataset Preview")).to_be_visible()
-        expect(page.get_by_role("button", name="Add dataset")).to_be_visible()
 
     # -------------------------------------------------------------------------
     def test_catalog_race_keeps_loading_owned_by_newest_request(
@@ -238,30 +218,158 @@ class TestDatasetPage:
             "No validation report found"
         )
 
+    # -------------------------------------------------------------------------
+    def test_dataset_without_report_can_be_deleted_and_disappears_from_catalog(
+        self,
+        page: Page,
+        base_url: str,
+        api_context: APIRequestContext,
+        job_waiter,
+    ) -> None:
+        """A no-report dataset remains selectable and is removed from UI and API state."""
+        dataset_name = _upload_dataset_for_ui_test(
+            api_context=api_context,
+            job_waiter=job_waiter,
+            stem=f"qa_delete_noreport_{uuid4().hex[:8]}",
+        )
+
+        page.goto(f"{base_url}/dataset")
+        row = page.locator(".dataset-preview-row").filter(has_text=dataset_name).first
+        expect(row).to_be_visible()
+
+        delete_count = 0
+
+        def count_delete(request) -> None:
+            nonlocal delete_count
+            if request.method == "DELETE" and "/api/datasets/delete" in request.url:
+                delete_count += 1
+
+        page.on("request", count_delete)
+        page.once("dialog", lambda dialog: dialog.accept())
+        with page.expect_response(
+            lambda response: (
+                response.request.method == "DELETE"
+                and "/api/datasets/delete" in response.url
+                and response.status == 200
+            )
+        ):
+            row.get_by_role("button", name="Remove dataset").click()
+
+        expect(page.locator(".dataset-preview-row").filter(has_text=dataset_name)).to_have_count(0)
+        assert delete_count == 1
+
+        refreshed = api_context.get("/api/datasets/list")
+        assert refreshed.ok
+        assert dataset_name not in {
+            str(item.get("dataset_name")) for item in refreshed.json().get("datasets", [])
+        }
+
 ###############################################################################
 class TestTokenizersPage:
     """Tests for tokenizers page UI elements."""
 
     # -------------------------------------------------------------------------
-    def test_tokenizers_page_loads(self, page: Page, base_url: str) -> None:
-        """Tokenizers page should render selection and report panels."""
+    def test_tokenizer_manager_discovery_controls_and_empty_state(
+        self, page: Page, base_url: str
+    ) -> None:
+        """Tokenizer discovery uses the structured backend contract and advanced filters."""
+        page.route(
+            "**/api/tokenizers/list*",
+            lambda route: route.fulfill(json={"tokenizers": [], "count": 0}),
+        )
+
+        def fulfill_discovery(route) -> None:
+            url = route.request.url
+            if "unlikely-query" in url:
+                route.fulfill(json={"items": [], "count": 0, "fetched_count": 0})
+                return
+            route.fulfill(json={
+                "items": [{
+                    "identifier": "google/bert-base-uncased",
+                    "pipeline_tag": "fill-mask",
+                    "library_name": "transformers",
+                    "downloads": 1234,
+                    "likes": 12,
+                    "last_modified": None,
+                    "gated": False,
+                    "tags": ["core"],
+                    "vocabulary_size": None,
+                }],
+                "count": 1,
+                "fetched_count": 1,
+            })
+
+        page.route("**/api/tokenizers/discover*", fulfill_discovery)
         page.goto(f"{base_url}/tokenizers")
-        expect(page.get_by_text("Tokenizer Selection")).to_be_visible()
-        expect(page.get_by_text("Tokenizers Dashboard")).to_be_visible()
+        page.get_by_role("button", name="Add tokenizer").click()
+
+        dialog = page.get_by_role("dialog", name="Tokenizer Manager")
+        expect(dialog).to_be_visible()
+        expect(dialog.get_by_label("Search")).to_be_visible()
+        expect(dialog.get_by_role("spinbutton", name="Results")).to_be_visible()
+        expect(dialog.get_by_label("Category")).to_be_visible()
+        expect(dialog.get_by_label("Sort")).to_be_visible()
+        expect(dialog.get_by_role("button", name="Advanced filters")).to_have_attribute("aria-expanded", "false")
+        dialog.get_by_role("button", name="Advanced filters").click()
+        expect(dialog.get_by_label("Author")).to_be_visible()
+        expect(dialog.get_by_label("Required tags")).to_be_visible()
+
+        expect(dialog.get_by_text("google/bert-base-uncased", exact=True)).to_be_visible()
+        expect(dialog.get_by_text("Unknown", exact=True)).to_be_visible()
+        expect(dialog.get_by_text("1234 downloads", exact=True)).to_be_visible()
+
+        dialog.get_by_label("Search").fill("unlikely-query")
+        with page.expect_request(lambda request: "/api/tokenizers/discover" in request.url and "unlikely-query" in request.url):
+            dialog.get_by_role("button", name="Search Hugging Face").click()
+        expect(dialog.get_by_text("No tokenizer repositories match this query.", exact=True)).to_be_visible()
+
+    # -------------------------------------------------------------------------
+    def test_custom_tokenizer_delete_removes_preview_row_and_backend_item(
+        self,
+        page: Page,
+        base_url: str,
+        api_context: APIRequestContext,
+        tiny_tokenizer_json: bytes,
+    ) -> None:
+        """Confirmed custom-tokenizer deletion updates the preview without a reload."""
+        stem = f"qa_ui_delete_custom_{uuid4().hex[:8]}"
+        upload = api_context.post(
+            "/api/tokenizers/upload",
+            multipart={
+                "file": {
+                    "name": f"{stem}.json",
+                    "mimeType": "application/json",
+                    "buffer": tiny_tokenizer_json,
+                }
+            },
+        )
+        assert upload.ok, upload.text()
+        tokenizer_name = upload.json()["tokenizer_name"]
+
+        page.goto(f"{base_url}/tokenizers")
+        row = page.locator(".tokenizer-preview-row").filter(has_text=tokenizer_name).first
+        expect(row).to_be_visible()
+
+        page.once("dialog", lambda dialog: dialog.accept())
+        with page.expect_response(
+            lambda response: (
+                response.request.method == "DELETE"
+                and "/api/tokenizers/delete" in response.url
+                and response.status == 200
+            )
+        ):
+            row.get_by_role("button", name=f"Remove {tokenizer_name}").click()
+
+        expect(page.locator(".tokenizer-preview-row").filter(has_text=tokenizer_name)).to_have_count(0)
+        refreshed = api_context.get("/api/tokenizers/list")
+        assert refreshed.ok
+        assert tokenizer_name not in {
+            str(item.get("tokenizer_name")) for item in refreshed.json().get("tokenizers", [])
+        }
 
 ###############################################################################
 class TestCrossBenchmarkPage:
     """Tests for cross benchmark page UI elements."""
-
-    # -------------------------------------------------------------------------
-    def test_cross_benchmark_page_loads_controls(
-        self, page: Page, base_url: str
-    ) -> None:
-        """Cross benchmark page should render control panel and report selector."""
-        page.goto(f"{base_url}/cross-benchmark")
-        expect(page.get_by_role("combobox", name="Select report")).to_be_visible()
-        expect(page.get_by_role("button", name="Run benchmark")).to_be_visible()
-        expect(page.locator("#cross-benchmark-report-select")).to_be_visible()
 
     # -------------------------------------------------------------------------
     def test_cross_benchmark_wizard_navigation_and_validation(
@@ -278,6 +386,31 @@ class TestCrossBenchmarkPage:
         page.get_by_role("button", name="Next").click()
         expect(page.get_by_role("button", name="Back")).to_be_enabled()
         expect(page.get_by_role("button", name="Next")).to_be_disabled()
+
+    # -------------------------------------------------------------------------
+    @pytest.mark.parametrize("viewport", [(1440, 900), (1024, 900), (390, 844)])
+    def test_benchmark_actions_title_has_own_row_without_overflow(
+        self,
+        page: Page,
+        base_url: str,
+        viewport: tuple[int, int],
+    ) -> None:
+        """The shared command navbar keeps its title above the responsive action grid."""
+        page.set_viewport_size({"width": viewport[0], "height": viewport[1]})
+        page.goto(f"{base_url}/cross-benchmark")
+        navbar = page.locator(".cross-benchmark-command-navbar")
+        title = page.locator(".cross-benchmark-command-navbar__title")
+        content = page.locator(".cross-benchmark-command-navbar__content")
+        expect(title).to_be_visible()
+        expect(content).to_be_visible()
+
+        navbar_box = navbar.bounding_box()
+        title_box = title.bounding_box()
+        content_box = content.bounding_box()
+        assert navbar_box and title_box and content_box
+        assert content_box["y"] >= title_box["y"] + title_box["height"]
+        assert content_box["x"] >= navbar_box["x"]
+        assert content_box["x"] + content_box["width"] <= navbar_box["x"] + navbar_box["width"] + 1
 
     # -------------------------------------------------------------------------
     def test_cross_benchmark_shows_diagnostics_for_failed_tokenizer_report(
@@ -320,7 +453,7 @@ class TestCrossBenchmarkPage:
                     '{"reports":[{"report_id":1,"report_version":5,"created_at":"2026-01-01T00:00:00Z",'
                     '"run_name":"mock run","dataset_name":"custom/sample","documents_processed":2,'
                     '"tokenizers_count":2,"tokenizers_processed":["ok/tokenizer","broken/tokenizer"],'
-                    '"selected_metric_keys":["eff.encode_tokens_per_second_mean"]}]}'
+                    '"selected_metric_keys":["eff.encode_tokens_per_second_mean"]}],"total":1,"offset":0,"limit":25}'
                 ),
             ),
         )
@@ -381,8 +514,9 @@ class TestCrossBenchmarkPage:
         )
 
         page.goto(f"{base_url}/cross-benchmark")
-        report_selector = page.locator("#cross-benchmark-report-select")
-        expect(report_selector).to_contain_text("mock run")
-        report_selector.select_option("1")
+        expect(page.get_by_text("mock run", exact=True)).to_be_visible()
+        page.get_by_role("button", name=re.compile(r"Reports \(1\)" )).first.click()
+        expect(page.get_by_role("dialog", name="Benchmark Reports")).to_be_visible()
+        page.get_by_role("button", name=re.compile("mock run")).click()
         expect(page.get_by_text("Run Diagnostics")).to_be_visible()
         expect(page.get_by_text("broken/tokenizer: RuntimeError", exact=False)).to_be_visible()

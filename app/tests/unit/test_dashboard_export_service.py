@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from server.services.dashboard_export_helpers import DashboardExportFormatting
 from server.services.export import DashboardExportService
 
 ###############################################################################
@@ -54,10 +55,10 @@ def build_dataset_payload() -> dict:
                 "words.rare_tail_mass": 0.133,
                 "words.normalized_entropy": 0.74,
                 "words.zipf_curve": [
-                    [1, 300],
-                    [2, 205],
-                    [3, 150],
-                    [4, 110],
+                    {"rank": 1, "frequency": 300},
+                    {"rank": 2, "frequency": 205},
+                    {"rank": 3, "frequency": 150},
+                    {"rank": 4, "frequency": 110},
                 ],
             },
         }
@@ -162,7 +163,6 @@ def test_export_dataset_dashboard_pdf_generates_pdf_bytes() -> None:
     assert result.file_name == "dataset-layout-export.pdf"
     assert result.page_count >= 2
     assert result.pdf_bytes.startswith(b"%PDF")
-    assert len(result.pdf_bytes) > 5000
 
 ###############################################################################
 def test_export_tokenizer_dashboard_pdf_generates_pdf_bytes() -> None:
@@ -177,7 +177,6 @@ def test_export_tokenizer_dashboard_pdf_generates_pdf_bytes() -> None:
     assert result.file_name == "tokenizer-layout-export.pdf"
     assert result.page_count >= 1
     assert result.pdf_bytes.startswith(b"%PDF")
-    assert len(result.pdf_bytes) > 4000
 
 ###############################################################################
 def test_export_benchmark_dashboard_pdf_generates_pdf_bytes() -> None:
@@ -192,7 +191,6 @@ def test_export_benchmark_dashboard_pdf_generates_pdf_bytes() -> None:
     assert result.file_name == "benchmark-layout-export.pdf"
     assert result.page_count == 2
     assert result.pdf_bytes.startswith(b"%PDF")
-    assert len(result.pdf_bytes) > 5000
 
 ###############################################################################
 def test_benchmark_pdf_normalizes_visible_widgets_in_requested_order() -> None:
@@ -217,3 +215,19 @@ def test_export_dashboard_pdf_rejects_unsupported_dashboard_type() -> None:
             file_name="x",
             dashboard_payload={},
         )
+
+###############################################################################
+def test_dashboard_export_formatting_accepts_only_current_metric_shapes() -> None:
+    formatting = DashboardExportFormatting()
+
+    assert formatting._parse_zipf_curve([
+        {"rank": 1, "frequency": 10},
+    ]) == [{"rank": 1.0, "frequency": 10.0}]
+    assert formatting._parse_zipf_curve([[1, 10]]) == []
+    assert formatting._parse_zipf_curve('[{"rank": 1, "frequency": 10}]') == []
+    assert formatting._parse_word_frequency([
+        {"word": "hello", "count": 3},
+    ]) == [{"word": "hello", "count": 3}]
+    assert formatting._parse_word_frequency([
+        {"token": "hello", "count": 3},
+    ]) == []

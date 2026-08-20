@@ -19,7 +19,7 @@ from server.common.constants import (
     FASTAPI_VERSION,
 )
 
-from server.domain.health import HealthResponse
+from server.contracts.health import HealthResponse
 from server.configurations import get_server_settings
 from server.repositories.database.initializer import initialize_database
 from server.services.jobs import JobManager

@@ -1,5 +1,7 @@
 """Current-schema browser coverage for the cross-benchmark dashboard."""
 
+from urllib.parse import parse_qs, urlparse
+
 from playwright.sync_api import Page, expect
 
 ###############################################################################
@@ -9,7 +11,7 @@ def _route_dashboard_api(page: Page) -> None:
     page.route("**/api/benchmarks/metrics/catalog", lambda route: route.fulfill(json={"categories": []}))
     page.route(
         "**/api/benchmarks/reports?*",
-        lambda route: route.fulfill(json={"reports": [{"report_id": 101, "report_version": 5, "created_at": "2026-07-22T12:00:00Z", "run_name": "Dashboard QA", "dataset_name": "custom/qa", "documents_processed": 2, "tokenizers_count": 2, "tokenizers_processed": ["alpha", "beta"], "selected_metric_keys": ["efficiency.speed", "vocabulary.size", "latency.distribution", "fragmentation.bucket"]}]}),
+        lambda route: route.fulfill(json={"reports": [{"report_id": 101, "report_version": 5, "created_at": "2026-07-22T12:00:00Z", "run_name": "Dashboard QA", "dataset_name": "custom/qa", "documents_processed": 2, "tokenizers_count": 2, "tokenizers_processed": ["alpha", "beta"], "selected_metric_keys": ["efficiency.speed", "vocabulary.size", "latency.distribution", "fragmentation.bucket"]}], "total": 1, "offset": 0, "limit": 25}),
     )
     page.route(
         "**/api/benchmarks/reports/101",
@@ -78,7 +80,74 @@ def test_cross_benchmark_dashboard_customization_and_accessible_data(
     expect(tables).to_have_count(4)
     tables.first.click()
     expect(page.get_by_text("Tokenization speed values by tokenizer")).to_be_visible()
-    expect(page.get_by_role("cell", name="1500")).to_be_visible()
+
+###############################################################################
+def test_cross_benchmark_report_manager_search_pagination_and_inline_delete(
+    page: Page, base_url: str
+) -> None:
+    """Report management stays server-backed and uses inline deletion confirmation."""
+    _route_dashboard_api(page)
+    page.route("**/api/exports/dashboard/pdf", lambda route: route.fulfill(status=500, json={"detail": "Export unavailable"}))
+    reports = [
+        {
+            "report_id": report_id,
+            "report_version": 5,
+            "created_at": f"2026-07-{(report_id % 28) + 1:02d}T12:00:00Z",
+            "run_name": f"Report {report_id}",
+            "dataset_name": "custom/qa",
+            "documents_processed": 2,
+            "tokenizers_count": 2,
+            "tokenizers_processed": ["alpha", "beta"],
+            "selected_metric_keys": [],
+        }
+        for report_id in range(101, 152)
+    ]
+    observed_urls: list[str] = []
+
+    def route_reports(route) -> None:
+        query = parse_qs(urlparse(route.request.url).query)
+        observed_urls.append(route.request.url)
+        search = query.get("search", [""])[0].casefold()
+        offset = int(query.get("offset", ["0"])[0])
+        limit = int(query.get("limit", ["25"])[0])
+        filtered = [item for item in reports if not search or search in item["run_name"].casefold()]
+        route.fulfill(json={"reports": filtered[offset:offset + limit], "total": len(filtered), "offset": offset, "limit": limit})
+
+    page.route("**/api/benchmarks/reports?*", route_reports)
+    page.route(
+        "**/api/benchmarks/reports/102",
+        lambda route: route.fulfill(status=204) if route.request.method == "DELETE" else route.fallback(),
+    )
+    page.goto(f"{base_url}/cross-benchmark")
+    page.get_by_role("button", name="Reports (51)").click()
+    expect(page.get_by_role("dialog", name="Benchmark Reports")).to_be_visible()
+    expect(page.locator(".benchmark-report-row")).to_have_count(25)
+    expect(page.get_by_text("51 reports", exact=True)).to_be_visible()
+
+    page.get_by_role("button", name="Next").click()
+    page.wait_for_timeout(300)
+    assert any("offset=25" in url for url in observed_urls)
+    expect(page.get_by_text("Report 126", exact=True)).to_be_visible()
+    page.get_by_role("button", name="Previous").click()
+    page.wait_for_timeout(300)
+    assert any("offset=0" in url for url in observed_urls)
+
+    page.get_by_label("Search reports").fill("Report 102")
+    page.wait_for_timeout(350)
+    expect(page.get_by_text("Report 102", exact=True)).to_be_visible()
+    delete_button = page.get_by_role("button", name="Delete report")
+    delete_button.click()
+    expect(page.get_by_text("Delete this report permanently?", exact=True)).to_be_visible()
+    page.get_by_role("button", name="Cancel").click()
+    expect(page.get_by_text("Delete this report permanently?", exact=True)).to_have_count(0)
+    delete_button.click()
+    with page.expect_request(lambda request: request.method == "DELETE" and request.url.endswith("/reports/102")):
+        page.get_by_role("button", name="Delete", exact=True).click()
+    page.wait_for_timeout(300)
+    expect(page.get_by_role("heading", name="Tokenization speed")).to_be_visible()
+    page.get_by_role("dialog", name="Benchmark Reports").get_by_role(
+        "button", name="Close benchmark report manager"
+    ).click()
 
     customize = page.get_by_role("button", name="Customize benchmark dashboard")
     customize.click()

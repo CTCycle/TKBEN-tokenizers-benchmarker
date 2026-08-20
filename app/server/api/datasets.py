@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile, status
 
-from server.domain.dataset import (
+from server.contracts.dataset import (
     DatasetAnalysisRequest,
     DatasetAnalysisResponse,
     DatasetDeleteResponse,
@@ -15,7 +15,7 @@ from server.domain.dataset import (
     DatasetMetricCatalogResponse,
     DatasetPreview,
 )
-from server.domain.jobs import JobStartResponse
+from server.contracts.jobs import JobStartResponse
 from server.configurations import get_server_settings
 from server.common.utils.logger import logger
 from server.common.utils.security import (

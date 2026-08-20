@@ -1,0 +1,23 @@
+<button class="key-manager-backdrop" type="button" aria-label="Close key manager" (click)="close()"></button>
+<section class="key-manager-popover" role="dialog" aria-modal="true" aria-labelledby="hf-key-title" [appModalA11y]="true" (modalEscape)="close()">
+  <header class="key-manager-header">
+    <div>
+      <p id="hf-key-title" class="panel-label">Hugging Face Keys</p>
+      <p class="panel-description">Store access keys for gated Hugging Face downloads.</p>
+    </div>
+    <button class="icon-button subtle" type="button" aria-label="Close key manager" (click)="close()">×</button>
+  </header>
+  <div class="key-manager-add-row">
+    <input id="hf-key-input" class="text-input" type="password" placeholder="Enter Hugging Face key" [formControl]="key" aria-label="Hugging Face key" />
+    <button class="primary-button" type="button" (click)="addKey()">Add</button>
+  </div>
+  @if (error()) { <p class="error-banner" role="alert">{{ error() }}</p> }
+  @if (key.invalid && key.touched) {
+    <p class="error-banner" role="alert">Enter a Hugging Face key.</p>
+  }
+  <div class="key-manager-list" [attr.role]="loading() ? 'status' : null" aria-live="polite">
+    @if (loading()) { <div class="key-manager-empty">Loading keys...</div> }
+    @else if (keys().length === 0) { <div class="key-manager-empty">No keys stored.</div> }
+    @else { @for (item of keys(); track item.id) { <div class="key-manager-row"><code class="key-manager-preview">{{ revealed()[item.id] || item.masked_preview }}</code><div class="key-manager-actions"><button class="icon-button subtle" type="button" [attr.aria-label]="revealed()[item.id] ? 'Hide key' : 'Reveal key'" [disabled]="actionKeyId() === item.id" (click)="toggleReveal(item)">{{ revealed()[item.id] ? '◌' : '◉' }}</button><button class="icon-button accent" type="button" [attr.aria-label]="item.is_active ? 'Deactivate key' : 'Activate key'" [disabled]="actionKeyId() === item.id" (click)="toggleActivation(item)">{{ item.is_active ? '⌑' : '✓' }}</button><button class="icon-button danger" type="button" aria-label="Delete key" [disabled]="actionKeyId() === item.id" (click)="deleteKey(item)">×</button></div></div> } }
+  </div>
+</section>

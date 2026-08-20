@@ -34,15 +34,12 @@ def test_benchmark_run_route_returns_202(monkeypatch) -> None:
     from server.services.benchmarks import BenchmarkService
 
     monkeypatch.setattr(
-        BenchmarkService, "resolve_custom_tokenizer_selection", lambda self, name: {}
-    )
-    monkeypatch.setattr(
-        BenchmarkService, "get_dataset_document_count", lambda self, dataset_name: 3
-    )
-    monkeypatch.setattr(
         BenchmarkService,
-        "get_missing_persisted_tokenizers",
-        lambda self, tokenizers: [],
+        "prepare_run",
+        lambda self, payload: {
+            **payload.model_dump(),
+            "custom_tokenizers": {},
+        },
     )
 
     client = TestClient(app)
@@ -75,27 +72,16 @@ def test_benchmark_run_accepts_selected_custom_tokenizer_without_persisted_cache
 
     from server.services.benchmarks import BenchmarkService
 
-    missing_checked = {"tokenizers": None}
+    prepared_payload = {}
 
-    monkeypatch.setattr(
-        BenchmarkService,
-        "resolve_custom_tokenizer_selection",
-        lambda self, name: {"CUSTOM_demo": object()} if name == "CUSTOM_demo" else {},
-    )
-    monkeypatch.setattr(
-        BenchmarkService, "get_dataset_document_count", lambda self, dataset_name: 3
-    )
-
-    def fake_missing(self, tokenizers):
+    def fake_prepare(self, payload):
         del self
-        missing_checked["tokenizers"] = list(tokenizers)
-        return []
+        prepared_payload.update(payload.model_dump())
+        request_payload = payload.model_dump()
+        request_payload["custom_tokenizers"] = {"CUSTOM_demo": object()}
+        return request_payload
 
-    monkeypatch.setattr(
-        BenchmarkService,
-        "get_missing_persisted_tokenizers",
-        fake_missing,
-    )
+    monkeypatch.setattr(BenchmarkService, "prepare_run", fake_prepare)
 
     client = TestClient(app)
     resp = client.post(
@@ -103,23 +89,39 @@ def test_benchmark_run_accepts_selected_custom_tokenizer_without_persisted_cache
         json={
             "tokenizers": ["CUSTOM_demo"],
             "dataset_name": "custom/sample",
-            "custom_tokenizer_name": "CUSTOM_demo",
             "config": {"max_documents": 2},
         },
     )
 
     assert resp.status_code == 202
-    assert missing_checked["tokenizers"] == []
+    assert prepared_payload["tokenizers"] == ["CUSTOM_demo"]
+
+###############################################################################
+def test_benchmark_run_rejects_removed_custom_tokenizer_field() -> None:
+    response = TestClient(app).post(
+        "/api/benchmarks/run",
+        json={
+            "tokenizers": ["CUSTOM_demo"],
+            "dataset_name": "custom/sample",
+            "custom_tokenizer_name": "CUSTOM_demo",
+        },
+    )
+
+    assert response.status_code == 422
+    assert "custom_tokenizer_name" in response.text
 
 ###############################################################################
 def test_benchmark_list_and_by_id(monkeypatch) -> None:
-    from server.services.benchmarks import BenchmarkService
+    from server.contracts.benchmarks import BenchmarkReportListResponse
+    from server.services.benchmark_reports import BenchmarkReportService
 
-    monkeypatch.setattr(
-        BenchmarkService,
-        "list_benchmark_reports",
-        lambda self, limit=200: [
-            {
+    captured = {}
+
+    def fake_list(self, query):
+        del self
+        captured.update(query.model_dump())
+        return BenchmarkReportListResponse.model_validate({
+            "reports": [{
                 "report_id": 1,
                 "report_version": 5,
                 "created_at": "2026-01-01T00:00:00Z",
@@ -129,11 +131,19 @@ def test_benchmark_list_and_by_id(monkeypatch) -> None:
                 "tokenizers_count": 1,
                 "tokenizers_processed": ["bert-base-uncased"],
                 "selected_metric_keys": ["global.tokenization_speed_tps"],
-            }
-        ],
+            }],
+            "total": 1,
+            "offset": 0,
+            "limit": 25,
+        })
+
+    monkeypatch.setattr(
+        BenchmarkReportService,
+        "list_benchmark_reports",
+        fake_list,
     )
     monkeypatch.setattr(
-        BenchmarkService,
+        BenchmarkReportService,
         "load_benchmark_report_by_id",
         lambda self, report_id: {
             "status": "success",
@@ -180,20 +190,32 @@ def test_benchmark_list_and_by_id(monkeypatch) -> None:
 
     client = TestClient(app)
 
-    listed = client.get("/api/benchmarks/reports")
+    listed = client.get("/api/benchmarks/reports?search= run &sort=oldest&offset=5&limit=10")
     assert listed.status_code == 200
     assert listed.json()["reports"][0]["report_id"] == 1
+    assert listed.json()["total"] == 1
+    assert captured == {"search": "run", "sort": "oldest", "offset": 5, "limit": 10}
 
     by_id = client.get("/api/benchmarks/reports/1")
     assert by_id.status_code == 200
     assert by_id.json()["report_id"] == 1
 
 ###############################################################################
+def test_benchmark_report_delete_route_returns_204_or_404(monkeypatch) -> None:
+    from server.services.benchmark_reports import BenchmarkReportService
+
+    monkeypatch.setattr(BenchmarkReportService, "delete_benchmark_report", lambda self, report_id: report_id == 4)
+    client = TestClient(app)
+    assert client.delete("/api/benchmarks/reports/4").status_code == 204
+    missing = client.delete("/api/benchmarks/reports/9")
+    assert missing.status_code == 404
+
+###############################################################################
 def test_benchmark_by_id_accepts_cancelled_contract(monkeypatch) -> None:
-    from server.services.benchmarks import BenchmarkService
+    from server.services.benchmark_reports import BenchmarkReportService
 
     monkeypatch.setattr(
-        BenchmarkService,
+        BenchmarkReportService,
         "load_benchmark_report_by_id",
         lambda self, report_id: {
             "status": "cancelled",

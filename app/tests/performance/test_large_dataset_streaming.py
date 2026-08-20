@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from server.repositories.database.backend import get_database
 from server.repositories.schemas.models import Base, Dataset, DatasetDocument
-from server.repositories.serialization.datasets import DatasetSerializer
+from server.repositories.datasets import DatasetRepository
 
 ###############################################################################
 def test_large_dataset_streaming_batches_do_not_materialize_all_rows(
@@ -29,9 +29,9 @@ def test_large_dataset_streaming_batches_do_not_materialize_all_rows(
         )
         session.commit()
 
-    serializer = DatasetSerializer()
+    repository = DatasetRepository()
     batches = list(
-        serializer.iterate_dataset_batches("custom/large_stream", batch_size=128)
+        repository.iterate_dataset_batches("custom/large_stream", batch_size=128)
     )
     assert len(batches) >= 10
     assert sum(len(batch) for batch in batches) == 2000

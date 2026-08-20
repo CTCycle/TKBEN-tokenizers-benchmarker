@@ -1,16 +1,17 @@
 """
 E2E tests for tokenizer API endpoints.
-Covers /api/tokenizers/settings, /api/tokenizers/scan, /api/tokenizers/upload, /api/tokenizers/custom.
+Covers /api/tokenizers/settings, /api/tokenizers/discover, /api/tokenizers/upload, /api/tokenizers/custom.
 """
 
 import json
 import os
+from uuid import uuid4
 
 import pytest
 from playwright.sync_api import APIRequestContext
 
 
-RUN_HF_SCAN = os.getenv("E2E_RUN_HF_SCAN", "").lower() in ("1", "true", "yes")
+RUN_HF_DISCOVERY = os.getenv("E2E_RUN_HF_DISCOVERY", "").lower() in ("1", "true", "yes")
 RUN_TOKENIZER_REPORT_FLOW = os.getenv("E2E_RUN_TOKENIZER_REPORT_FLOW", "").lower() in (
     "1",
     "true",
@@ -38,32 +39,44 @@ def _build_wordlevel_tokenizer_json() -> bytes:
 
 ###############################################################################
 def test_get_tokenizer_settings(api_context: APIRequestContext) -> None:
-    """GET /api/tokenizers/settings should return configured scan limits."""
+    """GET /api/tokenizers/settings should return configured discovery limits."""
     response = api_context.get("/api/tokenizers/settings")
     assert response.ok
     data = response.json()
-    assert "default_scan_limit" in data
-    assert "max_scan_limit" in data
-    assert "min_scan_limit" in data
+    assert "default_discovery_limit" in data
+    assert "max_discovery_limit" in data
+    assert "max_discovery_candidates" in data
+    assert "metadata_candidate_multiplier" in data
     assert (
-        data["min_scan_limit"] <= data["default_scan_limit"] <= data["max_scan_limit"]
+        1 <= data["default_discovery_limit"] <= data["max_discovery_limit"]
     )
 
 ###############################################################################
-@pytest.mark.skipif(not RUN_HF_SCAN, reason="Set E2E_RUN_HF_SCAN=1 to enable.")
-def test_scan_tokenizers_returns_consistent_catalog(
+@pytest.mark.skipif(not RUN_HF_DISCOVERY, reason="Set E2E_RUN_HF_DISCOVERY=1 to enable.")
+def test_discover_tokenizers_returns_bounded_structured_catalog(
     api_context: APIRequestContext,
 ) -> None:
-    """GET /api/tokenizers/scan should return a self-consistent optional catalog."""
-    response = api_context.get("/api/tokenizers/scan?limit=1")
+    """GET /api/tokenizers/discover should return bounded structured results."""
+    response = api_context.get(
+        "/api/tokenizers/discover?search=bert&limit=5&pipeline_tag=fill-mask&sort=downloads"
+    )
     assert response.ok
     data = response.json()
-    assert data.get("status") == "success"
-    identifiers = data.get("identifiers")
-    assert isinstance(identifiers, list)
-    assert data.get("count") == len(identifiers)
-    assert len(identifiers) <= 1
-    assert all(isinstance(identifier, str) and identifier for identifier in identifiers)
+    items = data.get("items")
+    assert isinstance(items, list)
+    assert data.get("count") == len(items)
+    assert len(items) <= 5
+    assert all(isinstance(item.get("identifier"), str) and item["identifier"] for item in items)
+    assert all("vocabulary_size" in item for item in items)
+
+###############################################################################
+@pytest.mark.skipif(not RUN_HF_DISCOVERY, reason="Set E2E_RUN_HF_DISCOVERY=1 to enable.")
+def test_discover_tokenizers_supports_empty_result(api_context: APIRequestContext) -> None:
+    response = api_context.get(
+        "/api/tokenizers/discover?search=tkben-no-such-repository-8f72&limit=5"
+    )
+    assert response.ok
+    assert response.json().get("items") == []
 
 ###############################################################################
 def test_upload_rejects_invalid_extension(api_context: APIRequestContext) -> None:
@@ -129,6 +142,48 @@ def test_clear_custom_tokenizers(api_context: APIRequestContext) -> None:
     assert response.ok
     data = response.json()
     assert data.get("status") == "success"
+
+###############################################################################
+def test_custom_tokenizer_can_be_deleted_and_repeated_delete_is_not_found(
+    api_context: APIRequestContext,
+    tiny_tokenizer_json: bytes,
+) -> None:
+    """Per-item deletion removes custom registry entries without changing the clear-all endpoint."""
+    stem = f"qa_delete_custom_{uuid4().hex[:8]}"
+    upload = api_context.post(
+        "/api/tokenizers/upload",
+        multipart={
+            "file": {
+                "name": f"{stem}.json",
+                "mimeType": "application/json",
+                "buffer": tiny_tokenizer_json,
+            }
+        },
+    )
+    assert upload.ok, upload.text()
+    tokenizer_name = upload.json()["tokenizer_name"]
+
+    listed = api_context.get("/api/tokenizers/list")
+    assert listed.ok
+    assert tokenizer_name in {
+        str(item.get("tokenizer_name")) for item in listed.json().get("tokenizers", [])
+    }
+
+    deleted = api_context.delete(
+        f"/api/tokenizers/delete?tokenizer_name={tokenizer_name}"
+    )
+    assert deleted.status == 200, deleted.text()
+
+    refreshed = api_context.get("/api/tokenizers/list")
+    assert refreshed.ok
+    assert tokenizer_name not in {
+        str(item.get("tokenizer_name")) for item in refreshed.json().get("tokenizers", [])
+    }
+
+    repeated = api_context.delete(
+        f"/api/tokenizers/delete?tokenizer_name={tokenizer_name}"
+    )
+    assert repeated.status == 404
 
 ###############################################################################
 @pytest.mark.skipif(

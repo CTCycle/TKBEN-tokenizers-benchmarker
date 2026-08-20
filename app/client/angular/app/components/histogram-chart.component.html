@@ -1,0 +1,12 @@
+<div class="dataset-histogram-chart" role="img" [attr.aria-label]="label()">
+  <svg viewBox="0 0 640 190" preserveAspectRatio="none" aria-hidden="true">
+    @for (fraction of axisFractions; track fraction) {
+      <line x1="28" x2="632" [attr.y1]="tickY(fraction)" [attr.y2]="tickY(fraction)" stroke="currentColor" stroke-opacity=".16" stroke-dasharray="3 3" />
+      <text x="22" [attr.y]="tickY(fraction) + 3" text-anchor="end" font-size="10">{{ tickValue(fraction) }}</text>
+    }
+    <line x1="28" y1="166" x2="632" y2="166" stroke="currentColor" stroke-opacity=".45" />
+    @for (count of histogram().counts; track $index) {
+      <rect [attr.x]="barX($index)" [attr.y]="166 - (count / maxCount()) * 130" [attr.width]="barWidth()" [attr.height]="(count / maxCount()) * 130" rx="2" class="dataset-histogram-bar"><title>{{ histogram().bins[$index] || $index }}: {{ count }}</title></rect>
+    }
+  </svg>
+</div>
