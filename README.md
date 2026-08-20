@@ -160,7 +160,8 @@ Key paths:
 - `app/resources`: SQLite database, downloaded sources, logs, and mutable application data.
 - `settings`: Local `.env` plus versioned structured configuration and environment templates.
 - `runtimes`: Portable Windows runtimes.
-- `assets/cache`: Centralized development-tool caches and temporary test artifacts.
+- `runtimes/cache`: uv, pip, and npm runtime/package-manager caches.
+- `app/tests/cache`: pytest, Ruff, mypy, Python bytecode, coverage, Playwright, and Angular tool caches.
 - `assets/docs/project_index.md`: Documentation root index and topic map.
 - `assets/docs/architecture/architecture_review.md`: Current architecture findings, remediation scope, and ownership diagram.
 - `assets/docs/architecture/system_overview.md`: Implemented system layers and runtime component map.

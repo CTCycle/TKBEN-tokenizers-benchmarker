@@ -23,9 +23,10 @@ test scripts.
 
 ## Development Cache and Artifact Locations
 - Pytest’s collection cache and temporary test directory are under
-  `assets/cache/pytest` and `assets/cache/pytest-basetemp`.
-- Ruff, mypy, Python bytecode, coverage, Playwright, uv, pip, npm, and Angular
-  persistent-build caches are under their respective `assets/cache` folders.
+  `app/tests/cache/pytest` and `app/tests/cache/pytest-basetemp`.
+- Ruff, mypy, Python bytecode, coverage, Playwright, and Angular persistent-build
+  caches are under their respective `app/tests/cache` folders.
+- uv, pip, and npm caches are under their respective `runtimes/cache` folders.
 - `app/client/dist`, `app/server/.venv`, and `app/client/node_modules` remain in
   their established locations because they are the runtime build output or
   installed dependency trees rather than tool caches.
