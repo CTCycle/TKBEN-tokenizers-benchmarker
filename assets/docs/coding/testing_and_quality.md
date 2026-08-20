@@ -11,11 +11,12 @@ Last updated: 2026-08-20
   - relevant `tests/e2e` when behavior crosses API and UI boundaries
 - Browser/live validation uses the in-app browser for a quick visual and interaction smoke check, and uses Playwright or pytest-playwright for repeatable route/API coverage.
 
-The repository CI gate currently runs backend compileall, Ruff, BasedPyright,
-unit tests, and an OpenAPI smoke import, plus frontend `npm ci`, lint, and
-production build. The Windows `app/tests/run_tests.bat` runner additionally
-supports live backend/frontend startup, the configured pytest target, and
-optional frontend test scripts.
+The repository CI gate currently runs backend source-only compileall, Ruff,
+BasedPyright, unit tests, an OpenAPI smoke import, and the AST architecture
+boundary test, plus frontend `npm ci`, lint, unit tests, and production build.
+The Windows `app/tests/run_tests.bat` runner additionally supports live
+backend/frontend startup, the configured pytest target, and optional frontend
+test scripts.
 
 ## Development Cache and Artifact Locations
 - Pytest’s collection cache and temporary test directory are under
@@ -27,7 +28,9 @@ optional frontend test scripts.
   installed dependency trees rather than tool caches.
 
 ## Cross-language Quality Gates
-- Keep architecture layering intact: API -> service -> repository.
-- Do not bypass domain validation models.
+- Keep architecture layering intact: API -> contracts/services -> repository.
+- Treat `test_architecture_boundaries.py` as the executable ownership contract;
+  module-only refactors do not require a schema migration.
+- Do not bypass contract validation models.
 - Do not duplicate business logic across backend and frontend without necessity.
 - Add or adjust tests when changing behavior, contracts, or data schemas.
