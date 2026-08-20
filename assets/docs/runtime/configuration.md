@@ -1,5 +1,5 @@
 # Configuration
-Last updated: 2026-08-18
+Last updated: 2026-08-20
 
 ## Environment File
 Primary launcher runtime env file:
@@ -35,7 +35,8 @@ Primary launcher runtime env file:
 
 ## Structured Settings
 - `settings/configurations.json`
-  - `datasets`, `tokenizers`, `benchmarks`, `jobs`, and optional `database` overrides
+  - `datasets`, `tokenizers`, `benchmarks`, and `jobs`
+  - A legacy `database` object may still be parsed, but it does not select the runtime database.
 
 ## Configuration Differences
 ### Dev and Local Webapp
@@ -43,11 +44,10 @@ Primary launcher runtime env file:
 - `RELOAD=true` enables Uvicorn reload behavior.
 
 ### Persistence Toggle
-- If `database` is present in `settings/configurations.json`, that block is authoritative for database mode and connection fields.
-- Otherwise the backend falls back to `DATABASE_*` environment variables.
+- Database mode and connection fields always come from `settings/.env` through the `DATABASE_*` variables. This is the same source used by Alembic and the database initializer; `configurations.json` cannot override it.
 - `DATABASE_EMBEDDED=true` uses SQLite (`<TKBEN_DATA_DIR>/database.db`; defaults to `app/resources/database.db`).
 - `DATABASE_EMBEDDED=false` with `DATABASE_ENGINE=postgresql+psycopg` uses PostgreSQL.
-- `DATABASE_URL` may seed engine, host, port, name, user, and password values when no structured database block is supplied.
+- `DATABASE_URL` may seed engine, host, port, name, user, and password values when the corresponding explicit `DATABASE_*` value is absent.
 
 ### Job Retention
 - `jobs.polling_interval` controls frontend polling guidance for async job status.

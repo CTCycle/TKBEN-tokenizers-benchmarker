@@ -12,6 +12,8 @@ from server.repositories.schemas.models import MetricType
 def seed_metric_types(
     engine: Any,
     metric_catalog: Sequence[Mapping[str, Any]],
+    *,
+    commit: bool = True,
 ) -> None:
     entries: list[dict[str, str]] = []
     for category in metric_catalog:
@@ -59,7 +61,10 @@ def seed_metric_types(
                 metric_type.description = entry["description"]
                 metric_type.scope = entry["scope"]
                 metric_type.value_kind = entry["value_kind"]
-            session.commit()
+            if commit:
+                session.commit()
+            else:
+                session.flush()
         except Exception:
             session.rollback()
             raise

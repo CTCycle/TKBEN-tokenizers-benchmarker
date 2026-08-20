@@ -152,7 +152,7 @@ Run the unified menu:
 .\start_on_windows.ps1
 ```
 
-The menu contains launch, dependency installation/update, frontend rebuild, database initialization, test execution, log removal, cache cleanup, uninstall, and exit actions. Dependency installation prompts for the Development or Standard profile. Launching starts the backend and frontend, opens the browser, prints the active ports and process IDs, and then exits the menu.
+The menu contains launch, dependency installation/update, frontend rebuild, database initialization, test execution, log removal, cache cleanup, uninstall, and exit actions. Dependency installation prompts for the Development or Standard profile, then runs the same Alembic-backed database initializer used by the explicit database option. Launching starts the backend and frontend, opens the browser, prints the active ports and process IDs, and then exits the menu.
 
 ## 5. Resources
 
@@ -170,7 +170,7 @@ Key paths:
 
 Configuration is split between:
 - `settings/.env.example`: Versioned configuration template; `settings/.env` must never be committed.
-- `settings/configurations.json`: Backend structured settings for datasets, tokenizers, benchmarks, jobs, and optional database overrides.
+- `settings/configurations.json`: Backend structured settings for datasets, tokenizers, benchmarks, and jobs. Database connection settings are not read from this file.
 
 Core runtime keys you will commonly edit:
 - `FASTAPI_HOST`, `FASTAPI_PORT`
@@ -189,6 +189,22 @@ Core runtime keys you will commonly edit:
 - `DATABASE_SSL`, `DATABASE_SSL_CA`, `DATABASE_CONNECT_TIMEOUT`
 - `DATABASE_INSERT_BATCH_SIZE`
 - `HF_KEYS_ENCRYPTION_MATERIAL_FILE`
+
+Database schema management is owned by Alembic. From `app/server`, inspect or
+apply the repository head with:
+
+```powershell
+uv run alembic current --check-heads
+uv run alembic upgrade head
+uv run alembic check
+uv run alembic revision --autogenerate -m "<change>"
+```
+
+Review every generated revision before applying it. The database initializer
+and FastAPI startup use the `DATABASE_*` values from `settings/.env`; a
+PostgreSQL role must have `CREATEDB` permission when the configured target does
+not yet exist. Production schema evolution must use migrations rather than
+`Base.metadata.create_all()`.
 
 Determinism:
 - Backend lockfile: `app/server/uv.lock` (generated/updated directly by running `uv sync` from `app/server`).

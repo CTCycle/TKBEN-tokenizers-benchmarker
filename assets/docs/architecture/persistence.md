@@ -1,5 +1,5 @@
 # Persistence
-Last updated: 2026-08-18
+Last updated: 2026-08-20
 
 ## Storage selection
 
@@ -10,16 +10,27 @@ Embedded SQLite is the default local store at `app/resources/database.db`. Set
 `postgresql+psycopg` settings. Database access is injected through the
 repository backend.
 
-The schema is canonical and intentionally has no migration or compatibility
-layer. Normal startup does not cross-validate, reset, recreate, or reseed an
-existing database.
+Alembic is the authoritative schema owner. Application startup and the
+database-initialization command run the same idempotent migration workflow:
+they create a missing SQLite file (or a missing PostgreSQL target when the
+configured role has `CREATEDB`), acquire the backend migration lock, adopt a
+supported unversioned schema when safe, upgrade to the single repository head,
+verify that head, and seed the metric catalog in the protected transaction.
+`Base.metadata.create_all()` is not used for production initialization.
 
-SQLite startup checks only whether `app/resources/database.db` exists. A
-missing file receives the canonical schema and the persisted dataset metric
-catalog seed once; an existing file is left untouched. PostgreSQL startup
-connects to the configured target with a read-only `SELECT 1` check. Database
-and schema creation for PostgreSQL is performed only by launcher menu option 3,
-which also applies the metric catalog seed.
+SQLite migrations use `BEGIN IMMEDIATE`, bounded by `DATABASE_CONNECT_TIMEOUT`,
+and run a foreign-key integrity check before commit. PostgreSQL uses an
+advisory transaction lock; database creation is serialized through a separate
+maintenance-database advisory lock. A failed migration or seed rolls back and
+prevents FastAPI from becoming ready. Databases ahead of the application,
+unknown revisions, multiple heads, and unrecognized or partial unversioned
+schemas fail without automatic downgrades or destructive changes.
+
+An unversioned database is adopted only when its tables, columns, keys,
+relationships, indexes, and recognized historical differences match a supported
+TKBEN signature. The pre-Alembic signature is stamped at
+`0001_pre_alembic_schema` and upgraded; the current signature is stamped at
+`0002_current_schema`.
 
 ## Canonical tables
 
@@ -70,3 +81,16 @@ visibility, composite ownership, partial uniqueness, value-shape constraints,
 cascades, rollback, active-key uniqueness, and keyset document streaming.
 PostgreSQL integration validation must be run against a disposable database
 before claiming PostgreSQL runtime equivalence.
+
+## Migration workflow
+
+From `app/server`, use `uv run alembic current --check-heads`,
+`uv run alembic upgrade head`, `uv run alembic check`, and
+`uv run alembic revision --autogenerate -m "<change>"`. Review every generated
+revision manually; the tracked `migrations/script.py.mako` file is the single
+revision-generation template, not application runtime configuration. Alembic
+uses the pyproject configuration and the application settings loader; no
+`alembic.ini` is maintained, so database credentials have one source of truth
+in `settings/.env`. Use the application initializer (launcher option 4 or
+`app/scripts/initialize_database.py`) for an existing unversioned database so
+the supported-schema adoption check runs before a direct `alembic upgrade`.

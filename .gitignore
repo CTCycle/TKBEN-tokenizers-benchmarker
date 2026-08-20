@@ -56,6 +56,10 @@ Thumbs.db
 *.exe
 !.gitkeep
 
+# Alembic revision-generation templates
+*.mako
+!app/server/migrations/script.py.mako
+
 # Local configuration
 settings/.env
 app/resources/hf-key-material.json
