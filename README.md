@@ -1,5 +1,5 @@
 # TKBEN Tokenizer Benchmarker
-Last updated: 2026-08-18
+Last updated: 2026-08-20
 [![Release](https://img.shields.io/github/v/release/CTCycle/TKBEN-tokenizers-benchmarker?display_name=tag)](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.14-3776AB?logo=python&logoColor=white)
 ![Node.js](https://img.shields.io/badge/node.js-%3E%3D22-339933?logo=node.js&logoColor=white)
@@ -122,7 +122,7 @@ Wait for the benchmark job to complete before opening its saved report. You can 
 
 ### 3.5 Product Snapshots
 
-The following snapshots were captured in local webapp mode with backend and frontend running:
+The following full-page captures were taken from the live local webapp with real persisted C4 validation and benchmark data. Open an image at its original size to inspect the complete page.
 
 The settings view centralizes local runtime options such as hosts, ports, logging, and optional integrations. Values are read from the local configuration and should be changed carefully when a service is already using the configured ports.
 
@@ -132,17 +132,17 @@ The settings view centralizes local runtime options such as hosts, ports, loggin
 Dataset dashboard with a loaded persisted validation session, aggregate statistics, histograms, and word-cloud analytics.
 
 ![Dataset workspace](assets/figures/dataset.png)
-*Dataset workspace displaying a completed validation report with summary metrics and visual analysis.*
+*Full-page dataset dashboard for a 200-document C4 validation. Review dataset health, lexical metrics, distributions, entropy, concentration, and word-cloud signals before benchmarking.*
 
 Tokenizers dashboard with an opened tokenizer report, vocabulary statistics, and populated token preview table.
 
 ![Tokenizers workspace](assets/figures/tokenizers-overview.png)
-*Tokenizer workspace showing vocabulary statistics and a paginated preview of extracted tokens.*
+*Full-page GPT-2 tokenizer report showing model metadata, a 50,257-token vocabulary, token-length distribution, and a paginated token preview.*
 
 Cross-benchmark dashboard with a loaded run summary and comparative metric panels.
 
 ![Cross-benchmark dashboard](assets/figures/cross-benchmark.png)
-*Cross-benchmark dashboard comparing saved tokenizer results across normalized metric panels.*
+*Full-page C4 cross-benchmark report comparing GPT-2 and RoBERTa across throughput, vocabulary, latency, round-trip fidelity, memory, and run diagnostics.*
 
 ## 4. Setup and Maintenance
 
