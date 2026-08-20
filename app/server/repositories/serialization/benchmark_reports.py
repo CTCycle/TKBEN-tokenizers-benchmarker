@@ -4,7 +4,7 @@ from typing import Any, cast
 
 import pandas as pd
 
-from server.domain.benchmarks import (
+from server.contracts.benchmarks import (
     BenchmarkReportListResponse,
     BenchmarkReportQuery,
     BenchmarkReportSummary,

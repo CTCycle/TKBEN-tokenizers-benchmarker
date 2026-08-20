@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from server.configurations import get_server_settings
-from server.domain.jobs import JobStartResponse
+from server.contracts.jobs import JobStartResponse
 from server.services.jobs import JobManager
 
 ###############################################################################

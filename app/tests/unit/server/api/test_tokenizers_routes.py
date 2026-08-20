@@ -244,7 +244,7 @@ def test_tokenizer_discovery_returns_sanitized_500_on_upstream_failure(monkeypat
 
 ###############################################################################
 def test_tokenizer_discovery_validates_combined_query_and_structured_response(monkeypatch) -> None:
-    from server.domain.tokenizers import TokenizerDiscoveryResponse
+    from server.contracts.tokenizers import TokenizerDiscoveryResponse
     from server.services.tokenizers import TokenizersService
 
     captured = {}

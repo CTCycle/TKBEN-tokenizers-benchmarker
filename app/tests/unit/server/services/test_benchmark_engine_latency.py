@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from server.domain.benchmark_observations import BatchObservation
+from server.services.benchmark_observations import BatchObservation
 from server.services.benchmark_engine import summarize_observations
 
 ###############################################################################

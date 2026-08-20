@@ -8,7 +8,7 @@ from collections.abc import Callable, Iterable
 import numpy as np
 import psutil
 
-from server.domain.benchmark_observations import BatchObservation, TokenizerRunConfig
+from server.services.benchmark_observations import BatchObservation, TokenizerRunConfig
 from server.services.tokenizer_adapters import TokenizerAdapter
 
 ###############################################################################

@@ -14,7 +14,7 @@ from server.common.constants import (
     API_ROUTER_PREFIX_KEYS,
 )
 from server.configurations import is_key_reveal_enabled
-from server.domain.keys import (
+from server.contracts.keys import (
     HFAccessKeyActivateResponse,
     HFAccessKeyCreateRequest,
     HFAccessKeyDeleteResponse,

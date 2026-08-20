@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from server.domain.benchmarks import BenchmarkRunResponse
+from server.contracts.benchmarks import BenchmarkRunResponse
 from server.common.constants import BENCHMARK_REPORT_VERSION
 from server.services.benchmarks import BenchmarkService
 from server.services.jobs import JobManager, JobProgressReporter, JobStopChecker

@@ -12,7 +12,7 @@ from pydantic import ValidationError
 from requests import Response
 from requests.exceptions import ConnectionError as RequestsConnectionError
 
-from server.domain.dataset import DatasetDownloadRequest
+from server.contracts.dataset import DatasetDownloadRequest
 from server.services.datasets import (
     HF_DATASET_ALIASES,
     DatasetService,

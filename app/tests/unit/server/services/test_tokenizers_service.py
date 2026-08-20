@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from server.domain.tokenizers import TokenizerDiscoveryQuery
+from server.contracts.tokenizers import TokenizerDiscoveryQuery
 from server.services.tokenizer_reporting import TokenizerReportingService
 from server.services.tokenizers import TokenizersService
 

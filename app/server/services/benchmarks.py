@@ -8,7 +8,7 @@ import numpy as np
 from transformers import AutoTokenizer
 from transformers.utils.logging import set_verbosity_error
 
-from server.domain.benchmarks import (
+from server.contracts.benchmarks import (
     BenchmarkReportListResponse,
     BenchmarkReportQuery,
 )

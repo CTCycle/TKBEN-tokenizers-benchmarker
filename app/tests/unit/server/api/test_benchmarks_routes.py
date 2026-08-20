@@ -132,7 +132,7 @@ def test_benchmark_run_rejects_removed_custom_tokenizer_field() -> None:
 
 ###############################################################################
 def test_benchmark_list_and_by_id(monkeypatch) -> None:
-    from server.domain.benchmarks import BenchmarkReportListResponse
+    from server.contracts.benchmarks import BenchmarkReportListResponse
     from server.services.benchmarks import BenchmarkService
 
     captured = {}

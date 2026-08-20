@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
+from threading import Lock
 
 from dotenv import load_dotenv
 
@@ -10,7 +12,11 @@ from server.common.constants import ALLOW_KEY_REVEAL_DEFAULT
 from server.common.utils.types import coerce_bool
 from server.common.path import ENV_EXAMPLE_FILE_PATH, ENV_FILE_PATH
 from server.common.utils.logger import logger
-from server.domain.bootstrap import EnvironmentBootstrapState
+###############################################################################
+@dataclass
+class EnvironmentBootstrapState:
+    lock: Lock = field(default_factory=Lock)
+    bootstrapped: bool = False
 
 ###############################################################################
 @lru_cache(maxsize=1)

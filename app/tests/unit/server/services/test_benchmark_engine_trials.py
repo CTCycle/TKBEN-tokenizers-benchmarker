@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from server.domain.benchmark_observations import TokenizerRunConfig
+from server.services.benchmark_observations import TokenizerRunConfig
 from server.services.benchmark_engine import run_tokenizer_trials
 from server.services.tokenizer_adapters import EncodedBatch
 
