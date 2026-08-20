@@ -63,18 +63,6 @@ async def run_benchmarks(
     request: Request,
     payload: BenchmarkRunRequest,
 ) -> JobStartResponse:
-    if not payload.tokenizers:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="At least one tokenizer must be specified.",
-        )
-
-    if not payload.dataset_name:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Dataset name must be specified.",
-        )
-
     logger.info(
         "Benchmark run requested: dataset=%s, tokenizers=%s, max_docs=%s",
         payload.dataset_name,
@@ -83,53 +71,13 @@ async def run_benchmarks(
     )
 
     service = BenchmarkService(max_documents=payload.config.max_documents)
-    custom_tokenizers = await asyncio.to_thread(
-        service.resolve_custom_tokenizer_selection,
-        payload.tokenizers,
-    )
-
-    doc_count = await asyncio.to_thread(
-        service.get_dataset_document_count,
-        payload.dataset_name,
-    )
-    if doc_count == 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Dataset '{payload.dataset_name}' not found or empty",
-        )
-
-    custom_tokenizer_names = set(custom_tokenizers)
-    persisted_tokenizers = [
-        tokenizer
-        for tokenizer in payload.tokenizers
-        if tokenizer not in custom_tokenizer_names
-    ]
-
     try:
-        missing_tokenizers = await asyncio.to_thread(
-            service.get_missing_persisted_tokenizers,
-            persisted_tokenizers,
-        )
+        request_payload = await asyncio.to_thread(service.prepare_run, payload)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
-
-    if missing_tokenizers:
-        missing_display = ", ".join(missing_tokenizers[:5])
-        if len(missing_tokenizers) > 5:
-            missing_display = f"{missing_display}, ..."
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "Tokenizers must be downloaded before benchmarking. "
-                f"Missing: {missing_display}"
-            ),
-        )
-
-    request_payload = payload.model_dump()
-    request_payload["custom_tokenizers"] = custom_tokenizers
 
     return ManagedJobHttpAdapter.start(
         request,

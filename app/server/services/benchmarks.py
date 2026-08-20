@@ -8,6 +8,7 @@ import numpy as np
 from transformers import AutoTokenizer
 from transformers.utils.logging import set_verbosity_error
 
+from server.contracts.benchmarks import BenchmarkRunRequest
 from server.repositories.benchmarks import BenchmarkRepository
 from server.repositories.datasets import DatasetRepository
 from server.services.metrics.catalog import BENCHMARK_METRIC_CATALOG
@@ -285,6 +286,43 @@ class BenchmarkService(BenchmarkServiceExecutionMixin):
             if tokenizer is not None and self.tools.is_tokenizer_compatible(tokenizer):
                 resolved[selected_name] = tokenizer
         return resolved
+
+    # -------------------------------------------------------------------------
+    def prepare_run(self, payload: BenchmarkRunRequest) -> dict[str, Any]:
+        """Validate admission state and normalize a benchmark job payload."""
+        if not payload.tokenizers:
+            raise ValueError("At least one tokenizer must be specified.")
+        if not payload.dataset_name:
+            raise ValueError("Dataset name must be specified.")
+
+        custom_tokenizers = self.resolve_custom_tokenizer_selection(
+            payload.tokenizers
+        )
+        if self.get_dataset_document_count(payload.dataset_name) == 0:
+            raise ValueError(
+                f"Dataset '{payload.dataset_name}' not found or empty"
+            )
+
+        persisted_tokenizers = [
+            tokenizer
+            for tokenizer in payload.tokenizers
+            if tokenizer not in custom_tokenizers
+        ]
+        missing_tokenizers = self.get_missing_persisted_tokenizers(
+            persisted_tokenizers
+        )
+        if missing_tokenizers:
+            missing_display = ", ".join(missing_tokenizers[:5])
+            if len(missing_tokenizers) > 5:
+                missing_display = f"{missing_display}, ..."
+            raise ValueError(
+                "Tokenizers must be downloaded before benchmarking. "
+                f"Missing: {missing_display}"
+            )
+
+        request_payload = payload.model_dump()
+        request_payload["custom_tokenizers"] = custom_tokenizers
+        return request_payload
 
     # -------------------------------------------------------------------------
     def load_tokenizers(self, tokenizer_ids: list[str]) -> dict[str, Any]:
