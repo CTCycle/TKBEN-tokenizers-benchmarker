@@ -162,6 +162,8 @@ Key paths:
 - `runtimes`: Portable Windows runtimes.
 - `assets/cache`: Centralized development-tool caches and temporary test artifacts.
 - `assets/docs/project_index.md`: Documentation root index and topic map.
+- `assets/docs/architecture/architecture_review.md`: Current architecture findings, remediation scope, and ownership diagram.
+- `assets/docs/architecture/system_overview.md`: Implemented system layers and runtime component map.
 - `assets/docs/runtime/modes.md`: Supported runtime mode details.
 - `assets/docs/runtime/startup.md`: Startup procedures and launcher commands.
 - `assets/docs/runtime/release.md`: Source-release preparation, validation, and publication procedure.

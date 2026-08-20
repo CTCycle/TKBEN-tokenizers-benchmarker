@@ -1,5 +1,5 @@
 # Python Rules
-Last updated: 2026-08-02
+Last updated: 2026-08-20
 
 ## Runtime and Dependencies
 - Python target version: `>=3.14` from `pyproject.toml`.
@@ -22,11 +22,25 @@ Python 3.14 in recommended mode, and must report zero errors. Warnings are
 reported for visibility but do not fail the gate.
 
 ## Validation and API Contracts
-- Use Pydantic or domain models for request, response, and settings validation.
+- Use Pydantic contract models for request, response, and settings validation.
 - Avoid ad-hoc validation when a model can encode the contract.
 - Use explicit HTTP status codes for success and error paths.
 - Keep response models stable and consistent.
 - Handle errors safely and preserve traceability through job IDs and logs.
+
+## Import and Ownership Boundaries
+
+- Keep API routers at the HTTP boundary; they may depend on contracts,
+  configurations, and services, but not repositories directly.
+- Keep contract modules implementation-free: contracts must not import API,
+  service, or repository modules.
+- Keep repositories focused on persistence and query concerns; repositories
+  must not import services or API modules.
+- Put shared metric catalogs and dependency-free helpers in `server/common`.
+- Use the canonical ownership paths under `server/contracts`,
+  `server/configurations`, `server/services`, and `server/repositories`.
+- Do not recreate the removed `server.domain` or
+  `server.repositories.serialization` namespaces as aliases.
 
 ## Async and Long-Running Work
 - Use async endpoints only as orchestrators.

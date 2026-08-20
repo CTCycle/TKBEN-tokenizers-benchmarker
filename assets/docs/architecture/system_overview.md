@@ -1,5 +1,5 @@
 # System Overview
-Last updated: 2026-08-02
+Last updated: 2026-08-20
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
@@ -37,11 +37,18 @@ Source-level structure, with generated and environment-specific folders omitted:
 │  │  ├─ uv.lock
 │  │  ├─ app.py
 │  │  ├─ api/
+│  │  ├─ contracts/
 │  │  ├─ configurations/
-│  │  ├─ domain/
+│  │  ├─ common/
 │  │  ├─ services/
+│  │  │  └─ benchmark_reports.py
 │  │  ├─ repositories/
-│  │  └─ common/
+│  │  │  ├─ datasets.py
+│  │  │  ├─ tokenizer_reports.py
+│  │  │  ├─ database/
+│  │  │  ├─ queries/
+│  │  │  └─ schemas/
+│  │  └─ migrations/
 │  ├─ scripts/
 │  ├─ tests/
 │  └─ resources/
@@ -67,9 +74,37 @@ Source-level structure, with generated and environment-specific folders omitted:
 ## Reporting Service Boundaries
 - `server.services.TokenizersService` owns Hugging Face discovery, catalog, download, cache, persistence, and custom-tokenizer workflows.
 - `server.services.TokenizerReportingService` owns tokenizer metadata, vocabulary analysis, report generation, and report retrieval.
+- `server.services.BenchmarkService` owns benchmark admission, execution, and runtime result construction.
+- `server.services.BenchmarkReportService` owns benchmark report contract validation, persistence orchestration, and response normalization.
+- `server.repositories.DatasetRepository` owns dataset, analysis-session, metric, and histogram persistence.
+- `server.repositories.TokenizerReportRepository` owns tokenizer report and vocabulary persistence; `TokenizerRepository` owns tokenizer identity/catalog storage.
 - `server.services.dataset_statistics` owns the focused `LengthStatistics` and `HistogramBuilder` components used by dataset analysis.
 - `server.services.ManagedJobService`, exposed to API handlers through `ManagedJobHttpAdapter`, centralizes job conflict checks, start-up, and initial status validation.
 - There are no legacy service aliases or compatibility forwarding methods between these boundaries.
+
+## High-Level Architecture
+
+The application separates external provider and filesystem I/O from relational
+persistence. Hugging Face and PDF export are service-side integrations; SQLite
+or PostgreSQL is reached only through repositories and SQLAlchemy.
+
+```mermaid
+flowchart LR
+    User[User] --> SPA[Angular SPA]
+    SPA --> Stores[Angular signal stores]
+    Stores --> Clients[Angular API clients]
+    Clients --> FastAPI[FastAPI]
+    FastAPI --> Routers[API routers]
+    Routers --> Contracts[Request and response contracts]
+    Routers --> Services[Application services]
+    Services --> Jobs[Managed jobs]
+    Services --> Repositories[Repositories]
+    Repositories --> ORM[SQLAlchemy ORM]
+    ORM --> Relational[(SQLite/PostgreSQL)]
+    Services --> Cache[(Filesystem cache)]
+    Services --> HF[Hugging Face provider I/O]
+    Services --> PDF[PDF export]
+```
 
 ## Runtime Interaction Topology
 - Local webapp mode:
