@@ -35,16 +35,11 @@ def test_benchmark_run_route_returns_202(monkeypatch) -> None:
 
     monkeypatch.setattr(
         BenchmarkService,
-        "resolve_custom_tokenizer_selection",
-        lambda self, selected: {},
-    )
-    monkeypatch.setattr(
-        BenchmarkService, "get_dataset_document_count", lambda self, dataset_name: 3
-    )
-    monkeypatch.setattr(
-        BenchmarkService,
-        "get_missing_persisted_tokenizers",
-        lambda self, tokenizers: [],
+        "prepare_run",
+        lambda self, payload: {
+            **payload.model_dump(),
+            "custom_tokenizers": {},
+        },
     )
 
     client = TestClient(app)
@@ -77,31 +72,16 @@ def test_benchmark_run_accepts_selected_custom_tokenizer_without_persisted_cache
 
     from server.services.benchmarks import BenchmarkService
 
-    missing_checked = {"tokenizers": None}
+    prepared_payload = {}
 
-    monkeypatch.setattr(
-        BenchmarkService,
-        "resolve_custom_tokenizer_selection",
-        lambda self, selected: (
-            {"CUSTOM_demo": object()}
-            if "CUSTOM_demo" in selected
-            else {}
-        ),
-    )
-    monkeypatch.setattr(
-        BenchmarkService, "get_dataset_document_count", lambda self, dataset_name: 3
-    )
-
-    def fake_missing(self, tokenizers):
+    def fake_prepare(self, payload):
         del self
-        missing_checked["tokenizers"] = list(tokenizers)
-        return []
+        prepared_payload.update(payload.model_dump())
+        request_payload = payload.model_dump()
+        request_payload["custom_tokenizers"] = {"CUSTOM_demo": object()}
+        return request_payload
 
-    monkeypatch.setattr(
-        BenchmarkService,
-        "get_missing_persisted_tokenizers",
-        fake_missing,
-    )
+    monkeypatch.setattr(BenchmarkService, "prepare_run", fake_prepare)
 
     client = TestClient(app)
     resp = client.post(
@@ -114,7 +94,7 @@ def test_benchmark_run_accepts_selected_custom_tokenizer_without_persisted_cache
     )
 
     assert resp.status_code == 202
-    assert missing_checked["tokenizers"] == []
+    assert prepared_payload["tokenizers"] == ["CUSTOM_demo"]
 
 ###############################################################################
 def test_benchmark_run_rejects_removed_custom_tokenizer_field() -> None:

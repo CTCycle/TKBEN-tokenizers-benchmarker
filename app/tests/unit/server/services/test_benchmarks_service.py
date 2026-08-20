@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+from server.contracts.benchmarks import BenchmarkRunRequest
 from server.services.benchmarks import BenchmarkService
 
 ###############################################################################
@@ -64,3 +67,27 @@ def test_resolve_custom_tokenizer_selection(monkeypatch) -> None:
 
     resolved = service.resolve_custom_tokenizer_selection(["CUSTOM_demo"])
     assert "CUSTOM_demo" in resolved
+
+###############################################################################
+def test_prepare_run_owns_admission_checks_and_normalizes_job_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = BenchmarkService()
+    monkeypatch.setattr(
+        service,
+        "resolve_custom_tokenizer_selection",
+        lambda selected: {"CUSTOM_demo": object()} if selected else {},
+    )
+    monkeypatch.setattr(service, "get_dataset_document_count", lambda dataset_name: 3)
+    monkeypatch.setattr(service, "get_missing_persisted_tokenizers", lambda tokenizers: [])
+
+    payload = BenchmarkRunRequest(
+        tokenizers=["CUSTOM_demo"],
+        dataset_name="custom/sample",
+        config={"max_documents": 2},
+    )
+    prepared = service.prepare_run(payload)
+
+    assert prepared["dataset_name"] == "custom/sample"
+    assert prepared["config"]["max_documents"] == 2
+    assert list(prepared["custom_tokenizers"]) == ["CUSTOM_demo"]
