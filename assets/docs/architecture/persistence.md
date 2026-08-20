@@ -130,16 +130,24 @@ before claiming PostgreSQL runtime equivalence.
 
 ## Migration workflow
 
-From `app/server`, use `uv run alembic current --check-heads`,
-`uv run alembic upgrade head`, `uv run alembic check`, and
-`uv run alembic revision --autogenerate -m "<change>"`. Review every generated
-revision manually; the tracked `migrations/script.py.mako` file is the single
-revision-generation template, not application runtime configuration. Alembic
-uses the pyproject configuration and the application settings loader; no
-`alembic.ini` is maintained, so database credentials have one source of truth
-in `settings/.env`. Use the application initializer (launcher option 4 or
+From `app/server`, use the existing project environment with the TOML
+configuration loaded explicitly:
+
+```powershell
+uv run python -c 'from alembic.config import Config; from alembic import command; command.current(Config(toml_file="pyproject.toml"), check_heads=True)'
+uv run python -c 'from alembic.config import Config; from alembic import command; command.upgrade(Config(toml_file="pyproject.toml"), "head")'
+uv run python -c 'from alembic.config import Config; from alembic import command; command.check(Config(toml_file="pyproject.toml"))'
+uv run python -c 'from alembic.config import Config; from alembic import command; command.revision(Config(toml_file="pyproject.toml"), message="<change>", autogenerate=True)'
+```
+
+Review every generated revision manually; the tracked
+`migrations/script.py.mako` file is the single revision-generation template,
+not application runtime configuration. Alembic uses the pyproject
+configuration and the application settings loader; no `alembic.ini` is
+maintained, so database credentials have one source of truth in `settings/.env`.
+Use the application initializer (launcher option 4 or
 `app/scripts/initialize_database.py`) for an existing unversioned database so
-the supported-schema adoption check runs before a direct `alembic upgrade`.
+the supported-schema adoption check runs before a direct Alembic upgrade.
 
 The architecture remediation described by this document is module ownership
 only. It requires no Alembic revision and no database migration.
