@@ -17,7 +17,7 @@ from server.repositories.schemas.models import (
     MetricValue,
 )
 from server.repositories.queries.data import DataRepositoryQueries
-from server.repositories.serialization.datasets import DatasetSerializer
+from server.repositories.datasets import DatasetRepository
 
 ###############################################################################
 @pytest.fixture()
@@ -71,14 +71,14 @@ def test_dataset_catalog_filters_ready_rows_by_source_search_and_count(
     database = SimpleNamespace(
         backend=SimpleNamespace(engine=sqlite_session.bind),
     )
-    serializer = DatasetSerializer(DataRepositoryQueries(database))
+    repository = DatasetRepository(DataRepositoryQueries(database))
 
-    assert serializer.list_dataset_previews(
+    assert repository.list_dataset_previews(
         source="custom",
         document_count_operator="at_most",
         document_count=5,
     ) == [{"dataset_name": "custom/small", "document_count": 3}]
-    assert serializer.list_dataset_previews(
+    assert repository.list_dataset_previews(
         search="PUBLIC",
         source="public",
     ) == [{"dataset_name": "public/corpus", "document_count": 12}]

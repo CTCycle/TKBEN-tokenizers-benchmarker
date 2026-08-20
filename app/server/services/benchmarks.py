@@ -8,15 +8,8 @@ import numpy as np
 from transformers import AutoTokenizer
 from transformers.utils.logging import set_verbosity_error
 
-from server.contracts.benchmarks import (
-    BenchmarkReportListResponse,
-    BenchmarkReportQuery,
-)
 from server.repositories.benchmarks import BenchmarkRepository
-from server.repositories.serialization.benchmark_reports import (
-    BenchmarkReportSerializer,
-)
-from server.repositories.serialization.datasets import DatasetSerializer
+from server.repositories.datasets import DatasetRepository
 from server.services.metrics.catalog import BENCHMARK_METRIC_CATALOG
 from server.configurations import get_server_settings
 from server.common.path import TOKENIZERS_PATH
@@ -208,8 +201,7 @@ class BenchmarkService(BenchmarkServiceExecutionMixin):
         self.tools = BenchmarkTools()
         self.result_builder = BenchmarkResultBuilder(self.tools)
         self.repository = BenchmarkRepository()
-        self.report_serializer = BenchmarkReportSerializer()
-        self.dataset_serializer = DatasetSerializer()
+        self.dataset_repository = DatasetRepository()
 
         # Load settings from config
         self.streaming_batch_size = (
@@ -324,7 +316,7 @@ class BenchmarkService(BenchmarkServiceExecutionMixin):
         self, dataset_name: str
     ) -> Generator[tuple[int, str], None, None]:
         count = 0
-        for row_id, text in self.dataset_serializer.iterate_dataset_rows_for_benchmarks(
+        for row_id, text in self.dataset_repository.iterate_dataset_rows_for_benchmarks(
             dataset_name=dataset_name,
             batch_size=self.streaming_batch_size,
         ):
@@ -340,26 +332,6 @@ class BenchmarkService(BenchmarkServiceExecutionMixin):
     # -------------------------------------------------------------------------
     def get_metric_catalog(self) -> list[dict[str, Any]]:
         return BENCHMARK_METRIC_CATALOG
-
-    # -------------------------------------------------------------------------
-    def list_benchmark_reports(
-        self,
-        query: BenchmarkReportQuery,
-    ) -> BenchmarkReportListResponse:
-        return self.report_serializer.list_benchmark_reports(query)
-
-    # -------------------------------------------------------------------------
-    def delete_benchmark_report(self, report_id: int) -> bool:
-        return self.report_serializer.delete_benchmark_report(report_id)
-
-    # -------------------------------------------------------------------------
-    def load_benchmark_report_by_id(self, report_id: int) -> dict[str, Any] | None:
-        return self.report_serializer.load_benchmark_report_by_id(report_id)
-
-    # -------------------------------------------------------------------------
-    def save_benchmark_report(self, payload: dict[str, Any]) -> int:
-        report_id = self.report_serializer.save_benchmark_report(payload)
-        return int(report_id)
 
     # -------------------------------------------------------------------------
     def default_selected_metric_keys(self) -> list[str]:

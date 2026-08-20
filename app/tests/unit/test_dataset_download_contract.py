@@ -64,7 +64,7 @@ def test_upload_existing_dataset_is_non_destructive(
         lambda dataset_name, text_column="text": expected_payload,
     )
     monkeypatch.setattr(
-        service.dataset_serializer,
+        service.dataset_repository,
         "delete_dataset",
         lambda dataset_name: delete_calls.append(dataset_name),
     )

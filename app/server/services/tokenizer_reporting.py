@@ -14,7 +14,7 @@ from transformers import AutoTokenizer
 from server.common.utils.logger import logger
 from server.configurations import get_server_settings
 from server.repositories.tokenizers import TokenizerRepository
-from server.repositories.serialization.tokenizer_reports import TokenizerReportSerializer
+from server.repositories.tokenizer_reports import TokenizerReportRepository
 from server.services.custom_tokenizers import get_custom_tokenizer_registry
 from server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
 from server.services.tokenizer_storage import TokenizerStorageMixin
@@ -27,7 +27,7 @@ class TokenizerReportingService(TokenizerStorageMixin):
     def __init__(self) -> None:
         self.repository = TokenizerRepository()
         self.key_service = HFAccessKeyService()
-        self.report_serializer = TokenizerReportSerializer()
+        self.report_repository = TokenizerReportRepository()
         self.custom_tokenizer_registry = get_custom_tokenizer_registry()
         self.histogram_bins = max(5, int(get_server_settings().datasets.histogram_bins))
         self.special_token_pattern = re.compile(
@@ -740,7 +740,7 @@ class TokenizerReportingService(TokenizerStorageMixin):
             "vocabulary_size": int(len(vocab_pairs)),
         }
 
-        report_id = self.report_serializer.replace_report_and_vocabulary(
+        report_id = self.report_repository.replace_report_and_vocabulary(
             name, report_payload, vocabulary_rows
         )
         report_payload["report_id"] = int(report_id)
@@ -754,13 +754,13 @@ class TokenizerReportingService(TokenizerStorageMixin):
     def get_latest_tokenizer_report(self, tokenizer_name: str) -> dict[str, Any] | None:
         if self.repository.get_latest_tokenizer_report(tokenizer_name) is None:
             return None
-        return self.report_serializer.load_latest_tokenizer_report(tokenizer_name)
+        return self.report_repository.load_latest_tokenizer_report(tokenizer_name)
 
     # -------------------------------------------------------------------------
     def get_tokenizer_report_by_id(self, report_id: int) -> dict[str, Any] | None:
         if self.repository.get_tokenizer_report_by_id(report_id) is None:
             return None
-        return self.report_serializer.load_tokenizer_report_by_id(report_id)
+        return self.report_repository.load_tokenizer_report_by_id(report_id)
 
     # -------------------------------------------------------------------------
     def get_tokenizer_report_vocabulary(
@@ -771,7 +771,7 @@ class TokenizerReportingService(TokenizerStorageMixin):
     ) -> dict[str, Any] | None:
         if self.repository.get_tokenizer_report_by_id(report_id) is None:
             return None
-        return self.report_serializer.load_tokenizer_vocabulary_page(
+        return self.report_repository.load_tokenizer_vocabulary_page(
             report_id=report_id,
             offset=offset,
             limit=limit,

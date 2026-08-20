@@ -26,6 +26,7 @@ from server.common.constants import (
 from server.common.utils.logger import logger
 from server.api.helpers import ManagedJobHttpAdapter
 from server.services.benchmark_jobs import BenchmarkJobService
+from server.services.benchmark_reports import BenchmarkReportService
 from server.services.benchmarks import BenchmarkService
 from server.services.managed_jobs import ManagedJobSpec
 
@@ -151,7 +152,7 @@ async def run_benchmarks(
 async def list_benchmark_reports(
     query: Annotated[BenchmarkReportQuery, Depends(_build_benchmark_report_query)],
 ) -> BenchmarkReportListResponse:
-    service = BenchmarkService()
+    service = BenchmarkReportService()
     return await asyncio.to_thread(service.list_benchmark_reports, query)
 
 ###############################################################################
@@ -160,7 +161,7 @@ async def list_benchmark_reports(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_benchmark_report(report_id: int) -> None:
-    service = BenchmarkService()
+    service = BenchmarkReportService()
     deleted = await asyncio.to_thread(service.delete_benchmark_report, report_id)
     if not deleted:
         raise HTTPException(
@@ -175,7 +176,7 @@ async def delete_benchmark_report(report_id: int) -> None:
     status_code=status.HTTP_200_OK,
 )
 async def get_benchmark_report_by_id(report_id: int) -> BenchmarkRunResponse:
-    service = BenchmarkService()
+    service = BenchmarkReportService()
     report = await asyncio.to_thread(service.load_benchmark_report_by_id, report_id)
     if report is None:
         raise HTTPException(
