@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { Subject, of, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TokenizersApiService } from '../api/tokenizers-api.service';
-import type { TokenizerReportResponse } from '../api/api.types';
+import type { TokenizerReportResponse } from '../api/api.models';
 import { TokenizersStore } from './tokenizers.store';
 
 const report = {

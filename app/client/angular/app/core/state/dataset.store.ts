@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, catchError, debounce, distinctUntilChanged, map, of, switchMap, timer } from 'rxjs';
 import { DatasetsApiService, type DatasetCatalogFilters } from '../api/datasets-api.service';
 import { errorMessage, isNotFoundError } from '../api/error-utils';
-import type { DatasetAnalysisRequest, DatasetAnalysisResponse, DatasetDownloadRequest, DatasetMetricCatalogCategory, DatasetPreviewItem } from '../api/api.types';
+import type { DatasetAnalysisRequest, DatasetAnalysisResponse, DatasetDownloadRequest, DatasetMetricCatalogCategory, DatasetPreviewItem } from '../api/api.models';
 
 interface DatasetRefreshRequest {
   readonly filters: DatasetCatalogFilters;

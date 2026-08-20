@@ -14,7 +14,7 @@ import type {
   BenchmarkReportSummary,
   BenchmarkRunRequest,
   BenchmarkRunResponse,
-} from '../api/api.types';
+} from '../api/api.models';
 
 @Injectable({ providedIn: 'root' })
 export class BenchmarkStore {

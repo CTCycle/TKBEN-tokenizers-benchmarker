@@ -5,7 +5,7 @@ import { BenchmarksApiService } from '../api/benchmarks-api.service';
 import { DatasetsApiService } from '../api/datasets-api.service';
 import { JobsApiService } from '../api/jobs-api.service';
 import { TokenizersApiService } from '../api/tokenizers-api.service';
-import type { BenchmarkRunResponse } from '../api/api.types';
+import type { BenchmarkRunResponse } from '../api/api.models';
 import { BenchmarkStore } from './benchmark.store';
 
 const report = {

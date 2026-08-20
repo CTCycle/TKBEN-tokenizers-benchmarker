@@ -10,7 +10,7 @@ import type {
   TokenizerListItem,
   TokenizerReportResponse,
   TokenizerVocabularyPageResponse,
-} from '../api/api.types';
+} from '../api/api.models';
 
 interface TokenizerRefreshRequest {
   readonly filters: TokenizerCatalogFilters;

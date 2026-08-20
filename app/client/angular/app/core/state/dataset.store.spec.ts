@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { Subject, of, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetsApiService } from '../api/datasets-api.service';
-import type { DatasetAnalysisResponse } from '../api/api.types';
+import type { DatasetAnalysisResponse } from '../api/api.models';
 import { DatasetStore } from './dataset.store';
 
 const report = {
