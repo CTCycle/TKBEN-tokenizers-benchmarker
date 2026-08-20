@@ -33,7 +33,7 @@ cd app/server
 uv sync
 uv run python -m uvicorn server.app:app --app-dir .. --host 127.0.0.1 --port 5000
 cd ../client
-npm ci
+npm install --no-package-lock
 npm run preview -- --host 127.0.0.1 --port 8000 --strictPort
 ```
 

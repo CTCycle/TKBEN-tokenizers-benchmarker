@@ -46,7 +46,7 @@ jobs:
         run: .venv/bin/python -m compileall app.py api common configurations contracts repositories services
 
       - name: Ruff checks
-        run: app/server/.venv/bin/python -m ruff check app/server app/tests
+        run: app/server/.venv/bin/python -m ruff check --cache-dir "$RUFF_CACHE_DIR" app/server app/tests
 
       - name: BasedPyright
         working-directory: app/server
@@ -80,12 +80,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: app/client
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install
-          fi
+        run: npm install --no-package-lock
 
       - name: Lint frontend
         working-directory: app/client
