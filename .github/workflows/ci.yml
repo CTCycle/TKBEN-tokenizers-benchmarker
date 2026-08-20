@@ -53,8 +53,7 @@ jobs:
         run: .venv/bin/python -m basedpyright
 
       - name: Initialize embedded database
-        working-directory: app/server
-        run: .venv/bin/python ../scripts/initialize_database.py
+        run: app/server/.venv/bin/python app/scripts/initialize_database.py
 
       - name: Unit tests
         run: app/server/.venv/bin/python -m pytest app/tests/unit -q
