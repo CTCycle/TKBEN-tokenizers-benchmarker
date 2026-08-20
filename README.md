@@ -160,6 +160,7 @@ Key paths:
 - `app/resources`: SQLite database, downloaded sources, logs, and mutable application data.
 - `settings`: Local `.env` plus versioned structured configuration and environment templates.
 - `runtimes`: Portable Windows runtimes.
+- `assets/cache`: Centralized development-tool caches and temporary test artifacts.
 - `assets/docs/project_index.md`: Documentation root index and topic map.
 - `assets/docs/runtime/modes.md`: Supported runtime mode details.
 - `assets/docs/runtime/startup.md`: Startup procedures and launcher commands.

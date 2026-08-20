@@ -29,7 +29,8 @@ $VenvDir = Join-Path $ServerDir '.venv'
 $VenvPython = Join-Path $VenvDir 'Scripts\python.exe'
 $EnvFile = Join-Path $RepoRoot 'settings\.env'
 $EnvTemplate = Join-Path $RepoRoot 'settings\.env.example'
-$UvCacheDir = Join-Path $RuntimeDir '.uv-cache'
+$CacheDir = Join-Path $RepoRoot 'assets\cache'
+$UvCacheDir = Join-Path $CacheDir 'uv'
 $PythonVersion = '3.14.2'
 $NodeVersion = '22.23.1'
 
@@ -230,7 +231,18 @@ function Import-Environment {
         throw "BACKEND_LOGS_VISIBLE must be either 'true' or 'false'."
     }
 
+    Ensure-Directory $CacheDir
+    foreach ($cacheName in @('uv', 'pip', 'npm', 'ruff', 'mypy', 'pycache', 'coverage', 'playwright', 'pytest', 'pytest-basetemp', 'angular')) {
+        Ensure-Directory (Join-Path $CacheDir $cacheName)
+    }
     $env:UV_CACHE_DIR = $UvCacheDir
+    $env:PIP_CACHE_DIR = Join-Path $CacheDir 'pip'
+    $env:NPM_CONFIG_CACHE = Join-Path $CacheDir 'npm'
+    $env:RUFF_CACHE_DIR = Join-Path $CacheDir 'ruff'
+    $env:MYPY_CACHE_DIR = Join-Path $CacheDir 'mypy'
+    $env:PYTHONPYCACHEPREFIX = Join-Path $CacheDir 'pycache'
+    $env:COVERAGE_FILE = Join-Path (Join-Path $CacheDir 'coverage') '.coverage'
+    $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path $CacheDir 'playwright'
     $env:UV_PROJECT_ENVIRONMENT = $VenvDir
     $env:UV_LINK_MODE = 'copy'
     Remove-Item Env:PYTHONHOME -ErrorAction SilentlyContinue
@@ -583,10 +595,28 @@ function Remove-PythonCaches {
         Remove-Item -Recurse -Force
 }
 
+function Remove-LegacyDevelopmentCaches {
+    Get-ChildItem -LiteralPath $RepoRoot -Directory -Recurse -Force -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.Name -in @('.pytest_cache', '.ruff_cache', '.mypy_cache', '.angular') -and
+            $_.FullName -notlike "$CacheDir*"
+        } |
+        Sort-Object FullName -Descending |
+        Remove-Item -Recurse -Force
+}
+
+function Clear-ManagedCache {
+    Ensure-Directory $CacheDir
+    Get-ChildItem -LiteralPath $CacheDir -Force -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -ne '.gitkeep' } |
+        Remove-Item -Recurse -Force
+}
+
 function Clear-Cache {
-    Write-Step 'Removing Python and uv caches.'
+    Write-Step 'Removing development caches and temporary artifacts.'
     Remove-PythonCaches
-    if (Test-Path -LiteralPath $UvCacheDir) { Remove-Item -LiteralPath $UvCacheDir -Recurse -Force }
+    Remove-LegacyDevelopmentCaches
+    Clear-ManagedCache
     Write-Ok 'Caches cleared.'
 }
 
@@ -607,6 +637,8 @@ function Uninstall-Application {
         if (Test-Path -LiteralPath $lockfile) { Remove-Item -LiteralPath $lockfile -Force }
     }
     Remove-PythonCaches
+    Remove-LegacyDevelopmentCaches
+    Clear-ManagedCache
     Write-Ok 'Application dependencies and generated files removed. Settings and user data were preserved.'
 }
 
