@@ -13,7 +13,8 @@ Last updated: 2026-08-20
 
 The repository CI gate currently runs backend source-only compileall, Ruff,
 BasedPyright, unit tests, an OpenAPI smoke import, and the AST architecture
-boundary test, plus frontend `npm ci`, lint, unit tests, and production build.
+boundary test, plus frontend `npm install --no-package-lock`, lint, unit tests,
+and production build.
 The backend job creates `app/server/.venv` before installing the test extra,
 initializes the embedded SQLite schema, and then runs the checks from that
 environment so CI matches the repository Pyright and runtime configuration.

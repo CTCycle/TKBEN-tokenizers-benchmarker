@@ -64,7 +64,7 @@ On the first launch, allow dependency setup to finish and note the URL printed b
 3. Start frontend (new terminal)
    ```bash
    cd app/client
-   npm ci
+   npm install --no-package-lock
    npm run preview -- --host 127.0.0.1 --port 8000 --strictPort
    ```
 
@@ -209,19 +209,20 @@ PostgreSQL role must have `CREATEDB` permission when the configured target does
 not yet exist. Production schema evolution must use migrations rather than
 `Base.metadata.create_all()`.
 
-Determinism:
-- Backend lockfile: `app/server/uv.lock` (generated/updated directly by running `uv sync` from `app/server`).
-- Frontend lockfile: committed `app/client/package-lock.json`; setup uses `npm ci`, while application launch reuses a verified unchanged dependency tree.
+Dependency state:
+- Backend dependencies are declared in `app/server/pyproject.toml`; `uv sync` may create the local `app/server/uv.lock` metadata used by that installation.
+- Frontend dependencies are declared in `app/client/package.json`; setup uses `npm install --no-package-lock`, while application launch reuses a verified unchanged dependency tree.
+- Local dependency metadata and the optional `ruff.toml` cache configuration are ignored by Git and removed by the uninstall action.
 
 ## 7. Releases and Repository Hygiene
 
 Current source release: `v4.0.0`.
 
-Continuous integration validates the locked backend and frontend sources. Keep `app/server/uv.lock` and `app/client/package-lock.json` tracked so installations remain reproducible.
+Continuous integration validates the backend and frontend source manifests. It installs backend test dependencies from `app/server/pyproject.toml` and resolves frontend dependencies with `npm install --no-package-lock`, so no local lockfiles are required in a checkout.
 
 GitHub releases provide a versioned repository source ZIP for download. The archive contains tracked source files only; local environments, credentials, dependencies, caches, logs, and generated build output are excluded. Follow [the release procedure](assets/docs/runtime/release.md) to review the delta, validate the application, synchronize `develop` and `main`, apply the coordinated major version bump, and publish the annotated tag.
 
-Never commit `.env` files, credentials, databases, downloaded model/data caches, logs, virtual environments, Node dependencies, or generated frontend output. Keep configuration templates, scripts, workflows, and both application lockfiles tracked.
+Never commit `.env` files, credentials, databases, downloaded model/data caches, logs, virtual environments, Node dependencies, local lockfiles, `ruff.toml`, or generated frontend output. Keep configuration templates, scripts, and workflows tracked.
 
 ## 8. License
 
