@@ -46,7 +46,9 @@ jobs:
         run: .venv/bin/python -m compileall app.py api common configurations contracts repositories services
 
       - name: Ruff checks
-        run: app/server/.venv/bin/python -m ruff check --cache-dir "$RUFF_CACHE_DIR" app/server app/tests
+        # Keep CI independent of ignored local ruff.toml files while retaining
+        # the repository-local cache location used by the workflow.
+        run: app/server/.venv/bin/python -m ruff check --isolated --cache-dir "$RUFF_CACHE_DIR" app/server app/tests
 
       - name: BasedPyright
         working-directory: app/server
