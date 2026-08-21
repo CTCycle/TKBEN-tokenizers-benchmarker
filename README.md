@@ -1,5 +1,5 @@
 # TKBEN Tokenizer Benchmarker
-Last updated: 2026-08-20
+Last updated: 2026-08-21
 [![Release](https://img.shields.io/github/v/release/CTCycle/TKBEN-tokenizers-benchmarker?display_name=tag)](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.14-3776AB?logo=python&logoColor=white)
 ![Node.js](https://img.shields.io/badge/node.js-%3E%3D22-339933?logo=node.js&logoColor=white)
@@ -152,7 +152,7 @@ Run the unified menu:
 .\start_on_windows.ps1
 ```
 
-The menu contains launch, dependency installation/update, frontend rebuild, database initialization, test execution, log removal, cache cleanup, uninstall, and exit actions. Dependency installation prompts for the Development or Standard profile, then runs the same Alembic-backed database initializer used by the explicit database option. Launching starts the backend and frontend, opens the browser, prints the active ports and process IDs, and then exits the menu.
+The menu contains grouped application, setup, validation, maintenance, update, and exit actions. It includes source updates from `origin/main`, a read-only update check, and a confirmation-gated option for removing the embedded database and user-created files while preserving application files. Dependency installation prompts for the Development or Standard profile, then runs the same Alembic-backed database initializer used by the explicit database option. Launching starts the backend and frontend, opens the browser, prints the active ports and process IDs, and then exits the menu.
 
 ## 5. Resources
 
