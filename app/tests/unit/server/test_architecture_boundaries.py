@@ -26,6 +26,7 @@ LEGACY_IMPORTS = (
 )
 
 
+###############################################################################
 def _imported_modules(path: Path) -> list[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     modules: list[str] = []
@@ -37,6 +38,7 @@ def _imported_modules(path: Path) -> list[str]:
     return modules
 
 
+###############################################################################
 def _production_python_files() -> list[Path]:
     return sorted(
         path
@@ -45,10 +47,12 @@ def _production_python_files() -> list[Path]:
     )
 
 
+###############################################################################
 def _starts_with_module(module: str, prefix: str) -> bool:
     return module == prefix or module.startswith(f"{prefix}.")
 
 
+###############################################################################
 def test_production_layers_respect_dependency_boundaries() -> None:
     violations: list[str] = []
     for path in _production_python_files():
@@ -63,6 +67,7 @@ def test_production_layers_respect_dependency_boundaries() -> None:
     assert not violations, "\n".join(violations)
 
 
+###############################################################################
 def test_production_code_has_no_legacy_architecture_imports() -> None:
     violations: list[str] = []
     for path in _production_python_files():

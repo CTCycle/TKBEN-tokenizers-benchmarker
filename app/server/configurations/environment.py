@@ -12,6 +12,7 @@ from server.common.constants import ALLOW_KEY_REVEAL_DEFAULT
 from server.common.utils.types import coerce_bool
 from server.common.path import ENV_EXAMPLE_FILE_PATH, ENV_FILE_PATH
 from server.common.utils.logger import logger
+
 ###############################################################################
 @dataclass
 class EnvironmentBootstrapState:

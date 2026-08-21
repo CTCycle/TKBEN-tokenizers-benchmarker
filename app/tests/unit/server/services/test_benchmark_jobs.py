@@ -74,6 +74,7 @@ def test_run_benchmark_job_builds_and_saves_report(monkeypatch) -> None:
             assert payload["dataset_name"] == "custom/sample"
             return 11
 
+    ###############################################################################
     class FakeBenchmarkReportService:
 
         # -------------------------------------------------------------------------

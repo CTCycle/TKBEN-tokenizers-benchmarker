@@ -162,7 +162,10 @@ def test_postgres_startup_runs_the_same_migration_workflow(
         lambda received: calls.append(f"ensure:{received.database_name}"),
     )
 
+    ###############################################################################
     class FakeEngine:
+
+        # -------------------------------------------------------------------------
         def dispose(self) -> None:
             calls.append("dispose")
 
@@ -211,6 +214,7 @@ def test_postgres_connection_check_executes_select_one(
         def connect(self):
             return FakeConnection()
 
+        # -------------------------------------------------------------------------
         def dispose(self):
             return None
 

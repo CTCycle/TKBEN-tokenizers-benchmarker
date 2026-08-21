@@ -17,6 +17,7 @@ config = context.config
 target_metadata = Base.metadata
 
 
+###############################################################################
 def _database_url() -> str:
     settings = get_server_settings().database
     if settings.embedded_database:
@@ -28,6 +29,7 @@ def _database_url() -> str:
         repository.engine.dispose()
 
 
+###############################################################################
 def _render_item(
     type_: str,
     obj: Any,
@@ -43,6 +45,7 @@ def _render_item(
     return False
 
 
+###############################################################################
 def _include_object(
     object_: Any,
     name: str | None,
@@ -54,6 +57,7 @@ def _include_object(
     return not (type_ == "table" and name == "alembic_version")
 
 
+###############################################################################
 def _configure(connection: Any) -> None:
     version_table_pk = config.get_main_option("version_table_pk") or "true"
     context.configure(
@@ -69,12 +73,14 @@ def _configure(connection: Any) -> None:
     )
 
 
+###############################################################################
 def _run_migrations(connection: Any) -> None:
     _configure(connection)
     with context.begin_transaction():
         context.run_migrations()
 
 
+###############################################################################
 def run_migrations_offline() -> None:
     context.configure(
         url=config.get_main_option("sqlalchemy.url") or _database_url(),
@@ -90,6 +96,7 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
+###############################################################################
 def run_migrations_online() -> None:
     connection = config.attributes.get("connection")
     if connection is not None:

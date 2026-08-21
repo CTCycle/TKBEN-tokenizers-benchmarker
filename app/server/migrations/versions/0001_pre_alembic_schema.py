@@ -27,10 +27,12 @@ _SQLITE_LEGACY_METRIC_CHECK = (
 )
 
 
+###############################################################################
 def _is_sqlite() -> bool:
     return op.get_bind().dialect.name == "sqlite"
 
 
+###############################################################################
 def upgrade() -> None:
     active_default = sa.text("'0'")
     metric_value_check = (
@@ -295,6 +297,7 @@ def upgrade() -> None:
     op.create_index("ix_hf_access_keys_active_id", "hf_access_keys", ["is_active", "id"])
 
 
+###############################################################################
 def downgrade() -> None:
     op.drop_index("ix_hf_access_keys_active_id", table_name="hf_access_keys")
     op.drop_index("uq_hf_access_keys_active", table_name="hf_access_keys")

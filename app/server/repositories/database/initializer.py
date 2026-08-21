@@ -22,6 +22,7 @@ SUPPORTED_POSTGRES_ENGINE = "postgresql+psycopg"
 POSTGRES_CREATION_LOCK_NAME = "tkben:database:create"
 
 
+###############################################################################
 def build_postgres_connect_args(settings: DatabaseSettings) -> dict[str, str | int]:
     connect_args: dict[str, str | int] = {"connect_timeout": settings.connect_timeout}
     if settings.ssl:
@@ -31,6 +32,7 @@ def build_postgres_connect_args(settings: DatabaseSettings) -> dict[str, str | i
     return connect_args
 
 
+###############################################################################
 def build_postgres_url(settings: DatabaseSettings, database_name: str) -> str:
     port = settings.port or 5432
     engine_name = _resolve_postgres_engine(settings.engine)
@@ -42,6 +44,7 @@ def build_postgres_url(settings: DatabaseSettings, database_name: str) -> str:
     )
 
 
+###############################################################################
 def clone_settings_with_database(
     settings: DatabaseSettings, database_name: str
 ) -> DatabaseSettings:
@@ -60,6 +63,7 @@ def clone_settings_with_database(
     )
 
 
+###############################################################################
 def build_postgres_create_database_sql(database_name: str) -> TextClause:
     safe_database = database_name.replace('"', '""')
     return sqlalchemy.text(
@@ -67,6 +71,7 @@ def build_postgres_create_database_sql(database_name: str) -> TextClause:
     )
 
 
+###############################################################################
 def initialize_sqlite_database(settings: DatabaseSettings) -> None:
     database_path = Path(normalize_sqlite_path(DATABASE_PATH))
     logger.info("Checking SQLite database %s.", database_path)
@@ -87,6 +92,7 @@ def initialize_sqlite_database(settings: DatabaseSettings) -> None:
     logger.info("SQLite database %s is synchronized.", database_path)
 
 
+###############################################################################
 def connect_postgres_database(settings: DatabaseSettings) -> None:
     """Verify the configured PostgreSQL target is reachable."""
     repository = PostgresRepository(settings)
@@ -98,6 +104,7 @@ def connect_postgres_database(settings: DatabaseSettings) -> None:
     logger.info("Connected to PostgreSQL database %s.", settings.database_name)
 
 
+###############################################################################
 def _is_missing_postgres_database(error: BaseException) -> bool:
     current: BaseException | None = error
     visited: set[int] = set()
@@ -116,6 +123,7 @@ def _is_missing_postgres_database(error: BaseException) -> bool:
     return False
 
 
+###############################################################################
 def _create_missing_postgres_database(settings: DatabaseSettings) -> None:
     admin_url = build_postgres_url(settings, "postgres")
     admin_engine = sqlalchemy.create_engine(
@@ -168,6 +176,7 @@ def _create_missing_postgres_database(settings: DatabaseSettings) -> None:
         admin_engine.dispose()
 
 
+###############################################################################
 def ensure_postgres_database(settings: DatabaseSettings) -> str:
     """Ensure the configured PostgreSQL target exists, creating it if absent."""
     if not settings.host:
@@ -199,6 +208,7 @@ def ensure_postgres_database(settings: DatabaseSettings) -> str:
     return settings.database_name
 
 
+###############################################################################
 def run_database_initialization(*, startup: bool = False) -> None:
     del startup  # Startup and explicit initialization share the same workflow.
     settings = get_server_settings().database
@@ -220,6 +230,7 @@ def run_database_initialization(*, startup: bool = False) -> None:
         repository.engine.dispose()
 
 
+###############################################################################
 def _resolve_postgres_engine(engine: str | None) -> str:
     normalized = (engine or "").strip().lower()
     if normalized == SUPPORTED_POSTGRES_ENGINE:
@@ -227,6 +238,7 @@ def _resolve_postgres_engine(engine: str | None) -> str:
     raise ValueError(f"Unsupported database engine: {engine}")
 
 
+###############################################################################
 def initialize_database(*, startup: bool = False) -> None:
     try:
         run_database_initialization(startup=startup)
