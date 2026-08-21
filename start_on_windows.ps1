@@ -25,6 +25,8 @@ $NpmCmd = Join-Path $NodeDir 'npm.cmd'
 $ServerDir = Join-Path $RepoRoot 'app\server'
 $ClientDir = Join-Path $RepoRoot 'app\client'
 $AppDir = Join-Path $RepoRoot 'app'
+$AssetsDir = Join-Path $RepoRoot 'assets'
+$SettingsDir = Join-Path $RepoRoot 'settings'
 $TestsDir = Join-Path $AppDir 'tests'
 $VenvDir = Join-Path $ServerDir '.venv'
 $VenvPython = Join-Path $VenvDir 'Scripts\python.exe'
@@ -37,6 +39,9 @@ $UvCacheDir = Join-Path $RuntimeCacheDir 'uv'
 $PythonVersion = '3.14.2'
 $NodeVersion = '22.23.1'
 
+# =============================================================================
+# Shared output and filesystem helpers
+# =============================================================================
 function Write-Step([string]$Message) { Write-Host "[STEP] $Message" -ForegroundColor Cyan }
 function Write-Ok([string]$Message) { Write-Host "[OK] $Message" -ForegroundColor Green }
 function Write-Fatal([string]$Message) { Write-Host "[FATAL] $Message" -ForegroundColor Red }
@@ -55,6 +60,79 @@ function Initialize-EnvFile {
     }
 }
 
+function Read-EnvironmentFile {
+    $values = @{}
+    if (-not (Test-Path -LiteralPath $EnvFile)) { return $values }
+
+    foreach ($rawLine in Get-Content -LiteralPath $EnvFile) {
+        $line = $rawLine.Trim()
+        if (-not $line -or $line.StartsWith('#') -or $line.StartsWith(';') -or -not $line.Contains('=')) {
+            continue
+        }
+        $key, $value = $line.Split('=', 2)
+        $key = $key.Trim()
+        $value = $value.Trim()
+        if (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'"))) {
+            $value = $value.Substring(1, $value.Length - 2)
+        }
+        if ($key) { $values[$key] = $value }
+    }
+    return $values
+}
+
+function Get-EnvironmentSetting {
+    param(
+        [Parameter(Mandatory)][string]$Key,
+        [string]$DefaultValue = ''
+    )
+
+    $configuredValues = Read-EnvironmentFile
+    if ($configuredValues.ContainsKey($Key)) { return [string]$configuredValues[$Key] }
+
+    $processValue = [Environment]::GetEnvironmentVariable($Key)
+    if (-not [string]::IsNullOrWhiteSpace($processValue)) { return $processValue }
+    return $DefaultValue
+}
+
+function Resolve-ConfiguredPath {
+    param(
+        [string]$ConfiguredPath,
+        [Parameter(Mandatory)][string]$DefaultPath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ConfiguredPath)) {
+        return [IO.Path]::GetFullPath($DefaultPath)
+    }
+
+    $expandedPath = [Environment]::ExpandEnvironmentVariables($ConfiguredPath.Trim())
+    if ([IO.Path]::IsPathRooted($expandedPath)) {
+        return [IO.Path]::GetFullPath($expandedPath)
+    }
+    return [IO.Path]::GetFullPath((Join-Path $RepoRoot $expandedPath))
+}
+
+function Get-ApplicationDataRoot {
+    return Resolve-ConfiguredPath `
+        -ConfiguredPath (Get-EnvironmentSetting -Key 'TKBEN_DATA_DIR') `
+        -DefaultPath (Join-Path $AppDir 'resources')
+}
+
+function Get-ApplicationLogRoot {
+    param([Parameter(Mandatory)][string]$DataRoot)
+
+    return Resolve-ConfiguredPath `
+        -ConfiguredPath (Get-EnvironmentSetting -Key 'TKBEN_LOG_DIR') `
+        -DefaultPath (Join-Path $DataRoot 'logs')
+}
+
+function Get-HuggingFaceMaterialPath {
+    param([Parameter(Mandatory)][string]$DataRoot)
+
+    return Resolve-ConfiguredPath `
+        -ConfiguredPath (Get-EnvironmentSetting -Key 'HF_KEYS_ENCRYPTION_MATERIAL_FILE') `
+        -DefaultPath (Join-Path $DataRoot 'hf-key-material.json')
+}
+
 function Invoke-DownloadAndExtract {
     param(
         [Parameter(Mandatory)][uri]$Uri,
@@ -71,6 +149,9 @@ function Invoke-DownloadAndExtract {
     }
 }
 
+# =============================================================================
+# Environment, runtimes, and dependency management
+# =============================================================================
 function Install-NodeRuntime {
     $stagingDir = Join-Path $RuntimeDir ('.nodejs-staging-' + [guid]::NewGuid().ToString('N'))
     $backupDir = Join-Path $RuntimeDir ('.nodejs-backup-' + [guid]::NewGuid().ToString('N'))
@@ -210,20 +291,8 @@ function Import-Environment {
         Set-Item -Path "Env:$($entry.Key)" -Value $entry.Value
     }
 
-    foreach ($rawLine in Get-Content -LiteralPath $EnvFile) {
-        $line = $rawLine.Trim()
-        if (-not $line -or $line.StartsWith('#') -or $line.StartsWith(';') -or -not $line.Contains('=')) {
-            continue
-        }
-        $key, $value = $line.Split('=', 2)
-        $key = $key.Trim()
-        $value = $value.Trim()
-        if (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'"))) {
-            $value = $value.Substring(1, $value.Length - 2)
-        }
-        if ($key) {
-            Set-Item -Path "Env:$key" -Value $value
-        }
+    foreach ($entry in (Read-EnvironmentFile).GetEnumerator()) {
+        Set-Item -Path "Env:$($entry.Key)" -Value $entry.Value
     }
 
     if ($env:BACKEND_LOGS_VISIBLE -ieq 'true') {
@@ -471,6 +540,9 @@ function Get-PortProcessId([int]$Port) {
     return $null
 }
 
+# =============================================================================
+# Application lifecycle and validation
+# =============================================================================
 function Launch-Application {
     Import-Environment
     if (-not (Test-DependenciesReady)) {
@@ -594,6 +666,9 @@ function Run-TestSuite {
     Write-Ok "Test suite completed with exit code $testExitCode."
 }
 
+# =============================================================================
+# Data, logs, cache, and installation maintenance
+# =============================================================================
 function Remove-Logs {
     $logDir = Join-Path $RepoRoot 'app\resources\logs'
     $logs = @(Get-ChildItem -LiteralPath $logDir -Filter '*.log' -File -ErrorAction SilentlyContinue)
@@ -637,6 +712,103 @@ function Remove-PathBestEffort {
     }
 
     return [pscustomobject]@{ Removed = $removed; Skipped = $skipped }
+}
+
+function Assert-SafeCleanupDirectory {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string]$Description
+    )
+
+    $candidate = [IO.Path]::GetFullPath($Path).TrimEnd('\')
+    $repository = [IO.Path]::GetFullPath($RepoRoot).TrimEnd('\')
+    $protectedDirectories = @(
+        $repository,
+        [IO.Path]::GetFullPath($AppDir).TrimEnd('\'),
+        [IO.Path]::GetFullPath($AssetsDir).TrimEnd('\'),
+        [IO.Path]::GetFullPath($SettingsDir).TrimEnd('\'),
+        [IO.Path]::GetFullPath($ServerDir).TrimEnd('\'),
+        [IO.Path]::GetFullPath($ClientDir).TrimEnd('\'),
+        [IO.Path]::GetFullPath($RuntimeDir).TrimEnd('\'),
+        [IO.Path]::GetFullPath($TestsDir).TrimEnd('\')
+    )
+
+    $filesystemRoot = [IO.Path]::GetPathRoot($candidate).TrimEnd('\')
+    if ($candidate -eq $filesystemRoot -or
+        $protectedDirectories -contains $candidate -or
+        $repository.StartsWith("$candidate\", [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Refusing to remove application files through $Description at $Path."
+    }
+}
+
+function Remove-DirectoryContents {
+    param([Parameter(Mandatory)][string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
+        return [pscustomobject]@{ Removed = 0; Skipped = 0 }
+    }
+
+    $enumerationErrors = @()
+    $entries = @(Get-ChildItem -LiteralPath $Path -Force -ErrorAction SilentlyContinue -ErrorVariable enumerationErrors |
+        Where-Object { $_.Name -ne '.gitkeep' })
+    $skipped = $enumerationErrors.Count
+    foreach ($enumerationError in $enumerationErrors) {
+        Write-Host "[WARN] Skipped inaccessible data path below ${Path}: $($enumerationError.Exception.Message)" -ForegroundColor Yellow
+    }
+
+    $summaries = @($entries | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
+    $removed = [int](($summaries | Measure-Object -Property Removed -Sum).Sum)
+    $skipped += [int](($summaries | Measure-Object -Property Skipped -Sum).Sum)
+    return [pscustomobject]@{ Removed = $removed; Skipped = $skipped }
+}
+
+function Remove-AllData {
+    $confirmation = Read-Host 'This permanently deletes user data. Type DELETE to continue'
+    if ($null -eq $confirmation) { $confirmation = '' } else { $confirmation = $confirmation.Trim() }
+    if ($confirmation -cne 'DELETE') {
+        Write-Host '[INFO] Remove All Data cancelled.' -ForegroundColor DarkGray
+        return
+    }
+
+    $dataRoot = Get-ApplicationDataRoot
+    $logRoot = Get-ApplicationLogRoot -DataRoot $dataRoot
+    if ([IO.Path]::GetFullPath($logRoot).TrimEnd('\') -eq [IO.Path]::GetFullPath($dataRoot).TrimEnd('\')) {
+        throw 'The configured log directory cannot be the application data directory.'
+    }
+    Assert-SafeCleanupDirectory -Path $logRoot -Description 'the configured log directory'
+
+    Write-Step "Removing user data from $dataRoot."
+    $summaries = @()
+    foreach ($dataFile in @(
+        (Join-Path $dataRoot 'database.db'),
+        (Join-Path $dataRoot 'database.db-wal'),
+        (Join-Path $dataRoot 'database.db-shm'),
+        (Join-Path $dataRoot 'database.db-journal'),
+        (Get-HuggingFaceMaterialPath -DataRoot $dataRoot)
+    ) | Select-Object -Unique) {
+        if (Test-Path -LiteralPath $dataFile) {
+            $summaries += @(Remove-PathBestEffort -Path $dataFile)
+        }
+    }
+
+    foreach ($dataDirectory in @(
+        (Join-Path $dataRoot 'sources\datasets'),
+        (Join-Path $dataRoot 'sources\tokenizers'),
+        $logRoot
+    ) | Select-Object -Unique) {
+        $summaries += @(Remove-DirectoryContents -Path $dataDirectory)
+    }
+
+    $removed = [int](($summaries | Measure-Object -Property Removed -Sum).Sum)
+    $skipped = [int](($summaries | Measure-Object -Property Skipped -Sum).Sum)
+    if ((Get-EnvironmentSetting -Key 'DATABASE_EMBEDDED' -DefaultValue 'true') -ine 'true') {
+        Write-Host '[WARN] DATABASE_EMBEDDED is false; the external database was not modified.' -ForegroundColor Yellow
+    }
+    if ($skipped -gt 0) {
+        Write-Ok "Removed $removed user-data file(s); skipped $skipped locked or inaccessible path(s)."
+    } else {
+        Write-Ok "Removed $removed user-data file(s). Application files, templates, and .gitkeep files were preserved."
+    }
 }
 
 function Remove-PythonCaches {
@@ -707,6 +879,53 @@ function Uninstall-Application {
     Write-Ok 'Application dependencies and generated files removed. Settings and user data were preserved.'
 }
 
+# =============================================================================
+# Source update management
+# =============================================================================
+function Update-Application {
+    Write-Step 'Updating the application from origin/main.'
+    Push-Location $RepoRoot
+    try {
+        & git pull origin main
+        if ($LASTEXITCODE -ne 0) { throw "Application update failed with exit code $LASTEXITCODE." }
+    } finally {
+        Pop-Location
+    }
+    Write-Ok 'Application updated from origin/main.'
+}
+
+function Check-ForUpdates {
+    Push-Location $RepoRoot
+    try {
+        $currentRevision = (& git rev-parse HEAD 2>&1).Trim()
+        if ($LASTEXITCODE -ne 0) { throw "Could not determine the current application revision: $currentRevision" }
+
+        # ls-remote reads the remote branch tip without fetching or applying objects.
+        $remoteOutput = @(& git ls-remote origin refs/heads/main 2>&1)
+        if ($LASTEXITCODE -ne 0) {
+            $details = ($remoteOutput -join ' ').Trim()
+            throw "Could not check origin/main for updates$(if ($details) { ": $details" })."
+        }
+        $remoteLine = [string]($remoteOutput | Select-Object -First 1)
+        $remoteRevision = ($remoteLine -split '\s+')[0]
+        if ($remoteRevision -notmatch '^[0-9a-fA-F]{40}$') {
+            throw 'The origin/main revision could not be read.'
+        }
+    } finally {
+        Pop-Location
+    }
+
+    if ($currentRevision -eq $remoteRevision) {
+        Write-Ok 'The application is up to date with origin/main.'
+    } else {
+        Write-Host "[UPDATE] A newer origin/main revision is available ($($remoteRevision.Substring(0, 7)); current $($currentRevision.Substring(0, 7)))." -ForegroundColor Yellow
+        Write-Host '         Run Update to pull the main branch.' -ForegroundColor DarkGray
+    }
+}
+
+# =============================================================================
+# Interactive menu
+# =============================================================================
 function Wait-ForMenu {
     if ([Console]::IsInputRedirected) { return }
     Write-Host
@@ -756,20 +975,25 @@ function Show-Menu {
         Write-Host '  MAINTENANCE' -ForegroundColor DarkCyan
         Write-MenuItem '6' 'Remove logs' 'Clear generated application logs'
         Write-MenuItem '7' 'Clear cache' 'Remove downloaded and generated caches'
-        Write-MenuItem '8' 'Uninstall application' 'Remove local runtimes and dependencies' Yellow
+        Write-MenuItem '8' 'Remove All Data' 'Delete the database and user-created files' Yellow
+        Write-MenuItem '9' 'Uninstall application' 'Remove local runtimes and dependencies' Yellow
+        Write-Host
+        Write-Host '  UPDATES' -ForegroundColor DarkCyan
+        Write-MenuItem '10' 'Update' 'Pull the application from the main branch' Yellow
+        Write-MenuItem '11' 'Check for Updates' 'Report whether origin/main has a newer revision'
         Write-Host
         Write-Host '  +----------------------------------------------------------+' -ForegroundColor DarkCyan
-        Write-MenuItem '9' 'Exit' 'Close this launcher' DarkGray
+        Write-MenuItem '12' 'Exit' 'Close this launcher' DarkGray
         Write-Host '  +----------------------------------------------------------+' -ForegroundColor DarkCyan
         Write-Host
-        $selection = (Read-Host '  Select an option [1-9]').Trim()
+        $selection = (Read-Host '  Select an option [1-12]').Trim()
 
-        if ($selection -notmatch '^[1-9]$') {
-            Write-Fatal 'Invalid option. Enter a number from 1 through 9.'
+        if ($selection -notmatch '^(?:[1-9]|1[0-2])$') {
+            Write-Fatal 'Invalid option. Enter a number from 1 through 12.'
             Wait-ForMenu
             continue
         }
-        if ($selection -eq '9') { break }
+        if ($selection -eq '12') { break }
 
         try {
             switch ($selection) {
@@ -780,7 +1004,10 @@ function Show-Menu {
                 '5' { Run-TestSuite }
                 '6' { Remove-Logs }
                 '7' { Clear-Cache }
-                '8' { Uninstall-Application }
+                '8' { Remove-AllData }
+                '9' { Uninstall-Application }
+                '10' { Update-Application }
+                '11' { Check-ForUpdates }
             }
         } catch {
             Write-Fatal $_.Exception.Message
