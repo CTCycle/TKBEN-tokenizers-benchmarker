@@ -23,10 +23,12 @@ _LEGACY_METRIC_CHECK = (
 )
 
 
+###############################################################################
 def _is_sqlite() -> bool:
     return op.get_bind().dialect.name == "sqlite"
 
 
+###############################################################################
 def _alter_metric_value_check(expression: str) -> None:
     if _is_sqlite():
         with op.batch_alter_table("metric_value", recreate="always") as batch:
@@ -38,6 +40,7 @@ def _alter_metric_value_check(expression: str) -> None:
     op.create_check_constraint("ck_metric_exactly_one_value", expression, "metric_value")
 
 
+###############################################################################
 def _alter_report_version_default(default: str) -> None:
     server_default = sa.text(f"'{default}'")
     if _is_sqlite():
@@ -61,11 +64,13 @@ def _alter_report_version_default(default: str) -> None:
     )
 
 
+###############################################################################
 def upgrade() -> None:
     _alter_metric_value_check(_CANONICAL_METRIC_CHECK)
     _alter_report_version_default("2")
 
 
+###############################################################################
 def downgrade() -> None:
     _alter_report_version_default("1")
     _alter_metric_value_check(

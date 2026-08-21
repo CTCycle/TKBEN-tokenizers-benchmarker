@@ -18,6 +18,7 @@ from server.repositories.database.migrations import DatabaseMigrationError
 from server.repositories.database.sqlite import SQLiteRepository
 
 
+###############################################################################
 def _settings() -> DatabaseSettings:
     return DatabaseSettings(
         embedded_database=True,
@@ -34,6 +35,7 @@ def _settings() -> DatabaseSettings:
     )
 
 
+###############################################################################
 def _configure_database(
     monkeypatch: pytest.MonkeyPatch,
     path: Path,
@@ -49,6 +51,7 @@ def _configure_database(
     return settings
 
 
+###############################################################################
 def _revision(path: Path) -> str | None:
     engine = create_engine(f"sqlite:///{path}", future=True)
     try:
@@ -61,6 +64,7 @@ def _revision(path: Path) -> str | None:
         engine.dispose()
 
 
+###############################################################################
 def test_repeated_initialization_is_current_and_idempotent(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -76,6 +80,7 @@ def test_repeated_initialization_is_current_and_idempotent(
     assert path.stat().st_size == first_size
 
 
+###############################################################################
 def test_legacy_revision_upgrade_preserves_relational_data(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -152,6 +157,7 @@ def test_legacy_revision_upgrade_preserves_relational_data(
     assert _revision(path) == migrations.HEAD_REVISION
 
 
+###############################################################################
 def test_current_unversioned_schema_is_adopted_without_rebuilding(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -171,6 +177,7 @@ def test_current_unversioned_schema_is_adopted_without_rebuilding(
     assert _revision(path) == migrations.HEAD_REVISION
 
 
+###############################################################################
 def test_unknown_unversioned_schema_is_rejected_untouched(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -192,6 +199,7 @@ def test_unknown_unversioned_schema_is_rejected_untouched(
     assert _revision(path) is None
 
 
+###############################################################################
 def test_database_ahead_of_repository_is_rejected(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -214,6 +222,7 @@ def test_database_ahead_of_repository_is_rejected(
     assert _revision(path) == "9999_future"
 
 
+###############################################################################
 def test_seed_failure_rolls_back_schema_and_version(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -236,6 +245,7 @@ def test_seed_failure_rolls_back_schema_and_version(
         engine.dispose()
 
 
+###############################################################################
 def test_concurrent_initializers_serialize_on_sqlite(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
