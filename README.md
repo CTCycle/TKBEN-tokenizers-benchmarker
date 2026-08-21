@@ -216,7 +216,7 @@ Dependency state:
 
 ## 7. Releases and Repository Hygiene
 
-Current source release: `v4.0.0`.
+Current source release: `v4.1.0`.
 
 Continuous integration validates the backend and frontend source manifests. It installs backend test dependencies from `app/server/pyproject.toml` and resolves frontend dependencies with `npm install --no-package-lock`, so no local lockfiles are required in a checkout.
 
