@@ -16,5 +16,5 @@ From project and runtime scripts:
 ## Constraints
 - The repository does not currently include an active Docker runtime configuration in the root.
 - Automatic Python and Node.js downloads target Windows x64.
-- The current public release is source-only `v4.0.0`; no installer, executable,
+- The current public release is source-only `v4.1.0`; no installer, executable,
   package, or other binary artifact is part of that release workflow.
