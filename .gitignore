@@ -55,6 +55,10 @@ Thumbs.db
 *.exe
 !.gitkeep
 
+# Commit dependency lockfiles for reproducible CI installs.
+!app/server/uv.lock
+!app/client/package-lock.json
+
 # Alembic revision-generation templates
 *.mako
 !app/server/migrations/script.py.mako

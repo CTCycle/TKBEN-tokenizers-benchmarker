@@ -10,79 +10,74 @@ on:
       - main
       - develop
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend-validation:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     env:
       PYTHONPATH: app
-      UV_CACHE_DIR: ${{ github.workspace }}/runtimes/cache/uv
-      PIP_CACHE_DIR: ${{ github.workspace }}/runtimes/cache/pip
-      RUFF_CACHE_DIR: ${{ github.workspace }}/app/tests/cache/ruff
-      MYPY_CACHE_DIR: ${{ github.workspace }}/app/tests/cache/mypy
-      PYTHONPYCACHEPREFIX: ${{ github.workspace }}/app/tests/cache/pycache
-      COVERAGE_FILE: ${{ github.workspace }}/app/tests/cache/coverage/.coverage
-      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/app/tests/cache/playwright
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Prepare development cache directories
-        run: mkdir -p runtimes/cache/{uv,pip,npm} app/tests/cache/{ruff,mypy,pycache,coverage,playwright,pytest,pytest-basetemp,angular}
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.14"
+          python-version: "3.14.2"
 
-      - name: Install test dependencies
-        working-directory: app/server
-        run: |
-          python -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip
-          .venv/bin/python -m pip install '.[test]'
+      - name: Set up UV
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.30"
+          enable-cache: true
+          cache-dependency-glob: app/server/uv.lock
+
+      - name: Install locked test dependencies
+        run: uv sync --locked --project app/server --extra test
 
       - name: Compile backend modules
-        working-directory: app/server
-        run: .venv/bin/python -m compileall app.py api common configurations contracts repositories services
+        run: uv run --project app/server python -m compileall app/server
 
       - name: Ruff checks
-        # Keep CI independent of ignored local ruff.toml files while retaining
-        # the repository-local cache location used by the workflow.
-        run: app/server/.venv/bin/python -m ruff check --isolated --cache-dir "$RUFF_CACHE_DIR" app/server app/tests
+        run: uv run --project app/server ruff check --isolated app/server app/tests
 
       - name: BasedPyright
         working-directory: app/server
-        run: .venv/bin/python -m basedpyright
+        run: uv run basedpyright
 
       - name: Initialize embedded database
-        run: app/server/.venv/bin/python app/scripts/initialize_database.py
+        run: uv run --project app/server python app/scripts/initialize_database.py
 
       - name: Unit tests
-        run: app/server/.venv/bin/python -m pytest app/tests/unit -q
+        run: uv run --project app/server python -m pytest app/tests/unit -q
 
       - name: OpenAPI smoke
-        run: app/server/.venv/bin/python -c "from server.app import app; app.openapi()"
+        run: uv run --project app/server python -c "from server.app import app; app.openapi()"
 
   frontend-validation:
     runs-on: ubuntu-latest
-    env:
-      NPM_CONFIG_CACHE: ${{ github.workspace }}/runtimes/cache/npm
+    timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Prepare development cache directory
-        run: mkdir -p runtimes/cache/npm
+        uses: actions/checkout@v4
 
       - name: Set up Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
-          node-version: "22"
-          package-manager-cache: false
+          node-version: "22.13.0"
+          cache: npm
+          cache-dependency-path: app/client/package-lock.json
 
       - name: Install frontend dependencies
         working-directory: app/client
-        run: npm install --no-package-lock
+        run: npm ci --no-audit --no-fund
 
       - name: Lint frontend
         working-directory: app/client
