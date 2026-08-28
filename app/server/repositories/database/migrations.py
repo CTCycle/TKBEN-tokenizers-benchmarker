@@ -25,11 +25,9 @@ POSTGRES_LOCK_NAME = "tkben:alembic:migrations"
 
 SchemaState = Literal["empty", "canonical", "legacy", "unknown"]
 
-
 ###############################################################################
 class DatabaseMigrationError(RuntimeError):
     """Raised when the application cannot make its database current."""
-
 
 ###############################################################################
 def build_alembic_config() -> Config:
@@ -38,7 +36,6 @@ def build_alembic_config() -> Config:
     config.set_main_option("version_table", ALEMBIC_VERSION_TABLE)
     config.set_main_option("version_table_pk", "true")
     return config
-
 
 ###############################################################################
 def _migration_directory(config: Config) -> script.ScriptDirectory:
@@ -51,7 +48,6 @@ def _migration_directory(config: Config) -> script.ScriptDirectory:
         )
     return directory
 
-
 ###############################################################################
 def _normalize_sql(value: str | None) -> str:
     normalized = (value or "").lower()
@@ -60,7 +56,6 @@ def _normalize_sql(value: str | None) -> str:
     # not that dialect spelling.
     normalized = re.sub(r"::[a-z0-9_\s\[\].]+", "", normalized)
     return re.sub(r"[^a-z0-9_]", "", normalized)
-
 
 ###############################################################################
 def _normalize_default(value: str | None) -> str | None:
@@ -77,7 +72,6 @@ def _normalize_default(value: str | None) -> str | None:
         normalized = normalized[1:-1]
     return re.sub(r"\s+", "", normalized)
 
-
 ###############################################################################
 def _normalize_type(value: Any, connection: Connection) -> str:
     if hasattr(value, "compile"):
@@ -86,19 +80,16 @@ def _normalize_type(value: Any, connection: Connection) -> str:
         rendered = str(value)
     return re.sub(r"\s+", "", rendered).upper()
 
-
 ###############################################################################
 def _column_default(column: Any) -> str | None:
     if column.server_default is None:
         return None
     return _normalize_default(str(column.server_default.arg))
 
-
 ###############################################################################
 def _normalize_index_predicate(value: Any, table_name: str) -> str:
     normalized = _normalize_sql(str(value)).replace(_normalize_sql(table_name), "")
     return normalized.replace("istrue", "is1")
-
 
 ###############################################################################
 def _index_predicate(index: Any, dialect_name: str) -> str | None:
@@ -108,7 +99,6 @@ def _index_predicate(index: Any, dialect_name: str) -> str | None:
         if where is not None
         else None
     )
-
 
 ###############################################################################
 def _metadata_signature(connection: Connection) -> dict[str, Any]:
@@ -166,7 +156,6 @@ def _metadata_signature(connection: Connection) -> dict[str, Any]:
             Base.metadata.tables["analysis_session"].columns["report_version"]
         ),
     }
-
 
 ###############################################################################
 def _reflected_signature(connection: Connection) -> dict[str, Any]:
@@ -250,7 +239,6 @@ def _reflected_signature(connection: Connection) -> dict[str, Any]:
         ),
     }
 
-
 ###############################################################################
 def _legacy_metric_check(expression: str) -> bool:
     return _normalize_sql(expression) == _normalize_sql(
@@ -258,11 +246,9 @@ def _legacy_metric_check(expression: str) -> bool:
         "(json_value IS NOT NULL) = 1"
     )
 
-
 ###############################################################################
 def _canonical_metric_check(expression: str, expected: str) -> bool:
     return _normalize_sql(expression) == _normalize_sql(expected)
-
 
 ###############################################################################
 def _same_structure_except_known_legacy_differences(
@@ -313,7 +299,6 @@ def _same_structure_except_known_legacy_differences(
     actual_tables["analysis_session"]["columns"] = tuple(actual_analysis_columns)
     return actual_tables == expected_tables
 
-
 ###############################################################################
 def classify_unversioned_schema(connection: Connection) -> SchemaState:
     reflected = _reflected_signature(connection)
@@ -326,7 +311,6 @@ def classify_unversioned_schema(connection: Connection) -> SchemaState:
         return "legacy"
     return "unknown"
 
-
 ###############################################################################
 def _current_heads(connection: Connection) -> tuple[str, ...]:
     migration_context = MigrationContext.configure(
@@ -334,7 +318,6 @@ def _current_heads(connection: Connection) -> tuple[str, ...]:
         opts={"version_table": ALEMBIC_VERSION_TABLE},
     )
     return tuple(migration_context.get_current_heads())
-
 
 ###############################################################################
 def _pending_revisions(
@@ -348,7 +331,6 @@ def _pending_revisions(
             break
         pending.append(revision)
     return list(reversed(pending))
-
 
 ###############################################################################
 def _stamp_or_upgrade_unversioned(
@@ -381,7 +363,6 @@ def _stamp_or_upgrade_unversioned(
         return (LEGACY_REVISION,)
     logger.info("Database is empty; applying the complete Alembic history.")
     return ()
-
 
 ###############################################################################
 def _synchronize_schema(
@@ -427,7 +408,6 @@ def _synchronize_schema(
         )
     logger.info("Alembic migration verification succeeded at %s.", HEAD_REVISION)
 
-
 ###############################################################################
 def _acquire_postgres_lock(
     connection: Connection,
@@ -452,14 +432,12 @@ def _acquire_postgres_lock(
             )
         time.sleep(0.1)
 
-
 ###############################################################################
 def _foreign_key_violations(connection: Connection) -> list[tuple[Any, ...]]:
     return [
         tuple(row)
         for row in connection.execute(text("PRAGMA foreign_key_check")).all()
     ]
-
 
 ###############################################################################
 def run_locked_migrations(

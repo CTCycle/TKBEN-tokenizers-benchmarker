@@ -16,7 +16,6 @@ from server.repositories.schemas.types import JSONArray, JSONObject, UTCDateTime
 config = context.config
 target_metadata = Base.metadata
 
-
 ###############################################################################
 def _database_url() -> str:
     settings = get_server_settings().database
@@ -27,7 +26,6 @@ def _database_url() -> str:
         return str(repository.engine.url)
     finally:
         repository.engine.dispose()
-
 
 ###############################################################################
 def _render_item(
@@ -44,7 +42,6 @@ def _render_item(
         return "sa.JSON()"
     return False
 
-
 ###############################################################################
 def _include_object(
     object_: Any,
@@ -55,7 +52,6 @@ def _include_object(
 ) -> bool:
     del object_, reflected, compare_to
     return not (type_ == "table" and name == "alembic_version")
-
 
 ###############################################################################
 def _configure(connection: Any) -> None:
@@ -72,13 +68,11 @@ def _configure(connection: Any) -> None:
         version_table_pk=version_table_pk.lower() == "true",
     )
 
-
 ###############################################################################
 def _run_migrations(connection: Any) -> None:
     _configure(connection)
     with context.begin_transaction():
         context.run_migrations()
-
 
 ###############################################################################
 def run_migrations_offline() -> None:
@@ -94,7 +88,6 @@ def run_migrations_offline() -> None:
     )
     with context.begin_transaction():
         context.run_migrations()
-
 
 ###############################################################################
 def run_migrations_online() -> None:

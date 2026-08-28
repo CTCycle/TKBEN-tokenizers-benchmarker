@@ -21,7 +21,6 @@ from server.repositories.database.utils import normalize_sqlite_path
 SUPPORTED_POSTGRES_ENGINE = "postgresql+psycopg"
 POSTGRES_CREATION_LOCK_NAME = "tkben:database:create"
 
-
 ###############################################################################
 def build_postgres_connect_args(settings: DatabaseSettings) -> dict[str, str | int]:
     connect_args: dict[str, str | int] = {"connect_timeout": settings.connect_timeout}
@@ -30,7 +29,6 @@ def build_postgres_connect_args(settings: DatabaseSettings) -> dict[str, str | i
         if settings.ssl_ca:
             connect_args["sslrootcert"] = settings.ssl_ca
     return connect_args
-
 
 ###############################################################################
 def build_postgres_url(settings: DatabaseSettings, database_name: str) -> str:
@@ -42,7 +40,6 @@ def build_postgres_url(settings: DatabaseSettings, database_name: str) -> str:
         f"{engine_name}://{safe_username}:{safe_password}"
         f"@{settings.host}:{port}/{database_name}"
     )
-
 
 ###############################################################################
 def clone_settings_with_database(
@@ -62,14 +59,12 @@ def clone_settings_with_database(
         insert_batch_size=settings.insert_batch_size,
     )
 
-
 ###############################################################################
 def build_postgres_create_database_sql(database_name: str) -> TextClause:
     safe_database = database_name.replace('"', '""')
     return sqlalchemy.text(
         f'CREATE DATABASE "{safe_database}" WITH ENCODING \'UTF8\' TEMPLATE template0'
     )
-
 
 ###############################################################################
 def initialize_sqlite_database(settings: DatabaseSettings) -> None:
@@ -91,7 +86,6 @@ def initialize_sqlite_database(settings: DatabaseSettings) -> None:
         repository.engine.dispose()
     logger.info("SQLite database %s is synchronized.", database_path)
 
-
 ###############################################################################
 def connect_postgres_database(settings: DatabaseSettings) -> None:
     """Verify the configured PostgreSQL target is reachable."""
@@ -102,7 +96,6 @@ def connect_postgres_database(settings: DatabaseSettings) -> None:
     finally:
         repository.engine.dispose()
     logger.info("Connected to PostgreSQL database %s.", settings.database_name)
-
 
 ###############################################################################
 def _is_missing_postgres_database(error: BaseException) -> bool:
@@ -121,7 +114,6 @@ def _is_missing_postgres_database(error: BaseException) -> bool:
         original = getattr(current, "orig", None)
         current = original or current.__cause__ or current.__context__
     return False
-
 
 ###############################################################################
 def _create_missing_postgres_database(settings: DatabaseSettings) -> None:
@@ -175,7 +167,6 @@ def _create_missing_postgres_database(settings: DatabaseSettings) -> None:
     finally:
         admin_engine.dispose()
 
-
 ###############################################################################
 def ensure_postgres_database(settings: DatabaseSettings) -> str:
     """Ensure the configured PostgreSQL target exists, creating it if absent."""
@@ -207,7 +198,6 @@ def ensure_postgres_database(settings: DatabaseSettings) -> str:
     connect_postgres_database(settings)
     return settings.database_name
 
-
 ###############################################################################
 def run_database_initialization(*, startup: bool = False) -> None:
     del startup  # Startup and explicit initialization share the same workflow.
@@ -229,14 +219,12 @@ def run_database_initialization(*, startup: bool = False) -> None:
     finally:
         repository.engine.dispose()
 
-
 ###############################################################################
 def _resolve_postgres_engine(engine: str | None) -> str:
     normalized = (engine or "").strip().lower()
     if normalized == SUPPORTED_POSTGRES_ENGINE:
         return SUPPORTED_POSTGRES_ENGINE
     raise ValueError(f"Unsupported database engine: {engine}")
-
 
 ###############################################################################
 def initialize_database(*, startup: bool = False) -> None:

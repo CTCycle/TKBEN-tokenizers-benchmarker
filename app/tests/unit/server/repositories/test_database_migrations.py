@@ -17,7 +17,6 @@ from server.repositories.database import sqlite as sqlite_repository
 from server.repositories.database.migrations import DatabaseMigrationError
 from server.repositories.database.sqlite import SQLiteRepository
 
-
 ###############################################################################
 def _settings() -> DatabaseSettings:
     return DatabaseSettings(
@@ -34,7 +33,6 @@ def _settings() -> DatabaseSettings:
         insert_batch_size=1000,
     )
 
-
 ###############################################################################
 def _configure_database(
     monkeypatch: pytest.MonkeyPatch,
@@ -50,7 +48,6 @@ def _configure_database(
     )
     return settings
 
-
 ###############################################################################
 def _revision(path: Path) -> str | None:
     engine = create_engine(f"sqlite:///{path}", future=True)
@@ -62,7 +59,6 @@ def _revision(path: Path) -> str | None:
             return connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
     finally:
         engine.dispose()
-
 
 ###############################################################################
 def test_repeated_initialization_is_current_and_idempotent(
@@ -78,7 +74,6 @@ def test_repeated_initialization_is_current_and_idempotent(
 
     assert _revision(path) == migrations.HEAD_REVISION
     assert path.stat().st_size == first_size
-
 
 ###############################################################################
 def test_legacy_revision_upgrade_preserves_relational_data(
@@ -156,7 +151,6 @@ def test_legacy_revision_upgrade_preserves_relational_data(
         engine.dispose()
     assert _revision(path) == migrations.HEAD_REVISION
 
-
 ###############################################################################
 def test_current_unversioned_schema_is_adopted_without_rebuilding(
     tmp_path: Path,
@@ -175,7 +169,6 @@ def test_current_unversioned_schema_is_adopted_without_rebuilding(
 
     initializer.run_database_initialization()
     assert _revision(path) == migrations.HEAD_REVISION
-
 
 ###############################################################################
 def test_unknown_unversioned_schema_is_rejected_untouched(
@@ -197,7 +190,6 @@ def test_unknown_unversioned_schema_is_rejected_untouched(
 
     assert path.read_bytes() == before
     assert _revision(path) is None
-
 
 ###############################################################################
 def test_database_ahead_of_repository_is_rejected(
@@ -221,7 +213,6 @@ def test_database_ahead_of_repository_is_rejected(
 
     assert _revision(path) == "9999_future"
 
-
 ###############################################################################
 def test_seed_failure_rolls_back_schema_and_version(
     tmp_path: Path,
@@ -243,7 +234,6 @@ def test_seed_failure_rolls_back_schema_and_version(
         assert inspect(engine).get_table_names() == []
     finally:
         engine.dispose()
-
 
 ###############################################################################
 def test_concurrent_initializers_serialize_on_sqlite(

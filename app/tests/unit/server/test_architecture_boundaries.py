@@ -25,7 +25,6 @@ LEGACY_IMPORTS = (
     "server.repositories.serialization",
 )
 
-
 ###############################################################################
 def _imported_modules(path: Path) -> list[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -37,7 +36,6 @@ def _imported_modules(path: Path) -> list[str]:
             modules.append(node.module)
     return modules
 
-
 ###############################################################################
 def _production_python_files() -> list[Path]:
     return sorted(
@@ -46,11 +44,9 @@ def _production_python_files() -> list[Path]:
         if not any(part in {".venv", "__pycache__"} for part in path.parts)
     )
 
-
 ###############################################################################
 def _starts_with_module(module: str, prefix: str) -> bool:
     return module == prefix or module.startswith(f"{prefix}.")
-
 
 ###############################################################################
 def test_production_layers_respect_dependency_boundaries() -> None:
@@ -65,7 +61,6 @@ def test_production_layers_respect_dependency_boundaries() -> None:
                     violations.append(f"{relative}: imports {module}")
 
     assert not violations, "\n".join(violations)
-
 
 ###############################################################################
 def test_production_code_has_no_legacy_architecture_imports() -> None:
