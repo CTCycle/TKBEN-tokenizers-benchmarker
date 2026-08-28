@@ -26,11 +26,9 @@ _SQLITE_LEGACY_METRIC_CHECK = (
     "(json_value IS NOT NULL) = 1"
 )
 
-
 ###############################################################################
 def _is_sqlite() -> bool:
     return op.get_bind().dialect.name == "sqlite"
-
 
 ###############################################################################
 def upgrade() -> None:
@@ -295,7 +293,6 @@ def upgrade() -> None:
         postgresql_where=sa.text("is_active IS TRUE"),
     )
     op.create_index("ix_hf_access_keys_active_id", "hf_access_keys", ["is_active", "id"])
-
 
 ###############################################################################
 def downgrade() -> None:
