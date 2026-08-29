@@ -11,14 +11,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from server.common.constants import DATASET_REPORT_VERSION
-from server.repositories.database.seeding import seed_metric_types
 from server.repositories.queries.data import DataRepositoryQueries
 from server.repositories.schemas.models import (
     AnalysisSession,
     Dataset,
     DatasetDocument,
     HistogramArtifact,
-    MetricType,
     MetricValue,
 )
 
@@ -282,17 +280,6 @@ class DatasetRepository:
             session.commit()
 
     # -------------------------------------------------------------------------
-    def ensure_metric_types_seeded(self, metric_catalog: list[dict[str, Any]]) -> None:
-        seed_metric_types(self.queries.engine, metric_catalog)
-
-    # -------------------------------------------------------------------------
-    def get_metric_type_map(self) -> dict[str, int]:
-        stmt = select(MetricType.id, MetricType.key)
-        with self._session() as session:
-            rows = session.execute(stmt).all()
-        return {str(metric_key): int(metric_id) for metric_id, metric_key in rows}
-
-    # -------------------------------------------------------------------------
     def create_analysis_session(
         self,
         dataset_name: str,
@@ -350,13 +337,11 @@ class DatasetRepository:
         if owning_dataset_id is None:
             raise ValueError(f"Analysis session {session_id} does not exist")
         created_at = datetime.now(timezone.utc)
-        metric_type_map = self.get_metric_type_map()
         rows: list[dict[str, Any]] = []
         for item in batch:
             metric_key = str(item.get("metric_key") or "")
-            metric_type_id = metric_type_map.get(metric_key)
-            if metric_type_id is None:
-                continue
+            if not metric_key.strip():
+                raise ValueError("Metric key must be a non-empty string")
             raw_numeric = item.get("numeric_value")
             numeric_value = None
             if raw_numeric is not None:
@@ -383,7 +368,7 @@ class DatasetRepository:
                 {
                     "session_id": int(session_id),
                     "dataset_id": int(owning_dataset_id),
-                    "metric_type_id": int(metric_type_id),
+                    "metric_key": metric_key,
                     "document_id": (
                         int(item["document_id"])
                         if item.get("document_id") is not None
@@ -409,12 +394,11 @@ class DatasetRepository:
         metric_key: str,
         histogram: dict[str, Any],
     ) -> None:
-        metric_type_id = self.get_metric_type_map().get(metric_key)
-        if metric_type_id is None:
-            return
+        if not str(metric_key).strip():
+            raise ValueError("Metric key must be a non-empty string")
         row = {
             "session_id": int(session_id),
-            "metric_type_id": int(metric_type_id),
+            "metric_key": str(metric_key),
             "bins": histogram.get("bins", []),
             "bin_edges": histogram.get("bin_edges", []),
             "counts": histogram.get("counts", []),
@@ -424,19 +408,18 @@ class DatasetRepository:
             "median_value": float(histogram.get("median_length", 0.0) or 0.0),
             "created_at": datetime.now(timezone.utc),
         }
-        self.queries.upsert_records(self.histogram_table, [row], ["session_id", "metric_type_id"])
+        self.queries.upsert_records(self.histogram_table, [row], ["session_id", "metric_key"])
 
     # -------------------------------------------------------------------------
     def _load_metric_rows_for_session(self, session_id: int) -> list[dict[str, Any]]:
         stmt = (
             select(
                 MetricValue.document_id,
-                MetricType.key,
+                MetricValue.metric_key,
                 MetricValue.numeric_value,
                 MetricValue.text_value,
                 MetricValue.json_value,
             )
-            .join(MetricType, MetricType.id == MetricValue.metric_type_id)
             .where(MetricValue.session_id == int(session_id))
             .order_by(MetricValue.id.asc())
         )
@@ -457,7 +440,7 @@ class DatasetRepository:
     def _load_histogram_rows_for_session(self, session_id: int) -> dict[str, Any]:
         stmt = (
             select(
-                MetricType.key,
+                HistogramArtifact.metric_key,
                 HistogramArtifact.bins,
                 HistogramArtifact.counts,
                 HistogramArtifact.bin_edges,
@@ -466,7 +449,6 @@ class DatasetRepository:
                 HistogramArtifact.mean_value,
                 HistogramArtifact.median_value,
             )
-            .join(MetricType, MetricType.id == HistogramArtifact.metric_type_id)
             .where(HistogramArtifact.session_id == int(session_id))
         )
         with self._session() as session:
@@ -505,6 +487,15 @@ class DatasetRepository:
     def _build_session_report_response(
         self, session_row: dict[str, Any]
     ) -> dict[str, Any]:
+        try:
+            report_version = int(session_row.get("report_version") or 0)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Dataset report has an invalid report version") from exc
+        if report_version != DATASET_REPORT_VERSION:
+            raise ValueError(
+                "Dataset report has incompatible report version "
+                f"{report_version}; expected {DATASET_REPORT_VERSION}"
+            )
         session_id = int(session_row.get("id") or 0)
         metric_rows = self._load_metric_rows_for_session(session_id)
         histogram_rows = self._load_histogram_rows_for_session(session_id)
@@ -513,6 +504,8 @@ class DatasetRepository:
         per_document: dict[int, dict[str, Any]] = {}
         for row in metric_rows:
             key = str(row.get("key") or "")
+            if not key.strip():
+                raise ValueError("Dataset report contains a blank metric key")
             numeric_value = row.get("numeric_value")
             if isinstance(numeric_value, float) and pd.isna(numeric_value):
                 numeric_value = None
@@ -643,7 +636,6 @@ class DatasetRepository:
             .where(
                 Dataset.name == dataset_name,
                 AnalysisSession.status == "completed",
-                AnalysisSession.report_version == DATASET_REPORT_VERSION,
             )
             .order_by(AnalysisSession.id.desc())
             .limit(1)
@@ -676,7 +668,6 @@ class DatasetRepository:
             .join(Dataset, Dataset.id == AnalysisSession.dataset_id)
             .where(
                 AnalysisSession.id == int(session_id),
-                AnalysisSession.report_version == DATASET_REPORT_VERSION,
             )
             .limit(1)
         )

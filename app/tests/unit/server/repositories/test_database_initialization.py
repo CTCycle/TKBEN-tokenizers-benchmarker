@@ -5,22 +5,20 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from sqlalchemy import create_engine, func, inspect, select, text
-from sqlalchemy.orm import Session
+from sqlalchemy import create_engine, inspect, text
 
 from server.configurations import DatabaseSettings
 from server.repositories.database import initializer
+from server.repositories.database import migrations
 from server.repositories.database import sqlite as sqlite_repository
 from server.repositories.database.backend import build_sqlite_backend
 from server.repositories.database.migrations import DatabaseMigrationError
-from server.repositories.schemas.models import Base, MetricType
-from server.common.metric_catalog import DATASET_METRIC_CATALOG
+from server.repositories.schemas.models import Base
 
 ###############################################################################
 def _sqlite_settings() -> DatabaseSettings:
     return DatabaseSettings(
         embedded_database=True,
-        engine=None,
         host=None,
         port=None,
         database_name=None,
@@ -36,7 +34,6 @@ def _sqlite_settings() -> DatabaseSettings:
 def _postgres_settings(*, host: str | None = "127.0.0.1") -> DatabaseSettings:
     return DatabaseSettings(
         embedded_database=False,
-        engine="postgresql+psycopg",
         host=host,
         port=5432,
         database_name="tkben_test",
@@ -57,7 +54,7 @@ def _patch_sqlite_path(
     monkeypatch.setattr(sqlite_repository, "DATABASE_PATH", database_path)
 
 ###############################################################################
-def test_missing_sqlite_database_is_created_and_seeded(
+def test_missing_sqlite_database_is_created_from_alembic_history(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -84,15 +81,10 @@ def test_missing_sqlite_database_is_created_and_seeded(
                 connection.execute(
                     text("SELECT version_num FROM alembic_version")
                 ).scalar_one()
-                == "0002_current_schema"
+                == migrations._migration_directory(
+                    migrations.build_alembic_config()
+                ).get_heads()[0]
             )
-        with Session(engine) as session:
-            seeded_count = session.scalar(select(func.count(MetricType.id)))
-        expected_count = sum(
-            len(category.get("metrics", []))
-            for category in DATASET_METRIC_CATALOG
-        )
-        assert seeded_count == expected_count
     finally:
         engine.dispose()
 

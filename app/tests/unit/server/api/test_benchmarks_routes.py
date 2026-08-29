@@ -36,10 +36,7 @@ def test_benchmark_run_route_returns_202(monkeypatch) -> None:
     monkeypatch.setattr(
         BenchmarkService,
         "prepare_run",
-        lambda self, payload: {
-            **payload.model_dump(),
-            "custom_tokenizers": {},
-        },
+        lambda self, payload: payload.model_dump(),
     )
 
     client = TestClient(app)
@@ -64,7 +61,7 @@ def test_benchmark_run_route_returns_202(monkeypatch) -> None:
     assert resp.json()["job_id"] == "job-bench"
 
 ###############################################################################
-def test_benchmark_run_accepts_selected_custom_tokenizer_without_persisted_cache(
+def test_benchmark_run_accepts_selected_persisted_custom_tokenizer(
     monkeypatch,
 ) -> None:
     manager = DummyJobManager()
@@ -77,9 +74,7 @@ def test_benchmark_run_accepts_selected_custom_tokenizer_without_persisted_cache
     def fake_prepare(self, payload):
         del self
         prepared_payload.update(payload.model_dump())
-        request_payload = payload.model_dump()
-        request_payload["custom_tokenizers"] = {"CUSTOM_demo": object()}
-        return request_payload
+        return payload.model_dump()
 
     monkeypatch.setattr(BenchmarkService, "prepare_run", fake_prepare)
 

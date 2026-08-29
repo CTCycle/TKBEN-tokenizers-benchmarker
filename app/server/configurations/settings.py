@@ -2,18 +2,16 @@ from __future__ import annotations
 
 import json
 import os
-import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 ###############################################################################
 @dataclass(frozen=True)
 class DatabaseSettings:
     embedded_database: bool
-    engine: str | None
     host: str | None
     port: int | None
     database_name: str | None
@@ -78,25 +76,6 @@ def _normalize_optional_text(value: Any) -> str | None:
     return text
 
 ###############################################################################
-class JsonDatabaseSettings(BaseModel):
-    """Legacy JSON shape retained for backwards-compatible file parsing.
-
-    Database connection settings are owned by ``settings/.env``.  The parsed
-    value is intentionally not used when building :class:`ServerSettings`.
-    """
-    embedded_database: bool = True
-    engine: str | None = None
-    host: str | None = None
-    port: int | None = Field(default=None, ge=1, le=65535)
-    database_name: str | None = None
-    username: str | None = None
-    password: str | None = None
-    ssl: bool | None = None
-    ssl_ca: str | None = None
-    connect_timeout: int | None = Field(default=None, ge=1)
-    insert_batch_size: int | None = Field(default=None, ge=1)
-
-###############################################################################
 def _read_env_bool(name: str, default: bool) -> bool:
     raw_value = os.getenv(name)
     if raw_value is None:
@@ -134,23 +113,6 @@ def _read_env_int(
         raise RuntimeError(f"{name} must be <= {maximum}, got: {value}")
     return value
 
-###############################################################################
-def _parse_database_url(database_url: str | None) -> dict[str, Any]:
-    if not database_url:
-        return {}
-
-    parsed = urllib.parse.urlparse(database_url)
-    database_name = parsed.path.lstrip("/") or None
-    return {
-        "engine": _normalize_optional_text(parsed.scheme),
-        "host": _normalize_optional_text(parsed.hostname),
-        "port": parsed.port,
-        "database_name": _normalize_optional_text(database_name),
-        "username": _normalize_optional_text(parsed.username),
-        "password": _normalize_optional_text(parsed.password),
-    }
-
-###############################################################################
 def _load_database_settings_from_sources() -> DatabaseSettings:
     """Load database settings from the environment only.
 
@@ -165,7 +127,6 @@ def _load_database_settings_from_sources() -> DatabaseSettings:
     if embedded_database:
         return DatabaseSettings(
             embedded_database=True,
-            engine=None,
             host=None,
             port=None,
             database_name=None,
@@ -177,36 +138,15 @@ def _load_database_settings_from_sources() -> DatabaseSettings:
             insert_batch_size=insert_batch_size,
         )
 
-    database_url = _normalize_optional_text(os.getenv("DATABASE_URL"))
-    database_url_parts = _parse_database_url(database_url)
-
-    engine = _normalize_optional_text(
-        os.getenv("DATABASE_ENGINE")
-    ) or database_url_parts.get("engine")
-    host = _normalize_optional_text(
-        os.getenv("DATABASE_HOST")
-    ) or database_url_parts.get("host")
-    username = _normalize_optional_text(
-        os.getenv("DATABASE_USERNAME")
-    ) or database_url_parts.get("username")
-    password = _normalize_optional_text(
-        os.getenv("DATABASE_PASSWORD")
-    ) or database_url_parts.get("password")
-    database_name = _normalize_optional_text(
-        os.getenv("DATABASE_NAME")
-    ) or database_url_parts.get("database_name")
-    port = _read_env_int(
-        "DATABASE_PORT",
-        database_url_parts.get("port") or 5432,
-        minimum=1,
-        maximum=65535,
-    )
+    host = _normalize_optional_text(os.getenv("DATABASE_HOST"))
+    username = _normalize_optional_text(os.getenv("DATABASE_USERNAME"))
+    password = _normalize_optional_text(os.getenv("DATABASE_PASSWORD"))
+    database_name = _normalize_optional_text(os.getenv("DATABASE_NAME"))
+    port = _read_env_int("DATABASE_PORT", 5432, minimum=1, maximum=65535)
     ssl = _read_env_bool("DATABASE_SSL", False)
     ssl_ca = _normalize_optional_text(os.getenv("DATABASE_SSL_CA"))
 
     missing: list[str] = []
-    if not engine:
-        missing.append("database.engine")
     if not host:
         missing.append("database.host")
     if not database_name:
@@ -217,11 +157,8 @@ def _load_database_settings_from_sources() -> DatabaseSettings:
         joined = ", ".join(missing)
         raise RuntimeError(f"External database configuration requires: {joined}")
 
-    assert engine is not None
-
     return DatabaseSettings(
         embedded_database=False,
-        engine=engine.lower(),
         host=host,
         port=port,
         database_name=database_name,
@@ -235,6 +172,8 @@ def _load_database_settings_from_sources() -> DatabaseSettings:
 
 ###############################################################################
 class JsonDatasetSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     allowed_extensions: tuple[str, ...] = (".csv", ".xls", ".xlsx")
     column_detection_cutoff: float = Field(default=0.6, ge=0.0, le=1.0)
     max_upload_bytes: int = Field(default=25 * 1024 * 1024, ge=1)
@@ -248,6 +187,8 @@ class JsonDatasetSettings(BaseModel):
 
 ###############################################################################
 class JsonTokenizerSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     default_discovery_limit: int = Field(default=50, ge=1, le=250)
     max_discovery_limit: int = Field(default=250, ge=1, le=250)
     max_discovery_candidates: int = Field(default=750, ge=1)
@@ -269,19 +210,22 @@ class JsonTokenizerSettings(BaseModel):
 
 ###############################################################################
 class JsonBenchmarkSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     streaming_batch_size: int = Field(default=1000, ge=100)
     log_interval: int = Field(default=10000, ge=100)
 
 ###############################################################################
 class JsonJobsSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     polling_interval: float = Field(default=1.0, gt=0.0)
     terminal_retention_seconds: float = Field(default=3600.0, ge=0.0)
 
 ###############################################################################
 class JsonConfiguration(BaseModel):
-    # Parsed for compatibility with older configuration files.  Connection
-    # settings are always resolved from settings/.env instead.
-    database: JsonDatabaseSettings | None = Field(default=None)
+    model_config = ConfigDict(extra="forbid")
+
     datasets: JsonDatasetSettings = Field(default_factory=JsonDatasetSettings)
     tokenizers: JsonTokenizerSettings = Field(default_factory=JsonTokenizerSettings)
     benchmarks: JsonBenchmarkSettings = Field(default_factory=JsonBenchmarkSettings)
@@ -290,15 +234,7 @@ class JsonConfiguration(BaseModel):
     # -------------------------------------------------------------------------
     @classmethod
     def from_payload(cls, payload: dict[str, Any]) -> "JsonConfiguration":
-        return cls(
-            # Database values in legacy JSON files are intentionally ignored
-            # before validation; settings/.env is the sole connection source.
-            database=None,
-            datasets=payload.get("datasets", {}),
-            tokenizers=payload.get("tokenizers", {}),
-            benchmarks=payload.get("benchmarks", {}),
-            jobs=payload.get("jobs", {}),
-        )
+        return cls.model_validate(payload)
 
     # -------------------------------------------------------------------------
     @classmethod

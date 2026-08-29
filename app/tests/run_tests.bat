@@ -12,9 +12,9 @@ set "VENV_PYTHON=%SERVER_DIR%\.venv\Scripts\python.exe"
 set "RUNTIME_NPM=%PROJECT_ROOT%\runtimes\nodejs\npm.cmd"
 
 set "FASTAPI_HOST=127.0.0.1"
-set "FASTAPI_PORT=8000"
+set "FASTAPI_PORT=5000"
 set "UI_HOST=127.0.0.1"
-set "UI_PORT=7861"
+set "UI_PORT=8000"
 set "TEST_RESULT=0"
 set "BACKEND_PHASE=SKIPPED"
 set "FRONTEND_BOOTSTRAP_PHASE=SKIPPED"
@@ -77,6 +77,11 @@ if exist "%RUNTIME_NPM%" (
   set "NPM_CMD=npm"
 )
 
+if not exist "%CLIENT_DIR%\package-lock.json" (
+  echo [ERROR] Frontend package-lock.json is required.
+  exit /b 1
+)
+
 set "UVICORN_APP=server.app:app"
 set "BACKEND_WORKDIR=%SERVER_DIR%"
 set "PYTHONPATH=%APP_DIR%"
@@ -126,12 +131,7 @@ if /i "%STANDARD_TEST_SKIP_LIVE_SERVERS%"=="false" if "%HAS_E2E%"=="1" (
     if errorlevel 1 (
       if not exist "%CLIENT_DIR%\node_modules" (
         echo [INFO] Installing frontend dependencies...
-        if exist "%CLIENT_DIR%\package-lock.json" (
-          call "%NPM_CMD%" --prefix "%CLIENT_DIR%" ci
-          if errorlevel 1 call "%NPM_CMD%" --prefix "%CLIENT_DIR%" install
-        ) else (
-          call "%NPM_CMD%" --prefix "%CLIENT_DIR%" install
-        )
+        call "%NPM_CMD%" --prefix "%CLIENT_DIR%" ci
         if errorlevel 1 (
           set "LIVE_SERVER_PHASE=FAIL"
           set "TEST_RESULT=1"

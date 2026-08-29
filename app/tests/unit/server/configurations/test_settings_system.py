@@ -15,7 +15,6 @@ from server.configurations.startup import (
     get_server_settings,
     reload_settings_for_tests,
 )
-from server.repositories.database.initializer import _resolve_postgres_engine
 
 ###############################################################################
 @pytest.fixture(autouse=True)
@@ -37,7 +36,6 @@ def _write_json(path: Path, payload: dict[str, object]) -> None:
 ###############################################################################
 def _minimal_config_json() -> dict[str, object]:
     return {
-        "database": {"embedded_database": True},
         "datasets": {},
         "tokenizers": {},
         "benchmarks": {},
@@ -155,7 +153,7 @@ def test_invalid_configuration_file_fails_fast(
         _ = get_server_settings(config_path=config_path)
 
 ###############################################################################
-def test_environment_database_settings_override_json_database_block(
+def test_environment_database_settings_use_explicit_fields(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     config_path = tmp_path / "configurations.json"
@@ -166,7 +164,6 @@ def test_environment_database_settings_override_json_database_block(
         env_path,
         [
             "DATABASE_EMBEDDED=false",
-            "DATABASE_ENGINE=postgresql+psycopg",
             "DATABASE_HOST=remote-db",
             "DATABASE_NAME=remote_db",
             "DATABASE_USERNAME=remote_user",
@@ -177,12 +174,11 @@ def test_environment_database_settings_override_json_database_block(
     settings = get_server_settings(config_path=config_path)
 
     assert settings.database.embedded_database is False
-    assert settings.database.engine == "postgresql+psycopg"
     assert settings.database.host == "remote-db"
     assert settings.database.database_name == "remote_db"
 
 ###############################################################################
-def test_absent_json_database_block_uses_environment_database_settings(
+def test_environment_database_settings_are_loaded(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     config_path = tmp_path / "configurations.json"
@@ -201,7 +197,6 @@ def test_absent_json_database_block_uses_environment_database_settings(
         env_path,
         [
             "DATABASE_EMBEDDED=false",
-            "DATABASE_ENGINE=postgresql+psycopg",
             "DATABASE_HOST=127.0.0.1",
             "DATABASE_PORT=5432",
             "DATABASE_NAME=tkben_test",
@@ -213,11 +208,10 @@ def test_absent_json_database_block_uses_environment_database_settings(
     settings = get_server_settings(config_path=config_path)
 
     assert settings.database.embedded_database is False
-    assert settings.database.engine == "postgresql+psycopg"
     assert settings.database.database_name == "tkben_test"
 
 ###############################################################################
-def test_json_database_block_cannot_select_embedded_database(
+def test_json_database_block_is_rejected(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     config_path = tmp_path / "configurations.json"
@@ -237,7 +231,6 @@ def test_json_database_block_cannot_select_embedded_database(
         env_path,
         [
             "DATABASE_EMBEDDED=false",
-            "DATABASE_ENGINE=postgresql+psycopg",
             "DATABASE_HOST=127.0.0.1",
             "DATABASE_NAME=tkben_test",
             "DATABASE_USERNAME=postgres",
@@ -245,14 +238,11 @@ def test_json_database_block_cannot_select_embedded_database(
     )
     monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
 
-    settings = get_server_settings(config_path=config_path)
-
-    assert settings.database.embedded_database is False
-    assert settings.database.engine == "postgresql+psycopg"
-    assert settings.database.database_name == "tkben_test"
+    with pytest.raises(RuntimeError, match="database"):
+        _ = get_server_settings(config_path=config_path)
 
 ###############################################################################
-def test_invalid_legacy_json_database_block_is_ignored(
+def test_invalid_json_database_block_is_rejected(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     config_path = tmp_path / "configurations.json"
@@ -270,9 +260,8 @@ def test_invalid_legacy_json_database_block_is_ignored(
     _write_env(env_path, ["DATABASE_EMBEDDED=true"])
     monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
 
-    settings = get_server_settings(config_path=config_path)
-
-    assert settings.database.embedded_database is True
+    with pytest.raises(RuntimeError, match="database"):
+        _ = get_server_settings(config_path=config_path)
 
 ###############################################################################
 def test_external_database_requires_host_name_and_user(
@@ -282,7 +271,6 @@ def test_external_database_requires_host_name_and_user(
     _write_json(
         config_path,
         {
-            "database": {"embedded_database": False, "engine": "postgresql+psycopg"},
             "datasets": {},
             "tokenizers": {},
             "benchmarks": {},
@@ -296,7 +284,6 @@ def test_external_database_requires_host_name_and_user(
         [
             "FASTAPI_HOST=127.0.0.1",
             "DATABASE_EMBEDDED=false",
-            "DATABASE_ENGINE=postgresql+psycopg",
             "DATABASE_HOST=",
             "DATABASE_NAME=",
             "DATABASE_USERNAME=",
@@ -318,19 +305,6 @@ def test_get_server_settings_path_scoped_loading_is_deterministic(
     _write_json(
         config_path,
         {
-            "database": {
-                "embedded_database": False,
-                "engine": "postgresql+psycopg",
-                "host": "127.0.0.1",
-                "port": 5432,
-                "database_name": "app",
-                "username": "postgres",
-                "password": "secret",
-                "ssl": False,
-                "ssl_ca": None,
-                "connect_timeout": 30,
-                "insert_batch_size": 1000,
-            },
             "datasets": {"histogram_bins": 30},
             "tokenizers": {"default_discovery_limit": 150},
             "benchmarks": {"streaming_batch_size": 2000},
@@ -344,7 +318,6 @@ def test_get_server_settings_path_scoped_loading_is_deterministic(
         [
             "FASTAPI_HOST=0.0.0.0",
             "DATABASE_EMBEDDED=false",
-            "DATABASE_ENGINE=postgresql+psycopg",
             "DATABASE_HOST=127.0.0.1",
             "DATABASE_PORT=5432",
             "DATABASE_NAME=app",
@@ -359,7 +332,6 @@ def test_get_server_settings_path_scoped_loading_is_deterministic(
 
     assert settings_a == settings_b
     assert settings_a.database.embedded_database is False
-    assert settings_a.database.engine == "postgresql+psycopg"
     assert settings_a.datasets.histogram_bins == 30
     assert settings_a.tokenizers.default_discovery_limit == 150
     assert settings_a.benchmarks.streaming_batch_size == 2000
@@ -403,62 +375,12 @@ def test_configuration_manager_reload_reflects_file_changes(
     assert manager.get_value("datasets", "histogram_bins") == 45
 
 ###############################################################################
-def test_configuration_payload_omits_fitting_block(tmp_path: Path) -> None:
+def test_configuration_payload_rejects_unknown_block(tmp_path: Path) -> None:
     config_path = tmp_path / "configurations.json"
-    _write_json(config_path, _minimal_config_json())
+    _write_json(config_path, {**_minimal_config_json(), "fitting": {}})
 
-    manager = get_configuration_manager(config_path=config_path)
-
-    assert manager.get_block("fitting") == {}
-    assert not hasattr(manager.server_settings, "fitting")
-
-###############################################################################
-@pytest.mark.parametrize(
-    "engine",
-    ["postgres", "postgresql", "postgresql+psycopg2"],
-)
-def test_external_database_rejects_legacy_engine_aliases(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    engine: str,
-) -> None:
-    config_path = tmp_path / "configurations.json"
-    _write_json(
-        config_path,
-        {
-            "database": {
-                "embedded_database": False,
-                "engine": engine,
-                "host": "127.0.0.1",
-                "port": 5432,
-                "database_name": "app",
-                "username": "postgres",
-                "password": "secret",
-            },
-            "datasets": {},
-            "tokenizers": {},
-            "benchmarks": {},
-            "jobs": {},
-        },
-    )
-    env_path = tmp_path / ".env"
-    _write_env(
-        env_path,
-        [
-            "FASTAPI_HOST=127.0.0.1",
-            "DATABASE_EMBEDDED=false",
-            f"DATABASE_ENGINE={engine}",
-            "DATABASE_HOST=127.0.0.1",
-            "DATABASE_PORT=5432",
-            "DATABASE_NAME=app",
-            "DATABASE_USERNAME=postgres",
-        ],
-    )
-    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
-
-    settings = get_server_settings(config_path=config_path)
-    with pytest.raises(ValueError, match="Unsupported database engine"):
-        _resolve_postgres_engine(settings.database.engine)
+    with pytest.raises(RuntimeError, match="fitting"):
+        get_configuration_manager(config_path=config_path)
 
 ###############################################################################
 def test_allow_key_reveal_reads_environment(monkeypatch: pytest.MonkeyPatch) -> None:

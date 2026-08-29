@@ -87,33 +87,12 @@ class AnalysisSession(Base):
     histograms: Mapped[list[HistogramArtifact]] = relationship(back_populates="session", cascade="all, delete-orphan", passive_deletes=True, lazy="raise")
 
 ###############################################################################
-class MetricType(Base):
-    __tablename__ = "metric_type"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    key: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
-    category: Mapped[str] = mapped_column(String(100), nullable=False)
-    label: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[str | None] = mapped_column(Text)
-    scope: Mapped[str] = mapped_column(String(16), nullable=False, default="aggregate", server_default="aggregate")
-    value_kind: Mapped[str] = mapped_column(String(16), nullable=False, default="number", server_default="number")
-    __table_args__ = (
-        CheckConstraint("length(trim(key)) > 0", name="ck_metric_key_nonblank"),
-        CheckConstraint("length(trim(category)) > 0", name="ck_metric_category_nonblank"),
-        CheckConstraint("length(trim(label)) > 0", name="ck_metric_label_nonblank"),
-        CheckConstraint("scope IN ('aggregate', 'per_document')", name="ck_metric_scope"),
-        CheckConstraint("value_kind IN ('number', 'text', 'json', 'histogram')", name="ck_metric_value_kind"),
-        Index("ix_metric_type_category", "category"),
-    )
-    metric_values: Mapped[list[MetricValue]] = relationship(back_populates="metric_type", lazy="raise")
-    histograms: Mapped[list[HistogramArtifact]] = relationship(back_populates="metric_type", lazy="raise")
-
-###############################################################################
 class MetricValue(Base):
     __tablename__ = "metric_value"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     session_id: Mapped[int] = mapped_column(Integer, nullable=False)
     dataset_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    metric_type_id: Mapped[int] = mapped_column(ForeignKey("metric_type.id"), nullable=False)
+    metric_key: Mapped[str] = mapped_column(String(255), nullable=False)
     document_id: Mapped[int | None] = mapped_column(Integer)
     numeric_value: Mapped[float | None] = mapped_column(Float, nullable=True)
     text_value: Mapped[str | None] = mapped_column(Text)
@@ -123,13 +102,13 @@ class MetricValue(Base):
         ForeignKeyConstraint(["session_id", "dataset_id"], ["analysis_session.id", "analysis_session.dataset_id"], ondelete="CASCADE"),
         ForeignKeyConstraint(["document_id", "dataset_id"], ["dataset_document.id", "dataset_document.dataset_id"], ondelete="CASCADE"),
         CheckConstraint("(CASE WHEN numeric_value IS NOT NULL THEN 1 ELSE 0 END + CASE WHEN text_value IS NOT NULL THEN 1 ELSE 0 END + CASE WHEN json_value IS NOT NULL THEN 1 ELSE 0 END) = 1", name="ck_metric_exactly_one_value"),
-        Index("uq_metric_value_aggregate", "session_id", "metric_type_id", unique=True, sqlite_where=and_(document_id.is_(None)), postgresql_where=and_(document_id.is_(None))),
-        Index("uq_metric_value_document", "session_id", "metric_type_id", "document_id", unique=True, sqlite_where=and_(document_id.is_not(None)), postgresql_where=and_(document_id.is_not(None))),
+        CheckConstraint("length(trim(metric_key)) > 0", name="ck_metric_value_key_nonblank"),
+        Index("uq_metric_value_aggregate", "session_id", "metric_key", unique=True, sqlite_where=and_(document_id.is_(None)), postgresql_where=and_(document_id.is_(None))),
+        Index("uq_metric_value_document", "session_id", "metric_key", "document_id", unique=True, sqlite_where=and_(document_id.is_not(None)), postgresql_where=and_(document_id.is_not(None))),
         Index("ix_metric_value_session_id", "session_id", "id"),
         Index("ix_metric_value_document_dataset", "document_id", "dataset_id"),
     )
     session: Mapped[AnalysisSession] = relationship(back_populates="metric_values", lazy="raise", overlaps="metric_values,document")
-    metric_type: Mapped[MetricType] = relationship(back_populates="metric_values", lazy="raise")
     document: Mapped[DatasetDocument | None] = relationship(back_populates="metric_values", lazy="raise", overlaps="metric_values,session")
 
 ###############################################################################
@@ -137,7 +116,7 @@ class HistogramArtifact(Base):
     __tablename__ = "histogram_artifact"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     session_id: Mapped[int] = mapped_column(ForeignKey("analysis_session.id", ondelete="CASCADE"), nullable=False)
-    metric_type_id: Mapped[int] = mapped_column(ForeignKey("metric_type.id"), nullable=False)
+    metric_key: Mapped[str] = mapped_column(String(255), nullable=False)
     bins: Mapped[list[Any]] = mapped_column(JSONArray(), nullable=False)
     bin_edges: Mapped[list[float]] = mapped_column(JSONArray(), nullable=False)
     counts: Mapped[list[int]] = mapped_column(JSONArray(), nullable=False)
@@ -146,17 +125,17 @@ class HistogramArtifact(Base):
     mean_value: Mapped[float] = mapped_column(nullable=False)
     median_value: Mapped[float] = mapped_column(nullable=False)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
-    __table_args__ = (UniqueConstraint("session_id", "metric_type_id"), CheckConstraint("min_value <= max_value", name="ck_histogram_range"), Index("ix_histogram_artifact_session_id", "session_id", "id"))
+    __table_args__ = (UniqueConstraint("session_id", "metric_key", name="uq_histogram_artifact_session_metric_key"), CheckConstraint("length(trim(metric_key)) > 0", name="ck_histogram_metric_key_nonblank"), CheckConstraint("min_value <= max_value", name="ck_histogram_range"), Index("ix_histogram_artifact_session_id", "session_id", "id"))
     session: Mapped[AnalysisSession] = relationship(back_populates="histograms", lazy="raise")
-    metric_type: Mapped[MetricType] = relationship(back_populates="histograms", lazy="raise")
 
 ###############################################################################
 class Tokenizer(Base):
     __tablename__ = "tokenizer"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    source: Mapped[str] = mapped_column(String(32), nullable=False, default="huggingface", server_default="huggingface")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
-    __table_args__ = (CheckConstraint("length(trim(name)) > 0", name="ck_tokenizer_name_nonblank"),)
+    __table_args__ = (CheckConstraint("length(trim(name)) > 0", name="ck_tokenizer_name_nonblank"), CheckConstraint("source IN ('huggingface', 'custom')", name="ck_tokenizer_source"))
     reports: Mapped[list[TokenizerReport]] = relationship(back_populates="tokenizer", cascade="all, delete-orphan", passive_deletes=True, lazy="raise")
     vocabularies: Mapped[list[TokenizerVocabulary]] = relationship(back_populates="tokenizer", cascade="all, delete-orphan", passive_deletes=True, lazy="raise")
 

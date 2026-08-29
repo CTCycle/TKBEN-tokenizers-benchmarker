@@ -1,5 +1,5 @@
 # Configuration
-Last updated: 2026-08-20
+Last updated: 2026-08-29
 
 ## Environment File
 Primary launcher runtime env file:
@@ -18,10 +18,7 @@ Primary launcher runtime env file:
 - `HF_KEYS_ENCRYPTION_MATERIAL_FILE`
 - `TKBEN_DATA_DIR` (resource root for the embedded database, datasets, tokenizers, and exports; defaults to `app/resources`)
 - `TKBEN_LOG_DIR` (runtime logs)
-- `TKBEN_CONFIG_DIR` (active `.env` and `configurations.json`)
 - `DATABASE_EMBEDDED`
-- `DATABASE_URL`
-- `DATABASE_ENGINE`
 - `DATABASE_HOST`
 - `DATABASE_PORT`
 - `DATABASE_NAME`
@@ -36,7 +33,7 @@ Primary launcher runtime env file:
 ## Structured Settings
 - `settings/configurations.json`
   - `datasets`, `tokenizers`, `benchmarks`, and `jobs`
-  - A legacy `database` object may still be parsed, but it does not select the runtime database.
+  - Unknown top-level blocks, including a `database` block, are rejected.
 
 ## Configuration Differences
 ### Dev and Local Webapp
@@ -46,8 +43,7 @@ Primary launcher runtime env file:
 ### Persistence Toggle
 - Database mode and connection fields always come from `settings/.env` through the `DATABASE_*` variables. This is the same source used by Alembic and the database initializer; `configurations.json` cannot override it.
 - `DATABASE_EMBEDDED=true` uses SQLite (`<TKBEN_DATA_DIR>/database.db`; defaults to `app/resources/database.db`).
-- `DATABASE_EMBEDDED=false` with `DATABASE_ENGINE=postgresql+psycopg` uses PostgreSQL.
-- `DATABASE_URL` may seed engine, host, port, name, user, and password values when the corresponding explicit `DATABASE_*` value is absent.
+- `DATABASE_EMBEDDED=false` uses PostgreSQL with the explicit `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `DATABASE_SSL`, and `DATABASE_SSL_CA` fields. The engine is fixed to `postgresql+psycopg`.
 
 ### Job Retention
 - `jobs.polling_interval` controls frontend polling guidance for async job status.
@@ -63,6 +59,5 @@ Primary launcher runtime env file:
 - `FASTAPI_HOST` controls the interface on which the backend listens. Network exposure requires appropriate deployment-level access controls.
 
 Boolean launcher settings are validated as `true` or `false`; invalid values
-fail fast. The launcher’s in-memory fallback values are `FASTAPI_PORT=8000`
-and `UI_PORT=8001`; a newly generated `settings/.env` then supplies the
-versioned template values `FASTAPI_PORT=5000` and `UI_PORT=8000`.
+fail fast. The versioned template defaults are `FASTAPI_PORT=5000` and
+`UI_PORT=8000`, and the same values are used by the test harness.

@@ -34,7 +34,6 @@ $EnvFile = Join-Path $RepoRoot 'settings\.env'
 $EnvTemplate = Join-Path $RepoRoot 'settings\.env.example'
 $RuntimeCacheDir = Join-Path $RuntimeDir 'cache'
 $ToolCacheDir = Join-Path $TestsDir 'cache'
-$LegacyCacheDir = Join-Path $RepoRoot 'assets\cache'
 $UvCacheDir = Join-Path $RuntimeCacheDir 'uv'
 $PythonVersion = '3.14.2'
 $NodeVersion = '22.23.1'
@@ -280,9 +279,9 @@ function Import-Environment {
 
     $defaults = @{
         FASTAPI_HOST = '127.0.0.1'
-        FASTAPI_PORT = '8000'
+        FASTAPI_PORT = '5000'
         UI_HOST = '127.0.0.1'
-        UI_PORT = '8001'
+        UI_PORT = '8000'
         RELOAD = 'false'
         # Backend logs are visible by default when the setting is absent.
         BACKEND_LOGS_VISIBLE = 'true'
@@ -387,9 +386,11 @@ function Get-FrontendDependencyFingerprint {
     $manifestPaths = @(
         (Join-Path $ClientDir 'package.json'),
         (Join-Path $ClientDir 'package-lock.json')
-    ) | Where-Object { Test-Path -LiteralPath $_ }
+    )
 
-    if (-not $manifestPaths) { throw 'Frontend package manifests are missing.' }
+    if ($manifestPaths | Where-Object { -not (Test-Path -LiteralPath $_) }) {
+        throw 'Frontend package.json and package-lock.json are required.'
+    }
     return (($manifestPaths | ForEach-Object { (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash }) -join ':')
 }
 
@@ -470,11 +471,10 @@ function Sync-Frontend {
         $frontendInstallRequired = -not $UseCachedFrontendDependencies -or -not (Test-FrontendDependenciesReady)
         if ($frontendInstallRequired) {
             Write-Step 'Installing frontend dependencies.'
-            if (Test-Path -LiteralPath (Join-Path $ClientDir 'package-lock.json')) {
-                $npmExitCode = Invoke-Npm ci
-            } else {
-                $npmExitCode = Invoke-Npm install
+            if (-not (Test-Path -LiteralPath (Join-Path $ClientDir 'package-lock.json'))) {
+                throw 'Frontend package-lock.json is required; refusing an unlocked install.'
             }
+            $npmExitCode = Invoke-Npm ci
             if ($npmExitCode -ne 0) { throw "npm dependency installation failed with exit code $npmExitCode." }
             Write-FrontendDependencyStamp
         } else {
@@ -817,16 +817,6 @@ function Remove-PythonCaches {
     @($cacheDirectories | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
 }
 
-function Remove-LegacyDevelopmentCaches {
-    $cacheDirectories = @(Get-ChildItem -LiteralPath $RepoRoot -Directory -Recurse -Force -ErrorAction SilentlyContinue |
-        Where-Object {
-            $_.Name -in @('.pytest_cache', '.ruff_cache', '.mypy_cache', '.angular') -and
-            $_.FullName -notlike "$RuntimeCacheDir*" -and
-            $_.FullName -notlike "$ToolCacheDir*"
-        } | Sort-Object FullName -Descending)
-    @($cacheDirectories | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
-}
-
 function Clear-ManagedCache {
     $summaries = @()
     foreach ($cacheRoot in @($RuntimeCacheDir, $ToolCacheDir)) {
@@ -836,9 +826,6 @@ function Clear-ManagedCache {
         $summaries += @($entries | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
     }
 
-    if (Test-Path -LiteralPath $LegacyCacheDir) {
-        $summaries += @(Remove-PathBestEffort -Path $LegacyCacheDir)
-    }
     $summaries
 }
 
@@ -846,7 +833,6 @@ function Clear-Cache {
     Write-Step 'Removing development caches and temporary artifacts.'
     $summaries = @(
         Remove-PythonCaches
-        Remove-LegacyDevelopmentCaches
         Clear-ManagedCache
     )
     $skipped = [int](($summaries | Measure-Object -Property Skipped -Sum).Sum)
@@ -872,7 +858,6 @@ function Uninstall-Application {
     }
     # Project manifests, dependency lockfiles, and tool configuration remain intact.
     Remove-PythonCaches
-    Remove-LegacyDevelopmentCaches
     Clear-ManagedCache
     Write-Ok 'Application runtimes, dependencies, and build outputs removed. Dependency lockfiles and user data were preserved.'
 }

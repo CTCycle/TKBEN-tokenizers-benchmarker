@@ -30,7 +30,6 @@ class BenchmarkJobService:
         result = service.run_benchmarks(
             dataset_name=request_payload.get("dataset_name", ""),
             tokenizer_ids=request_payload.get("tokenizers", []),
-            custom_tokenizers=request_payload.get("custom_tokenizers", {}),
             run_name=request_payload.get("run_name"),
             selected_metric_keys=request_payload.get("selected_metric_keys"),
             benchmark_config=config,

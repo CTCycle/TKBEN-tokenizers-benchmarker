@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from tokenizers import Tokenizer as FastTokenizer
 from transformers import AutoTokenizer
 from transformers.utils.logging import set_verbosity_error
 
@@ -21,7 +22,6 @@ from server.common.utils.security import (
 )
 from server.services.benchmark_execution import BenchmarkServiceExecutionMixin
 from server.services.benchmark_result_builder import BenchmarkResultBuilder
-from server.services.custom_tokenizers import get_custom_tokenizer_registry
 
 ###############################################################################
 class BenchmarkTools:
@@ -248,44 +248,24 @@ class BenchmarkService(BenchmarkServiceExecutionMixin):
             return []
 
         unique_requested = list(dict.fromkeys(requested))
-        missing_names = set(
-            self.repository.get_missing_persisted_tokenizers(unique_requested)
-        )
+        sources = self.repository.get_tokenizer_sources(unique_requested)
 
         missing: list[str] = []
-        custom_registry = get_custom_tokenizer_registry()
         for tokenizer_name in unique_requested:
-            if custom_registry.get(tokenizer_name) is not None:
-                continue
-            if tokenizer_name in missing_names:
+            source = sources.get(tokenizer_name)
+            if source is None:
                 missing.append(tokenizer_name)
                 continue
             cache_dir = Path(self.get_tokenizer_cache_dir(tokenizer_name))
-            has_cached_files = cache_dir.is_dir() and any(
-                path.is_file() for path in cache_dir.rglob("*")
-            )
-            if not has_cached_files:
+            if source == "custom":
+                has_artifact = (cache_dir / "tokenizer.json").is_file()
+            else:
+                has_artifact = cache_dir.is_dir() and any(
+                    path.is_file() for path in cache_dir.rglob("*")
+                )
+            if not has_artifact:
                 missing.append(tokenizer_name)
         return missing
-
-    # -------------------------------------------------------------------------
-    def resolve_custom_tokenizer_selection(
-        self,
-        selected_tokenizer_names: list[str],
-    ) -> dict[str, Any]:
-        selected_names: list[str] = []
-        for tokenizer_name in selected_tokenizer_names:
-            normalized_name = str(tokenizer_name).strip()
-            if normalized_name:
-                selected_names.append(normalized_name)
-
-        resolved: dict[str, Any] = {}
-        registry = get_custom_tokenizer_registry()
-        for selected_name in dict.fromkeys(selected_names):
-            tokenizer = registry.get(selected_name)
-            if tokenizer is not None and self.tools.is_tokenizer_compatible(tokenizer):
-                resolved[selected_name] = tokenizer
-        return resolved
 
     # -------------------------------------------------------------------------
     def prepare_run(self, payload: BenchmarkRunRequest) -> dict[str, Any]:
@@ -295,21 +275,13 @@ class BenchmarkService(BenchmarkServiceExecutionMixin):
         if not payload.dataset_name:
             raise ValueError("Dataset name must be specified.")
 
-        custom_tokenizers = self.resolve_custom_tokenizer_selection(
-            payload.tokenizers
-        )
         if self.get_dataset_document_count(payload.dataset_name) == 0:
             raise ValueError(
                 f"Dataset '{payload.dataset_name}' not found or empty"
             )
 
-        persisted_tokenizers = [
-            tokenizer
-            for tokenizer in payload.tokenizers
-            if tokenizer not in custom_tokenizers
-        ]
         missing_tokenizers = self.get_missing_persisted_tokenizers(
-            persisted_tokenizers
+            payload.tokenizers
         )
         if missing_tokenizers:
             missing_display = ", ".join(missing_tokenizers[:5])
@@ -320,21 +292,26 @@ class BenchmarkService(BenchmarkServiceExecutionMixin):
                 f"Missing: {missing_display}"
             )
 
-        request_payload = payload.model_dump()
-        request_payload["custom_tokenizers"] = custom_tokenizers
-        return request_payload
+        return payload.model_dump()
 
     # -------------------------------------------------------------------------
     def load_tokenizers(self, tokenizer_ids: list[str]) -> dict[str, Any]:
         tokenizers: dict[str, Any] = {}
+        sources = self.repository.get_tokenizer_sources(tokenizer_ids)
         for tokenizer_id in tokenizer_ids:
             try:
                 logger.info("Loading tokenizer: %s", tokenizer_id)
-                tokenizer = AutoTokenizer.from_pretrained(
-                    tokenizer_id,
-                    cache_dir=self.get_tokenizer_cache_dir(tokenizer_id),
-                    local_files_only=True,
-                )
+                cache_dir = self.get_tokenizer_cache_dir(tokenizer_id)
+                if sources.get(tokenizer_id) == "custom":
+                    tokenizer = FastTokenizer.from_file(
+                        str(Path(cache_dir) / "tokenizer.json")
+                    )
+                else:
+                    tokenizer = AutoTokenizer.from_pretrained(
+                        tokenizer_id,
+                        cache_dir=cache_dir,
+                        local_files_only=True,
+                    )
                 if self.tools.is_tokenizer_compatible(tokenizer):
                     tokenizers[tokenizer_id] = tokenizer
                 else:

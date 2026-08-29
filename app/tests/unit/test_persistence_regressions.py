@@ -62,6 +62,7 @@ def test_tokenizer_repository_insert_if_missing_is_idempotent(
         rows = session.execute(select(Tokenizer)).scalars().all()
     assert len(rows) == 1
     assert rows[0].name == "bert-base-uncased"
+    assert rows[0].source == "huggingface"
 
 ###############################################################################
 def test_dataset_delete_cascades_documents_sessions_and_benchmark_reports() -> None:
@@ -153,7 +154,7 @@ def test_tokenizer_delete_cascades_reports_and_vocabulary(
         assert session.execute(select(TokenizerVocabulary)).scalars().all() == []
 
 ###############################################################################
-def test_benchmark_service_ensure_tokenizer_ids_returns_mapping(
+def test_benchmark_repository_requires_existing_tokenizer_ids(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
@@ -162,7 +163,18 @@ def test_benchmark_service_ensure_tokenizer_ids_returns_mapping(
     monkeypatch.setattr(database.backend, "engine", engine)
     service = BenchmarkService()
 
-    mapping = service.ensure_tokenizer_ids(["tok/a", "tok/b", "tok/a"])
+    with pytest.raises(ValueError, match="do not exist"):
+        service.repository.get_tokenizer_ids(["tok/a", "tok/b", "tok/a"])
+
+    with Session(bind=engine) as session:
+        now = datetime.now(timezone.utc)
+        session.add_all([
+            Tokenizer(name="tok/a", created_at=now),
+            Tokenizer(name="tok/b", created_at=now),
+        ])
+        session.commit()
+
+    mapping = service.repository.get_tokenizer_ids(["tok/a", "tok/b", "tok/a"])
 
     assert set(mapping.keys()) == {"tok/a", "tok/b"}
     assert mapping["tok/a"] != mapping["tok/b"]

@@ -228,11 +228,6 @@ class TokenizerVocabularyPageResponse(BaseModel):
     items: list[TokenizerVocabularyItem] = Field(default_factory=list)
 
 ###############################################################################
-class CustomTokenizersDeleteResponse(BaseModel):
-    status: str = Field(default="success")
-    message: str
-
-###############################################################################
 class TokenizerDeleteResponse(BaseModel):
     status: str = Field(default="success")
     tokenizer_name: str

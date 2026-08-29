@@ -13,7 +13,7 @@ TESTS_DIR = APP_DIR / "tests"
 ASSETS_DIR = ROOT_DIR / "assets"
 FIGURES_DIR = ASSETS_DIR / "figures"
 QA_DIR = ROOT_DIR / "QA"
-SETTINGS_DIR = Path(os.getenv("TKBEN_CONFIG_DIR", ROOT_DIR / "settings")).resolve()
+SETTINGS_DIR = (ROOT_DIR / "settings").resolve()
 
 ###############################################################################
 def _resolve_resource_path(configured_path: str | None) -> Path:

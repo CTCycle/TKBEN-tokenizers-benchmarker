@@ -21,7 +21,6 @@ from server.repositories.database.sqlite import SQLiteRepository
 def _settings() -> DatabaseSettings:
     return DatabaseSettings(
         embedded_database=True,
-        engine=None,
         host=None,
         port=None,
         database_name=None,
@@ -49,6 +48,10 @@ def _configure_database(
     return settings
 
 ###############################################################################
+def _head() -> str:
+    return migrations._migration_directory(migrations.build_alembic_config()).get_heads()[0]
+
+###############################################################################
 def _revision(path: Path) -> str | None:
     engine = create_engine(f"sqlite:///{path}", future=True)
     try:
@@ -56,7 +59,7 @@ def _revision(path: Path) -> str | None:
         if "alembic_version" not in tables:
             return None
         with engine.connect() as connection:
-            return connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
+            return connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one_or_none()
     finally:
         engine.dispose()
 
@@ -72,17 +75,16 @@ def test_repeated_initialization_is_current_and_idempotent(
     first_size = path.stat().st_size
     initializer.run_database_initialization()
 
-    assert _revision(path) == migrations.HEAD_REVISION
+    assert _revision(path) == _head()
     assert path.stat().st_size == first_size
 
 ###############################################################################
-def test_legacy_revision_upgrade_preserves_relational_data(
+def test_versioned_pre_cleanup_revision_upgrades_and_preserves_metric_key(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     path = tmp_path / "database.db"
     settings = _configure_database(monkeypatch, path)
-    initializer.run_database_initialization()
 
     repository = SQLiteRepository(settings, enforce_foreign_keys=False, begin_immediate=True)
     try:
@@ -90,47 +92,51 @@ def test_legacy_revision_upgrade_preserves_relational_data(
             with connection.begin():
                 config = migrations.build_alembic_config()
                 config.attributes["connection"] = connection
-                command.downgrade(config, migrations.LEGACY_REVISION)
-        with repository.engine.begin() as connection:
-            dataset_id = connection.execute(
-                text(
-                    "INSERT INTO dataset (name, status, document_count, created_at, updated_at) "
-                    "VALUES ('preserved', 'loading', 1, :now, :now) RETURNING id"
-                ),
-                {"now": datetime.now(timezone.utc)},
-            ).scalar_one()
-            document_id = connection.execute(
-                text(
-                    "INSERT INTO dataset_document (dataset_id, ordinal, text) "
-                    "VALUES (:dataset_id, 0, 'document') RETURNING id"
-                ),
-                {"dataset_id": dataset_id},
-            ).scalar_one()
-            session_id = connection.execute(
-                text(
-                    "INSERT INTO analysis_session "
-                    "(dataset_id, status, created_at, parameters, selected_metric_keys) "
-                    "VALUES (:dataset_id, 'running', :now, '{}', '[]') RETURNING id"
-                ),
-                {"dataset_id": dataset_id, "now": datetime.now(timezone.utc)},
-            ).scalar_one()
-            metric_type_id = connection.execute(
-                text("SELECT id FROM metric_type ORDER BY id LIMIT 1")
-            ).scalar_one()
-            connection.execute(
-                text(
-                    "INSERT INTO metric_value "
-                    "(session_id, dataset_id, metric_type_id, document_id, numeric_value, created_at) "
-                    "VALUES (:session_id, :dataset_id, :metric_type_id, :document_id, 1.5, :now)"
-                ),
-                {
-                    "session_id": session_id,
-                    "dataset_id": dataset_id,
-                    "metric_type_id": metric_type_id,
-                    "document_id": document_id,
-                    "now": datetime.now(timezone.utc),
-                },
-            )
+                command.upgrade(config, "0002_current_schema")
+            with connection.begin():
+                now = datetime.now(timezone.utc)
+                dataset_id = connection.execute(
+                    text(
+                        "INSERT INTO dataset (name, status, document_count, created_at, updated_at, ready_at) "
+                        "VALUES ('preserved', 'ready', 1, :now, :now, :now) RETURNING id"
+                    ),
+                    {"now": now},
+                ).scalar_one()
+                document_id = connection.execute(
+                    text(
+                        "INSERT INTO dataset_document (dataset_id, ordinal, text) "
+                        "VALUES (:dataset_id, 0, 'document') RETURNING id"
+                    ),
+                    {"dataset_id": dataset_id},
+                ).scalar_one()
+                session_id = connection.execute(
+                    text(
+                        "INSERT INTO analysis_session "
+                        "(dataset_id, status, report_version, created_at, completed_at, parameters, selected_metric_keys) "
+                        "VALUES (:dataset_id, 'completed', 2, :now, :now, '{}', '[]') RETURNING id"
+                    ),
+                    {"dataset_id": dataset_id, "now": now},
+                ).scalar_one()
+                metric_type_id = connection.execute(
+                    text(
+                        "INSERT INTO metric_type "
+                        "(key, category, label) VALUES ('metric', 'test', 'Metric') RETURNING id"
+                    )
+                ).scalar_one()
+                connection.execute(
+                    text(
+                        "INSERT INTO metric_value "
+                        "(session_id, dataset_id, metric_type_id, document_id, numeric_value, created_at) "
+                        "VALUES (:session_id, :dataset_id, :metric_type_id, :document_id, 1.5, :now)"
+                    ),
+                    {
+                        "session_id": session_id,
+                        "dataset_id": dataset_id,
+                        "metric_type_id": metric_type_id,
+                        "document_id": document_id,
+                        "now": now,
+                    },
+                )
     finally:
         repository.engine.dispose()
 
@@ -140,19 +146,17 @@ def test_legacy_revision_upgrade_preserves_relational_data(
     try:
         with Session(engine) as session:
             assert session.execute(text("SELECT count(*) FROM dataset WHERE name='preserved'")).scalar_one() == 1
-            assert session.execute(text("SELECT count(*) FROM metric_value")).scalar_one() == 1
-        report_default = next(
-            column["default"]
-            for column in inspect(engine).get_columns("analysis_session")
-            if column["name"] == "report_version"
-        )
-        assert report_default in {"'2'", "2"}
+            assert session.execute(text("SELECT metric_key FROM metric_value")).scalar_one() == "metric"
+        tables = inspect(engine).get_table_names()
+        assert "metric_type" not in tables
+        tokenizer_columns = {column["name"] for column in inspect(engine).get_columns("tokenizer")}
+        assert "source" in tokenizer_columns
     finally:
         engine.dispose()
-    assert _revision(path) == migrations.HEAD_REVISION
+    assert _revision(path) == _head()
 
 ###############################################################################
-def test_current_unversioned_schema_is_adopted_without_rebuilding(
+def test_nonempty_unversioned_database_is_rejected_untouched(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -166,9 +170,13 @@ def test_current_unversioned_schema_is_adopted_without_rebuilding(
             connection.execute(text("DROP TABLE alembic_version"))
     finally:
         engine.dispose()
+    before = path.read_bytes()
 
-    initializer.run_database_initialization()
-    assert _revision(path) == migrations.HEAD_REVISION
+    with pytest.raises(DatabaseMigrationError, match="non-empty unversioned schema"):
+        initializer.run_database_initialization()
+
+    assert path.read_bytes() == before
+    assert _revision(path) is None
 
 ###############################################################################
 def test_unknown_unversioned_schema_is_rejected_untouched(
@@ -185,7 +193,7 @@ def test_unknown_unversioned_schema_is_rejected_untouched(
         engine.dispose()
     before = path.read_bytes()
 
-    with pytest.raises(DatabaseMigrationError, match="unversioned schema"):
+    with pytest.raises(DatabaseMigrationError, match="non-empty unversioned schema"):
         initializer.run_database_initialization()
 
     assert path.read_bytes() == before
@@ -214,28 +222,6 @@ def test_database_ahead_of_repository_is_rejected(
     assert _revision(path) == "9999_future"
 
 ###############################################################################
-def test_seed_failure_rolls_back_schema_and_version(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    path = tmp_path / "database.db"
-    _configure_database(monkeypatch, path)
-
-    def fail_seed(*args: object, **kwargs: object) -> None:
-        del args, kwargs
-        raise RuntimeError("injected seed failure")
-
-    monkeypatch.setattr(migrations, "seed_metric_types", fail_seed)
-    with pytest.raises(DatabaseMigrationError, match="Unable to migrate"):
-        initializer.run_database_initialization()
-
-    engine = create_engine(f"sqlite:///{path}", future=True)
-    try:
-        assert inspect(engine).get_table_names() == []
-    finally:
-        engine.dispose()
-
-###############################################################################
 def test_concurrent_initializers_serialize_on_sqlite(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -251,4 +237,4 @@ def test_concurrent_initializers_serialize_on_sqlite(
         for future in futures:
             future.result()
 
-    assert _revision(path) == migrations.HEAD_REVISION
+    assert _revision(path) == _head()

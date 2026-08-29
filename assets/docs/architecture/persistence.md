@@ -1,41 +1,42 @@
 # Persistence
-Last updated: 2026-08-20
+Last updated: 2026-08-29
 
 ## Storage selection
 
 Embedded SQLite is the default local store at `app/resources/database.db`. Set
 `TKBEN_DATA_DIR` to override the resource root; the embedded database then uses
 `<TKBEN_DATA_DIR>/database.db`. The PostgreSQL backend is selected with
-`DATABASE_EMBEDDED=false` and `postgresql+psycopg` settings. Database access is
-injected through the repository backend.
+`DATABASE_EMBEDDED=false` and the explicit PostgreSQL fields in `settings/.env`;
+the engine is fixed to `postgresql+psycopg`. Database access is injected through
+the repository backend.
 
 Alembic is the authoritative schema owner. Application startup and the
 database-initialization command run the same idempotent migration workflow:
 they create a missing SQLite file (or a missing PostgreSQL target when the
-configured role has `CREATEDB`), acquire the backend migration lock, adopt a
-supported unversioned schema when safe, upgrade to the single repository head,
-verify that head, and seed the metric catalog in the protected transaction.
+configured role has `CREATEDB`), acquire the backend migration lock, upgrade an
+empty database to the single repository head, and verify that head in the
+protected transaction.
 `Base.metadata.create_all()` is not used for production initialization.
 
 SQLite migrations use `BEGIN IMMEDIATE`, bounded by
 `DATABASE_CONNECT_TIMEOUT`, and run a foreign-key integrity check before
 commit. PostgreSQL uses an advisory transaction lock; database creation is
 serialized through a separate maintenance-database advisory lock. A failed
-migration or seed rolls back and prevents FastAPI from becoming ready.
+migration rolls back and prevents FastAPI from becoming ready.
 Databases ahead of the application, unknown revisions, multiple heads, and
 unrecognized or partial unversioned schemas fail without automatic downgrades
 or destructive changes.
 
-An unversioned database is adopted only when its tables, columns, keys,
-relationships, indexes, and recognized historical differences match a
-supported TKBEN signature. The pre-Alembic signature is stamped at
-`0001_pre_alembic_schema` and upgraded; the current signature is stamped at
-`0002_current_schema`.
+A non-empty database without an Alembic version row is rejected. Historical
+schemas remain represented by the tracked `0001_pre_alembic_schema` and
+`0002_current_schema` revisions; the `0003_canonical_state_cleanup` revision
+purges incompatible reports and converts persisted metric and tokenizer state
+to the current contract.
 
 ## Canonical tables
 
 The schema contains `dataset`, `dataset_document`, `analysis_session`,
-`metric_type`, `metric_value`, `histogram_artifact`, `tokenizer`,
+`metric_value`, `histogram_artifact`, `tokenizer`,
 `tokenizer_vocabulary`, `tokenizer_report`, `benchmark_report`, and
 `hf_access_keys`. The obsolete `dataset_validation_report` table is removed.
 
@@ -48,8 +49,6 @@ erDiagram
     DATASET ||--o{ BENCHMARK_REPORT : snapshots
     ANALYSIS_SESSION ||--o{ METRIC_VALUE : produces
     ANALYSIS_SESSION ||--o{ HISTOGRAM_ARTIFACT : produces
-    METRIC_TYPE ||--o{ METRIC_VALUE : defines
-    METRIC_TYPE ||--o{ HISTOGRAM_ARTIFACT : defines
     DATASET_DOCUMENT o|--o{ METRIC_VALUE : scopes
     TOKENIZER ||--o{ TOKENIZER_VOCABULARY : contains
     TOKENIZER ||--o| TOKENIZER_REPORT : current_report
@@ -69,14 +68,17 @@ dataset-local ordinal and the ready document count is stored on `dataset`.
 Failed or cancelled loading imports are deleted and database cascades remove
 their documents.
 
-Metric values carry the owning dataset, enforce composite session/document
-ownership, require exactly one value representation, and use partial unique
-indexes for aggregate and per-document values. Tokenizer reports are
-current-only: replacing a report replaces its vocabulary and report as one
-logical operation. Benchmark reports keep immutable schema-3/report-5 JSON
-snapshots plus projected summary columns; list queries do not select the full
-payload. Reports from older contracts are filtered out and never migrated;
-dashboard histogram bins remain inside the immutable payload snapshot.
+Metric values carry the owning dataset, store the canonical metric key directly,
+enforce composite session/document ownership, require exactly one value
+representation, and use partial unique indexes for aggregate and per-document
+values. Tokenizer rows declare `source` as `huggingface` or `custom`; custom
+rows require a durable canonical `tokenizer.json` artifact. Tokenizer reports
+are current-only: replacing a report replaces its vocabulary and report as one
+logical operation. Benchmark reports keep immutable schema-3/report-5 detail
+JSON plus projected summary columns; list queries do not select the full
+payload. Reports from older contracts are purged by migration and incompatible
+rows fail explicitly if encountered later; dashboard histogram bins remain
+inside the immutable detail payload.
 
 Benchmark report snapshots store tokenizer names in JSON because the report is
 an immutable run record; there is no benchmark-report/tokenizer junction table.
@@ -101,10 +103,8 @@ Persistence ownership follows the repository/service split:
 - The report service uses the benchmark repository/database boundary for
   transactions and summary/payload queries.
 
-This naming and ownership refactor does not change the schema, response
-fields, ordering, or transaction behavior. The removed
-`repositories/serialization` namespace is not retained as a compatibility
-alias.
+Repositories and services use the current schema and response contracts without
+compatibility aliases or implicit row creation.
 
 ## Backend and transaction guarantees
 
@@ -146,8 +146,6 @@ not application runtime configuration. Alembic uses the pyproject
 configuration and the application settings loader; no `alembic.ini` is
 maintained, so database credentials have one source of truth in `settings/.env`.
 Use the application initializer (launcher option 4 or
-`app/scripts/initialize_database.py`) for an existing unversioned database so
-the supported-schema adoption check runs before a direct Alembic upgrade.
-
-The architecture remediation described by this document is module ownership
-only. It requires no Alembic revision and no database migration.
+`app/scripts/initialize_database.py`) for an existing database. A non-empty
+unversioned database is intentionally a hard failure and must be restored from a
+versioned backup or recreated.

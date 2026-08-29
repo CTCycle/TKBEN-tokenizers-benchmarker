@@ -97,10 +97,7 @@ describe('BenchmarkStore', () => {
 
   it('deduplicates hidden widgets and preserves visualization settings while reordering', () => {
     const { store } = createStore();
-    localStorage.setItem(
-      'tkben:cross-benchmark-dashboard-layout:v3',
-      JSON.stringify({ visualization_by_widget_id: { visible: 'bar' } }),
-    );
+    store.setVisualization('visible', 'bar');
 
     store.setHiddenWidgetIds(['hidden', 'hidden']);
     store.reorder(0, 1);
@@ -109,6 +106,16 @@ describe('BenchmarkStore', () => {
     expect(store.hiddenWidgetIds()).toEqual(['hidden']);
     expect(saved.ordered_widget_ids).toEqual(['hidden', 'visible']);
     expect(saved.visualization_by_widget_id).toEqual({ visible: 'bar' });
+  });
+
+  it('ignores the old array preference shape', () => {
+    localStorage.setItem(
+      'tkben:cross-benchmark-dashboard-layout:v3',
+      JSON.stringify(['legacy-only']),
+    );
+    const { store } = createStore();
+
+    expect(store.layout()).toEqual(['visible', 'hidden']);
   });
 
   it('reorders visible widgets without moving hidden panel slots', () => {

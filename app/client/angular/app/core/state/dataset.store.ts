@@ -56,7 +56,6 @@ export class DatasetStore {
       }
     });
 
-    this.restoreReport();
     this.loadMetricCatalog();
     this.refresh();
   }
@@ -172,18 +171,5 @@ export class DatasetStore {
 
   private setReport(report: DatasetAnalysisResponse | null): void {
     this.report.set(report);
-    try {
-      if (report) localStorage.setItem('tkben:last-dataset-report', JSON.stringify(report));
-      else localStorage.removeItem('tkben:last-dataset-report');
-    } catch { /* storage is optional */ }
-  }
-
-  private restoreReport(): void {
-    try {
-      const raw = localStorage.getItem('tkben:last-dataset-report');
-      if (!raw) return;
-      const parsed: unknown = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object' && typeof (parsed as { dataset_name?: unknown }).dataset_name === 'string') this.report.set(parsed as DatasetAnalysisResponse);
-    } catch { /* corrupted storage is ignored */ }
   }
 }

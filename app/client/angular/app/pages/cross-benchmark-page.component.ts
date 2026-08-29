@@ -35,7 +35,6 @@ export class CrossBenchmarkPageComponent {
   protected readonly runSelectedMetricKeys = signal<readonly string[]>([]);
   protected readonly runSelectedTokenizers = signal<readonly string[]>([]);
   protected readonly tokenizerQuery = signal('');
-  protected readonly visualizations = signal<Record<string, string>>({});
   protected readonly restoreDisabled = signal(false);
   protected readonly exportError = signal<string | null>(null);
   protected readonly keyboardGrabbed = signal<string | null>(null);
@@ -69,17 +68,6 @@ export class CrossBenchmarkPageComponent {
     const query = this.tokenizerQuery().trim().toLowerCase();
     return this.store.availableTokenizers().filter((tokenizer) => !query || tokenizer.toLowerCase().includes(query));
   });
-
-  constructor() {
-    try {
-      const raw = localStorage.getItem('tkben:cross-benchmark-dashboard-layout:v3');
-      const parsed: unknown = raw ? JSON.parse(raw) : null;
-      if (parsed && typeof parsed === 'object' && 'visualization_by_widget_id' in parsed) {
-        const map = (parsed as { visualization_by_widget_id?: unknown }).visualization_by_widget_id;
-        if (map && typeof map === 'object') this.visualizations.set(map as Record<string, string>);
-      }
-    } catch { /* corrupted storage is ignored */ }
-  }
 
   protected openReportManager(): void { this.reportManagerOpen.set(true); }
   protected closeReportManager(): void { this.reportManagerOpen.set(false); this.reportDeleteConfirmId.set(null); }
@@ -205,7 +193,18 @@ export class CrossBenchmarkPageComponent {
     const report = this.store.report();
     if (!report) return;
     this.exportError.set(null);
-    this.exportApi.dashboardPdf({ dashboardType: 'benchmark', reportName: report.run_name || `benchmark-report-${report.report_id ?? 'latest'}`, fileName: `benchmark-report-${report.report_id ?? 'latest'}.pdf`, dashboardPayload: report as unknown as Record<string, unknown> }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ next: (result) => { const url = URL.createObjectURL(result.blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = result.fileName; anchor.click(); URL.revokeObjectURL(url); }, error: (error: unknown) => { void errorMessageAsync(error, 'Failed to export dashboard.').then((message) => this.exportError.set(message)); } });
+    const orderedWidgetIds = this.allOrderedWidgets().map((widget) => widget.widget_id);
+    const visibleWidgets = this.orderedWidgets();
+    const visualizationByWidgetId = Object.fromEntries(
+      visibleWidgets.map((widget) => [widget.widget_id, this.visualizationFor(widget)]),
+    );
+    const dashboardPayload = {
+      ...report,
+      visible_widget_ids: visibleWidgets.map((widget) => widget.widget_id),
+      ordered_widget_ids: orderedWidgetIds,
+      visualization_by_widget_id: visualizationByWidgetId,
+    } as unknown as Record<string, unknown>;
+    this.exportApi.dashboardPdf({ dashboardType: 'benchmark', reportName: report.run_name || `benchmark-report-${report.report_id ?? 'latest'}`, fileName: `benchmark-report-${report.report_id ?? 'latest'}.pdf`, dashboardPayload }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ next: (result) => { const url = URL.createObjectURL(result.blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = result.fileName; anchor.click(); URL.revokeObjectURL(url); }, error: (error: unknown) => { void errorMessageAsync(error, 'Failed to export dashboard.').then((message) => this.exportError.set(message)); } });
   }
 
   protected dropWidget(event: CdkDragDrop<unknown[]>): void {
@@ -237,19 +236,17 @@ export class CrossBenchmarkPageComponent {
   }
 
   protected setVisualization(widgetId: string, value: string): void {
-    const next = { ...this.visualizations(), [widgetId]: value };
-    this.visualizations.set(next);
-    try { localStorage.setItem('tkben:cross-benchmark-dashboard-layout:v3', JSON.stringify({ version: 3, ordered_widget_ids: this.store.layout(), hidden_widget_ids: this.store.hiddenWidgetIds(), known_widget_ids: this.store.layout(), visualization_by_widget_id: next })); } catch { /* storage is optional */ }
+    this.store.setVisualization(widgetId, value);
   }
 
   protected isVisualization(widget: BenchmarkDashboardWidgetData, value: string): boolean {
-    const stored = this.visualizations()[widget.widget_id];
+    const stored = this.store.visualizations()[widget.widget_id];
     const selected = stored && widget.compatible_visualizations.includes(stored as BenchmarkVisualizationKind) ? stored as BenchmarkVisualizationKind : widget.default_visualization;
     return selected === value;
   }
 
   protected visualizationFor(widget: BenchmarkDashboardWidgetData): BenchmarkVisualizationKind {
-    const stored = this.visualizations()[widget.widget_id];
+    const stored = this.store.visualizations()[widget.widget_id];
     return stored && widget.compatible_visualizations.includes(stored as BenchmarkVisualizationKind)
       ? stored as BenchmarkVisualizationKind
       : widget.default_visualization;
@@ -265,7 +262,5 @@ export class CrossBenchmarkPageComponent {
     this.customizeOpen.set(false);
     this.restoreDisabled.set(true);
     this.store.resetLayout();
-    this.visualizations.set({});
-    try { localStorage.removeItem('tkben:cross-benchmark-dashboard-layout:v3'); } catch { /* storage is optional */ }
   }
 }

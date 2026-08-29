@@ -9,7 +9,7 @@ from sqlalchemy.sql.elements import TextClause
 
 from server.common.path import DATABASE_PATH
 from server.common.utils.logger import logger
-from server.configurations import DatabaseSettings, get_server_settings
+from server.configurations import DatabaseSettings, ServerSettings, get_server_settings
 from server.repositories.database.migrations import (
     DatabaseMigrationError,
     run_locked_migrations,
@@ -18,7 +18,6 @@ from server.repositories.database.postgres import PostgresRepository
 from server.repositories.database.sqlite import SQLiteRepository
 from server.repositories.database.utils import normalize_sqlite_path
 
-SUPPORTED_POSTGRES_ENGINE = "postgresql+psycopg"
 POSTGRES_CREATION_LOCK_NAME = "tkben:database:create"
 
 ###############################################################################
@@ -33,11 +32,10 @@ def build_postgres_connect_args(settings: DatabaseSettings) -> dict[str, str | i
 ###############################################################################
 def build_postgres_url(settings: DatabaseSettings, database_name: str) -> str:
     port = settings.port or 5432
-    engine_name = _resolve_postgres_engine(settings.engine)
     safe_username = urllib.parse.quote_plus(settings.username or "")
     safe_password = urllib.parse.quote_plus(settings.password or "")
     return (
-        f"{engine_name}://{safe_username}:{safe_password}"
+        f"postgresql+psycopg://{safe_username}:{safe_password}"
         f"@{settings.host}:{port}/{database_name}"
     )
 
@@ -47,7 +45,6 @@ def clone_settings_with_database(
 ) -> DatabaseSettings:
     return DatabaseSettings(
         embedded_database=False,
-        engine=settings.engine,
         host=settings.host,
         port=settings.port,
         database_name=database_name,
@@ -199,37 +196,37 @@ def ensure_postgres_database(settings: DatabaseSettings) -> str:
     return settings.database_name
 
 ###############################################################################
-def run_database_initialization(*, startup: bool = False) -> None:
+def run_database_initialization(
+    *, settings: DatabaseSettings | ServerSettings | None = None, startup: bool = False
+) -> None:
     del startup  # Startup and explicit initialization share the same workflow.
-    settings = get_server_settings().database
-    if settings.embedded_database:
-        initialize_sqlite_database(settings)
+    database_settings = (
+        settings.database
+        if isinstance(settings, ServerSettings)
+        else settings or get_server_settings().database
+    )
+    if database_settings.embedded_database:
+        initialize_sqlite_database(database_settings)
         return
 
-    _resolve_postgres_engine(settings.engine)
-    ensure_postgres_database(settings)
-    repository = PostgresRepository(settings)
+    ensure_postgres_database(database_settings)
+    repository = PostgresRepository(database_settings)
     try:
         run_locked_migrations(
             repository.engine,
-            settings,
-            settings.database_name or "postgresql",
+            database_settings,
+            database_settings.database_name or "postgresql",
             postgres=True,
         )
     finally:
         repository.engine.dispose()
 
 ###############################################################################
-def _resolve_postgres_engine(engine: str | None) -> str:
-    normalized = (engine or "").strip().lower()
-    if normalized == SUPPORTED_POSTGRES_ENGINE:
-        return SUPPORTED_POSTGRES_ENGINE
-    raise ValueError(f"Unsupported database engine: {engine}")
-
-###############################################################################
-def initialize_database(*, startup: bool = False) -> None:
+def initialize_database(
+    *, settings: DatabaseSettings | ServerSettings | None = None, startup: bool = False
+) -> None:
     try:
-        run_database_initialization(startup=startup)
+        run_database_initialization(settings=settings, startup=startup)
     except DatabaseMigrationError as exc:
         logger.error("Database migration failed: %s", exc)
         raise

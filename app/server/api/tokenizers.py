@@ -8,7 +8,6 @@ from pydantic import ValidationError
 
 from server.contracts.jobs import JobStartResponse
 from server.contracts.tokenizers import (
-    CustomTokenizersDeleteResponse,
     TokenizerDeleteResponse,
     SupportedTokenizerPipeline,
     TokenizerDownloadRequest,
@@ -25,7 +24,6 @@ from server.contracts.tokenizers import (
 )
 from server.configurations import get_server_settings
 from server.common.constants import (
-    API_ROUTE_TOKENIZERS_CUSTOM,
     API_ROUTE_TOKENIZERS_DELETE,
     API_ROUTE_TOKENIZERS_DOWNLOAD,
     API_ROUTE_TOKENIZERS_LIST,
@@ -363,19 +361,6 @@ async def upload_custom_tokenizer(
         ) from exc
 
     return TokenizerUploadResponse(**result)
-
-###############################################################################
-@router.delete(
-    API_ROUTE_TOKENIZERS_CUSTOM,
-    response_model=CustomTokenizersDeleteResponse,
-    status_code=status.HTTP_200_OK,
-)
-async def delete_custom_tokenizers() -> CustomTokenizersDeleteResponse:
-    await asyncio.to_thread(TokenizersService().clear_custom_tokenizers)
-    return CustomTokenizersDeleteResponse(
-        status="success",
-        message="Custom tokenizers cleared",
-    )
 
 ###############################################################################
 @router.delete(

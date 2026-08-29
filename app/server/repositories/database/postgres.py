@@ -16,9 +16,7 @@ class PostgresRepository(RepositoryBase):
     def __init__(self, settings: DatabaseSettings) -> None:
         if not settings.host or not settings.database_name or not settings.username:
             raise ValueError("PostgreSQL host, database name, and username are required")
-        engine_name = (settings.engine or "").lower()
-        if engine_name != "postgresql+psycopg":
-            raise ValueError(f"Unsupported database engine: {settings.engine}")
+        engine_name = "postgresql+psycopg"
         username = urllib.parse.quote_plus(settings.username)
         password = urllib.parse.quote_plus(settings.password or "")
         connect_args: dict[str, Any] = {"connect_timeout": settings.connect_timeout}

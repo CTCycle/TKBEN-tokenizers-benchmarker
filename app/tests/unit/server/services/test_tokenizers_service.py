@@ -142,11 +142,8 @@ def test_tokenizer_discovery_passes_native_filters_and_returns_structured_items(
     }
 
 ###############################################################################
-def test_remove_custom_tokenizer_removes_registry_entry_and_persisted_row(monkeypatch) -> None:
+def test_remove_custom_tokenizer_removes_persisted_row(monkeypatch) -> None:
     service = TokenizersService()
-    registry = service.custom_tokenizer_registry
-    registry.clear()
-    registry.set("CUSTOM_sample", object())
 
     deleted: list[str] = []
 
@@ -161,7 +158,6 @@ def test_remove_custom_tokenizer_removes_registry_entry_and_persisted_row(monkey
     service.repository = FakeRepository()  # type: ignore[assignment]
 
     assert service.remove_downloaded_tokenizer("CUSTOM_sample") is True
-    assert registry.get("CUSTOM_sample") is None
     assert deleted == ["CUSTOM_sample"]
 
 ###############################################################################
@@ -488,19 +484,14 @@ def test_tokenizer_catalog_filters_cached_sources_search_and_vocabulary(
     service = TokenizersService()
 
     ###############################################################################
-    class CustomTokenizer:
-
-        # -------------------------------------------------------------------------
-        def get_vocab_size(self) -> int:
-            return 4
-
     monkeypatch.setattr(
         service.repository,
         "list_downloaded_tokenizer_catalog",
         lambda: [
-            ("zeta/model", True, {"vocabulary_size": 100}),
-            ("alpha/model", False, {"vocabulary_size": 3}),
-            ("uncached/model", False, {"vocabulary_size": 1}),
+            ("zeta/model", "huggingface", True, {"vocabulary_size": 100}),
+            ("alpha/model", "huggingface", False, {"vocabulary_size": 3}),
+            ("uncached/model", "huggingface", False, {"vocabulary_size": 1}),
+            ("CUSTOM_demo", "custom", False, {"vocabulary_size": 4}),
         ],
     )
     monkeypatch.setattr(
@@ -508,11 +499,7 @@ def test_tokenizer_catalog_filters_cached_sources_search_and_vocabulary(
         "has_cached_tokenizer",
         lambda name: name != "uncached/model",
     )
-    monkeypatch.setattr(
-        service.custom_tokenizer_registry,
-        "snapshot",
-        lambda: {"CUSTOM_demo": CustomTokenizer()},
-    )
+    monkeypatch.setattr(service, "has_custom_tokenizer_artifact", lambda name: name == "CUSTOM_demo")
     monkeypatch.setattr(
         service.repository,
         "get_latest_tokenizer_report",

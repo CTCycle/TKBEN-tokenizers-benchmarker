@@ -3,7 +3,6 @@ from __future__ import annotations
 import shutil
 import tempfile
 import threading
-from collections.abc import Sized
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
@@ -22,7 +21,6 @@ from server.contracts.tokenizers import (
 )
 from server.repositories.tokenizers import TokenizerRepository
 from server.services.benchmarks import BenchmarkTools
-from server.services.custom_tokenizers import get_custom_tokenizer_registry
 from server.services.keys import HFAccessKeyService
 from server.services.tokenizer_storage import TokenizerStorageMixin
 
@@ -51,7 +49,6 @@ class TokenizersService(TokenizerStorageMixin):
         self.repository = TokenizerRepository()
         self.key_service = HFAccessKeyService()
         self.benchmark_tools = BenchmarkTools()
-        self.custom_tokenizer_registry = get_custom_tokenizer_registry()
 
     # -------------------------------------------------------------------------
     def register_custom_tokenizer_from_upload(
@@ -86,16 +83,28 @@ class TokenizersService(TokenizerStorageMixin):
 
         is_compatible = self.benchmark_tools.is_tokenizer_compatible(tokenizer)
         tokenizer_name = f"CUSTOM_{safe_stem}"
-        if is_compatible:
-            self.custom_tokenizer_registry.set(tokenizer_name, tokenizer)
-            logger.info(
-                "Loaded custom tokenizer: %s (source=%s)",
+        if not is_compatible:
+            logger.warning(
+                "Custom tokenizer %s is not compatible (source=%s)",
                 tokenizer_name,
                 normalized_filename,
             )
         else:
-            logger.warning(
-                "Custom tokenizer %s is not compatible (source=%s)",
+            previous_artifact = self.persist_custom_tokenizer_artifact(
+                tokenizer_name, file_content
+            )
+            try:
+                self.repository.upsert_tokenizer_source(
+                    tokenizer_name,
+                    source="custom",
+                )
+            except Exception:
+                self.restore_custom_tokenizer_artifact(
+                    tokenizer_name, previous_artifact
+                )
+                raise
+            logger.info(
+                "Persisted custom tokenizer: %s (source=%s)",
                 tokenizer_name,
                 normalized_filename,
             )
@@ -106,26 +115,18 @@ class TokenizersService(TokenizerStorageMixin):
             "is_compatible": is_compatible,
         }
 
-    # -------------------------------------------------------------------------
-    def clear_custom_tokenizers(self) -> None:
-        self.custom_tokenizer_registry.clear()
-
-    # -------------------------------------------------------------------------
     def has_available_tokenizer(self, tokenizer_id: str) -> bool:
         """Return whether a tokenizer can be loaded for reports or benchmarks."""
-        return self.has_cached_tokenizer(tokenizer_id) or (
-            self.custom_tokenizer_registry.get(tokenizer_id) is not None
-        )
+        source = self.repository.get_tokenizer_source(tokenizer_id)
+        if source is None:
+            return False
+        if source == "custom":
+            return self.has_custom_tokenizer_artifact(tokenizer_id)
+        return self.has_cached_tokenizer(tokenizer_id)
 
     # -------------------------------------------------------------------------
     def remove_downloaded_tokenizer(self, tokenizer_id: str) -> bool:
         tokenizer_name = self.validate_tokenizer_identifier(tokenizer_id)
-        if self.custom_tokenizer_registry.delete(tokenizer_name):
-            # Custom tokenizers are normally registry-only, but remove a
-            # matching persisted row as well if a report created one.
-            self.repository.delete_tokenizer(tokenizer_name)
-            return True
-
         cache_dir = Path(self.get_tokenizer_cache_dir(tokenizer_name))
         if cache_dir.exists():
             try:
@@ -152,45 +153,32 @@ class TokenizersService(TokenizerStorageMixin):
         vocabulary_size: int | None = None,
     ) -> list[dict[str, Any]]:
         catalog: list[dict[str, Any]] = []
-        for name, has_report, metadata in self.repository.list_downloaded_tokenizer_catalog():
-            if not self.has_cached_tokenizer(name):
+        for name, tokenizer_source, has_report, metadata in self.repository.list_downloaded_tokenizer_catalog():
+            has_artifact = (
+                self.has_custom_tokenizer_artifact(name)
+                if tokenizer_source == "custom"
+                else self.has_cached_tokenizer(name)
+            )
+            if not has_artifact:
                 continue
             parsed_size = None
             if isinstance(metadata, dict):
                 value = metadata.get("vocabulary_size")
                 if isinstance(value, int) and value >= 0:
                     parsed_size = value
-            catalog.append({
-                "tokenizer_name": name,
-                "source": "huggingface",
-                "has_report": has_report,
-                "vocabulary_size": parsed_size,
-            })
-
-        for name, tokenizer in self.custom_tokenizer_registry.snapshot().items():
-            parsed_size: int | None = None
-            get_size = getattr(tokenizer, "get_vocab_size", None)
-            if callable(get_size):
+            if parsed_size is None and tokenizer_source == "custom":
                 try:
-                    value = get_size()
-                    if isinstance(value, int) and value >= 0:
-                        parsed_size = value
+                    parsed_size = int(
+                        FastTokenizer.from_file(
+                            str(self.custom_tokenizer_artifact_path(name))
+                        ).get_vocab_size()
+                    )
                 except Exception:  # noqa: BLE001
-                    pass
-            if parsed_size is None:
-                get_vocab = getattr(tokenizer, "get_vocab", None)
-                if callable(get_vocab):
-                    try:
-                        vocabulary = get_vocab()
-                        if isinstance(vocabulary, Sized):
-                            parsed_size = len(vocabulary)
-                    except Exception:  # noqa: BLE001
-                        pass
+                    parsed_size = None
             catalog.append({
                 "tokenizer_name": name,
-                "source": "custom",
-                "has_report": self.repository.get_latest_tokenizer_report(name)
-                is not None,
+                "source": tokenizer_source,
+                "has_report": has_report,
                 "vocabulary_size": parsed_size,
             })
 
@@ -494,6 +482,10 @@ class TokenizersService(TokenizerStorageMixin):
                 if is_persisted and has_cached:
                     already_downloaded.append(tokenizer_id)
                 else:
+                    if self.repository.get_tokenizer_source(tokenizer_id) == "custom":
+                        raise ValueError(
+                            f"Custom tokenizer '{tokenizer_id}' is missing its canonical artifact."
+                        )
                     cache_dir = self.get_tokenizer_cache_dir(tokenizer_id)
                     Path(cache_dir).mkdir(parents=True, exist_ok=True)
                     self._load_tokenizer_with_timeout(
@@ -503,7 +495,10 @@ class TokenizersService(TokenizerStorageMixin):
                     )
                     # Keep cached tokenizer files because benchmark runs load
                     # tokenizers locally with local_files_only=True.
-                    self.repository.insert_if_missing(tokenizer_id)
+                    self.repository.insert_if_missing(
+                        tokenizer_id,
+                        source="huggingface",
+                    )
                     downloaded.append(tokenizer_id)
             except Exception as exc:  # noqa: BLE001
                 cache_dir = Path(self.get_tokenizer_cache_dir(tokenizer_id))

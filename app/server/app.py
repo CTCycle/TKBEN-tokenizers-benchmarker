@@ -61,12 +61,11 @@ def register_frontend_routes(application: FastAPI) -> None:
 ###############################################################################
 @asynccontextmanager
 async def app_lifespan(application: FastAPI) -> AsyncIterator[None]:
-    settings = get_server_settings()
+    settings = application.state.settings
 
     run_startup_validations()
-    initialize_database(startup=True)
+    initialize_database(settings=settings, startup=True)
 
-    application.state.settings = settings
     yield
 
 ###############################################################################
@@ -85,6 +84,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     settings = get_server_settings()
+    application.state.settings = settings
     terminal_retention_seconds = settings.jobs.terminal_retention_seconds
     application.state.job_manager = JobManager(
         terminal_retention_seconds=terminal_retention_seconds
