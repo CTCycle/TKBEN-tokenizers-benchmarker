@@ -258,10 +258,14 @@ class BenchmarkService(BenchmarkServiceExecutionMixin):
                 continue
             cache_dir = Path(self.get_tokenizer_cache_dir(tokenizer_name))
             if source == "custom":
-                has_artifact = (cache_dir / "tokenizer.json").is_file()
+                has_artifact = (
+                    (cache_dir / "tokenizer.json").is_file()
+                    and (cache_dir / "tokenizer.json").stat().st_size > 0
+                )
             else:
                 has_artifact = cache_dir.is_dir() and any(
-                    path.is_file() for path in cache_dir.rglob("*")
+                    path.is_file() and path.stat().st_size > 0
+                    for path in cache_dir.rglob("*")
                 )
             if not has_artifact:
                 missing.append(tokenizer_name)
@@ -288,7 +292,7 @@ class BenchmarkService(BenchmarkServiceExecutionMixin):
             if len(missing_tokenizers) > 5:
                 missing_display = f"{missing_display}, ..."
             raise ValueError(
-                "Tokenizers must be downloaded before benchmarking. "
+                "Tokenizers must be persisted with available artifacts before benchmarking. "
                 f"Missing: {missing_display}"
             )
 

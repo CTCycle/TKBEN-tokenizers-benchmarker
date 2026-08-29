@@ -143,6 +143,11 @@ def test_benchmark_report_service_round_trip(monkeypatch) -> None:
     assert summaries.reports[0].dataset_name == dataset_name
     assert summaries.total == 1
 
+    inconsistent = _build_payload(dataset_name)
+    inconsistent["tokenizers_count"] = 2
+    with pytest.raises(ValueError, match="tokenizer count disagrees"):
+        report_service.save_benchmark_report(inconsistent)
+
 ###############################################################################
 def test_benchmark_report_service_search_sort_pagination_and_delete(monkeypatch) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)

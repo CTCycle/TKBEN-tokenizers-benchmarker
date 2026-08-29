@@ -1,7 +1,8 @@
 """Record the schema deployed before Alembic was introduced.
 
-This revision is intentionally independent of the live ORM models.  It is the
-compatibility boundary used to recognize and adopt existing TKBEN databases.
+This revision is intentionally independent of the live ORM models and remains
+part of the historical migration graph. Runtime startup does not infer or
+adopt unversioned databases from this revision.
 """
 
 from __future__ import annotations

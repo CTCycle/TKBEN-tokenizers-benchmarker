@@ -622,7 +622,8 @@ class TokenizerReportingService(TokenizerStorageMixin):
             has_artifact = self.has_cached_tokenizer(name)
         if not has_artifact:
             raise ValueError(
-                f"Tokenizer '{name}' is not downloaded. Download it before validation."
+                f"Tokenizer '{name}' has no available canonical artifact. "
+                "Persist the tokenizer artifact before validation."
             )
 
         if progress_callback:

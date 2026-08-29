@@ -34,8 +34,9 @@ test scripts.
 
 ## Cross-language Quality Gates
 - Keep architecture layering intact: API -> contracts/services -> repository.
-- Treat `test_architecture_boundaries.py` as the executable ownership contract;
-  module-only refactors do not require a schema migration.
+- Treat `test_architecture_boundaries.py` as the executable ownership and
+  removed-symbol contract; schema changes must be represented by a tracked
+  Alembic revision rather than runtime adoption logic.
 - Do not bypass contract validation models.
 - Do not duplicate business logic across backend and frontend without necessity.
 - Add or adjust tests when changing behavior, contracts, or data schemas.

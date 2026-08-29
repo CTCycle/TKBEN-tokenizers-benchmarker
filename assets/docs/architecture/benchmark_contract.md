@@ -1,5 +1,5 @@
 # Benchmark Contract
-Last updated: 2026-08-02
+Last updated: 2026-08-29
 
 ## Benchmark Request Notes
 Benchmark run request config includes tokenizer behavior flags and per-document controls:
@@ -33,6 +33,21 @@ Runtime metadata includes benchmark config echo and dataset scope details:
 - dashboard export accepts `visualization_by_widget_id` and rejects unknown or widget-incompatible overrides
 - `available_metric_keys` and `unavailable_selected_metric_keys` make availability explicit at metric level
 - schema 2/report 4 and every earlier report are not listed or loaded and are not migrated; they must be rerun
+
+## Persistence ownership
+
+Benchmark report identity, version, dataset, timestamps, run name, status,
+document/tokenizer counts, tokenizer names, selected metrics, and methodology
+are persisted in relational summary columns. The JSON payload stores only
+report detail fields; report load reconstructs the report contract from both
+sources and rejects incompatible rows explicitly. List queries project summary
+columns without loading the detail JSON.
+
+Tokenizer rows persist their source (`huggingface` or `custom`). A custom
+tokenizer also requires the canonical `tokenizer.json` artifact under its cache
+directory. Upload, restart, catalog, benchmark admission, and report loading
+all use this database-plus-artifact state; there is no process-local custom
+tokenizer registry.
 
 ## Fidelity Semantics
 - `fid.exact_round_trip_rate` stores decode/re-encode token ID stability, not direct text preservation

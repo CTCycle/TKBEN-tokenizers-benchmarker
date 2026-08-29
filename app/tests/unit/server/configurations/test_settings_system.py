@@ -211,6 +211,25 @@ def test_environment_database_settings_are_loaded(
     assert settings.database.database_name == "tkben_test"
 
 ###############################################################################
+def test_unsupported_database_environment_keys_do_not_change_canonical_settings(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "configurations.json"
+    _write_json(config_path, _minimal_config_json())
+    env_path = tmp_path / ".env"
+    _write_env(env_path, ["DATABASE_EMBEDDED=true"])
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
+    monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://ignored/ignored")
+    monkeypatch.setenv("DATABASE_ENGINE", "sqlite")
+    monkeypatch.setenv("TKBEN_CONFIG_DIR", str(tmp_path / "ignored-settings"))
+
+    settings = get_server_settings(config_path=config_path)
+
+    assert settings.database.embedded_database is True
+    assert settings.database.host is None
+    assert settings.database.database_name is None
+
+###############################################################################
 def test_json_database_block_is_rejected(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

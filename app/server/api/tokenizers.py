@@ -225,8 +225,8 @@ async def generate_tokenizer_report(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=(
-                f"Tokenizer '{tokenizer_name}' is not downloaded. "
-                "Download it before generating a report."
+                f"Tokenizer '{tokenizer_name}' has no available canonical artifact. "
+                "Persist the tokenizer artifact before generating a report."
             ),
         )
 
@@ -378,7 +378,7 @@ async def delete_tokenizer(
             max_length=160,
         )
         removed = await asyncio.to_thread(
-            TokenizersService().remove_downloaded_tokenizer,
+            TokenizersService().remove_tokenizer,
             normalized_name,
         )
     except ValueError as exc:
@@ -394,7 +394,7 @@ async def delete_tokenizer(
     if not removed:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Tokenizer '{normalized_name}' is not downloaded.",
+            detail=f"Tokenizer '{normalized_name}' is not persisted.",
         )
     return TokenizerDeleteResponse(
         status="success",
