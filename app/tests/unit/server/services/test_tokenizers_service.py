@@ -2,10 +2,16 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
+from sqlalchemy import create_engine
 
 from server.contracts.tokenizers import TokenizerDiscoveryQuery
+from server.repositories.benchmarks import BenchmarkRepository
+from server.repositories.schemas.models import Base
+from server.repositories.tokenizers import TokenizerRepository
+from server.services.benchmarks import BenchmarkService
 from server.services.tokenizer_reporting import TokenizerReportingService
 from server.services.tokenizers import TokenizersService
 
@@ -157,11 +163,74 @@ def test_remove_custom_tokenizer_removes_persisted_row(monkeypatch) -> None:
 
     service.repository = FakeRepository()  # type: ignore[assignment]
 
-    assert service.remove_downloaded_tokenizer("CUSTOM_sample") is True
+    assert service.remove_tokenizer("CUSTOM_sample") is True
     assert deleted == ["CUSTOM_sample"]
 
 ###############################################################################
-def test_remove_downloaded_tokenizer_cleans_cache_before_database_delete(tmp_path, monkeypatch) -> None:
+def test_custom_tokenizer_survives_service_recreation_and_is_benchmarkable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from server.services import benchmarks as benchmark_module
+    from server.services import tokenizer_storage
+
+    monkeypatch.setattr(tokenizer_storage, "TOKENIZERS_PATH", tmp_path)
+    monkeypatch.setattr(benchmark_module, "TOKENIZERS_PATH", tmp_path)
+
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    Base.metadata.create_all(engine)
+    database = SimpleNamespace(backend=SimpleNamespace(engine=engine))
+
+    class FakeFastTokenizer:
+        def get_vocab_size(self) -> int:
+            return 3
+
+    monkeypatch.setattr(
+        "server.services.tokenizers.FastTokenizer.from_file",
+        lambda _path: FakeFastTokenizer(),
+    )
+    try:
+        service = TokenizersService()
+        service.repository = TokenizerRepository(database)  # type: ignore[assignment]
+        monkeypatch.setattr(
+            service.benchmark_tools,
+            "is_tokenizer_compatible",
+            lambda _tokenizer: True,
+        )
+
+        result = service.register_custom_tokenizer_from_upload(
+            b"canonical tokenizer artifact",
+            "custom.json",
+            "sample",
+        )
+        tokenizer_name = result["tokenizer_name"]
+        assert result["is_compatible"] is True
+        artifact = tmp_path / "CUSTOM_sample" / "tokenizer.json"
+        assert artifact.read_bytes() == b"canonical tokenizer artifact"
+
+        recreated = TokenizersService()
+        recreated.repository = TokenizerRepository(database)  # type: ignore[assignment]
+        assert recreated.repository.get_tokenizer_source(tokenizer_name) == "custom"
+        assert recreated.has_available_tokenizer(tokenizer_name) is True
+        assert recreated.list_tokenizer_catalog() == [{
+            "tokenizer_name": tokenizer_name,
+            "source": "custom",
+            "has_report": False,
+            "vocabulary_size": 3,
+        }]
+
+        benchmark = BenchmarkService()
+        benchmark.repository = BenchmarkRepository(database)  # type: ignore[assignment]
+        monkeypatch.setattr(
+            benchmark.tools,
+            "is_tokenizer_compatible",
+            lambda _tokenizer: True,
+        )
+        assert tokenizer_name in benchmark.load_tokenizers([tokenizer_name])
+    finally:
+        engine.dispose()
+
+###############################################################################
+def test_remove_tokenizer_cleans_cache_before_database_delete(tmp_path, monkeypatch) -> None:
     service = TokenizersService()
     cache_dir = tmp_path / "google-bert__bert-base-uncased"
     cache_dir.mkdir()
@@ -181,11 +250,11 @@ def test_remove_downloaded_tokenizer_cleans_cache_before_database_delete(tmp_pat
 
     service.repository = FakeRepository()  # type: ignore[assignment]
 
-    assert service.remove_downloaded_tokenizer("google-bert/bert-base-uncased") is True
+    assert service.remove_tokenizer("google-bert/bert-base-uncased") is True
     assert calls == ["google-bert/bert-base-uncased"]
 
 ###############################################################################
-def test_remove_downloaded_tokenizer_keeps_database_row_when_cache_cleanup_fails(monkeypatch) -> None:
+def test_remove_tokenizer_keeps_database_row_when_cache_cleanup_fails(monkeypatch) -> None:
     service = TokenizersService()
     monkeypatch.setattr(service, "get_tokenizer_cache_dir", lambda name: "cache")
     monkeypatch.setattr("server.services.tokenizers.Path.exists", lambda self: True)
@@ -204,8 +273,8 @@ def test_remove_downloaded_tokenizer_keeps_database_row_when_cache_cleanup_fails
 
     service.repository = FakeRepository()  # type: ignore[assignment]
 
-    with pytest.raises(RuntimeError, match="Failed to remove downloaded tokenizer files"):
-        service.remove_downloaded_tokenizer("google-bert/bert-base-uncased")
+    with pytest.raises(RuntimeError, match="Failed to remove tokenizer files"):
+        service.remove_tokenizer("google-bert/bert-base-uncased")
     assert deleted is False
 
 ###############################################################################

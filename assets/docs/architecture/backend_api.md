@@ -1,5 +1,5 @@
 # Backend API
-Last updated: 2026-08-20
+Last updated: 2026-08-29
 
 ## API Prefix
 All routers are included with `prefix="/api"` during backend startup.
@@ -31,9 +31,10 @@ through the manual Hugging Face dataset-ID workflow.
 - `GET /api/tokenizers/reports/latest`
 - `GET /api/tokenizers/reports/{report_id}`
 - `GET /api/tokenizers/reports/{report_id}/vocabulary`
-- `POST /api/tokenizers/upload`
-- `DELETE /api/tokenizers/custom`
-- `DELETE /api/tokenizers/delete?tokenizer_name={name}` — removes a downloaded tokenizer and its cached artifacts
+- `POST /api/tokenizers/upload` — creates or updates the database tokenizer
+  source and canonical custom artifact
+- `DELETE /api/tokenizers/delete?tokenizer_name={name}` — removes either a
+  downloaded or uploaded tokenizer through the shared deletion path
 
 ## Benchmarks
 - `POST /api/benchmarks/run`
@@ -58,7 +59,11 @@ through the manual Hugging Face dataset-ID workflow.
 ## Exports
 - `POST /api/exports/dashboard/pdf` — benchmark payloads include `visualization_by_widget_id`; the server rejects unknown or incompatible visualization overrides
 
-Service ownership is explicit: tokenizer discovery/catalog/download/cache and custom-tokenizer workflows remain in `TokenizersService`, while report analysis/generation/retrieval is owned by `TokenizerReportingService`. No legacy service aliases or forwarding methods are part of the API architecture.
+Service ownership is explicit: tokenizer discovery/catalog/download/cache and
+custom-tokenizer workflows remain in `TokenizersService`, while report
+analysis/generation/retrieval is owned by `TokenizerReportingService`. No
+process-local tokenizer registry, legacy service alias, or forwarding method is
+part of the API architecture.
 
 Frontend API services keep endpoint construction centralized and pass responses
 through typed guards before page-level rendering. Invalid or non-finite metric

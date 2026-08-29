@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
+from server.repositories.queries.data import DataRepositoryQueries
 from server.repositories.tokenizer_reports import TokenizerReportRepository
+from server.repositories.schemas.models import Base, Tokenizer
 from server.services.tokenizer_reporting import TokenizerReportingService
 
 ###############################################################################
@@ -171,11 +177,20 @@ def test_generate_report_payload_includes_hf_url_and_subword_stats(
 
 ###############################################################################
 def test_tokenizer_report_repository_roundtrip_preserves_huggingface_url() -> None:
-    repository = TokenizerReportRepository()
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    Base.metadata.create_all(engine)
+    now = datetime.now(timezone.utc)
+    tokenizer_name = "test/tokenizer-report-roundtrip"
+    with Session(engine) as session:
+        session.add(Tokenizer(name=tokenizer_name, source="huggingface", created_at=now))
+        session.commit()
+    repository = TokenizerReportRepository(
+        DataRepositoryQueries(SimpleNamespace(backend=SimpleNamespace(engine=engine)))
+    )
     report = {
         "report_version": 1,
         "created_at": "2026-02-17T00:00:00Z",
-        "tokenizer_name": "test/tokenizer-report-roundtrip",
+        "tokenizer_name": tokenizer_name,
         "description": None,
         "huggingface_url": "https://huggingface.co/test/tokenizer-report-roundtrip",
         "global_stats": {
@@ -237,3 +252,18 @@ def test_tokenizer_report_repository_roundtrip_preserves_huggingface_url() -> No
     assert loaded["global_stats"]["base_vocabulary_size"] == 2
     assert loaded["global_stats"]["model_max_length"] == 512
     assert loaded["global_stats"]["vocabulary_stats"]["subword_like_count"] == 1
+
+###############################################################################
+def test_tokenizer_report_repository_does_not_create_missing_tokenizer() -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    Base.metadata.create_all(engine)
+    repository = TokenizerReportRepository(
+        DataRepositoryQueries(SimpleNamespace(backend=SimpleNamespace(engine=engine)))
+    )
+
+    with pytest.raises(ValueError, match="must exist before storing a report"):
+        repository.replace_report_and_vocabulary(
+            "missing/tokenizer",
+            {"report_version": 1, "global_stats": {}, "token_length_histogram": {}},
+            [],
+        )

@@ -66,16 +66,12 @@ if exist "%VENV_PYTHON%" (
   exit /b 1
 )
 
-if exist "%RUNTIME_NPM%" (
-  set "NPM_CMD=%RUNTIME_NPM%"
-) else (
-  where npm >nul 2>&1
-  if errorlevel 1 (
-    echo [ERROR] npm runtime not found.
-    exit /b 1
-  )
-  set "NPM_CMD=npm"
+if not exist "%RUNTIME_NPM%" (
+  echo [ERROR] Bundled npm runtime not found: "%RUNTIME_NPM%"
+  echo [ERROR] Run start_on_windows.ps1 first.
+  exit /b 1
 )
+set "NPM_CMD=%RUNTIME_NPM%"
 
 if not exist "%CLIENT_DIR%\package-lock.json" (
   echo [ERROR] Frontend package-lock.json is required.

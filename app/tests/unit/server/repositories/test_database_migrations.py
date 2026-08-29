@@ -156,6 +156,65 @@ def test_versioned_pre_cleanup_revision_upgrades_and_preserves_metric_key(
     assert _revision(path) == _head()
 
 ###############################################################################
+def test_canonical_cleanup_purges_incompatible_derived_reports(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "database.db"
+    settings = _configure_database(monkeypatch, path)
+    repository = SQLiteRepository(
+        settings,
+        enforce_foreign_keys=False,
+        begin_immediate=True,
+    )
+    try:
+        with repository.engine.connect() as connection:
+            with connection.begin():
+                config = migrations.build_alembic_config()
+                config.attributes["connection"] = connection
+                command.upgrade(config, "0002_current_schema")
+            with connection.begin():
+                now = datetime.now(timezone.utc)
+                dataset_id = connection.execute(
+                    text(
+                        "INSERT INTO dataset "
+                        "(name, status, document_count, created_at, updated_at, ready_at) "
+                        "VALUES ('purge-me', 'ready', 0, :now, :now, :now) RETURNING id"
+                    ),
+                    {"now": now},
+                ).scalar_one()
+                connection.execute(
+                    text(
+                        "INSERT INTO analysis_session "
+                        "(dataset_id, status, report_version, created_at, completed_at, parameters, selected_metric_keys) "
+                        "VALUES (:dataset_id, 'completed', 1, :now, :now, '{}', '[]')"
+                    ),
+                    {"dataset_id": dataset_id, "now": now},
+                )
+                connection.execute(
+                    text(
+                        "INSERT INTO benchmark_report "
+                        "(dataset_id, report_version, schema_version, methodology_version, created_at, status, "
+                        "documents_processed, tokenizers_count, tokenizers_processed, selected_metric_keys, payload) "
+                        "VALUES (:dataset_id, 4, 2, 'old', :now, 'completed', 0, 0, '[]', '[]', '{}')"
+                    ),
+                    {"dataset_id": dataset_id, "now": now},
+                )
+    finally:
+        repository.engine.dispose()
+
+    initializer.run_database_initialization()
+
+    engine = create_engine(f"sqlite:///{path}", future=True)
+    try:
+        with engine.connect() as connection:
+            assert connection.execute(text("SELECT count(*) FROM analysis_session")).scalar_one() == 0
+            assert connection.execute(text("SELECT count(*) FROM benchmark_report")).scalar_one() == 0
+    finally:
+        engine.dispose()
+    assert _revision(path) == _head()
+
+###############################################################################
 def test_nonempty_unversioned_database_is_rejected_untouched(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

@@ -1,13 +1,15 @@
 # Project Overview
-Last updated: 2026-08-20
+Last updated: 2026-08-29
 
 ## Purpose
 This file is the root index for `assets/docs`. Read it first to find the narrowest topic file for the task at hand.
 
-The current codebase uses schema-3/report-5 benchmark reports, typed frontend
-catalog controls, reusable dataset/dashboard data helpers, and responsive chart
-and modal hooks. The current public source release is `v4.1.0`; `develop` and
-`main` are synchronized at the release commit.
+The current codebase uses schema-3/report-5 benchmark reports, Alembic revision
+`0003_canonical_state_cleanup`, typed frontend catalog controls, persisted
+tokenizer source/artifact state, and a `BenchmarkStore` that owns dashboard
+preferences. Reports own relational summary fields while JSON stores detail
+fields; incompatible historical rows are rejected or purged rather than
+silently adapted.
 
 ## How To Navigate
 1. Start with this file only.

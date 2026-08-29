@@ -1,6 +1,6 @@
 """
 E2E tests for tokenizer API endpoints.
-Covers /api/tokenizers/settings, /api/tokenizers/discover, /api/tokenizers/upload, /api/tokenizers/custom.
+Covers /api/tokenizers/settings, /api/tokenizers/discover, /api/tokenizers/upload, and per-item deletion.
 """
 
 import json

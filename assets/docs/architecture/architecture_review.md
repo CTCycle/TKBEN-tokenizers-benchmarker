@@ -1,5 +1,5 @@
 # Architecture Review
-Last updated: 2026-08-20
+Last updated: 2026-08-29
 
 ## Current State
 
@@ -19,8 +19,9 @@ The benchmark path is intentionally concrete: `BenchmarkService` admits and
 orchestrates a run, `BenchmarkJobService` owns the managed execution lifecycle,
 `BenchmarkResultBuilder` constructs the report payload,
 `BenchmarkReportService` coordinates report persistence, and the benchmark
-repository/database layer commits the result. The persistence schema is owned
-by Alembic and was not changed by this module-ownership remediation.
+repository/database layer commits the result. Alembic owns the schema graph;
+revision `0003_canonical_state_cleanup` establishes direct metric keys,
+persisted tokenizer sources, and the relational benchmark report summary.
 
 ## Architectural Strengths
 
@@ -38,7 +39,8 @@ by Alembic and was not changed by this module-ownership remediation.
 - The frontend models preserve backend nullability for unavailable metrics and
   keep required per-document observation arrays explicit.
 - Alembic remains the single schema authority, with startup migration locking,
-  integrity checks, and safe handling of recognized unversioned databases.
+  integrity checks, empty-database upgrades, and explicit rejection of
+  non-empty unversioned databases.
 - AST tests and CI now make the most important import and compile contracts
   executable.
 
@@ -78,11 +80,11 @@ report fixture test protects the backend/frontend contract shape.
 
 No P0 runtime or data-integrity issue was found. The remediation deliberately
 does not introduce dependency injection frameworks, a queue or microservice
-split, a new persistence schema, a benchmark-report/tokenizer junction table,
-or a second frontend state abstraction. A larger mixin decomposition and a
-separate cross-benchmark orchestration object were assessed as future
-refactors, not prerequisites for the ownership fix; the current benchmark
-service and tests provide a smaller, behavior-preserving boundary.
+split, a benchmark-report/tokenizer junction table, or a second frontend state
+abstraction. The persistence change is intentionally a clean break enforced by
+Alembic revision `0003_canonical_state_cleanup`; incompatible historical rows
+are not silently adapted. A larger mixin decomposition and a separate
+cross-benchmark orchestration object remain future refactors.
 
 ## Target State
 
@@ -177,10 +179,11 @@ Completed implementation work:
 8. Updated the architecture, persistence, API, coding, testing, index, and
    README documentation to describe the implemented state and the migration
    workflow.
-
-The remediation is module ownership only. There is no Alembic revision,
-database migration, data rewrite, generated frontend artifact, or compatibility
-alias to clean up.
+9. Replaced hybrid configuration, metric, tokenizer, report, and dashboard
+   preference paths with one canonical source for each state boundary.
+10. Added Alembic revision `0003_canonical_state_cleanup`, removed registry-only
+    custom tokenizer state, and made incompatible persisted rows fail
+    explicitly instead of mapping to empty responses.
 
 ## Architecture Risks
 
@@ -199,5 +202,6 @@ alias to clean up.
   states rather than synthetic zeroes.
 
 The validation record for this review is kept under
-`assets/QA/architecture-remediation-20260820` and the executable import
-contract is `tests/unit/server/test_architecture_boundaries.py`.
+`assets/QA/architecture-remediation-20260820`; the executable import and
+removed-symbol contract is
+`tests/unit/server/test_architecture_boundaries.py`.

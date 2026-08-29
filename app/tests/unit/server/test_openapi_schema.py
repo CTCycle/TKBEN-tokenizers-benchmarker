@@ -27,7 +27,6 @@ JSON_ROUTE_EXPECTATIONS = [
         "TokenizerVocabularyPageResponse",
     ),
     ("/api/tokenizers/upload", "post", 200, "TokenizerUploadResponse"),
-    ("/api/tokenizers/custom", "delete", 200, "CustomTokenizersDeleteResponse"),
     ("/api/tokenizers/delete", "delete", 200, "TokenizerDeleteResponse"),
     ("/api/benchmarks/run", "post", 202, "JobStartResponse"),
     ("/api/benchmarks/reports", "get", 200, "BenchmarkReportListResponse"),
@@ -54,6 +53,7 @@ def test_openapi_generation_and_response_models() -> None:
     assert schema
 
     paths = schema.get("paths", {})
+    assert "/api/tokenizers/custom" not in paths
     for path, method, status_code, model_name in JSON_ROUTE_EXPECTATIONS:
         assert path in paths
         operation = paths[path][method]

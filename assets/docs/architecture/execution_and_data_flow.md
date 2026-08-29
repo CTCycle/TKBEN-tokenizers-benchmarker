@@ -1,5 +1,5 @@
 # Execution and Data Flow
-Last updated: 2026-08-20
+Last updated: 2026-08-29
 
 ## Layered Architecture
 
@@ -24,7 +24,9 @@ dependencies rather than a second domain layer.
     repository implementations.
 - `server/configurations/*`
   - Environment loading, structured settings, startup configuration, and
-    database configuration. Configuration does not own feature behavior.
+    database configuration. One process-level `ServerSettings` snapshot is
+    resolved for application startup; structured JSON contains content
+    catalogs/jobs only and cannot override database settings.
 - `server/services/*`
   - Operational business logic, validation, orchestration, and report
     workflows. `services/benchmark_reports.py` owns benchmark report
@@ -43,6 +45,21 @@ dependencies rather than a second domain layer.
 
 The current import boundary is checked by
 `tests/unit/server/test_architecture_boundaries.py`.
+
+## Configuration and schema flow
+
+`create_app()` resolves the process-level settings snapshot once and places it
+on application state. Lifespan startup, database initialization, repositories,
+and services consume that snapshot rather than independently reloading
+configuration. `.env` owns operational values; `configurations.json` owns
+datasets, tokenizers, benchmarks, and jobs. PostgreSQL uses the fixed
+`postgresql+psycopg` driver when external mode is selected.
+
+Alembic is the only schema authority. Empty databases upgrade through the
+tracked graph, while non-empty databases without an Alembic version row,
+unknown revisions, multiple heads, or ahead-of-application revisions fail
+explicitly. Revision `0003_canonical_state_cleanup` removes incompatible
+report rows and normalizes direct metric keys and persisted tokenizer sources.
 
 ## Dependency Maps
 
@@ -94,9 +111,9 @@ new code must use the ownership paths above.
 HTTP contract, calls `BenchmarkService.prepare_run()` in a worker thread, maps
 known admission failures to HTTP 400, and starts the managed benchmark job.
 Preparation performs the rules that need the configured repositories: it
-rejects an empty tokenizer or dataset selection, resolves custom tokenizer
-identifiers, checks that the selected dataset has ready documents, verifies
-persisted tokenizer availability, and returns a normalized payload. The
+rejects an empty tokenizer or dataset selection, checks persisted tokenizer
+identity, source, and canonical artifact availability, checks that the selected
+dataset has ready documents, and returns a normalized payload. The
 execution mixin retains a defensive ready-document count check at the actual
 run boundary.
 
@@ -163,10 +180,10 @@ sequenceDiagram
 
     API->>ReportService: list/load/save/delete request
     ReportService->>ReportRepo: repository operation
-    ReportRepo->>DB: summary query or transaction
+    ReportRepo->>DB: summary query or transaction over owned columns/details
     DB-->>ReportRepo: rows or affected count
     ReportRepo-->>ReportService: persistence result
-    ReportService-->>API: response or not-found result
+    ReportService-->>API: reconstructed response or not-found result
 ```
 
 ## Managed Jobs
@@ -227,7 +244,7 @@ sequenceDiagram
     Builder-->>Bench: immutable report payload
     Bench-->>Job: benchmark result
     Job->>Report: save report
-    Report->>Repo: persist summary and JSON snapshot
+    Report->>Repo: persist relational summary and JSON detail snapshot
     Repo->>DB: transaction
     DB-->>Repo: committed report id
     Repo-->>Report: persisted report

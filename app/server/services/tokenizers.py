@@ -125,7 +125,7 @@ class TokenizersService(TokenizerStorageMixin):
         return self.has_cached_tokenizer(tokenizer_id)
 
     # -------------------------------------------------------------------------
-    def remove_downloaded_tokenizer(self, tokenizer_id: str) -> bool:
+    def remove_tokenizer(self, tokenizer_id: str) -> bool:
         tokenizer_name = self.validate_tokenizer_identifier(tokenizer_id)
         cache_dir = Path(self.get_tokenizer_cache_dir(tokenizer_name))
         if cache_dir.exists():
@@ -138,7 +138,7 @@ class TokenizersService(TokenizerStorageMixin):
                     exc,
                 )
                 raise RuntimeError(
-                    f"Failed to remove downloaded tokenizer files for '{tokenizer_name}'."
+                    f"Failed to remove tokenizer files for '{tokenizer_name}'."
                 ) from exc
 
         # Commit the database deletion only after filesystem cleanup succeeds.
@@ -478,11 +478,20 @@ class TokenizersService(TokenizerStorageMixin):
 
             try:
                 is_persisted = self.repository.tokenizer_exists(tokenizer_id)
-                has_cached = self.has_cached_tokenizer(tokenizer_id)
-                if is_persisted and has_cached:
+                source = (
+                    self.repository.get_tokenizer_source(tokenizer_id)
+                    if is_persisted
+                    else None
+                )
+                has_required_artifact = (
+                    self.has_custom_tokenizer_artifact(tokenizer_id)
+                    if source == "custom"
+                    else self.has_cached_tokenizer(tokenizer_id)
+                )
+                if is_persisted and has_required_artifact:
                     already_downloaded.append(tokenizer_id)
                 else:
-                    if self.repository.get_tokenizer_source(tokenizer_id) == "custom":
+                    if source == "custom":
                         raise ValueError(
                             f"Custom tokenizer '{tokenizer_id}' is missing its canonical artifact."
                         )
