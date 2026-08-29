@@ -68,7 +68,6 @@ export class TokenizersStore {
       }
     });
 
-    this.restoreReport();
     this.refresh();
   }
 
@@ -209,22 +208,11 @@ export class TokenizersStore {
 
   private setReport(report: TokenizerReportResponse): void {
     this.report.set(report);
-    try { localStorage.setItem('tkben.lastTokenizerReport', JSON.stringify(report)); } catch { /* storage is optional */ }
     this.loadVocabulary();
   }
 
   private clearReport(): void {
     this.report.set(null);
     this.vocabulary.set(null);
-    try { localStorage.removeItem('tkben.lastTokenizerReport'); } catch { /* storage is optional */ }
-  }
-
-  private restoreReport(): void {
-    try {
-      const raw = localStorage.getItem('tkben.lastTokenizerReport');
-      if (!raw) return;
-      const parsed: unknown = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object' && typeof (parsed as { tokenizer_name?: unknown }).tokenizer_name === 'string') this.report.set(parsed as TokenizerReportResponse);
-    } catch { /* corrupted storage is ignored */ }
   }
 }

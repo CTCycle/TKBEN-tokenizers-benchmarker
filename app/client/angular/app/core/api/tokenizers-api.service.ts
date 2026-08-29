@@ -65,10 +65,6 @@ export class TokenizersApiService {
     return this.http.post<TokenizerUploadResponse>('/api/tokenizers/upload', body);
   }
 
-  clearCustom(): Observable<void> {
-    return this.http.delete<void>('/api/tokenizers/custom');
-  }
-
   delete(tokenizerName: string): Observable<void> {
     return this.http.delete<void>(`/api/tokenizers/delete?tokenizer_name=${encodeURIComponent(tokenizerName)}`);
   }

@@ -19,6 +19,7 @@ class ConfigurationManager:
         )
         self._payload: dict[str, Any] = {}
         self._configuration = JsonConfiguration()
+        self._server_settings: ServerSettings | None = None
 
     # -------------------------------------------------------------------------
     @property
@@ -28,13 +29,16 @@ class ConfigurationManager:
     # -------------------------------------------------------------------------
     @property
     def server_settings(self) -> ServerSettings:
-        return self._configuration.to_server_settings()
+        if self._server_settings is None:
+            raise RuntimeError("Configuration has not been loaded.")
+        return self._server_settings
 
     # -------------------------------------------------------------------------
     def load(self) -> "ConfigurationManager":
         payload = self._normalize_payload(self._read_payload())
         self._configuration = self._validate_configuration(payload)
         self._payload = payload
+        self._server_settings = self._configuration.to_server_settings()
         return self
 
     # -------------------------------------------------------------------------
@@ -50,6 +54,7 @@ class ConfigurationManager:
         normalized_payload = self._normalize_payload(payload)
         self._configuration = self._validate_configuration(normalized_payload)
         self._payload = normalized_payload
+        self._server_settings = self._configuration.to_server_settings()
         if persist:
             self.config_path.write_text(
                 json.dumps(normalized_payload, indent=2),

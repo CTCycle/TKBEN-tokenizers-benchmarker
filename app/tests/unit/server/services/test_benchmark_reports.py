@@ -7,7 +7,7 @@ import pytest
 
 from server.contracts.benchmarks import BenchmarkReportQuery
 from server.repositories.database.backend import get_database
-from server.repositories.schemas.models import Base, Dataset
+from server.repositories.schemas.models import Base, BenchmarkReport, Dataset
 from server.services.benchmark_reports import BenchmarkReportService
 
 ###############################################################################
@@ -134,6 +134,11 @@ def test_benchmark_report_service_round_trip(monkeypatch) -> None:
         stored["tokenizer_results"][0]["efficiency"]["encode_only_wall_time_seconds"]
         == 1.0
     )
+    with Session(bind=engine) as session:
+        stored_row = session.get(BenchmarkReport, report_id)
+        assert stored_row is not None
+        assert "status" not in stored_row.payload
+        assert "config" in stored_row.payload
     assert summaries.reports[0].report_id == report_id
     assert summaries.reports[0].dataset_name == dataset_name
     assert summaries.total == 1

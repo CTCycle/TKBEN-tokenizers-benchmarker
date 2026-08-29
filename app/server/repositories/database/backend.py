@@ -5,7 +5,7 @@ from functools import cache
 from typing import Any, Protocol
 
 from server.common.utils.logger import logger
-from server.configurations import DatabaseSettings, get_server_settings
+from server.configurations import DatabaseSettings, ServerSettings, get_server_settings
 from server.repositories.database.postgres import PostgresRepository
 from server.repositories.database.sqlite import SQLiteRepository
 
@@ -32,13 +32,17 @@ def build_postgres_backend(settings: DatabaseSettings) -> DatabaseBackend:
 class TKBENDatabase:
 
     # -------------------------------------------------------------------------
-    def __init__(self) -> None:
-        self.settings = get_server_settings().database
+    def __init__(
+        self, settings: DatabaseSettings | ServerSettings | None = None
+    ) -> None:
+        self.settings = (
+            settings.database
+            if isinstance(settings, ServerSettings)
+            else settings or get_server_settings().database
+        )
         if self.settings.embedded_database:
             self.backend = build_sqlite_backend(self.settings)
         else:
-            if (self.settings.engine or "").lower() != "postgresql+psycopg":
-                raise ValueError(f"Unsupported database engine: {self.settings.engine}")
             self.backend = build_postgres_backend(self.settings)
         logger.info("Initialized database backend")
 

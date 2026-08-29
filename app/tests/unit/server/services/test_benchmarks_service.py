@@ -18,6 +18,14 @@ class FakeBenchmarkRepository:
     def get_missing_persisted_tokenizers(self, tokenizer_ids: list[str]) -> list[str]:
         return [name for name in tokenizer_ids if name != "bert-base-uncased"]
 
+    # -------------------------------------------------------------------------
+    def get_tokenizer_sources(self, tokenizer_ids: list[str]) -> dict[str, str]:
+        return {
+            name: "huggingface"
+            for name in tokenizer_ids
+            if name == "bert-base-uncased"
+        }
+
 ###############################################################################
 def test_benchmark_service_uses_repository_for_dataset_and_tokenizer_checks() -> None:
     service = BenchmarkService()
@@ -47,37 +55,10 @@ def test_benchmark_service_preserves_repository_missing_with_cached_files(
     assert missing == ["missing"]
 
 ###############################################################################
-def test_resolve_custom_tokenizer_selection(monkeypatch) -> None:
-    service = BenchmarkService()
-
-    ###############################################################################
-    class DummyRegistry:
-
-        # -------------------------------------------------------------------------
-        def get(self, name: str):
-            return object() if name == "CUSTOM_demo" else None
-
-    monkeypatch.setattr(
-        "server.services.benchmarks.get_custom_tokenizer_registry",
-        lambda: DummyRegistry(),
-    )
-    monkeypatch.setattr(
-        service.tools, "is_tokenizer_compatible", lambda tokenizer: True
-    )
-
-    resolved = service.resolve_custom_tokenizer_selection(["CUSTOM_demo"])
-    assert "CUSTOM_demo" in resolved
-
-###############################################################################
 def test_prepare_run_owns_admission_checks_and_normalizes_job_payload(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     service = BenchmarkService()
-    monkeypatch.setattr(
-        service,
-        "resolve_custom_tokenizer_selection",
-        lambda selected: {"CUSTOM_demo": object()} if selected else {},
-    )
     monkeypatch.setattr(service, "get_dataset_document_count", lambda dataset_name: 3)
     monkeypatch.setattr(service, "get_missing_persisted_tokenizers", lambda tokenizers: [])
 
@@ -90,4 +71,3 @@ def test_prepare_run_owns_admission_checks_and_normalizes_job_payload(
 
     assert prepared["dataset_name"] == "custom/sample"
     assert prepared["config"]["max_documents"] == 2
-    assert list(prepared["custom_tokenizers"]) == ["CUSTOM_demo"]

@@ -19,6 +19,7 @@ def _parse_timestamp(value: object) -> pd.Timestamp | None:
 
 ###############################################################################
 class TokenizerReportRepository:
+    REPORT_VERSION = 1
 
     # -------------------------------------------------------------------------
     def __init__(self, queries: DataRepositoryQueries | None = None) -> None:
@@ -47,10 +48,9 @@ class TokenizerReportRepository:
         with self._session() as session:
             tokenizer_id = session.execute(select(Tokenizer.id).where(Tokenizer.name == name)).scalar_one_or_none()
             if tokenizer_id is None:
-                tokenizer = Tokenizer(name=name, created_at=now)
-                session.add(tokenizer)
-                session.flush()
-                tokenizer_id = tokenizer.id
+                raise ValueError(
+                    f"Tokenizer '{name}' must exist before storing a report."
+                )
             session.execute(delete(TokenizerVocabulary).where(TokenizerVocabulary.tokenizer_id == int(tokenizer_id)))
             records = [{"tokenizer_id": int(tokenizer_id), "token_id": int(row["token_id"]), "token": str(row.get("token", "")), "decoded_token": row.get("decoded_token")} for row in vocabulary_rows]
             for start in range(0, len(records), 1000):
@@ -73,6 +73,12 @@ class TokenizerReportRepository:
     def _build_tokenizer_report_response(
         self, storage: dict[str, Any]
     ) -> dict[str, Any]:
+        report_version = int(storage["report_version"])
+        if report_version != self.REPORT_VERSION:
+            raise ValueError(
+                "Tokenizer report uses incompatible report version "
+                f"{report_version}; expected {self.REPORT_VERSION}."
+            )
         created_at = _parse_timestamp(storage.get("created_at"))
         created_at_iso = (
             created_at.isoformat().replace("+00:00", "Z")
@@ -106,7 +112,7 @@ class TokenizerReportRepository:
             huggingface_url = None
         return {
             "report_id": int(storage.get("id") or 0),
-            "report_version": int(storage["report_version"]),
+            "report_version": report_version,
             "created_at": created_at_iso,
             "tokenizer_name": storage.get("tokenizer_name", ""),
             "description": storage.get("description"),

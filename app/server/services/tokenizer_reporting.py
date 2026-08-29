@@ -9,13 +9,13 @@ from pathlib import Path
 from typing import Any
 
 from huggingface_hub import HfApi, ModelCard
+from tokenizers import Tokenizer as FastTokenizer
 from transformers import AutoTokenizer
 
 from server.common.utils.logger import logger
 from server.configurations import get_server_settings
 from server.repositories.tokenizers import TokenizerRepository
 from server.repositories.tokenizer_reports import TokenizerReportRepository
-from server.services.custom_tokenizers import get_custom_tokenizer_registry
 from server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
 from server.services.tokenizer_storage import TokenizerStorageMixin
 
@@ -28,7 +28,6 @@ class TokenizerReportingService(TokenizerStorageMixin):
         self.repository = TokenizerRepository()
         self.key_service = HFAccessKeyService()
         self.report_repository = TokenizerReportRepository()
-        self.custom_tokenizer_registry = get_custom_tokenizer_registry()
         self.histogram_bins = max(5, int(get_server_settings().datasets.histogram_bins))
         self.special_token_pattern = re.compile(
             r"^(?:\[[^\]]{0,200}\]|<[^>]{0,200}>|\{[^}]{0,200}\}|</?s>|</?pad>|UNK|PAD)$",
@@ -504,13 +503,13 @@ class TokenizerReportingService(TokenizerStorageMixin):
         tokenizer_name: str,
         cache_dir: str,
     ) -> dict[str, str]:
-        _ = cache_dir
-        if self.custom_tokenizer_registry.get(tokenizer_name) is not None:
+        source = self.repository.get_tokenizer_source(tokenizer_name)
+        if source == "custom":
             return {
-                "persistence_mode": "memory_registry",
+                "persistence_mode": "canonical_artifact",
                 "persistence_reason": (
-                    "Custom tokenizer is loaded from the in-memory registry; "
-                    "the uploaded tokenizer JSON is not persisted as a filesystem cache."
+                    "Custom tokenizer is loaded from the canonical tokenizer.json "
+                    "artifact persisted with its database identity."
                 ),
             }
         # Downloaded tokenizer loading relies on AutoTokenizer.from_pretrained(..., local_files_only=True)
@@ -612,8 +611,16 @@ class TokenizerReportingService(TokenizerStorageMixin):
             raise ValueError("Tokenizer name must be provided.")
 
         cache_dir = self.get_tokenizer_cache_dir(name)
-        custom_tokenizer = self.custom_tokenizer_registry.get(name)
-        if custom_tokenizer is None and not self.has_cached_tokenizer(name):
+        source = self.repository.get_tokenizer_source(name)
+        if source is None:
+            raise ValueError(
+                f"Tokenizer '{name}' is not registered. Download or upload it first."
+            )
+        if source == "custom":
+            has_artifact = self.has_custom_tokenizer_artifact(name)
+        else:
+            has_artifact = self.has_cached_tokenizer(name)
+        if not has_artifact:
             raise ValueError(
                 f"Tokenizer '{name}' is not downloaded. Download it before validation."
             )
@@ -621,8 +628,10 @@ class TokenizerReportingService(TokenizerStorageMixin):
         if progress_callback:
             progress_callback(5.0)
 
-        if custom_tokenizer is not None:
-            tokenizer = custom_tokenizer
+        if source == "custom":
+            tokenizer = FastTokenizer.from_file(
+                str(self.custom_tokenizer_artifact_path(name))
+            )
         else:
             tokenizer = AutoTokenizer.from_pretrained(
                 name,

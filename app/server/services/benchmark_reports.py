@@ -10,7 +10,6 @@ from server.contracts.benchmarks import (
     BenchmarkReportSummary,
     BenchmarkRunResponse,
 )
-from server.common.utils.logger import logger
 from server.repositories.benchmarks import BenchmarkRepository
 from server.common.constants import BENCHMARK_REPORT_VERSION, BENCHMARK_SCHEMA_VERSION
 
@@ -97,22 +96,47 @@ class BenchmarkReportService:
             str(key) for key in selected_metric_keys if isinstance(key, str) and key
         ]
 
-        normalized_payload = dict(payload)
-        self._validate_current_contract(normalized_payload)
-        normalized_payload["report_id"] = int(
-            row.get("id") or normalized_payload.get("report_id") or 0
-        )
-        if int(row.get("report_version") or 0) != BENCHMARK_REPORT_VERSION:
+        report_version = int(row.get("report_version") or 0)
+        schema_version = int(row.get("schema_version") or 0)
+        if report_version != BENCHMARK_REPORT_VERSION:
             raise ValueError("Benchmark report uses an incompatible report version.")
-        normalized_payload["report_version"] = BENCHMARK_REPORT_VERSION
-        normalized_payload["created_at"] = created_at_iso
-        normalized_payload["run_name"] = row.get("run_name") or normalized_payload.get(
-            "run_name"
+        if schema_version != BENCHMARK_SCHEMA_VERSION:
+            raise ValueError("Benchmark report uses an incompatible schema version.")
+
+        tokenizers_processed = row.get("tokenizers_processed")
+        if not isinstance(tokenizers_processed, list):
+            raise ValueError(
+                "Benchmark report tokenizers_processed must be a native JSON array."
+            )
+        tokenizers_processed = [str(name) for name in tokenizers_processed]
+        tokenizers_count = int(row.get("tokenizers_count") or 0)
+        if tokenizers_count != len(tokenizers_processed):
+            raise ValueError("Benchmark report tokenizer count disagrees with its list.")
+        documents_processed = int(row.get("documents_processed") or 0)
+        if documents_processed < 0:
+            raise ValueError("Benchmark report documents_processed must be non-negative.")
+        methodology_version = str(row.get("methodology_version") or "").strip()
+        if not methodology_version:
+            raise ValueError("Benchmark report is missing methodology_version.")
+
+        normalized_payload = dict(payload)
+        normalized_payload.update(
+            {
+                "report_id": int(row.get("id") or 0),
+                "report_version": report_version,
+                "schema_version": schema_version,
+                "methodology_version": methodology_version,
+                "created_at": created_at_iso,
+                "run_name": row.get("run_name"),
+                "status": str(row.get("status") or ""),
+                "documents_processed": documents_processed,
+                "tokenizers_count": tokenizers_count,
+                "tokenizers_processed": tokenizers_processed,
+                "selected_metric_keys": selected_metric_keys,
+                "dataset_name": str(row.get("dataset_name") or ""),
+            }
         )
-        normalized_payload["selected_metric_keys"] = selected_metric_keys
-        normalized_payload["dataset_name"] = str(
-            normalized_payload.get("dataset_name") or row.get("dataset_name") or ""
-        )
+        self._validate_current_contract(normalized_payload)
 
         return BenchmarkRunResponse.model_validate(normalized_payload).model_dump(
             mode="json"
@@ -132,6 +156,10 @@ class BenchmarkReportService:
 
         summaries: list[BenchmarkReportSummary] = []
         for row in page.rows:
+            if int(row.get("report_version") or 0) != BENCHMARK_REPORT_VERSION:
+                raise ValueError("Benchmark report uses an incompatible report version.")
+            if int(row.get("schema_version") or 0) != BENCHMARK_SCHEMA_VERSION:
+                raise ValueError("Benchmark report uses an incompatible schema version.")
             created_at = _parse_timestamp(row.get("created_at"))
             summaries.append(BenchmarkReportSummary.model_validate({
                 "report_id": int(row["id"]),
@@ -165,17 +193,16 @@ class BenchmarkReportService:
         mapped = {
             "id": report_row.id,
             "report_version": report_row.report_version,
+            "schema_version": report_row.schema_version,
+            "methodology_version": report_row.methodology_version,
             "created_at": report_row.created_at,
             "run_name": report_row.run_name,
+            "status": report_row.status,
+            "documents_processed": report_row.documents_processed,
+            "tokenizers_count": report_row.tokenizers_count,
+            "tokenizers_processed": report_row.tokenizers_processed,
             "selected_metric_keys": report_row.selected_metric_keys,
             "payload": report_row.payload,
             "dataset_name": dataset_name,
         }
-        try:
-            return self._normalize_report_row(mapped)
-        except ValueError:
-            logger.warning(
-                "Benchmark report id=%s is incompatible with current schema",
-                report_id,
-            )
-            return None
+        return self._normalize_report_row(mapped)

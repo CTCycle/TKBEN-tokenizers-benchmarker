@@ -1,5 +1,5 @@
 # Startup
-Last updated: 2026-08-21
+Last updated: 2026-08-29
 
 ## Local Webapp Mode
 Windows recommended:
@@ -19,7 +19,7 @@ What it does:
 - opens the single combined launch-and-maintenance menu
 - installs pinned portable Python, uv, and Node.js on first use
 - creates `settings/.env` from the versioned example when missing
-- synchronizes Python dependencies and reuses the frontend dependency tree on application launch when the package manifests and portable Node.js version are unchanged; it performs a clean frontend install when dependencies are missing or stale. The dependency maintenance option prompts for `Development` (including Ruff, BasedPyright, and pytest extras) or `Standard` (runtime dependencies only), then rebuilds the frontend and synchronizes the database to the latest Alembic head. Use menu option 3 to rebuild only the Angular frontend; it reuses valid frontend dependencies and installs them when missing or stale without synchronizing Python dependencies. Application launch reuses the existing production output and does not rebuild it; run menu option 2 after dependency changes or option 3 after frontend changes. Runtime/package-manager caches are stored under `runtimes/cache`, while pytest and other development-tool caches are stored under `app/tests/cache`. Menu option 7 removes both cache trees, legacy cache directories, and Python cache directories; locked or admin-only files are reported and skipped so cleanup continues. Menu option 8 permanently removes the embedded database, downloaded/uploaded sources, logs, and Hugging Face key material after confirmation while preserving application files, templates, and `.gitkeep` sentinels. If `DATABASE_EMBEDDED=false`, the external database is not modified. If the managed uv cache causes a sync failure, the launcher clears that cache on a best-effort basis and retries once. Before frontend synchronization, it stops any listener on the configured UI port so a prior Angular preview cannot keep `node_modules` binaries locked. On Windows, portable `npm.cmd` calls are routed through `cmd.exe` so repository paths containing spaces work reliably. The launcher verifies the portable Node.js version and replaces an older runtime when required by the frontend dependency engines.
+- synchronizes Python dependencies and reuses the frontend dependency tree on application launch when the package manifests and portable Node.js version are unchanged; it performs `npm ci` when dependencies are missing or stale. The dependency maintenance option prompts for `Development` (including Ruff, BasedPyright, and pytest extras) or `Standard` (runtime dependencies only), then rebuilds the frontend and synchronizes the database to the latest Alembic head. Use menu option 3 to rebuild only the Angular frontend; it reuses valid frontend dependencies and runs `npm ci` when missing or stale without synchronizing Python dependencies. Application launch reuses the existing production output and does not rebuild it; run menu option 2 after dependency changes or option 3 after frontend changes. Runtime/package-manager caches are stored under `runtimes/cache`, while pytest and other development-tool caches are stored under `app/tests/cache`. Menu option 7 removes both managed cache trees and Python cache directories; locked or admin-only files are reported and skipped so cleanup continues. Menu option 8 permanently removes the embedded database, downloaded/uploaded sources, logs, and Hugging Face key material after confirmation while preserving application files, templates, and `.gitkeep` sentinels. If `DATABASE_EMBEDDED=false`, the external database is not modified. If the managed uv cache causes a sync failure, the launcher clears that cache on a best-effort basis and retries once. Before frontend synchronization, it stops any listener on the configured UI port so a prior Angular preview cannot keep `node_modules` binaries locked. On Windows, portable `npm.cmd` calls are routed through `cmd.exe` so repository paths containing spaces work reliably. The launcher verifies the portable Node.js version and replaces an older runtime when required by the frontend dependency engines.
 - starts FastAPI and the Angular preview server, captures preview output under `app/resources/logs`, waits for health checks, and prints ports and process IDs; browser auto-open is best-effort and reports the URL when Windows blocks it
 - optionally shows backend logs in a dedicated terminal when `BACKEND_LOGS_VISIBLE=true` (the default when absent; the only accepted values are `true` and `false`)
 - keeps the maintenance menu usable when stdin/stdout are redirected by skipping cursor-only screen repaint operations while preserving normal interactive clearing and window-title behavior
@@ -33,7 +33,7 @@ cd app/server
 uv sync
 uv run python -m uvicorn server.app:app --app-dir .. --host 127.0.0.1 --port 5000
 cd ../client
-npm install --no-package-lock
+npm ci
 npm run preview -- --host 127.0.0.1 --port 8000 --strictPort
 ```
 
@@ -58,9 +58,9 @@ Use `.\start_on_windows.ps1` for dependency installation, application updates, u
 - Launcher menu option 2 (dependency installation/update) and option 4
   (database initialization) invoke the same initializer. Repeating either
   operation is safe and preserves existing data.
-- A supported unversioned TKBEN database is adopted only after a complete
-  schema signature check. Unknown, partial, conflicting, ahead-of-application,
-  or multi-head databases fail without being stamped or downgraded. Migration
+- An empty database upgrades through the Alembic graph to its single current
+  head. A non-empty database without an Alembic version row is rejected; so are
+  unknown, partial, ahead-of-application, or multi-head states. Migration
   errors return a nonzero command exit and prevent startup health checks from
   succeeding.
 

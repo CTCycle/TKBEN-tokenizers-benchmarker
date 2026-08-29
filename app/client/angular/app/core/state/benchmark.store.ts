@@ -46,6 +46,7 @@ export class BenchmarkStore {
   readonly activeJobId = signal<string | null>(null);
   readonly layout = signal<readonly string[]>([]);
   readonly hiddenWidgetIds = signal<readonly string[]>([]);
+  readonly visualizations = signal<Record<string, string>>({});
   private readonly layoutStorageKey = 'tkben:cross-benchmark-dashboard-layout:v3';
 
   constructor() {
@@ -229,6 +230,7 @@ export class BenchmarkStore {
     const defaults = widgets.map((widget) => widget.widget_id);
     this.layout.set(defaults);
     this.hiddenWidgetIds.set(widgets.filter((widget) => !widget.default_visible).map((widget) => widget.widget_id));
+    this.visualizations.set({});
     this.persistLayout(defaults);
   }
 
@@ -236,31 +238,45 @@ export class BenchmarkStore {
     try {
       const raw = localStorage.getItem(this.layoutStorageKey);
       const parsed: unknown = raw ? JSON.parse(raw) : null;
-      if (Array.isArray(parsed) && parsed.every((item) => typeof item === 'string')) this.layout.set(parsed);
-      else if (parsed && typeof parsed === 'object' && 'ordered_widget_ids' in parsed) {
-        const order = (parsed as { ordered_widget_ids?: unknown }).ordered_widget_ids;
-        if (Array.isArray(order) && order.every((item) => typeof item === 'string')) this.layout.set(order);
-        const hidden = (parsed as { hidden_widget_ids?: unknown }).hidden_widget_ids;
-        if (Array.isArray(hidden) && hidden.every((item) => typeof item === 'string')) this.hiddenWidgetIds.set(hidden);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return;
+      const preferences = parsed as {
+        ordered_widget_ids?: unknown;
+        hidden_widget_ids?: unknown;
+        visualization_by_widget_id?: unknown;
+      };
+      if (Array.isArray(preferences.ordered_widget_ids) && preferences.ordered_widget_ids.every((item) => typeof item === 'string')) {
+        this.layout.set(preferences.ordered_widget_ids);
+      }
+      if (Array.isArray(preferences.hidden_widget_ids) && preferences.hidden_widget_ids.every((item) => typeof item === 'string')) {
+        this.hiddenWidgetIds.set(preferences.hidden_widget_ids);
+      }
+      if (preferences.visualization_by_widget_id && typeof preferences.visualization_by_widget_id === 'object' && !Array.isArray(preferences.visualization_by_widget_id)) {
+        const visualizations = Object.fromEntries(
+          Object.entries(preferences.visualization_by_widget_id).filter(([, value]) => typeof value === 'string'),
+        );
+        this.visualizations.set(visualizations);
       }
     } catch { /* corrupted storage is ignored */ }
   }
 
   private persistLayout(order: readonly string[]): void {
     try {
-      const previous = JSON.parse(localStorage.getItem(this.layoutStorageKey) ?? 'null') as { visualization_by_widget_id?: unknown } | null;
       localStorage.setItem(this.layoutStorageKey, JSON.stringify({
         version: 3,
         ordered_widget_ids: order,
         hidden_widget_ids: this.hiddenWidgetIds(),
-        known_widget_ids: order,
-        visualization_by_widget_id: previous && previous.visualization_by_widget_id && typeof previous.visualization_by_widget_id === 'object' ? previous.visualization_by_widget_id : {},
+        visualization_by_widget_id: this.visualizations(),
       }));
     } catch { /* storage is optional */ }
   }
 
   setHiddenWidgetIds(hidden: readonly string[]): void {
     this.hiddenWidgetIds.set([...new Set(hidden)]);
+    this.persistLayout(this.layout());
+  }
+
+  setVisualization(widgetId: string, visualization: string): void {
+    this.visualizations.update((current) => ({ ...current, [widgetId]: visualization }));
     this.persistLayout(this.layout());
   }
 
@@ -278,5 +294,6 @@ export class BenchmarkStore {
     this.report.set(null);
     this.layout.set([]);
     this.hiddenWidgetIds.set([]);
+    this.visualizations.set({});
   }
 }

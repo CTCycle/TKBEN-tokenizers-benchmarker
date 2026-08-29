@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import tempfile
 from pathlib import Path
 
 from server.common.path import TOKENIZERS_PATH
@@ -71,6 +73,62 @@ class TokenizerStorageMixin:
             and path.stat().st_size > 0
             for path in cache_dir.rglob("*")
         )
+
+    # -------------------------------------------------------------------------
+    def custom_tokenizer_artifact_path(self, tokenizer_id: str) -> Path:
+        cache_dir = Path(self.get_tokenizer_cache_dir(tokenizer_id))
+        return Path(ensure_path_is_within(cache_dir, cache_dir / "tokenizer.json"))
+
+    # -------------------------------------------------------------------------
+    def has_custom_tokenizer_artifact(self, tokenizer_id: str) -> bool:
+        artifact_path = self.custom_tokenizer_artifact_path(tokenizer_id)
+        return artifact_path.is_file() and artifact_path.stat().st_size > 0
+
+    # -------------------------------------------------------------------------
+    def persist_custom_tokenizer_artifact(
+        self, tokenizer_id: str, content: bytes
+    ) -> bytes | None:
+        if not content:
+            raise ValueError("Custom tokenizer artifact is empty.")
+        cache_dir = Path(self.get_tokenizer_cache_dir(tokenizer_id))
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        artifact_path = self.custom_tokenizer_artifact_path(tokenizer_id)
+        previous_content = artifact_path.read_bytes() if artifact_path.exists() else None
+        temporary_path: str | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="wb",
+                dir=cache_dir,
+                prefix=".tokenizer.json.",
+                suffix=".tmp",
+                delete=False,
+            ) as temporary_file:
+                temporary_file.write(content)
+                temporary_file.flush()
+                os.fsync(temporary_file.fileno())
+                temporary_path = temporary_file.name
+            os.replace(temporary_path, artifact_path)
+            temporary_path = None
+        finally:
+            if temporary_path is not None:
+                try:
+                    Path(temporary_path).unlink()
+                except FileNotFoundError:
+                    pass
+        return previous_content
+
+    # -------------------------------------------------------------------------
+    def restore_custom_tokenizer_artifact(
+        self, tokenizer_id: str, previous_content: bytes | None
+    ) -> None:
+        artifact_path = self.custom_tokenizer_artifact_path(tokenizer_id)
+        if previous_content is None:
+            try:
+                artifact_path.unlink()
+            except FileNotFoundError:
+                pass
+            return
+        self.persist_custom_tokenizer_artifact(tokenizer_id, previous_content)
 
     # -------------------------------------------------------------------------
     def build_huggingface_url(self, tokenizer_name: str) -> str | None:

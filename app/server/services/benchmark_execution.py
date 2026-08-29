@@ -81,7 +81,6 @@ class BenchmarkServiceExecutionMixin:
         self,
         dataset_name: str,
         tokenizer_ids: list[str],
-        custom_tokenizers: dict[str, Any] | None = None,
         run_name: str | None = None,
         selected_metric_keys: list[str] | None = None,
         benchmark_config: dict[str, Any] | None = None,
@@ -101,11 +100,6 @@ class BenchmarkServiceExecutionMixin:
             progress_callback(5.0)
 
         tokenizers = self.load_tokenizers(tokenizer_ids)
-        if custom_tokenizers:
-            for name, tok in custom_tokenizers.items():
-                if self.tools.is_tokenizer_compatible(tok):
-                    tokenizers[name] = tok
-                    logger.info("Added custom tokenizer: %s", name)
 
         if not tokenizers:
             raise ValueError("No valid tokenizers could be loaded")
@@ -660,7 +654,3 @@ class BenchmarkServiceExecutionMixin:
     # -------------------------------------------------------------------------
     def get_dataset_id(self, dataset_name: str) -> int | None:
         return self.repository.get_dataset_id(dataset_name)
-
-    # -------------------------------------------------------------------------
-    def ensure_tokenizer_ids(self, tokenizer_names: list[str]) -> dict[str, int]:
-        return self.repository.ensure_tokenizer_ids(tokenizer_names)

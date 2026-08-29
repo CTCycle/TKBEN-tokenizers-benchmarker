@@ -37,7 +37,7 @@ def test_cross_benchmark_dashboard_customization_and_accessible_data(
     page.add_init_script(
         "if (!window.sessionStorage.getItem('tkben-visualization-fixture-seeded')) {"
         "window.localStorage.setItem('tkben:cross-benchmark-dashboard-layout:v3', "
-        "JSON.stringify({version: 3, ordered_widget_ids: [], hidden_widget_ids: [], known_widget_ids: [], "
+        "JSON.stringify({version: 3, ordered_widget_ids: [], hidden_widget_ids: [], "
         "visualization_by_widget_id: {'vocabulary.size': 'heatmap'}}));"
         "window.sessionStorage.setItem('tkben-visualization-fixture-seeded', '1');}"
     )

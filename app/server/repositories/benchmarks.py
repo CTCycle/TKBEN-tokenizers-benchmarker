@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from dataclasses import dataclass
 from typing import Any
 from sqlalchemy import func, or_, select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from server.contracts.benchmarks import BenchmarkReportSort
@@ -15,7 +13,6 @@ from server.repositories.schemas.models import (
     DatasetDocument,
     Tokenizer,
 )
-from server.common.constants import BENCHMARK_REPORT_VERSION
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -61,6 +58,18 @@ class BenchmarkRepository:
         return [name for name in unique_requested if name not in persisted_names]
 
     # -------------------------------------------------------------------------
+    def get_tokenizer_sources(self, tokenizer_ids: list[str]) -> dict[str, str]:
+        if not tokenizer_ids:
+            return {}
+        with self._session() as session:
+            rows = session.execute(
+                select(Tokenizer.name, Tokenizer.source).where(
+                    Tokenizer.name.in_(list(dict.fromkeys(tokenizer_ids)))
+                )
+            ).all()
+        return {str(name): str(source) for name, source in rows}
+
+    # -------------------------------------------------------------------------
     def list_benchmark_reports(
         self,
         *,
@@ -71,7 +80,7 @@ class BenchmarkRepository:
     ) -> BenchmarkReportPage:
         safe_offset = max(0, int(offset))
         safe_limit = max(1, min(100, int(limit)))
-        filters = [BenchmarkReport.report_version == BENCHMARK_REPORT_VERSION]
+        filters = []
         if search:
             pattern = f"%{search}%"
             filters.append(
@@ -95,6 +104,7 @@ class BenchmarkRepository:
             select(
                 BenchmarkReport.id,
                 BenchmarkReport.report_version,
+                BenchmarkReport.schema_version,
                 BenchmarkReport.created_at,
                 BenchmarkReport.run_name,
                 BenchmarkReport.documents_processed,
@@ -140,7 +150,7 @@ class BenchmarkRepository:
         stmt = (
             select(BenchmarkReport, Dataset.name.label("dataset_name"))
             .join(Dataset, Dataset.id == BenchmarkReport.dataset_id)
-            .where(BenchmarkReport.id == int(report_id), BenchmarkReport.report_version == BENCHMARK_REPORT_VERSION)
+            .where(BenchmarkReport.id == int(report_id))
             .limit(1)
         )
         with self._session() as session:
@@ -157,32 +167,23 @@ class BenchmarkRepository:
         return int(dataset_id) if dataset_id is not None else None
 
     # -------------------------------------------------------------------------
-    def ensure_tokenizer_ids(self, tokenizer_names: list[str]) -> dict[str, int]:
+    def get_tokenizer_ids(self, tokenizer_names: list[str]) -> dict[str, int]:
         if not tokenizer_names:
             return {}
         deduped_names = list(dict.fromkeys(tokenizer_names))
         with self._session() as session:
-            existing_rows = (
-                session.execute(
-                    select(Tokenizer).where(Tokenizer.name.in_(deduped_names))
-                )
-                .scalars()
-                .all()
-            )
-            existing_names = {row.name for row in existing_rows}
-            for name in deduped_names:
-                if name not in existing_names:
-                    session.add(Tokenizer(name=name, created_at=datetime.now(timezone.utc)))
-            try:
-                session.commit()
-            except IntegrityError:
-                session.rollback()
             mapping_rows = session.execute(
                 select(Tokenizer.id, Tokenizer.name).where(
                     Tokenizer.name.in_(deduped_names)
                 )
             ).all()
-        return {str(name): int(tokenizer_id) for tokenizer_id, name in mapping_rows}
+        mapping = {str(name): int(tokenizer_id) for tokenizer_id, name in mapping_rows}
+        missing = [name for name in deduped_names if name not in mapping]
+        if missing:
+            raise ValueError(
+                "Tokenizer records do not exist: " + ", ".join(missing)
+            )
+        return mapping
 
     # -------------------------------------------------------------------------
     def save_benchmark_report(
@@ -211,6 +212,33 @@ class BenchmarkRepository:
         tokenizers_processed = payload["tokenizers_processed"]
         if not isinstance(tokenizers_processed, list):
             raise ValueError("Benchmark report tokenizers_processed must be a list.")
+        tokenizers_processed = [str(name) for name in tokenizers_processed]
+        payload_tokenizer_count = payload.get("tokenizers_count")
+        if payload_tokenizer_count is not None and int(payload_tokenizer_count) != len(tokenizers_processed):
+            raise ValueError("Benchmark report tokenizer count disagrees with its list.")
+        payload_selected_metric_keys = payload.get("selected_metric_keys")
+        if payload_selected_metric_keys is not None:
+            if not isinstance(payload_selected_metric_keys, list):
+                raise ValueError("Benchmark report selected_metric_keys must be a list.")
+            if [str(key) for key in payload_selected_metric_keys] != selected_metric_keys:
+                raise ValueError("Benchmark report selected metrics disagree with its summary.")
+        detail_fields = {
+            "report_id",
+            "report_version",
+            "schema_version",
+            "methodology_version",
+            "created_at",
+            "run_name",
+            "status",
+            "documents_processed",
+            "tokenizers_count",
+            "tokenizers_processed",
+            "selected_metric_keys",
+            "dataset_name",
+        }
+        details_payload = {
+            key: value for key, value in payload.items() if key not in detail_fields
+        }
         report_row = BenchmarkReport(
             dataset_id=int(dataset_id),
             report_version=int(report_version),
@@ -223,7 +251,7 @@ class BenchmarkRepository:
             documents_processed=documents_processed,
             tokenizers_count=len(tokenizers_processed),
             tokenizers_processed=tokenizers_processed,
-            payload=payload,
+            payload=details_payload,
         )
         with self._session() as session:
             session.add(report_row)

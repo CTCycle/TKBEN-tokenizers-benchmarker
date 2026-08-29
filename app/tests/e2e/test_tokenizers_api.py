@@ -132,23 +132,12 @@ def test_upload_accepts_valid_tokenizer_json(api_context: APIRequestContext) -> 
     assert data.get("tokenizer_name", "").startswith("CUSTOM_")
     assert data.get("is_compatible") is True
 
-    cleanup = api_context.delete("/api/tokenizers/custom")
-    assert cleanup.ok
-
-###############################################################################
-def test_clear_custom_tokenizers(api_context: APIRequestContext) -> None:
-    """DELETE /api/tokenizers/custom should return a success message."""
-    response = api_context.delete("/api/tokenizers/custom")
-    assert response.ok
-    data = response.json()
-    assert data.get("status") == "success"
-
 ###############################################################################
 def test_custom_tokenizer_can_be_deleted_and_repeated_delete_is_not_found(
     api_context: APIRequestContext,
     tiny_tokenizer_json: bytes,
 ) -> None:
-    """Per-item deletion removes custom registry entries without changing the clear-all endpoint."""
+    """Per-item deletion removes the durable custom tokenizer."""
     stem = f"qa_delete_custom_{uuid4().hex[:8]}"
     upload = api_context.post(
         "/api/tokenizers/upload",

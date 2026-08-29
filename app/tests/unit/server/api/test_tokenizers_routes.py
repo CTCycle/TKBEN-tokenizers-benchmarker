@@ -27,7 +27,7 @@ class DummyJobManager:
         return {"job_type": self.last_job_type, "status": "pending"}
 
 ###############################################################################
-def test_tokenizer_upload_validation_and_custom_clear(monkeypatch) -> None:
+def test_tokenizer_upload_validation(monkeypatch) -> None:
     client = TestClient(app)
 
     invalid_ext = client.post(
@@ -95,22 +95,6 @@ def test_tokenizer_upload_validation_and_custom_clear(monkeypatch) -> None:
     )
     assert ok_upload.status_code == 200
     assert ok_upload.json()["is_compatible"] is True
-
-    called = {"value": False}
-
-    def fake_clear(self) -> None:
-        del self
-        called["value"] = True
-
-    monkeypatch.setattr(
-        tokenizers_api.TokenizersService,
-        "clear_custom_tokenizers",
-        fake_clear,
-    )
-
-    cleared = client.delete("/api/tokenizers/custom")
-    assert cleared.status_code == 200
-    assert called["value"] is True
 
 ###############################################################################
 def test_tokenizer_delete_supports_encoded_and_custom_names_and_returns_404(monkeypatch) -> None:
@@ -206,7 +190,7 @@ def test_tokenizer_job_routes_return_202(monkeypatch) -> None:
     monkeypatch.setattr(HFAccessKeyService, "get_active_key", lambda self: "token")
     monkeypatch.setattr(
         TokenizersService,
-        "has_cached_tokenizer",
+        "has_available_tokenizer",
         lambda self, tokenizer_name: tokenizer_name == "bert-base-uncased",
     )
 

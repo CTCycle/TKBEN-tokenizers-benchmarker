@@ -77,7 +77,7 @@ describe('DatasetStore', () => {
     expect(store.busyAction()).toBeNull();
   });
 
-  it('publishes analysis progress, persists the report, and resets failures', () => {
+  it('publishes analysis progress in memory and resets failures', () => {
     const { api, store } = createStore();
 
     store.analyze({ dataset_name: 'custom/demo' } as never);
@@ -86,7 +86,7 @@ describe('DatasetStore', () => {
     expect(store.report()).toBe(report);
     expect(store.jobProgress()).toBe(100);
     expect(store.busyAction()).toBeNull();
-    expect(JSON.parse(localStorage.getItem('tkben:last-dataset-report') ?? '{}')).toEqual(report);
+    expect(localStorage.length).toBe(0);
 
     api.analyze.mockReturnValue(throwError(() => new Error('analysis failed')));
     store.analyze({ dataset_name: 'custom/demo' } as never);

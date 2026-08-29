@@ -509,8 +509,6 @@ class DatasetServiceOperationsMixin:
         parameters = self.get_default_analysis_parameters()
         parameters.update(parameter_overrides)
 
-        self.dataset_repository.ensure_metric_types_seeded(self.get_metric_catalog())
-
         session_parameters = {
             "sampling": sampling_config,
             "filters": filter_config,
