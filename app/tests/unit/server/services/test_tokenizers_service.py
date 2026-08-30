@@ -15,9 +15,9 @@ from server.services.benchmarks import BenchmarkService
 from server.services.tokenizer_reporting import TokenizerReportingService
 from server.services.tokenizers import TokenizersService
 
+
 ###############################################################################
 class FakeTokenizerRepository:
-
     # -------------------------------------------------------------------------
     def get_latest_tokenizer_report(self, tokenizer_name: str):
         return object() if tokenizer_name == "exists" else None
@@ -26,9 +26,11 @@ class FakeTokenizerRepository:
     def get_tokenizer_report_by_id(self, report_id: int):
         return object() if report_id == 1 else None
 
+
 ###############################################################################
 def tokenizer_siblings(*filenames: str) -> list[dict[str, str]]:
     return [{"rfilename": filename} for filename in filenames]
+
 
 ###############################################################################
 def test_tokenizers_service_report_prechecks(monkeypatch) -> None:
@@ -65,13 +67,15 @@ def test_tokenizers_service_report_prechecks(monkeypatch) -> None:
     assert service.get_tokenizer_report_vocabulary(1, 0, 10) is not None
     assert service.get_tokenizer_report_vocabulary(2, 0, 10) is None
 
+
 ###############################################################################
-def test_tokenizer_discovery_passes_native_filters_and_returns_structured_items(monkeypatch) -> None:
+def test_tokenizer_discovery_passes_native_filters_and_returns_structured_items(
+    monkeypatch,
+) -> None:
     service = TokenizersService()
 
     ###############################################################################
     class FakeModel:
-
         # -------------------------------------------------------------------------
         def __init__(self, model_id: str, pipeline_tag: str | None) -> None:
             self.modelId = model_id
@@ -87,7 +91,6 @@ def test_tokenizer_discovery_passes_native_filters_and_returns_structured_items(
 
     ###############################################################################
     class FakeApi:
-
         captured: dict[str, object] = {}
 
         # -------------------------------------------------------------------------
@@ -103,15 +106,17 @@ def test_tokenizer_discovery_passes_native_filters_and_returns_structured_items(
     monkeypatch.setattr("server.services.tokenizers.HfApi", lambda **kwargs: fake_api)
     monkeypatch.setattr(service.key_service, "get_active_key", lambda: None)
 
-    response = service.discover_tokenizers(TokenizerDiscoveryQuery(
-        search=" bert ",
-        limit=5,
-        pipeline_tag="fill-mask",
-        author="google",
-        include_tags=["core-model"],
-        access="public",
-        sort="downloads",
-    ))
+    response = service.discover_tokenizers(
+        TokenizerDiscoveryQuery(
+            search=" bert ",
+            limit=5,
+            pipeline_tag="fill-mask",
+            author="google",
+            include_tags=["core-model"],
+            access="public",
+            sort="downloads",
+        )
+    )
 
     assert fake_api.captured == {
         "sort": "downloads",
@@ -147,6 +152,7 @@ def test_tokenizer_discovery_passes_native_filters_and_returns_structured_items(
         "vocabulary_size": None,
     }
 
+
 ###############################################################################
 def test_remove_custom_tokenizer_removes_persisted_row(monkeypatch) -> None:
     service = TokenizersService()
@@ -155,7 +161,6 @@ def test_remove_custom_tokenizer_removes_persisted_row(monkeypatch) -> None:
 
     ###############################################################################
     class FakeRepository:
-
         # -------------------------------------------------------------------------
         def delete_tokenizer(self, name: str) -> bool:
             deleted.append(name)
@@ -165,6 +170,7 @@ def test_remove_custom_tokenizer_removes_persisted_row(monkeypatch) -> None:
 
     assert service.remove_tokenizer("CUSTOM_sample") is True
     assert deleted == ["CUSTOM_sample"]
+
 
 ###############################################################################
 def test_custom_tokenizer_survives_service_recreation_and_is_benchmarkable(
@@ -211,12 +217,14 @@ def test_custom_tokenizer_survives_service_recreation_and_is_benchmarkable(
         recreated.repository = TokenizerRepository(database)  # type: ignore[assignment]
         assert recreated.repository.get_tokenizer_source(tokenizer_name) == "custom"
         assert recreated.has_available_tokenizer(tokenizer_name) is True
-        assert recreated.list_tokenizer_catalog() == [{
-            "tokenizer_name": tokenizer_name,
-            "source": "custom",
-            "has_report": False,
-            "vocabulary_size": 3,
-        }]
+        assert recreated.list_tokenizer_catalog() == [
+            {
+                "tokenizer_name": tokenizer_name,
+                "source": "custom",
+                "has_report": False,
+                "vocabulary_size": 3,
+            }
+        ]
 
         benchmark = BenchmarkService()
         benchmark.repository = BenchmarkRepository(database)  # type: ignore[assignment]
@@ -229,8 +237,11 @@ def test_custom_tokenizer_survives_service_recreation_and_is_benchmarkable(
     finally:
         engine.dispose()
 
+
 ###############################################################################
-def test_remove_tokenizer_cleans_cache_before_database_delete(tmp_path, monkeypatch) -> None:
+def test_remove_tokenizer_cleans_cache_before_database_delete(
+    tmp_path, monkeypatch
+) -> None:
     service = TokenizersService()
     cache_dir = tmp_path / "google-bert__bert-base-uncased"
     cache_dir.mkdir()
@@ -241,7 +252,6 @@ def test_remove_tokenizer_cleans_cache_before_database_delete(tmp_path, monkeypa
 
     ###############################################################################
     class FakeRepository:
-
         # -------------------------------------------------------------------------
         def delete_tokenizer(self, name: str) -> bool:
             assert not cache_dir.exists()
@@ -253,18 +263,23 @@ def test_remove_tokenizer_cleans_cache_before_database_delete(tmp_path, monkeypa
     assert service.remove_tokenizer("google-bert/bert-base-uncased") is True
     assert calls == ["google-bert/bert-base-uncased"]
 
+
 ###############################################################################
-def test_remove_tokenizer_keeps_database_row_when_cache_cleanup_fails(monkeypatch) -> None:
+def test_remove_tokenizer_keeps_database_row_when_cache_cleanup_fails(
+    monkeypatch,
+) -> None:
     service = TokenizersService()
     monkeypatch.setattr(service, "get_tokenizer_cache_dir", lambda name: "cache")
     monkeypatch.setattr("server.services.tokenizers.Path.exists", lambda self: True)
-    monkeypatch.setattr("server.services.tokenizers.shutil.rmtree", lambda path: (_ for _ in ()).throw(OSError("locked")))
+    monkeypatch.setattr(
+        "server.services.tokenizers.shutil.rmtree",
+        lambda path: (_ for _ in ()).throw(OSError("locked")),
+    )
 
     deleted = False
 
     ###############################################################################
     class FakeRepository:
-
         # -------------------------------------------------------------------------
         def delete_tokenizer(self, name: str) -> bool:
             nonlocal deleted
@@ -277,13 +292,15 @@ def test_remove_tokenizer_keeps_database_row_when_cache_cleanup_fails(monkeypatc
         service.remove_tokenizer("google-bert/bert-base-uncased")
     assert deleted is False
 
+
 ###############################################################################
-def test_tokenizer_discovery_uses_bounded_overfetch_and_candidate_cap(monkeypatch) -> None:
+def test_tokenizer_discovery_uses_bounded_overfetch_and_candidate_cap(
+    monkeypatch,
+) -> None:
     service = TokenizersService()
 
     ###############################################################################
     class FakeApi:
-
         captured: dict[str, object] = {}
 
         # -------------------------------------------------------------------------
@@ -295,21 +312,26 @@ def test_tokenizer_discovery_uses_bounded_overfetch_and_candidate_cap(monkeypatc
     monkeypatch.setattr("server.services.tokenizers.HfApi", lambda **kwargs: fake_api)
     monkeypatch.setattr(service.key_service, "get_active_key", lambda: None)
 
-    service.discover_tokenizers(TokenizerDiscoveryQuery(
-        limit=5,
-        exclude_tags=["audio"],
-        vocabulary_sort="ascending",
-    ))
+    service.discover_tokenizers(
+        TokenizerDiscoveryQuery(
+            limit=5,
+            exclude_tags=["audio"],
+            vocabulary_sort="ascending",
+        )
+    )
     assert fake_api.captured["limit"] == 15
     assert fake_api.captured["expand"][-1] == "config"
     assert "fetch_config" not in fake_api.captured
 
-    service.discover_tokenizers(TokenizerDiscoveryQuery(
-        limit=250,
-        vocabulary_sort="ascending",
-    ))
+    service.discover_tokenizers(
+        TokenizerDiscoveryQuery(
+            limit=250,
+            vocabulary_sort="ascending",
+        )
+    )
     assert fake_api.captured["limit"] == 750
     assert fake_api.captured["expand"][0] == "siblings"
+
 
 ###############################################################################
 def test_tokenizer_discovery_accepts_supported_root_artifacts_only(monkeypatch) -> None:
@@ -317,7 +339,6 @@ def test_tokenizer_discovery_accepts_supported_root_artifacts_only(monkeypatch) 
 
     ###############################################################################
     class FakeModel:
-
         # -------------------------------------------------------------------------
         def __init__(self, model_id: str, filenames: tuple[str, ...]) -> None:
             self.modelId = model_id
@@ -327,7 +348,6 @@ def test_tokenizer_discovery_accepts_supported_root_artifacts_only(monkeypatch) 
 
     ###############################################################################
     class FakeApi:
-
         # -------------------------------------------------------------------------
         def list_models(self, **kwargs):
             assert kwargs["expand"][0] == "siblings"
@@ -338,8 +358,12 @@ def test_tokenizer_discovery_accepts_supported_root_artifacts_only(monkeypatch) 
                 FakeModel("valid/bpe", ("vocab.json", "merges.txt")),
                 FakeModel("valid/wordpiece", ("vocab.txt", "config.json")),
                 FakeModel("invalid/weights-only", ("config.json", "model.safetensors")),
-                FakeModel("invalid/metadata-only", ("config.json", "tokenizer_config.json")),
-                FakeModel("invalid/nested-only", ("config.json", "nested/tokenizer.json")),
+                FakeModel(
+                    "invalid/metadata-only", ("config.json", "tokenizer_config.json")
+                ),
+                FakeModel(
+                    "invalid/nested-only", ("config.json", "nested/tokenizer.json")
+                ),
                 FakeModel("invalid/partial-vocab", ("vocab.json",)),
                 FakeModel("invalid/no-siblings", ()),
             ]
@@ -359,13 +383,15 @@ def test_tokenizer_discovery_accepts_supported_root_artifacts_only(monkeypatch) 
     assert response.count == 5
     assert response.fetched_count == 10
 
+
 ###############################################################################
-def test_tokenizer_discovery_filters_excluded_and_unsupported_models(monkeypatch) -> None:
+def test_tokenizer_discovery_filters_excluded_and_unsupported_models(
+    monkeypatch,
+) -> None:
     service = TokenizersService()
 
     ###############################################################################
     class FakeModel:
-
         # -------------------------------------------------------------------------
         def __init__(self, model_id: str, pipeline_tag: str, tags: list[str]) -> None:
             self.modelId = model_id
@@ -375,7 +401,6 @@ def test_tokenizer_discovery_filters_excluded_and_unsupported_models(monkeypatch
 
     ###############################################################################
     class FakeApi:
-
         # -------------------------------------------------------------------------
         def list_models(self, **kwargs):
             del kwargs
@@ -388,80 +413,117 @@ def test_tokenizer_discovery_filters_excluded_and_unsupported_models(monkeypatch
     monkeypatch.setattr("server.services.tokenizers.HfApi", lambda **kwargs: FakeApi())
     monkeypatch.setattr(service.key_service, "get_active_key", lambda: None)
 
-    response = service.discover_tokenizers(TokenizerDiscoveryQuery(
-        limit=10,
-        exclude_tags=["unsafe"],
-    ))
+    response = service.discover_tokenizers(
+        TokenizerDiscoveryQuery(
+            limit=10,
+            exclude_tags=["unsafe"],
+        )
+    )
     assert [item.identifier for item in response.items] == ["text/model"]
 
+
 ###############################################################################
-def test_tokenizer_discovery_extracts_and_filters_vocabulary_metadata(monkeypatch) -> None:
+def test_tokenizer_discovery_extracts_and_filters_vocabulary_metadata(
+    monkeypatch,
+) -> None:
     service = TokenizersService()
 
     ###############################################################################
     class FakeModel:
-
         # -------------------------------------------------------------------------
         def __init__(self, model_id: str, vocabulary_size: object) -> None:
             self.modelId = model_id
             self.pipeline_tag = "fill-mask"
-            self.config = {"vocab_size": vocabulary_size} if vocabulary_size is not None else None
+            self.config = (
+                {"vocab_size": vocabulary_size} if vocabulary_size is not None else None
+            )
             self.siblings = tokenizer_siblings("vocab.txt", "config.json")
 
     ###############################################################################
     class FakeApi:
-
         # -------------------------------------------------------------------------
         def list_models(self, **kwargs):
             assert "config" in kwargs["expand"]
-            return [FakeModel("small/model", 4), FakeModel("large/model", 12), FakeModel("unknown/model", None)]
+            return [
+                FakeModel("small/model", 4),
+                FakeModel("large/model", 12),
+                FakeModel("unknown/model", None),
+            ]
 
     monkeypatch.setattr("server.services.tokenizers.HfApi", lambda **kwargs: FakeApi())
     monkeypatch.setattr(service.key_service, "get_active_key", lambda: None)
 
-    minimum = service.discover_tokenizers(TokenizerDiscoveryQuery(
-        limit=10,
-        vocabulary_operator="at_least",
-        vocabulary_size=10,
-    ))
-    assert [(item.identifier, item.vocabulary_size) for item in minimum.items] == [("large/model", 12)]
+    minimum = service.discover_tokenizers(
+        TokenizerDiscoveryQuery(
+            limit=10,
+            vocabulary_operator="at_least",
+            vocabulary_size=10,
+        )
+    )
+    assert [(item.identifier, item.vocabulary_size) for item in minimum.items] == [
+        ("large/model", 12)
+    ]
 
-    maximum = service.discover_tokenizers(TokenizerDiscoveryQuery(
-        limit=10,
-        vocabulary_operator="at_most",
-        vocabulary_size=5,
-    ))
-    assert [(item.identifier, item.vocabulary_size) for item in maximum.items] == [("small/model", 4)]
+    maximum = service.discover_tokenizers(
+        TokenizerDiscoveryQuery(
+            limit=10,
+            vocabulary_operator="at_most",
+            vocabulary_size=5,
+        )
+    )
+    assert [(item.identifier, item.vocabulary_size) for item in maximum.items] == [
+        ("small/model", 4)
+    ]
+
 
 ###############################################################################
-def test_tokenizer_discovery_orders_known_vocabulary_before_unknown(monkeypatch) -> None:
+def test_tokenizer_discovery_orders_known_vocabulary_before_unknown(
+    monkeypatch,
+) -> None:
     service = TokenizersService()
 
     ###############################################################################
     class FakeModel:
-
         # -------------------------------------------------------------------------
         def __init__(self, model_id: str, vocabulary_size: int | None) -> None:
             self.modelId = model_id
             self.pipeline_tag = "fill-mask"
-            self.config = {"vocab_size": vocabulary_size} if vocabulary_size is not None else None
+            self.config = (
+                {"vocab_size": vocabulary_size} if vocabulary_size is not None else None
+            )
             self.siblings = tokenizer_siblings("vocab.json", "merges.txt")
 
     ###############################################################################
     class FakeApi:
-
         # -------------------------------------------------------------------------
         def list_models(self, **kwargs):
             del kwargs
-            return [FakeModel("unknown/model", None), FakeModel("large/model", 12), FakeModel("small/model", 4)]
+            return [
+                FakeModel("unknown/model", None),
+                FakeModel("large/model", 12),
+                FakeModel("small/model", 4),
+            ]
 
     monkeypatch.setattr("server.services.tokenizers.HfApi", lambda **kwargs: FakeApi())
     monkeypatch.setattr(service.key_service, "get_active_key", lambda: None)
 
-    ascending = service.discover_tokenizers(TokenizerDiscoveryQuery(limit=10, vocabulary_sort="ascending"))
-    descending = service.discover_tokenizers(TokenizerDiscoveryQuery(limit=10, vocabulary_sort="descending"))
-    assert [item.identifier for item in ascending.items] == ["small/model", "large/model", "unknown/model"]
-    assert [item.identifier for item in descending.items] == ["large/model", "small/model", "unknown/model"]
+    ascending = service.discover_tokenizers(
+        TokenizerDiscoveryQuery(limit=10, vocabulary_sort="ascending")
+    )
+    descending = service.discover_tokenizers(
+        TokenizerDiscoveryQuery(limit=10, vocabulary_sort="descending")
+    )
+    assert [item.identifier for item in ascending.items] == [
+        "small/model",
+        "large/model",
+        "unknown/model",
+    ]
+    assert [item.identifier for item in descending.items] == [
+        "large/model",
+        "small/model",
+        "unknown/model",
+    ]
+
 
 ###############################################################################
 def test_tokenizer_discovery_propagates_upstream_failure(monkeypatch) -> None:
@@ -469,17 +531,19 @@ def test_tokenizer_discovery_propagates_upstream_failure(monkeypatch) -> None:
 
     ###############################################################################
     class FailingApi:
-
         # -------------------------------------------------------------------------
         def list_models(self, **kwargs):
             del kwargs
             raise RuntimeError("upstream outage details")
 
-    monkeypatch.setattr("server.services.tokenizers.HfApi", lambda **kwargs: FailingApi())
+    monkeypatch.setattr(
+        "server.services.tokenizers.HfApi", lambda **kwargs: FailingApi()
+    )
     monkeypatch.setattr(service.key_service, "get_active_key", lambda: None)
 
     with pytest.raises(RuntimeError, match="upstream outage details"):
         service.discover_tokenizers(TokenizerDiscoveryQuery(limit=5))
+
 
 ###############################################################################
 def test_failed_tokenizer_download_cleans_partial_cache_and_returns_reason(
@@ -516,6 +580,7 @@ def test_failed_tokenizer_download_cleans_partial_cache_and_returns_reason(
     assert "ValueError: Unrecognized model configuration" in result["failed_details"][0]
     assert removed == [str(Path(cache_dir))]
 
+
 ###############################################################################
 def test_tokenizer_download_timeout_returns_failure_without_blocking_job(
     monkeypatch,
@@ -546,6 +611,7 @@ def test_tokenizer_download_timeout_returns_failure_without_blocking_job(
     assert result["failed"] == ["slow/model"]
     assert "TokenizerDownloadTimeoutError" in result["failed_details"][0]
 
+
 ###############################################################################
 def test_tokenizer_catalog_filters_cached_sources_search_and_vocabulary(
     monkeypatch,
@@ -568,7 +634,9 @@ def test_tokenizer_catalog_filters_cached_sources_search_and_vocabulary(
         "has_cached_tokenizer",
         lambda name: name != "uncached/model",
     )
-    monkeypatch.setattr(service, "has_custom_tokenizer_artifact", lambda name: name == "CUSTOM_demo")
+    monkeypatch.setattr(
+        service, "has_custom_tokenizer_artifact", lambda name: name == "CUSTOM_demo"
+    )
     monkeypatch.setattr(
         service.repository,
         "get_latest_tokenizer_report",
@@ -585,13 +653,18 @@ def test_tokenizer_catalog_filters_cached_sources_search_and_vocabulary(
         search="DEMO",
         vocabulary_size_operator="at_most",
         vocabulary_size=5,
-    ) == [{
-        "tokenizer_name": "CUSTOM_demo",
-        "source": "custom",
-        "has_report": False,
-        "vocabulary_size": 4,
-    }]
-    assert [item["tokenizer_name"] for item in service.list_tokenizer_catalog(
-        vocabulary_size_operator="at_least",
-        vocabulary_size=50,
-    )] == ["zeta/model"]
+    ) == [
+        {
+            "tokenizer_name": "CUSTOM_demo",
+            "source": "custom",
+            "has_report": False,
+            "vocabulary_size": 4,
+        }
+    ]
+    assert [
+        item["tokenizer_name"]
+        for item in service.list_tokenizer_catalog(
+            vocabulary_size_operator="at_least",
+            vocabulary_size=50,
+        )
+    ] == ["zeta/model"]

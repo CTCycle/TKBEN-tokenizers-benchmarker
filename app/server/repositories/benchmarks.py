@@ -14,6 +14,7 @@ from server.repositories.schemas.models import (
     Tokenizer,
 )
 
+
 ###############################################################################
 @dataclass(frozen=True)
 class BenchmarkReportPage:
@@ -22,9 +23,9 @@ class BenchmarkReportPage:
     offset: int
     limit: int
 
+
 ###############################################################################
 class BenchmarkRepository:
-
     # -------------------------------------------------------------------------
     def __init__(self, database: TKBENDatabase | None = None) -> None:
         self.database = database or get_database()
@@ -180,9 +181,7 @@ class BenchmarkRepository:
         mapping = {str(name): int(tokenizer_id) for tokenizer_id, name in mapping_rows}
         missing = [name for name in deduped_names if name not in mapping]
         if missing:
-            raise ValueError(
-                "Tokenizer records do not exist: " + ", ".join(missing)
-            )
+            raise ValueError("Tokenizer records do not exist: " + ", ".join(missing))
         return mapping
 
     # -------------------------------------------------------------------------
@@ -214,14 +213,24 @@ class BenchmarkRepository:
             raise ValueError("Benchmark report tokenizers_processed must be a list.")
         tokenizers_processed = [str(name) for name in tokenizers_processed]
         payload_tokenizer_count = payload.get("tokenizers_count")
-        if payload_tokenizer_count is not None and int(payload_tokenizer_count) != len(tokenizers_processed):
-            raise ValueError("Benchmark report tokenizer count disagrees with its list.")
+        if payload_tokenizer_count is not None and int(payload_tokenizer_count) != len(
+            tokenizers_processed
+        ):
+            raise ValueError(
+                "Benchmark report tokenizer count disagrees with its list."
+            )
         payload_selected_metric_keys = payload.get("selected_metric_keys")
         if payload_selected_metric_keys is not None:
             if not isinstance(payload_selected_metric_keys, list):
-                raise ValueError("Benchmark report selected_metric_keys must be a list.")
-            if [str(key) for key in payload_selected_metric_keys] != selected_metric_keys:
-                raise ValueError("Benchmark report selected metrics disagree with its summary.")
+                raise ValueError(
+                    "Benchmark report selected_metric_keys must be a list."
+                )
+            if [
+                str(key) for key in payload_selected_metric_keys
+            ] != selected_metric_keys:
+                raise ValueError(
+                    "Benchmark report selected metrics disagree with its summary."
+                )
         detail_fields = {
             "report_id",
             "report_version",

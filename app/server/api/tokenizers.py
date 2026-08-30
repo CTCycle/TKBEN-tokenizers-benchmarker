@@ -3,7 +3,16 @@ from __future__ import annotations
 import asyncio
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+    status,
+)
 from pydantic import ValidationError
 
 from server.contracts.jobs import JobStartResponse
@@ -59,6 +68,7 @@ from server.services.managed_jobs import (
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_TOKENIZERS, tags=["tokenizers"])
 
+
 ###############################################################################
 @router.get(
     API_ROUTE_TOKENIZERS_SETTINGS,
@@ -73,6 +83,7 @@ async def get_tokenizer_settings() -> TokenizerSettingsResponse:
         metadata_candidate_multiplier=get_server_settings().tokenizers.metadata_candidate_multiplier,
     )
 
+
 ###############################################################################
 def _build_tokenizer_discovery_query(
     search: Annotated[str | None, Query(max_length=160)] = None,
@@ -83,9 +94,13 @@ def _build_tokenizer_discovery_query(
     exclude_tags: Annotated[list[str] | None, Query()] = None,
     access: Annotated[Literal["all", "public", "gated"], Query()] = "all",
     sort: Annotated[TokenizerDiscoverySort, Query()] = TokenizerDiscoverySort.DOWNLOADS,
-    vocabulary_operator: Annotated[Literal["at_least", "at_most"] | None, Query()] = None,
+    vocabulary_operator: Annotated[
+        Literal["at_least", "at_most"] | None, Query()
+    ] = None,
     vocabulary_size: Annotated[int | None, Query(ge=0)] = None,
-    vocabulary_sort: Annotated[Literal["none", "ascending", "descending"], Query()] = "none",
+    vocabulary_sort: Annotated[
+        Literal["none", "ascending", "descending"], Query()
+    ] = "none",
 ) -> TokenizerDiscoveryQuery:
     settings = get_server_settings().tokenizers
     try:
@@ -108,6 +123,7 @@ def _build_tokenizer_discovery_query(
             detail=str(exc),
         ) from exc
 
+
 ###############################################################################
 @router.get(
     API_ROUTE_TOKENIZERS_DISCOVER,
@@ -115,7 +131,9 @@ def _build_tokenizer_discovery_query(
     status_code=status.HTTP_200_OK,
 )
 async def discover_tokenizers(
-    query: Annotated[TokenizerDiscoveryQuery, Depends(_build_tokenizer_discovery_query)],
+    query: Annotated[
+        TokenizerDiscoveryQuery, Depends(_build_tokenizer_discovery_query)
+    ],
 ) -> TokenizerDiscoveryResponse:
     logger.info("Discovering HuggingFace tokenizers (limit=%s)", query.limit)
 
@@ -137,6 +155,7 @@ async def discover_tokenizers(
 
     return response
 
+
 ###############################################################################
 @router.get(
     API_ROUTE_TOKENIZERS_LIST,
@@ -146,7 +165,9 @@ async def discover_tokenizers(
 async def list_tokenizers(
     search: Annotated[str | None, Query(max_length=160)] = None,
     source: Annotated[Literal["all", "huggingface", "custom"], Query()] = "all",
-    vocabulary_size_operator: Annotated[Literal["at_least", "at_most"], Query()] = "at_least",
+    vocabulary_size_operator: Annotated[
+        Literal["at_least", "at_most"], Query()
+    ] = "at_least",
     vocabulary_size: Annotated[int | None, Query(ge=0)] = None,
 ) -> TokenizerListResponse:
     service = TokenizersService()
@@ -161,6 +182,7 @@ async def list_tokenizers(
         tokenizers=[TokenizerListItem.model_validate(item) for item in tokenizers],
         count=len(tokenizers),
     )
+
 
 ###############################################################################
 @router.post(
@@ -198,6 +220,7 @@ async def download_tokenizers(
             message="Tokenizer download job started.",
         ),
     )
+
 
 ###############################################################################
 @router.post(
@@ -242,6 +265,7 @@ async def generate_tokenizer_report(
         ),
     )
 
+
 ###############################################################################
 @router.get(
     API_ROUTE_TOKENIZERS_REPORT_LATEST,
@@ -272,6 +296,7 @@ async def get_latest_tokenizer_report(tokenizer_name: str) -> TokenizerReportRes
         )
     return TokenizerReportResponse(status="success", **report)
 
+
 ###############################################################################
 @router.get(
     API_ROUTE_TOKENIZERS_REPORT_BY_ID,
@@ -287,6 +312,7 @@ async def get_tokenizer_report_by_id(report_id: int) -> TokenizerReportResponse:
             detail=f"Tokenizer report '{report_id}' not found.",
         )
     return TokenizerReportResponse(status="success", **report)
+
 
 ###############################################################################
 @router.get(
@@ -312,6 +338,7 @@ async def get_tokenizer_report_vocabulary(
             detail=f"Tokenizer report '{report_id}' not found.",
         )
     return TokenizerVocabularyPageResponse(status="success", **page)
+
 
 ###############################################################################
 @router.post(
@@ -361,6 +388,7 @@ async def upload_custom_tokenizer(
         ) from exc
 
     return TokenizerUploadResponse(**result)
+
 
 ###############################################################################
 @router.delete(

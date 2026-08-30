@@ -33,6 +33,7 @@ from server.services.managed_jobs import ManagedJobSpec
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_BENCHMARKS, tags=["benchmarks"])
 
+
 ###############################################################################
 def _build_benchmark_report_query(
     search: Annotated[str | None, Query(max_length=160)] = None,
@@ -52,6 +53,7 @@ def _build_benchmark_report_query(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
+
 
 ###############################################################################
 @router.post(
@@ -91,6 +93,7 @@ async def run_benchmarks(
         ),
     )
 
+
 ###############################################################################
 @router.get(
     API_ROUTE_BENCHMARKS_REPORTS,
@@ -102,6 +105,7 @@ async def list_benchmark_reports(
 ) -> BenchmarkReportListResponse:
     service = BenchmarkReportService()
     return await asyncio.to_thread(service.list_benchmark_reports, query)
+
 
 ###############################################################################
 @router.delete(
@@ -116,6 +120,7 @@ async def delete_benchmark_report(report_id: int) -> None:
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Benchmark report '{report_id}' not found.",
         )
+
 
 ###############################################################################
 @router.get(
@@ -132,6 +137,7 @@ async def get_benchmark_report_by_id(report_id: int) -> BenchmarkRunResponse:
             detail=f"Benchmark report '{report_id}' not found.",
         )
     return BenchmarkRunResponse(**report)
+
 
 ###############################################################################
 @router.get(

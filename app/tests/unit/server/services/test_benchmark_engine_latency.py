@@ -3,6 +3,7 @@ from __future__ import annotations
 from server.services.benchmark_observations import BatchObservation
 from server.services.benchmark_engine import summarize_observations
 
+
 ###############################################################################
 def test_latency_percentiles_come_from_samples() -> None:
     observations = [

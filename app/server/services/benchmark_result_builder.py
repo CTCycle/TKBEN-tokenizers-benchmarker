@@ -25,9 +25,9 @@ from server.contracts.benchmarks import (
 )
 from server.common.benchmark_metric_definitions import BENCHMARK_METRIC_DEFINITIONS
 
+
 ###############################################################################
 class BenchmarkResultBuilder:
-
     # -------------------------------------------------------------------------
     def __init__(self, tools: Any) -> None:
         self.tools = tools
@@ -99,19 +99,41 @@ class BenchmarkResultBuilder:
         peak_rss_mb: float | None = None,
         memory_delta_mb: float | None = None,
     ) -> BenchmarkTokenizerResult:
-        chars_per_token = float(compression_chars_per_token) if compression_chars_per_token is not None else None
-        tokens_per_character = (1.0 / chars_per_token) if chars_per_token is not None and chars_per_token > 0 else None
-        tokens_per_byte = float(compression_bytes_per_character) if compression_bytes_per_character is not None else None
-        bytes_per_token = (1.0 / tokens_per_byte) if tokens_per_byte is not None and tokens_per_byte > 0 else None
+        chars_per_token = (
+            float(compression_chars_per_token)
+            if compression_chars_per_token is not None
+            else None
+        )
+        tokens_per_character = (
+            (1.0 / chars_per_token)
+            if chars_per_token is not None and chars_per_token > 0
+            else None
+        )
+        tokens_per_byte = (
+            float(compression_bytes_per_character)
+            if compression_bytes_per_character is not None
+            else None
+        )
+        bytes_per_token = (
+            (1.0 / tokens_per_byte)
+            if tokens_per_byte is not None and tokens_per_byte > 0
+            else None
+        )
         tokenization_speed_tps = (
             float(np.mean(trial_tokenization_speeds_tps))
             if trial_tokenization_speeds_tps
             else 0.0
         )
         ci95_half_width = self._ci95_half_width(trial_tokenization_speeds_tps)
-        latency_p50 = self._percentile(observed_latency_ms, 50.0) if observed_latency_ms else None
-        latency_p95 = self._percentile(observed_latency_ms, 95.0) if observed_latency_ms else None
-        latency_p99 = self._percentile(observed_latency_ms, 99.0) if observed_latency_ms else None
+        latency_p50 = (
+            self._percentile(observed_latency_ms, 50.0) if observed_latency_ms else None
+        )
+        latency_p95 = (
+            self._percentile(observed_latency_ms, 95.0) if observed_latency_ms else None
+        )
+        latency_p99 = (
+            self._percentile(observed_latency_ms, 99.0) if observed_latency_ms else None
+        )
 
         return BenchmarkTokenizerResult(
             tokenizer=tokenizer_name,
@@ -227,9 +249,13 @@ class BenchmarkResultBuilder:
         per_document_stats: list[BenchmarkPerDocumentTokenizerStats] | None = None,
         selected_metric_keys: list[str] | None = None,
     ) -> BenchmarkDashboardData:
-        successful = [result for result in tokenizer_results if result.status == "success"]
+        successful = [
+            result for result in tokenizer_results if result.status == "success"
+        ]
         selected = set(selected_metric_keys or [])
-        per_document_by_tokenizer = {item.tokenizer: item for item in per_document_stats or []}
+        per_document_by_tokenizer = {
+            item.tokenizer: item for item in per_document_stats or []
+        }
         widgets: list[BenchmarkDashboardWidgetData] = []
         available_keys: set[str] = set()
         for definition in BENCHMARK_METRIC_DEFINITIONS:
@@ -240,33 +266,109 @@ class BenchmarkResultBuilder:
             if definition.distribution_source:
                 values_by_tokenizer: dict[str, list[float]] = {}
                 for result in successful:
-                    values = self._dashboard_distribution_values(definition.distribution_source, result.tokenizer, raw_observations, per_document_by_tokenizer)
+                    values = self._dashboard_distribution_values(
+                        definition.distribution_source,
+                        result.tokenizer,
+                        raw_observations,
+                        per_document_by_tokenizer,
+                    )
                     values_by_tokenizer[result.tokenizer] = values
                     summary = self._distribution_summary(values)
                     if summary is not None:
-                        distributions.append(BenchmarkDashboardDistribution(tokenizer=result.tokenizer, **summary))
+                        distributions.append(
+                            BenchmarkDashboardDistribution(
+                                tokenizer=result.tokenizer, **summary
+                            )
+                        )
                 histogram_bins = self._histogram_bins(values_by_tokenizer)
             elif definition.default_visualization.value == "grouped_bar":
                 for result in successful:
-                    for bucket in result.fragmentation.fragmentation_by_word_length_bucket:
+                    for (
+                        bucket
+                    ) in result.fragmentation.fragmentation_by_word_length_bucket:
                         if self._is_number(bucket.pieces_per_word_mean):
-                            buckets.append(BenchmarkDashboardBucketPoint(tokenizer=result.tokenizer, bucket=bucket.bucket, value=float(bucket.pieces_per_word_mean)))
+                            buckets.append(
+                                BenchmarkDashboardBucketPoint(
+                                    tokenizer=result.tokenizer,
+                                    bucket=bucket.bucket,
+                                    value=float(bucket.pieces_per_word_mean),
+                                )
+                            )
             else:
                 for result in successful:
                     value = self._extract_path(result, definition.path)
                     if not self._is_number(value):
                         continue
-                    low = self._extract_path(result, definition.interval_low_path) if definition.interval_low_path else None
-                    high = self._extract_path(result, definition.interval_high_path) if definition.interval_high_path else None
-                    points.append(BenchmarkDashboardPoint(tokenizer=result.tokenizer, value=float(value), interval_low=float(low) if self._is_number(low) else None, interval_high=float(high) if self._is_number(high) else None))
+                    low = (
+                        self._extract_path(result, definition.interval_low_path)
+                        if definition.interval_low_path
+                        else None
+                    )
+                    high = (
+                        self._extract_path(result, definition.interval_high_path)
+                        if definition.interval_high_path
+                        else None
+                    )
+                    points.append(
+                        BenchmarkDashboardPoint(
+                            tokenizer=result.tokenizer,
+                            value=float(value),
+                            interval_low=float(low) if self._is_number(low) else None,
+                            interval_high=float(high)
+                            if self._is_number(high)
+                            else None,
+                        )
+                    )
             if not points and not distributions and not buckets:
                 continue
-            tokenizer_count = len({point.tokenizer for point in points} | {point.tokenizer for point in distributions} | {point.tokenizer for point in buckets})
+            tokenizer_count = len(
+                {point.tokenizer for point in points}
+                | {point.tokenizer for point in distributions}
+                | {point.tokenizer for point in buckets}
+            )
             bucket_count = len({point.bucket for point in buckets})
-            data_width = "wide" if definition.width.value == "wide" or tokenizer_count > 4 or bucket_count > 5 else "standard"
-            widgets.append(BenchmarkDashboardWidgetData(widget_id=definition.widget_id, metric_keys=list(definition.required_metric_keys), category_key=definition.category_key, category_label=definition.category_label, label=definition.label, description=definition.description, unit=definition.unit, display_format=definition.display_format, default_visualization=definition.default_visualization, compatible_visualizations=list(definition.compatible_visualizations), default_visible=definition.default_visible, width=data_width, points=points, distributions=distributions, buckets=buckets, histogram_bins=histogram_bins))
+            data_width = (
+                "wide"
+                if definition.width.value == "wide"
+                or tokenizer_count > 4
+                or bucket_count > 5
+                else "standard"
+            )
+            widgets.append(
+                BenchmarkDashboardWidgetData(
+                    widget_id=definition.widget_id,
+                    metric_keys=list(definition.required_metric_keys),
+                    category_key=definition.category_key,
+                    category_label=definition.category_label,
+                    label=definition.label,
+                    description=definition.description,
+                    unit=definition.unit,
+                    display_format=definition.display_format,
+                    default_visualization=definition.default_visualization,
+                    compatible_visualizations=list(
+                        definition.compatible_visualizations
+                    ),
+                    default_visible=definition.default_visible,
+                    width=data_width,
+                    points=points,
+                    distributions=distributions,
+                    buckets=buckets,
+                    histogram_bins=histogram_bins,
+                )
+            )
             available_keys.update(definition.required_metric_keys)
-        return BenchmarkDashboardData(widgets=widgets, available_widget_ids=[widget.widget_id for widget in widgets], available_metric_keys=[definition.key for definition in BENCHMARK_METRIC_DEFINITIONS if definition.key in available_keys], unavailable_selected_metric_keys=[key for key in selected if key not in available_keys])
+        return BenchmarkDashboardData(
+            widgets=widgets,
+            available_widget_ids=[widget.widget_id for widget in widgets],
+            available_metric_keys=[
+                definition.key
+                for definition in BENCHMARK_METRIC_DEFINITIONS
+                if definition.key in available_keys
+            ],
+            unavailable_selected_metric_keys=[
+                key for key in selected if key not in available_keys
+            ],
+        )
 
     # -------------------------------------------------------------------------
     def _extract_path(self, value: object, path: str | None) -> object | None:
@@ -279,7 +381,11 @@ class BenchmarkResultBuilder:
 
     # -------------------------------------------------------------------------
     def _is_number(self, value: object) -> TypeGuard[int | float]:
-        return isinstance(value, int | float) and not isinstance(value, bool) and np.isfinite(float(value))
+        return (
+            isinstance(value, int | float)
+            and not isinstance(value, bool)
+            and np.isfinite(float(value))
+        )
 
     # -------------------------------------------------------------------------
     def _distribution_summary(self, values: list[float]) -> dict[str, Any] | None:
@@ -287,10 +393,23 @@ class BenchmarkResultBuilder:
         if not finite:
             return None
         array = np.asarray(finite, dtype=float)
-        return {"min": float(np.min(array)), "q1": float(np.percentile(array, 25)), "median": float(np.percentile(array, 50)), "q3": float(np.percentile(array, 75)), "max": float(np.max(array)), "sample_count": len(finite)}
+        return {
+            "min": float(np.min(array)),
+            "q1": float(np.percentile(array, 25)),
+            "median": float(np.percentile(array, 50)),
+            "q3": float(np.percentile(array, 75)),
+            "max": float(np.max(array)),
+            "sample_count": len(finite),
+        }
 
     # -------------------------------------------------------------------------
-    def _dashboard_distribution_values(self, source: str, tokenizer: str, raw: dict[str, list[dict[str, object]]], stats: dict[str, BenchmarkPerDocumentTokenizerStats]) -> list[float]:
+    def _dashboard_distribution_values(
+        self,
+        source: str,
+        tokenizer: str,
+        raw: dict[str, list[dict[str, object]]],
+        stats: dict[str, BenchmarkPerDocumentTokenizerStats],
+    ) -> list[float]:
         if source == "raw_latency":
             values: list[float] = []
             for row in raw.get(tokenizer, []):
@@ -299,16 +418,22 @@ class BenchmarkResultBuilder:
                 if not (self._is_number(elapsed_ns) and self._is_number(documents)):
                     continue
                 values.append(
-                    (float(elapsed_ns) / 1_000_000.0)
-                    / max(1.0, float(documents))
+                    (float(elapsed_ns) / 1_000_000.0) / max(1.0, float(documents))
                 )
             return values
         values = getattr(stats.get(tokenizer), source, []) if tokenizer in stats else []
         return [float(value) for value in values if self._is_number(value)]
 
     # -------------------------------------------------------------------------
-    def _histogram_bins(self, values_by_tokenizer: dict[str, list[float]]) -> list[BenchmarkDashboardHistogramBin]:
-        finite = [value for values in values_by_tokenizer.values() for value in values if self._is_number(value)]
+    def _histogram_bins(
+        self, values_by_tokenizer: dict[str, list[float]]
+    ) -> list[BenchmarkDashboardHistogramBin]:
+        finite = [
+            value
+            for values in values_by_tokenizer.values()
+            for value in values
+            if self._is_number(value)
+        ]
         if not finite:
             return []
         array = np.asarray(finite, dtype=float)
@@ -326,13 +451,23 @@ class BenchmarkResultBuilder:
                 edges = np.linspace(low, high, 25)
         bins: list[BenchmarkDashboardHistogramBin] = []
         for tokenizer, values in values_by_tokenizer.items():
-            finite_values = np.asarray([value for value in values if self._is_number(value)], dtype=float)
+            finite_values = np.asarray(
+                [value for value in values if self._is_number(value)], dtype=float
+            )
             if finite_values.size == 0:
                 continue
             counts, _ = np.histogram(finite_values, bins=edges)
             total = int(finite_values.size)
             for index, count in enumerate(counts.tolist()):
-                bins.append(BenchmarkDashboardHistogramBin(tokenizer=tokenizer, bin_low=float(edges[index]), bin_high=float(edges[index + 1]), count=int(count), proportion=float(count / total)))
+                bins.append(
+                    BenchmarkDashboardHistogramBin(
+                        tokenizer=tokenizer,
+                        bin_low=float(edges[index]),
+                        bin_high=float(edges[index + 1]),
+                        count=int(count),
+                        proportion=float(count / total),
+                    )
+                )
         return bins
 
     # -------------------------------------------------------------------------

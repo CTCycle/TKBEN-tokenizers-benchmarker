@@ -16,6 +16,7 @@ from server.services.managed_jobs import (
 
 UPLOAD_CHUNK_SIZE = 1024 * 1024
 
+
 ###############################################################################
 class ManagedJobHttpAdapter:
     """Maps service-level job lifecycle failures to HTTP responses."""
@@ -34,6 +35,7 @@ class ManagedJobHttpAdapter:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
             ) from exc
 
+
 ###############################################################################
 def validate_upload_filename(
     file: UploadFile,
@@ -43,11 +45,15 @@ def validate_upload_filename(
     validate_stem_before_extension: bool = False,
 ) -> tuple[str, str]:
     if not file.filename:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No filename provided.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="No filename provided."
+        )
 
     normalized_filename = PurePosixPath(file.filename.strip().replace("\\", "/")).name
     if not normalized_filename:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid filename.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid filename."
+        )
 
     safe_stem = ""
     if validate_stem_before_extension:
@@ -62,12 +68,16 @@ def validate_upload_filename(
         safe_stem = _normalize_upload_stem(normalized_filename)
     return normalized_filename, safe_stem
 
+
 ###############################################################################
 def _normalize_upload_stem(filename: str) -> str:
     try:
         return normalize_upload_stem(filename)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+
 
 ###############################################################################
 async def read_upload_limited(

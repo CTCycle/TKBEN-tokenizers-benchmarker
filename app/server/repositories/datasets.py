@@ -22,6 +22,7 @@ from server.repositories.schemas.models import (
 
 K_ERROR = "k error"
 
+
 ###############################################################################
 def _parse_timestamp(value: object) -> pd.Timestamp | None:
     if value is None:
@@ -29,9 +30,9 @@ def _parse_timestamp(value: object) -> pd.Timestamp | None:
     parsed = pd.to_datetime(cast(Any, value), utc=True, errors="coerce")
     return parsed if isinstance(parsed, pd.Timestamp) and not pd.isna(parsed) else None
 
+
 ###############################################################################
 class DatasetRepository:
-
     # -------------------------------------------------------------------------
     def __init__(self, queries: DataRepositoryQueries | None = None) -> None:
         self.queries = queries or DataRepositoryQueries()
@@ -104,7 +105,11 @@ class DatasetRepository:
 
     # -------------------------------------------------------------------------
     def get_dataset_id(self, dataset_name: str) -> int | None:
-        stmt = select(Dataset.id).where(Dataset.name == dataset_name, Dataset.status == "ready").limit(1)
+        stmt = (
+            select(Dataset.id)
+            .where(Dataset.name == dataset_name, Dataset.status == "ready")
+            .limit(1)
+        )
         with self._session() as session:
             dataset_id = session.execute(stmt).scalar_one_or_none()
         return int(dataset_id) if dataset_id is not None else None
@@ -119,18 +124,29 @@ class DatasetRepository:
         now = datetime.now(timezone.utc)
         with self._session() as session:
             dataset_row = session.execute(
-                select(Dataset.id, Dataset.status).where(Dataset.name == dataset_name).limit(1)
+                select(Dataset.id, Dataset.status)
+                .where(Dataset.name == dataset_name)
+                .limit(1)
             ).first()
             dataset_id = dataset_row[0] if dataset_row is not None else None
             if dataset_row is not None:
                 dataset_status = dataset_row[1]
                 if dataset_status == "ready":
                     assert dataset_id is not None
-                    session.execute(delete(Dataset).where(Dataset.id == int(dataset_id)))
+                    session.execute(
+                        delete(Dataset).where(Dataset.id == int(dataset_id))
+                    )
                     session.flush()
                     dataset_id = None
             if dataset_id is None:
-                session.add(Dataset(name=dataset_name, status="loading", created_at=now, updated_at=now))
+                session.add(
+                    Dataset(
+                        name=dataset_name,
+                        status="loading",
+                        created_at=now,
+                        updated_at=now,
+                    )
+                )
                 try:
                     session.commit()
                 except IntegrityError:
@@ -146,7 +162,16 @@ class DatasetRepository:
     def finalize_dataset_import(self, dataset_id: int, document_count: int) -> None:
         now = datetime.now(timezone.utc)
         with self._session() as session:
-            result = session.execute(update(Dataset).where(Dataset.id == int(dataset_id), Dataset.status == "loading").values(status="ready", document_count=max(0, int(document_count)), ready_at=now, updated_at=now))
+            result = session.execute(
+                update(Dataset)
+                .where(Dataset.id == int(dataset_id), Dataset.status == "loading")
+                .values(
+                    status="ready",
+                    document_count=max(0, int(document_count)),
+                    ready_at=now,
+                    updated_at=now,
+                )
+            )
             if cast(Any, result).rowcount != 1:
                 raise ValueError(f"Dataset import {dataset_id} is not loading")
             session.commit()
@@ -154,7 +179,11 @@ class DatasetRepository:
     # -------------------------------------------------------------------------
     def delete_incomplete_dataset(self, dataset_id: int) -> None:
         with self._session() as session:
-            session.execute(delete(Dataset).where(Dataset.id == int(dataset_id), Dataset.status == "loading"))
+            session.execute(
+                delete(Dataset).where(
+                    Dataset.id == int(dataset_id), Dataset.status == "loading"
+                )
+            )
             session.commit()
 
     # -------------------------------------------------------------------------
@@ -165,7 +194,11 @@ class DatasetRepository:
 
     # -------------------------------------------------------------------------
     def dataset_exists(self, dataset_name: str) -> bool:
-        stmt = select(Dataset.id).where(Dataset.name == dataset_name, Dataset.status == "ready").limit(1)
+        stmt = (
+            select(Dataset.id)
+            .where(Dataset.name == dataset_name, Dataset.status == "ready")
+            .limit(1)
+        )
         with self._session() as session:
             return session.execute(stmt).first() is not None
 
@@ -192,7 +225,8 @@ class DatasetRepository:
                 select(DatasetDocument.id, DatasetDocument.text)
                 .join(Dataset, Dataset.id == DatasetDocument.dataset_id)
                 .where(
-                    Dataset.name == dataset_name, Dataset.status == "ready",
+                    Dataset.name == dataset_name,
+                    Dataset.status == "ready",
                     DatasetDocument.id > int(last_seen_id),
                 )
                 .order_by(DatasetDocument.id.asc())
@@ -236,7 +270,11 @@ class DatasetRepository:
             stmt = (
                 select(DatasetDocument.id, DatasetDocument.text)
                 .join(Dataset, Dataset.id == DatasetDocument.dataset_id)
-                .where(and_(*conditions), Dataset.status == "ready", DatasetDocument.id > int(last_seen_id))
+                .where(
+                    and_(*conditions),
+                    Dataset.status == "ready",
+                    DatasetDocument.id > int(last_seen_id),
+                )
                 .order_by(DatasetDocument.id.asc())
                 .limit(int(batch_size))
             )
@@ -333,7 +371,11 @@ class DatasetRepository:
         if not batch:
             return
         with self._session() as session:
-            owning_dataset_id = session.execute(select(AnalysisSession.dataset_id).where(AnalysisSession.id == int(session_id))).scalar_one_or_none()
+            owning_dataset_id = session.execute(
+                select(AnalysisSession.dataset_id).where(
+                    AnalysisSession.id == int(session_id)
+                )
+            ).scalar_one_or_none()
         if owning_dataset_id is None:
             raise ValueError(f"Analysis session {session_id} does not exist")
         created_at = datetime.now(timezone.utc)
@@ -350,7 +392,9 @@ class DatasetRepository:
                     numeric_value = numeric_candidate
             raw_text = item.get("text_value")
             text_value = None
-            if raw_text is not None and not (isinstance(raw_text, float) and math.isnan(raw_text)):
+            if raw_text is not None and not (
+                isinstance(raw_text, float) and math.isnan(raw_text)
+            ):
                 text_value = str(raw_text)
             json_value = item.get("json_value")
             if json_value is not None:
@@ -358,7 +402,9 @@ class DatasetRepository:
                 text_value = None
             elif text_value is not None:
                 numeric_value = None
-            value_count = sum(value is not None for value in (numeric_value, text_value, json_value))
+            value_count = sum(
+                value is not None for value in (numeric_value, text_value, json_value)
+            )
             if value_count != 1:
                 raise ValueError(
                     f"Metric '{metric_key}' must contain exactly one value representation; "
@@ -385,7 +431,9 @@ class DatasetRepository:
         chunk_size = 100
         for start in range(0, len(rows), chunk_size):
             chunk = rows[start : start + chunk_size]
-            self.queries.insert_records(self.metric_value_table, chunk, ignore_duplicates=False)
+            self.queries.insert_records(
+                self.metric_value_table, chunk, ignore_duplicates=False
+            )
 
     # -------------------------------------------------------------------------
     def save_histogram_artifact(
@@ -408,7 +456,9 @@ class DatasetRepository:
             "median_value": float(histogram.get("median_length", 0.0) or 0.0),
             "created_at": datetime.now(timezone.utc),
         }
-        self.queries.upsert_records(self.histogram_table, [row], ["session_id", "metric_key"])
+        self.queries.upsert_records(
+            self.histogram_table, [row], ["session_id", "metric_key"]
+        )
 
     # -------------------------------------------------------------------------
     def _load_metric_rows_for_session(self, session_id: int) -> list[dict[str, Any]]:
@@ -438,19 +488,16 @@ class DatasetRepository:
 
     # -------------------------------------------------------------------------
     def _load_histogram_rows_for_session(self, session_id: int) -> dict[str, Any]:
-        stmt = (
-            select(
-                HistogramArtifact.metric_key,
-                HistogramArtifact.bins,
-                HistogramArtifact.counts,
-                HistogramArtifact.bin_edges,
-                HistogramArtifact.min_value,
-                HistogramArtifact.max_value,
-                HistogramArtifact.mean_value,
-                HistogramArtifact.median_value,
-            )
-            .where(HistogramArtifact.session_id == int(session_id))
-        )
+        stmt = select(
+            HistogramArtifact.metric_key,
+            HistogramArtifact.bins,
+            HistogramArtifact.counts,
+            HistogramArtifact.bin_edges,
+            HistogramArtifact.min_value,
+            HistogramArtifact.max_value,
+            HistogramArtifact.mean_value,
+            HistogramArtifact.median_value,
+        ).where(HistogramArtifact.session_id == int(session_id))
         with self._session() as session:
             rows = session.execute(stmt).all()
         result: dict[str, Any] = {}
@@ -518,7 +565,9 @@ class DatasetRepository:
             if isinstance(json_value, float) and pd.isna(json_value):
                 json_value = None
             if json_value is not None and not isinstance(json_value, (dict, list)):
-                raise ValueError("Metric JSON values must be native JSON objects or arrays.")
+                raise ValueError(
+                    "Metric JSON values must be native JSON objects or arrays."
+                )
 
             value: Any = numeric_value
             if value is None and text_value is not None:
@@ -560,7 +609,9 @@ class DatasetRepository:
         document_histogram = histogram_rows.get("hist.document_length", {})
         word_histogram = histogram_rows.get("hist.word_length", {})
         created_at = _parse_timestamp(session_row.get("created_at"))
-        created_at_iso = created_at.isoformat().replace("+00:00", "Z") if created_at else None
+        created_at_iso = (
+            created_at.isoformat().replace("+00:00", "Z") if created_at else None
+        )
 
         selected_metric_keys = self._native_json_list(
             session_row.get("selected_metric_keys"),

@@ -11,11 +11,15 @@ from playwright.sync_api import APIRequestContext
 
 RUN_BENCHMARKS = os.getenv("E2E_RUN_BENCHMARKS", "").lower() in ("1", "true", "yes")
 
+
 ###############################################################################
 @pytest.mark.parametrize(
     ("payload", "message"),
     [
-        ({"tokenizers": [], "dataset_name": "custom/e2e_sample"}, "At least one tokenizer"),
+        (
+            {"tokenizers": [], "dataset_name": "custom/e2e_sample"},
+            "At least one tokenizer",
+        ),
         (
             {
                 "tokenizers": ["hf-internal-testing/tiny-random-bert"],
@@ -36,6 +40,7 @@ def test_run_benchmarks_rejects_missing_required_inputs(
     data = response.json()
     assert message in data.get("detail", "")
 
+
 ###############################################################################
 def test_run_benchmarks_missing_dataset_returns_400(
     api_context: APIRequestContext,
@@ -52,6 +57,7 @@ def test_run_benchmarks_missing_dataset_returns_400(
     data = response.json()
     assert "not found or empty" in data.get("detail", "").lower()
 
+
 ###############################################################################
 def test_get_benchmark_metrics_catalog_returns_categories(
     api_context: APIRequestContext,
@@ -66,6 +72,7 @@ def test_get_benchmark_metrics_catalog_returns_categories(
     first = categories[0]
     assert isinstance(first.get("category_key"), str)
     assert isinstance(first.get("metrics"), list)
+
 
 ###############################################################################
 @pytest.mark.skipif(
@@ -136,9 +143,10 @@ def test_benchmark_report_round_trip_includes_reproducibility_metadata(
     tokenizer_result = tokenizer_results[0]
     assert tokenizer_result.get("tokenizer") == tokenizer_name
     assert tokenizer_result.get("status") == "success"
-    assert tokenizer_result.get("efficiency", {}).get(
-        "encode_tokens_per_second_mean", 0
-    ) > 0
+    assert (
+        tokenizer_result.get("efficiency", {}).get("encode_tokens_per_second_mean", 0)
+        > 0
+    )
     assert not tokenizer_result.get("error_message")
 
     runtime_metadata = data.get("runtime_metadata")
@@ -163,10 +171,9 @@ def test_benchmark_report_round_trip_includes_reproducibility_metadata(
     assert by_id_data.get("documents_processed") == data.get("documents_processed")
     assert by_id_data.get("tokenizers_processed") == data.get("tokenizers_processed")
     assert by_id_data.get("config", {}).get("timed_trials") == 1
-    assert (
-        by_id_data.get("runtime_metadata", {}).get("benchmark_config", {})
-        == runtime_metadata.get("benchmark_config")
-    )
+    assert by_id_data.get("runtime_metadata", {}).get(
+        "benchmark_config", {}
+    ) == runtime_metadata.get("benchmark_config")
 
     delete_response = api_context.delete(f"/api/benchmarks/reports/{report_id}")
     assert delete_response.status == 204, delete_response.text()
@@ -175,4 +182,7 @@ def test_benchmark_report_round_trip_includes_reproducibility_metadata(
         f"/api/benchmarks/reports?search={run_payload['run_name'].replace(' ', '%20')}"
     )
     assert remaining.ok, remaining.text()
-    assert all(int(item.get("report_id", 0)) != report_id for item in remaining.json().get("reports", []))
+    assert all(
+        int(item.get("report_id", 0)) != report_id
+        for item in remaining.json().get("reports", [])
+    )

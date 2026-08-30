@@ -4,6 +4,7 @@ from server.services.benchmark_observations import TokenizerRunConfig
 from server.services.benchmark_engine import run_tokenizer_trials
 from server.services.tokenizer_adapters import EncodedBatch
 
+
 ###############################################################################
 class CountingAdapter:
     tokenizer_id = "dummy"
@@ -22,6 +23,7 @@ class CountingAdapter:
             input_ids_by_doc=[[1 for _ in text] for text in texts],
         )
 
+
 ###############################################################################
 def test_warmup_excluded_and_timed_trials_control_observations() -> None:
     adapter = CountingAdapter()
@@ -35,6 +37,7 @@ def test_warmup_excluded_and_timed_trials_control_observations() -> None:
     )
     assert len(observations) == 6
     assert adapter.calls == (2 * 2) + (3 * 2)
+
 
 ###############################################################################
 def test_run_tokenizer_trials_respects_cancellation() -> None:

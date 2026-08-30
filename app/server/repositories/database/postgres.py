@@ -9,13 +9,15 @@ from sqlalchemy.dialects.postgresql import insert
 from server.configurations import DatabaseSettings
 from server.repositories.database.base import RepositoryBase
 
+
 ###############################################################################
 class PostgresRepository(RepositoryBase):
-
     # -------------------------------------------------------------------------
     def __init__(self, settings: DatabaseSettings) -> None:
         if not settings.host or not settings.database_name or not settings.username:
-            raise ValueError("PostgreSQL host, database name, and username are required")
+            raise ValueError(
+                "PostgreSQL host, database name, and username are required"
+            )
         engine_name = "postgresql+psycopg"
         username = urllib.parse.quote_plus(settings.username)
         password = urllib.parse.quote_plus(settings.password or "")
@@ -24,7 +26,12 @@ class PostgresRepository(RepositoryBase):
             connect_args["sslmode"] = "require"
             if settings.ssl_ca:
                 connect_args["sslrootcert"] = settings.ssl_ca
-        engine = sqlalchemy.create_engine(f"{engine_name}://{username}:{password}@{settings.host}:{settings.port or 5432}/{settings.database_name}", future=True, connect_args=connect_args, pool_pre_ping=True)
+        engine = sqlalchemy.create_engine(
+            f"{engine_name}://{username}:{password}@{settings.host}:{settings.port or 5432}/{settings.database_name}",
+            future=True,
+            connect_args=connect_args,
+            pool_pre_ping=True,
+        )
         super().__init__(engine, settings.insert_batch_size)
 
     # -------------------------------------------------------------------------
@@ -47,8 +54,20 @@ class PostgresRepository(RepositoryBase):
             try:
                 for batch in self._batches(records):
                     statement = insert(table).values(batch)
-                    updates = {column: getattr(statement.excluded, column) for column in batch[0] if column not in conflict_columns}
-                    statement = statement.on_conflict_do_update(index_elements=conflict_columns, set_=updates) if updates else statement.on_conflict_do_nothing(index_elements=conflict_columns)
+                    updates = {
+                        column: getattr(statement.excluded, column)
+                        for column in batch[0]
+                        if column not in conflict_columns
+                    }
+                    statement = (
+                        statement.on_conflict_do_update(
+                            index_elements=conflict_columns, set_=updates
+                        )
+                        if updates
+                        else statement.on_conflict_do_nothing(
+                            index_elements=conflict_columns
+                        )
+                    )
                     session.execute(statement)
                 session.commit()
             except Exception:

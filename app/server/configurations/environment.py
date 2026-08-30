@@ -13,16 +13,19 @@ from server.common.utils.types import coerce_bool
 from server.common.path import ENV_EXAMPLE_FILE_PATH, ENV_FILE_PATH
 from server.common.utils.logger import logger
 
+
 ###############################################################################
 @dataclass
 class EnvironmentBootstrapState:
     lock: Lock = field(default_factory=Lock)
     bootstrapped: bool = False
 
+
 ###############################################################################
 @lru_cache(maxsize=1)
 def _bootstrap_state() -> EnvironmentBootstrapState:
     return EnvironmentBootstrapState()
+
 
 ###############################################################################
 def ensure_environment_loaded(*, force: bool = False) -> Path | None:
@@ -39,14 +42,13 @@ def ensure_environment_loaded(*, force: bool = False) -> Path | None:
         state.bootstrapped = True
         return env_path if env_path.is_file() else None
 
+
 ###############################################################################
 def _ensure_environment_file(env_path: Path) -> None:
     if env_path.is_file():
         return
     if not ENV_EXAMPLE_FILE_PATH.is_file():
-        raise RuntimeError(
-            f"Environment template not found: {ENV_EXAMPLE_FILE_PATH}"
-        )
+        raise RuntimeError(f"Environment template not found: {ENV_EXAMPLE_FILE_PATH}")
 
     env_path.parent.mkdir(parents=True, exist_ok=True)
     template_bytes = ENV_EXAMPLE_FILE_PATH.read_bytes()
@@ -59,11 +61,13 @@ def _ensure_environment_file(env_path: Path) -> None:
 
     logger.info("Created environment file from template: %s", env_path)
 
+
 ###############################################################################
 def reset_environment_bootstrap_for_tests() -> None:
     state = _bootstrap_state()
     with state.lock:
         state.bootstrapped = False
+
 
 ###############################################################################
 def is_key_reveal_enabled() -> bool:

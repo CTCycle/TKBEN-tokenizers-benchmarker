@@ -8,6 +8,7 @@ from server.repositories.database.backend import get_database
 from server.repositories.schemas.models import Base, Dataset, DatasetDocument
 from server.repositories.datasets import DatasetRepository
 
+
 ###############################################################################
 def test_large_dataset_streaming_batches_do_not_materialize_all_rows(
     monkeypatch,
@@ -18,12 +19,20 @@ def test_large_dataset_streaming_batches_do_not_materialize_all_rows(
     monkeypatch.setattr(database.backend, "engine", engine)
     with Session(bind=engine) as session:
         now = datetime.now(timezone.utc)
-        dataset = Dataset(name="custom/large_stream", status="ready", created_at=now, updated_at=now, ready_at=now)
+        dataset = Dataset(
+            name="custom/large_stream",
+            status="ready",
+            created_at=now,
+            updated_at=now,
+            ready_at=now,
+        )
         session.add(dataset)
         session.flush()
         session.add_all(
             [
-                DatasetDocument(dataset_id=dataset.id, ordinal=index, text=f"row-{index}")
+                DatasetDocument(
+                    dataset_id=dataset.id, ordinal=index, text=f"row-{index}"
+                )
                 for index in range(2000)
             ]
         )

@@ -4,9 +4,9 @@ from fastapi.testclient import TestClient
 
 from server.app import app
 
+
 ###############################################################################
 class DummyJobManager:
-
     # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.last_job_type = ""
@@ -25,6 +25,7 @@ class DummyJobManager:
     def get_job_status(self, job_id: str):
         del job_id
         return {"job_type": self.last_job_type, "status": "pending"}
+
 
 ###############################################################################
 def test_tokenizer_upload_validation(monkeypatch) -> None:
@@ -96,8 +97,11 @@ def test_tokenizer_upload_validation(monkeypatch) -> None:
     assert ok_upload.status_code == 200
     assert ok_upload.json()["is_compatible"] is True
 
+
 ###############################################################################
-def test_tokenizer_delete_supports_encoded_and_custom_names_and_returns_404(monkeypatch) -> None:
+def test_tokenizer_delete_supports_encoded_and_custom_names_and_returns_404(
+    monkeypatch,
+) -> None:
     from server.api import tokenizers as tokenizers_api
 
     deleted: list[str] = []
@@ -112,7 +116,9 @@ def test_tokenizer_delete_supports_encoded_and_custom_names_and_returns_404(monk
             return True
         return False
 
-    monkeypatch.setattr(tokenizers_api.TokenizersService, "remove_tokenizer", fake_remove)
+    monkeypatch.setattr(
+        tokenizers_api.TokenizersService, "remove_tokenizer", fake_remove
+    )
 
     client = TestClient(app)
     downloaded = client.delete(
@@ -139,8 +145,11 @@ def test_tokenizer_delete_supports_encoded_and_custom_names_and_returns_404(monk
         "CUSTOM_sample",
     ]
 
+
 ###############################################################################
-def test_tokenizer_upload_rejects_oversized_file_before_service_call(monkeypatch) -> None:
+def test_tokenizer_upload_rejects_oversized_file_before_service_call(
+    monkeypatch,
+) -> None:
     from server.api import tokenizers as tokenizers_api
 
     ###############################################################################
@@ -175,6 +184,7 @@ def test_tokenizer_upload_rejects_oversized_file_before_service_call(monkeypatch
     assert response.status_code == 413
     assert called["upload"] is False
 
+
 ###############################################################################
 def test_tokenizer_job_routes_return_202(monkeypatch) -> None:
     manager = DummyJobManager()
@@ -206,8 +216,11 @@ def test_tokenizer_job_routes_return_202(monkeypatch) -> None:
     assert report_resp.status_code == 202
     assert report_resp.json()["job_id"] == "job-xyz"
 
+
 ###############################################################################
-def test_tokenizer_discovery_returns_sanitized_500_on_upstream_failure(monkeypatch) -> None:
+def test_tokenizer_discovery_returns_sanitized_500_on_upstream_failure(
+    monkeypatch,
+) -> None:
     from server.services.tokenizers import TokenizersService
 
     def fail_discovery(self, query):
@@ -219,11 +232,16 @@ def test_tokenizer_discovery_returns_sanitized_500_on_upstream_failure(monkeypat
     response = TestClient(app).get("/api/tokenizers/discover")
 
     assert response.status_code == 500
-    assert response.json()["detail"] == "Failed to discover tokenizers from HuggingFace."
+    assert (
+        response.json()["detail"] == "Failed to discover tokenizers from HuggingFace."
+    )
     assert "private upstream" not in response.text
 
+
 ###############################################################################
-def test_tokenizer_discovery_validates_combined_query_and_structured_response(monkeypatch) -> None:
+def test_tokenizer_discovery_validates_combined_query_and_structured_response(
+    monkeypatch,
+) -> None:
     from server.contracts.tokenizers import TokenizerDiscoveryResponse
     from server.services.tokenizers import TokenizersService
 
@@ -232,21 +250,25 @@ def test_tokenizer_discovery_validates_combined_query_and_structured_response(mo
     def fake_discovery(self, query):
         del self
         captured.update(query.model_dump())
-        return TokenizerDiscoveryResponse.model_validate({
-            "items": [{
-                "identifier": "bert-base-uncased",
-                "pipeline_tag": "fill-mask",
-                "library_name": "transformers",
-                "downloads": 10,
-                "likes": 2,
-                "last_modified": None,
-                "gated": False,
-                "tags": ["core"],
-                "vocabulary_size": None,
-            }],
-            "count": 1,
-            "fetched_count": 3,
-        })
+        return TokenizerDiscoveryResponse.model_validate(
+            {
+                "items": [
+                    {
+                        "identifier": "bert-base-uncased",
+                        "pipeline_tag": "fill-mask",
+                        "library_name": "transformers",
+                        "downloads": 10,
+                        "likes": 2,
+                        "last_modified": None,
+                        "gated": False,
+                        "tags": ["core"],
+                        "vocabulary_size": None,
+                    }
+                ],
+                "count": 1,
+                "fetched_count": 3,
+            }
+        )
 
     monkeypatch.setattr(TokenizersService, "discover_tokenizers", fake_discovery)
     response = TestClient(app).get(
@@ -265,6 +287,7 @@ def test_tokenizer_discovery_validates_combined_query_and_structured_response(mo
     assert captured["exclude_tags"] == ["audio"]
     assert captured["access"] == "public"
 
+
 ###############################################################################
 def test_tokenizer_discovery_rejects_invalid_query(monkeypatch) -> None:
     from server.services.tokenizers import TokenizersService
@@ -278,11 +301,25 @@ def test_tokenizer_discovery_rejects_invalid_query(monkeypatch) -> None:
 
     monkeypatch.setattr(TokenizersService, "discover_tokenizers", fail_discovery)
     client = TestClient(app)
-    assert client.get("/api/tokenizers/discover?pipeline_tag=image-tokenization").status_code == 422
-    assert client.get("/api/tokenizers/discover?vocabulary_operator=at_least").status_code == 422
+    assert (
+        client.get(
+            "/api/tokenizers/discover?pipeline_tag=image-tokenization"
+        ).status_code
+        == 422
+    )
+    assert (
+        client.get("/api/tokenizers/discover?vocabulary_operator=at_least").status_code
+        == 422
+    )
     assert client.get("/api/tokenizers/discover?vocabulary_size=-1").status_code == 422
-    assert client.get("/api/tokenizers/discover?include_tags=shared&exclude_tags=shared").status_code == 422
+    assert (
+        client.get(
+            "/api/tokenizers/discover?include_tags=shared&exclude_tags=shared"
+        ).status_code
+        == 422
+    )
     assert called["value"] is False
+
 
 ###############################################################################
 def test_tokenizer_list_passes_catalog_filters_to_service(monkeypatch) -> None:
@@ -293,12 +330,14 @@ def test_tokenizer_list_passes_catalog_filters_to_service(monkeypatch) -> None:
     def fake_catalog(self, **filters):
         del self
         captured.update(filters)
-        return [{
-            "tokenizer_name": "CUSTOM_demo",
-            "source": "custom",
-            "has_report": False,
-            "vocabulary_size": 3,
-        }]
+        return [
+            {
+                "tokenizer_name": "CUSTOM_demo",
+                "source": "custom",
+                "has_report": False,
+                "vocabulary_size": 3,
+            }
+        ]
 
     monkeypatch.setattr(TokenizersService, "list_tokenizer_catalog", fake_catalog)
 
@@ -309,12 +348,14 @@ def test_tokenizer_list_passes_catalog_filters_to_service(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json() == {
-        "tokenizers": [{
-            "tokenizer_name": "CUSTOM_demo",
-            "source": "custom",
-            "has_report": False,
-            "vocabulary_size": 3,
-        }],
+        "tokenizers": [
+            {
+                "tokenizer_name": "CUSTOM_demo",
+                "source": "custom",
+                "has_report": False,
+                "vocabulary_size": 3,
+            }
+        ],
         "count": 1,
     }
     assert captured == {

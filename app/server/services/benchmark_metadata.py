@@ -18,6 +18,7 @@ TRACKED_PACKAGES = [
     "fastapi",
 ]
 
+
 ###############################################################################
 def collect_package_versions() -> dict[str, str]:
     versions: dict[str, str] = {}
@@ -27,6 +28,7 @@ def collect_package_versions() -> dict[str, str]:
         except importlib.metadata.PackageNotFoundError:
             versions[package_name] = "not-installed"
     return versions
+
 
 ###############################################################################
 def collect_runtime_environment() -> dict[str, object]:

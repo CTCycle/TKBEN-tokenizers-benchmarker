@@ -13,6 +13,7 @@ from server.repositories.tokenizer_reports import TokenizerReportRepository
 from server.repositories.schemas.models import Base, Tokenizer
 from server.services.tokenizer_reporting import TokenizerReportingService
 
+
 ###############################################################################
 def test_compute_subword_word_stats_excludes_special_tokens_and_classifies_markers() -> (
     None
@@ -42,6 +43,7 @@ def test_compute_subword_word_stats_excludes_special_tokens_and_classifies_marke
     assert stats["subword_percentage"] == pytest.approx(55.5555, rel=1e-3)
     assert stats["word_percentage"] == pytest.approx(44.4444, rel=1e-3)
 
+
 ###############################################################################
 @pytest.mark.parametrize("field", ["metadata", "token_length_histogram"])
 def test_tokenizer_report_response_rejects_json_encoded_storage(field: str) -> None:
@@ -58,6 +60,7 @@ def test_tokenizer_report_response_rejects_json_encoded_storage(field: str) -> N
 
     with pytest.raises(ValueError, match="native JSON object"):
         repository._build_tokenizer_report_response(storage)
+
 
 ###############################################################################
 def test_resolve_hf_repo_metadata_returns_link_when_description_unavailable(
@@ -85,16 +88,18 @@ def test_resolve_hf_repo_metadata_returns_link_when_description_unavailable(
     assert description is None
     assert huggingface_url == "https://huggingface.co/bert-base-uncased"
 
+
 ###############################################################################
 class DummyBackendTokenizerModel:
     pass
 
+
 ###############################################################################
 class DummyBackendTokenizer:
-
     # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.model = DummyBackendTokenizerModel()
+
 
 ###############################################################################
 class DummyTokenizer:
@@ -123,6 +128,7 @@ class DummyTokenizer:
             "Ġtoken": 5,
             "wordĠpiece": 6,
         }
+
 
 ###############################################################################
 def test_generate_report_payload_includes_hf_url_and_subword_stats(
@@ -175,6 +181,7 @@ def test_generate_report_payload_includes_hf_url_and_subword_stats(
         captured_report["global_stats"]["vocabulary_stats"]["unique_token_lengths"] == 3
     )
 
+
 ###############################################################################
 def test_tokenizer_report_repository_roundtrip_preserves_huggingface_url() -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
@@ -182,7 +189,9 @@ def test_tokenizer_report_repository_roundtrip_preserves_huggingface_url() -> No
     now = datetime.now(timezone.utc)
     tokenizer_name = "test/tokenizer-report-roundtrip"
     with Session(engine) as session:
-        session.add(Tokenizer(name=tokenizer_name, source="huggingface", created_at=now))
+        session.add(
+            Tokenizer(name=tokenizer_name, source="huggingface", created_at=now)
+        )
         session.commit()
     repository = TokenizerReportRepository(
         DataRepositoryQueries(SimpleNamespace(backend=SimpleNamespace(engine=engine)))
@@ -252,6 +261,7 @@ def test_tokenizer_report_repository_roundtrip_preserves_huggingface_url() -> No
     assert loaded["global_stats"]["base_vocabulary_size"] == 2
     assert loaded["global_stats"]["model_max_length"] == 512
     assert loaded["global_stats"]["vocabulary_stats"]["subword_like_count"] == 1
+
 
 ###############################################################################
 def test_tokenizer_report_repository_does_not_create_missing_tokenizer() -> None:

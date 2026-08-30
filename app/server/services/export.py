@@ -26,7 +26,15 @@ PRIMARY_COLOR = "#facc15"
 SECONDARY_COLOR = "#38bdf8"
 TERTIARY_COLOR = "#22c55e"
 MUTED_TEXT = "#5b6472"
-CHART_SERIES_COLORS = (SECONDARY_COLOR, TERTIARY_COLOR, PRIMARY_COLOR, "#f472b6", "#a78bfa", "#2dd4bf")
+CHART_SERIES_COLORS = (
+    SECONDARY_COLOR,
+    TERTIARY_COLOR,
+    PRIMARY_COLOR,
+    "#f472b6",
+    "#a78bfa",
+    "#2dd4bf",
+)
+
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -35,9 +43,9 @@ class DashboardPdfDocument:
     page_count: int
     pdf_bytes: bytes
 
+
 ###############################################################################
 class DashboardExportService(DashboardExportFormatting):
-
     # -------------------------------------------------------------------------
     def export_dashboard_pdf(
         self,
@@ -237,9 +245,7 @@ class DashboardExportService(DashboardExportFormatting):
             )
 
         zipf_ax = fig2.add_subplot(grid2[0, 1])
-        zipf_points = self._parse_zipf_curve(
-            aggregate.get("words.zipf_curve")
-        )
+        zipf_points = self._parse_zipf_curve(aggregate.get("words.zipf_curve"))
         zipf_ax.set_title("Zipf Curve", fontsize=12, fontweight="bold")
         if zipf_points:
             zipf_ax.plot(
@@ -437,7 +443,9 @@ class DashboardExportService(DashboardExportFormatting):
         report = self._extract_nested(payload, "report")
         source = report if report else payload
         widgets = self._normalize_benchmark_dashboard_widgets(source, payload)
-        return self._render_normalized_benchmark_widgets(pdf, report_name, source, widgets)
+        return self._render_normalized_benchmark_widgets(
+            pdf, report_name, source, widgets
+        )
 
     # -------------------------------------------------------------------------
     def _normalize_benchmark_dashboard_widgets(
@@ -465,43 +473,83 @@ class DashboardExportService(DashboardExportFormatting):
         if unknown_override_ids:
             raise ValueError(
                 "visualization_by_widget_id contains unknown widget IDs: "
-                + ", ".join(sorted(str(widget_id) for widget_id in unknown_override_ids))
+                + ", ".join(
+                    sorted(str(widget_id) for widget_id in unknown_override_ids)
+                )
                 + "."
             )
         visible_set = {widget_id for widget_id in visible if isinstance(widget_id, str)}
         normalized: list[dict[str, Any]] = []
         seen: set[str] = set()
         for widget_id in ordered:
-            if not isinstance(widget_id, str) or widget_id in seen or widget_id not in visible_set:
+            if (
+                not isinstance(widget_id, str)
+                or widget_id in seen
+                or widget_id not in visible_set
+            ):
                 continue
             widget = widgets_by_id.get(widget_id)
             if widget is not None:
                 default = widget.get("default_visualization")
                 compatible = widget.get("compatible_visualizations")
-                if not isinstance(default, str) or not isinstance(compatible, list) or not all(isinstance(item, str) for item in compatible):
-                    raise ValueError(f"Widget '{widget_id}' has an invalid visualization contract.")
+                if (
+                    not isinstance(default, str)
+                    or not isinstance(compatible, list)
+                    or not all(isinstance(item, str) for item in compatible)
+                ):
+                    raise ValueError(
+                        f"Widget '{widget_id}' has an invalid visualization contract."
+                    )
                 try:
                     selected = overrides.get(widget_id, default)
                     selected_kind = BenchmarkVisualizationKind(selected)
                 except ValueError as exc:
-                    raise ValueError(f"Widget '{widget_id}' has an unknown visualization override.") from exc
+                    raise ValueError(
+                        f"Widget '{widget_id}' has an unknown visualization override."
+                    ) from exc
                 if selected_kind.value not in compatible:
-                    raise ValueError(f"Visualization '{selected_kind.value}' is incompatible with widget '{widget_id}'.")
+                    raise ValueError(
+                        f"Visualization '{selected_kind.value}' is incompatible with widget '{widget_id}'."
+                    )
                 normalized.append({**widget, "visualization": selected_kind.value})
                 seen.add(widget_id)
         return normalized
 
     # -------------------------------------------------------------------------
     def _render_normalized_benchmark_widgets(
-        self, pdf: PdfPages, report_name: str, source: dict[str, Any], widgets: list[dict[str, Any]]
+        self,
+        pdf: PdfPages,
+        report_name: str,
+        source: dict[str, Any],
+        widgets: list[dict[str, Any]],
     ) -> int:
         if not widgets:
             fig = plt.figure(figsize=(11.69, 8.27), constrained_layout=True)
             ax = fig.add_subplot(111)
             ax.axis("off")
-            ax.text(0.0, 0.92, "Benchmark Dashboard Report", fontsize=18, fontweight="bold", color="#111827")
-            ax.text(0.0, 0.74, f"Report: {report_name or source.get('dataset_name') or 'N/A'}", fontsize=11, color=MUTED_TEXT)
-            ax.text(0.5, 0.45, "No selected metric widgets are available for this export.", ha="center", va="center", color=MUTED_TEXT)
+            ax.text(
+                0.0,
+                0.92,
+                "Benchmark Dashboard Report",
+                fontsize=18,
+                fontweight="bold",
+                color="#111827",
+            )
+            ax.text(
+                0.0,
+                0.74,
+                f"Report: {report_name or source.get('dataset_name') or 'N/A'}",
+                fontsize=11,
+                color=MUTED_TEXT,
+            )
+            ax.text(
+                0.5,
+                0.45,
+                "No selected metric widgets are available for this export.",
+                ha="center",
+                va="center",
+                color=MUTED_TEXT,
+            )
             pdf.savefig(fig)
             plt.close(fig)
             return 1
@@ -553,7 +601,9 @@ class DashboardExportService(DashboardExportFormatting):
         return len(pages)
 
     # -------------------------------------------------------------------------
-    def _render_normalized_benchmark_widget(self, ax: Any, widget: dict[str, Any]) -> None:
+    def _render_normalized_benchmark_widget(
+        self, ax: Any, widget: dict[str, Any]
+    ) -> None:
         label = str(widget.get("label") or "Metric")
         unit = str(widget.get("unit") or "")
         ax.set_title(
@@ -565,53 +615,148 @@ class DashboardExportService(DashboardExportFormatting):
         )
         visualization = widget.get("visualization")
         if visualization == "box_plot":
-            rows = [row for row in widget.get("distributions", []) if isinstance(row, dict)]
+            rows = [
+                row for row in widget.get("distributions", []) if isinstance(row, dict)
+            ]
             if rows:
-                labels = [self._short_name(str(row.get("tokenizer") or "")) for row in rows]
-                stats: list[dict[str, Any]] = [{"label": label, "whislo": self._to_number(row.get("min")), "q1": self._to_number(row.get("q1")), "med": self._to_number(row.get("median")), "q3": self._to_number(row.get("q3")), "whishi": self._to_number(row.get("max")), "fliers": []} for label, row in zip(labels, rows, strict=True)]
-                ax.bxp(stats, orientation="horizontal", showfliers=False, patch_artist=True, boxprops={"facecolor": SECONDARY_COLOR, "alpha": 0.75}, medianprops={"color": PRIMARY_COLOR, "linewidth": 2})
+                labels = [
+                    self._short_name(str(row.get("tokenizer") or "")) for row in rows
+                ]
+                stats: list[dict[str, Any]] = [
+                    {
+                        "label": label,
+                        "whislo": self._to_number(row.get("min")),
+                        "q1": self._to_number(row.get("q1")),
+                        "med": self._to_number(row.get("median")),
+                        "q3": self._to_number(row.get("q3")),
+                        "whishi": self._to_number(row.get("max")),
+                        "fliers": [],
+                    }
+                    for label, row in zip(labels, rows, strict=True)
+                ]
+                ax.bxp(
+                    stats,
+                    orientation="horizontal",
+                    showfliers=False,
+                    patch_artist=True,
+                    boxprops={"facecolor": SECONDARY_COLOR, "alpha": 0.75},
+                    medianprops={"color": PRIMARY_COLOR, "linewidth": 2},
+                )
                 minimum = min(stat["whislo"] for stat in stats)
                 maximum = max(stat["whishi"] for stat in stats)
                 if minimum > 0 and maximum / minimum >= 50:
                     ax.set_xscale("log")
                     ax.set_xlabel(f"{unit} (log scale)")
             else:
-                ax.text(0.5, 0.5, "No distribution data", ha="center", va="center", color=MUTED_TEXT)
+                ax.text(
+                    0.5,
+                    0.5,
+                    "No distribution data",
+                    ha="center",
+                    va="center",
+                    color=MUTED_TEXT,
+                )
         elif visualization == "histogram":
-            rows = [row for row in widget.get("histogram_bins", []) if isinstance(row, dict)]
-            tokenizers = list(dict.fromkeys(str(row.get("tokenizer") or "") for row in rows))
+            rows = [
+                row for row in widget.get("histogram_bins", []) if isinstance(row, dict)
+            ]
+            tokenizers = list(
+                dict.fromkeys(str(row.get("tokenizer") or "") for row in rows)
+            )
             if rows:
                 for index, tokenizer in enumerate(tokenizers):
-                    tokenizer_rows = [row for row in rows if str(row.get("tokenizer") or "") == tokenizer]
-                    lows = [self._to_number(row.get("bin_low")) for row in tokenizer_rows]
-                    widths = [self._to_number(row.get("bin_high")) - low for row, low in zip(tokenizer_rows, lows, strict=True)]
-                    counts = [self._to_number(row.get("count")) for row in tokenizer_rows]
-                    ax.bar(lows, counts, width=widths, align="edge", alpha=0.35, label=self._short_name(tokenizer), color=CHART_SERIES_COLORS[index % len(CHART_SERIES_COLORS)])
+                    tokenizer_rows = [
+                        row
+                        for row in rows
+                        if str(row.get("tokenizer") or "") == tokenizer
+                    ]
+                    lows = [
+                        self._to_number(row.get("bin_low")) for row in tokenizer_rows
+                    ]
+                    widths = [
+                        self._to_number(row.get("bin_high")) - low
+                        for row, low in zip(tokenizer_rows, lows, strict=True)
+                    ]
+                    counts = [
+                        self._to_number(row.get("count")) for row in tokenizer_rows
+                    ]
+                    ax.bar(
+                        lows,
+                        counts,
+                        width=widths,
+                        align="edge",
+                        alpha=0.35,
+                        label=self._short_name(tokenizer),
+                        color=CHART_SERIES_COLORS[index % len(CHART_SERIES_COLORS)],
+                    )
                 ax.legend(fontsize=8)
                 ax.set_xlabel(unit)
                 ax.set_ylabel("Count")
             else:
-                ax.text(0.5, 0.5, "No histogram data", ha="center", va="center", color=MUTED_TEXT)
+                ax.text(
+                    0.5,
+                    0.5,
+                    "No histogram data",
+                    ha="center",
+                    va="center",
+                    color=MUTED_TEXT,
+                )
         elif visualization in {"grouped_bar", "heatmap"}:
             rows = [row for row in widget.get("buckets", []) if isinstance(row, dict)]
-            tokenizers = list(dict.fromkeys(str(row.get("tokenizer") or "") for row in rows))
+            tokenizers = list(
+                dict.fromkeys(str(row.get("tokenizer") or "") for row in rows)
+            )
             buckets = list(dict.fromkeys(str(row.get("bucket") or "") for row in rows))
-            lookup = {(str(row.get("tokenizer") or ""), str(row.get("bucket") or "")): self._to_number(row.get("value")) for row in rows}
+            lookup = {
+                (
+                    str(row.get("tokenizer") or ""),
+                    str(row.get("bucket") or ""),
+                ): self._to_number(row.get("value"))
+                for row in rows
+            }
             if rows and visualization == "grouped_bar":
                 x = list(range(len(buckets)))
                 width = 0.8 / max(len(tokenizers), 1)
                 for index, tokenizer in enumerate(tokenizers):
-                    ax.bar([item + (index - (len(tokenizers) - 1) / 2) * width for item in x], [lookup.get((tokenizer, bucket), 0.0) for bucket in buckets], width=width, label=self._short_name(tokenizer), color=CHART_SERIES_COLORS[index % len(CHART_SERIES_COLORS)])
+                    ax.bar(
+                        [
+                            item + (index - (len(tokenizers) - 1) / 2) * width
+                            for item in x
+                        ],
+                        [lookup.get((tokenizer, bucket), 0.0) for bucket in buckets],
+                        width=width,
+                        label=self._short_name(tokenizer),
+                        color=CHART_SERIES_COLORS[index % len(CHART_SERIES_COLORS)],
+                    )
                 ax.set_xticks(x, [self._short_name(bucket) for bucket in buckets])
                 ax.legend(fontsize=8)
             elif rows:
-                matrix = [[lookup.get((tokenizer, bucket), float("nan")) for bucket in buckets] for tokenizer in tokenizers]
+                matrix = [
+                    [
+                        lookup.get((tokenizer, bucket), float("nan"))
+                        for bucket in buckets
+                    ]
+                    for tokenizer in tokenizers
+                ]
                 image = ax.imshow(matrix, aspect="auto", cmap="viridis")
-                ax.set_xticks(range(len(buckets)), [self._short_name(bucket) for bucket in buckets])
-                ax.set_yticks(range(len(tokenizers)), [self._short_name(tokenizer) for tokenizer in tokenizers])
+                ax.set_xticks(
+                    range(len(buckets)),
+                    [self._short_name(bucket) for bucket in buckets],
+                )
+                ax.set_yticks(
+                    range(len(tokenizers)),
+                    [self._short_name(tokenizer) for tokenizer in tokenizers],
+                )
                 ax.figure.colorbar(image, ax=ax, fraction=0.046, pad=0.04)
             else:
-                ax.text(0.5, 0.5, "No bucket data", ha="center", va="center", color=MUTED_TEXT)
+                ax.text(
+                    0.5,
+                    0.5,
+                    "No bucket data",
+                    ha="center",
+                    va="center",
+                    color=MUTED_TEXT,
+                )
         elif visualization == "horizontal_bar":
             rows = [row for row in widget.get("points", []) if isinstance(row, dict)]
             labels = [self._short_name(str(row.get("tokenizer") or "")) for row in rows]
@@ -620,7 +765,14 @@ class DashboardExportService(DashboardExportFormatting):
                 ax.barh(labels, values, color=SECONDARY_COLOR)
                 ax.set_xlabel(unit)
             else:
-                ax.text(0.5, 0.5, "No metric data", ha="center", va="center", color=MUTED_TEXT)
+                ax.text(
+                    0.5,
+                    0.5,
+                    "No metric data",
+                    ha="center",
+                    va="center",
+                    color=MUTED_TEXT,
+                )
         elif visualization == "dot_whisker":
             rows = [row for row in widget.get("points", []) if isinstance(row, dict)]
             labels = [self._short_name(str(row.get("tokenizer") or "")) for row in rows]
@@ -628,25 +780,74 @@ class DashboardExportService(DashboardExportFormatting):
             lows = [self._to_number(row.get("interval_low")) for row in rows]
             highs = [self._to_number(row.get("interval_high")) for row in rows]
             if rows:
-                errors = [[max(0.0, value - low) for value, low in zip(values, lows, strict=True)], [max(0.0, high - value) for value, high in zip(values, highs, strict=True)]]
-                ax.errorbar(values, labels, xerr=errors, fmt="o", color=PRIMARY_COLOR, ecolor=SECONDARY_COLOR, capsize=4)
+                errors = [
+                    [
+                        max(0.0, value - low)
+                        for value, low in zip(values, lows, strict=True)
+                    ],
+                    [
+                        max(0.0, high - value)
+                        for value, high in zip(values, highs, strict=True)
+                    ],
+                ]
+                ax.errorbar(
+                    values,
+                    labels,
+                    xerr=errors,
+                    fmt="o",
+                    color=PRIMARY_COLOR,
+                    ecolor=SECONDARY_COLOR,
+                    capsize=4,
+                )
             else:
-                ax.text(0.5, 0.5, "No metric data", ha="center", va="center", color=MUTED_TEXT)
+                ax.text(
+                    0.5,
+                    0.5,
+                    "No metric data",
+                    ha="center",
+                    va="center",
+                    color=MUTED_TEXT,
+                )
         else:
             rows = [row for row in widget.get("points", []) if isinstance(row, dict)]
             if rows:
-                labels = [self._short_name(str(row.get("tokenizer") or "")) for row in rows]
+                labels = [
+                    self._short_name(str(row.get("tokenizer") or "")) for row in rows
+                ]
                 values = [self._to_number(row.get("value")) for row in rows]
                 ax.bar(labels, values, color=SECONDARY_COLOR)
                 if visualization == "interval_bar":
                     lows = [self._to_number(row.get("interval_low")) for row in rows]
                     highs = [self._to_number(row.get("interval_high")) for row in rows]
-                    errors = [[max(0.0, value - low) for value, low in zip(values, lows, strict=True)], [max(0.0, high - value) for value, high in zip(values, highs, strict=True)]]
-                    ax.errorbar(labels, values, yerr=errors, fmt="none", ecolor=PRIMARY_COLOR, capsize=3)
+                    errors = [
+                        [
+                            max(0.0, value - low)
+                            for value, low in zip(values, lows, strict=True)
+                        ],
+                        [
+                            max(0.0, high - value)
+                            for value, high in zip(values, highs, strict=True)
+                        ],
+                    ]
+                    ax.errorbar(
+                        labels,
+                        values,
+                        yerr=errors,
+                        fmt="none",
+                        ecolor=PRIMARY_COLOR,
+                        capsize=3,
+                    )
                 ax.tick_params(axis="x", rotation=35, labelsize=8)
                 ax.grid(axis="y", alpha=0.25)
             else:
-                ax.text(0.5, 0.5, "No metric data", ha="center", va="center", color=MUTED_TEXT)
+                ax.text(
+                    0.5,
+                    0.5,
+                    "No metric data",
+                    ha="center",
+                    va="center",
+                    color=MUTED_TEXT,
+                )
         ax.set_ylabel(unit)
         ax.set_axisbelow(True)
 

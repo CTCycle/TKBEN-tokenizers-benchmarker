@@ -19,6 +19,7 @@ from server.repositories.datasets import DatasetRepository
 from server.common.metric_catalog import default_selected_metric_keys
 from server.services.metrics.engine import DatasetMetricsEngine
 
+
 ###############################################################################
 class DatasetServiceOperationsMixin:
     """Dataset operation slice with an explicit concrete-host contract."""
@@ -88,7 +89,13 @@ class DatasetServiceOperationsMixin:
                 return self.histogram_from_counts(stats, length_counts), saved_count
             text_length = len(text)
             length_counts[text_length] = length_counts.get(text_length, 0) + 1
-            batch.append({"dataset_id": dataset_id, "ordinal": saved_count + len(batch), "text": text})
+            batch.append(
+                {
+                    "dataset_id": dataset_id,
+                    "ordinal": saved_count + len(batch),
+                    "text": text,
+                }
+            )
 
             if len(batch) >= batch_size:
                 self.dataset_repository.save_document_batch(batch)
@@ -406,7 +413,13 @@ class DatasetServiceOperationsMixin:
                 break
             text_length = len(text)
             length_counts[text_length] = length_counts.get(text_length, 0) + 1
-            batch.append({"dataset_id": dataset_id, "ordinal": saved_count + len(batch), "text": text})
+            batch.append(
+                {
+                    "dataset_id": dataset_id,
+                    "ordinal": saved_count + len(batch),
+                    "text": text,
+                }
+            )
 
             if len(batch) >= batch_size:
                 self.dataset_repository.save_document_batch(batch)

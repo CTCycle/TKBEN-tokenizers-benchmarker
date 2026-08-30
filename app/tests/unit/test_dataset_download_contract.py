@@ -20,16 +20,19 @@ from server.services.datasets import (
 )
 from server.services.keys import HFAccessKeyValidationError
 
+
 ###############################################################################
 def test_dataset_download_request_requires_configs() -> None:
     with pytest.raises(ValidationError):
         DatasetDownloadRequest(corpus="wikitext")
+
 
 ###############################################################################
 def test_dataset_download_request_allows_missing_configuration() -> None:
     request = DatasetDownloadRequest(corpus="c4", configs={})
     assert request.corpus == "c4"
     assert request.configs.configuration is None
+
 
 ###############################################################################
 def test_dataset_download_request_accepts_configuration() -> None:
@@ -38,6 +41,7 @@ def test_dataset_download_request_accepts_configuration() -> None:
         configs={"configuration": "wikitext-2-v1"},
     )
     assert request.configs.configuration == "wikitext-2-v1"
+
 
 ###############################################################################
 def test_upload_existing_dataset_is_non_destructive(
@@ -76,6 +80,7 @@ def test_upload_existing_dataset_is_non_destructive(
     assert result == expected_payload
     assert delete_calls == []
 
+
 ###############################################################################
 def test_get_hf_access_token_for_download_falls_back_to_none_on_invalid_key(
     monkeypatch: pytest.MonkeyPatch,
@@ -87,6 +92,7 @@ def test_get_hf_access_token_for_download_falls_back_to_none_on_invalid_key(
 
     monkeypatch.setattr(service.key_service, "get_active_key", raise_invalid_key)
     assert service.get_hf_access_token_for_download() is None
+
 
 ###############################################################################
 def test_preselected_dataset_aliases_cover_all_ui_presets() -> None:
@@ -118,6 +124,7 @@ def test_preselected_dataset_aliases_cover_all_ui_presets() -> None:
     }
     assert expected_presets.issubset(set(HF_DATASET_ALIASES.keys()))
 
+
 ###############################################################################
 def test_c4_preset_uses_bounded_streaming_training_sample() -> None:
     target = DatasetService().resolve_dataset_download(corpus="c4", config=None)
@@ -128,12 +135,14 @@ def test_c4_preset_uses_bounded_streaming_training_sample() -> None:
     assert target.streaming is True
     assert target.max_documents == 10000
 
+
 ###############################################################################
 def test_the_pile_preset_is_disabled_with_clear_error() -> None:
     service = DatasetService()
     with pytest.raises(ValueError) as exc_info:
         service.resolve_dataset_download(corpus="the_pile", config=None)
     assert "disabled" in str(exc_info.value)
+
 
 ###############################################################################
 def configure_download_success_mocks(
@@ -162,6 +171,7 @@ def configure_download_success_mocks(
         ),
     )
     monkeypatch.setattr(service, "maybe_cleanup_downloaded_source", lambda *args: None)
+
 
 ###############################################################################
 def test_download_and_persist_keeps_wikitext_working(
@@ -195,6 +205,7 @@ def test_download_and_persist_keeps_wikitext_working(
     assert captured["corpus"] == "wikitext"
     assert captured["config"] == "wikitext-2-v1"
     assert result["dataset_name"] == "wikitext/wikitext-2-v1"
+
 
 ###############################################################################
 def test_download_and_persist_maps_c4_friendly_name(
@@ -231,6 +242,7 @@ def test_download_and_persist_maps_c4_friendly_name(
     assert captured["kwargs"] == {"split": "train", "streaming": True}
     assert result["dataset_name"] == "c4/en"
 
+
 ###############################################################################
 def test_download_and_persist_maps_arxiv_to_canonical_hf_repo(
     monkeypatch: pytest.MonkeyPatch,
@@ -261,6 +273,7 @@ def test_download_and_persist_maps_arxiv_to_canonical_hf_repo(
     assert captured["corpus"] == "ccdv/arxiv-summarization"
     assert captured["config"] is None
     assert result["dataset_name"] == "arxiv"
+
 
 ###############################################################################
 def test_download_and_persist_success_triggers_source_cleanup(
@@ -298,6 +311,7 @@ def test_download_and_persist_success_triggers_source_cleanup(
     assert result["dataset_name"] == "wikitext/wikitext-2-v1"
     assert len(cleanup_calls) == 1
     assert cleanup_calls[0][1] == "wikitext/wikitext-2-v1"
+
 
 ###############################################################################
 def test_download_and_persist_failed_import_does_not_cleanup_sources(
@@ -352,6 +366,7 @@ def test_download_and_persist_failed_import_does_not_cleanup_sources(
 
     assert cleanup_calls == []
 
+
 ###############################################################################
 def test_download_and_persist_uses_database_for_existence_not_filesystem(
     monkeypatch: pytest.MonkeyPatch,
@@ -386,6 +401,7 @@ def test_download_and_persist_uses_database_for_existence_not_filesystem(
     assert result["dataset_name"] == "wikitext/wikitext-2-v1"
     assert database_checks == ["wikitext/wikitext-2-v1"]
 
+
 ###############################################################################
 def test_download_and_persist_classifies_invalid_dataset_or_config(
     monkeypatch: pytest.MonkeyPatch,
@@ -409,6 +425,7 @@ def test_download_and_persist_classifies_invalid_dataset_or_config(
     assert "job=job00001" in message
     assert "'unknown_dataset_name'" in message
 
+
 ###############################################################################
 def test_download_and_persist_classifies_unsupported_dataset_script(
     monkeypatch: pytest.MonkeyPatch,
@@ -431,6 +448,7 @@ def test_download_and_persist_classifies_unsupported_dataset_script(
     assert "requires a legacy dataset script" in message
     assert "job=job00004" in message
     assert "'EleutherAI/pile/all'" in message
+
 
 ###############################################################################
 def test_download_and_persist_classifies_gated_or_auth_errors(
@@ -460,6 +478,7 @@ def test_download_and_persist_classifies_gated_or_auth_errors(
     assert "job=job00002" in message
     assert "'oscar-corpus/OSCAR-2201/en'" in message
     assert "No valid decryptable Hugging Face token is currently configured." in message
+
 
 ###############################################################################
 def test_load_dataset_with_progress_reports_stage_progress(
@@ -491,6 +510,7 @@ def test_load_dataset_with_progress_reports_stage_progress(
     assert progress_values
     assert progress_values[0] == 5.0
     assert progress_values[-1] == 15.0
+
 
 ###############################################################################
 def test_load_dataset_with_progress_limits_streaming_datasets(
@@ -524,6 +544,7 @@ def test_load_dataset_with_progress_limits_streaming_datasets(
     streaming_dataset.take.assert_called_once_with(2)
     assert limited_dataset is limited_streaming_dataset
 
+
 ###############################################################################
 def test_download_and_persist_stops_before_retry_when_cancelled(
     monkeypatch: pytest.MonkeyPatch,
@@ -556,6 +577,7 @@ def test_download_and_persist_stops_before_retry_when_cancelled(
     assert state["attempts"] == 1
     assert cleanup_calls == ["wikitext/wikitext-2-v1"]
 
+
 ###############################################################################
 def test_download_and_persist_classifies_network_errors(
     monkeypatch: pytest.MonkeyPatch,
@@ -578,6 +600,7 @@ def test_download_and_persist_classifies_network_errors(
     assert "network/transient error" in message
     assert "job=job00003" in message
 
+
 ###############################################################################
 def test_download_and_persist_retries_transient_failures_with_backoff(
     monkeypatch: pytest.MonkeyPatch,
@@ -596,7 +619,9 @@ def test_download_and_persist_retries_transient_failures_with_backoff(
         return object()
 
     monkeypatch.setattr("server.services.datasets.load_dataset", fake_load_dataset)
-    monkeypatch.setattr("server.services.dataset_operations.time.sleep", sleep_calls.append)
+    monkeypatch.setattr(
+        "server.services.dataset_operations.time.sleep", sleep_calls.append
+    )
 
     result = service.download_and_persist(
         corpus="wikitext",
@@ -607,6 +632,7 @@ def test_download_and_persist_retries_transient_failures_with_backoff(
     assert result["dataset_name"] == "wikitext/wikitext-2-v1"
     assert attempts["count"] == 3
     assert sleep_calls == [0.25, 0.5]
+
 
 ###############################################################################
 def test_download_and_persist_does_not_retry_non_transient_failures(
@@ -624,7 +650,9 @@ def test_download_and_persist_does_not_retry_non_transient_failures(
         raise DataFilesNotFoundError("No (supported) data files found.")
 
     monkeypatch.setattr("server.services.datasets.load_dataset", raise_not_found)
-    monkeypatch.setattr("server.services.dataset_operations.time.sleep", sleep_calls.append)
+    monkeypatch.setattr(
+        "server.services.dataset_operations.time.sleep", sleep_calls.append
+    )
 
     with pytest.raises(RuntimeError) as exc_info:
         service.download_and_persist(
@@ -636,6 +664,7 @@ def test_download_and_persist_does_not_retry_non_transient_failures(
     assert "invalid dataset id or configuration" in str(exc_info.value)
     assert attempts["count"] == 1
     assert sleep_calls == []
+
 
 ###############################################################################
 def test_download_and_persist_timeout_is_reported_as_provider_timeout(
@@ -662,6 +691,7 @@ def test_download_and_persist_timeout_is_reported_as_provider_timeout(
     message = str(exc_info.value)
     assert "did not finish loading" in message
     assert "job=job-timeout" in message
+
 
 ###############################################################################
 def test_upload_and_persist_hides_internal_parser_errors(

@@ -19,6 +19,7 @@ from server.repositories.tokenizer_reports import TokenizerReportRepository
 from server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
 from server.services.tokenizer_storage import TokenizerStorageMixin
 
+
 ###############################################################################
 class TokenizerReportingService(TokenizerStorageMixin):
     REPORT_VERSION = 1
@@ -312,7 +313,6 @@ class TokenizerReportingService(TokenizerStorageMixin):
     def is_subword_like_token(self, token: str) -> bool:
         normalized = str(token).strip()
         if not normalized:
-
             return False
 
         return bool(
@@ -570,7 +570,6 @@ class TokenizerReportingService(TokenizerStorageMixin):
             median_length = float(sorted_lengths[midpoint])
 
         return {
-
             "bins": bins,
             "counts": counts,
             "bin_edges": [float(edge) for edge in edges],

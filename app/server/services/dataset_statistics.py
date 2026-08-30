@@ -4,6 +4,7 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
+
 ###############################################################################
 @dataclass
 class LengthStatistics:
@@ -35,9 +36,9 @@ class LengthStatistics:
             return 0.0
         return self.total_length / self.document_count
 
+
 ###############################################################################
 class HistogramBuilder:
-
     # -------------------------------------------------------------------------
     def __init__(self, stats: LengthStatistics, bins: int) -> None:
         self.stats = stats

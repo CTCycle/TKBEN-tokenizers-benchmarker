@@ -13,6 +13,7 @@ from server.contracts.benchmarks import (
 from server.repositories.benchmarks import BenchmarkRepository
 from server.common.constants import BENCHMARK_REPORT_VERSION, BENCHMARK_SCHEMA_VERSION
 
+
 ###############################################################################
 def _parse_timestamp(value: object) -> pd.Timestamp | None:
     if value is None:
@@ -20,9 +21,9 @@ def _parse_timestamp(value: object) -> pd.Timestamp | None:
     parsed = pd.to_datetime(cast(Any, value), utc=True, errors="coerce")
     return parsed if isinstance(parsed, pd.Timestamp) and not pd.isna(parsed) else None
 
+
 ###############################################################################
 class BenchmarkReportService:
-
     # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.repository = BenchmarkRepository()
@@ -44,7 +45,9 @@ class BenchmarkReportService:
             str(key) for key in selected_metric_keys if isinstance(key, str) and key
         ]
 
-        created_at = _parse_timestamp(report_payload.get("created_at")) or pd.Timestamp.utcnow()
+        created_at = (
+            _parse_timestamp(report_payload.get("created_at")) or pd.Timestamp.utcnow()
+        )
         created_at_value = created_at.to_pydatetime()
 
         run_name = report_payload.get("run_name")
@@ -111,10 +114,14 @@ class BenchmarkReportService:
         tokenizers_processed = [str(name) for name in tokenizers_processed]
         tokenizers_count = int(row.get("tokenizers_count") or 0)
         if tokenizers_count != len(tokenizers_processed):
-            raise ValueError("Benchmark report tokenizer count disagrees with its list.")
+            raise ValueError(
+                "Benchmark report tokenizer count disagrees with its list."
+            )
         documents_processed = int(row.get("documents_processed") or 0)
         if documents_processed < 0:
-            raise ValueError("Benchmark report documents_processed must be non-negative.")
+            raise ValueError(
+                "Benchmark report documents_processed must be non-negative."
+            )
         methodology_version = str(row.get("methodology_version") or "").strip()
         if not methodology_version:
             raise ValueError("Benchmark report is missing methodology_version.")
@@ -157,21 +164,35 @@ class BenchmarkReportService:
         summaries: list[BenchmarkReportSummary] = []
         for row in page.rows:
             if int(row.get("report_version") or 0) != BENCHMARK_REPORT_VERSION:
-                raise ValueError("Benchmark report uses an incompatible report version.")
+                raise ValueError(
+                    "Benchmark report uses an incompatible report version."
+                )
             if int(row.get("schema_version") or 0) != BENCHMARK_SCHEMA_VERSION:
-                raise ValueError("Benchmark report uses an incompatible schema version.")
+                raise ValueError(
+                    "Benchmark report uses an incompatible schema version."
+                )
             created_at = _parse_timestamp(row.get("created_at"))
-            summaries.append(BenchmarkReportSummary.model_validate({
-                "report_id": int(row["id"]),
-                "report_version": int(row["report_version"]),
-                "created_at": created_at.isoformat().replace("+00:00", "Z") if created_at is not None else None,
-                "run_name": row.get("run_name"),
-                "dataset_name": str(row["dataset_name"]),
-                "documents_processed": int(row["documents_processed"]),
-                "tokenizers_count": int(row["tokenizers_count"]),
-                "tokenizers_processed": list(row.get("tokenizers_processed") or []),
-                "selected_metric_keys": list(row.get("selected_metric_keys") or []),
-            }))
+            summaries.append(
+                BenchmarkReportSummary.model_validate(
+                    {
+                        "report_id": int(row["id"]),
+                        "report_version": int(row["report_version"]),
+                        "created_at": created_at.isoformat().replace("+00:00", "Z")
+                        if created_at is not None
+                        else None,
+                        "run_name": row.get("run_name"),
+                        "dataset_name": str(row["dataset_name"]),
+                        "documents_processed": int(row["documents_processed"]),
+                        "tokenizers_count": int(row["tokenizers_count"]),
+                        "tokenizers_processed": list(
+                            row.get("tokenizers_processed") or []
+                        ),
+                        "selected_metric_keys": list(
+                            row.get("selected_metric_keys") or []
+                        ),
+                    }
+                )
+            )
         return BenchmarkReportListResponse(
             reports=summaries,
             total=page.total,

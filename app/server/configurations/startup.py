@@ -11,11 +11,13 @@ from server.configurations.settings import ServerSettings
 _DEFAULT_SETTINGS_LOCK = RLock()
 _DEFAULT_SETTINGS: ServerSettings | None = None
 
+
 ###############################################################################
 def _resolve_config_path(config_path: str | Path | None = None) -> Path:
     if config_path is None:
         return CONFIGURATIONS_FILE
     return Path(config_path)
+
 
 ###############################################################################
 def get_configuration_manager(
@@ -23,6 +25,7 @@ def get_configuration_manager(
 ) -> ConfigurationManager:
     ensure_environment_loaded(force=True)
     return ConfigurationManager(config_path=_resolve_config_path(config_path)).load()
+
 
 ###############################################################################
 def get_server_settings(config_path: str | Path | None = None) -> ServerSettings:
@@ -33,6 +36,7 @@ def get_server_settings(config_path: str | Path | None = None) -> ServerSettings
         if _DEFAULT_SETTINGS is None:
             _DEFAULT_SETTINGS = get_configuration_manager().server_settings
         return _DEFAULT_SETTINGS
+
 
 ###############################################################################
 def reload_settings_for_tests(config_path: str | Path | None = None) -> ServerSettings:

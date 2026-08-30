@@ -27,9 +27,11 @@ _SQLITE_LEGACY_METRIC_CHECK = (
     "(json_value IS NOT NULL) = 1"
 )
 
+
 ###############################################################################
 def _is_sqlite() -> bool:
     return op.get_bind().dialect.name == "sqlite"
+
 
 ###############################################################################
 def upgrade() -> None:
@@ -42,8 +44,15 @@ def upgrade() -> None:
         "dataset",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("name", sa.String(length=255), nullable=False),
-        sa.Column("status", sa.String(length=16), nullable=False, server_default=sa.text("'loading'")),
-        sa.Column("document_count", sa.Integer(), nullable=False, server_default=sa.text("0")),
+        sa.Column(
+            "status",
+            sa.String(length=16),
+            nullable=False,
+            server_default=sa.text("'loading'"),
+        ),
+        sa.Column(
+            "document_count", sa.Integer(), nullable=False, server_default=sa.text("0")
+        ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("ready_at", sa.DateTime(timezone=True), nullable=True),
@@ -82,12 +91,26 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("dataset_id", sa.Integer(), nullable=False),
         sa.Column("session_name", sa.String(length=255), nullable=True),
-        sa.Column("status", sa.String(length=16), nullable=False, server_default=sa.text("'running'")),
-        sa.Column("report_version", sa.Integer(), nullable=False, server_default=sa.text("1")),
+        sa.Column(
+            "status",
+            sa.String(length=16),
+            nullable=False,
+            server_default=sa.text("'running'"),
+        ),
+        sa.Column(
+            "report_version", sa.Integer(), nullable=False, server_default=sa.text("1")
+        ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("parameters", sa.JSON(), nullable=False, server_default=sa.text("'{}'")),
-        sa.Column("selected_metric_keys", sa.JSON(), nullable=False, server_default=sa.text("'[]'")),
+        sa.Column(
+            "parameters", sa.JSON(), nullable=False, server_default=sa.text("'{}'")
+        ),
+        sa.Column(
+            "selected_metric_keys",
+            sa.JSON(),
+            nullable=False,
+            server_default=sa.text("'[]'"),
+        ),
         sa.Column("error_message", sa.Text(), nullable=True),
         sa.CheckConstraint(
             "status IN ('running', 'completed', 'failed', 'cancelled')",
@@ -115,12 +138,26 @@ def upgrade() -> None:
         sa.Column("category", sa.String(length=100), nullable=False),
         sa.Column("label", sa.String(length=255), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
-        sa.Column("scope", sa.String(length=16), nullable=False, server_default=sa.text("'aggregate'")),
-        sa.Column("value_kind", sa.String(length=16), nullable=False, server_default=sa.text("'number'")),
+        sa.Column(
+            "scope",
+            sa.String(length=16),
+            nullable=False,
+            server_default=sa.text("'aggregate'"),
+        ),
+        sa.Column(
+            "value_kind",
+            sa.String(length=16),
+            nullable=False,
+            server_default=sa.text("'number'"),
+        ),
         sa.CheckConstraint("length(trim(key)) > 0", name="ck_metric_key_nonblank"),
-        sa.CheckConstraint("length(trim(category)) > 0", name="ck_metric_category_nonblank"),
+        sa.CheckConstraint(
+            "length(trim(category)) > 0", name="ck_metric_category_nonblank"
+        ),
         sa.CheckConstraint("length(trim(label)) > 0", name="ck_metric_label_nonblank"),
-        sa.CheckConstraint("scope IN ('aggregate', 'per_document')", name="ck_metric_scope"),
+        sa.CheckConstraint(
+            "scope IN ('aggregate', 'per_document')", name="ck_metric_scope"
+        ),
         sa.CheckConstraint(
             "value_kind IN ('number', 'text', 'json', 'histogram')",
             name="ck_metric_value_kind",
@@ -192,7 +229,9 @@ def upgrade() -> None:
         sa.Column("median_value", sa.Float(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.CheckConstraint("min_value <= max_value", name="ck_histogram_range"),
-        sa.ForeignKeyConstraint(["session_id"], ["analysis_session.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["session_id"], ["analysis_session.id"], ondelete="CASCADE"
+        ),
         sa.ForeignKeyConstraint(["metric_type_id"], ["metric_type.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("session_id", "metric_type_id"),
@@ -281,7 +320,9 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("key_value", sa.Text(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("is_active", sa.Boolean(), nullable=False, server_default=active_default),
+        sa.Column(
+            "is_active", sa.Boolean(), nullable=False, server_default=active_default
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("key_value"),
     )
@@ -293,7 +334,10 @@ def upgrade() -> None:
         sqlite_where=sa.text("is_active IS 1"),
         postgresql_where=sa.text("is_active IS TRUE"),
     )
-    op.create_index("ix_hf_access_keys_active_id", "hf_access_keys", ["is_active", "id"])
+    op.create_index(
+        "ix_hf_access_keys_active_id", "hf_access_keys", ["is_active", "id"]
+    )
+
 
 ###############################################################################
 def downgrade() -> None:
@@ -301,7 +345,9 @@ def downgrade() -> None:
     op.drop_index("uq_hf_access_keys_active", table_name="hf_access_keys")
     op.drop_table("hf_access_keys")
     op.drop_index("ix_benchmark_report_created_id", table_name="benchmark_report")
-    op.drop_index("ix_benchmark_report_dataset_created_id", table_name="benchmark_report")
+    op.drop_index(
+        "ix_benchmark_report_dataset_created_id", table_name="benchmark_report"
+    )
     op.drop_table("benchmark_report")
     op.drop_table("tokenizer_report")
     op.drop_table("tokenizer_vocabulary")
@@ -315,7 +361,9 @@ def downgrade() -> None:
     op.drop_table("metric_value")
     op.drop_index("ix_metric_type_category", table_name="metric_type")
     op.drop_table("metric_type")
-    op.drop_index("ix_analysis_session_dataset_created_id", table_name="analysis_session")
+    op.drop_index(
+        "ix_analysis_session_dataset_created_id", table_name="analysis_session"
+    )
     op.drop_table("analysis_session")
     op.drop_index("ix_dataset_document_dataset_id_id", table_name="dataset_document")
     op.drop_table("dataset_document")

@@ -5,6 +5,7 @@ Covers /api/datasets/list, /api/datasets/upload, and /api/datasets/analyze.
 
 from playwright.sync_api import APIRequestContext
 
+
 ###############################################################################
 def test_list_datasets_includes_uploaded_dataset(
     api_context: APIRequestContext,
@@ -20,6 +21,7 @@ def test_list_datasets_includes_uploaded_dataset(
         for item in previews
         if isinstance(item, dict)
     )
+
 
 ###############################################################################
 def test_upload_rejects_invalid_extension(api_context: APIRequestContext) -> None:
@@ -38,6 +40,7 @@ def test_upload_rejects_invalid_extension(api_context: APIRequestContext) -> Non
     data = response.json()
     assert "Unsupported file type" in data.get("detail", "")
 
+
 ###############################################################################
 def test_upload_accepts_csv_and_returns_histogram(
     uploaded_dataset: dict,
@@ -53,6 +56,7 @@ def test_upload_accepts_csv_and_returns_histogram(
     assert "min_length" in histogram
     assert "max_length" in histogram
 
+
 ###############################################################################
 def test_analyze_missing_dataset_returns_404(
     api_context: APIRequestContext,
@@ -63,6 +67,7 @@ def test_analyze_missing_dataset_returns_404(
         data={"dataset_name": "missing_dataset"},
     )
     assert response.status == 404
+
 
 ###############################################################################
 def test_analyze_uploaded_dataset_returns_stats(

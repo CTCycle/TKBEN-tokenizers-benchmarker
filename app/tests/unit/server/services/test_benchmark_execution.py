@@ -8,6 +8,7 @@ from server.contracts.benchmarks import BenchmarkRunResponse
 from server.services.benchmarks import BenchmarkService
 from server.services.benchmark_execution import normalize_vocabulary_token
 
+
 ###############################################################################
 class DummyTokenizer:
     name_or_path = "dummy/tokenizer"
@@ -46,6 +47,7 @@ class DummyTokenizer:
     def get_vocab(self) -> dict[str, int]:
         return dict(self._vocab)
 
+
 ###############################################################################
 class UnknownAwareTokenizer(DummyTokenizer):
     unk_token_id = 0
@@ -56,6 +58,7 @@ class UnknownAwareTokenizer(DummyTokenizer):
         self._vocab = {"known": 1}
         self._id_to_token = {1: "known", 0: "[UNK]"}
 
+
 ###############################################################################
 def test_normalize_vocabulary_token_removes_only_top_level_markers() -> None:
     assert normalize_vocabulary_token("##tail") == "tail"
@@ -63,6 +66,7 @@ def test_normalize_vocabulary_token_removes_only_top_level_markers() -> None:
     assert normalize_vocabulary_token("Ġworld") == "world"
     assert normalize_vocabulary_token("Garden") == "Garden"
     assert normalize_vocabulary_token("word▁pieceĠtail##") == "word▁pieceĠtail##"
+
 
 ###############################################################################
 def test_run_benchmarks_returns_contract() -> None:
@@ -122,6 +126,7 @@ def test_run_benchmarks_returns_contract() -> None:
     assert result.tokenizer_results[0].efficiency.postprocess_wall_time_seconds >= 0.0
     assert result.tokenizer_results[0].fidelity.unknown_token_rate is None
 
+
 ###############################################################################
 def test_run_benchmarks_enforces_max_documents_limit() -> None:
     service = BenchmarkService(max_documents=2)
@@ -146,6 +151,7 @@ def test_run_benchmarks_enforces_max_documents_limit() -> None:
     assert result.documents_processed == 2
     assert len(result.per_document_stats[0].tokens_count) == 2
 
+
 ###############################################################################
 def test_run_benchmarks_isolates_tokenizer_failure() -> None:
     service = BenchmarkService()
@@ -156,7 +162,6 @@ def test_run_benchmarks_isolates_tokenizer_failure() -> None:
 
     ###############################################################################
     class BrokenTokenizer(DummyTokenizer):
-
         # -------------------------------------------------------------------------
         def encode(self, text: str) -> list[int]:
             raise RuntimeError("broken tokenizer")
@@ -189,6 +194,7 @@ def test_run_benchmarks_isolates_tokenizer_failure() -> None:
     chart_tokenizers = {point.tokenizer for point in efficiency_widget.points}
     assert "ok/tokenizer" in chart_tokenizers
     assert "broken/tokenizer" not in chart_tokenizers
+
 
 ###############################################################################
 def test_run_benchmarks_uses_trial_level_speeds_for_ci() -> None:
@@ -226,6 +232,7 @@ def test_run_benchmarks_uses_trial_level_speeds_for_ci() -> None:
         metrics.encode_tokens_per_second_ci95_high
         > metrics.encode_tokens_per_second_ci95_low
     )
+
 
 ###############################################################################
 def test_run_benchmarks_uses_true_latency_distribution_five_number_summary() -> None:
@@ -274,6 +281,7 @@ def test_run_benchmarks_uses_true_latency_distribution_five_number_summary() -> 
     assert dist.sample_count == 3
     assert result.tokenizer_results[0].latency.sample_count == 3
 
+
 ###############################################################################
 def test_run_benchmarks_reports_utf8_bytes_throughput_and_unknown_rate() -> None:
     service = BenchmarkService()
@@ -301,6 +309,7 @@ def test_run_benchmarks_reports_utf8_bytes_throughput_and_unknown_rate() -> None
         >= tokenizer_result.fragmentation.characters_per_token
     )
     assert tokenizer_result.resources.peak_rss_mb > 0.0
+
 
 ###############################################################################
 def test_run_benchmarks_uses_all_timed_trials_for_latency_summary() -> None:
@@ -334,6 +343,7 @@ def test_run_benchmarks_uses_all_timed_trials_for_latency_summary() -> None:
     assert latency.encode_latency_p95_ms > 1.0
     assert latency.sample_count == 2
 
+
 ###############################################################################
 def test_run_benchmarks_computes_real_fragmentation_buckets() -> None:
     service = BenchmarkService()
@@ -341,7 +351,6 @@ def test_run_benchmarks_computes_real_fragmentation_buckets() -> None:
 
     ###############################################################################
     class LengthSensitiveTokenizer(DummyTokenizer):
-
         # -------------------------------------------------------------------------
         def encode(self, text: str) -> list[int]:
             token = str(text)
@@ -373,6 +382,7 @@ def test_run_benchmarks_computes_real_fragmentation_buckets() -> None:
     assert set(buckets) == {"short_1_4", "medium_5_8", "long_9_plus"}
     assert len(set(round(value, 6) for value in buckets.values())) > 1
 
+
 ###############################################################################
 def test_run_benchmarks_uses_utf8_bytes_per_token_for_per_doc_stats() -> None:
     service = BenchmarkService()
@@ -389,6 +399,7 @@ def test_run_benchmarks_uses_utf8_bytes_per_token_for_per_doc_stats() -> None:
     )
     # "known é" => 8 UTF-8 bytes, 2 tokens
     assert result.per_document_stats[0].bytes_per_token[0] == 4.0
+
 
 ###############################################################################
 def test_run_benchmarks_can_disable_per_document_stats_and_persist_config() -> None:
@@ -420,6 +431,7 @@ def test_run_benchmarks_can_disable_per_document_stats_and_persist_config() -> N
     assert result.config.truncation is True
     assert result.config.max_length == 32
 
+
 ###############################################################################
 def test_run_benchmarks_returns_cancelled_status_when_stopped() -> None:
     service = BenchmarkService()
@@ -445,6 +457,7 @@ def test_run_benchmarks_returns_cancelled_status_when_stopped() -> None:
 
     assert result.status == "cancelled"
 
+
 ###############################################################################
 def test_run_benchmarks_all_failed_tokenizers_report_unavailable_metrics() -> None:
     service = BenchmarkService()
@@ -452,7 +465,6 @@ def test_run_benchmarks_all_failed_tokenizers_report_unavailable_metrics() -> No
 
     ###############################################################################
     class BrokenTokenizer(DummyTokenizer):
-
         # -------------------------------------------------------------------------
         def encode(self, text: str) -> list[int]:
             raise RuntimeError("always broken")

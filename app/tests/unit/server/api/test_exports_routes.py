@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from server.app import app
 
+
 ###############################################################################
 def _export_payload() -> dict[str, object]:
     return {
@@ -15,13 +16,13 @@ def _export_payload() -> dict[str, object]:
         "dashboard_payload": {"report_id": 1},
     }
 
+
 ###############################################################################
 def test_export_route_returns_pdf_headers_and_bytes(monkeypatch) -> None:
     from server.api import exports as exports_api
 
     ###############################################################################
     class FakeExportService:
-
         # -------------------------------------------------------------------------
         def export_dashboard_pdf(self, **kwargs):
             assert kwargs["dashboard_type"] == "benchmark"
@@ -33,7 +34,9 @@ def test_export_route_returns_pdf_headers_and_bytes(monkeypatch) -> None:
 
     monkeypatch.setattr(exports_api, "DashboardExportService", FakeExportService)
 
-    response = TestClient(app).post("/api/exports/dashboard/pdf", json=_export_payload())
+    response = TestClient(app).post(
+        "/api/exports/dashboard/pdf", json=_export_payload()
+    )
 
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/pdf"
@@ -41,13 +44,15 @@ def test_export_route_returns_pdf_headers_and_bytes(monkeypatch) -> None:
     assert response.headers["x-export-page-count"] == "2"
     assert response.content == b"%PDF-test"
 
+
 ###############################################################################
-def test_export_route_maps_expected_and_unexpected_service_failures(monkeypatch) -> None:
+def test_export_route_maps_expected_and_unexpected_service_failures(
+    monkeypatch,
+) -> None:
     from server.api import exports as exports_api
 
     ###############################################################################
     class ValueErrorService:
-
         # -------------------------------------------------------------------------
         def export_dashboard_pdf(self, **kwargs):
             del kwargs
@@ -60,7 +65,6 @@ def test_export_route_maps_expected_and_unexpected_service_failures(monkeypatch)
 
     ###############################################################################
     class FailingService:
-
         # -------------------------------------------------------------------------
         def export_dashboard_pdf(self, **kwargs):
             del kwargs

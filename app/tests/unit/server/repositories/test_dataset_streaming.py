@@ -8,6 +8,7 @@ from server.repositories.database.backend import get_database
 from server.repositories.schemas.models import Base, Dataset, DatasetDocument
 from server.repositories.datasets import DatasetRepository
 
+
 ###############################################################################
 def test_streaming_preserves_empty_and_unicode_rows(monkeypatch) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
@@ -17,7 +18,13 @@ def test_streaming_preserves_empty_and_unicode_rows(monkeypatch) -> None:
 
     with Session(bind=engine) as session:
         now = datetime.now(timezone.utc)
-        dataset = Dataset(name="custom/stream", status="ready", created_at=now, updated_at=now, ready_at=now)
+        dataset = Dataset(
+            name="custom/stream",
+            status="ready",
+            created_at=now,
+            updated_at=now,
+            ready_at=now,
+        )
         session.add(dataset)
         session.flush()
         session.add_all(

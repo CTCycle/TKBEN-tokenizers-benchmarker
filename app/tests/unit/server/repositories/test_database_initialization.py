@@ -15,6 +15,7 @@ from server.repositories.database.backend import build_sqlite_backend
 from server.repositories.database.migrations import DatabaseMigrationError
 from server.repositories.schemas.models import Base
 
+
 ###############################################################################
 def _sqlite_settings() -> DatabaseSettings:
     return DatabaseSettings(
@@ -29,6 +30,7 @@ def _sqlite_settings() -> DatabaseSettings:
         connect_timeout=1,
         insert_batch_size=100,
     )
+
 
 ###############################################################################
 def _postgres_settings(*, host: str | None = "127.0.0.1") -> DatabaseSettings:
@@ -45,6 +47,7 @@ def _postgres_settings(*, host: str | None = "127.0.0.1") -> DatabaseSettings:
         insert_batch_size=100,
     )
 
+
 ###############################################################################
 def _patch_sqlite_path(
     monkeypatch: pytest.MonkeyPatch,
@@ -52,6 +55,7 @@ def _patch_sqlite_path(
 ) -> None:
     monkeypatch.setattr(initializer, "DATABASE_PATH", database_path)
     monkeypatch.setattr(sqlite_repository, "DATABASE_PATH", database_path)
+
 
 ###############################################################################
 def test_missing_sqlite_database_is_created_from_alembic_history(
@@ -88,6 +92,7 @@ def test_missing_sqlite_database_is_created_from_alembic_history(
     finally:
         engine.dispose()
 
+
 ###############################################################################
 def test_unknown_existing_sqlite_database_is_rejected_without_changes(
     tmp_path: Path,
@@ -109,6 +114,7 @@ def test_unknown_existing_sqlite_database_is_rejected_without_changes(
 
     assert hashlib.sha256(database_path.read_bytes()).digest() == before
 
+
 ###############################################################################
 def test_sqlite_backend_does_not_validate_existing_database(
     tmp_path: Path,
@@ -129,6 +135,7 @@ def test_sqlite_backend_does_not_validate_existing_database(
     backend.engine.dispose()
 
     assert hashlib.sha256(database_path.read_bytes()).digest() == before
+
 
 ###############################################################################
 def test_postgres_startup_runs_the_same_migration_workflow(
@@ -156,7 +163,6 @@ def test_postgres_startup_runs_the_same_migration_workflow(
 
     ###############################################################################
     class FakeEngine:
-
         # -------------------------------------------------------------------------
         def dispose(self) -> None:
             calls.append("dispose")
@@ -178,6 +184,7 @@ def test_postgres_startup_runs_the_same_migration_workflow(
 
     assert calls == ["ensure:tkben_test", "migrate:tkben_test:True", "dispose"]
 
+
 ###############################################################################
 def test_postgres_connection_check_executes_select_one(
     monkeypatch: pytest.MonkeyPatch,
@@ -186,7 +193,6 @@ def test_postgres_connection_check_executes_select_one(
 
     ###############################################################################
     class FakeConnection:
-
         # -------------------------------------------------------------------------
         def __enter__(self):
             return self
@@ -201,7 +207,6 @@ def test_postgres_connection_check_executes_select_one(
 
     ###############################################################################
     class FakeEngine:
-
         # -------------------------------------------------------------------------
         def connect(self):
             return FakeConnection()
@@ -219,6 +224,7 @@ def test_postgres_connection_check_executes_select_one(
     initializer.connect_postgres_database(_postgres_settings())
 
     assert statements == ["SELECT 1"]
+
 
 ###############################################################################
 def test_postgres_initialization_failure_is_returned_as_process_failure(

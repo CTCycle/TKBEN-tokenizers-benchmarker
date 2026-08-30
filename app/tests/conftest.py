@@ -11,6 +11,7 @@ from typing import Any
 import pytest
 from playwright.sync_api import APIRequestContext
 
+
 ###############################################################################
 def _read_env(name: str, default: str | None = None) -> str | None:
     value = os.getenv(name, default)
@@ -19,11 +20,13 @@ def _read_env(name: str, default: str | None = None) -> str | None:
     normalized = value.strip().strip('"').strip("'")
     return normalized or default
 
+
 ###############################################################################
 def _normalize_host(host: str) -> str:
     if host in {"0.0.0.0", "::"}:
         return "127.0.0.1"
     return host
+
 
 ###############################################################################
 def _build_base_url(
@@ -47,17 +50,20 @@ API_BASE_URL = (
     or _build_base_url("FASTAPI_HOST", "FASTAPI_PORT", "127.0.0.1", "5000")
 )
 
+
 ###############################################################################
 @pytest.fixture(scope="session")
 def base_url() -> str:
     """Returns the base URL of the UI."""
     return UI_BASE_URL
 
+
 ###############################################################################
 @pytest.fixture(scope="session")
 def api_base_url() -> str:
     """Returns the base URL of the API."""
     return API_BASE_URL
+
 
 ###############################################################################
 @pytest.fixture(scope="session")
@@ -69,6 +75,7 @@ def api_context(playwright) -> APIRequestContext:
     context = playwright.request.new_context(base_url=API_BASE_URL)
     yield context
     context.dispose()
+
 
 ###############################################################################
 def wait_for_job_completion(
@@ -91,6 +98,7 @@ def wait_for_job_completion(
             )
         time.sleep(max(poll_interval, 0.1))
 
+
 ###############################################################################
 @pytest.fixture(scope="session")
 def job_waiter(api_context: APIRequestContext):
@@ -106,6 +114,7 @@ def job_waiter(api_context: APIRequestContext):
 
     return _wait
 
+
 ###############################################################################
 @pytest.fixture(scope="session")
 def sample_dataset_payload() -> tuple[str, str, bytes]:
@@ -116,6 +125,7 @@ def sample_dataset_payload() -> tuple[str, str, bytes]:
     dataset_name = f"custom/{Path(filename).stem}"
     csv_content = "text\nHello world\nThis is a sample document\nAnother sample\n"
     return filename, dataset_name, csv_content.encode("utf-8")
+
 
 ###############################################################################
 @pytest.fixture(scope="session")
@@ -128,6 +138,7 @@ def tiny_tokenizer_json() -> bytes:
         b'"This":3,"is":4,"a":5,"sample":6,"document":7,"Another":8},'
         b'"unk_token":"[UNK]"}}'
     )
+
 
 ###############################################################################
 @pytest.fixture(scope="session")
@@ -150,6 +161,7 @@ def uploaded_tiny_tokenizer(
     assert payload.get("is_compatible") is True
     assert payload.get("tokenizer_name") == "CUSTOM_e2e_tiny_tokenizer"
     return payload
+
 
 ###############################################################################
 @pytest.fixture(scope="session")

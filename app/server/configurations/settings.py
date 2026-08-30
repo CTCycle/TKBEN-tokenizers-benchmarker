@@ -8,6 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+
 ###############################################################################
 @dataclass(frozen=True)
 class DatabaseSettings:
@@ -21,6 +22,7 @@ class DatabaseSettings:
     ssl_ca: str | None
     connect_timeout: int
     insert_batch_size: int
+
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -36,6 +38,7 @@ class DatasetSettings:
     download_retry_attempts: int
     download_retry_backoff_seconds: float
 
+
 ###############################################################################
 @dataclass(frozen=True)
 class TokenizerSettings:
@@ -45,17 +48,20 @@ class TokenizerSettings:
     metadata_candidate_multiplier: int
     max_upload_bytes: int
 
+
 ###############################################################################
 @dataclass(frozen=True)
 class BenchmarkSettings:
     streaming_batch_size: int
     log_interval: int
 
+
 ###############################################################################
 @dataclass(frozen=True)
 class JobsSettings:
     polling_interval: float
     terminal_retention_seconds: float
+
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -66,6 +72,7 @@ class ServerSettings:
     benchmarks: BenchmarkSettings
     jobs: JobsSettings
 
+
 ###############################################################################
 def _normalize_optional_text(value: Any) -> str | None:
     if value is None:
@@ -74,6 +81,7 @@ def _normalize_optional_text(value: Any) -> str | None:
     if text == "":
         return None
     return text
+
 
 ###############################################################################
 def _read_env_bool(name: str, default: bool) -> bool:
@@ -87,6 +95,7 @@ def _read_env_bool(name: str, default: bool) -> bool:
     if normalized in {"0", "false", "no", "off"}:
         return False
     raise RuntimeError(f"{name} must be a boolean value, got: {raw_value}")
+
 
 ###############################################################################
 def _read_env_int(
@@ -112,6 +121,7 @@ def _read_env_int(
     if maximum is not None and value > maximum:
         raise RuntimeError(f"{name} must be <= {maximum}, got: {value}")
     return value
+
 
 def _load_database_settings_from_sources() -> DatabaseSettings:
     """Load database settings from the environment only.
@@ -170,6 +180,7 @@ def _load_database_settings_from_sources() -> DatabaseSettings:
         insert_batch_size=insert_batch_size,
     )
 
+
 ###############################################################################
 class JsonDatasetSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -184,6 +195,7 @@ class JsonDatasetSettings(BaseModel):
     download_timeout_seconds: float = Field(default=120.0, ge=1.0)
     download_retry_attempts: int = Field(default=3, ge=1, le=10)
     download_retry_backoff_seconds: float = Field(default=1.0, ge=0.0, le=60.0)
+
 
 ###############################################################################
 class JsonTokenizerSettings(BaseModel):
@@ -208,6 +220,7 @@ class JsonTokenizerSettings(BaseModel):
             )
         return self
 
+
 ###############################################################################
 class JsonBenchmarkSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -215,12 +228,14 @@ class JsonBenchmarkSettings(BaseModel):
     streaming_batch_size: int = Field(default=1000, ge=100)
     log_interval: int = Field(default=10000, ge=100)
 
+
 ###############################################################################
 class JsonJobsSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     polling_interval: float = Field(default=1.0, gt=0.0)
     terminal_retention_seconds: float = Field(default=3600.0, ge=0.0)
+
 
 ###############################################################################
 class JsonConfiguration(BaseModel):

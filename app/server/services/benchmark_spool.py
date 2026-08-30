@@ -5,9 +5,9 @@ import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 
+
 ###############################################################################
 class BenchmarkTextSpool:
-
     # -------------------------------------------------------------------------
     def __init__(self) -> None:
         temp = tempfile.NamedTemporaryFile(

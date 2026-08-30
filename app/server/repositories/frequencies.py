@@ -12,11 +12,13 @@ from sqlalchemy.orm import Session, declarative_base, mapped_column, sessionmake
 
 Base = declarative_base()
 
+
 ###############################################################################
 class FrequencyEntry(Base):
     __tablename__ = "frequencies"
     token = mapped_column(String, primary_key=True, nullable=False)
     count = mapped_column(Integer, nullable=False, default=0, index=True)
+
 
 ###############################################################################
 class DiskBackedFrequencyStore:
@@ -63,7 +65,10 @@ class DiskBackedFrequencyStore:
         if not self.memory:
             return
         with self._session() as session:
-            records = [{"token": token, "count": int(count)} for token, count in self.memory.items()]
+            records = [
+                {"token": token, "count": int(count)}
+                for token, count in self.memory.items()
+            ]
             for start in range(0, len(records), self._token_lookup_batch_size()):
                 batch = records[start : start + self._token_lookup_batch_size()]
                 statement = insert(FrequencyEntry.__table__).values(batch)

@@ -10,6 +10,7 @@ from server.common.utils.security import (
     normalize_identifier,
 )
 
+
 ###############################################################################
 class TokenizerStorageMixin:
     TOKENIZER_ID_MAX_LENGTH = 160
@@ -93,7 +94,9 @@ class TokenizerStorageMixin:
         cache_dir = Path(self.get_tokenizer_cache_dir(tokenizer_id))
         cache_dir.mkdir(parents=True, exist_ok=True)
         artifact_path = self.custom_tokenizer_artifact_path(tokenizer_id)
-        previous_content = artifact_path.read_bytes() if artifact_path.exists() else None
+        previous_content = (
+            artifact_path.read_bytes() if artifact_path.exists() else None
+        )
         temporary_path: str | None = None
         try:
             with tempfile.NamedTemporaryFile(

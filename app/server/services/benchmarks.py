@@ -23,9 +23,9 @@ from server.common.utils.security import (
 from server.services.benchmark_execution import BenchmarkServiceExecutionMixin
 from server.services.benchmark_result_builder import BenchmarkResultBuilder
 
+
 ###############################################################################
 class BenchmarkTools:
-
     # -------------------------------------------------------------------------
     def process_tokens(self, text: str, tokenizer: Any) -> tuple[str, list[str]]:
         if not isinstance(text, str):
@@ -187,6 +187,7 @@ class BenchmarkTools:
         call_method = getattr(tokenizer, "__call__", None)
         return callable(call_method)
 
+
 ###############################################################################
 class BenchmarkService(BenchmarkServiceExecutionMixin):
     TOKENIZER_ID_MAX_LENGTH = 160
@@ -258,10 +259,9 @@ class BenchmarkService(BenchmarkServiceExecutionMixin):
                 continue
             cache_dir = Path(self.get_tokenizer_cache_dir(tokenizer_name))
             if source == "custom":
-                has_artifact = (
-                    (cache_dir / "tokenizer.json").is_file()
-                    and (cache_dir / "tokenizer.json").stat().st_size > 0
-                )
+                has_artifact = (cache_dir / "tokenizer.json").is_file() and (
+                    cache_dir / "tokenizer.json"
+                ).stat().st_size > 0
             else:
                 has_artifact = cache_dir.is_dir() and any(
                     path.is_file() and path.stat().st_size > 0
@@ -280,13 +280,9 @@ class BenchmarkService(BenchmarkServiceExecutionMixin):
             raise ValueError("Dataset name must be specified.")
 
         if self.get_dataset_document_count(payload.dataset_name) == 0:
-            raise ValueError(
-                f"Dataset '{payload.dataset_name}' not found or empty"
-            )
+            raise ValueError(f"Dataset '{payload.dataset_name}' not found or empty")
 
-        missing_tokenizers = self.get_missing_persisted_tokenizers(
-            payload.tokenizers
-        )
+        missing_tokenizers = self.get_missing_persisted_tokenizers(payload.tokenizers)
         if missing_tokenizers:
             missing_display = ", ".join(missing_tokenizers[:5])
             if len(missing_tokenizers) > 5:

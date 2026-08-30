@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from server.services.tokenizer_adapters import UniversalTokenizerAdapter
 
+
 ###############################################################################
 class DummyTokenizer:
     unk_token_id = 0
@@ -11,12 +12,13 @@ class DummyTokenizer:
         del kwargs
         return {"input_ids": [[1, 2], [0]]}
 
+
 ###############################################################################
 class RawEncoding:
-
     # -------------------------------------------------------------------------
     def __init__(self, ids: list[int]) -> None:
         self.ids = ids
+
 
 ###############################################################################
 class RawTokenizer:
@@ -25,6 +27,7 @@ class RawTokenizer:
     # -------------------------------------------------------------------------
     def encode(self, text: str) -> RawEncoding:
         return RawEncoding([1, 0] if text == "unknown" else [1, 2, 3])
+
 
 ###############################################################################
 class PaddingTokenizer:
@@ -37,6 +40,7 @@ class PaddingTokenizer:
         assert kwargs["padding"] is True
         assert self.pad_token == self.eos_token
         return {"input_ids": [[1] for _ in texts]}
+
 
 ###############################################################################
 def test_adapter_returns_normalized_structure() -> None:
@@ -51,6 +55,7 @@ def test_adapter_returns_normalized_structure() -> None:
     assert encoded.token_counts == [2, 1]
     assert encoded.unknown_counts == [0, 1]
 
+
 ###############################################################################
 def test_adapter_accepts_raw_tokenizers_encoding_objects() -> None:
     adapter = UniversalTokenizerAdapter("raw", RawTokenizer())
@@ -64,6 +69,7 @@ def test_adapter_accepts_raw_tokenizers_encoding_objects() -> None:
     assert encoded.input_ids_by_doc == [[1, 2, 3], [1, 0]]
     assert encoded.token_counts == [3, 2]
     assert encoded.unknown_counts == [0, 1]
+
 
 ###############################################################################
 def test_adapter_uses_eos_token_for_padding_when_pad_token_is_missing() -> None:
