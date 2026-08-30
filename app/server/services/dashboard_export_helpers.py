@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
+
 ###############################################################################
 class DashboardExportFormatting:
-
     # -------------------------------------------------------------------------
     def _parse_zipf_curve(self, value: Any) -> list[dict[str, float]]:
         if not isinstance(value, list):

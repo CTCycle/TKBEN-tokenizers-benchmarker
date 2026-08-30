@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from server import app as app_module
 from server.services import startup_validation
 
+
 ###############################################################################
 def test_build_cors_origins_normalizes_local_hosts(
     monkeypatch: pytest.MonkeyPatch,
@@ -20,6 +21,7 @@ def test_build_cors_origins_normalizes_local_hosts(
 
     assert origins == ["http://127.0.0.1:8000", "http://localhost:8000"]
 
+
 ###############################################################################
 def test_build_cors_origins_rejects_invalid_port(
     monkeypatch: pytest.MonkeyPatch,
@@ -28,6 +30,7 @@ def test_build_cors_origins_rejects_invalid_port(
 
     with pytest.raises(RuntimeError, match="UI_PORT must be a valid integer"):
         startup_validation.build_cors_origins()
+
 
 ###############################################################################
 def test_run_startup_validations_loads_environment_and_creates_runtime_directories(
@@ -57,6 +60,7 @@ def test_run_startup_validations_loads_environment_and_creates_runtime_directori
     assert datasets_path.is_dir()
     assert tokenizers_path.is_dir()
     assert templates_path.is_dir()
+
 
 ###############################################################################
 def test_create_app_initializes_startup_state(

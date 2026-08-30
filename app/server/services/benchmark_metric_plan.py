@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+
 ###############################################################################
 @dataclass(frozen=True)
 class BenchmarkMetricPlan:
@@ -21,6 +22,7 @@ class BenchmarkMetricPlan:
     needs_per_document_memory: bool
     needs_per_document_stats: bool
 
+
 ###############################################################################
 def build_metric_plan(
     selected_metric_keys: list[str],
@@ -30,7 +32,10 @@ def build_metric_plan(
     selected = set(selected_metric_keys)
     needs_throughput = any(key.startswith("eff.") for key in selected)
     needs_latency = any(key.startswith("lat.") for key in selected)
-    needs_latency_distribution = bool({"lat.encode_latency_distribution", "doc.encode_latency_distribution"} & selected)
+    needs_latency_distribution = bool(
+        {"lat.encode_latency_distribution", "doc.encode_latency_distribution"}
+        & selected
+    )
     needs_fidelity = any(key.startswith("fid.") for key in selected)
     needs_round_trip = bool(
         {"fid.exact_round_trip_rate", "fid.normalized_round_trip_rate"} & selected
@@ -43,7 +48,10 @@ def build_metric_plan(
     needs_fragmentation_buckets = "frag.fragmentation_by_word_length_bucket" in selected
     needs_resources = any(key.startswith("res.") for key in selected)
     needs_per_document_token_counts = "doc.tokens_count_distribution" in selected
-    needs_per_document_fragmentation = bool({"doc.bytes_per_token_distribution", "doc.pieces_per_word_distribution"} & selected)
+    needs_per_document_fragmentation = bool(
+        {"doc.bytes_per_token_distribution", "doc.pieces_per_word_distribution"}
+        & selected
+    )
     needs_per_document_latency = "doc.encode_latency_distribution" in selected
     needs_per_document_memory = "doc.peak_rss_distribution" in selected
     return BenchmarkMetricPlan(
@@ -61,5 +69,13 @@ def build_metric_plan(
         needs_per_document_fragmentation=needs_per_document_fragmentation,
         needs_per_document_latency=needs_per_document_latency,
         needs_per_document_memory=needs_per_document_memory,
-        needs_per_document_stats=store_per_document_stats or any((needs_per_document_token_counts, needs_per_document_fragmentation, needs_per_document_latency, needs_per_document_memory)),
+        needs_per_document_stats=store_per_document_stats
+        or any(
+            (
+                needs_per_document_token_counts,
+                needs_per_document_fragmentation,
+                needs_per_document_latency,
+                needs_per_document_memory,
+            )
+        ),
     )

@@ -24,9 +24,11 @@ from server.services.benchmarks import BenchmarkTools
 from server.services.keys import HFAccessKeyService
 from server.services.tokenizer_storage import TokenizerStorageMixin
 
+
 ###############################################################################
 class TokenizerDownloadTimeoutError(TimeoutError):
     """Raised when a tokenizer provider load exceeds the job timeout."""
+
 
 ###############################################################################
 class TokenizersService(TokenizerStorageMixin):
@@ -37,11 +39,13 @@ class TokenizersService(TokenizerStorageMixin):
     SUPPORTED_PIPELINE_TAGS = tuple(item.value for item in SupportedTokenizerPipeline)
     TOKENIZER_METADATA_FILES = frozenset({"config.json", "tokenizer_config.json"})
     FAST_TOKENIZER_FILES = frozenset({"tokenizer.json"})
-    SENTENCEPIECE_TOKENIZER_FILES = frozenset({
-        "sentencepiece.bpe.model",
-        "spiece.model",
-        "tokenizer.model",
-    })
+    SENTENCEPIECE_TOKENIZER_FILES = frozenset(
+        {
+            "sentencepiece.bpe.model",
+            "spiece.model",
+            "tokenizer.model",
+        }
+    )
     TOKENIZER_DOWNLOAD_TIMEOUT_SECONDS = 120.0
 
     # -------------------------------------------------------------------------
@@ -153,7 +157,12 @@ class TokenizersService(TokenizerStorageMixin):
         vocabulary_size: int | None = None,
     ) -> list[dict[str, Any]]:
         catalog: list[dict[str, Any]] = []
-        for name, tokenizer_source, has_report, metadata in self.repository.list_downloaded_tokenizer_catalog():
+        for (
+            name,
+            tokenizer_source,
+            has_report,
+            metadata,
+        ) in self.repository.list_downloaded_tokenizer_catalog():
             has_artifact = (
                 self.has_custom_tokenizer_artifact(name)
                 if tokenizer_source == "custom"
@@ -175,18 +184,23 @@ class TokenizersService(TokenizerStorageMixin):
                     )
                 except Exception:  # noqa: BLE001
                     parsed_size = None
-            catalog.append({
-                "tokenizer_name": name,
-                "source": tokenizer_source,
-                "has_report": has_report,
-                "vocabulary_size": parsed_size,
-            })
+            catalog.append(
+                {
+                    "tokenizer_name": name,
+                    "source": tokenizer_source,
+                    "has_report": has_report,
+                    "vocabulary_size": parsed_size,
+                }
+            )
 
         search_term = (search or "").strip().casefold()
         filtered = [
-            item for item in catalog
+            item
+            for item in catalog
             if (source == "all" or item["source"] == source)
-            and (not search_term or search_term in str(item["tokenizer_name"]).casefold())
+            and (
+                not search_term or search_term in str(item["tokenizer_name"]).casefold()
+            )
             and (
                 vocabulary_size is None
                 or (
@@ -338,13 +352,19 @@ class TokenizersService(TokenizerStorageMixin):
         vocabulary_size = None
         if isinstance(config, dict):
             configured_size = config.get("vocab_size")
-            if isinstance(configured_size, int) and not isinstance(configured_size, bool) and configured_size >= 0:
+            if (
+                isinstance(configured_size, int)
+                and not isinstance(configured_size, bool)
+                and configured_size >= 0
+            ):
                 vocabulary_size = configured_size
         return TokenizerDiscoveryItem(
             identifier=identifier,
             pipeline_tag=pipeline_tag,
             library_name=library_name,
-            downloads=TokenizersService._non_negative_int(getattr(model, "downloads", None)),
+            downloads=TokenizersService._non_negative_int(
+                getattr(model, "downloads", None)
+            ),
             likes=TokenizersService._non_negative_int(getattr(model, "likes", None)),
             last_modified=last_modified,
             gated=getattr(model, "gated", None),
@@ -355,7 +375,11 @@ class TokenizersService(TokenizerStorageMixin):
     # -------------------------------------------------------------------------
     @staticmethod
     def _non_negative_int(value: object) -> int | None:
-        return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+        return (
+            value
+            if isinstance(value, int) and not isinstance(value, bool) and value >= 0
+            else None
+        )
 
     # -------------------------------------------------------------------------
     @staticmethod

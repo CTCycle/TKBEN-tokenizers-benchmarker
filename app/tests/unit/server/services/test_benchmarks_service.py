@@ -7,9 +7,9 @@ import pytest
 from server.contracts.benchmarks import BenchmarkRunRequest
 from server.services.benchmarks import BenchmarkService
 
+
 ###############################################################################
 class FakeBenchmarkRepository:
-
     # -------------------------------------------------------------------------
     def get_dataset_document_count(self, dataset_name: str) -> int:
         return 7 if dataset_name == "custom/sample" else 0
@@ -21,10 +21,9 @@ class FakeBenchmarkRepository:
     # -------------------------------------------------------------------------
     def get_tokenizer_sources(self, tokenizer_ids: list[str]) -> dict[str, str]:
         return {
-            name: "huggingface"
-            for name in tokenizer_ids
-            if name == "bert-base-uncased"
+            name: "huggingface" for name in tokenizer_ids if name == "bert-base-uncased"
         }
+
 
 ###############################################################################
 def test_benchmark_service_uses_repository_for_dataset_and_tokenizer_checks() -> None:
@@ -36,6 +35,7 @@ def test_benchmark_service_uses_repository_for_dataset_and_tokenizer_checks() ->
 
     missing = service.get_missing_persisted_tokenizers(["bert-base-uncased", "missing"])
     assert "missing" in missing
+
 
 ###############################################################################
 def test_benchmark_service_preserves_repository_missing_with_cached_files(
@@ -54,13 +54,16 @@ def test_benchmark_service_preserves_repository_missing_with_cached_files(
 
     assert missing == ["missing"]
 
+
 ###############################################################################
 def test_prepare_run_owns_admission_checks_and_normalizes_job_payload(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     service = BenchmarkService()
     monkeypatch.setattr(service, "get_dataset_document_count", lambda dataset_name: 3)
-    monkeypatch.setattr(service, "get_missing_persisted_tokenizers", lambda tokenizers: [])
+    monkeypatch.setattr(
+        service, "get_missing_persisted_tokenizers", lambda tokenizers: []
+    )
 
     payload = BenchmarkRunRequest(
         tokenizers=["CUSTOM_demo"],

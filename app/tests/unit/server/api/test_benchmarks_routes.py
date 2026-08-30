@@ -4,9 +4,9 @@ from fastapi.testclient import TestClient
 
 from server.app import app
 
+
 ###############################################################################
 class DummyJobManager:
-
     # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.last_job_type = ""
@@ -25,6 +25,7 @@ class DummyJobManager:
     def get_job_status(self, job_id: str):
         del job_id
         return {"job_type": self.last_job_type, "status": "pending"}
+
 
 ###############################################################################
 def test_benchmark_run_route_returns_202(monkeypatch) -> None:
@@ -60,6 +61,7 @@ def test_benchmark_run_route_returns_202(monkeypatch) -> None:
     assert resp.status_code == 202
     assert resp.json()["job_id"] == "job-bench"
 
+
 ###############################################################################
 def test_benchmark_run_accepts_selected_persisted_custom_tokenizer(
     monkeypatch,
@@ -91,6 +93,7 @@ def test_benchmark_run_accepts_selected_persisted_custom_tokenizer(
     assert resp.status_code == 202
     assert prepared_payload["tokenizers"] == ["CUSTOM_demo"]
 
+
 ###############################################################################
 def test_benchmark_run_rejects_removed_custom_tokenizer_field() -> None:
     response = TestClient(app).post(
@@ -105,6 +108,7 @@ def test_benchmark_run_rejects_removed_custom_tokenizer_field() -> None:
     assert response.status_code == 422
     assert "custom_tokenizer_name" in response.text
 
+
 ###############################################################################
 def test_benchmark_list_and_by_id(monkeypatch) -> None:
     from server.contracts.benchmarks import BenchmarkReportListResponse
@@ -115,22 +119,26 @@ def test_benchmark_list_and_by_id(monkeypatch) -> None:
     def fake_list(self, query):
         del self
         captured.update(query.model_dump())
-        return BenchmarkReportListResponse.model_validate({
-            "reports": [{
-                "report_id": 1,
-                "report_version": 5,
-                "created_at": "2026-01-01T00:00:00Z",
-                "run_name": "run",
-                "dataset_name": "custom/sample",
-                "documents_processed": 2,
-                "tokenizers_count": 1,
-                "tokenizers_processed": ["bert-base-uncased"],
-                "selected_metric_keys": ["global.tokenization_speed_tps"],
-            }],
-            "total": 1,
-            "offset": 0,
-            "limit": 25,
-        })
+        return BenchmarkReportListResponse.model_validate(
+            {
+                "reports": [
+                    {
+                        "report_id": 1,
+                        "report_version": 5,
+                        "created_at": "2026-01-01T00:00:00Z",
+                        "run_name": "run",
+                        "dataset_name": "custom/sample",
+                        "documents_processed": 2,
+                        "tokenizers_count": 1,
+                        "tokenizers_processed": ["bert-base-uncased"],
+                        "selected_metric_keys": ["global.tokenization_speed_tps"],
+                    }
+                ],
+                "total": 1,
+                "offset": 0,
+                "limit": 25,
+            }
+        )
 
     monkeypatch.setattr(
         BenchmarkReportService,
@@ -185,7 +193,9 @@ def test_benchmark_list_and_by_id(monkeypatch) -> None:
 
     client = TestClient(app)
 
-    listed = client.get("/api/benchmarks/reports?search= run &sort=oldest&offset=5&limit=10")
+    listed = client.get(
+        "/api/benchmarks/reports?search= run &sort=oldest&offset=5&limit=10"
+    )
     assert listed.status_code == 200
     assert listed.json()["reports"][0]["report_id"] == 1
     assert listed.json()["total"] == 1
@@ -195,15 +205,21 @@ def test_benchmark_list_and_by_id(monkeypatch) -> None:
     assert by_id.status_code == 200
     assert by_id.json()["report_id"] == 1
 
+
 ###############################################################################
 def test_benchmark_report_delete_route_returns_204_or_404(monkeypatch) -> None:
     from server.services.benchmark_reports import BenchmarkReportService
 
-    monkeypatch.setattr(BenchmarkReportService, "delete_benchmark_report", lambda self, report_id: report_id == 4)
+    monkeypatch.setattr(
+        BenchmarkReportService,
+        "delete_benchmark_report",
+        lambda self, report_id: report_id == 4,
+    )
     client = TestClient(app)
     assert client.delete("/api/benchmarks/reports/4").status_code == 204
     missing = client.delete("/api/benchmarks/reports/9")
     assert missing.status_code == 404
+
 
 ###############################################################################
 def test_benchmark_by_id_accepts_cancelled_contract(monkeypatch) -> None:

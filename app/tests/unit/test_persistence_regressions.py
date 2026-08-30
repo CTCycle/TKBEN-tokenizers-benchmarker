@@ -24,12 +24,13 @@ from server.repositories.schemas.models import (
 from server.services.benchmarks import BenchmarkService
 from server.repositories.tokenizers import TokenizerRepository
 
+
 ###############################################################################
 class FakeQueries:
-
     # -------------------------------------------------------------------------
     def __init__(self, engine: sqlalchemy.Engine) -> None:
         self.engine = engine
+
 
 ###############################################################################
 def test_dataset_repository_ensure_dataset_id_is_idempotent() -> None:
@@ -44,6 +45,7 @@ def test_dataset_repository_ensure_dataset_id_is_idempotent() -> None:
     with Session(bind=engine) as session:
         count = session.execute(select(sqlalchemy.func.count(Dataset.id))).scalar_one()
     assert int(count) == 1
+
 
 ###############################################################################
 def test_tokenizer_repository_insert_if_missing_is_idempotent(
@@ -63,6 +65,7 @@ def test_tokenizer_repository_insert_if_missing_is_idempotent(
     assert len(rows) == 1
     assert rows[0].name == "bert-base-uncased"
     assert rows[0].source == "huggingface"
+
 
 ###############################################################################
 def test_dataset_delete_cascades_documents_sessions_and_benchmark_reports() -> None:
@@ -84,28 +87,32 @@ def test_dataset_delete_cascades_documents_sessions_and_benchmark_reports() -> N
         session.add(dataset)
         session.flush()
         session.add(DatasetDocument(dataset_id=dataset.id, ordinal=0, text="hello"))
-        session.add(AnalysisSession(
-            dataset_id=dataset.id,
-            status="completed",
-            report_version=2,
-            created_at=now,
-            completed_at=now,
-            parameters={},
-            selected_metric_keys=[],
-        ))
-        session.add(BenchmarkReport(
-            dataset_id=dataset.id,
-            report_version=1,
-            schema_version=1,
-            methodology_version="test",
-            created_at=now,
-            status="completed",
-            documents_processed=1,
-            tokenizers_count=0,
-            tokenizers_processed=[],
-            selected_metric_keys=[],
-            payload={},
-        ))
+        session.add(
+            AnalysisSession(
+                dataset_id=dataset.id,
+                status="completed",
+                report_version=2,
+                created_at=now,
+                completed_at=now,
+                parameters={},
+                selected_metric_keys=[],
+            )
+        )
+        session.add(
+            BenchmarkReport(
+                dataset_id=dataset.id,
+                report_version=1,
+                schema_version=1,
+                methodology_version="test",
+                created_at=now,
+                status="completed",
+                documents_processed=1,
+                tokenizers_count=0,
+                tokenizers_processed=[],
+                selected_metric_keys=[],
+                payload={},
+            )
+        )
         session.commit()
 
     repository.delete_dataset("custom/cascade")
@@ -115,6 +122,7 @@ def test_dataset_delete_cascades_documents_sessions_and_benchmark_reports() -> N
         assert session.execute(select(DatasetDocument)).scalars().all() == []
         assert session.execute(select(AnalysisSession)).scalars().all() == []
         assert session.execute(select(BenchmarkReport)).scalars().all() == []
+
 
 ###############################################################################
 def test_tokenizer_delete_cascades_reports_and_vocabulary(
@@ -132,18 +140,22 @@ def test_tokenizer_delete_cascades_reports_and_vocabulary(
         tokenizer = Tokenizer(name="custom/cascade", created_at=now)
         session.add(tokenizer)
         session.flush()
-        session.add(TokenizerReport(
-            tokenizer_id=tokenizer.id,
-            report_version=1,
-            created_at=now,
-            metadata_json={},
-            token_length_histogram={},
-        ))
-        session.add(TokenizerVocabulary(
-            tokenizer_id=tokenizer.id,
-            token_id=0,
-            token="hello",
-        ))
+        session.add(
+            TokenizerReport(
+                tokenizer_id=tokenizer.id,
+                report_version=1,
+                created_at=now,
+                metadata_json={},
+                token_length_histogram={},
+            )
+        )
+        session.add(
+            TokenizerVocabulary(
+                tokenizer_id=tokenizer.id,
+                token_id=0,
+                token="hello",
+            )
+        )
         session.commit()
 
     assert repository.delete_tokenizer("custom/cascade") is True
@@ -152,6 +164,7 @@ def test_tokenizer_delete_cascades_reports_and_vocabulary(
         assert session.execute(select(Tokenizer)).scalars().all() == []
         assert session.execute(select(TokenizerReport)).scalars().all() == []
         assert session.execute(select(TokenizerVocabulary)).scalars().all() == []
+
 
 ###############################################################################
 def test_benchmark_repository_requires_existing_tokenizer_ids(
@@ -168,10 +181,12 @@ def test_benchmark_repository_requires_existing_tokenizer_ids(
 
     with Session(bind=engine) as session:
         now = datetime.now(timezone.utc)
-        session.add_all([
-            Tokenizer(name="tok/a", created_at=now),
-            Tokenizer(name="tok/b", created_at=now),
-        ])
+        session.add_all(
+            [
+                Tokenizer(name="tok/a", created_at=now),
+                Tokenizer(name="tok/b", created_at=now),
+            ]
+        )
         session.commit()
 
     mapping = service.repository.get_tokenizer_ids(["tok/a", "tok/b", "tok/a"])
@@ -183,6 +198,7 @@ def test_benchmark_repository_requires_existing_tokenizer_ids(
             select(sqlalchemy.func.count(Tokenizer.id))
         ).scalar_one()
     assert int(count) == 2
+
 
 ###############################################################################
 def test_session_report_preserves_native_json_metrics_when_numeric_is_nan(
@@ -251,21 +267,28 @@ def test_session_report_preserves_native_json_metrics_when_numeric_is_nan(
     ]
     assert report["word_cloud_terms"] == [{"word": "hello", "count": 9, "weight": 100}]
 
+
 ###############################################################################
 def test_session_report_rejects_json_encoded_storage(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     repository = DatasetRepository.__new__(DatasetRepository)
-    monkeypatch.setattr(repository, "_load_metric_rows_for_session", lambda session_id: [])
-    monkeypatch.setattr(repository, "_load_histogram_rows_for_session", lambda session_id: {})
+    monkeypatch.setattr(
+        repository, "_load_metric_rows_for_session", lambda session_id: []
+    )
+    monkeypatch.setattr(
+        repository, "_load_histogram_rows_for_session", lambda session_id: {}
+    )
 
     with pytest.raises(ValueError, match="native JSON array"):
-        repository._build_session_report_response({
-            "id": 123,
-            "report_version": 2,
-            "created_at": "2026-02-16T00:00:00Z",
-            "dataset_name": "custom/encoded",
-            "session_name": None,
-            "selected_metric_keys": "[]",
-            "parameters": {},
-        })
+        repository._build_session_report_response(
+            {
+                "id": 123,
+                "report_version": 2,
+                "created_at": "2026-02-16T00:00:00Z",
+                "dataset_name": "custom/encoded",
+                "session_name": None,
+                "selected_metric_keys": "[]",
+                "parameters": {},
+            }
+        )

@@ -4,9 +4,9 @@ from fastapi.testclient import TestClient
 
 from server.app import app
 
+
 ###############################################################################
 class DummyJobManager:
-
     # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.last_job_type = ""
@@ -27,6 +27,7 @@ class DummyJobManager:
     def get_job_status(self, job_id: str):
         del job_id
         return {"job_type": self.last_job_type, "status": "pending"}
+
 
 ###############################################################################
 def test_dataset_job_start_routes_return_202(monkeypatch) -> None:
@@ -64,6 +65,7 @@ def test_dataset_job_start_routes_return_202(monkeypatch) -> None:
     assert analyze_resp.status_code == 202
     assert analyze_resp.json()["job_id"] == "job-123"
 
+
 ###############################################################################
 def test_dataset_upload_rejects_oversized_file_before_job_dispatch(monkeypatch) -> None:
     manager = DummyJobManager()
@@ -91,6 +93,7 @@ def test_dataset_upload_rejects_oversized_file_before_job_dispatch(monkeypatch) 
 
     assert response.status_code == 413
     assert manager.started_jobs == 0
+
 
 ###############################################################################
 def test_dataset_list_passes_catalog_filters_to_service(monkeypatch) -> None:
@@ -122,8 +125,11 @@ def test_dataset_list_passes_catalog_filters_to_service(monkeypatch) -> None:
         "document_count": 5,
     }
 
+
 ###############################################################################
-def test_dataset_delete_normalizes_identifier_and_returns_not_found_for_repeat(monkeypatch) -> None:
+def test_dataset_delete_normalizes_identifier_and_returns_not_found_for_repeat(
+    monkeypatch,
+) -> None:
     from server.services.datasets import DatasetService
 
     calls: list[tuple[str, str]] = []

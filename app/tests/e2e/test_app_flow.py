@@ -11,6 +11,7 @@ import pytest
 from playwright.sync_api import Page, expect
 from playwright.sync_api import APIRequestContext
 
+
 ###############################################################################
 def _upload_dataset_for_ui_test(
     api_context: APIRequestContext,
@@ -42,6 +43,7 @@ def _upload_dataset_for_ui_test(
     assert job_status.get("status") == "completed", job_status.get("error")
     return dataset_name
 
+
 ###############################################################################
 class TestAppShell:
     """Tests for core layout and routing."""
@@ -55,6 +57,7 @@ class TestAppShell:
         page.goto(f"{base_url}{path}")
         expect(page).to_have_url(re.compile(r".*/dataset/?$"))
         expect(page.get_by_text("Dataset Usage")).to_be_visible()
+
 
 ###############################################################################
 class TestDatasetPage:
@@ -103,11 +106,15 @@ class TestDatasetPage:
         page.wait_for_timeout(500)
 
         expect(page.get_by_text("Loading datasets...", exact=True)).to_be_visible()
-        expect(page.locator(".dataset-preview-row").filter(has_text="custom/second")).to_have_count(0)
+        expect(
+            page.locator(".dataset-preview-row").filter(has_text="custom/second")
+        ).to_have_count(0)
 
         page.wait_for_timeout(850)
         expect(page.get_by_text("Loading datasets...", exact=True)).to_have_count(0)
-        expect(page.locator(".dataset-preview-row").filter(has_text="custom/second")).to_have_count(1)
+        expect(
+            page.locator(".dataset-preview-row").filter(has_text="custom/second")
+        ).to_have_count(1)
 
     # -------------------------------------------------------------------------
     def test_row_click_loads_latest_report_for_selected_dataset(
@@ -255,14 +262,18 @@ class TestDatasetPage:
         ):
             row.get_by_role("button", name="Remove dataset").click()
 
-        expect(page.locator(".dataset-preview-row").filter(has_text=dataset_name)).to_have_count(0)
+        expect(
+            page.locator(".dataset-preview-row").filter(has_text=dataset_name)
+        ).to_have_count(0)
         assert delete_count == 1
 
         refreshed = api_context.get("/api/datasets/list")
         assert refreshed.ok
         assert dataset_name not in {
-            str(item.get("dataset_name")) for item in refreshed.json().get("datasets", [])
+            str(item.get("dataset_name"))
+            for item in refreshed.json().get("datasets", [])
         }
+
 
 ###############################################################################
 class TestTokenizersPage:
@@ -283,21 +294,25 @@ class TestTokenizersPage:
             if "unlikely-query" in url:
                 route.fulfill(json={"items": [], "count": 0, "fetched_count": 0})
                 return
-            route.fulfill(json={
-                "items": [{
-                    "identifier": "google/bert-base-uncased",
-                    "pipeline_tag": "fill-mask",
-                    "library_name": "transformers",
-                    "downloads": 1234,
-                    "likes": 12,
-                    "last_modified": None,
-                    "gated": False,
-                    "tags": ["core"],
-                    "vocabulary_size": None,
-                }],
-                "count": 1,
-                "fetched_count": 1,
-            })
+            route.fulfill(
+                json={
+                    "items": [
+                        {
+                            "identifier": "google/bert-base-uncased",
+                            "pipeline_tag": "fill-mask",
+                            "library_name": "transformers",
+                            "downloads": 1234,
+                            "likes": 12,
+                            "last_modified": None,
+                            "gated": False,
+                            "tags": ["core"],
+                            "vocabulary_size": None,
+                        }
+                    ],
+                    "count": 1,
+                    "fetched_count": 1,
+                }
+            )
 
         page.route("**/api/tokenizers/discover*", fulfill_discovery)
         page.goto(f"{base_url}/tokenizers")
@@ -309,19 +324,32 @@ class TestTokenizersPage:
         expect(dialog.get_by_role("spinbutton", name="Results")).to_be_visible()
         expect(dialog.get_by_label("Category")).to_be_visible()
         expect(dialog.get_by_label("Sort")).to_be_visible()
-        expect(dialog.get_by_role("button", name="Advanced filters")).to_have_attribute("aria-expanded", "false")
+        expect(dialog.get_by_role("button", name="Advanced filters")).to_have_attribute(
+            "aria-expanded", "false"
+        )
         dialog.get_by_role("button", name="Advanced filters").click()
         expect(dialog.get_by_label("Author")).to_be_visible()
         expect(dialog.get_by_label("Required tags")).to_be_visible()
 
-        expect(dialog.get_by_text("google/bert-base-uncased", exact=True)).to_be_visible()
+        expect(
+            dialog.get_by_text("google/bert-base-uncased", exact=True)
+        ).to_be_visible()
         expect(dialog.get_by_text("Unknown", exact=True)).to_be_visible()
         expect(dialog.get_by_text("1234 downloads", exact=True)).to_be_visible()
 
         dialog.get_by_label("Search").fill("unlikely-query")
-        with page.expect_request(lambda request: "/api/tokenizers/discover" in request.url and "unlikely-query" in request.url):
+        with page.expect_request(
+            lambda request: (
+                "/api/tokenizers/discover" in request.url
+                and "unlikely-query" in request.url
+            )
+        ):
             dialog.get_by_role("button", name="Search Hugging Face").click()
-        expect(dialog.get_by_text("No tokenizer repositories match this query.", exact=True)).to_be_visible()
+        expect(
+            dialog.get_by_text(
+                "No tokenizer repositories match this query.", exact=True
+            )
+        ).to_be_visible()
 
     # -------------------------------------------------------------------------
     def test_custom_tokenizer_delete_removes_preview_row_and_backend_item(
@@ -347,7 +375,9 @@ class TestTokenizersPage:
         tokenizer_name = upload.json()["tokenizer_name"]
 
         page.goto(f"{base_url}/tokenizers")
-        row = page.locator(".tokenizer-preview-row").filter(has_text=tokenizer_name).first
+        row = (
+            page.locator(".tokenizer-preview-row").filter(has_text=tokenizer_name).first
+        )
         expect(row).to_be_visible()
 
         page.once("dialog", lambda dialog: dialog.accept())
@@ -360,12 +390,16 @@ class TestTokenizersPage:
         ):
             row.get_by_role("button", name=f"Remove {tokenizer_name}").click()
 
-        expect(page.locator(".tokenizer-preview-row").filter(has_text=tokenizer_name)).to_have_count(0)
+        expect(
+            page.locator(".tokenizer-preview-row").filter(has_text=tokenizer_name)
+        ).to_have_count(0)
         refreshed = api_context.get("/api/tokenizers/list")
         assert refreshed.ok
         assert tokenizer_name not in {
-            str(item.get("tokenizer_name")) for item in refreshed.json().get("tokenizers", [])
+            str(item.get("tokenizer_name"))
+            for item in refreshed.json().get("tokenizers", [])
         }
+
 
 ###############################################################################
 class TestCrossBenchmarkPage:
@@ -410,7 +444,10 @@ class TestCrossBenchmarkPage:
         assert navbar_box and title_box and content_box
         assert content_box["y"] >= title_box["y"] + title_box["height"]
         assert content_box["x"] >= navbar_box["x"]
-        assert content_box["x"] + content_box["width"] <= navbar_box["x"] + navbar_box["width"] + 1
+        assert (
+            content_box["x"] + content_box["width"]
+            <= navbar_box["x"] + navbar_box["width"] + 1
+        )
 
     # -------------------------------------------------------------------------
     def test_cross_benchmark_shows_diagnostics_for_failed_tokenizer_report(
@@ -515,8 +552,10 @@ class TestCrossBenchmarkPage:
 
         page.goto(f"{base_url}/cross-benchmark")
         expect(page.get_by_text("mock run", exact=True)).to_be_visible()
-        page.get_by_role("button", name=re.compile(r"Reports \(1\)" )).first.click()
+        page.get_by_role("button", name=re.compile(r"Reports \(1\)")).first.click()
         expect(page.get_by_role("dialog", name="Benchmark Reports")).to_be_visible()
         page.get_by_role("button", name=re.compile("mock run")).click()
         expect(page.get_by_text("Run Diagnostics")).to_be_visible()
-        expect(page.get_by_text("broken/tokenizer: RuntimeError", exact=False)).to_be_visible()
+        expect(
+            page.get_by_text("broken/tokenizer: RuntimeError", exact=False)
+        ).to_be_visible()

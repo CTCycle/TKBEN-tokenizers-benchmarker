@@ -35,13 +35,16 @@ from server.services.benchmark_spool import BenchmarkTextSpool
 from server.services.benchmark_streams import iter_limited_rows
 from server.services.tokenizer_adapters import UniversalTokenizerAdapter
 
+
 ###############################################################################
 class BenchmarkCancelledError(RuntimeError):
     pass
 
+
 ###############################################################################
 def _as_float(value: object, default: float = 0.0) -> float:
     return float(value) if isinstance(value, int | float) else default
+
 
 ###############################################################################
 def normalize_vocabulary_token(token: object) -> str:
@@ -49,6 +52,7 @@ def normalize_vocabulary_token(token: object) -> str:
     for prefix in ("##", "▁", "Ġ"):
         normalized = normalized.removeprefix(prefix)
     return normalized
+
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -59,6 +63,7 @@ class SpooledTextBatchFactory:
     # -------------------------------------------------------------------------
     def __call__(self) -> Any:
         return self.spool.iter_text_batches(self.batch_size)
+
 
 ###############################################################################
 class BenchmarkServiceExecutionMixin:
@@ -74,7 +79,9 @@ class BenchmarkServiceExecutionMixin:
     load_tokenizers: ClassVar[Callable[..., dict[str, Any]]]
     stream_dataset_rows_from_database: ClassVar[Callable[..., Any]]
     repository: Any = None
-    result_builder: BenchmarkResultBuilder = cast(BenchmarkResultBuilder, cast(object, None))
+    result_builder: BenchmarkResultBuilder = cast(
+        BenchmarkResultBuilder, cast(object, None)
+    )
 
     # -------------------------------------------------------------------------
     def run_benchmarks(
@@ -312,7 +319,9 @@ class BenchmarkServiceExecutionMixin:
                                 words, word_piece_counts, strict=False
                             ):
                                 fragmentation_bucket_values[
-                                    self.result_builder._fragmentation_bucket_label(len(word))
+                                    self.result_builder._fragmentation_bucket_label(
+                                        len(word)
+                                    )
                                 ].append(float(piece_count))
                             pieces_per_word = float(np.mean(word_piece_counts))
                     decoded_text = self.tools.safe_decode(tokenizer, encoded_ids)
@@ -476,14 +485,40 @@ class BenchmarkServiceExecutionMixin:
                         compression_chars_per_token=compression_chars_per_token,
                         compression_bytes_per_character=compression_bytes_per_character,
                         fragmentation_buckets=fragmentation_buckets,
-                        peak_rss_mb=(max(values) if (values := [float(obs.peak_rss_mb) for obs in observations if isinstance(obs.peak_rss_mb, int | float)]) and metric_plan.needs_resources else None),
-                        memory_delta_mb=(max(values) - min(values) if values and metric_plan.needs_resources else None),
+                        peak_rss_mb=(
+                            max(values)
+                            if (
+                                values := [
+                                    float(obs.peak_rss_mb)
+                                    for obs in observations
+                                    if isinstance(obs.peak_rss_mb, int | float)
+                                ]
+                            )
+                            and metric_plan.needs_resources
+                            else None
+                        ),
+                        memory_delta_mb=(
+                            max(values) - min(values)
+                            if values and metric_plan.needs_resources
+                            else None
+                        ),
                     )
                 )
                 if metric_plan.needs_throughput:
-                    tokenizer_results[-1].efficiency.encode_bytes_per_second_mean = float(throughput_bytes_per_sec)
+                    tokenizer_results[
+                        -1
+                    ].efficiency.encode_bytes_per_second_mean = float(
+                        throughput_bytes_per_sec
+                    )
                 else:
-                    tokenizer_results[-1].efficiency = tokenizer_results[-1].efficiency.model_copy(update={field: None for field in tokenizer_results[-1].efficiency.model_fields})
+                    tokenizer_results[-1].efficiency = tokenizer_results[
+                        -1
+                    ].efficiency.model_copy(
+                        update={
+                            field: None
+                            for field in tokenizer_results[-1].efficiency.model_fields
+                        }
+                    )
 
                 if metric_plan.needs_per_document_stats:
                     sampled_data = pd.DataFrame(sample_rows)
@@ -492,8 +527,13 @@ class BenchmarkServiceExecutionMixin:
                             tokenizer_name=name,
                             data=sampled_data,
                             per_document_latency_ms=(
-                                [(obs.elapsed_ns / 1_000_000.0) / max(1, obs.documents) for obs in observations[:len(sampled_data)]]
-                                if metric_plan.needs_per_document_latency else [None for _ in range(len(sampled_data))]
+                                [
+                                    (obs.elapsed_ns / 1_000_000.0)
+                                    / max(1, obs.documents)
+                                    for obs in observations[: len(sampled_data)]
+                                ]
+                                if metric_plan.needs_per_document_latency
+                                else [None for _ in range(len(sampled_data))]
                             ),
                         )
                     )

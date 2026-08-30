@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from server.services.tokenizer_adapters import UniversalTokenizerAdapter
 
+
 ###############################################################################
 class CapturingTokenizer:
-
     # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.last_kwargs = {}
@@ -14,6 +14,7 @@ class CapturingTokenizer:
         del texts
         self.last_kwargs = dict(kwargs)
         return {"input_ids": [[1], [2]]}
+
 
 ###############################################################################
 def test_adapter_uses_explicit_tokenizer_settings() -> None:

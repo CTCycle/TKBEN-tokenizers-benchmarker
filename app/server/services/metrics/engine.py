@@ -65,6 +65,7 @@ STOPWORDS: dict[str, set[str]] = {
     "it": {"di", "e", "il", "la", "che", "a", "per", "in", "un", "del", "le", "si"},
 }
 
+
 ###############################################################################
 @dataclass
 class RunningMoments:
@@ -126,9 +127,9 @@ class RunningMoments:
         )
         return (m4 / (var * var)) - 3.0
 
+
 ###############################################################################
 class RollingMattr:
-
     # -------------------------------------------------------------------------
     def __init__(self, window_size: int) -> None:
         self.window_size = max(10, int(window_size))
@@ -156,9 +157,9 @@ class RollingMattr:
             return 0.0
         return self.sum_ttr / float(self.total_windows)
 
+
 ###############################################################################
 class DatasetMetricsEngine:
-
     # -------------------------------------------------------------------------
     def __init__(self, parameters: dict[str, Any]) -> None:
         self.parameters = parameters
@@ -217,7 +218,11 @@ class DatasetMetricsEngine:
         for lang, stopwords in STOPWORDS.items():
             hits = sum(1 for token in sample if token in stopwords)
             lang_scores[lang] = hits
-        best_lang = max(lang_scores, key=lambda lang: lang_scores[lang]) if lang_scores else "unknown"
+        best_lang = (
+            max(lang_scores, key=lambda lang: lang_scores[lang])
+            if lang_scores
+            else "unknown"
+        )
         if lang_scores.get(best_lang, 0) >= 2:
             return best_lang
 

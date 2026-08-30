@@ -37,6 +37,7 @@ from server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
 from server.services.dataset_operations import DatasetServiceOperationsMixin
 from server.services.dataset_statistics import HistogramBuilder, LengthStatistics
 
+
 ###############################################################################
 @dataclass(frozen=True)
 class DatasetAlias:
@@ -45,6 +46,7 @@ class DatasetAlias:
     default_split: str | None = None
     streaming: bool = False
     max_documents: int | None = None
+
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -56,6 +58,7 @@ class ResolvedDatasetDownload:
     split: str | None
     streaming: bool
     max_documents: int | None
+
 
 ###############################################################################
 class DatasetDownloadTimeoutError(TimeoutError):
@@ -115,6 +118,7 @@ DATASET_ID_FIELD = "Dataset id"
 DATASET_SPLIT_PATTERN = re.compile(
     r"^[A-Za-z0-9][A-Za-z0-9._-]*(?:\[(?:[0-9]*):(?:[0-9]*)\])?$"
 )
+
 
 ###############################################################################
 class DatasetService(DatasetServiceOperationsMixin):
@@ -444,9 +448,7 @@ class DatasetService(DatasetServiceOperationsMixin):
         if isinstance(dataset, DatasetDict):
             return DatasetDict(
                 {
-                    split_name: split.select(
-                        range(min(max_documents, len(split)))
-                    )
+                    split_name: split.select(range(min(max_documents, len(split))))
                     for split_name, split in dataset.items()
                 }
             )

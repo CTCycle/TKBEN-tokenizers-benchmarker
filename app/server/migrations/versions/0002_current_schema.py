@@ -22,9 +22,11 @@ _LEGACY_METRIC_CHECK = (
     "(json_value IS NOT NULL) = 1"
 )
 
+
 ###############################################################################
 def _is_sqlite() -> bool:
     return op.get_bind().dialect.name == "sqlite"
+
 
 ###############################################################################
 def _alter_metric_value_check(expression: str) -> None:
@@ -35,7 +37,10 @@ def _alter_metric_value_check(expression: str) -> None:
         return
 
     op.drop_constraint("ck_metric_exactly_one_value", "metric_value", type_="check")
-    op.create_check_constraint("ck_metric_exactly_one_value", expression, "metric_value")
+    op.create_check_constraint(
+        "ck_metric_exactly_one_value", expression, "metric_value"
+    )
+
 
 ###############################################################################
 def _alter_report_version_default(default: str) -> None:
@@ -60,10 +65,12 @@ def _alter_report_version_default(default: str) -> None:
         server_default=server_default,
     )
 
+
 ###############################################################################
 def upgrade() -> None:
     _alter_metric_value_check(_CANONICAL_METRIC_CHECK)
     _alter_report_version_default("2")
+
 
 ###############################################################################
 def downgrade() -> None:

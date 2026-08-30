@@ -28,13 +28,16 @@ from server.services.startup_validation import (
     run_startup_validations,
 )
 
+
 ###############################################################################
 def redirect_to_docs() -> RedirectResponse:
     return RedirectResponse(url="/docs")
 
+
 ###############################################################################
 def backend_healthcheck() -> HealthResponse:
     return HealthResponse(status="ok")
+
 
 ###############################################################################
 def register_api_routers(application: FastAPI) -> None:
@@ -54,9 +57,11 @@ def register_api_routers(application: FastAPI) -> None:
     ):
         application.include_router(router, prefix="/api")
 
+
 ###############################################################################
 def register_frontend_routes(application: FastAPI) -> None:
     application.add_api_route("/", redirect_to_docs, methods=["GET"])
+
 
 ###############################################################################
 @asynccontextmanager
@@ -67,6 +72,7 @@ async def app_lifespan(application: FastAPI) -> AsyncIterator[None]:
     initialize_database(settings=settings, startup=True)
 
     yield
+
 
 ###############################################################################
 def create_app() -> FastAPI:

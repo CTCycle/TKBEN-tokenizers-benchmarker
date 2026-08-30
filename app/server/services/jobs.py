@@ -13,6 +13,7 @@ from server.common.utils.logger import logger
 
 TERMINAL_STATUSES = {"completed", "failed", "cancelled"}
 
+
 ###############################################################################
 @dataclass
 class JobState:
@@ -48,9 +49,9 @@ class JobState:
                 "completed_at": self.completed_at,
             }
 
+
 ###############################################################################
 class JobProgressReporter:
-
     # -------------------------------------------------------------------------
     def __init__(self, job_manager: JobManager, job_id: str) -> None:
         self.job_manager = job_manager
@@ -60,9 +61,9 @@ class JobProgressReporter:
     def __call__(self, value: float) -> None:
         self.job_manager.update_progress(self.job_id, value)
 
+
 ###############################################################################
 class JobStopChecker:
-
     # -------------------------------------------------------------------------
     def __init__(self, job_manager: JobManager, job_id: str) -> None:
         self.job_manager = job_manager
@@ -72,9 +73,9 @@ class JobStopChecker:
     def __call__(self) -> bool:
         return self.job_manager.should_stop(self.job_id)
 
+
 ###############################################################################
 class JobManager:
-
     # -------------------------------------------------------------------------
     def __init__(self, terminal_retention_seconds: float = 3600.0) -> None:
         self.jobs: dict[str, JobState] = {}

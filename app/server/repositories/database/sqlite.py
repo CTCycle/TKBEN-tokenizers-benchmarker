@@ -11,6 +11,7 @@ from server.configurations import DatabaseSettings
 from server.repositories.database.base import RepositoryBase
 from server.repositories.database.utils import normalize_sqlite_path
 
+
 ###############################################################################
 class SQLiteRepository(RepositoryBase):
     SQLITE_MAX_VARIABLES = 900
@@ -88,8 +89,20 @@ class SQLiteRepository(RepositoryBase):
             try:
                 for batch in self._batches(records):
                     statement = insert(table).values(batch)
-                    updates = {column: getattr(statement.excluded, column) for column in batch[0] if column not in conflict_columns}
-                    statement = statement.on_conflict_do_update(index_elements=conflict_columns, set_=updates) if updates else statement.on_conflict_do_nothing(index_elements=conflict_columns)
+                    updates = {
+                        column: getattr(statement.excluded, column)
+                        for column in batch[0]
+                        if column not in conflict_columns
+                    }
+                    statement = (
+                        statement.on_conflict_do_update(
+                            index_elements=conflict_columns, set_=updates
+                        )
+                        if updates
+                        else statement.on_conflict_do_nothing(
+                            index_elements=conflict_columns
+                        )
+                    )
                     session.execute(statement)
                 session.commit()
             except Exception:

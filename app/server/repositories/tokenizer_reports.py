@@ -8,7 +8,12 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from server.repositories.queries.data import DataRepositoryQueries
-from server.repositories.schemas.models import Tokenizer, TokenizerReport, TokenizerVocabulary
+from server.repositories.schemas.models import (
+    Tokenizer,
+    TokenizerReport,
+    TokenizerVocabulary,
+)
+
 
 ###############################################################################
 def _parse_timestamp(value: object) -> pd.Timestamp | None:
@@ -16,6 +21,7 @@ def _parse_timestamp(value: object) -> pd.Timestamp | None:
         return None
     parsed = pd.to_datetime(cast(Any, value), utc=True, errors="coerce")
     return parsed if isinstance(parsed, pd.Timestamp) and not pd.isna(parsed) else None
+
 
 ###############################################################################
 class TokenizerReportRepository:
@@ -39,30 +45,61 @@ class TokenizerReportRepository:
 
     # -------------------------------------------------------------------------
     def replace_report_and_vocabulary(
-        self, tokenizer_name: str, report: dict[str, Any], vocabulary_rows: list[dict[str, Any]]
+        self,
+        tokenizer_name: str,
+        report: dict[str, Any],
+        vocabulary_rows: list[dict[str, Any]],
     ) -> int:
         name = str(tokenizer_name).strip()
         if not name:
             raise ValueError("Tokenizer name must be provided")
         now = datetime.now(timezone.utc)
         with self._session() as session:
-            tokenizer_id = session.execute(select(Tokenizer.id).where(Tokenizer.name == name)).scalar_one_or_none()
+            tokenizer_id = session.execute(
+                select(Tokenizer.id).where(Tokenizer.name == name)
+            ).scalar_one_or_none()
             if tokenizer_id is None:
                 raise ValueError(
                     f"Tokenizer '{name}' must exist before storing a report."
                 )
-            session.execute(delete(TokenizerVocabulary).where(TokenizerVocabulary.tokenizer_id == int(tokenizer_id)))
-            records = [{"tokenizer_id": int(tokenizer_id), "token_id": int(row["token_id"]), "token": str(row.get("token", "")), "decoded_token": row.get("decoded_token")} for row in vocabulary_rows]
+            session.execute(
+                delete(TokenizerVocabulary).where(
+                    TokenizerVocabulary.tokenizer_id == int(tokenizer_id)
+                )
+            )
+            records = [
+                {
+                    "tokenizer_id": int(tokenizer_id),
+                    "token_id": int(row["token_id"]),
+                    "token": str(row.get("token", "")),
+                    "decoded_token": row.get("decoded_token"),
+                }
+                for row in vocabulary_rows
+            ]
             for start in range(0, len(records), 1000):
-                session.execute(cast(Any, TokenizerVocabulary.__table__).insert(), records[start : start + 1000])
-            session.execute(delete(TokenizerReport).where(TokenizerReport.tokenizer_id == int(tokenizer_id)))
+                session.execute(
+                    cast(Any, TokenizerVocabulary.__table__).insert(),
+                    records[start : start + 1000],
+                )
+            session.execute(
+                delete(TokenizerReport).where(
+                    TokenizerReport.tokenizer_id == int(tokenizer_id)
+                )
+            )
             global_stats = report.get("global_stats", {})
-            metadata_payload = dict(global_stats) if isinstance(global_stats, dict) else {}
-            metadata_payload.setdefault("huggingface_url", report.get("huggingface_url"))
+            metadata_payload = (
+                dict(global_stats) if isinstance(global_stats, dict) else {}
+            )
+            metadata_payload.setdefault(
+                "huggingface_url", report.get("huggingface_url")
+            )
             report_row = TokenizerReport(
-                tokenizer_id=int(tokenizer_id), report_version=int(report["report_version"]),
-                created_at=now, metadata_json=metadata_payload,
-                token_length_histogram=report.get("token_length_histogram", {}), description=report.get("description"),
+                tokenizer_id=int(tokenizer_id),
+                report_version=int(report["report_version"]),
+                created_at=now,
+                metadata_json=metadata_payload,
+                token_length_histogram=report.get("token_length_histogram", {}),
+                description=report.get("description"),
             )
             session.add(report_row)
             session.commit()
@@ -95,9 +132,7 @@ class TokenizerReportRepository:
         if histogram is None:
             histogram = {}
         if not isinstance(histogram, dict):
-            raise ValueError(
-                "Tokenizer report histogram must be a native JSON object."
-            )
+            raise ValueError("Tokenizer report histogram must be a native JSON object.")
         histogram_payload = {
             "bins": list(histogram.get("bins", [])),
             "counts": list(histogram.get("counts", [])),

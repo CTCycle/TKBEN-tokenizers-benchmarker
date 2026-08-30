@@ -18,6 +18,7 @@ RUN_TOKENIZER_REPORT_FLOW = os.getenv("E2E_RUN_TOKENIZER_REPORT_FLOW", "").lower
     "yes",
 )
 
+
 ###############################################################################
 def _build_wordlevel_tokenizer_json() -> bytes:
     from tokenizers import Tokenizer
@@ -37,6 +38,7 @@ def _build_wordlevel_tokenizer_json() -> bytes:
         payload = json.dumps(payload)
     return str(payload).encode("utf-8")
 
+
 ###############################################################################
 def test_get_tokenizer_settings(api_context: APIRequestContext) -> None:
     """GET /api/tokenizers/settings should return configured discovery limits."""
@@ -47,12 +49,13 @@ def test_get_tokenizer_settings(api_context: APIRequestContext) -> None:
     assert "max_discovery_limit" in data
     assert "max_discovery_candidates" in data
     assert "metadata_candidate_multiplier" in data
-    assert (
-        1 <= data["default_discovery_limit"] <= data["max_discovery_limit"]
-    )
+    assert 1 <= data["default_discovery_limit"] <= data["max_discovery_limit"]
+
 
 ###############################################################################
-@pytest.mark.skipif(not RUN_HF_DISCOVERY, reason="Set E2E_RUN_HF_DISCOVERY=1 to enable.")
+@pytest.mark.skipif(
+    not RUN_HF_DISCOVERY, reason="Set E2E_RUN_HF_DISCOVERY=1 to enable."
+)
 def test_discover_tokenizers_returns_bounded_structured_catalog(
     api_context: APIRequestContext,
 ) -> None:
@@ -66,17 +69,25 @@ def test_discover_tokenizers_returns_bounded_structured_catalog(
     assert isinstance(items, list)
     assert data.get("count") == len(items)
     assert len(items) <= 5
-    assert all(isinstance(item.get("identifier"), str) and item["identifier"] for item in items)
+    assert all(
+        isinstance(item.get("identifier"), str) and item["identifier"] for item in items
+    )
     assert all("vocabulary_size" in item for item in items)
 
+
 ###############################################################################
-@pytest.mark.skipif(not RUN_HF_DISCOVERY, reason="Set E2E_RUN_HF_DISCOVERY=1 to enable.")
-def test_discover_tokenizers_supports_empty_result(api_context: APIRequestContext) -> None:
+@pytest.mark.skipif(
+    not RUN_HF_DISCOVERY, reason="Set E2E_RUN_HF_DISCOVERY=1 to enable."
+)
+def test_discover_tokenizers_supports_empty_result(
+    api_context: APIRequestContext,
+) -> None:
     response = api_context.get(
         "/api/tokenizers/discover?search=tkben-no-such-repository-8f72&limit=5"
     )
     assert response.ok
     assert response.json().get("items") == []
+
 
 ###############################################################################
 def test_upload_rejects_invalid_extension(api_context: APIRequestContext) -> None:
@@ -95,6 +106,7 @@ def test_upload_rejects_invalid_extension(api_context: APIRequestContext) -> Non
     data = response.json()
     assert "File must be a .json file" in data.get("detail", "")
 
+
 ###############################################################################
 def test_upload_rejects_invalid_json(api_context: APIRequestContext) -> None:
     """POST /api/tokenizers/upload should reject invalid tokenizer JSON."""
@@ -111,6 +123,7 @@ def test_upload_rejects_invalid_json(api_context: APIRequestContext) -> None:
     assert response.status == 400
     data = response.json()
     assert "Failed to load tokenizer" in data.get("detail", "")
+
 
 ###############################################################################
 def test_upload_accepts_valid_tokenizer_json(api_context: APIRequestContext) -> None:
@@ -131,6 +144,7 @@ def test_upload_accepts_valid_tokenizer_json(api_context: APIRequestContext) -> 
     assert data.get("status") == "success"
     assert data.get("tokenizer_name", "").startswith("CUSTOM_")
     assert data.get("is_compatible") is True
+
 
 ###############################################################################
 def test_custom_tokenizer_can_be_deleted_and_repeated_delete_is_not_found(
@@ -166,13 +180,15 @@ def test_custom_tokenizer_can_be_deleted_and_repeated_delete_is_not_found(
     refreshed = api_context.get("/api/tokenizers/list")
     assert refreshed.ok
     assert tokenizer_name not in {
-        str(item.get("tokenizer_name")) for item in refreshed.json().get("tokenizers", [])
+        str(item.get("tokenizer_name"))
+        for item in refreshed.json().get("tokenizers", [])
     }
 
     repeated = api_context.delete(
         f"/api/tokenizers/delete?tokenizer_name={tokenizer_name}"
     )
     assert repeated.status == 404
+
 
 ###############################################################################
 @pytest.mark.skipif(

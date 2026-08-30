@@ -15,6 +15,7 @@ from server.services.keys import (
     HFAccessKeyValidationError,
 )
 
+
 ###############################################################################
 @pytest.fixture
 def isolated_engine(monkeypatch: pytest.MonkeyPatch):
@@ -27,6 +28,7 @@ def isolated_engine(monkeypatch: pytest.MonkeyPatch):
     finally:
         engine.dispose()
 
+
 ###############################################################################
 def test_get_active_key_raises_validation_error_on_invalid_decryption(
     isolated_engine,
@@ -36,7 +38,6 @@ def test_get_active_key_raises_validation_error_on_invalid_decryption(
 
     ###############################################################################
     class FailingCipher:
-
         # -------------------------------------------------------------------------
         def decrypt(self, encrypted_value: str) -> str:
             del encrypted_value
@@ -56,6 +57,7 @@ def test_get_active_key_raises_validation_error_on_invalid_decryption(
     with pytest.raises(HFAccessKeyValidationError, match="cannot be decrypted"):
         service.get_active_key()
 
+
 ###############################################################################
 def test_add_key_skips_undecryptable_rows_during_duplicate_check(
     isolated_engine,
@@ -65,7 +67,6 @@ def test_add_key_skips_undecryptable_rows_during_duplicate_check(
 
     ###############################################################################
     class RecoveringCipher:
-
         # -------------------------------------------------------------------------
         def encrypt(self, plaintext: str) -> str:
             return f"enc:{plaintext}"
@@ -101,6 +102,7 @@ def test_add_key_skips_undecryptable_rows_during_duplicate_check(
     assert len(rows) == 2
     assert rows[1].key_value == "enc:hf_test_key"
 
+
 ###############################################################################
 def test_add_key_detects_duplicate_raw_key_across_encryption(
     isolated_engine,
@@ -110,7 +112,6 @@ def test_add_key_detects_duplicate_raw_key_across_encryption(
 
     ###############################################################################
     class NonDeterministicCipher:
-
         # -------------------------------------------------------------------------
         def __init__(self) -> None:
             self.encryptions = 0
@@ -134,6 +135,7 @@ def test_add_key_detects_duplicate_raw_key_across_encryption(
         rows = session.execute(select(HFAccessKey)).scalars().all()
     assert len(rows) == 1
 
+
 ###############################################################################
 def test_get_active_key_rejects_plaintext_legacy_value(
     isolated_engine,
@@ -143,7 +145,6 @@ def test_get_active_key_rejects_plaintext_legacy_value(
 
     ###############################################################################
     class StrictCipher:
-
         # -------------------------------------------------------------------------
         def decrypt(self, encrypted_value: str) -> str:
             if encrypted_value.startswith("enc:"):
@@ -163,6 +164,7 @@ def test_get_active_key_rejects_plaintext_legacy_value(
     service._cipher = StrictCipher()  # type: ignore[assignment]
     with pytest.raises(HFAccessKeyValidationError, match="cannot be decrypted"):
         service.get_active_key()
+
 
 ###############################################################################
 def test_set_active_key_is_idempotent_for_already_active_key(
@@ -203,6 +205,7 @@ def test_set_active_key_is_idempotent_for_already_active_key(
         )
     assert any(row.id == key_id and row.is_active for row in rows)
     assert all(row.is_active is (row.id == key_id) for row in rows)
+
 
 ###############################################################################
 def test_activating_second_key_deactivates_first(
@@ -245,6 +248,7 @@ def test_activating_second_key_deactivates_first(
     assert rows[0].is_active is False
     assert rows[1].is_active is True
 
+
 ###############################################################################
 def test_unknown_activation_does_not_clear_existing_active_key(
     isolated_engine,
@@ -270,6 +274,7 @@ def test_unknown_activation_does_not_clear_existing_active_key(
         row = session.get(HFAccessKey, key_id)
     assert row is not None
     assert row.is_active is True
+
 
 ###############################################################################
 def test_set_active_key_raises_not_found_for_unknown_key(

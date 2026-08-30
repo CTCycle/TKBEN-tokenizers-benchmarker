@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from server.common.utils.security import normalize_identifier
 
+
 ###############################################################################
 class TokenizerSignature(BaseModel):
     identifier: str
@@ -17,6 +18,7 @@ class TokenizerSignature(BaseModel):
     @classmethod
     def validate_identifier(cls, value: str) -> str:
         return normalize_identifier(value, "Tokenizer identifier", max_length=160)
+
 
 ###############################################################################
 class SupportedTokenizerPipeline(StrEnum):
@@ -31,12 +33,14 @@ class SupportedTokenizerPipeline(StrEnum):
     SUMMARIZATION = "summarization"
     ZERO_SHOT_CLASSIFICATION = "zero-shot-classification"
 
+
 ###############################################################################
 class TokenizerDiscoverySort(StrEnum):
     DOWNLOADS = "downloads"
     LIKES = "likes"
     LAST_MODIFIED = "last_modified"
     CREATED_AT = "created_at"
+
 
 ###############################################################################
 class TokenizerDiscoveryQuery(BaseModel):
@@ -87,10 +91,13 @@ class TokenizerDiscoveryQuery(BaseModel):
         include = {tag.casefold() for tag in self.include_tags}
         exclude = {tag.casefold() for tag in self.exclude_tags}
         if include & exclude:
-            raise ValueError("A tokenizer discovery tag cannot be both required and excluded.")
+            raise ValueError(
+                "A tokenizer discovery tag cannot be both required and excluded."
+            )
         if self.vocabulary_operator is not None and self.vocabulary_size is None:
             raise ValueError("Vocabulary operator requires a vocabulary size.")
         return self
+
 
 ###############################################################################
 class TokenizerDiscoveryItem(BaseModel):
@@ -104,11 +111,13 @@ class TokenizerDiscoveryItem(BaseModel):
     tags: list[str] = Field(default_factory=list)
     vocabulary_size: int | None = Field(default=None, ge=0)
 
+
 ###############################################################################
 class TokenizerDiscoveryResponse(BaseModel):
     items: list[TokenizerDiscoveryItem] = Field(default_factory=list)
     count: int = Field(default=0, ge=0)
     fetched_count: int = Field(default=0, ge=0)
+
 
 ###############################################################################
 class TokenizerListItem(BaseModel):
@@ -117,10 +126,12 @@ class TokenizerListItem(BaseModel):
     has_report: bool = False
     vocabulary_size: int | None = Field(default=None, ge=0)
 
+
 ###############################################################################
 class TokenizerListResponse(BaseModel):
     tokenizers: list[TokenizerListItem] = Field(default_factory=list)
     count: int = Field(default=0)
+
 
 ###############################################################################
 class TokenizerDownloadRequest(BaseModel):
@@ -149,6 +160,7 @@ class TokenizerDownloadRequest(BaseModel):
             raise ValueError("Too many tokenizers requested (max 200).")
         return normalized
 
+
 ###############################################################################
 class TokenizerDownloadResponse(BaseModel):
     status: str = Field(default="success")
@@ -161,12 +173,14 @@ class TokenizerDownloadResponse(BaseModel):
     already_downloaded_count: int = Field(default=0)
     failed_count: int = Field(default=0)
 
+
 ###############################################################################
 class TokenizerSettingsResponse(BaseModel):
     default_discovery_limit: int
     max_discovery_limit: int
     max_discovery_candidates: int
     metadata_candidate_multiplier: int
+
 
 ###############################################################################
 class TokenizerUploadResponse(BaseModel):
@@ -175,6 +189,7 @@ class TokenizerUploadResponse(BaseModel):
     status: str = Field(default="success")
     tokenizer_name: str = Field(..., description="Name assigned to uploaded tokenizer")
     is_compatible: bool = Field(..., description="Whether tokenizer is compatible")
+
 
 ###############################################################################
 class TokenizerReportGenerateRequest(BaseModel):
@@ -186,6 +201,7 @@ class TokenizerReportGenerateRequest(BaseModel):
     def validate_tokenizer_name(cls, value: str) -> str:
         return normalize_identifier(value, "Tokenizer name", max_length=160)
 
+
 ###############################################################################
 class TokenizerLengthHistogram(BaseModel):
     bins: list[str] = Field(default_factory=list)
@@ -195,6 +211,7 @@ class TokenizerLengthHistogram(BaseModel):
     max_length: int = Field(default=0)
     mean_length: float = Field(default=0.0)
     median_length: float = Field(default=0.0)
+
 
 ###############################################################################
 class TokenizerReportResponse(BaseModel):
@@ -211,11 +228,13 @@ class TokenizerReportResponse(BaseModel):
     )
     vocabulary_size: int = Field(default=0)
 
+
 ###############################################################################
 class TokenizerVocabularyItem(BaseModel):
     token_id: int
     token: str
     length: int
+
 
 ###############################################################################
 class TokenizerVocabularyPageResponse(BaseModel):
@@ -226,6 +245,7 @@ class TokenizerVocabularyPageResponse(BaseModel):
     limit: int
     total: int
     items: list[TokenizerVocabularyItem] = Field(default_factory=list)
+
 
 ###############################################################################
 class TokenizerDeleteResponse(BaseModel):

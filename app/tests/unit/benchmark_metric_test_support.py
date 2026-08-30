@@ -35,6 +35,7 @@ CORE_TOKENIZER_BENCHMARK_METRIC_KEYS: set[str] = (
     CORE_BENCHMARK_METRIC_KEYS - DATASET_BENCHMARK_METRIC_KEYS
 )
 
+
 ###############################################################################
 class DummyTokenizer:
     name_or_path = "dummy/tokenizer"
@@ -73,6 +74,7 @@ class DummyTokenizer:
     def get_vocab(self) -> dict[str, int]:
         return dict(self._vocab)
 
+
 ###############################################################################
 def _benchmark_rows() -> list[tuple[int, str]]:
     return [
@@ -80,6 +82,7 @@ def _benchmark_rows() -> list[tuple[int, str]]:
         (11, "alpha gamma"),
         (12, "delta"),
     ]
+
 
 ###############################################################################
 def run_deterministic_benchmark() -> dict[str, Any]:
@@ -99,6 +102,7 @@ def run_deterministic_benchmark() -> dict[str, Any]:
     if hasattr(result, "model_dump"):
         return result.model_dump(mode="json")
     return result
+
 
 ###############################################################################
 def build_benchmark_metric_value_map(result: dict[str, Any]) -> dict[str, Any]:
@@ -147,11 +151,12 @@ def build_benchmark_metric_value_map(result: dict[str, Any]) -> dict[str, Any]:
             tokenizer_result["fidelity"]["unknown_token_rate"]
         )
     if tokenizer_result["fidelity"]["lossless_encodability_rate"] is not None:
-        metric_values["fid.lossless_encodability_rate"] = tokenizer_result[
-            "fidelity"
-        ]["lossless_encodability_rate"]
+        metric_values["fid.lossless_encodability_rate"] = tokenizer_result["fidelity"][
+            "lossless_encodability_rate"
+        ]
 
     return metric_values
+
 
 ###############################################################################
 def assert_metric_value(

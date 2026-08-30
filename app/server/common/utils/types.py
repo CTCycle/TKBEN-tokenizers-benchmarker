@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+
 ###############################################################################
 def coerce_bool(value: Any, default: bool) -> bool:
     if isinstance(value, bool):

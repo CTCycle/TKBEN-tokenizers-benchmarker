@@ -12,9 +12,9 @@ from server.repositories.schemas.models import (
     TokenizerVocabulary,
 )
 
+
 ###############################################################################
 class TokenizerRepository:
-
     # -------------------------------------------------------------------------
     def __init__(self, database: TKBENDatabase | None = None) -> None:
         self.database = database or get_database()
@@ -54,14 +54,14 @@ class TokenizerRepository:
     def get_tokenizer_source(self, tokenizer_id: str) -> str | None:
         with self._session() as session:
             source = session.execute(
-                select(Tokenizer.source)
-                .where(Tokenizer.name == tokenizer_id)
-                .limit(1)
+                select(Tokenizer.source).where(Tokenizer.name == tokenizer_id).limit(1)
             ).scalar_one_or_none()
         return str(source) if source is not None else None
 
     # -------------------------------------------------------------------------
-    def insert_if_missing(self, tokenizer_id: str, *, source: str = "huggingface") -> None:
+    def insert_if_missing(
+        self, tokenizer_id: str, *, source: str = "huggingface"
+    ) -> None:
         if source not in {"huggingface", "custom"}:
             raise ValueError(f"Unsupported tokenizer source: {source}")
         with self._session() as session:
@@ -89,9 +89,7 @@ class TokenizerRepository:
             raise ValueError(f"Unsupported tokenizer source: {source}")
         with self._session() as session:
             row = session.execute(
-                select(Tokenizer)
-                .where(Tokenizer.name == tokenizer_id)
-                .limit(1)
+                select(Tokenizer).where(Tokenizer.name == tokenizer_id).limit(1)
             ).scalar_one_or_none()
             if row is None:
                 session.add(

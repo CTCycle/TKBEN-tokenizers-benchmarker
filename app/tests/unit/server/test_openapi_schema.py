@@ -47,6 +47,7 @@ JSON_ROUTE_EXPECTATIONS = [
     ("/api/keys/{key_id}/reveal", "post", 200, "HFAccessKeyRevealResponse"),
 ]
 
+
 ###############################################################################
 def test_openapi_generation_and_response_models() -> None:
     schema = app.openapi()

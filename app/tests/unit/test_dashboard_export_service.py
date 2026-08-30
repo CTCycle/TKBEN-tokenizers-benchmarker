@@ -5,6 +5,7 @@ import pytest
 from server.services.dashboard_export_helpers import DashboardExportFormatting
 from server.services.export import DashboardExportService
 
+
 ###############################################################################
 def build_dataset_payload() -> dict:
     return {
@@ -64,6 +65,7 @@ def build_dataset_payload() -> dict:
         }
     }
 
+
 ###############################################################################
 def build_tokenizer_payload() -> dict:
     return {
@@ -94,6 +96,7 @@ def build_tokenizer_payload() -> dict:
             {"token_id": 5, "token": "the", "length": 3},
         ],
     }
+
 
 ###############################################################################
 def build_benchmark_payload() -> dict:
@@ -127,8 +130,18 @@ def build_benchmark_payload() -> dict:
                         "compatible_visualizations": ["interval_bar", "dot_whisker"],
                         "width": "wide",
                         "points": [
-                            {"tokenizer": "bert-base-uncased", "value": 11000, "interval_low": 10500, "interval_high": 11500},
-                            {"tokenizer": "gpt2", "value": 9600, "interval_low": 9200, "interval_high": 10000},
+                            {
+                                "tokenizer": "bert-base-uncased",
+                                "value": 11000,
+                                "interval_low": 10500,
+                                "interval_high": 11500,
+                            },
+                            {
+                                "tokenizer": "gpt2",
+                                "value": 9600,
+                                "interval_low": 9200,
+                                "interval_high": 10000,
+                            },
                         ],
                     },
                     {
@@ -146,9 +159,17 @@ def build_benchmark_payload() -> dict:
         },
         "selected_distribution_tokenizer": "bert-base-uncased",
         "visible_widget_ids": ["benchmark.speed", "benchmark.vocabulary"],
-        "ordered_widget_ids": ["benchmark.speed", "benchmark.hidden", "benchmark.vocabulary"],
-        "visualization_by_widget_id": {"benchmark.speed": "dot_whisker", "benchmark.vocabulary": "horizontal_bar"},
+        "ordered_widget_ids": [
+            "benchmark.speed",
+            "benchmark.hidden",
+            "benchmark.vocabulary",
+        ],
+        "visualization_by_widget_id": {
+            "benchmark.speed": "dot_whisker",
+            "benchmark.vocabulary": "horizontal_bar",
+        },
     }
+
 
 ###############################################################################
 def test_export_dataset_dashboard_pdf_generates_pdf_bytes() -> None:
@@ -164,6 +185,7 @@ def test_export_dataset_dashboard_pdf_generates_pdf_bytes() -> None:
     assert result.page_count >= 2
     assert result.pdf_bytes.startswith(b"%PDF")
 
+
 ###############################################################################
 def test_export_tokenizer_dashboard_pdf_generates_pdf_bytes() -> None:
     service = DashboardExportService()
@@ -177,6 +199,7 @@ def test_export_tokenizer_dashboard_pdf_generates_pdf_bytes() -> None:
     assert result.file_name == "tokenizer-layout-export.pdf"
     assert result.page_count >= 1
     assert result.pdf_bytes.startswith(b"%PDF")
+
 
 ###############################################################################
 def test_export_benchmark_dashboard_pdf_generates_pdf_bytes() -> None:
@@ -192,6 +215,7 @@ def test_export_benchmark_dashboard_pdf_generates_pdf_bytes() -> None:
     assert result.page_count == 2
     assert result.pdf_bytes.startswith(b"%PDF")
 
+
 ###############################################################################
 def test_benchmark_pdf_normalizes_visible_widgets_in_requested_order() -> None:
     service = DashboardExportService()
@@ -205,6 +229,7 @@ def test_benchmark_pdf_normalizes_visible_widgets_in_requested_order() -> None:
         "benchmark.vocabulary",
     ]
 
+
 ###############################################################################
 def test_export_dashboard_pdf_rejects_unsupported_dashboard_type() -> None:
     service = DashboardExportService()
@@ -216,18 +241,28 @@ def test_export_dashboard_pdf_rejects_unsupported_dashboard_type() -> None:
             dashboard_payload={},
         )
 
+
 ###############################################################################
 def test_dashboard_export_formatting_accepts_only_current_metric_shapes() -> None:
     formatting = DashboardExportFormatting()
 
-    assert formatting._parse_zipf_curve([
-        {"rank": 1, "frequency": 10},
-    ]) == [{"rank": 1.0, "frequency": 10.0}]
+    assert formatting._parse_zipf_curve(
+        [
+            {"rank": 1, "frequency": 10},
+        ]
+    ) == [{"rank": 1.0, "frequency": 10.0}]
     assert formatting._parse_zipf_curve([[1, 10]]) == []
     assert formatting._parse_zipf_curve('[{"rank": 1, "frequency": 10}]') == []
-    assert formatting._parse_word_frequency([
-        {"word": "hello", "count": 3},
-    ]) == [{"word": "hello", "count": 3}]
-    assert formatting._parse_word_frequency([
-        {"token": "hello", "count": 3},
-    ]) == []
+    assert formatting._parse_word_frequency(
+        [
+            {"word": "hello", "count": 3},
+        ]
+    ) == [{"word": "hello", "count": 3}]
+    assert (
+        formatting._parse_word_frequency(
+            [
+                {"token": "hello", "count": 3},
+            ]
+        )
+        == []
+    )

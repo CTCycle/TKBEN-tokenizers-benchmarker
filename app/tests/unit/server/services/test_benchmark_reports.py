@@ -10,6 +10,7 @@ from server.repositories.database.backend import get_database
 from server.repositories.schemas.models import Base, BenchmarkReport, Dataset
 from server.services.benchmark_reports import BenchmarkReportService
 
+
 ###############################################################################
 def _build_payload(dataset_name: str) -> dict:
     return {
@@ -105,6 +106,7 @@ def _build_payload(dataset_name: str) -> dict:
         "raw_observations": {},
     }
 
+
 ###############################################################################
 def test_benchmark_report_service_round_trip(monkeypatch) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
@@ -115,7 +117,15 @@ def test_benchmark_report_service_round_trip(monkeypatch) -> None:
     dataset_name = "custom/serializer_ds"
     with Session(bind=engine) as session:
         now = datetime.now(timezone.utc)
-        session.add(Dataset(name=dataset_name, status="ready", created_at=now, updated_at=now, ready_at=now))
+        session.add(
+            Dataset(
+                name=dataset_name,
+                status="ready",
+                created_at=now,
+                updated_at=now,
+                ready_at=now,
+            )
+        )
         session.commit()
 
     report_service = BenchmarkReportService()
@@ -148,8 +158,11 @@ def test_benchmark_report_service_round_trip(monkeypatch) -> None:
     with pytest.raises(ValueError, match="tokenizer count disagrees"):
         report_service.save_benchmark_report(inconsistent)
 
+
 ###############################################################################
-def test_benchmark_report_service_search_sort_pagination_and_delete(monkeypatch) -> None:
+def test_benchmark_report_service_search_sort_pagination_and_delete(
+    monkeypatch,
+) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     Base.metadata.create_all(engine, checkfirst=True)
     database = get_database()
@@ -159,7 +172,15 @@ def test_benchmark_report_service_search_sort_pagination_and_delete(monkeypatch)
     datasets = ["custom/alpha", "custom/beta"]
     with Session(bind=engine) as session:
         for dataset_name in datasets:
-            session.add(Dataset(name=dataset_name, status="ready", created_at=now, updated_at=now, ready_at=now))
+            session.add(
+                Dataset(
+                    name=dataset_name,
+                    status="ready",
+                    created_at=now,
+                    updated_at=now,
+                    ready_at=now,
+                )
+            )
         session.commit()
 
     report_service = BenchmarkReportService()
@@ -179,13 +200,19 @@ def test_benchmark_report_service_search_sort_pagination_and_delete(monkeypatch)
     assert newest.offset == 0
     assert newest.limit == 2
 
-    oldest = report_service.list_benchmark_reports(BenchmarkReportQuery(sort="oldest", offset=1, limit=1))
+    oldest = report_service.list_benchmark_reports(
+        BenchmarkReportQuery(sort="oldest", offset=1, limit=1)
+    )
     assert [item.report_id for item in oldest.reports] == [middle_id]
     assert oldest.total == 3
 
-    run_search = report_service.list_benchmark_reports(BenchmarkReportQuery(search="newer"))
+    run_search = report_service.list_benchmark_reports(
+        BenchmarkReportQuery(search="newer")
+    )
     assert [item.report_id for item in run_search.reports] == [newer_id]
-    dataset_search = report_service.list_benchmark_reports(BenchmarkReportQuery(search="beta"))
+    dataset_search = report_service.list_benchmark_reports(
+        BenchmarkReportQuery(search="beta")
+    )
     assert [item.report_id for item in dataset_search.reports] == [middle_id]
 
     assert report_service.delete_benchmark_report(middle_id) is True
@@ -195,40 +222,56 @@ def test_benchmark_report_service_search_sort_pagination_and_delete(monkeypatch)
     assert remaining.total == 2
     assert [item.report_id for item in remaining.reports] == [newer_id, older_id]
 
+
 ###############################################################################
 def test_benchmark_report_service_rejects_v4_payload() -> None:
     report_service = BenchmarkReportService()
     with pytest.raises(ValueError, match="incompatible report version"):
-        report_service._normalize_report_row({
-            "id": 3,
-            "report_version": 4,
-            "created_at": datetime.now(timezone.utc),
-            "run_name": "old",
-            "selected_metric_keys": [],
-            "dataset_name": "custom/old",
-            "payload": {"schema_version": 3, "methodology_version": "semantic_honesty", "dataset_name": "custom/old"},
-        })
+        report_service._normalize_report_row(
+            {
+                "id": 3,
+                "report_version": 4,
+                "created_at": datetime.now(timezone.utc),
+                "run_name": "old",
+                "selected_metric_keys": [],
+                "dataset_name": "custom/old",
+                "payload": {
+                    "schema_version": 3,
+                    "methodology_version": "semantic_honesty",
+                    "dataset_name": "custom/old",
+                },
+            }
+        )
+
 
 ###############################################################################
 def test_benchmark_report_service_rejects_json_encoded_storage() -> None:
     report_service = BenchmarkReportService()
 
     with pytest.raises(ValueError, match="native JSON object"):
-        report_service._normalize_report_row({
-            "id": 3,
-            "report_version": 5,
-            "created_at": datetime.now(timezone.utc),
-            "run_name": "encoded",
-            "selected_metric_keys": [],
-            "payload": '{"schema_version": 3}',
-        })
+        report_service._normalize_report_row(
+            {
+                "id": 3,
+                "report_version": 5,
+                "created_at": datetime.now(timezone.utc),
+                "run_name": "encoded",
+                "selected_metric_keys": [],
+                "payload": '{"schema_version": 3}',
+            }
+        )
 
     with pytest.raises(ValueError, match="native JSON array"):
-        report_service._normalize_report_row({
-            "id": 3,
-            "report_version": 5,
-            "created_at": datetime.now(timezone.utc),
-            "run_name": "encoded",
-            "selected_metric_keys": '["metric"]',
-            "payload": {"schema_version": 3, "methodology_version": "semantic_honesty", "report_version": 5},
-        })
+        report_service._normalize_report_row(
+            {
+                "id": 3,
+                "report_version": 5,
+                "created_at": datetime.now(timezone.utc),
+                "run_name": "encoded",
+                "selected_metric_keys": '["metric"]',
+                "payload": {
+                    "schema_version": 3,
+                    "methodology_version": "semantic_honesty",
+                    "report_version": 5,
+                },
+            }
+        )

@@ -20,6 +20,7 @@ from server.repositories.database.utils import normalize_sqlite_path
 
 POSTGRES_CREATION_LOCK_NAME = "tkben:database:create"
 
+
 ###############################################################################
 def build_postgres_connect_args(settings: DatabaseSettings) -> dict[str, str | int]:
     connect_args: dict[str, str | int] = {"connect_timeout": settings.connect_timeout}
@@ -28,6 +29,7 @@ def build_postgres_connect_args(settings: DatabaseSettings) -> dict[str, str | i
         if settings.ssl_ca:
             connect_args["sslrootcert"] = settings.ssl_ca
     return connect_args
+
 
 ###############################################################################
 def build_postgres_url(settings: DatabaseSettings, database_name: str) -> str:
@@ -38,6 +40,7 @@ def build_postgres_url(settings: DatabaseSettings, database_name: str) -> str:
         f"postgresql+psycopg://{safe_username}:{safe_password}"
         f"@{settings.host}:{port}/{database_name}"
     )
+
 
 ###############################################################################
 def clone_settings_with_database(
@@ -56,12 +59,14 @@ def clone_settings_with_database(
         insert_batch_size=settings.insert_batch_size,
     )
 
+
 ###############################################################################
 def build_postgres_create_database_sql(database_name: str) -> TextClause:
     safe_database = database_name.replace('"', '""')
     return sqlalchemy.text(
-        f'CREATE DATABASE "{safe_database}" WITH ENCODING \'UTF8\' TEMPLATE template0'
+        f"CREATE DATABASE \"{safe_database}\" WITH ENCODING 'UTF8' TEMPLATE template0"
     )
+
 
 ###############################################################################
 def initialize_sqlite_database(settings: DatabaseSettings) -> None:
@@ -83,6 +88,7 @@ def initialize_sqlite_database(settings: DatabaseSettings) -> None:
         repository.engine.dispose()
     logger.info("SQLite database %s is synchronized.", database_path)
 
+
 ###############################################################################
 def connect_postgres_database(settings: DatabaseSettings) -> None:
     """Verify the configured PostgreSQL target is reachable."""
@@ -93,6 +99,7 @@ def connect_postgres_database(settings: DatabaseSettings) -> None:
     finally:
         repository.engine.dispose()
     logger.info("Connected to PostgreSQL database %s.", settings.database_name)
+
 
 ###############################################################################
 def _is_missing_postgres_database(error: BaseException) -> bool:
@@ -111,6 +118,7 @@ def _is_missing_postgres_database(error: BaseException) -> bool:
         original = getattr(current, "orig", None)
         current = original or current.__cause__ or current.__context__
     return False
+
 
 ###############################################################################
 def _create_missing_postgres_database(settings: DatabaseSettings) -> None:
@@ -146,11 +154,11 @@ def _create_missing_postgres_database(settings: DatabaseSettings) -> None:
                     )
                 else:
                     connection.execute(
-                        build_postgres_create_database_sql(
-                            settings.database_name or ""
-                        )
+                        build_postgres_create_database_sql(settings.database_name or "")
                     )
-                    logger.info("Created PostgreSQL database %s.", settings.database_name)
+                    logger.info(
+                        "Created PostgreSQL database %s.", settings.database_name
+                    )
             finally:
                 connection.execute(
                     sqlalchemy.text("SELECT pg_advisory_unlock(hashtext(:lock_name))"),
@@ -163,6 +171,7 @@ def _create_missing_postgres_database(settings: DatabaseSettings) -> None:
         ) from exc
     finally:
         admin_engine.dispose()
+
 
 ###############################################################################
 def ensure_postgres_database(settings: DatabaseSettings) -> str:
@@ -179,7 +188,9 @@ def ensure_postgres_database(settings: DatabaseSettings) -> str:
         try:
             with target_repository.engine.connect() as connection:
                 connection.execute(sqlalchemy.text("SELECT 1"))
-            logger.info("PostgreSQL database %s already exists.", settings.database_name)
+            logger.info(
+                "PostgreSQL database %s already exists.", settings.database_name
+            )
             return settings.database_name
         except SQLAlchemyError as error:
             if not _is_missing_postgres_database(error):
@@ -194,6 +205,7 @@ def ensure_postgres_database(settings: DatabaseSettings) -> str:
     _create_missing_postgres_database(settings)
     connect_postgres_database(settings)
     return settings.database_name
+
 
 ###############################################################################
 def run_database_initialization(
@@ -221,6 +233,7 @@ def run_database_initialization(
     finally:
         repository.engine.dispose()
 
+
 ###############################################################################
 def initialize_database(
     *, settings: DatabaseSettings | ServerSettings | None = None, startup: bool = False
@@ -238,4 +251,6 @@ def initialize_database(
         raise DatabaseMigrationError(str(exc)) from exc
     except Exception as exc:
         logger.exception("Unexpected error during database initialization.")
-        raise DatabaseMigrationError("Database initialization failed unexpectedly.") from exc
+        raise DatabaseMigrationError(
+            "Database initialization failed unexpectedly."
+        ) from exc

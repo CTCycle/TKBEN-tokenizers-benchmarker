@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 from server.repositories.schemas.models import Base
 
+
 ###############################################################################
 class RepositoryBase:
     IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -33,22 +34,37 @@ class RepositoryBase:
             raise ValueError(f"Unknown canonical table: {table_name}") from exc
 
     # -------------------------------------------------------------------------
-    def _batches(self, records: list[Mapping[str, Any]]) -> Iterable[list[Mapping[str, Any]]]:
+    def _batches(
+        self, records: list[Mapping[str, Any]]
+    ) -> Iterable[list[Mapping[str, Any]]]:
         for start in range(0, len(records), self.insert_batch_size):
             yield records[start : start + self.insert_batch_size]
 
     # -------------------------------------------------------------------------
-    def insert_records(self, table_name: str, records: Sequence[Mapping[str, Any]], *, ignore_duplicates: bool = False) -> None:
+    def insert_records(
+        self,
+        table_name: str,
+        records: Sequence[Mapping[str, Any]],
+        *,
+        ignore_duplicates: bool = False,
+    ) -> None:
         if not records:
             return
-        self._insert(self.get_table(table_name), records, ignore_duplicates=ignore_duplicates)
+        self._insert(
+            self.get_table(table_name), records, ignore_duplicates=ignore_duplicates
+        )
 
     # -------------------------------------------------------------------------
     def _insert(self, table, records, *, ignore_duplicates: bool) -> None:  # type: ignore[no-untyped-def]
         raise NotImplementedError
 
     # -------------------------------------------------------------------------
-    def upsert_records(self, table_name: str, records: Sequence[Mapping[str, Any]], conflict_columns: list[str]) -> None:
+    def upsert_records(
+        self,
+        table_name: str,
+        records: Sequence[Mapping[str, Any]],
+        conflict_columns: list[str],
+    ) -> None:
         if not records:
             return
         self._upsert(self.get_table(table_name), records, conflict_columns)

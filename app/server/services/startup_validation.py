@@ -9,6 +9,7 @@ from server.common.path import (
 )
 from server.configurations.environment import ensure_environment_loaded
 
+
 ###############################################################################
 def ensure_runtime_directories() -> None:
     for directory in (
@@ -18,6 +19,7 @@ def ensure_runtime_directories() -> None:
         TEMPLATES_PATH,
     ):
         directory.mkdir(parents=True, exist_ok=True)
+
 
 ###############################################################################
 def build_cors_origins() -> list[str]:
@@ -32,10 +34,12 @@ def build_cors_origins() -> list[str]:
 
     return sorted(f"http://{host}:{ui_port}" for host in hosts)
 
+
 ###############################################################################
 def run_startup_validations() -> None:
     ensure_environment_loaded()
     ensure_runtime_directories()
+
 
 ###############################################################################
 def _normalized_host(raw_host: str) -> str:
@@ -43,6 +47,7 @@ def _normalized_host(raw_host: str) -> str:
     if host in {"0.0.0.0", "::"}:
         return "127.0.0.1"
     return host
+
 
 ###############################################################################
 def _normalized_port(raw_port: str) -> str:

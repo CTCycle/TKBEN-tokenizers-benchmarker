@@ -9,9 +9,9 @@ from server.services.benchmark_reports import BenchmarkReportService
 from server.services.benchmarks import BenchmarkService
 from server.services.jobs import JobManager, JobProgressReporter, JobStopChecker
 
+
 ###############################################################################
 class BenchmarkJobService:
-
     # -------------------------------------------------------------------------
     def run_benchmark_job(
         self,
