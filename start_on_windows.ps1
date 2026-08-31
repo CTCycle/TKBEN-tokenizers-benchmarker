@@ -4,7 +4,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ProgressPreference = 'SilentlyContinue'
+# Launcher progress is user-facing; keep Write-Progress visible during long operations.
+$ProgressPreference = 'Continue'
 
 $RepoRoot = if ($PSScriptRoot) {
     [IO.Path]::GetFullPath($PSScriptRoot)
@@ -37,6 +38,8 @@ $ToolCacheDir = Join-Path $TestsDir 'cache'
 $UvCacheDir = Join-Path $RuntimeCacheDir 'uv'
 $PythonVersion = '3.14.2'
 $NodeVersion = '22.23.1'
+$script:NextProgressId = 1
+$script:ActiveProgressIds = [Collections.Generic.HashSet[int]]::new()
 
 # =============================================================================
 # Shared output and filesystem helpers
@@ -44,6 +47,63 @@ $NodeVersion = '22.23.1'
 function Write-Step([string]$Message) { Write-Host "[STEP] $Message" -ForegroundColor Cyan }
 function Write-Ok([string]$Message) { Write-Host "[OK] $Message" -ForegroundColor Green }
 function Write-Fatal([string]$Message) { Write-Host "[FATAL] $Message" -ForegroundColor Red }
+
+function Start-LauncherProgress {
+    param([Parameter(Mandatory)][string]$Activity, [string]$Status = 'Starting')
+    $id = $script:NextProgressId++
+    [void]$script:ActiveProgressIds.Add($id)
+    Write-Progress -Id $id -Activity $Activity -Status $Status
+    return $id
+}
+
+function Update-LauncherProgress {
+    param(
+        [Parameter(Mandatory)][int]$Id,
+        [Parameter(Mandatory)][string]$Activity,
+        [Parameter(Mandatory)][string]$Status,
+        [Nullable[int]]$PercentComplete
+    )
+    if (-not $script:ActiveProgressIds.Contains($Id)) { return }
+    $progress = @{ Id = $Id; Activity = $Activity; Status = $Status }
+    if ($null -ne $PercentComplete) { $progress.PercentComplete = $PercentComplete }
+    Write-Progress @progress
+}
+
+function Complete-LauncherProgress([int]$Id) {
+    if ($script:ActiveProgressIds.Contains($Id)) {
+        Write-Progress -Id $Id -Activity 'TKBEN launcher' -Completed
+        [void]$script:ActiveProgressIds.Remove($Id)
+    }
+}
+
+function Clear-LauncherProgress {
+    foreach ($id in @($script:ActiveProgressIds)) {
+        Write-Progress -Id $id -Activity 'TKBEN launcher' -Completed
+        [void]$script:ActiveProgressIds.Remove($id)
+    }
+}
+
+function Invoke-TrackedLauncherAction {
+    param(
+        [Parameter(Mandatory)][string]$Name,
+        [Parameter(Mandatory)][scriptblock]$Action
+    )
+    $activity = "TKBEN: $Name"
+    $progressId = Start-LauncherProgress -Activity $activity -Status 'Starting'
+    Write-Step "Starting $Name"
+    try {
+        Update-LauncherProgress -Id $progressId -Activity $activity -Status 'Running'
+        & $Action
+        Write-Ok "$Name completed"
+    }
+    catch {
+        Write-Fatal "$Name failed: $($_.Exception.Message)"
+        throw
+    }
+    finally {
+        Complete-LauncherProgress $progressId
+    }
+}
 
 function Ensure-Directory([string]$Path) {
     [IO.Directory]::CreateDirectory($Path) | Out-Null
@@ -138,13 +198,17 @@ function Invoke-DownloadAndExtract {
         [Parameter(Mandatory)][string]$ArchivePath,
         [Parameter(Mandatory)][string]$Destination
     )
-    [IO.Directory]::CreateDirectory((Split-Path -Parent $ArchivePath)) | Out-Null
-    [IO.Directory]::CreateDirectory($Destination) | Out-Null
+    $activity = "TKBEN: download and extract $([IO.Path]::GetFileName($ArchivePath))"
+    $progressId = Start-LauncherProgress -Activity $activity -Status "Downloading $Uri"
     try {
+        [IO.Directory]::CreateDirectory((Split-Path -Parent $ArchivePath)) | Out-Null
+        [IO.Directory]::CreateDirectory($Destination) | Out-Null
         Invoke-WebRequest -Uri $Uri -OutFile $ArchivePath
+        Update-LauncherProgress -Id $progressId -Activity $activity -Status 'Extracting archive'
         Expand-Archive -LiteralPath $ArchivePath -DestinationPath $Destination -Force
     } finally {
         Remove-Item -LiteralPath $ArchivePath -Force -ErrorAction SilentlyContinue
+        Complete-LauncherProgress $progressId
     }
 }
 
@@ -701,14 +765,22 @@ function Remove-PathBestEffort {
         Write-Host "[WARN] Skipped inaccessible cache path below ${Path}: $($enumerationError.Exception.Message)" -ForegroundColor Yellow
     }
 
-    foreach ($item in $items) {
-        try {
-            Remove-Item -LiteralPath $item.FullName -Force -ErrorAction Stop
-            $removed++
-        } catch {
-            $skipped++
-            Write-Host "[WARN] Skipped locked or inaccessible path: $($item.FullName)" -ForegroundColor Yellow
+    $progressId = Start-LauncherProgress -Activity "TKBEN: remove $Path" -Status "0 of $($items.Count) items"
+    try {
+        for ($index = 0; $index -lt $items.Count; $index++) {
+            $item = $items[$index]
+            $percent = if ($items.Count -eq 0) { 100 } else { [int](($index + 1) * 100 / $items.Count) }
+            Update-LauncherProgress -Id $progressId -Activity "TKBEN: remove $Path" -Status "$($index + 1) of $($items.Count): $($item.Name)" -PercentComplete $percent
+            try {
+                Remove-Item -LiteralPath $item.FullName -Force -ErrorAction Stop
+                $removed++
+            } catch {
+                $skipped++
+                Write-Host "[WARN] Skipped locked or inaccessible path: $($item.FullName)" -ForegroundColor Yellow
+            }
         }
+    } finally {
+        Complete-LauncherProgress $progressId
     }
 
     return [pscustomobject]@{ Removed = $removed; Skipped = $skipped }
@@ -866,11 +938,29 @@ function Uninstall-Application {
 # Source update management
 # =============================================================================
 function Update-Application {
-    Write-Step 'Updating the application from origin/main.'
+    Write-Step 'Updating the application from origin/main (fast-forward only).'
     Push-Location $RepoRoot
     try {
-        & git pull origin main
-        if ($LASTEXITCODE -ne 0) { throw "Application update failed with exit code $LASTEXITCODE." }
+        $branchOutput = @(& git branch --show-current 2>$null)
+        $branchExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+        $branch = (@($branchOutput | ForEach-Object { [string]$_ }) -join [Environment]::NewLine).Trim()
+        if ($branchExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($branch)) { throw 'Update requires a non-detached Git checkout.' }
+        if ($branch -ne 'main') { throw "Update requires the main branch to be checked out; current branch is '$branch'. No files were changed." }
+        $statusOutput = @(& git status --porcelain 2>$null)
+        $statusExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+        if ($statusExitCode -ne 0) { throw 'Unable to inspect the Git working tree before updating.' }
+        $changes = @($statusOutput | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+        if ($changes.Count -gt 0) { throw 'Update requires a clean Git working tree. Commit or safely preserve local changes before retrying.' }
+        $activity = 'TKBEN: update application from origin/main'
+        $progressId = Start-LauncherProgress -Activity $activity -Status 'Pulling origin/main'
+        try {
+            & git pull --ff-only origin main
+            $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+            if ($exitCode -ne 0) { throw "Application update failed with exit code $exitCode." }
+        }
+        finally {
+            Complete-LauncherProgress $progressId
+        }
     } finally {
         Pop-Location
     }
@@ -979,18 +1069,20 @@ function Show-Menu {
         if ($selection -eq '12') { break }
 
         try {
-            switch ($selection) {
-                '1' { Launch-Application; exit 0 }
-                '2' { Install-Dependencies }
-                '3' { Rebuild-Frontend }
-                '4' { Initialize-Database }
-                '5' { Run-TestSuite }
-                '6' { Remove-Logs }
-                '7' { Clear-Cache }
-                '8' { Remove-AllData }
-                '9' { Uninstall-Application }
-                '10' { Update-Application }
-                '11' { Check-ForUpdates }
+            Invoke-TrackedLauncherAction -Name "menu option $selection" -Action {
+                switch ($selection) {
+                    '1' { Launch-Application; exit 0 }
+                    '2' { Install-Dependencies }
+                    '3' { Rebuild-Frontend }
+                    '4' { Initialize-Database }
+                    '5' { Run-TestSuite }
+                    '6' { Remove-Logs }
+                    '7' { Clear-Cache }
+                    '8' { Remove-AllData }
+                    '9' { Uninstall-Application }
+                    '10' { Update-Application }
+                    '11' { Check-ForUpdates }
+                }
             }
         } catch {
             Write-Fatal $_.Exception.Message
@@ -1000,8 +1092,9 @@ function Show-Menu {
 }
 
 if ($Launch) {
-    Launch-Application
+    Invoke-TrackedLauncherAction -Name 'launch application' -Action { Launch-Application }
     exit 0
 }
 
 Show-Menu
+Clear-LauncherProgress
