@@ -9,7 +9,7 @@ from server.configurations.management import ConfigurationManager
 from server.configurations.settings import ServerSettings
 
 _DEFAULT_SETTINGS_LOCK = RLock()
-_DEFAULT_SETTINGS: ServerSettings | None = None
+_default_settings: ServerSettings | None = None
 
 
 ###############################################################################
@@ -29,21 +29,21 @@ def get_configuration_manager(
 
 ###############################################################################
 def get_server_settings(config_path: str | Path | None = None) -> ServerSettings:
-    global _DEFAULT_SETTINGS
+    global _default_settings
     if config_path is not None:
         return get_configuration_manager(config_path).server_settings
     with _DEFAULT_SETTINGS_LOCK:
-        if _DEFAULT_SETTINGS is None:
-            _DEFAULT_SETTINGS = get_configuration_manager().server_settings
-        return _DEFAULT_SETTINGS
+        if _default_settings is None:
+            _default_settings = get_configuration_manager().server_settings
+        return _default_settings
 
 
 ###############################################################################
 def reload_settings_for_tests(config_path: str | Path | None = None) -> ServerSettings:
-    global _DEFAULT_SETTINGS
+    global _default_settings
     if config_path is not None:
         return get_configuration_manager(config_path).server_settings
     with _DEFAULT_SETTINGS_LOCK:
-        _DEFAULT_SETTINGS = None
-        _DEFAULT_SETTINGS = get_configuration_manager().server_settings
-        return _DEFAULT_SETTINGS
+        _default_settings = None
+        _default_settings = get_configuration_manager().server_settings
+        return _default_settings
