@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-# Launcher progress is user-facing; keep Write-Progress visible during long operations.
+# Progress bars are reserved for quiet, measurable work; console logs clear them first.
 $ProgressPreference = 'Continue'
 
 $RepoRoot = if ($PSScriptRoot) {
@@ -44,12 +44,12 @@ $script:ActiveProgressIds = [Collections.Generic.HashSet[int]]::new()
 # =============================================================================
 # Shared output and filesystem helpers
 # =============================================================================
-function Write-Step([string]$Message) { Write-Host "[STEP] $Message" -ForegroundColor Cyan }
-function Write-Ok([string]$Message) { Write-Host "[OK] $Message" -ForegroundColor Green }
-function Write-Fatal([string]$Message) { Write-Host "[FATAL] $Message" -ForegroundColor Red }
+function Write-Step([string]$Message) { Clear-LauncherProgress; Write-Host "[STEP] $Message" -ForegroundColor Cyan }
+function Write-Ok([string]$Message) { Clear-LauncherProgress; Write-Host "[OK] $Message" -ForegroundColor Green }
+function Write-Fatal([string]$Message) { Clear-LauncherProgress; Write-Host "[FATAL] $Message" -ForegroundColor Red }
 
 function Start-LauncherProgress {
-    param([Parameter(Mandatory)][string]$Activity, [string]$Status = 'Starting')
+    param([Parameter(Mandatory)][string]$Activity, [Parameter(Mandatory)][string]$Status)
     $id = $script:NextProgressId++
     [void]$script:ActiveProgressIds.Add($id)
     Write-Progress -Id $id -Activity $Activity -Status $Status
@@ -88,20 +88,14 @@ function Invoke-TrackedLauncherAction {
         [Parameter(Mandatory)][string]$Name,
         [Parameter(Mandatory)][scriptblock]$Action
     )
-    $activity = "TKBEN: $Name"
-    $progressId = Start-LauncherProgress -Activity $activity -Status 'Starting'
     Write-Step "Starting $Name"
     try {
-        Update-LauncherProgress -Id $progressId -Activity $activity -Status 'Running'
         & $Action
         Write-Ok "$Name completed"
     }
     catch {
         Write-Fatal "$Name failed: $($_.Exception.Message)"
         throw
-    }
-    finally {
-        Complete-LauncherProgress $progressId
     }
 }
 
@@ -735,7 +729,8 @@ function Run-TestSuite {
 # =============================================================================
 function Remove-Logs {
     $logDir = Join-Path $RepoRoot 'app\resources\logs'
-    $logs = @(Get-ChildItem -LiteralPath $logDir -Filter '*.log' -File -ErrorAction SilentlyContinue)
+    $logs = @(Get-ChildItem -LiteralPath $logDir -Filter '*.log' -File -ErrorAction SilentlyContinue |
+        Sort-Object @{ Expression = { $_.FullName.ToUpperInvariant() }; Descending = $false })
     $summary = @($logs | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
     $removed = [int](($summary | Measure-Object -Property Removed -Sum).Sum)
     $skipped = [int](($summary | Measure-Object -Property Skipped -Sum).Sum)
@@ -747,43 +742,64 @@ function Remove-PathBestEffort {
 
     $removed = 0
     $skipped = 0
-    $root = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
-    if (-not $root) {
-        return [pscustomobject]@{ Removed = 0; Skipped = 0 }
+    try {
+        $root = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+    } catch {
+        if ($_.CategoryInfo.Category -eq [System.Management.Automation.ErrorCategory]::ObjectNotFound) {
+            return [pscustomobject]@{ Removed = 0; Skipped = 0 }
+        }
+        Clear-LauncherProgress
+        Write-Host "[WARN] Skipped inaccessible cache path ${Path}: $($_.Exception.Message)" -ForegroundColor Yellow
+        return [pscustomobject]@{ Removed = 0; Skipped = 1 }
     }
 
     $enumerationErrors = @()
     $items = if ($root.PSIsContainer) {
         @(Get-ChildItem -LiteralPath $root.FullName -Force -Recurse -ErrorAction SilentlyContinue -ErrorVariable enumerationErrors |
-            Sort-Object { $_.FullName.Length } -Descending) + @($root)
+            Sort-Object @{ Expression = { $_.FullName.Length }; Descending = $true }, @{ Expression = { $_.FullName.ToUpperInvariant() }; Descending = $false })
     } else {
-        @($root)
+        @()
     }
 
-    foreach ($enumerationError in $enumerationErrors) {
-        $skipped++
-        Write-Host "[WARN] Skipped inaccessible cache path below ${Path}: $($enumerationError.Exception.Message)" -ForegroundColor Yellow
-    }
-
-    $progressId = Start-LauncherProgress -Activity "TKBEN: remove $Path" -Status "0 of $($items.Count) items"
     try {
-        for ($index = 0; $index -lt $items.Count; $index++) {
-            $item = $items[$index]
-            $percent = if ($items.Count -eq 0) { 100 } else { [int](($index + 1) * 100 / $items.Count) }
-            Update-LauncherProgress -Id $progressId -Activity "TKBEN: remove $Path" -Status "$($index + 1) of $($items.Count): $($item.Name)" -PercentComplete $percent
-            try {
-                Remove-Item -LiteralPath $item.FullName -Force -ErrorAction Stop
-                $removed++
-            } catch {
-                $skipped++
-                Write-Host "[WARN] Skipped locked or inaccessible path: $($item.FullName)" -ForegroundColor Yellow
-            }
+        Remove-Item -LiteralPath $root.FullName -Recurse -Force -Confirm:$false -ErrorAction Stop
+        foreach ($enumerationError in $enumerationErrors) {
+            Clear-LauncherProgress
+            Write-Host "[WARN] Skipped inaccessible cache path below ${Path}: $($enumerationError.Exception.Message)" -ForegroundColor Yellow
         }
-    } finally {
-        Complete-LauncherProgress $progressId
-    }
+        return [pscustomobject]@{ Removed = $items.Count + 1; Skipped = $enumerationErrors.Count }
+    } catch {
+        $failureMessages = [Collections.Generic.List[string]]::new()
+        foreach ($enumerationError in $enumerationErrors) {
+            $skipped++
+            [void]$failureMessages.Add("Skipped inaccessible cache path below ${Path}: $($enumerationError.Exception.Message)")
+        }
 
-    return [pscustomobject]@{ Removed = $removed; Skipped = $skipped }
+        $removalItems = @($items) + @($root)
+        $progressId = Start-LauncherProgress -Activity "TKBEN: remove $Path" -Status "0 of $($removalItems.Count) items"
+        try {
+            for ($index = 0; $index -lt $removalItems.Count; $index++) {
+                $item = $removalItems[$index]
+                $percent = if ($removalItems.Count -eq 0) { 100 } else { [int](($index + 1) * 100 / $removalItems.Count) }
+                Update-LauncherProgress -Id $progressId -Activity "TKBEN: remove $Path" -Status "$($index + 1) of $($removalItems.Count): $($item.Name)" -PercentComplete $percent
+                try {
+                    Remove-Item -LiteralPath $item.FullName -Force -Confirm:$false -ErrorAction Stop
+                    $removed++
+                } catch {
+                    $skipped++
+                    [void]$failureMessages.Add("Skipped locked or inaccessible path: $($item.FullName)")
+                }
+            }
+        } finally {
+            Complete-LauncherProgress $progressId
+        }
+
+        foreach ($message in @($failureMessages | Sort-Object -Unique)) {
+            Clear-LauncherProgress
+            Write-Host "[WARN] $message" -ForegroundColor Yellow
+        }
+        return [pscustomobject]@{ Removed = $removed; Skipped = $skipped }
+    }
 }
 
 function Assert-SafeCleanupDirectory {
@@ -822,7 +838,8 @@ function Remove-DirectoryContents {
 
     $enumerationErrors = @()
     $entries = @(Get-ChildItem -LiteralPath $Path -Force -ErrorAction SilentlyContinue -ErrorVariable enumerationErrors |
-        Where-Object { $_.Name -ne '.gitkeep' })
+        Where-Object { $_.Name -ne '.gitkeep' } |
+        Sort-Object @{ Expression = { $_.FullName.ToUpperInvariant() }; Descending = $false })
     $skipped = $enumerationErrors.Count
     foreach ($enumerationError in $enumerationErrors) {
         Write-Host "[WARN] Skipped inaccessible data path below ${Path}: $($enumerationError.Exception.Message)" -ForegroundColor Yellow
@@ -835,9 +852,8 @@ function Remove-DirectoryContents {
 }
 
 function Remove-AllData {
-    $confirmation = Read-Host 'This permanently deletes user data. Type DELETE to continue'
-    if ($null -eq $confirmation) { $confirmation = '' } else { $confirmation = $confirmation.Trim() }
-    if ($confirmation -cne 'DELETE') {
+    $confirmation = ([string](Read-Host 'This permanently deletes user data. Continue? [y/N]')).Trim()
+    if ($confirmation -notmatch '^(?i:y|yes)$') {
         Write-Host '[INFO] Remove All Data cancelled.' -ForegroundColor DarkGray
         return
     }
@@ -885,7 +901,7 @@ function Remove-AllData {
 
 function Remove-PythonCaches {
     $cacheDirectories = @(Get-ChildItem -LiteralPath $RepoRoot -Directory -Filter '__pycache__' -Recurse -Force -ErrorAction SilentlyContinue |
-        Sort-Object FullName -Descending)
+        Sort-Object @{ Expression = { $_.FullName.Length }; Descending = $true }, @{ Expression = { $_.FullName.ToUpperInvariant() }; Descending = $false })
     @($cacheDirectories | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
 }
 
@@ -894,7 +910,8 @@ function Clear-ManagedCache {
     foreach ($cacheRoot in @($RuntimeCacheDir, $ToolCacheDir)) {
         Ensure-Directory $cacheRoot
         $entries = @(Get-ChildItem -LiteralPath $cacheRoot -Force -ErrorAction SilentlyContinue |
-            Where-Object { $_.Name -ne '.gitkeep' })
+            Where-Object { $_.Name -ne '.gitkeep' } |
+            Sort-Object @{ Expression = { $_.FullName.ToUpperInvariant() }; Descending = $false })
         $summaries += @($entries | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
     }
 
@@ -951,16 +968,9 @@ function Update-Application {
         if ($statusExitCode -ne 0) { throw 'Unable to inspect the Git working tree before updating.' }
         $changes = @($statusOutput | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
         if ($changes.Count -gt 0) { throw 'Update requires a clean Git working tree. Commit or safely preserve local changes before retrying.' }
-        $activity = 'TKBEN: update application from origin/main'
-        $progressId = Start-LauncherProgress -Activity $activity -Status 'Pulling origin/main'
-        try {
-            & git pull --ff-only origin main
-            $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
-            if ($exitCode -ne 0) { throw "Application update failed with exit code $exitCode." }
-        }
-        finally {
-            Complete-LauncherProgress $progressId
-        }
+        & git pull --ff-only origin main
+        $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+        if ($exitCode -ne 0) { throw "Application update failed with exit code $exitCode." }
     } finally {
         Pop-Location
     }
