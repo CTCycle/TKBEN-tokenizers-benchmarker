@@ -44,7 +44,8 @@ Use `.\start_on_windows.ps1` for dependency installation, application updates, u
 
 - `Update` updates source only from a non-detached, clean checkout of `main` with `git pull --ff-only origin main`. It never switches branches or modifies local changes; rerun the dependency or frontend setup options when the pulled changes require local rebuilds.
 - `Check for Updates` reads the remote `origin/main` revision with `git ls-remote` and reports the status without fetching, pulling, or applying source changes.
-- `Remove All Data` requires typing `DELETE` and removes mutable local data while preserving tracked application files and templates. It does not drop an external PostgreSQL database.
+- `Remove All Data` requires an affirmative response at a `[y/N]` confirmation prompt and removes mutable local data while preserving tracked application files and templates. It does not drop an external PostgreSQL database.
+- Cache and data removal use deterministic path ordering and a bulk-first operation; item-level removal is used only as a deepest-first recovery path when a bulk delete encounters a locked or protected entry.
 
 ### Database initialization
 
