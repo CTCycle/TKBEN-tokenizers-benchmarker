@@ -137,6 +137,11 @@ def test_generate_report_payload_includes_hf_url_and_subword_stats(
     service = TokenizerReportingService()
     captured_report: dict[str, Any] = {}
 
+    monkeypatch.setattr(
+        service.repository,
+        "get_tokenizer_source",
+        lambda tokenizer_name: "huggingface",
+    )
     monkeypatch.setattr(service, "has_cached_tokenizer", lambda tokenizer_name: True)
     monkeypatch.setattr(
         "server.services.tokenizer_reporting.AutoTokenizer.from_pretrained",
