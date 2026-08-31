@@ -1,5 +1,5 @@
 # Startup
-Last updated: 2026-08-29
+Last updated: 2026-08-31
 
 ## Local Webapp Mode
 Windows recommended:
@@ -42,7 +42,7 @@ Use `.\start_on_windows.ps1` for dependency installation, application updates, u
 
 ### Application updates
 
-- `Update` runs `git pull origin main` in the repository checkout. It updates source only; rerun the dependency or frontend setup options when the pulled changes require local rebuilds.
+- `Update` updates source only from a non-detached, clean checkout of `main` with `git pull --ff-only origin main`. It never switches branches or modifies local changes; rerun the dependency or frontend setup options when the pulled changes require local rebuilds.
 - `Check for Updates` reads the remote `origin/main` revision with `git ls-remote` and reports the status without fetching, pulling, or applying source changes.
 - `Remove All Data` requires typing `DELETE` and removes mutable local data while preserving tracked application files and templates. It does not drop an external PostgreSQL database.
 
