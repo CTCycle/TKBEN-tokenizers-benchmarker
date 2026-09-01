@@ -56,7 +56,7 @@ jobs:
         run: uv run --project app/server python app/scripts/initialize_database.py
 
       - name: Unit tests
-        run: uv run --project app/server python -m pytest app/tests/unit -q
+        run: uv run --project app/server python -m pytest -c app/tests/pytest.ini app/tests/unit -q
 
       - name: OpenAPI smoke
         run: uv run --project app/server python -c "from server.app import app; app.openapi()"

@@ -196,7 +196,7 @@ if errorlevel 1 (
 )
 popd
 echo [STEP] Running Python tests...
-"%PYTHON_CMD%" -m pytest "%PYTEST_TARGET%" -v --tb=short --basetemp "%CACHE_DIR%\pytest-basetemp" %*
+"%PYTHON_CMD%" -m pytest -c "%TESTS_DIR%\pytest.ini" "%PYTEST_TARGET%" -v --tb=short --basetemp "%CACHE_DIR%\pytest-basetemp" %*
 set "PYTEST_RC=%ERRORLEVEL%"
 if "%PYTEST_RC%"=="0" (
   set "PYTEST_PHASE=PASS"
