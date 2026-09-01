@@ -39,7 +39,9 @@ $UvCacheDir = Join-Path $RuntimeCacheDir 'uv'
 $PythonVersion = '3.14.2'
 $NodeVersion = '22.23.1'
 $script:NextProgressId = 1
-$script:ActiveProgressIds = [Collections.Generic.HashSet[int]]::new()
+$script:ActiveProgressActivities = [Collections.Generic.Dictionary[int, string]]::new()
+$script:LauncherProgressEnabled = -not [Console]::IsOutputRedirected
+$script:LauncherInteractive = -not [Console]::IsInputRedirected -and -not [Console]::IsOutputRedirected
 
 # =============================================================================
 # Shared output and filesystem helpers
@@ -51,8 +53,8 @@ function Write-Fatal([string]$Message) { Clear-LauncherProgress; Write-Host "[FA
 function Start-LauncherProgress {
     param([Parameter(Mandatory)][string]$Activity, [Parameter(Mandatory)][string]$Status)
     $id = $script:NextProgressId++
-    [void]$script:ActiveProgressIds.Add($id)
-    Write-Progress -Id $id -Activity $Activity -Status $Status
+    $script:ActiveProgressActivities[$id] = $Activity
+    if ($script:LauncherProgressEnabled) { Write-Progress -Id $id -Activity $Activity -Status $Status }
     return $id
 }
 
@@ -63,23 +65,30 @@ function Update-LauncherProgress {
         [Parameter(Mandatory)][string]$Status,
         [Nullable[int]]$PercentComplete
     )
-    if (-not $script:ActiveProgressIds.Contains($Id)) { return }
-    $progress = @{ Id = $Id; Activity = $Activity; Status = $Status }
+    if (-not $script:ActiveProgressActivities.ContainsKey($Id)) { return }
+    $activity = $script:ActiveProgressActivities[$Id]
+    $progress = @{ Id = $Id; Activity = $activity; Status = $Status }
     if ($null -ne $PercentComplete) { $progress.PercentComplete = $PercentComplete }
-    Write-Progress @progress
+    if ($script:LauncherProgressEnabled) { Write-Progress @progress }
 }
 
 function Complete-LauncherProgress([int]$Id) {
-    if ($script:ActiveProgressIds.Contains($Id)) {
-        Write-Progress -Id $Id -Activity 'TKBEN launcher' -Completed
-        [void]$script:ActiveProgressIds.Remove($Id)
+    if ($script:ActiveProgressActivities.ContainsKey($Id)) {
+        $activity = $script:ActiveProgressActivities[$Id]
+        try {
+            if ($script:LauncherProgressEnabled) {
+                try { Write-Progress -Id $Id -Activity $activity -Completed } catch { }
+            }
+        }
+        finally {
+            [void]$script:ActiveProgressActivities.Remove($Id)
+        }
     }
 }
 
 function Clear-LauncherProgress {
-    foreach ($id in @($script:ActiveProgressIds)) {
-        Write-Progress -Id $id -Activity 'TKBEN launcher' -Completed
-        [void]$script:ActiveProgressIds.Remove($id)
+    foreach ($id in @($script:ActiveProgressActivities.Keys)) {
+        Complete-LauncherProgress -Id $id
     }
 }
 
@@ -96,6 +105,9 @@ function Invoke-TrackedLauncherAction {
     catch {
         Write-Fatal "$Name failed: $($_.Exception.Message)"
         throw
+    }
+    finally {
+        Clear-LauncherProgress
     }
 }
 
@@ -236,11 +248,11 @@ function Install-NodeRuntime {
         $newRuntimeInstalled = $true
 
         if (Test-Path -LiteralPath $backupDir) {
-            Remove-Item -LiteralPath $backupDir -Recurse -Force -ErrorAction Stop
+            [void](Remove-LauncherPath -Path $backupDir -Activity 'TKBEN: remove Node.js backup runtime' -Strict)
         }
     } catch {
         if ($newRuntimeInstalled -and (Test-Path -LiteralPath $NodeDir)) {
-            Remove-Item -LiteralPath $NodeDir -Recurse -Force -ErrorAction SilentlyContinue
+            [void](Remove-LauncherPath -Path $NodeDir -Activity 'TKBEN: roll back Node.js runtime')
         }
         if ($oldRuntimeMoved -and (Test-Path -LiteralPath $backupDir) -and -not (Test-Path -LiteralPath $NodeDir)) {
             Move-Item -LiteralPath $backupDir -Destination $NodeDir -ErrorAction SilentlyContinue
@@ -248,7 +260,7 @@ function Install-NodeRuntime {
         throw
     } finally {
         if (Test-Path -LiteralPath $stagingDir) {
-            Remove-Item -LiteralPath $stagingDir -Recurse -Force -ErrorAction SilentlyContinue
+            [void](Remove-LauncherPath -Path $stagingDir -Activity 'TKBEN: remove runtime staging directory')
         }
     }
 }
@@ -691,6 +703,7 @@ function Rebuild-Frontend {
 }
 
 function Read-InstallationType {
+    Clear-LauncherProgress
     Write-Host '  [1] Development - include Ruff, Pyright, and pytest'
     Write-Host '  [2] Standard    - install runtime dependencies only'
     $selection = (Read-Host '  Select installation profile [1-2]').Trim()
@@ -732,74 +745,169 @@ function Remove-Logs {
     $logs = @(Get-ChildItem -LiteralPath $logDir -Filter '*.log' -File -ErrorAction SilentlyContinue |
         Sort-Object @{ Expression = { $_.FullName.ToUpperInvariant() }; Descending = $false })
     $summary = @($logs | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
-    $removed = [int](($summary | Measure-Object -Property Removed -Sum).Sum)
-    $skipped = [int](($summary | Measure-Object -Property Skipped -Sum).Sum)
+    $removed = [int](($summary | Measure-Object -Property RemovedCount -Sum).Sum)
+    $skipped = [int](($summary | Measure-Object -Property SkippedCount -Sum).Sum)
     Write-Ok "Removed $removed log file(s); skipped $skipped locked or inaccessible file(s)."
+}
+
+function Remove-LauncherPath {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [switch]$KeepRoot,
+        [string[]]$PreserveNames = @('.gitkeep'),
+        [switch]$Strict,
+        [switch]$WhatIf,
+        [string]$Activity = 'TKBEN: remove files'
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        throw 'Refusing to remove an empty path.'
+    }
+    $fullPath = [IO.Path]::GetFullPath($Path)
+    $normalizedPath = $fullPath.TrimEnd('\')
+    $filesystemRoot = [IO.Path]::GetPathRoot($fullPath).TrimEnd('\')
+    $repositoryRoot = if ($script:RepoRoot) { [IO.Path]::GetFullPath([string]$script:RepoRoot).TrimEnd('\') } else { $null }
+    if ($normalizedPath -eq $filesystemRoot -or
+        ($repositoryRoot -and
+        ($normalizedPath -eq $repositoryRoot -or
+        $repositoryRoot.StartsWith("$normalizedPath\", [StringComparison]::OrdinalIgnoreCase)))) {
+        throw "Refusing to remove a filesystem or repository root: $fullPath"
+    }
+
+    $plannedPaths = [Collections.Generic.List[string]]::new()
+    $preservedPaths = [Collections.Generic.List[string]]::new()
+    $removedPaths = [Collections.Generic.List[string]]::new()
+    $skippedPaths = [Collections.Generic.List[string]]::new()
+    $enumerationErrorPaths = [Collections.Generic.List[string]]::new()
+    $warningMessages = [Collections.Generic.List[string]]::new()
+    $result = [ordered]@{
+        Target = $fullPath
+        Path = $fullPath
+        Planned = 0
+        PlannedCount = 0
+        PlannedPaths = @()
+        Preserved = 0
+        PreservedCount = 0
+        PreservedEntries = @()
+        PreservedPaths = @()
+        Removed = 0
+        RemovedCount = 0
+        RemovedPaths = @()
+        Skipped = 0
+        SkippedCount = 0
+        SkippedPaths = @()
+        EnumerationErrors = @()
+        EnumerationErrorCount = 0
+        EnumerationErrorPaths = @()
+        WhatIf = [bool]$WhatIf
+    }
+
+    try {
+        $root = Get-Item -LiteralPath $fullPath -Force -ErrorAction Stop
+    }
+    catch {
+        if ($_.CategoryInfo.Category -eq [System.Management.Automation.ErrorCategory]::ObjectNotFound) {
+            Clear-LauncherProgress
+            return [pscustomobject]$result
+        }
+        $message = [string]$_.Exception.Message
+        [void]$skippedPaths.Add($fullPath)
+        $result.Skipped = $skippedPaths.Count
+        $result.SkippedCount = $skippedPaths.Count
+        $result.SkippedPaths = @($skippedPaths.ToArray())
+        Clear-LauncherProgress
+        Write-Host "[WARN] Skipped inaccessible path: $fullPath ($message)" -ForegroundColor Yellow
+        if ($Strict) { throw }
+        return [pscustomobject]$result
+    }
+
+    $enumerationErrors = @()
+    $entries = if ($root.PSIsContainer) {
+        @(Get-ChildItem -LiteralPath $root.FullName -Force -Recurse -ErrorAction SilentlyContinue -ErrorVariable enumerationErrors)
+    } else {
+        @($root)
+    }
+    foreach ($enumerationError in @($enumerationErrors)) {
+        $errorPath = [string]$enumerationError.TargetObject
+        if ([string]::IsNullOrWhiteSpace($errorPath)) { $errorPath = $fullPath }
+        [void]$enumerationErrorPaths.Add($errorPath)
+        [void]$warningMessages.Add(("Skipped inaccessible path below {0}: {1}" -f $fullPath, $enumerationError.Exception.Message))
+    }
+
+    $protectedDirectories = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($entry in @($entries)) {
+        if ($entry.Name -in $PreserveNames) {
+            [void]$preservedPaths.Add($entry.FullName)
+            [void]$protectedDirectories.Add($root.FullName)
+            $ancestor = [IO.Path]::GetDirectoryName($entry.FullName)
+            while ($ancestor -and $ancestor.StartsWith($root.FullName.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) {
+                [void]$protectedDirectories.Add($ancestor)
+                $ancestor = [IO.Path]::GetDirectoryName($ancestor)
+            }
+        }
+    }
+
+    $candidates = @($entries |
+        Where-Object { -not $preservedPaths.Contains($_.FullName) -and -not $protectedDirectories.Contains($_.FullName) } |
+        Sort-Object @{ Expression = { $_.FullName.Length }; Descending = $true }, @{ Expression = { $_.FullName.ToUpperInvariant() }; Descending = $false })
+    if ($root.PSIsContainer -and -not $KeepRoot -and $preservedPaths.Count -eq 0) {
+        $candidates += $root
+    }
+    foreach ($candidate in @($candidates)) { [void]$plannedPaths.Add($candidate.FullName) }
+    $result.Planned = $plannedPaths.Count
+    $result.PlannedCount = $plannedPaths.Count
+    $result.PlannedPaths = @($plannedPaths.ToArray())
+    $result.Preserved = $preservedPaths.Count
+    $result.PreservedCount = $preservedPaths.Count
+    $result.PreservedEntries = @($preservedPaths.ToArray())
+    $result.PreservedPaths = @($preservedPaths.ToArray() | Sort-Object { $_.ToUpperInvariant() })
+    $result.EnumerationErrors = @($enumerationErrors | ForEach-Object { [string]$_ })
+    $result.EnumerationErrorCount = $enumerationErrorPaths.Count
+    $result.EnumerationErrorPaths = @($enumerationErrorPaths.ToArray() | Sort-Object { $_.ToUpperInvariant() })
+
+    $progressId = $null
+    try {
+        if ($plannedPaths.Count -gt 0) {
+            $progressId = Start-LauncherProgress -Activity $Activity -Status "0 of $($plannedPaths.Count) items"
+        }
+        for ($index = 0; $index -lt $plannedPaths.Count; $index++) {
+            $candidatePath = $plannedPaths[$index]
+            if ($null -ne $progressId) {
+                Update-LauncherProgress -Id $progressId -Activity $Activity -Status "$($index + 1) of $($plannedPaths.Count): $([IO.Path]::GetFileName($candidatePath))" -PercentComplete ([int](($index + 1) * 100 / [Math]::Max(1, $plannedPaths.Count)))
+            }
+            if ($WhatIf) { continue }
+            try {
+                Remove-Item -LiteralPath $candidatePath -Force -Confirm:$false -ErrorAction Stop
+                [void]$removedPaths.Add($candidatePath)
+            }
+            catch {
+                [void]$skippedPaths.Add($candidatePath)
+                [void]$warningMessages.Add("Skipped locked or protected path: $candidatePath ($($_.Exception.Message))")
+            }
+        }
+    }
+    finally {
+        if ($null -ne $progressId) { Complete-LauncherProgress -Id $progressId }
+    }
+
+    $result.Removed = $removedPaths.Count
+    $result.RemovedCount = $removedPaths.Count
+    $result.RemovedPaths = @($removedPaths.ToArray())
+    $result.Skipped = $skippedPaths.Count
+    $result.SkippedCount = $skippedPaths.Count
+    $result.SkippedPaths = @($skippedPaths.ToArray())
+    foreach ($message in $warningMessages.ToArray()) { Write-Host "[WARN] $message" -ForegroundColor Yellow }
+    Clear-LauncherProgress
+    if ($Strict -and ($result.SkippedCount -gt 0 -or $result.EnumerationErrorCount -gt 0)) {
+        throw "Removal of '$fullPath' was incomplete. Skipped $($result.SkippedCount) item(s) and encountered $($result.EnumerationErrorCount) enumeration error(s)."
+    }
+    return [pscustomobject]$result
 }
 
 function Remove-PathBestEffort {
     param([Parameter(Mandatory)][string]$Path)
-
-    $removed = 0
-    $skipped = 0
-    try {
-        $root = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
-    } catch {
-        if ($_.CategoryInfo.Category -eq [System.Management.Automation.ErrorCategory]::ObjectNotFound) {
-            return [pscustomobject]@{ Removed = 0; Skipped = 0 }
-        }
-        Clear-LauncherProgress
-        Write-Host "[WARN] Skipped inaccessible cache path ${Path}: $($_.Exception.Message)" -ForegroundColor Yellow
-        return [pscustomobject]@{ Removed = 0; Skipped = 1 }
-    }
-
-    $enumerationErrors = @()
-    $items = if ($root.PSIsContainer) {
-        @(Get-ChildItem -LiteralPath $root.FullName -Force -Recurse -ErrorAction SilentlyContinue -ErrorVariable enumerationErrors |
-            Sort-Object @{ Expression = { $_.FullName.Length }; Descending = $true }, @{ Expression = { $_.FullName.ToUpperInvariant() }; Descending = $false })
-    } else {
-        @()
-    }
-
-    try {
-        Remove-Item -LiteralPath $root.FullName -Recurse -Force -Confirm:$false -ErrorAction Stop
-        foreach ($enumerationError in $enumerationErrors) {
-            Clear-LauncherProgress
-            Write-Host "[WARN] Skipped inaccessible cache path below ${Path}: $($enumerationError.Exception.Message)" -ForegroundColor Yellow
-        }
-        return [pscustomobject]@{ Removed = $items.Count + 1; Skipped = $enumerationErrors.Count }
-    } catch {
-        $failureMessages = [Collections.Generic.List[string]]::new()
-        foreach ($enumerationError in $enumerationErrors) {
-            $skipped++
-            [void]$failureMessages.Add("Skipped inaccessible cache path below ${Path}: $($enumerationError.Exception.Message)")
-        }
-
-        $removalItems = @($items) + @($root)
-        $progressId = Start-LauncherProgress -Activity "TKBEN: remove $Path" -Status "0 of $($removalItems.Count) items"
-        try {
-            for ($index = 0; $index -lt $removalItems.Count; $index++) {
-                $item = $removalItems[$index]
-                $percent = if ($removalItems.Count -eq 0) { 100 } else { [int](($index + 1) * 100 / $removalItems.Count) }
-                Update-LauncherProgress -Id $progressId -Activity "TKBEN: remove $Path" -Status "$($index + 1) of $($removalItems.Count): $($item.Name)" -PercentComplete $percent
-                try {
-                    Remove-Item -LiteralPath $item.FullName -Force -Confirm:$false -ErrorAction Stop
-                    $removed++
-                } catch {
-                    $skipped++
-                    [void]$failureMessages.Add("Skipped locked or inaccessible path: $($item.FullName)")
-                }
-            }
-        } finally {
-            Complete-LauncherProgress $progressId
-        }
-
-        foreach ($message in @($failureMessages | Sort-Object -Unique)) {
-            Clear-LauncherProgress
-            Write-Host "[WARN] $message" -ForegroundColor Yellow
-        }
-        return [pscustomobject]@{ Removed = $removed; Skipped = $skipped }
-    }
+    return Remove-LauncherPath -Path $Path -Activity "TKBEN: remove $([IO.Path]::GetFileName($Path))"
 }
 
 function Assert-SafeCleanupDirectory {
@@ -833,25 +941,41 @@ function Remove-DirectoryContents {
     param([Parameter(Mandatory)][string]$Path)
 
     if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
-        return [pscustomobject]@{ Removed = 0; Skipped = 0 }
+        Clear-LauncherProgress
+        return [pscustomobject]@{
+            Path = [IO.Path]::GetFullPath($Path)
+            PlannedCount = 0
+            PlannedPaths = @()
+            PreservedCount = 0
+            PreservedPaths = @()
+            RemovedCount = 0
+            RemovedPaths = @()
+            SkippedCount = 0
+            SkippedPaths = @()
+            EnumerationErrorCount = 0
+            EnumerationErrorPaths = @()
+            WhatIf = $false
+        }
     }
-
-    $enumerationErrors = @()
-    $entries = @(Get-ChildItem -LiteralPath $Path -Force -ErrorAction SilentlyContinue -ErrorVariable enumerationErrors |
-        Where-Object { $_.Name -ne '.gitkeep' } |
-        Sort-Object @{ Expression = { $_.FullName.ToUpperInvariant() }; Descending = $false })
-    $skipped = $enumerationErrors.Count
-    foreach ($enumerationError in $enumerationErrors) {
-        Write-Host "[WARN] Skipped inaccessible data path below ${Path}: $($enumerationError.Exception.Message)" -ForegroundColor Yellow
+    $result = Remove-LauncherPath -Path $Path -KeepRoot -PreserveNames @('.gitkeep') -Activity "TKBEN: clear $Path"
+    return [pscustomobject]@{
+        Path = $result.Path
+        PlannedCount = $result.PlannedCount
+        PlannedPaths = $result.PlannedPaths
+        PreservedCount = $result.PreservedCount
+        PreservedPaths = $result.PreservedPaths
+        RemovedCount = $result.RemovedCount
+        RemovedPaths = $result.RemovedPaths
+        SkippedCount = $result.SkippedCount
+        SkippedPaths = $result.SkippedPaths
+        EnumerationErrorCount = $result.EnumerationErrorCount
+        EnumerationErrorPaths = $result.EnumerationErrorPaths
+        WhatIf = $result.WhatIf
     }
-
-    $summaries = @($entries | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
-    $removed = [int](($summaries | Measure-Object -Property Removed -Sum).Sum)
-    $skipped += [int](($summaries | Measure-Object -Property Skipped -Sum).Sum)
-    return [pscustomobject]@{ Removed = $removed; Skipped = $skipped }
 }
 
 function Remove-AllData {
+    Clear-LauncherProgress
     $confirmation = ([string](Read-Host 'This permanently deletes user data. Continue? [y/N]')).Trim()
     if ($confirmation -notmatch '^(?i:y|yes)$') {
         Write-Host '[INFO] Remove All Data cancelled.' -ForegroundColor DarkGray
@@ -887,8 +1011,9 @@ function Remove-AllData {
         $summaries += @(Remove-DirectoryContents -Path $dataDirectory)
     }
 
-    $removed = [int](($summaries | Measure-Object -Property Removed -Sum).Sum)
-    $skipped = [int](($summaries | Measure-Object -Property Skipped -Sum).Sum)
+    $removed = [int](($summaries | Measure-Object -Property RemovedCount -Sum).Sum)
+    $skipped = [int](($summaries | Measure-Object -Property SkippedCount -Sum).Sum) +
+        [int](($summaries | Measure-Object -Property EnumerationErrorCount -Sum).Sum)
     if ((Get-EnvironmentSetting -Key 'DATABASE_EMBEDDED' -DefaultValue 'true') -ine 'true') {
         Write-Host '[WARN] DATABASE_EMBEDDED is false; the external database was not modified.' -ForegroundColor Yellow
     }
@@ -924,7 +1049,8 @@ function Clear-Cache {
         Remove-PythonCaches
         Clear-ManagedCache
     )
-    $skipped = [int](($summaries | Measure-Object -Property Skipped -Sum).Sum)
+    $skipped = [int](($summaries | Measure-Object -Property SkippedCount -Sum).Sum) +
+        [int](($summaries | Measure-Object -Property EnumerationErrorCount -Sum).Sum)
     if ($skipped -gt 0) {
         Write-Ok "Caches cleared where permitted; skipped $skipped locked or inaccessible path(s)."
     } else {
@@ -934,6 +1060,7 @@ function Clear-Cache {
 
 function Uninstall-Application {
     Write-Step 'Removing downloaded runtimes, dependencies, build output, and Python caches.'
+    $summaries = @()
     $directories = @(
         $RuntimeDir,
         $VenvDir,
@@ -943,12 +1070,19 @@ function Uninstall-Application {
         (Join-Path $ClientDir 'dist')
     )
     foreach ($directory in $directories) {
-        if (Test-Path -LiteralPath $directory) { Remove-PathBestEffort -Path $directory | Out-Null }
+        if (Test-Path -LiteralPath $directory) { $summaries += @(Remove-PathBestEffort -Path $directory) }
     }
     # Project manifests, dependency lockfiles, and tool configuration remain intact.
-    Remove-PythonCaches
-    Clear-ManagedCache
-    Write-Ok 'Application runtimes, dependencies, and build outputs removed. Dependency lockfiles and user data were preserved.'
+    $summaries += @(Remove-PythonCaches)
+    $summaries += @(Clear-ManagedCache)
+    $removed = [int](($summaries | Measure-Object -Property RemovedCount -Sum).Sum)
+    $skipped = [int](($summaries | Measure-Object -Property SkippedCount -Sum).Sum) +
+        [int](($summaries | Measure-Object -Property EnumerationErrorCount -Sum).Sum)
+    if ($skipped -gt 0) {
+        Write-Ok "Removed $removed application path item(s) where permitted; skipped $skipped locked or inaccessible path(s). Dependency lockfiles and user data were preserved."
+    } else {
+        Write-Ok "Removed $removed application path item(s). Dependency lockfiles and user data were preserved."
+    }
 }
 
 # =============================================================================
@@ -1010,9 +1144,10 @@ function Check-ForUpdates {
 # Interactive menu
 # =============================================================================
 function Wait-ForMenu {
-    if ([Console]::IsInputRedirected) { return }
+    Clear-LauncherProgress
     Write-Host
     Write-Host 'Press any key to return to the menu...' -ForegroundColor DarkGray
+    if (-not $script:LauncherInteractive) { return }
     [Console]::ReadKey($true) | Out-Null
 }
 
@@ -1025,14 +1160,36 @@ function Clear-MenuScreen {
     }
 }
 
-function Write-MenuItem([string]$Number, [string]$Label, [string]$Description, [ConsoleColor]$Color = [ConsoleColor]::White) {
-    Write-Host "  [$Number] " -NoNewline -ForegroundColor $Color
-    Write-Host $Label -NoNewline -ForegroundColor White
-    Write-Host "  $Description" -ForegroundColor DarkGray
+function Get-LauncherMenuEntries {
+    return @(
+        [pscustomobject]@{ Section = 'APPLICATION'; Label = 'Launch application'; Description = 'Start the local benchmark workspace'; Key = 'Launch'; Destructive = $false }
+        [pscustomobject]@{ Section = 'SETUP & VALIDATION'; Label = 'Install / update dependencies'; Description = 'Sync tooling and the database'; Key = 'Install'; Destructive = $false }
+        [pscustomobject]@{ Section = 'SETUP & VALIDATION'; Label = 'Rebuild frontend'; Description = 'Build the Angular production output only'; Key = 'Rebuild'; Destructive = $false }
+        [pscustomobject]@{ Section = 'SETUP & VALIDATION'; Label = 'Initialize database'; Description = 'Create or update the local database'; Key = 'Database'; Destructive = $false }
+        [pscustomobject]@{ Section = 'SETUP & VALIDATION'; Label = 'Run test suite'; Description = 'Validate backend and frontend checks'; Key = 'Tests'; Destructive = $false }
+        [pscustomobject]@{ Section = 'SOURCE CONTROL'; Label = 'Check for updates'; Description = 'Report whether origin/main has a newer revision'; Key = 'Check'; Destructive = $false }
+        [pscustomobject]@{ Section = 'SOURCE CONTROL'; Label = 'Update application'; Description = 'Pull the application from the main branch'; Key = 'Update'; Destructive = $false }
+        [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Remove logs'; Description = 'Clear generated application logs'; Key = 'Logs'; Destructive = $true }
+        [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Clear cache'; Description = 'Remove downloaded and generated caches'; Key = 'Cache'; Destructive = $true }
+        [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Remove all data'; Description = 'Delete the database and user-created files'; Key = 'AllData'; Destructive = $true }
+        [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Uninstall application'; Description = 'Remove local runtimes and dependencies'; Key = 'Uninstall'; Destructive = $true }
+        [pscustomobject]@{ Section = 'EXIT'; Label = 'Exit'; Description = 'Close this launcher'; Key = 'Exit'; Destructive = $false }
+    )
+}
+
+function Write-MenuItem {
+    param(
+        [Parameter(Mandatory)][pscustomobject]$Entry,
+        [Parameter(Mandatory)][int]$NumberWidth,
+        [Parameter(Mandatory)][int]$LabelWidth
+    )
+    $color = if ($Entry.Destructive) { 'Yellow' } elseif ($Entry.Key -eq 'Exit') { 'DarkGray' } else { 'White' }
+    Write-Host ("  {0,$NumberWidth}. {1,-$LabelWidth}  {2}" -f $Entry.Number, $Entry.Label, $Entry.Description) -ForegroundColor $color
 }
 
 function Show-Menu {
     while ($true) {
+        Clear-LauncherProgress
         Clear-MenuScreen
         if (-not [Console]::IsOutputRedirected) {
             try { $host.UI.RawUI.WindowTitle = 'TKBEN | Tokenizers Benchmarker' } catch { }
@@ -1046,52 +1203,58 @@ function Show-Menu {
         Write-Host ('  |  {0,-56}|' -f 'Launch, maintain, and validate your local workspace.') -ForegroundColor DarkGray
         Write-Host '  +----------------------------------------------------------+' -ForegroundColor DarkCyan
         Write-Host
-        Write-Host '  APPLICATION' -ForegroundColor DarkCyan
-        Write-MenuItem '1' 'Launch application' 'Start the local benchmark workspace' Cyan
-        Write-Host
-        Write-Host '  SETUP & VALIDATION' -ForegroundColor DarkCyan
-        Write-MenuItem '2' 'Install / update dependencies' 'Sync tooling and the database'
-        Write-MenuItem '3' 'Rebuild frontend' 'Build the Angular production output only'
-        Write-MenuItem '4' 'Initialize database' 'Create or update the local database'
-        Write-MenuItem '5' 'Run test suite' 'Validate backend and frontend checks'
-        Write-Host
-        Write-Host '  MAINTENANCE' -ForegroundColor DarkCyan
-        Write-MenuItem '6' 'Remove logs' 'Clear generated application logs'
-        Write-MenuItem '7' 'Clear cache' 'Remove downloaded and generated caches'
-        Write-MenuItem '8' 'Remove All Data' 'Delete the database and user-created files' Yellow
-        Write-MenuItem '9' 'Uninstall application' 'Remove local runtimes and dependencies' Yellow
-        Write-Host
-        Write-Host '  UPDATES' -ForegroundColor DarkCyan
-        Write-MenuItem '10' 'Update' 'Pull the application from the main branch' Yellow
-        Write-MenuItem '11' 'Check for Updates' 'Report whether origin/main has a newer revision'
+        $entries = @(Get-LauncherMenuEntries)
+        for ($index = 0; $index -lt $entries.Count; $index++) {
+            $entries[$index] = [pscustomobject]@{
+                Number = $index + 1
+                Section = $entries[$index].Section
+                Label = $entries[$index].Label
+                Description = $entries[$index].Description
+                Key = $entries[$index].Key
+                Destructive = $entries[$index].Destructive
+            }
+        }
+        $numberWidth = ([string]$entries.Count).Length
+        $labelWidth = ($entries | ForEach-Object { $_.Label.Length } | Measure-Object -Maximum).Maximum
+        $lastSection = $null
+        foreach ($entry in $entries) {
+            if ($entry.Section -ne $lastSection) {
+                if ($null -ne $lastSection) { Write-Host }
+                Write-Host ("  {0}" -f $entry.Section) -ForegroundColor DarkCyan
+                $lastSection = $entry.Section
+            }
+            Write-MenuItem -Entry $entry -NumberWidth $numberWidth -LabelWidth $labelWidth
+        }
         Write-Host
         Write-Host '  +----------------------------------------------------------+' -ForegroundColor DarkCyan
-        Write-MenuItem '12' 'Exit' 'Close this launcher' DarkGray
-        Write-Host '  +----------------------------------------------------------+' -ForegroundColor DarkCyan
         Write-Host
-        $selection = (Read-Host '  Select an option [1-12]').Trim()
+        $maxOption = $entries.Count
+        if (-not $script:LauncherInteractive) { return }
+        Clear-LauncherProgress
+        $selection = (Read-Host "  Select an option (1-$maxOption)").Trim()
 
-        if ($selection -notmatch '^(?:[1-9]|1[0-2])$') {
-            Write-Fatal 'Invalid option. Enter a number from 1 through 12.'
+        if ($selection -notmatch '^[1-9][0-9]*$' -or [int]$selection -lt 1 -or [int]$selection -gt $maxOption) {
+            Write-Fatal "Invalid option. Enter a number from 1 through $maxOption."
             Wait-ForMenu
             continue
         }
-        if ($selection -eq '12') { break }
+        $entry = $entries[[int]$selection - 1]
+        if ($entry.Key -eq 'Exit') { break }
 
         try {
-            Invoke-TrackedLauncherAction -Name "menu option $selection" -Action {
-                switch ($selection) {
-                    '1' { Launch-Application; exit 0 }
-                    '2' { Install-Dependencies }
-                    '3' { Rebuild-Frontend }
-                    '4' { Initialize-Database }
-                    '5' { Run-TestSuite }
-                    '6' { Remove-Logs }
-                    '7' { Clear-Cache }
-                    '8' { Remove-AllData }
-                    '9' { Uninstall-Application }
-                    '10' { Update-Application }
-                    '11' { Check-ForUpdates }
+            Invoke-TrackedLauncherAction -Name $entry.Label -Action {
+                switch ($entry.Key) {
+                    'Launch' { Launch-Application; exit 0 }
+                    'Install' { Install-Dependencies }
+                    'Rebuild' { Rebuild-Frontend }
+                    'Database' { Initialize-Database }
+                    'Tests' { Run-TestSuite }
+                    'Check' { Check-ForUpdates }
+                    'Update' { Update-Application }
+                    'Logs' { Remove-Logs }
+                    'Cache' { Clear-Cache }
+                    'AllData' { Remove-AllData }
+                    'Uninstall' { Uninstall-Application }
                 }
             }
         } catch {
