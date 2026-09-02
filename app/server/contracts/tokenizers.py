@@ -211,6 +211,10 @@ class TokenizerLengthHistogram(BaseModel):
     max_length: int = Field(default=0)
     mean_length: float = Field(default=0.0)
     median_length: float = Field(default=0.0)
+    token_length_std: float = Field(default=0.0, ge=0.0)
+    token_length_p90: float = Field(default=0.0, ge=0.0)
+    token_length_cv: float = Field(default=0.0, ge=0.0)
+    single_character_token_percentage: float = Field(default=0.0, ge=0.0, le=100.0)
 
 
 ###############################################################################
