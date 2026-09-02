@@ -87,25 +87,30 @@ class TokenizerReportRepository:
                     TokenizerReport.tokenizer_id == int(tokenizer_id)
                 )
             )
-            vocabulary_shape_metrics = compute_vocabulary_shape_metrics(vocabulary_rows)
             global_stats = report.get("global_stats", {})
             metadata_payload = (
                 dict(global_stats) if isinstance(global_stats, dict) else {}
-            )
-            vocabulary_stats = metadata_payload.get("vocabulary_stats")
-            persisted_vocabulary_stats = (
-                dict(vocabulary_stats) if isinstance(vocabulary_stats, dict) else {}
-            )
-            persisted_vocabulary_stats.update(vocabulary_shape_metrics)
-            metadata_payload["vocabulary_stats"] = persisted_vocabulary_stats
-            metadata_payload.setdefault(
-                "huggingface_url", report.get("huggingface_url")
             )
             report_histogram = report.get("token_length_histogram", {})
             histogram_payload = (
                 dict(report_histogram) if isinstance(report_histogram, dict) else {}
             )
-            histogram_payload.update(vocabulary_shape_metrics)
+            is_canonical_generated_report = (
+                metadata_payload.get("token_length_measure") == "character_count"
+                and isinstance(metadata_payload.get("vocabulary_stats"), dict)
+                and bool(vocabulary_rows)
+            )
+            if is_canonical_generated_report:
+                vocabulary_shape_metrics = compute_vocabulary_shape_metrics(
+                    vocabulary_rows
+                )
+                vocabulary_stats = dict(metadata_payload["vocabulary_stats"])
+                vocabulary_stats.update(vocabulary_shape_metrics)
+                metadata_payload["vocabulary_stats"] = vocabulary_stats
+                histogram_payload.update(vocabulary_shape_metrics)
+            metadata_payload.setdefault(
+                "huggingface_url", report.get("huggingface_url")
+            )
             report_row = TokenizerReport(
                 tokenizer_id=int(tokenizer_id),
                 report_version=int(report["report_version"]),
@@ -146,7 +151,7 @@ class TokenizerReportRepository:
             histogram = {}
         if not isinstance(histogram, dict):
             raise ValueError("Tokenizer report histogram must be a native JSON object.")
-        histogram_payload = {
+        histogram_payload: dict[str, Any] = {
             "bins": list(histogram.get("bins", [])),
             "counts": list(histogram.get("counts", [])),
             "bin_edges": list(histogram.get("bin_edges", [])),
@@ -154,13 +159,15 @@ class TokenizerReportRepository:
             "max_length": int(histogram.get("max_length", 0) or 0),
             "mean_length": float(histogram.get("mean_length", 0.0) or 0.0),
             "median_length": float(histogram.get("median_length", 0.0) or 0.0),
-            "token_length_std": float(histogram.get("token_length_std", 0.0) or 0.0),
-            "token_length_p90": float(histogram.get("token_length_p90", 0.0) or 0.0),
-            "token_length_cv": float(histogram.get("token_length_cv", 0.0) or 0.0),
-            "single_character_token_percentage": float(
-                histogram.get("single_character_token_percentage", 0.0) or 0.0
-            ),
         }
+        for metric_key in (
+            "token_length_std",
+            "token_length_p90",
+            "token_length_cv",
+            "single_character_token_percentage",
+        ):
+            if metric_key in histogram:
+                histogram_payload[metric_key] = float(histogram.get(metric_key, 0.0) or 0.0)
         huggingface_url = metadata_payload.pop("huggingface_url", None)
         if not isinstance(huggingface_url, str) or not huggingface_url.strip():
             huggingface_url = None
