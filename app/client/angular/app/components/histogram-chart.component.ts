@@ -3,6 +3,12 @@ import type { HistogramData } from '../core/api/api.models';
 import { formatBenchmarkAxisValue } from '../core/utils/benchmark-dashboard-data';
 
 type HistogramView = 'histogram' | 'cumulative';
+type ExtendedHistogramData = HistogramData & {
+  token_length_std?: number;
+  token_length_p90?: number;
+  token_length_cv?: number;
+  single_character_token_percentage?: number;
+};
 
 @Component({
   selector: 'app-histogram-chart',
@@ -14,6 +20,9 @@ type HistogramView = 'histogram' | 'cumulative';
     .histogram-view-button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
     .histogram-cdf-line { fill: none; stroke: var(--color-accent); stroke-width: 2.5; vector-effect: non-scaling-stroke; }
     .histogram-cdf-point { fill: var(--color-accent); }
+    .histogram-shape-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px 12px; margin-top: 8px; font-size: 0.75rem; color: var(--color-muted); }
+    .histogram-shape-metrics span { display: flex; justify-content: space-between; gap: 8px; }
+    .histogram-shape-metrics strong { color: var(--color-text); font-weight: 600; }
   `],
 })
 export class HistogramChartComponent {
@@ -34,6 +43,21 @@ export class HistogramChartComponent {
     });
   });
   protected readonly cumulativePoints = computed(() => this.cumulativeValues().map((value, index) => `${this.pointX(index)},${this.pointY(value)}`).join(' '));
+  protected readonly shapeMetrics = computed(() => {
+    const histogram = this.histogram() as ExtendedHistogramData;
+    if (
+      histogram.token_length_std === undefined
+      && histogram.token_length_p90 === undefined
+      && histogram.token_length_cv === undefined
+      && histogram.single_character_token_percentage === undefined
+    ) return [];
+    return [
+      { label: 'Std', value: this.formatMetric(histogram.token_length_std) },
+      { label: 'p90', value: this.formatMetric(histogram.token_length_p90) },
+      { label: 'CV', value: this.formatMetric(histogram.token_length_cv, 3) },
+      { label: '1-char', value: histogram.single_character_token_percentage === undefined ? 'N/A' : `${histogram.single_character_token_percentage.toFixed(1)}%` },
+    ];
+  });
 
   protected setView(view: HistogramView): void { this.view.set(view); }
   protected tickY(fraction: number): number { return 166 - fraction * 130; }
@@ -53,4 +77,5 @@ export class HistogramChartComponent {
     return count === 1 ? 330 : 34 + (index / (count - 1)) * 590;
   }
   protected pointY(value: number): number { return 166 - Math.max(0, Math.min(1, value)) * 130; }
+  private formatMetric(value: number | undefined, digits = 2): string { return value === undefined ? 'N/A' : value.toFixed(digits); }
 }
