@@ -20,4 +20,9 @@
       }
     }
   </svg>
+  @if (shapeMetrics().length) {
+    <div class="histogram-shape-metrics" aria-label="Tokenizer length summary metrics">
+      @for (metric of shapeMetrics(); track metric.label) { <span>{{ metric.label }} <strong>{{ metric.value }}</strong></span> }
+    </div>
+  }
 </div>
