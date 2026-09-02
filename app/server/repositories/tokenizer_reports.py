@@ -7,6 +7,7 @@ import pandas as pd
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from server.common.tokenizer_metrics import compute_vocabulary_shape_metrics
 from server.repositories.queries.data import DataRepositoryQueries
 from server.repositories.schemas.models import (
     Tokenizer,
@@ -90,6 +91,14 @@ class TokenizerReportRepository:
             metadata_payload = (
                 dict(global_stats) if isinstance(global_stats, dict) else {}
             )
+            vocabulary_stats = metadata_payload.get("vocabulary_stats")
+            persisted_vocabulary_stats = (
+                dict(vocabulary_stats) if isinstance(vocabulary_stats, dict) else {}
+            )
+            persisted_vocabulary_stats.update(
+                compute_vocabulary_shape_metrics(vocabulary_rows)
+            )
+            metadata_payload["vocabulary_stats"] = persisted_vocabulary_stats
             metadata_payload.setdefault(
                 "huggingface_url", report.get("huggingface_url")
             )
