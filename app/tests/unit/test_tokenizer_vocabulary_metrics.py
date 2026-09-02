@@ -35,12 +35,14 @@ def test_repository_persists_vocabulary_shape_metrics_in_report_json() -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     Base.metadata.create_all(engine)
     tokenizer_name = "test/vectorized-metrics"
+    now = datetime.now(timezone.utc)
     with Session(engine) as session:
         session.add(
             Tokenizer(
                 name=tokenizer_name,
                 source="custom",
-                created_at=datetime.now(timezone.utc),
+                created_at=now,
+                updated_at=now,
             )
         )
         session.commit()
@@ -54,6 +56,7 @@ def test_repository_persists_vocabulary_shape_metrics_in_report_json() -> None:
             "report_version": 1,
             "global_stats": {
                 "vocabulary_size": 4,
+                "token_length_measure": "character_count",
                 "vocabulary_stats": {"mean_token_length": 2.5},
             },
             "token_length_histogram": {
