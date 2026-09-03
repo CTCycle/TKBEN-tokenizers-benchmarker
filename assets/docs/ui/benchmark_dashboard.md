@@ -1,9 +1,9 @@
 # Benchmark Dashboard
-Last updated: 2026-08-29
+Last updated: 2026-09-03
 
 Cross-benchmark reports use schema version 3 and report version 5. The report exposes a normalized `dashboard` payload whose widgets are emitted only for calculated, finite metric series; zero remains a valid calculated value.
 
-Widget definitions are canonical backend definitions. Each provides its category, display metadata, strict `default_visualization`, ordered compatible visualization choices, data-driven width, and default visibility. Scalar points expose `bar` and `horizontal_bar`; interval points expose `interval_bar` and `dot_whisker`; five-number distributions expose `box_plot` and `histogram`; tokenizer-by-bucket comparisons expose `grouped_bar` only so the dashboard does not offer a table-like alternative. Histogram widgets also expose shared-edge `histogram_bins`. The `BenchmarkStore` persists the committed widget order, hidden IDs, and per-widget choices under `tkben:cross-benchmark-dashboard-layout:v3`; malformed or older storage shapes, including the former array shape, are ignored and the current defaults are used without migration.
+Widget definitions are canonical backend definitions. Each provides its category, display metadata, strict `default_visualization`, ordered compatible visualization choices, data-driven width, and default visibility. Scalar points expose `bar` and `horizontal_bar`; interval points expose `interval_bar` and `dot_whisker`; five-number distributions expose `box_plot` and `histogram`; tokenizer-by-bucket comparisons expose `grouped_bar` and `heatmap`. Histogram widgets also expose shared-edge `histogram_bins`. The `BenchmarkStore` persists the committed widget order, hidden IDs, and per-widget choices under `tkben:cross-benchmark-dashboard-layout:v3`; malformed or older storage shapes, including the former array shape, are ignored and the current defaults are used without migration.
 
 The dashboard header can restore the complete default layout. This removes the persisted layout, returning visibility, widget ordering, and visualization choices to the current report defaults; the control is disabled while the active layout already matches those defaults.
 

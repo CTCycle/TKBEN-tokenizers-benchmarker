@@ -135,7 +135,7 @@ export interface JobStatusResponse {
 }
 
 /**
- * Histogram data for document length distribution
+ * Histogram data for a length distribution.
  */
 export interface HistogramData {
     bins: string[];
@@ -145,6 +145,10 @@ export interface HistogramData {
     max_length: number;
     mean_length: number;
     median_length: number;
+    token_length_std?: number | null;
+    token_length_p90?: number | null;
+    token_length_cv?: number | null;
+    single_character_token_percentage?: number | null;
 }
 
 /**
@@ -512,6 +516,10 @@ export interface TokenizerVocabularyStats {
     unknown_token_representation?: string | null;
     normalization_behavior?: string | null;
     vocabulary_density?: number | null;
+    token_length_std?: number | null;
+    token_length_p90?: number | null;
+    token_length_cv?: number | null;
+    single_character_token_percentage?: number | null;
 }
 
 export interface TokenizerGlobalStats extends Record<string, unknown> {
