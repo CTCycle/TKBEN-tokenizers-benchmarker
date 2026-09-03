@@ -36,13 +36,19 @@ def test_repository_persists_vocabulary_shape_metrics_in_report_json() -> None:
     Base.metadata.create_all(engine)
     tokenizer_name = "test/vectorized-metrics"
     now = datetime.now(timezone.utc)
+    vocabulary_rows = [
+        {"token_id": 0, "token": "a", "decoded_token": "a"},
+        {"token_id": 1, "token": "bb", "decoded_token": "bb"},
+        {"token_id": 2, "token": "ccc", "decoded_token": "ccc"},
+        {"token_id": 3, "token": "dddd", "decoded_token": "dddd"},
+    ]
+    vocabulary_shape_metrics = compute_vocabulary_shape_metrics(vocabulary_rows)
     with Session(engine) as session:
         session.add(
             Tokenizer(
                 name=tokenizer_name,
                 source="custom",
                 created_at=now,
-                updated_at=now,
             )
         )
         session.commit()
@@ -57,7 +63,10 @@ def test_repository_persists_vocabulary_shape_metrics_in_report_json() -> None:
             "global_stats": {
                 "vocabulary_size": 4,
                 "token_length_measure": "character_count",
-                "vocabulary_stats": {"mean_token_length": 2.5},
+                "vocabulary_stats": {
+                    "mean_token_length": 2.5,
+                    **vocabulary_shape_metrics,
+                },
             },
             "token_length_histogram": {
                 "bins": ["1", "2", "3", "4"],
@@ -67,14 +76,10 @@ def test_repository_persists_vocabulary_shape_metrics_in_report_json() -> None:
                 "max_length": 4,
                 "mean_length": 2.5,
                 "median_length": 2.5,
+                **vocabulary_shape_metrics,
             },
         },
-        [
-            {"token_id": 0, "token": "a", "decoded_token": "a"},
-            {"token_id": 1, "token": "bb", "decoded_token": "bb"},
-            {"token_id": 2, "token": "ccc", "decoded_token": "ccc"},
-            {"token_id": 3, "token": "dddd", "decoded_token": "dddd"},
-        ],
+        vocabulary_rows,
     )
 
     loaded = repository.load_tokenizer_report_by_id(report_id)

@@ -35,7 +35,7 @@ def compute_vocabulary_shape_metrics(
     std_length = float(np.std(lengths))
     p90_length = float(np.percentile(lengths, 90.0))
     token_length_cv = std_length / mean_length if mean_length > 0.0 else 0.0
-    single_character_percentage = float(np.mean(lengths == 1.0) * 100.0)
+    single_character_percentage = float(np.mean(np.isclose(lengths, 1.0)) * 100.0)
 
     return {
         "token_length_std": std_length,

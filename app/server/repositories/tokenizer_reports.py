@@ -7,7 +7,6 @@ import pandas as pd
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from server.common.tokenizer_metrics import compute_vocabulary_shape_metrics
 from server.repositories.queries.data import DataRepositoryQueries
 from server.repositories.schemas.models import (
     Tokenizer,
@@ -95,19 +94,6 @@ class TokenizerReportRepository:
             histogram_payload = (
                 dict(report_histogram) if isinstance(report_histogram, dict) else {}
             )
-            is_canonical_generated_report = (
-                metadata_payload.get("token_length_measure") == "character_count"
-                and isinstance(metadata_payload.get("vocabulary_stats"), dict)
-                and bool(vocabulary_rows)
-            )
-            if is_canonical_generated_report:
-                vocabulary_shape_metrics = compute_vocabulary_shape_metrics(
-                    vocabulary_rows
-                )
-                vocabulary_stats = dict(metadata_payload["vocabulary_stats"])
-                vocabulary_stats.update(vocabulary_shape_metrics)
-                metadata_payload["vocabulary_stats"] = vocabulary_stats
-                histogram_payload.update(vocabulary_shape_metrics)
             metadata_payload.setdefault(
                 "huggingface_url", report.get("huggingface_url")
             )
