@@ -90,6 +90,10 @@ class TokenizerReportRepository:
             metadata_payload = (
                 dict(global_stats) if isinstance(global_stats, dict) else {}
             )
+            report_histogram = report.get("token_length_histogram", {})
+            histogram_payload = (
+                dict(report_histogram) if isinstance(report_histogram, dict) else {}
+            )
             metadata_payload.setdefault(
                 "huggingface_url", report.get("huggingface_url")
             )
@@ -98,7 +102,7 @@ class TokenizerReportRepository:
                 report_version=int(report["report_version"]),
                 created_at=now,
                 metadata_json=metadata_payload,
-                token_length_histogram=report.get("token_length_histogram", {}),
+                token_length_histogram=histogram_payload,
                 description=report.get("description"),
             )
             session.add(report_row)
@@ -133,7 +137,7 @@ class TokenizerReportRepository:
             histogram = {}
         if not isinstance(histogram, dict):
             raise ValueError("Tokenizer report histogram must be a native JSON object.")
-        histogram_payload = {
+        histogram_payload: dict[str, Any] = {
             "bins": list(histogram.get("bins", [])),
             "counts": list(histogram.get("counts", [])),
             "bin_edges": list(histogram.get("bin_edges", [])),
@@ -142,6 +146,14 @@ class TokenizerReportRepository:
             "mean_length": float(histogram.get("mean_length", 0.0) or 0.0),
             "median_length": float(histogram.get("median_length", 0.0) or 0.0),
         }
+        for metric_key in (
+            "token_length_std",
+            "token_length_p90",
+            "token_length_cv",
+            "single_character_token_percentage",
+        ):
+            if metric_key in histogram:
+                histogram_payload[metric_key] = float(histogram.get(metric_key, 0.0) or 0.0)
         huggingface_url = metadata_payload.pop("huggingface_url", None)
         if not isinstance(huggingface_url, str) or not huggingface_url.strip():
             huggingface_url = None
