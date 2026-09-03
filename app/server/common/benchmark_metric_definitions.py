@@ -261,7 +261,10 @@ BENCHMARK_METRIC_DEFINITIONS: tuple[BenchmarkMetricDefinition, ...] = (
         "pieces/word",
         "ratio",
         default_visualization=BenchmarkVisualizationKind.GROUPED_BAR,
-        compatible_visualizations=(BenchmarkVisualizationKind.GROUPED_BAR,),
+        compatible_visualizations=(
+            BenchmarkVisualizationKind.GROUPED_BAR,
+            BenchmarkVisualizationKind.HEATMAP,
+        ),
         width=BenchmarkWidgetWidth.WIDE,
     ),
     _definition(

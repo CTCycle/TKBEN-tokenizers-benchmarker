@@ -12,6 +12,7 @@ from huggingface_hub import HfApi, ModelCard
 from tokenizers import Tokenizer as FastTokenizer
 from transformers import AutoTokenizer
 
+from server.common.tokenizer_metrics import compute_vocabulary_shape_metrics
 from server.common.utils.logger import logger
 from server.configurations import get_server_settings
 from server.repositories.tokenizers import TokenizerRepository
@@ -687,6 +688,8 @@ class TokenizerReportingService(TokenizerStorageMixin):
             vocab_tokens=vocabulary_tokens,
             special_tokens=special_token_set,
         )
+        vocabulary_shape_metrics = compute_vocabulary_shape_metrics(vocabulary_rows)
+        vocabulary_stats.update(vocabulary_shape_metrics)
         algorithm_type = self.detect_algorithm_type(
             tokenizer=tokenizer,
             tokenizer_json=tokenizer_json,
@@ -714,6 +717,7 @@ class TokenizerReportingService(TokenizerStorageMixin):
         description = config_description or hf_description
         persistence_info = self.resolve_tokenizer_persistence_mode(name, cache_dir)
         histogram = self.compute_histogram(lengths)
+        histogram.update(vocabulary_shape_metrics)
         created_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
         global_stats = {
