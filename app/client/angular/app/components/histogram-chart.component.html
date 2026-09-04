@@ -1,12 +1,32 @@
-<div class="dataset-histogram-chart" role="img" [attr.aria-label]="label()">
-  <svg viewBox="0 0 640 190" preserveAspectRatio="none" aria-hidden="true">
+<div class="dataset-histogram-chart">
+  <header class="histogram-chart-header">
+    <p class="histogram-chart-title">{{ label() }}</p>
+    <fieldset class="histogram-view-switcher">
+      <legend class="histogram-view-legend">{{ label() }} view</legend>
+      <button class="histogram-view-button" type="button" [attr.aria-pressed]="view() === 'histogram'" title="Show frequency histogram" (click)="setView('histogram')">Histogram</button>
+      <button class="histogram-view-button" type="button" [attr.aria-pressed]="view() === 'cumulative'" title="Show cumulative distribution" (click)="setView('cumulative')">CDF</button>
+    </fieldset>
+  </header>
+  <svg viewBox="0 0 640 190" preserveAspectRatio="none" role="img" [attr.aria-label]="label() + (view() === 'cumulative' ? ' cumulative distribution' : ' histogram')">
     @for (fraction of axisFractions; track fraction) {
       <line x1="28" x2="632" [attr.y1]="tickY(fraction)" [attr.y2]="tickY(fraction)" stroke="currentColor" stroke-opacity=".16" stroke-dasharray="3 3" />
       <text x="22" [attr.y]="tickY(fraction) + 3" text-anchor="end" font-size="10">{{ tickValue(fraction) }}</text>
     }
     <line x1="28" y1="166" x2="632" y2="166" stroke="currentColor" stroke-opacity=".45" />
-    @for (count of histogram().counts; track $index) {
-      <rect [attr.x]="barX($index)" [attr.y]="166 - (count / maxCount()) * 130" [attr.width]="barWidth()" [attr.height]="(count / maxCount()) * 130" rx="2" class="dataset-histogram-bar"><title>{{ histogram().bins[$index] || $index }}: {{ count }}</title></rect>
+    @if (view() === 'histogram') {
+      @for (count of histogram().counts; track $index) {
+        <rect [attr.x]="barX($index)" [attr.y]="166 - (count / maxCount()) * 130" [attr.width]="barWidth()" [attr.height]="(count / maxCount()) * 130" rx="2" class="dataset-histogram-bar"><title>{{ histogram().bins[$index] || $index }}: {{ count }}</title></rect>
+      }
+    } @else {
+      <polyline class="histogram-cdf-line" [attr.points]="cumulativePoints()" />
+      @for (value of cumulativeValues(); track $index) {
+        <circle class="histogram-cdf-point" [attr.cx]="pointX($index)" [attr.cy]="pointY(value)" r="3"><title>{{ histogram().bins[$index] || $index }}: {{ (value * 100).toFixed(1) }}%</title></circle>
+      }
     }
   </svg>
+  @if (shapeMetrics().length) {
+    <div class="histogram-shape-metrics" aria-label="Tokenizer length summary metrics">
+      @for (metric of shapeMetrics(); track metric.label) { <span>{{ metric.label }} <strong>{{ metric.value }}</strong></span> }
+    </div>
+  }
 </div>
