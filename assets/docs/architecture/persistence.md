@@ -1,5 +1,5 @@
 # Persistence
-Last updated: 2026-08-29
+Last updated: 2026-09-03
 
 ## Storage selection
 
@@ -74,7 +74,10 @@ representation, and use partial unique indexes for aggregate and per-document
 values. Tokenizer rows declare `source` as `huggingface` or `custom`; custom
 rows require a durable canonical `tokenizer.json` artifact. Tokenizer reports
 are current-only: replacing a report replaces its vocabulary and report as one
-logical operation. Benchmark reports keep immutable schema-3/report-5 detail
+logical operation. Vocabulary shape metrics remain in the existing report JSON
+(`metadata.vocabulary_stats` and `token_length_histogram`), so no relational
+migration is needed for those values. Benchmark reports keep immutable
+schema-3/report-5 detail
 JSON plus projected summary columns; list queries do not select the full
 payload. Reports from older contracts are purged by migration and incompatible
 rows fail explicitly if encountered later; dashboard histogram bins remain

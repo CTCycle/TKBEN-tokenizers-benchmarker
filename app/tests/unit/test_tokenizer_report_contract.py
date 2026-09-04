@@ -176,6 +176,19 @@ def test_generate_report_payload_includes_hf_url_and_subword_stats(
     assert report["global_stats"]["special_tokens_ids_count"] == 2
     assert report["global_stats"]["special_tokens_count"] == 2
     assert report["global_stats"]["vocabulary_stats"]["subword_like_count"] == 3
+    shape_metric_keys = {
+        "token_length_std",
+        "token_length_p90",
+        "token_length_cv",
+        "single_character_token_percentage",
+    }
+    vocabulary_stats = report["global_stats"]["vocabulary_stats"]
+    assert shape_metric_keys <= vocabulary_stats.keys()
+    assert shape_metric_keys <= report["token_length_histogram"].keys()
+    assert all(
+        vocabulary_stats[key] == captured_report["global_stats"]["vocabulary_stats"][key]
+        for key in shape_metric_keys
+    )
     assert (
         report["global_stats"]["vocabulary_stats"]["special_tokens_in_vocab_count"] == 1
     )
