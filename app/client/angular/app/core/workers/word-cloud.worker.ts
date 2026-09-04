@@ -47,9 +47,12 @@ const computeLayout = (input: WordCloudInput): WordCloudOutput => {
 
   sorted.forEach((term, index) => {
     const fontSize = Math.max(12, Math.min(44, 10 + Math.round(term.weight * 0.24)));
-    const wordWidth = Math.max(fontSize, Math.round(term.word.length * fontSize * 0.56));
+    const wordWidth = Math.max(fontSize, Math.round(term.word.length * fontSize * 0.64));
     const wordHeight = Math.max(12, Math.round(fontSize * 1.16));
     const rotation = index % 7 === 0 ? -8 : index % 9 === 0 ? 8 : 0;
+    const rotationRadians = Math.abs(rotation) * Math.PI / 180;
+    const rotatedWidth = Math.ceil(wordWidth * Math.cos(rotationRadians) + wordHeight * Math.sin(rotationRadians));
+    const rotatedHeight = Math.ceil(wordWidth * Math.sin(rotationRadians) + wordHeight * Math.cos(rotationRadians));
     const collisionPadding = Math.max(3, Math.round(fontSize * 0.12));
 
     let placedX = centerX;
@@ -66,10 +69,10 @@ const computeLayout = (input: WordCloudInput): WordCloudOutput => {
         continue;
       }
       const box: Box = {
-        left: candidateX - wordWidth / 2,
-        right: candidateX + wordWidth / 2,
-        top: candidateY - wordHeight / 2,
-        bottom: candidateY + wordHeight / 2,
+        left: candidateX - rotatedWidth / 2,
+        right: candidateX + rotatedWidth / 2,
+        top: candidateY - rotatedHeight / 2,
+        bottom: candidateY + rotatedHeight / 2,
       };
       if (box.left < 0 || box.right > width || box.top < 0 || box.bottom > height) {
         continue;

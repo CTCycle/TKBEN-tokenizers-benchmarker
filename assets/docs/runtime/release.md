@@ -1,5 +1,5 @@
 # Release Procedure
-Last updated: 2026-08-21
+Last updated: 2026-09-04
 
 ## Release model
 
@@ -10,11 +10,11 @@ add packaging as part of a source release.
 The public release version and component versions use the existing repository
 convention:
 
-| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` |
-| --- | ---: | ---: | ---: |
-| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` |
-| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` |
-| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` |
+| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` |
+| --- | ---: | ---: | ---: | ---: |
+| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` |
+| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` |
+| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` |
 
 ## Preparation and validation
 
@@ -31,7 +31,8 @@ convention:
    endpoint and frontend, then exercise Dataset, Tokenizers, and Cross
    Benchmark routes. Prioritize flows changed since the previous release,
    including current schema-3/report-5 persistence, catalog filtering, custom
-   tokenizer handling, and dashboard layout behavior.
+   tokenizer handling, vocabulary-shape metrics, histogram/CDF views, bounded
+   word-cloud layout, and dashboard visualization controls.
 5. Run the focused live API/UI tests when the local services are available.
    Inspect browser console output and application logs; classify expected
    test-injected failures separately from release-blocking errors.
@@ -43,8 +44,8 @@ convention:
 After validation is release-ready, apply the coordinated minor bump to the
 public tag version, backend package, frontend package, README, and relevant
 documentation. For this release, the public
-version is `v4.1.0`, the backend package is `3.1.0`, and the frontend package is
-`2.1.0`. Commit all release-preparation changes on `develop` before
+version is `v4.2.0`, the backend package is `3.2.0`, and the frontend package is
+`2.2.0`. Commit all release-preparation changes on `develop` before
 synchronizing branches.
 
 Synchronize `main` from the validated `develop` commit so the branches point to

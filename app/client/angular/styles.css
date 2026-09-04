@@ -4224,14 +4224,21 @@ select:focus-visible {
   min-height: 370px;
 }
 
+.dataset-word-cloud-card app-word-cloud {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .dataset-word-cloud-empty {
   min-height: 300px;
 }
 
 .dataset-word-cloud-canvas {
   position: relative;
+  width: 100%;
   flex: 1;
-  min-height: 300px;
+  min-height: 0;
   border: 1px dashed rgba(255, 255, 255, 0.14);
   border-radius: 10px;
   overflow: hidden;
@@ -4266,7 +4273,10 @@ select:focus-visible {
   font-weight: 600;
   line-height: 1;
   user-select: none;
-  white-space: nowrap;
+  width: max-content;
+  max-width: calc(100% - 16px);
+  overflow-wrap: anywhere;
+  text-align: center;
   transition: transform 200ms ease;
 }
 
@@ -4878,16 +4888,17 @@ select:focus-visible {
 
 
 .benchmark-dashboard-widget > header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 16px;
   margin-bottom: 12px;
 }
 
-.benchmark-dashboard-widget > header > div:first-child { min-width: 0; }
+.benchmark-dashboard-widget > header > div:first-child { min-width: 0; overflow-wrap: anywhere; }
+.benchmark-dashboard-widget h3 { overflow-wrap: anywhere; }
 
-.benchmark-visualization-switcher { display: inline-flex; flex: 0 0 auto; gap: var(--space-1); flex-wrap: nowrap; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.benchmark-visualization-switcher { display: inline-flex; justify-self: end; max-width: 100%; gap: var(--space-1); flex-wrap: nowrap; padding: 0; border: 0; border-radius: 0; background: transparent; }
 .benchmark-visualization-button { display: grid; width: 32px; height: 32px; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--color-muted); font-size: 14px; line-height: 1; cursor: pointer; }
 .benchmark-visualization-button:hover { background: var(--color-surface-subtle); }
 .benchmark-visualization-button[aria-pressed="true"] { border-color: var(--color-accent); background: var(--color-surface-subtle); color: var(--color-accent); }
@@ -4920,7 +4931,7 @@ app-benchmark-metric-chart { display: block; width: 100%; height: 100%; min-widt
 .benchmark-histogram-small-multiple { display: grid; grid-template-rows: auto minmax(0, 1fr); align-items: center; justify-items: center; min-width: 0; min-height: 0; max-width: 100%; overflow: hidden; }
 .benchmark-histogram-small-multiple > strong { display: block; width: 100%; max-width: 100%; margin: 0; overflow: hidden; color: var(--color-muted); font-size: 12px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .benchmark-histogram-small-multiple > .benchmark-custom-chart { width: min(100%, 600px); max-width: 600px; min-height: 0; }
-@media (max-width: 700px) { .benchmark-dashboard-widget > header { flex-direction: column; } .benchmark-visualization-switcher { align-self: flex-start; } .benchmark-chart-stage { min-height: 240px; height: 240px; } .benchmark-chart-stage--data-point .benchmark-chart-stage__content, .benchmark-chart-stage--data-distribution .benchmark-chart-stage__content { width: 100%; } .benchmark-visualization-button { width: 34px; height: 34px; } }
+@media (max-width: 700px) { .benchmark-chart-stage { min-height: 240px; height: 240px; } .benchmark-chart-stage--data-point .benchmark-chart-stage__content, .benchmark-chart-stage--data-distribution .benchmark-chart-stage__content { width: 100%; } .benchmark-visualization-button { width: 34px; height: 34px; } }
 
 @media (max-width: 700px) {
   .tokenizer-vocabulary-empty-card {

@@ -7,7 +7,9 @@ type HistogramView = 'histogram' | 'cumulative';
   selector: 'app-histogram-chart',
   templateUrl: './histogram-chart.component.html',
   styles: [`
-    .histogram-view-switcher { display: flex; justify-content: flex-end; gap: 4px; margin-bottom: 8px; border: 0; padding: 0; }
+    .histogram-chart-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px 12px; margin-bottom: 8px; min-width: 0; }
+    .histogram-chart-title { min-width: 0; margin: 0; color: var(--color-accent); font-size: var(--font-size-sm); letter-spacing: 0.08em; line-height: 1.25; overflow-wrap: anywhere; text-transform: uppercase; }
+    .histogram-view-switcher { display: inline-flex; justify-self: end; gap: 4px; margin: 0; border: 0; padding: 0; }
     .histogram-view-legend { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     .histogram-view-button { min-height: 28px; padding: 4px 9px; border: 1px solid var(--color-border); border-radius: 6px; background: transparent; color: var(--color-muted); font: inherit; font-size: 0.75rem; cursor: pointer; }
     .histogram-view-button[aria-pressed='true'] { border-color: var(--color-accent); color: var(--color-text); background: color-mix(in srgb, var(--color-accent) 12%, transparent); }
@@ -40,14 +42,10 @@ export class HistogramChartComponent {
   protected readonly shapeMetrics = computed(() => {
     const histogram = this.histogram();
     if (
-      histogram.token_length_std === undefined
-      && histogram.token_length_std === null
-      && histogram.token_length_p90 === undefined
-      && histogram.token_length_p90 === null
-      && histogram.token_length_cv === undefined
-      && histogram.token_length_cv === null
-      && histogram.single_character_token_percentage === undefined
-      && histogram.single_character_token_percentage === null
+      (histogram.token_length_std === undefined || histogram.token_length_std === null)
+      && (histogram.token_length_p90 === undefined || histogram.token_length_p90 === null)
+      && (histogram.token_length_cv === undefined || histogram.token_length_cv === null)
+      && (histogram.single_character_token_percentage === undefined || histogram.single_character_token_percentage === null)
     ) return [];
     return [
       { label: 'Std', value: this.formatMetric(histogram.token_length_std) },
