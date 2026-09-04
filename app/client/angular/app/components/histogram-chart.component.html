@@ -1,9 +1,12 @@
 <div class="dataset-histogram-chart">
-  <fieldset class="histogram-view-switcher">
-    <legend class="histogram-view-legend">{{ label() }} view</legend>
-    <button class="histogram-view-button" type="button" [attr.aria-pressed]="view() === 'histogram'" title="Show frequency histogram" (click)="setView('histogram')">Histogram</button>
-    <button class="histogram-view-button" type="button" [attr.aria-pressed]="view() === 'cumulative'" title="Show cumulative distribution" (click)="setView('cumulative')">CDF</button>
-  </fieldset>
+  <header class="histogram-chart-header">
+    <p class="histogram-chart-title">{{ label() }}</p>
+    <fieldset class="histogram-view-switcher">
+      <legend class="histogram-view-legend">{{ label() }} view</legend>
+      <button class="histogram-view-button" type="button" [attr.aria-pressed]="view() === 'histogram'" title="Show frequency histogram" (click)="setView('histogram')">Histogram</button>
+      <button class="histogram-view-button" type="button" [attr.aria-pressed]="view() === 'cumulative'" title="Show cumulative distribution" (click)="setView('cumulative')">CDF</button>
+    </fieldset>
+  </header>
   <svg viewBox="0 0 640 190" preserveAspectRatio="none" role="img" [attr.aria-label]="label() + (view() === 'cumulative' ? ' cumulative distribution' : ' histogram')">
     @for (fraction of axisFractions; track fraction) {
       <line x1="28" x2="632" [attr.y1]="tickY(fraction)" [attr.y2]="tickY(fraction)" stroke="currentColor" stroke-opacity=".16" stroke-dasharray="3 3" />
