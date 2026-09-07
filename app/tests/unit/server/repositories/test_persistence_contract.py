@@ -18,7 +18,6 @@ from server.repositories.schemas.models import (
 from server.repositories.queries.data import DataRepositoryQueries
 from server.repositories.datasets import DatasetRepository
 
-
 ###############################################################################
 @pytest.fixture()
 def sqlite_session():
@@ -31,7 +30,6 @@ def sqlite_session():
     Base.metadata.create_all(engine)
     with Session(engine) as session:
         yield session
-
 
 ###############################################################################
 def test_canonical_tables_and_removed_validation_report(
@@ -51,7 +49,6 @@ def test_canonical_tables_and_removed_validation_report(
         "benchmark_report",
         "hf_access_keys",
     } == tables
-
 
 ###############################################################################
 def test_metric_values_require_one_value_and_dataset_safe_document(
@@ -101,7 +98,6 @@ def test_metric_values_require_one_value_and_dataset_safe_document(
         )
         sqlite_session.flush()
     sqlite_session.rollback()
-
 
 ###############################################################################
 def test_dataset_catalog_filters_ready_rows_by_source_search_and_count(

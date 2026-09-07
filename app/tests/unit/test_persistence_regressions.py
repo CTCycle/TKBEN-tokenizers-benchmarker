@@ -24,13 +24,12 @@ from server.repositories.schemas.models import (
 from server.services.benchmarks import BenchmarkService
 from server.repositories.tokenizers import TokenizerRepository
 
-
 ###############################################################################
 class FakeQueries:
+
     # -------------------------------------------------------------------------
     def __init__(self, engine: sqlalchemy.Engine) -> None:
         self.engine = engine
-
 
 ###############################################################################
 def test_dataset_repository_ensure_dataset_id_is_idempotent() -> None:
@@ -45,7 +44,6 @@ def test_dataset_repository_ensure_dataset_id_is_idempotent() -> None:
     with Session(bind=engine) as session:
         count = session.execute(select(sqlalchemy.func.count(Dataset.id))).scalar_one()
     assert int(count) == 1
-
 
 ###############################################################################
 def test_tokenizer_repository_insert_if_missing_is_idempotent(
@@ -65,7 +63,6 @@ def test_tokenizer_repository_insert_if_missing_is_idempotent(
     assert len(rows) == 1
     assert rows[0].name == "bert-base-uncased"
     assert rows[0].source == "huggingface"
-
 
 ###############################################################################
 def test_dataset_delete_cascades_documents_sessions_and_benchmark_reports() -> None:
@@ -123,7 +120,6 @@ def test_dataset_delete_cascades_documents_sessions_and_benchmark_reports() -> N
         assert session.execute(select(AnalysisSession)).scalars().all() == []
         assert session.execute(select(BenchmarkReport)).scalars().all() == []
 
-
 ###############################################################################
 def test_tokenizer_delete_cascades_reports_and_vocabulary(
     monkeypatch: pytest.MonkeyPatch,
@@ -165,7 +161,6 @@ def test_tokenizer_delete_cascades_reports_and_vocabulary(
         assert session.execute(select(TokenizerReport)).scalars().all() == []
         assert session.execute(select(TokenizerVocabulary)).scalars().all() == []
 
-
 ###############################################################################
 def test_benchmark_repository_requires_existing_tokenizer_ids(
     monkeypatch: pytest.MonkeyPatch,
@@ -198,7 +193,6 @@ def test_benchmark_repository_requires_existing_tokenizer_ids(
             select(sqlalchemy.func.count(Tokenizer.id))
         ).scalar_one()
     assert int(count) == 2
-
 
 ###############################################################################
 def test_session_report_preserves_native_json_metrics_when_numeric_is_nan(
@@ -266,7 +260,6 @@ def test_session_report_preserves_native_json_metrics_when_numeric_is_nan(
         {"word": "hello", "count": 9}
     ]
     assert report["word_cloud_terms"] == [{"word": "hello", "count": 9, "weight": 100}]
-
 
 ###############################################################################
 def test_session_report_rejects_json_encoded_storage(

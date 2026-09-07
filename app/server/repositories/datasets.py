@@ -22,7 +22,6 @@ from server.repositories.schemas.models import (
 
 K_ERROR = "k error"
 
-
 ###############################################################################
 def _parse_timestamp(value: object) -> pd.Timestamp | None:
     if value is None:
@@ -30,9 +29,9 @@ def _parse_timestamp(value: object) -> pd.Timestamp | None:
     parsed = pd.to_datetime(cast(Any, value), utc=True, errors="coerce")
     return parsed if isinstance(parsed, pd.Timestamp) and not pd.isna(parsed) else None
 
-
 ###############################################################################
 class DatasetRepository:
+
     # -------------------------------------------------------------------------
     def __init__(self, queries: DataRepositoryQueries | None = None) -> None:
         self.queries = queries or DataRepositoryQueries()

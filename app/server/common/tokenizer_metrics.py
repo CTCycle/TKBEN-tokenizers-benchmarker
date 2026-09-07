@@ -4,7 +4,6 @@ from typing import Any
 
 import numpy as np
 
-
 ###############################################################################
 def compute_vocabulary_shape_metrics(
     vocabulary_rows: list[dict[str, Any]],

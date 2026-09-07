@@ -6,7 +6,6 @@ from fastapi.testclient import TestClient
 
 from server.app import app
 
-
 ###############################################################################
 def _key_item(key_id: int = 1) -> dict[str, object]:
     return {
@@ -15,7 +14,6 @@ def _key_item(key_id: int = 1) -> dict[str, object]:
         "is_active": False,
         "masked_preview": "********",
     }
-
 
 ###############################################################################
 def test_key_routes_keep_raw_values_out_of_list_and_map_lifecycle_calls(
@@ -27,6 +25,7 @@ def test_key_routes_keep_raw_values_out_of_list_and_map_lifecycle_calls(
 
     ###############################################################################
     class FakeKeyService:
+
         # -------------------------------------------------------------------------
         def add_key(self, raw_key: str):
             calls.append(("add", raw_key))
@@ -70,7 +69,6 @@ def test_key_routes_keep_raw_values_out_of_list_and_map_lifecycle_calls(
         ("deactivate", 1),
         ("delete", (1, True)),
     ]
-
 
 ###############################################################################
 def test_key_reveal_is_blocked_when_server_policy_disables_reveal(monkeypatch) -> None:

@@ -7,9 +7,9 @@ from sqlalchemy.engine import Engine
 
 from server.repositories.database.backend import TKBENDatabase, get_database
 
-
 ###############################################################################
 class DataRepositoryQueries:
+
     # -------------------------------------------------------------------------
     def __init__(self, database: TKBENDatabase | None = None) -> None:
         self.database = database or get_database()

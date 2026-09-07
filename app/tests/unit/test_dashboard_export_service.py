@@ -5,7 +5,6 @@ import pytest
 from server.services.dashboard_export_helpers import DashboardExportFormatting
 from server.services.export import DashboardExportService
 
-
 ###############################################################################
 def build_dataset_payload() -> dict:
     return {
@@ -65,7 +64,6 @@ def build_dataset_payload() -> dict:
         }
     }
 
-
 ###############################################################################
 def build_tokenizer_payload() -> dict:
     return {
@@ -96,7 +94,6 @@ def build_tokenizer_payload() -> dict:
             {"token_id": 5, "token": "the", "length": 3},
         ],
     }
-
 
 ###############################################################################
 def build_benchmark_payload() -> dict:
@@ -170,7 +167,6 @@ def build_benchmark_payload() -> dict:
         },
     }
 
-
 ###############################################################################
 def test_export_dataset_dashboard_pdf_generates_pdf_bytes() -> None:
     service = DashboardExportService()
@@ -184,7 +180,6 @@ def test_export_dataset_dashboard_pdf_generates_pdf_bytes() -> None:
     assert result.file_name == "dataset-layout-export.pdf"
     assert result.page_count >= 2
     assert result.pdf_bytes.startswith(b"%PDF")
-
 
 ###############################################################################
 def test_export_tokenizer_dashboard_pdf_generates_pdf_bytes() -> None:
@@ -200,7 +195,6 @@ def test_export_tokenizer_dashboard_pdf_generates_pdf_bytes() -> None:
     assert result.page_count >= 1
     assert result.pdf_bytes.startswith(b"%PDF")
 
-
 ###############################################################################
 def test_export_benchmark_dashboard_pdf_generates_pdf_bytes() -> None:
     service = DashboardExportService()
@@ -215,7 +209,6 @@ def test_export_benchmark_dashboard_pdf_generates_pdf_bytes() -> None:
     assert result.page_count == 2
     assert result.pdf_bytes.startswith(b"%PDF")
 
-
 ###############################################################################
 def test_benchmark_pdf_normalizes_visible_widgets_in_requested_order() -> None:
     service = DashboardExportService()
@@ -229,7 +222,6 @@ def test_benchmark_pdf_normalizes_visible_widgets_in_requested_order() -> None:
         "benchmark.vocabulary",
     ]
 
-
 ###############################################################################
 def test_export_dashboard_pdf_rejects_unsupported_dashboard_type() -> None:
     service = DashboardExportService()
@@ -240,7 +232,6 @@ def test_export_dashboard_pdf_rejects_unsupported_dashboard_type() -> None:
             file_name="x",
             dashboard_payload={},
         )
-
 
 ###############################################################################
 def test_dashboard_export_formatting_accepts_only_current_metric_shapes() -> None:

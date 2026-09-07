@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-
 ###############################################################################
 @dataclass(frozen=True)
 class BenchmarkMetricPlan:
@@ -21,7 +20,6 @@ class BenchmarkMetricPlan:
     needs_per_document_latency: bool
     needs_per_document_memory: bool
     needs_per_document_stats: bool
-
 
 ###############################################################################
 def build_metric_plan(

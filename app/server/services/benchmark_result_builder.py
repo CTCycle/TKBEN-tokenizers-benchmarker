@@ -25,9 +25,9 @@ from server.contracts.benchmarks import (
 )
 from server.common.benchmark_metric_definitions import BENCHMARK_METRIC_DEFINITIONS
 
-
 ###############################################################################
 class BenchmarkResultBuilder:
+
     # -------------------------------------------------------------------------
     def __init__(self, tools: Any) -> None:
         self.tools = tools

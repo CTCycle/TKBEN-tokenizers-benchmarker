@@ -8,7 +8,6 @@ from server.repositories.database.backend import get_database
 from server.repositories.schemas.models import Base, Dataset, DatasetDocument
 from server.repositories.datasets import DatasetRepository
 
-
 ###############################################################################
 def test_streaming_preserves_empty_and_unicode_rows(monkeypatch) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)

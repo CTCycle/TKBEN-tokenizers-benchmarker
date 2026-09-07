@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field, field_validator
 
 from server.common.utils.security import contains_control_chars
 
-
 ###############################################################################
 class HFAccessKeyCreateRequest(BaseModel):
     key_value: str = Field(..., description="Raw Hugging Face access key.")
@@ -30,7 +29,6 @@ class HFAccessKeyCreateRequest(BaseModel):
             raise ValueError("Hugging Face key must start with 'hf_'.")
         return normalized
 
-
 ###############################################################################
 class HFAccessKeyListItem(BaseModel):
     id: int
@@ -38,23 +36,19 @@ class HFAccessKeyListItem(BaseModel):
     is_active: bool
     masked_preview: str
 
-
 ###############################################################################
 class HFAccessKeyListResponse(BaseModel):
     keys: list[HFAccessKeyListItem] = Field(default_factory=list)
-
 
 ###############################################################################
 class HFAccessKeyRevealResponse(BaseModel):
     id: int
     key_value: str
 
-
 ###############################################################################
 class HFAccessKeyDeleteResponse(BaseModel):
     status: str = Field(default="success")
     message: str = Field(default="Key removed.")
-
 
 ###############################################################################
 class HFAccessKeyActivateResponse(BaseModel):

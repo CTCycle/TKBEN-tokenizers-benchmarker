@@ -11,7 +11,6 @@ from playwright.sync_api import APIRequestContext
 
 RUN_BENCHMARKS = os.getenv("E2E_RUN_BENCHMARKS", "").lower() in ("1", "true", "yes")
 
-
 ###############################################################################
 @pytest.mark.parametrize(
     ("payload", "message"),
@@ -40,7 +39,6 @@ def test_run_benchmarks_rejects_missing_required_inputs(
     data = response.json()
     assert message in data.get("detail", "")
 
-
 ###############################################################################
 def test_run_benchmarks_missing_dataset_returns_400(
     api_context: APIRequestContext,
@@ -57,7 +55,6 @@ def test_run_benchmarks_missing_dataset_returns_400(
     data = response.json()
     assert "not found or empty" in data.get("detail", "").lower()
 
-
 ###############################################################################
 def test_get_benchmark_metrics_catalog_returns_categories(
     api_context: APIRequestContext,
@@ -72,7 +69,6 @@ def test_get_benchmark_metrics_catalog_returns_categories(
     first = categories[0]
     assert isinstance(first.get("category_key"), str)
     assert isinstance(first.get("metrics"), list)
-
 
 ###############################################################################
 @pytest.mark.skipif(

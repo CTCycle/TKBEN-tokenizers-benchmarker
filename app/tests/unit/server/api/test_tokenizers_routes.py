@@ -4,9 +4,9 @@ from fastapi.testclient import TestClient
 
 from server.app import app
 
-
 ###############################################################################
 class DummyJobManager:
+
     # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.last_job_type = ""
@@ -25,7 +25,6 @@ class DummyJobManager:
     def get_job_status(self, job_id: str):
         del job_id
         return {"job_type": self.last_job_type, "status": "pending"}
-
 
 ###############################################################################
 def test_tokenizer_upload_validation(monkeypatch) -> None:
@@ -97,7 +96,6 @@ def test_tokenizer_upload_validation(monkeypatch) -> None:
     assert ok_upload.status_code == 200
     assert ok_upload.json()["is_compatible"] is True
 
-
 ###############################################################################
 def test_tokenizer_delete_supports_encoded_and_custom_names_and_returns_404(
     monkeypatch,
@@ -145,7 +143,6 @@ def test_tokenizer_delete_supports_encoded_and_custom_names_and_returns_404(
         "CUSTOM_sample",
     ]
 
-
 ###############################################################################
 def test_tokenizer_upload_rejects_oversized_file_before_service_call(
     monkeypatch,
@@ -184,7 +181,6 @@ def test_tokenizer_upload_rejects_oversized_file_before_service_call(
     assert response.status_code == 413
     assert called["upload"] is False
 
-
 ###############################################################################
 def test_tokenizer_job_routes_return_202(monkeypatch) -> None:
     manager = DummyJobManager()
@@ -216,7 +212,6 @@ def test_tokenizer_job_routes_return_202(monkeypatch) -> None:
     assert report_resp.status_code == 202
     assert report_resp.json()["job_id"] == "job-xyz"
 
-
 ###############################################################################
 def test_tokenizer_discovery_returns_sanitized_500_on_upstream_failure(
     monkeypatch,
@@ -236,7 +231,6 @@ def test_tokenizer_discovery_returns_sanitized_500_on_upstream_failure(
         response.json()["detail"] == "Failed to discover tokenizers from HuggingFace."
     )
     assert "private upstream" not in response.text
-
 
 ###############################################################################
 def test_tokenizer_discovery_validates_combined_query_and_structured_response(
@@ -287,7 +281,6 @@ def test_tokenizer_discovery_validates_combined_query_and_structured_response(
     assert captured["exclude_tags"] == ["audio"]
     assert captured["access"] == "public"
 
-
 ###############################################################################
 def test_tokenizer_discovery_rejects_invalid_query(monkeypatch) -> None:
     from server.services.tokenizers import TokenizersService
@@ -319,7 +312,6 @@ def test_tokenizer_discovery_rejects_invalid_query(monkeypatch) -> None:
         == 422
     )
     assert called["value"] is False
-
 
 ###############################################################################
 def test_tokenizer_list_passes_catalog_filters_to_service(monkeypatch) -> None:

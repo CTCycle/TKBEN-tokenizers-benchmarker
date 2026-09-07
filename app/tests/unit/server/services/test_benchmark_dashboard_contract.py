@@ -15,7 +15,6 @@ from server.common.benchmark_metric_definitions import (
     benchmark_metric_catalog,
 )
 
-
 ###############################################################################
 def _widget(
     visualization: str,
@@ -38,7 +37,6 @@ def _widget(
         "buckets": buckets or [],
     }
 
-
 ###############################################################################
 def test_metric_definitions_expose_only_strict_visualization_pairs() -> None:
     allowed = {item.value for item in BenchmarkVisualizationKind}
@@ -57,7 +55,6 @@ def test_metric_definitions_expose_only_strict_visualization_pairs() -> None:
         assert (
             definition.compatible_visualizations[0] is definition.default_visualization
         )
-
 
 ###############################################################################
 def test_metric_catalog_and_dashboard_definitions_preserve_default_visibility() -> None:
@@ -84,7 +81,6 @@ def test_metric_catalog_and_dashboard_definitions_preserve_default_visibility() 
         "frag.pieces_per_word_mean",
     }
 
-
 ###############################################################################
 def test_dashboard_model_rejects_unknown_visualization() -> None:
     with pytest.raises(ValidationError):
@@ -102,7 +98,6 @@ def test_dashboard_model_rejects_unknown_visualization() -> None:
             default_visible=True,
             width="standard",
         )
-
 
 ###############################################################################
 def test_builder_emits_payload_shape_compatible_visualization_choices() -> None:
@@ -141,7 +136,6 @@ def test_builder_emits_payload_shape_compatible_visualization_choices() -> None:
         BenchmarkVisualizationKind.GROUPED_BAR,
         BenchmarkVisualizationKind.HEATMAP,
     ]
-
 
 ###############################################################################
 def test_builder_preserves_definition_width_for_dense_visualizations() -> None:
@@ -185,7 +179,6 @@ def test_builder_preserves_definition_width_for_dense_visualizations() -> None:
         == "wide"
     )
 
-
 ###############################################################################
 def test_histogram_bins_use_shared_capped_edges_and_constant_padding() -> None:
     builder = BenchmarkResultBuilder(None)
@@ -201,7 +194,6 @@ def test_histogram_bins_use_shared_capped_edges_and_constant_padding() -> None:
     assert constant[0].bin_low < 3.0 < constant[0].bin_high
     assert constant[0].count == 3
     assert constant[0].proportion == 1.0
-
 
 ###############################################################################
 def test_pdf_renderer_covers_all_canonical_visualizations() -> None:
@@ -277,7 +269,6 @@ def test_pdf_renderer_covers_all_canonical_visualizations() -> None:
             )
         finally:
             plt.close(figure)
-
 
 ###############################################################################
 def test_pdf_export_rejects_unknown_and_incompatible_overrides() -> None:

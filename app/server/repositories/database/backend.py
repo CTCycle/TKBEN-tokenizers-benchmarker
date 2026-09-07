@@ -9,7 +9,6 @@ from server.configurations import DatabaseSettings, ServerSettings, get_server_s
 from server.repositories.database.postgres import PostgresRepository
 from server.repositories.database.sqlite import SQLiteRepository
 
-
 ###############################################################################
 class DatabaseBackend(Protocol):
     engine: Any
@@ -32,19 +31,17 @@ class DatabaseBackend(Protocol):
         conflict_columns: list[str],
     ) -> None: ...
 
-
 ###############################################################################
 def build_sqlite_backend(settings: DatabaseSettings) -> DatabaseBackend:
     return SQLiteRepository(settings)
-
 
 ###############################################################################
 def build_postgres_backend(settings: DatabaseSettings) -> DatabaseBackend:
     return PostgresRepository(settings)
 
-
 ###############################################################################
 class TKBENDatabase:
+
     # -------------------------------------------------------------------------
     def __init__(
         self, settings: DatabaseSettings | ServerSettings | None = None
@@ -69,7 +66,6 @@ class TKBENDatabase:
     @property
     def db_path(self) -> str | None:
         return getattr(self.backend, "db_path", None)
-
 
 ###############################################################################
 @cache

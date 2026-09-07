@@ -16,11 +16,9 @@ ALEMBIC_CONFIG_PATH = SERVER_DIR / "pyproject.toml"
 ALEMBIC_VERSION_TABLE = "alembic_version"
 POSTGRES_LOCK_NAME = "tkben:alembic:migrations"
 
-
 ###############################################################################
 class DatabaseMigrationError(RuntimeError):
     """Raised when the application cannot make its database current."""
-
 
 ###############################################################################
 def build_alembic_config() -> Config:
@@ -29,7 +27,6 @@ def build_alembic_config() -> Config:
     config.set_main_option("version_table", ALEMBIC_VERSION_TABLE)
     config.set_main_option("version_table_pk", "true")
     return config
-
 
 ###############################################################################
 def _migration_directory(config: Config) -> script.ScriptDirectory:
@@ -41,7 +38,6 @@ def _migration_directory(config: Config) -> script.ScriptDirectory:
         )
     return directory
 
-
 ###############################################################################
 def _current_heads(connection: Connection) -> tuple[str, ...]:
     migration_context = MigrationContext.configure(
@@ -50,11 +46,9 @@ def _current_heads(connection: Connection) -> tuple[str, ...]:
     )
     return tuple(migration_context.get_current_heads())
 
-
 ###############################################################################
 def _domain_tables(connection: Connection) -> set[str]:
     return set(inspect(connection).get_table_names()) - {ALEMBIC_VERSION_TABLE}
-
 
 ###############################################################################
 def _synchronize_schema(
@@ -99,7 +93,6 @@ def _synchronize_schema(
         )
     logger.info("Alembic migration verification succeeded at %s.", expected_heads)
 
-
 ###############################################################################
 def _acquire_postgres_lock(
     connection: Connection,
@@ -124,13 +117,11 @@ def _acquire_postgres_lock(
             )
         time.sleep(0.1)
 
-
 ###############################################################################
 def _foreign_key_violations(connection: Connection) -> list[tuple[Any, ...]]:
     return [
         tuple(row) for row in connection.execute(text("PRAGMA foreign_key_check")).all()
     ]
-
 
 ###############################################################################
 def run_locked_migrations(

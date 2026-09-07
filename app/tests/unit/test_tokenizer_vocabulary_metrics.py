@@ -12,7 +12,6 @@ from server.repositories.queries.data import DataRepositoryQueries
 from server.repositories.schemas.models import Base, Tokenizer
 from server.repositories.tokenizer_reports import TokenizerReportRepository
 
-
 ###############################################################################
 def test_compute_vocabulary_shape_metrics_vectorized_summary() -> None:
     metrics = compute_vocabulary_shape_metrics(
@@ -28,7 +27,6 @@ def test_compute_vocabulary_shape_metrics_vectorized_summary() -> None:
     assert metrics["token_length_p90"] == pytest.approx(3.7)
     assert metrics["token_length_cv"] == pytest.approx(0.4472135955)
     assert metrics["single_character_token_percentage"] == pytest.approx(25.0)
-
 
 ###############################################################################
 def test_repository_persists_vocabulary_shape_metrics_in_report_json() -> None:

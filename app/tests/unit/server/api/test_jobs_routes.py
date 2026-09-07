@@ -4,7 +4,6 @@ from fastapi.testclient import TestClient
 
 from server.app import app
 
-
 ###############################################################################
 def _job_status(job_id: str, status: str) -> dict[str, object]:
     return {
@@ -16,12 +15,12 @@ def _job_status(job_id: str, status: str) -> dict[str, object]:
         "error": None,
     }
 
-
 ###############################################################################
 def test_job_routes_distinguish_missing_terminal_and_running_jobs(monkeypatch) -> None:
 
     ###############################################################################
     class FakeJobManager:
+
         # -------------------------------------------------------------------------
         def get_job_status(self, job_id: str):
             if job_id == "missing":

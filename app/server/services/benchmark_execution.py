@@ -35,16 +35,13 @@ from server.services.benchmark_spool import BenchmarkTextSpool
 from server.services.benchmark_streams import iter_limited_rows
 from server.services.tokenizer_adapters import UniversalTokenizerAdapter
 
-
 ###############################################################################
 class BenchmarkCancelledError(RuntimeError):
     pass
 
-
 ###############################################################################
 def _as_float(value: object, default: float = 0.0) -> float:
     return float(value) if isinstance(value, int | float) else default
-
 
 ###############################################################################
 def normalize_vocabulary_token(token: object) -> str:
@@ -52,7 +49,6 @@ def normalize_vocabulary_token(token: object) -> str:
     for prefix in ("##", "▁", "Ġ"):
         normalized = normalized.removeprefix(prefix)
     return normalized
-
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -63,7 +59,6 @@ class SpooledTextBatchFactory:
     # -------------------------------------------------------------------------
     def __call__(self) -> Any:
         return self.spool.iter_text_batches(self.batch_size)
-
 
 ###############################################################################
 class BenchmarkServiceExecutionMixin:

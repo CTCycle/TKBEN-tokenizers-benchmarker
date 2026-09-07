@@ -10,7 +10,6 @@ from server.common.utils.security import (
     normalize_identifier,
 )
 
-
 ###############################################################################
 class TokenizerStorageMixin:
     TOKENIZER_ID_MAX_LENGTH = 160

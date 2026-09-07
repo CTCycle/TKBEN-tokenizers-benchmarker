@@ -9,9 +9,9 @@ from sqlalchemy.dialects.postgresql import insert
 from server.configurations import DatabaseSettings
 from server.repositories.database.base import RepositoryBase
 
-
 ###############################################################################
 class PostgresRepository(RepositoryBase):
+
     # -------------------------------------------------------------------------
     def __init__(self, settings: DatabaseSettings) -> None:
         if not settings.host or not settings.database_name or not settings.username:

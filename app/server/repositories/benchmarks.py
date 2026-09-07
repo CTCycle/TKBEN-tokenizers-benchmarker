@@ -14,7 +14,6 @@ from server.repositories.schemas.models import (
     Tokenizer,
 )
 
-
 ###############################################################################
 @dataclass(frozen=True)
 class BenchmarkReportPage:
@@ -23,9 +22,9 @@ class BenchmarkReportPage:
     offset: int
     limit: int
 
-
 ###############################################################################
 class BenchmarkRepository:
+
     # -------------------------------------------------------------------------
     def __init__(self, database: TKBENDatabase | None = None) -> None:
         self.database = database or get_database()

@@ -35,7 +35,6 @@ CHART_SERIES_COLORS = (
     "#2dd4bf",
 )
 
-
 ###############################################################################
 @dataclass(frozen=True)
 class DashboardPdfDocument:
@@ -43,9 +42,9 @@ class DashboardPdfDocument:
     page_count: int
     pdf_bytes: bytes
 
-
 ###############################################################################
 class DashboardExportService(DashboardExportFormatting):
+
     # -------------------------------------------------------------------------
     def export_dashboard_pdf(
         self,

@@ -16,7 +16,6 @@ from server.services.managed_jobs import (
 
 UPLOAD_CHUNK_SIZE = 1024 * 1024
 
-
 ###############################################################################
 class ManagedJobHttpAdapter:
     """Maps service-level job lifecycle failures to HTTP responses."""
@@ -34,7 +33,6 @@ class ManagedJobHttpAdapter:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
             ) from exc
-
 
 ###############################################################################
 def validate_upload_filename(
@@ -68,7 +66,6 @@ def validate_upload_filename(
         safe_stem = _normalize_upload_stem(normalized_filename)
     return normalized_filename, safe_stem
 
-
 ###############################################################################
 def _normalize_upload_stem(filename: str) -> str:
     try:
@@ -77,7 +74,6 @@ def _normalize_upload_stem(filename: str) -> str:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
         ) from exc
-
 
 ###############################################################################
 async def read_upload_limited(

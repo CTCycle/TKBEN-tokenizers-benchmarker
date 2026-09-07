@@ -13,7 +13,6 @@ from server.contracts.benchmarks import (
 from server.repositories.benchmarks import BenchmarkRepository
 from server.common.constants import BENCHMARK_REPORT_VERSION, BENCHMARK_SCHEMA_VERSION
 
-
 ###############################################################################
 def _parse_timestamp(value: object) -> pd.Timestamp | None:
     if value is None:
@@ -21,9 +20,9 @@ def _parse_timestamp(value: object) -> pd.Timestamp | None:
     parsed = pd.to_datetime(cast(Any, value), utc=True, errors="coerce")
     return parsed if isinstance(parsed, pd.Timestamp) and not pd.isna(parsed) else None
 
-
 ###############################################################################
 class BenchmarkReportService:
+
     # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.repository = BenchmarkRepository()

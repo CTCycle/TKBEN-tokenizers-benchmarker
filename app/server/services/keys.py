@@ -9,29 +9,25 @@ from server.common.utils.logger import logger
 from server.repositories.hf_access_keys import HFAccessKeyRepository
 from server.contracts.keys import HFAccessKeyListItem
 
-
 ###############################################################################
 class HFAccessKeyError(Exception):
     pass
-
 
 ###############################################################################
 class HFAccessKeyValidationError(HFAccessKeyError):
     pass
 
-
 ###############################################################################
 class HFAccessKeyConflictError(HFAccessKeyError):
     pass
-
 
 ###############################################################################
 class HFAccessKeyNotFoundError(HFAccessKeyError):
     pass
 
-
 ###############################################################################
 class HFAccessKeyService:
+
     # -------------------------------------------------------------------------
     def __init__(self, repository: HFAccessKeyRepository | None = None) -> None:
         self._cipher: SymmetricCipher | None = None
