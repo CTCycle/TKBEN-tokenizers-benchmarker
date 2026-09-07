@@ -15,9 +15,9 @@ from server.services.benchmarks import BenchmarkService
 from server.services.tokenizer_reporting import TokenizerReportingService
 from server.services.tokenizers import TokenizersService
 
-
 ###############################################################################
 class FakeTokenizerRepository:
+
     # -------------------------------------------------------------------------
     def get_latest_tokenizer_report(self, tokenizer_name: str):
         return object() if tokenizer_name == "exists" else None
@@ -26,11 +26,9 @@ class FakeTokenizerRepository:
     def get_tokenizer_report_by_id(self, report_id: int):
         return object() if report_id == 1 else None
 
-
 ###############################################################################
 def tokenizer_siblings(*filenames: str) -> list[dict[str, str]]:
     return [{"rfilename": filename} for filename in filenames]
-
 
 ###############################################################################
 def test_tokenizers_service_report_prechecks(monkeypatch) -> None:
@@ -67,7 +65,6 @@ def test_tokenizers_service_report_prechecks(monkeypatch) -> None:
     assert service.get_tokenizer_report_vocabulary(1, 0, 10) is not None
     assert service.get_tokenizer_report_vocabulary(2, 0, 10) is None
 
-
 ###############################################################################
 def test_tokenizer_discovery_passes_native_filters_and_returns_structured_items(
     monkeypatch,
@@ -76,6 +73,7 @@ def test_tokenizer_discovery_passes_native_filters_and_returns_structured_items(
 
     ###############################################################################
     class FakeModel:
+
         # -------------------------------------------------------------------------
         def __init__(self, model_id: str, pipeline_tag: str | None) -> None:
             self.modelId = model_id
@@ -152,7 +150,6 @@ def test_tokenizer_discovery_passes_native_filters_and_returns_structured_items(
         "vocabulary_size": None,
     }
 
-
 ###############################################################################
 def test_remove_custom_tokenizer_removes_persisted_row(monkeypatch) -> None:
     service = TokenizersService()
@@ -161,6 +158,7 @@ def test_remove_custom_tokenizer_removes_persisted_row(monkeypatch) -> None:
 
     ###############################################################################
     class FakeRepository:
+
         # -------------------------------------------------------------------------
         def delete_tokenizer(self, name: str) -> bool:
             deleted.append(name)
@@ -170,7 +168,6 @@ def test_remove_custom_tokenizer_removes_persisted_row(monkeypatch) -> None:
 
     assert service.remove_tokenizer("CUSTOM_sample") is True
     assert deleted == ["CUSTOM_sample"]
-
 
 ###############################################################################
 def test_custom_tokenizer_survives_service_recreation_and_is_benchmarkable(
@@ -186,7 +183,10 @@ def test_custom_tokenizer_survives_service_recreation_and_is_benchmarkable(
     Base.metadata.create_all(engine)
     database = SimpleNamespace(backend=SimpleNamespace(engine=engine))
 
+    ###############################################################################
     class FakeFastTokenizer:
+
+        # -------------------------------------------------------------------------
         def get_vocab_size(self) -> int:
             return 3
 
@@ -237,7 +237,6 @@ def test_custom_tokenizer_survives_service_recreation_and_is_benchmarkable(
     finally:
         engine.dispose()
 
-
 ###############################################################################
 def test_remove_tokenizer_cleans_cache_before_database_delete(
     tmp_path, monkeypatch
@@ -252,6 +251,7 @@ def test_remove_tokenizer_cleans_cache_before_database_delete(
 
     ###############################################################################
     class FakeRepository:
+
         # -------------------------------------------------------------------------
         def delete_tokenizer(self, name: str) -> bool:
             assert not cache_dir.exists()
@@ -262,7 +262,6 @@ def test_remove_tokenizer_cleans_cache_before_database_delete(
 
     assert service.remove_tokenizer("google-bert/bert-base-uncased") is True
     assert calls == ["google-bert/bert-base-uncased"]
-
 
 ###############################################################################
 def test_remove_tokenizer_keeps_database_row_when_cache_cleanup_fails(
@@ -280,6 +279,7 @@ def test_remove_tokenizer_keeps_database_row_when_cache_cleanup_fails(
 
     ###############################################################################
     class FakeRepository:
+
         # -------------------------------------------------------------------------
         def delete_tokenizer(self, name: str) -> bool:
             nonlocal deleted
@@ -291,7 +291,6 @@ def test_remove_tokenizer_keeps_database_row_when_cache_cleanup_fails(
     with pytest.raises(RuntimeError, match="Failed to remove tokenizer files"):
         service.remove_tokenizer("google-bert/bert-base-uncased")
     assert deleted is False
-
 
 ###############################################################################
 def test_tokenizer_discovery_uses_bounded_overfetch_and_candidate_cap(
@@ -332,13 +331,13 @@ def test_tokenizer_discovery_uses_bounded_overfetch_and_candidate_cap(
     assert fake_api.captured["limit"] == 750
     assert fake_api.captured["expand"][0] == "siblings"
 
-
 ###############################################################################
 def test_tokenizer_discovery_accepts_supported_root_artifacts_only(monkeypatch) -> None:
     service = TokenizersService()
 
     ###############################################################################
     class FakeModel:
+
         # -------------------------------------------------------------------------
         def __init__(self, model_id: str, filenames: tuple[str, ...]) -> None:
             self.modelId = model_id
@@ -348,6 +347,7 @@ def test_tokenizer_discovery_accepts_supported_root_artifacts_only(monkeypatch) 
 
     ###############################################################################
     class FakeApi:
+
         # -------------------------------------------------------------------------
         def list_models(self, **kwargs):
             assert kwargs["expand"][0] == "siblings"
@@ -383,7 +383,6 @@ def test_tokenizer_discovery_accepts_supported_root_artifacts_only(monkeypatch) 
     assert response.count == 5
     assert response.fetched_count == 10
 
-
 ###############################################################################
 def test_tokenizer_discovery_filters_excluded_and_unsupported_models(
     monkeypatch,
@@ -392,6 +391,7 @@ def test_tokenizer_discovery_filters_excluded_and_unsupported_models(
 
     ###############################################################################
     class FakeModel:
+
         # -------------------------------------------------------------------------
         def __init__(self, model_id: str, pipeline_tag: str, tags: list[str]) -> None:
             self.modelId = model_id
@@ -401,6 +401,7 @@ def test_tokenizer_discovery_filters_excluded_and_unsupported_models(
 
     ###############################################################################
     class FakeApi:
+
         # -------------------------------------------------------------------------
         def list_models(self, **kwargs):
             del kwargs
@@ -421,7 +422,6 @@ def test_tokenizer_discovery_filters_excluded_and_unsupported_models(
     )
     assert [item.identifier for item in response.items] == ["text/model"]
 
-
 ###############################################################################
 def test_tokenizer_discovery_extracts_and_filters_vocabulary_metadata(
     monkeypatch,
@@ -430,6 +430,7 @@ def test_tokenizer_discovery_extracts_and_filters_vocabulary_metadata(
 
     ###############################################################################
     class FakeModel:
+
         # -------------------------------------------------------------------------
         def __init__(self, model_id: str, vocabulary_size: object) -> None:
             self.modelId = model_id
@@ -441,6 +442,7 @@ def test_tokenizer_discovery_extracts_and_filters_vocabulary_metadata(
 
     ###############################################################################
     class FakeApi:
+
         # -------------------------------------------------------------------------
         def list_models(self, **kwargs):
             assert "config" in kwargs["expand"]
@@ -475,7 +477,6 @@ def test_tokenizer_discovery_extracts_and_filters_vocabulary_metadata(
         ("small/model", 4)
     ]
 
-
 ###############################################################################
 def test_tokenizer_discovery_orders_known_vocabulary_before_unknown(
     monkeypatch,
@@ -484,6 +485,7 @@ def test_tokenizer_discovery_orders_known_vocabulary_before_unknown(
 
     ###############################################################################
     class FakeModel:
+
         # -------------------------------------------------------------------------
         def __init__(self, model_id: str, vocabulary_size: int | None) -> None:
             self.modelId = model_id
@@ -495,6 +497,7 @@ def test_tokenizer_discovery_orders_known_vocabulary_before_unknown(
 
     ###############################################################################
     class FakeApi:
+
         # -------------------------------------------------------------------------
         def list_models(self, **kwargs):
             del kwargs
@@ -524,13 +527,13 @@ def test_tokenizer_discovery_orders_known_vocabulary_before_unknown(
         "unknown/model",
     ]
 
-
 ###############################################################################
 def test_tokenizer_discovery_propagates_upstream_failure(monkeypatch) -> None:
     service = TokenizersService()
 
     ###############################################################################
     class FailingApi:
+
         # -------------------------------------------------------------------------
         def list_models(self, **kwargs):
             del kwargs
@@ -543,7 +546,6 @@ def test_tokenizer_discovery_propagates_upstream_failure(monkeypatch) -> None:
 
     with pytest.raises(RuntimeError, match="upstream outage details"):
         service.discover_tokenizers(TokenizerDiscoveryQuery(limit=5))
-
 
 ###############################################################################
 def test_failed_tokenizer_download_cleans_partial_cache_and_returns_reason(
@@ -580,7 +582,6 @@ def test_failed_tokenizer_download_cleans_partial_cache_and_returns_reason(
     assert "ValueError: Unrecognized model configuration" in result["failed_details"][0]
     assert removed == [str(Path(cache_dir))]
 
-
 ###############################################################################
 def test_tokenizer_download_timeout_returns_failure_without_blocking_job(
     monkeypatch,
@@ -610,7 +611,6 @@ def test_tokenizer_download_timeout_returns_failure_without_blocking_job(
     assert time.monotonic() - started < 0.04
     assert result["failed"] == ["slow/model"]
     assert "TokenizerDownloadTimeoutError" in result["failed_details"][0]
-
 
 ###############################################################################
 def test_tokenizer_catalog_filters_cached_sources_search_and_vocabulary(

@@ -17,7 +17,6 @@ from server.repositories.database import sqlite as sqlite_repository
 from server.repositories.database.migrations import DatabaseMigrationError
 from server.repositories.database.sqlite import SQLiteRepository
 
-
 ###############################################################################
 def _settings() -> DatabaseSettings:
     return DatabaseSettings(
@@ -32,7 +31,6 @@ def _settings() -> DatabaseSettings:
         connect_timeout=5,
         insert_batch_size=1000,
     )
-
 
 ###############################################################################
 def _configure_database(
@@ -49,13 +47,11 @@ def _configure_database(
     )
     return settings
 
-
 ###############################################################################
 def _head() -> str:
     return migrations._migration_directory(
         migrations.build_alembic_config()
     ).get_heads()[0]
-
 
 ###############################################################################
 def _revision(path: Path) -> str | None:
@@ -71,7 +67,6 @@ def _revision(path: Path) -> str | None:
     finally:
         engine.dispose()
 
-
 ###############################################################################
 def test_repeated_initialization_is_current_and_idempotent(
     tmp_path: Path,
@@ -86,7 +81,6 @@ def test_repeated_initialization_is_current_and_idempotent(
 
     assert _revision(path) == _head()
     assert path.stat().st_size == first_size
-
 
 ###############################################################################
 def test_versioned_pre_cleanup_revision_upgrades_and_preserves_metric_key(
@@ -179,7 +173,6 @@ def test_versioned_pre_cleanup_revision_upgrades_and_preserves_metric_key(
         engine.dispose()
     assert _revision(path) == _head()
 
-
 ###############################################################################
 def test_canonical_cleanup_purges_incompatible_derived_reports(
     tmp_path: Path,
@@ -249,7 +242,6 @@ def test_canonical_cleanup_purges_incompatible_derived_reports(
         engine.dispose()
     assert _revision(path) == _head()
 
-
 ###############################################################################
 def test_nonempty_unversioned_database_is_rejected_untouched(
     tmp_path: Path,
@@ -273,7 +265,6 @@ def test_nonempty_unversioned_database_is_rejected_untouched(
     assert path.read_bytes() == before
     assert _revision(path) is None
 
-
 ###############################################################################
 def test_unknown_unversioned_schema_is_rejected_untouched(
     tmp_path: Path,
@@ -294,7 +285,6 @@ def test_unknown_unversioned_schema_is_rejected_untouched(
 
     assert path.read_bytes() == before
     assert _revision(path) is None
-
 
 ###############################################################################
 def test_database_ahead_of_repository_is_rejected(
@@ -317,7 +307,6 @@ def test_database_ahead_of_repository_is_rejected(
         initializer.run_database_initialization()
 
     assert _revision(path) == "9999_future"
-
 
 ###############################################################################
 def test_concurrent_initializers_serialize_on_sqlite(

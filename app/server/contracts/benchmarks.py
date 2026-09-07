@@ -6,7 +6,6 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from server.common.utils.security import contains_control_chars, normalize_identifier
 
-
 ###############################################################################
 class BenchmarkVisualizationKind(StrEnum):
     BAR = "bar"
@@ -17,7 +16,6 @@ class BenchmarkVisualizationKind(StrEnum):
     HISTOGRAM = "histogram"
     GROUPED_BAR = "grouped_bar"
     HEATMAP = "heatmap"
-
 
 ###############################################################################
 class BenchmarkRunConfig(BaseModel):
@@ -35,7 +33,6 @@ class BenchmarkRunConfig(BaseModel):
     store_per_document_stats: bool = Field(default=True)
     per_document_sample_size: int = Field(default=500, ge=1, le=10000)
 
-
 ###############################################################################
 class BenchmarkHardwareProfile(BaseModel):
     runtime: str = Field(default="")
@@ -44,12 +41,10 @@ class BenchmarkHardwareProfile(BaseModel):
     cpu_logical_cores: int | None = Field(default=None)
     memory_total_mb: float | None = Field(default=None)
 
-
 ###############################################################################
 class BenchmarkTrialSummary(BaseModel):
     warmup_trials: int = Field(default=0)
     timed_trials: int = Field(default=0)
-
 
 ###############################################################################
 class BenchmarkEfficiencyMetrics(BaseModel):
@@ -64,14 +59,12 @@ class BenchmarkEfficiencyMetrics(BaseModel):
     end_to_end_wall_time_seconds: float | None = None
     load_time_seconds: float | None = None
 
-
 ###############################################################################
 class BenchmarkLatencyMetrics(BaseModel):
     encode_latency_p50_ms: float | None = None
     encode_latency_p95_ms: float | None = None
     encode_latency_p99_ms: float | None = None
     sample_count: int | None = None
-
 
 ###############################################################################
 class BenchmarkFidelityMetrics(BaseModel):
@@ -81,12 +74,10 @@ class BenchmarkFidelityMetrics(BaseModel):
     byte_fallback_rate: float | None = Field(default=None)
     lossless_encodability_rate: float | None = Field(default=None)
 
-
 ###############################################################################
 class BenchmarkFragmentationBucket(BaseModel):
     bucket: str
     pieces_per_word_mean: float = Field(default=0.0)
-
 
 ###############################################################################
 class BenchmarkFragmentationMetrics(BaseModel):
@@ -99,12 +90,10 @@ class BenchmarkFragmentationMetrics(BaseModel):
         default_factory=list
     )
 
-
 ###############################################################################
 class BenchmarkResourceMetrics(BaseModel):
     peak_rss_mb: float | None = Field(default=None)
     memory_delta_mb: float | None = Field(default=None)
-
 
 ###############################################################################
 class BenchmarkTokenizerResult(BaseModel):
@@ -129,14 +118,12 @@ class BenchmarkTokenizerResult(BaseModel):
         default_factory=BenchmarkResourceMetrics
     )
 
-
 ###############################################################################
 class BenchmarkDashboardPoint(BaseModel):
     tokenizer: str
     value: float
     interval_low: float | None = None
     interval_high: float | None = None
-
 
 ###############################################################################
 class BenchmarkDashboardDistribution(BaseModel):
@@ -148,13 +135,11 @@ class BenchmarkDashboardDistribution(BaseModel):
     max: float
     sample_count: int
 
-
 ###############################################################################
 class BenchmarkDashboardBucketPoint(BaseModel):
     tokenizer: str
     bucket: str
     value: float
-
 
 ###############################################################################
 class BenchmarkDashboardHistogramBin(BaseModel):
@@ -163,7 +148,6 @@ class BenchmarkDashboardHistogramBin(BaseModel):
     bin_high: float
     count: int
     proportion: float
-
 
 ###############################################################################
 class BenchmarkDashboardWidgetData(BaseModel):
@@ -184,14 +168,12 @@ class BenchmarkDashboardWidgetData(BaseModel):
     buckets: list[BenchmarkDashboardBucketPoint] = Field(default_factory=list)
     histogram_bins: list[BenchmarkDashboardHistogramBin] = Field(default_factory=list)
 
-
 ###############################################################################
 class BenchmarkDashboardData(BaseModel):
     widgets: list[BenchmarkDashboardWidgetData] = Field(default_factory=list)
     available_widget_ids: list[str] = Field(default_factory=list)
     available_metric_keys: list[str] = Field(default_factory=list)
     unavailable_selected_metric_keys: list[str] = Field(default_factory=list)
-
 
 ###############################################################################
 class BenchmarkRunRequest(BaseModel):
@@ -247,7 +229,6 @@ class BenchmarkRunRequest(BaseModel):
             raise ValueError("Run name contains unsupported control characters.")
         return normalized
 
-
 ###############################################################################
 class BenchmarkMetricCatalogMetric(BaseModel):
     key: str
@@ -269,24 +250,20 @@ class BenchmarkMetricCatalogMetric(BaseModel):
     default_visible: bool = False
     width: str = "standard"
 
-
 ###############################################################################
 class BenchmarkMetricCatalogCategory(BaseModel):
     category_key: str
     category_label: str
     metrics: list[BenchmarkMetricCatalogMetric] = Field(default_factory=list)
 
-
 ###############################################################################
 class BenchmarkMetricCatalogResponse(BaseModel):
     categories: list[BenchmarkMetricCatalogCategory] = Field(default_factory=list)
-
 
 ###############################################################################
 class BenchmarkReportSort(StrEnum):
     NEWEST = "newest"
     OLDEST = "oldest"
-
 
 ###############################################################################
 class BenchmarkReportQuery(BaseModel):
@@ -304,7 +281,6 @@ class BenchmarkReportQuery(BaseModel):
         normalized = str(value).strip()
         return normalized or None
 
-
 ###############################################################################
 class BenchmarkReportSummary(BaseModel):
     report_id: int
@@ -317,14 +293,12 @@ class BenchmarkReportSummary(BaseModel):
     tokenizers_processed: list[str] = Field(default_factory=list)
     selected_metric_keys: list[str] = Field(default_factory=list)
 
-
 ###############################################################################
 class BenchmarkReportListResponse(BaseModel):
     reports: list[BenchmarkReportSummary] = Field(default_factory=list)
     total: int = Field(default=0, ge=0)
     offset: int = Field(default=0, ge=0)
     limit: int = Field(default=25, ge=1, le=100)
-
 
 ###############################################################################
 class BenchmarkPerDocumentTokenizerStats(BaseModel):
@@ -334,7 +308,6 @@ class BenchmarkPerDocumentTokenizerStats(BaseModel):
     pieces_per_word: list[float | None] = Field(default_factory=list)
     encode_latency_ms: list[float | None] = Field(default_factory=list)
     peak_rss_mb: list[float | None] = Field(default_factory=list)
-
 
 ###############################################################################
 class BenchmarkRunResponse(BaseModel):

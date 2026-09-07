@@ -24,11 +24,9 @@ from server.services.benchmarks import BenchmarkTools
 from server.services.keys import HFAccessKeyService
 from server.services.tokenizer_storage import TokenizerStorageMixin
 
-
 ###############################################################################
 class TokenizerDownloadTimeoutError(TimeoutError):
     """Raised when a tokenizer provider load exceeds the job timeout."""
-
 
 ###############################################################################
 class TokenizersService(TokenizerStorageMixin):
@@ -119,6 +117,7 @@ class TokenizersService(TokenizerStorageMixin):
             "is_compatible": is_compatible,
         }
 
+    # -------------------------------------------------------------------------
     def has_available_tokenizer(self, tokenizer_id: str) -> bool:
         """Return whether a tokenizer can be loaded for reports or benchmarks."""
         source = self.repository.get_tokenizer_source(tokenizer_id)

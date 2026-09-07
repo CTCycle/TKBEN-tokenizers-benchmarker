@@ -10,7 +10,6 @@ from server.repositories.database.backend import get_database
 from server.repositories.schemas.models import Base, BenchmarkReport, Dataset
 from server.services.benchmark_reports import BenchmarkReportService
 
-
 ###############################################################################
 def _build_payload(dataset_name: str) -> dict:
     return {
@@ -106,7 +105,6 @@ def _build_payload(dataset_name: str) -> dict:
         "raw_observations": {},
     }
 
-
 ###############################################################################
 def test_benchmark_report_service_round_trip(monkeypatch) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
@@ -157,7 +155,6 @@ def test_benchmark_report_service_round_trip(monkeypatch) -> None:
     inconsistent["tokenizers_count"] = 2
     with pytest.raises(ValueError, match="tokenizer count disagrees"):
         report_service.save_benchmark_report(inconsistent)
-
 
 ###############################################################################
 def test_benchmark_report_service_search_sort_pagination_and_delete(
@@ -222,7 +219,6 @@ def test_benchmark_report_service_search_sort_pagination_and_delete(
     assert remaining.total == 2
     assert [item.report_id for item in remaining.reports] == [newer_id, older_id]
 
-
 ###############################################################################
 def test_benchmark_report_service_rejects_v4_payload() -> None:
     report_service = BenchmarkReportService()
@@ -242,7 +238,6 @@ def test_benchmark_report_service_rejects_v4_payload() -> None:
                 },
             }
         )
-
 
 ###############################################################################
 def test_benchmark_report_service_rejects_json_encoded_storage() -> None:

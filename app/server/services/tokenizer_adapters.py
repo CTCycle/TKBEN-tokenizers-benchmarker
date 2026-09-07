@@ -4,14 +4,12 @@ from dataclasses import dataclass
 from collections.abc import Mapping, Sequence
 from typing import Any, Protocol, cast
 
-
 ###############################################################################
 @dataclass(frozen=True)
 class EncodedBatch:
     token_counts: list[int]
     unknown_counts: list[int | None]
     input_ids_by_doc: list[list[int]]
-
 
 ###############################################################################
 class TokenizerAdapter(Protocol):
@@ -28,9 +26,9 @@ class TokenizerAdapter(Protocol):
         max_length: int | None,
     ) -> EncodedBatch: ...
 
-
 ###############################################################################
 class UniversalTokenizerAdapter:
+
     # -------------------------------------------------------------------------
     def __init__(self, tokenizer_id: str, tokenizer: Any) -> None:
         self.tokenizer_id = tokenizer_id

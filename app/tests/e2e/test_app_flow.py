@@ -11,7 +11,6 @@ import pytest
 from playwright.sync_api import Page, expect
 from playwright.sync_api import APIRequestContext
 
-
 ###############################################################################
 def _upload_dataset_for_ui_test(
     api_context: APIRequestContext,
@@ -43,7 +42,6 @@ def _upload_dataset_for_ui_test(
     assert job_status.get("status") == "completed", job_status.get("error")
     return dataset_name
 
-
 ###############################################################################
 class TestAppShell:
     """Tests for core layout and routing."""
@@ -57,7 +55,6 @@ class TestAppShell:
         page.goto(f"{base_url}{path}")
         expect(page).to_have_url(re.compile(r".*/dataset/?$"))
         expect(page.get_by_text("Dataset Usage")).to_be_visible()
-
 
 ###############################################################################
 class TestDatasetPage:
@@ -274,7 +271,6 @@ class TestDatasetPage:
             for item in refreshed.json().get("datasets", [])
         }
 
-
 ###############################################################################
 class TestTokenizersPage:
     """Tests for tokenizers page UI elements."""
@@ -399,7 +395,6 @@ class TestTokenizersPage:
             str(item.get("tokenizer_name"))
             for item in refreshed.json().get("tokenizers", [])
         }
-
 
 ###############################################################################
 class TestCrossBenchmarkPage:

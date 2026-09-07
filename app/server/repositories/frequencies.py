@@ -12,13 +12,11 @@ from sqlalchemy.orm import Session, declarative_base, mapped_column, sessionmake
 
 Base = declarative_base()
 
-
 ###############################################################################
 class FrequencyEntry(Base):
     __tablename__ = "frequencies"
     token = mapped_column(String, primary_key=True, nullable=False)
     count = mapped_column(Integer, nullable=False, default=0, index=True)
-
 
 ###############################################################################
 class DiskBackedFrequencyStore:

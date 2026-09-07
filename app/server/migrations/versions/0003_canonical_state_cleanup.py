@@ -18,7 +18,6 @@ TOKENIZER_REPORT_VERSION = 1
 BENCHMARK_REPORT_VERSION = 5
 BENCHMARK_SCHEMA_VERSION = 3
 
-
 ###############################################################################
 def _purge_incompatible_reports() -> None:
     bind = op.get_bind()
@@ -54,7 +53,6 @@ def _purge_incompatible_reports() -> None:
         sa.text("DELETE FROM tokenizer_report WHERE report_version != :version"),
         {"version": TOKENIZER_REPORT_VERSION},
     )
-
 
 ###############################################################################
 def _normalize_benchmark_payloads() -> None:
@@ -104,7 +102,6 @@ def _normalize_benchmark_payloads() -> None:
             .values(payload=details)
         )
 
-
 ###############################################################################
 def _migrate_metric_values() -> None:
     bind = op.get_bind()
@@ -145,7 +142,6 @@ def _migrate_metric_values() -> None:
         postgresql_where=sa.text("document_id IS NOT NULL"),
     )
 
-
 ###############################################################################
 def _migrate_histograms() -> None:
     bind = op.get_bind()
@@ -172,7 +168,6 @@ def _migrate_histograms() -> None:
             "length(trim(metric_key)) > 0",
         )
 
-
 ###############################################################################
 def _remove_historical_custom_tokenizers() -> None:
     bind = op.get_bind()
@@ -190,12 +185,10 @@ def _remove_historical_custom_tokenizers() -> None:
     )
     bind.execute(sa.text("DELETE FROM tokenizer WHERE name LIKE 'CUSTOM_%'"))
 
-
 ###############################################################################
 def _remove_metric_catalog() -> None:
     op.drop_index("ix_metric_type_category", table_name="metric_type")
     op.drop_table("metric_type")
-
 
 ###############################################################################
 def upgrade() -> None:
@@ -218,7 +211,6 @@ def upgrade() -> None:
             "ck_tokenizer_source",
             "source IN ('huggingface', 'custom')",
         )
-
 
 ###############################################################################
 def downgrade() -> None:

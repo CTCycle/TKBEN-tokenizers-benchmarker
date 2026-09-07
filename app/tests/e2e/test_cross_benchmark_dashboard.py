@@ -4,7 +4,6 @@ from urllib.parse import parse_qs, urlparse
 
 from playwright.sync_api import Page, expect
 
-
 ###############################################################################
 def _route_dashboard_api(page: Page) -> None:
     page.route(
@@ -275,7 +274,6 @@ def _route_dashboard_api(page: Page) -> None:
         ),
     )
 
-
 ###############################################################################
 def test_cross_benchmark_dashboard_customization_and_accessible_data(
     page: Page, base_url: str
@@ -353,7 +351,6 @@ def test_cross_benchmark_dashboard_customization_and_accessible_data(
     expect(tables).to_have_count(4)
     tables.first.click()
     expect(page.get_by_text("Tokenization speed values by tokenizer")).to_be_visible()
-
 
 ###############################################################################
 def test_cross_benchmark_report_manager_search_pagination_and_inline_delete(
