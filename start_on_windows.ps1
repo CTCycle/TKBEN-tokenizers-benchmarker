@@ -740,7 +740,21 @@ function Run-TestSuite {
 # =============================================================================
 # Data, logs, cache, and installation maintenance
 # =============================================================================
+function Confirm-DestructiveAction([string]$Description) {
+    if (-not $script:LauncherInteractive) {
+        throw "The destructive action '$Description' requires an interactive console; no files were changed."
+    }
+    Clear-LauncherProgress
+    $confirmation = ([string](Read-Host "Continue to $($Description)? [y/N]")).Trim()
+    if ($confirmation -notmatch '^(?i:y|yes)$') {
+        Write-Host '[INFO] Operation cancelled. No changes were made.' -ForegroundColor DarkGray
+        return $false
+    }
+    return $true
+}
+
 function Remove-Logs {
+    if (-not (Confirm-DestructiveAction 'remove application log files')) { return }
     $logDir = Join-Path $RepoRoot 'app\resources\logs'
     $logs = @(Get-ChildItem -LiteralPath $logDir -Filter '*.log' -File -ErrorAction SilentlyContinue |
         Sort-Object @{ Expression = { $_.FullName.ToUpperInvariant() }; Descending = $false })
@@ -975,12 +989,7 @@ function Remove-DirectoryContents {
 }
 
 function Remove-AllData {
-    Clear-LauncherProgress
-    $confirmation = ([string](Read-Host 'This permanently deletes user data. Continue? [y/N]')).Trim()
-    if ($confirmation -notmatch '^(?i:y|yes)$') {
-        Write-Host '[INFO] Remove All Data cancelled.' -ForegroundColor DarkGray
-        return
-    }
+    if (-not (Confirm-DestructiveAction 'remove all user data')) { return }
 
     $dataRoot = Get-ApplicationDataRoot
     $logRoot = Get-ApplicationLogRoot -DataRoot $dataRoot
@@ -1044,6 +1053,7 @@ function Clear-ManagedCache {
 }
 
 function Clear-Cache {
+    if (-not (Confirm-DestructiveAction 'clear development caches and temporary artifacts')) { return }
     Write-Step 'Removing development caches and temporary artifacts.'
     $summaries = @(
         Remove-PythonCaches
@@ -1059,6 +1069,7 @@ function Clear-Cache {
 }
 
 function Uninstall-Application {
+    if (-not (Confirm-DestructiveAction 'remove downloaded runtimes, dependencies, build output, and Python caches')) { return }
     Write-Step 'Removing downloaded runtimes, dependencies, build output, and Python caches.'
     $summaries = @()
     $directories = @(
