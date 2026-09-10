@@ -4,6 +4,7 @@ import importlib
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 import pytest
 from server.common.path import ROOT_DIR
@@ -37,13 +38,60 @@ def _write_json(path: Path, payload: dict[str, object]) -> None:
 
 
 ###############################################################################
-def _minimal_config_json() -> dict[str, object]:
+def _complete_config_json() -> dict[str, Any]:
     return {
-        "datasets": {},
-        "tokenizers": {},
-        "benchmarks": {},
-        "jobs": {"polling_interval": 1.0},
+        "tokenizers": {
+            "default_discovery_limit": 50,
+            "max_discovery_limit": 250,
+            "max_discovery_candidates": 750,
+            "metadata_candidate_multiplier": 3,
+            "max_upload_bytes": 10485760,
+        },
+        "datasets": {
+            "histogram_bins": 20,
+            "streaming_batch_size": 10000,
+            "log_interval": 100000,
+            "max_upload_bytes": 26214400,
+            "download_timeout_seconds": 180.0,
+            "download_retry_attempts": 3,
+            "download_retry_backoff_seconds": 2.0,
+            "cleanup_downloaded_sources": True,
+            "allowed_extensions": [".csv", ".xls", ".xlsx"],
+            "column_detection_cutoff": 0.6,
+        },
+        "benchmarks": {
+            "streaming_batch_size": 1000,
+            "log_interval": 10000,
+        },
+        "jobs": {
+            "polling_interval": 1.0,
+            "terminal_retention_seconds": 3600.0,
+        },
     }
+
+
+###############################################################################
+def _config_with(
+    *,
+    datasets: dict[str, Any] | None = None,
+    tokenizers: dict[str, Any] | None = None,
+    benchmarks: dict[str, Any] | None = None,
+    jobs: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    payload = _complete_config_json()
+    overrides = {
+        "datasets": datasets,
+        "tokenizers": tokenizers,
+        "benchmarks": benchmarks,
+        "jobs": jobs,
+    }
+    for block_name, block_overrides in overrides.items():
+        if block_overrides:
+            payload[block_name] = {
+                **payload[block_name],
+                **block_overrides,
+            }
+    return payload
 
 
 ###############################################################################
@@ -165,11 +213,28 @@ def test_invalid_configuration_file_fails_fast(
 
 
 ###############################################################################
+def test_missing_structured_setting_fails_fast(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "configurations.json"
+    payload = _complete_config_json()
+    del payload["datasets"]["download_timeout_seconds"]
+    _write_json(config_path, payload)
+
+    env_path = tmp_path / ".env"
+    _write_env(env_path, ["DATABASE_EMBEDDED=true"])
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
+
+    with pytest.raises(RuntimeError, match="download_timeout_seconds"):
+        _ = get_server_settings(config_path=config_path)
+
+
+###############################################################################
 def test_environment_database_settings_use_explicit_fields(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     config_path = tmp_path / "configurations.json"
-    _write_json(config_path, _minimal_config_json())
+    _write_json(config_path, _complete_config_json())
 
     env_path = tmp_path / ".env"
     _write_env(
@@ -195,15 +260,7 @@ def test_environment_database_settings_are_loaded(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     config_path = tmp_path / "configurations.json"
-    _write_json(
-        config_path,
-        {
-            "datasets": {},
-            "tokenizers": {},
-            "benchmarks": {},
-            "jobs": {},
-        },
-    )
+    _write_json(config_path, _complete_config_json())
 
     env_path = tmp_path / ".env"
     _write_env(
@@ -229,7 +286,7 @@ def test_unsupported_database_environment_keys_do_not_change_canonical_settings(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     config_path = tmp_path / "configurations.json"
-    _write_json(config_path, _minimal_config_json())
+    _write_json(config_path, _complete_config_json())
     env_path = tmp_path / ".env"
     _write_env(env_path, ["DATABASE_EMBEDDED=true"])
     monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
@@ -245,20 +302,27 @@ def test_unsupported_database_environment_keys_do_not_change_canonical_settings(
 
 
 ###############################################################################
+def test_database_boolean_aliases_are_rejected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "configurations.json"
+    _write_json(config_path, _complete_config_json())
+    env_path = tmp_path / ".env"
+    _write_env(env_path, ["DATABASE_EMBEDDED=yes"])
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
+
+    with pytest.raises(RuntimeError, match="DATABASE_EMBEDDED"):
+        _ = get_server_settings(config_path=config_path)
+
+
+###############################################################################
 def test_json_database_block_is_rejected(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     config_path = tmp_path / "configurations.json"
-    _write_json(
-        config_path,
-        {
-            "database": {"embedded_database": True},
-            "datasets": {},
-            "tokenizers": {},
-            "benchmarks": {},
-            "jobs": {},
-        },
-    )
+    payload = _complete_config_json()
+    payload["database"] = {"embedded_database": True}
+    _write_json(config_path, payload)
 
     env_path = tmp_path / ".env"
     _write_env(
@@ -277,42 +341,11 @@ def test_json_database_block_is_rejected(
 
 
 ###############################################################################
-def test_invalid_json_database_block_is_rejected(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    config_path = tmp_path / "configurations.json"
-    _write_json(
-        config_path,
-        {
-            "database": {"embedded_database": False, "port": 0},
-            "datasets": {},
-            "tokenizers": {},
-            "benchmarks": {},
-            "jobs": {},
-        },
-    )
-    env_path = tmp_path / ".env"
-    _write_env(env_path, ["DATABASE_EMBEDDED=true"])
-    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
-
-    with pytest.raises(RuntimeError, match="database"):
-        _ = get_server_settings(config_path=config_path)
-
-
-###############################################################################
 def test_external_database_requires_host_name_and_user(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     config_path = tmp_path / "configurations.json"
-    _write_json(
-        config_path,
-        {
-            "datasets": {},
-            "tokenizers": {},
-            "benchmarks": {},
-            "jobs": {},
-        },
-    )
+    _write_json(config_path, _complete_config_json())
 
     env_path = tmp_path / ".env"
     _write_env(
@@ -341,12 +374,12 @@ def test_get_server_settings_path_scoped_loading_is_deterministic(
     config_path = tmp_path / "configurations.json"
     _write_json(
         config_path,
-        {
-            "datasets": {"histogram_bins": 30},
-            "tokenizers": {"default_discovery_limit": 150},
-            "benchmarks": {"streaming_batch_size": 2000},
-            "jobs": {"polling_interval": 2.5},
-        },
+        _config_with(
+            datasets={"histogram_bins": 30},
+            tokenizers={"default_discovery_limit": 150},
+            benchmarks={"streaming_batch_size": 2000},
+            jobs={"polling_interval": 2.5},
+        ),
     )
 
     env_path = tmp_path / ".env"
@@ -380,13 +413,7 @@ def test_path_scoped_settings_reload_reflects_file_changes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     config_path = tmp_path / "configurations.json"
-    _write_json(
-        config_path,
-        {
-            **_minimal_config_json(),
-            "datasets": {"histogram_bins": 20},
-        },
-    )
+    _write_json(config_path, _config_with(datasets={"histogram_bins": 20}))
 
     env_path = tmp_path / ".env"
     _write_env(env_path, ["FASTAPI_HOST=127.0.0.1"])
@@ -394,13 +421,7 @@ def test_path_scoped_settings_reload_reflects_file_changes(
 
     assert get_server_settings(config_path=config_path).datasets.histogram_bins == 20
 
-    _write_json(
-        config_path,
-        {
-            **_minimal_config_json(),
-            "datasets": {"histogram_bins": 45},
-        },
-    )
+    _write_json(config_path, _config_with(datasets={"histogram_bins": 45}))
 
     assert get_server_settings(config_path=config_path).datasets.histogram_bins == 45
 
@@ -408,7 +429,9 @@ def test_path_scoped_settings_reload_reflects_file_changes(
 ###############################################################################
 def test_configuration_payload_rejects_unknown_block(tmp_path: Path) -> None:
     config_path = tmp_path / "configurations.json"
-    _write_json(config_path, {**_minimal_config_json(), "fitting": {}})
+    payload = _complete_config_json()
+    payload["fitting"] = {}
+    _write_json(config_path, payload)
 
     with pytest.raises(RuntimeError, match="fitting"):
         get_server_settings(config_path=config_path)
