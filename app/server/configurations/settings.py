@@ -8,6 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+
 ###############################################################################
 @dataclass(frozen=True)
 class DatabaseSettings:
@@ -21,6 +22,7 @@ class DatabaseSettings:
     ssl_ca: str | None
     connect_timeout: int
     insert_batch_size: int
+
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -36,6 +38,7 @@ class DatasetSettings:
     download_retry_attempts: int
     download_retry_backoff_seconds: float
 
+
 ###############################################################################
 @dataclass(frozen=True)
 class TokenizerSettings:
@@ -45,17 +48,20 @@ class TokenizerSettings:
     metadata_candidate_multiplier: int
     max_upload_bytes: int
 
+
 ###############################################################################
 @dataclass(frozen=True)
 class BenchmarkSettings:
     streaming_batch_size: int
     log_interval: int
 
+
 ###############################################################################
 @dataclass(frozen=True)
 class JobsSettings:
     polling_interval: float
     terminal_retention_seconds: float
+
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -66,6 +72,7 @@ class ServerSettings:
     benchmarks: BenchmarkSettings
     jobs: JobsSettings
 
+
 ###############################################################################
 def _normalize_optional_text(value: Any) -> str | None:
     if value is None:
@@ -75,18 +82,22 @@ def _normalize_optional_text(value: Any) -> str | None:
         return None
     return text
 
+
 ###############################################################################
 def _read_env_bool(name: str, default: bool) -> bool:
     raw_value = os.getenv(name)
-    if raw_value is None:
+    if raw_value is None or raw_value.strip() == "":
         return default
 
     normalized = raw_value.strip().lower()
-    if normalized in {"1", "true", "yes", "on"}:
+    if normalized == "true":
         return True
-    if normalized in {"0", "false", "no", "off"}:
+    if normalized == "false":
         return False
-    raise RuntimeError(f"{name} must be a boolean value, got: {raw_value}")
+    raise RuntimeError(
+        f"{name} must be either 'true' or 'false', got: {raw_value}"
+    )
+
 
 ###############################################################################
 def _read_env_int(
@@ -116,12 +127,6 @@ def _read_env_int(
 
 ###############################################################################
 def _load_database_settings_from_sources() -> DatabaseSettings:
-    """Load database settings from the environment only.
-
-    Keeping this source single-purpose prevents the JSON application
-    configuration from silently selecting a different database than the
-    launcher and migration tooling configured in ``settings/.env``.
-    """
     embedded_database = _read_env_bool("DATABASE_EMBEDDED", True)
     connect_timeout = _read_env_int("DATABASE_CONNECT_TIMEOUT", 30, minimum=1)
     insert_batch_size = _read_env_int("DATABASE_INSERT_BATCH_SIZE", 1000, minimum=1)
@@ -172,30 +177,32 @@ def _load_database_settings_from_sources() -> DatabaseSettings:
         insert_batch_size=insert_batch_size,
     )
 
+
 ###############################################################################
 class JsonDatasetSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    allowed_extensions: tuple[str, ...] = (".csv", ".xls", ".xlsx")
-    column_detection_cutoff: float = Field(default=0.6, ge=0.0, le=1.0)
-    max_upload_bytes: int = Field(default=25 * 1024 * 1024, ge=1)
-    histogram_bins: int = Field(default=20, ge=5, le=100)
-    streaming_batch_size: int = Field(default=10000, ge=100)
-    log_interval: int = Field(default=100000, ge=1000)
-    cleanup_downloaded_sources: bool = False
-    download_timeout_seconds: float = Field(default=120.0, ge=1.0)
-    download_retry_attempts: int = Field(default=3, ge=1, le=10)
-    download_retry_backoff_seconds: float = Field(default=1.0, ge=0.0, le=60.0)
+    allowed_extensions: tuple[str, ...]
+    column_detection_cutoff: float = Field(ge=0.0, le=1.0)
+    max_upload_bytes: int = Field(ge=1)
+    histogram_bins: int = Field(ge=5, le=100)
+    streaming_batch_size: int = Field(ge=100)
+    log_interval: int = Field(ge=1000)
+    cleanup_downloaded_sources: bool
+    download_timeout_seconds: float = Field(ge=1.0)
+    download_retry_attempts: int = Field(ge=1, le=10)
+    download_retry_backoff_seconds: float = Field(ge=0.0, le=60.0)
+
 
 ###############################################################################
 class JsonTokenizerSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    default_discovery_limit: int = Field(default=50, ge=1, le=250)
-    max_discovery_limit: int = Field(default=250, ge=1, le=250)
-    max_discovery_candidates: int = Field(default=750, ge=1)
-    metadata_candidate_multiplier: int = Field(default=3, ge=1, le=10)
-    max_upload_bytes: int = Field(default=10 * 1024 * 1024, ge=1)
+    default_discovery_limit: int = Field(ge=1, le=250)
+    max_discovery_limit: int = Field(ge=1, le=250)
+    max_discovery_candidates: int = Field(ge=1)
+    metadata_candidate_multiplier: int = Field(ge=1, le=10)
+    max_upload_bytes: int = Field(ge=1)
 
     # -------------------------------------------------------------------------
     @model_validator(mode="after")
@@ -210,28 +217,31 @@ class JsonTokenizerSettings(BaseModel):
             )
         return self
 
+
 ###############################################################################
 class JsonBenchmarkSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    streaming_batch_size: int = Field(default=1000, ge=100)
-    log_interval: int = Field(default=10000, ge=100)
+    streaming_batch_size: int = Field(ge=100)
+    log_interval: int = Field(ge=100)
+
 
 ###############################################################################
 class JsonJobsSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    polling_interval: float = Field(default=1.0, gt=0.0)
-    terminal_retention_seconds: float = Field(default=3600.0, ge=0.0)
+    polling_interval: float = Field(gt=0.0)
+    terminal_retention_seconds: float = Field(ge=0.0)
+
 
 ###############################################################################
 class JsonConfiguration(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    datasets: JsonDatasetSettings = Field(default_factory=JsonDatasetSettings)
-    tokenizers: JsonTokenizerSettings = Field(default_factory=JsonTokenizerSettings)
-    benchmarks: JsonBenchmarkSettings = Field(default_factory=JsonBenchmarkSettings)
-    jobs: JsonJobsSettings = Field(default_factory=JsonJobsSettings)
+    datasets: JsonDatasetSettings
+    tokenizers: JsonTokenizerSettings
+    benchmarks: JsonBenchmarkSettings
+    jobs: JsonJobsSettings
 
     # -------------------------------------------------------------------------
     @classmethod
