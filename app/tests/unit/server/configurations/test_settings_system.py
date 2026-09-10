@@ -11,10 +11,10 @@ from server.common.utils.encryption import get_hf_key_cipher
 from server.configurations import environment as bootstrap
 from server.configurations import is_key_reveal_enabled
 from server.configurations.startup import (
-    get_configuration_manager,
     get_server_settings,
     reload_settings_for_tests,
 )
+
 
 ###############################################################################
 @pytest.fixture(autouse=True)
@@ -25,13 +25,16 @@ def reset_configuration_state() -> None:
     reload_settings_for_tests()
     bootstrap.reset_environment_bootstrap_for_tests()
 
+
 ###############################################################################
 def _write_env(path: Path, lines: list[str]) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
+
 ###############################################################################
 def _write_json(path: Path, payload: dict[str, object]) -> None:
     path.write_text(json.dumps(payload), encoding="utf-8")
+
 
 ###############################################################################
 def _minimal_config_json() -> dict[str, object]:
@@ -41,6 +44,7 @@ def _minimal_config_json() -> dict[str, object]:
         "benchmarks": {},
         "jobs": {"polling_interval": 1.0},
     }
+
 
 ###############################################################################
 def test_bootstrap_environment_overrides_existing_process_values(
@@ -55,6 +59,7 @@ def test_bootstrap_environment_overrides_existing_process_values(
     bootstrap.ensure_environment_loaded()
 
     assert os.getenv("FASTAPI_HOST") == "from_dotenv"
+
 
 ###############################################################################
 def test_missing_environment_is_created_from_example(
@@ -72,11 +77,13 @@ def test_missing_environment_is_created_from_example(
     assert env_path.read_bytes() == template_bytes
     assert os.getenv("FASTAPI_HOST") == "from_template"
 
+
 ###############################################################################
 def test_environment_template_exposes_resource_directory() -> None:
     example = (ROOT_DIR / "settings/.env.example").read_text(encoding="utf-8")
 
     assert "TKBEN_DATA_DIR=app/resources" in example
+
 
 ###############################################################################
 def test_existing_environment_is_preserved(
@@ -96,6 +103,7 @@ def test_existing_environment_is_preserved(
     assert env_path.read_bytes() == existing_bytes
     assert os.getenv("FASTAPI_HOST") == "existing"
 
+
 ###############################################################################
 def test_bootstrap_is_idempotent_without_force(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -110,6 +118,7 @@ def test_bootstrap_is_idempotent_without_force(
     bootstrap.ensure_environment_loaded()
 
     assert os.getenv("FASTAPI_HOST") == "first"
+
 
 ###############################################################################
 def test_server_package_import_bootstraps_env_early(
@@ -127,6 +136,7 @@ def test_server_package_import_bootstraps_env_early(
 
     assert os.getenv("FASTAPI_HOST") == "192.168.1.1"
 
+
 ###############################################################################
 def test_missing_configuration_file_fails_fast(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -137,6 +147,7 @@ def test_missing_configuration_file_fails_fast(
 
     with pytest.raises(RuntimeError, match="Configuration file not found"):
         _ = get_server_settings(config_path=tmp_path / "missing.json")
+
 
 ###############################################################################
 def test_invalid_configuration_file_fails_fast(
@@ -151,6 +162,7 @@ def test_invalid_configuration_file_fails_fast(
 
     with pytest.raises(RuntimeError, match="Unable to load configuration"):
         _ = get_server_settings(config_path=config_path)
+
 
 ###############################################################################
 def test_environment_database_settings_use_explicit_fields(
@@ -176,6 +188,7 @@ def test_environment_database_settings_use_explicit_fields(
     assert settings.database.embedded_database is False
     assert settings.database.host == "remote-db"
     assert settings.database.database_name == "remote_db"
+
 
 ###############################################################################
 def test_environment_database_settings_are_loaded(
@@ -210,6 +223,7 @@ def test_environment_database_settings_are_loaded(
     assert settings.database.embedded_database is False
     assert settings.database.database_name == "tkben_test"
 
+
 ###############################################################################
 def test_unsupported_database_environment_keys_do_not_change_canonical_settings(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -228,6 +242,7 @@ def test_unsupported_database_environment_keys_do_not_change_canonical_settings(
     assert settings.database.embedded_database is True
     assert settings.database.host is None
     assert settings.database.database_name is None
+
 
 ###############################################################################
 def test_json_database_block_is_rejected(
@@ -260,6 +275,7 @@ def test_json_database_block_is_rejected(
     with pytest.raises(RuntimeError, match="database"):
         _ = get_server_settings(config_path=config_path)
 
+
 ###############################################################################
 def test_invalid_json_database_block_is_rejected(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -281,6 +297,7 @@ def test_invalid_json_database_block_is_rejected(
 
     with pytest.raises(RuntimeError, match="database"):
         _ = get_server_settings(config_path=config_path)
+
 
 ###############################################################################
 def test_external_database_requires_host_name_and_user(
@@ -315,6 +332,7 @@ def test_external_database_requires_host_name_and_user(
         match="database.host, database.database_name, database.username",
     ):
         _ = get_server_settings(config_path=config_path)
+
 
 ###############################################################################
 def test_get_server_settings_path_scoped_loading_is_deterministic(
@@ -356,8 +374,9 @@ def test_get_server_settings_path_scoped_loading_is_deterministic(
     assert settings_a.benchmarks.streaming_batch_size == 2000
     assert settings_a.jobs.polling_interval == 2.5
 
+
 ###############################################################################
-def test_configuration_manager_reload_reflects_file_changes(
+def test_path_scoped_settings_reload_reflects_file_changes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     config_path = tmp_path / "configurations.json"
@@ -370,16 +389,10 @@ def test_configuration_manager_reload_reflects_file_changes(
     )
 
     env_path = tmp_path / ".env"
-    _write_env(
-        env_path,
-        [
-            "FASTAPI_HOST=127.0.0.1",
-        ],
-    )
+    _write_env(env_path, ["FASTAPI_HOST=127.0.0.1"])
     monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
 
-    manager = get_configuration_manager(config_path=config_path)
-    assert manager.server_settings.datasets.histogram_bins == 20
+    assert get_server_settings(config_path=config_path).datasets.histogram_bins == 20
 
     _write_json(
         config_path,
@@ -389,9 +402,8 @@ def test_configuration_manager_reload_reflects_file_changes(
         },
     )
 
-    manager.reload()
-    assert manager.server_settings.datasets.histogram_bins == 45
-    assert manager.get_value("datasets", "histogram_bins") == 45
+    assert get_server_settings(config_path=config_path).datasets.histogram_bins == 45
+
 
 ###############################################################################
 def test_configuration_payload_rejects_unknown_block(tmp_path: Path) -> None:
@@ -399,15 +411,30 @@ def test_configuration_payload_rejects_unknown_block(tmp_path: Path) -> None:
     _write_json(config_path, {**_minimal_config_json(), "fitting": {}})
 
     with pytest.raises(RuntimeError, match="fitting"):
-        get_configuration_manager(config_path=config_path)
+        get_server_settings(config_path=config_path)
+
 
 ###############################################################################
 def test_allow_key_reveal_reads_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ALLOW_KEY_REVEAL", "true")
     assert is_key_reveal_enabled() is True
 
+    monkeypatch.setenv("ALLOW_KEY_REVEAL", "false")
+    assert is_key_reveal_enabled() is False
+
     monkeypatch.delenv("ALLOW_KEY_REVEAL", raising=False)
     assert is_key_reveal_enabled() is False
+
+
+###############################################################################
+def test_allow_key_reveal_rejects_invalid_boolean(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ALLOW_KEY_REVEAL", "yes")
+
+    with pytest.raises(RuntimeError, match="ALLOW_KEY_REVEAL"):
+        is_key_reveal_enabled()
+
 
 ###############################################################################
 def test_hf_key_cipher_seeds_external_material_file(
