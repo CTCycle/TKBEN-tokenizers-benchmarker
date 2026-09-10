@@ -6,7 +6,6 @@ import sqlalchemy
 from sqlalchemy import event
 from sqlalchemy.dialects.sqlite import insert
 
-from server.common.path import DATABASE_PATH
 from server.configurations import DatabaseSettings
 from server.repositories.database.base import RepositoryBase
 from server.repositories.database.utils import normalize_sqlite_path
@@ -23,8 +22,9 @@ class SQLiteRepository(RepositoryBase):
         enforce_foreign_keys: bool = True,
         begin_immediate: bool = False,
     ) -> None:
-        self.db_path = normalize_sqlite_path(DATABASE_PATH)
-        DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        database_path = settings.sqlite_path
+        self.db_path = normalize_sqlite_path(database_path)
+        database_path.parent.mkdir(parents=True, exist_ok=True)
         engine = sqlalchemy.create_engine(
             f"sqlite:///{self.db_path}",
             future=True,
