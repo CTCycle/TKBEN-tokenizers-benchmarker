@@ -1,14 +1,11 @@
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 from threading import Lock
 
 from dotenv import load_dotenv
-
-from server.common.constants import ALLOW_KEY_REVEAL_DEFAULT
 
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
@@ -66,19 +63,3 @@ def reset_environment_bootstrap_for_tests() -> None:
     state = _bootstrap_state()
     with state.lock:
         state.bootstrapped = False
-
-
-###############################################################################
-def is_key_reveal_enabled() -> bool:
-    raw_value = os.getenv("ALLOW_KEY_REVEAL")
-    if raw_value is None or raw_value.strip() == "":
-        return ALLOW_KEY_REVEAL_DEFAULT
-
-    normalized = raw_value.strip().lower()
-    if normalized == "true":
-        return True
-    if normalized == "false":
-        return False
-    raise RuntimeError(
-        f"ALLOW_KEY_REVEAL must be either 'true' or 'false', got: {raw_value}"
-    )
