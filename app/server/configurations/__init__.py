@@ -5,11 +5,17 @@ from server.configurations.environment import (
     is_key_reveal_enabled,
     reset_environment_bootstrap_for_tests,
 )
-from server.configurations.startup import (
+
+
+# Load the runtime profile before importing modules that can reach
+# environment-derived paths or database settings.
+ensure_environment_loaded()
+
+from server.configurations.startup import (  # noqa: E402
     get_server_settings,
     reload_settings_for_tests,
 )
-from server.configurations.settings import (
+from server.configurations.settings import (  # noqa: E402
     BenchmarkSettings,
     DatabaseSettings,
     DatasetSettings,
