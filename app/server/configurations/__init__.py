@@ -5,9 +5,7 @@ from server.configurations.environment import (
     is_key_reveal_enabled,
     reset_environment_bootstrap_for_tests,
 )
-from server.configurations.management import ConfigurationManager
 from server.configurations.startup import (
-    get_configuration_manager,
     get_server_settings,
     reload_settings_for_tests,
 )
@@ -22,7 +20,6 @@ from server.configurations.settings import (
 
 
 __all__ = [
-    "ConfigurationManager",
     "BenchmarkSettings",
     "DatabaseSettings",
     "DatasetSettings",
@@ -31,7 +28,6 @@ __all__ = [
     "TokenizerSettings",
     "ensure_environment_loaded",
     "is_key_reveal_enabled",
-    "get_configuration_manager",
     "reload_settings_for_tests",
     "reset_environment_bootstrap_for_tests",
     "get_server_settings",

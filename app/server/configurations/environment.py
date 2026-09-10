@@ -9,9 +9,13 @@ from threading import Lock
 from dotenv import load_dotenv
 
 from server.common.constants import ALLOW_KEY_REVEAL_DEFAULT
-from server.common.utils.types import coerce_bool
-from server.common.path import ENV_EXAMPLE_FILE_PATH, ENV_FILE_PATH
-from server.common.utils.logger import logger
+
+
+ROOT_DIR = Path(__file__).resolve().parents[3]
+SETTINGS_DIR = (ROOT_DIR / "settings").resolve()
+ENV_FILE_PATH = SETTINGS_DIR / ".env"
+ENV_EXAMPLE_FILE_PATH = SETTINGS_DIR / ".env.example"
+
 
 ###############################################################################
 @dataclass
@@ -19,10 +23,12 @@ class EnvironmentBootstrapState:
     lock: Lock = field(default_factory=Lock)
     bootstrapped: bool = False
 
+
 ###############################################################################
 @lru_cache(maxsize=1)
 def _bootstrap_state() -> EnvironmentBootstrapState:
     return EnvironmentBootstrapState()
+
 
 ###############################################################################
 def ensure_environment_loaded(*, force: bool = False) -> Path | None:
@@ -33,11 +39,11 @@ def ensure_environment_loaded(*, force: bool = False) -> Path | None:
             return env_path
 
         _ensure_environment_file(env_path)
-        # .env is the active runtime profile and deliberately overrides process env.
         load_dotenv(dotenv_path=env_path, override=True)
 
         state.bootstrapped = True
         return env_path if env_path.is_file() else None
+
 
 ###############################################################################
 def _ensure_environment_file(env_path: Path) -> None:
@@ -52,10 +58,8 @@ def _ensure_environment_file(env_path: Path) -> None:
         with env_path.open("xb") as destination:
             destination.write(template_bytes)
     except FileExistsError:
-        # Another process created the file after the existence check. Preserve it.
         return
 
-    logger.info("Created environment file from template: %s", env_path)
 
 ###############################################################################
 def reset_environment_bootstrap_for_tests() -> None:
@@ -63,9 +67,18 @@ def reset_environment_bootstrap_for_tests() -> None:
     with state.lock:
         state.bootstrapped = False
 
+
 ###############################################################################
 def is_key_reveal_enabled() -> bool:
-    return coerce_bool(
-        os.getenv("ALLOW_KEY_REVEAL"),
-        ALLOW_KEY_REVEAL_DEFAULT,
+    raw_value = os.getenv("ALLOW_KEY_REVEAL")
+    if raw_value is None or raw_value.strip() == "":
+        return ALLOW_KEY_REVEAL_DEFAULT
+
+    normalized = raw_value.strip().lower()
+    if normalized == "true":
+        return True
+    if normalized == "false":
+        return False
+    raise RuntimeError(
+        f"ALLOW_KEY_REVEAL must be either 'true' or 'false', got: {raw_value}"
     )
