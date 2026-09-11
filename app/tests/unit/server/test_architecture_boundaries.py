@@ -71,6 +71,41 @@ def _starts_with_module(module: str, prefix: str) -> bool:
 
 
 ###############################################################################
+def test_configuration_bootstraps_before_sensitive_imports() -> None:
+    configuration_init = SERVER_ROOT / "configurations" / "__init__.py"
+    tree = ast.parse(
+        configuration_init.read_text(encoding="utf-8"),
+        filename=str(configuration_init),
+    )
+
+    bootstrap_index = next(
+        index
+        for index, node in enumerate(tree.body)
+        if (
+            isinstance(node, ast.Expr)
+            and isinstance(node.value, ast.Call)
+            and isinstance(node.value.func, ast.Name)
+            and node.value.func.id == "ensure_environment_loaded"
+        )
+    )
+    sensitive_import_indices = [
+        index
+        for index, node in enumerate(tree.body)
+        if (
+            isinstance(node, ast.ImportFrom)
+            and node.module
+            in {
+                "server.configurations.settings",
+                "server.configurations.startup",
+            }
+        )
+    ]
+
+    assert sensitive_import_indices
+    assert bootstrap_index < min(sensitive_import_indices)
+
+
+###############################################################################
 def test_production_layers_respect_dependency_boundaries() -> None:
     violations: list[str] = []
     for path in _production_python_files():
