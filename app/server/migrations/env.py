@@ -5,7 +5,6 @@ from typing import Any, Literal
 from alembic import context
 from sqlalchemy import create_engine
 
-from server.common.path import DATABASE_PATH
 from server.configurations import get_server_settings
 from server.repositories.database.backend import get_database
 from server.repositories.database.postgres import PostgresRepository
@@ -20,7 +19,7 @@ target_metadata = Base.metadata
 def _database_url() -> str:
     settings = get_server_settings().database
     if settings.embedded_database:
-        return f"sqlite:///{normalize_sqlite_path(DATABASE_PATH)}"
+        return f"sqlite:///{normalize_sqlite_path(settings.sqlite_path)}"
     repository = PostgresRepository(settings)
     try:
         return str(repository.engine.url)

@@ -36,16 +36,6 @@ $EnvTemplate = Join-Path $RepoRoot 'settings\.env.example'
 $RuntimeCacheDir = Join-Path $RuntimeDir 'cache'
 $ToolCacheDir = Join-Path $TestsDir 'cache'
 $UvCacheDir = Join-Path $RuntimeCacheDir 'uv'
-$LegacyCachePaths = @(
-    (Join-Path $RepoRoot '.uv-cache'),
-    (Join-Path $RepoRoot '.pytest_cache'),
-    (Join-Path $RepoRoot '.ruff_cache'),
-    (Join-Path $RepoRoot '.mypy_cache'),
-    (Join-Path $AppDir '.uv-cache'),
-    (Join-Path $ServerDir '.uv-cache'),
-    (Join-Path $ClientDir '.uv-cache'),
-    (Join-Path $TestsDir '.uv-cache')
-)
 $PythonVersion = '3.14.2'
 $NodeVersion = '22.23.1'
 $script:NextProgressId = 1
@@ -1051,7 +1041,7 @@ function Remove-PythonCaches {
 
 function Clear-ManagedCache {
     $summaries = @()
-    foreach ($cacheRoot in @($RuntimeCacheDir, $ToolCacheDir) + $LegacyCachePaths) {
+    foreach ($cacheRoot in @($RuntimeCacheDir, $ToolCacheDir)) {
         Ensure-Directory $cacheRoot
         $entries = @(Get-ChildItem -LiteralPath $cacheRoot -Force -ErrorAction SilentlyContinue |
             Where-Object { $_.Name -ne '.gitkeep' } |
