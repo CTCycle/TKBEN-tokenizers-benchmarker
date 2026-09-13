@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
 import urllib.parse
 
 import sqlalchemy
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql.elements import TextClause
 
-from server.common.path import DATABASE_PATH
 from server.common.utils.logger import logger
 from server.configurations import DatabaseSettings, ServerSettings, get_server_settings
 from server.repositories.database.migrations import (
@@ -45,6 +43,7 @@ def clone_settings_with_database(
 ) -> DatabaseSettings:
     return DatabaseSettings(
         embedded_database=False,
+        sqlite_path=settings.sqlite_path,
         host=settings.host,
         port=settings.port,
         database_name=database_name,
@@ -65,7 +64,7 @@ def build_postgres_create_database_sql(database_name: str) -> TextClause:
 
 ###############################################################################
 def initialize_sqlite_database(settings: DatabaseSettings) -> None:
-    database_path = Path(normalize_sqlite_path(DATABASE_PATH))
+    database_path = settings.sqlite_path
     logger.info("Checking SQLite database %s.", database_path)
     repository = SQLiteRepository(
         settings,
@@ -76,7 +75,7 @@ def initialize_sqlite_database(settings: DatabaseSettings) -> None:
         run_locked_migrations(
             repository.engine,
             settings,
-            str(database_path),
+            normalize_sqlite_path(database_path),
             postgres=False,
         )
     finally:

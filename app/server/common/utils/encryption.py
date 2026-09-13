@@ -1,16 +1,15 @@
 from __future__ import annotations
 
 import json
-import os
 from datetime import UTC, datetime
 from pathlib import Path
 
 from cryptography.fernet import Fernet, InvalidToken
 
-from server.common.path import RESOURCES_PATH, ROOT_DIR
+from server.configurations import get_server_settings
 
-MATERIAL_FILE_ENV = "HF_KEYS_ENCRYPTION_MATERIAL_FILE"
 MATERIAL_PURPOSE = "hugging_face_access_keys"
+
 
 ###############################################################################
 class SymmetricCipher:
@@ -35,13 +34,11 @@ class SymmetricCipher:
         except InvalidToken as exc:
             raise ValueError("Unable to decrypt stored Hugging Face key.") from exc
 
+
 ###############################################################################
 def _material_path() -> Path:
-    configured = os.getenv(MATERIAL_FILE_ENV, "").strip()
-    if not configured:
-        return RESOURCES_PATH / "hf-key-material.json"
-    path = Path(configured).expanduser()
-    return path if path.is_absolute() else ROOT_DIR / path
+    return get_server_settings().security.hf_keys_encryption_material_file
+
 
 ###############################################################################
 def _read_material_store(path: Path) -> dict[str, object]:
@@ -55,6 +52,7 @@ def _read_material_store(path: Path) -> dict[str, object]:
         raise RuntimeError("Hugging Face key material file must contain an object.")
     return payload
 
+
 ###############################################################################
 def _write_material_store(path: Path, payload: dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -63,6 +61,7 @@ def _write_material_store(path: Path, payload: dict[str, object]) -> None:
         json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     temporary.replace(path)
+
 
 ###############################################################################
 def _get_active_material(payload: dict[str, object]) -> str | None:
@@ -78,6 +77,7 @@ def _get_active_material(payload: dict[str, object]) -> str | None:
         return None
     key_material = record.get("key_material")
     return str(key_material) if isinstance(key_material, str) and key_material else None
+
 
 ###############################################################################
 def _ensure_material() -> str:
@@ -107,6 +107,7 @@ def _ensure_material() -> str:
     record = versions["1"]
     assert isinstance(record, dict)
     return str(record["key_material"])
+
 
 ###############################################################################
 def get_hf_key_cipher() -> SymmetricCipher:
