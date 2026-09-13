@@ -113,7 +113,6 @@ def _read_env_int(
         raise RuntimeError(f"{name} must be <= {maximum}, got: {value}")
     return value
 
-
 ###############################################################################
 def _load_database_settings_from_sources() -> DatabaseSettings:
     """Load database settings from the environment only.
