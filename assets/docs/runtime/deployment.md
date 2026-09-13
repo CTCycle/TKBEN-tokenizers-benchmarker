@@ -1,5 +1,5 @@
 # Deployment
-Last updated: 2026-09-04
+Last updated: 2026-09-13
 
 ## Dependency Prerequisites
 From project and runtime scripts:
@@ -9,12 +9,14 @@ From project and runtime scripts:
 
 ## Local Distribution Strategy
 - The repository plus `start_on_windows.ps1` is the supported Windows operational path.
-- The launcher synchronizes Python dependencies, reuses unchanged frontend dependencies on application launch, builds the frontend when configured, then starts FastAPI and Angular preview locally.
+- The launcher synchronizes Python dependencies, reuses unchanged frontend dependencies on application launch, builds the frontend when dependencies or the production entry are missing, verifies the configured ports, then starts FastAPI and Angular preview locally.
 - The default launcher binds locally with `FASTAPI_HOST=127.0.0.1`.
 - Network-hosted deployments require an external authentication boundary before exposing key management or destructive API routes.
 
 ## Constraints
 - The repository does not currently include an active Docker runtime configuration in the root.
 - Automatic Python and Node.js downloads target Windows x64.
-- The current public release is source-only `v4.2.0`; no installer, executable,
-  package, or other binary artifact is part of that release workflow.
+- The latest public release is source-only `v4.2.0`; no installer, executable,
+  package, or other binary artifact is part of that release workflow. The
+  current `develop` preparation targets unpublished public `v4.3.0`, backend
+  `3.3.0`, and frontend `2.3.0`; no tag or GitHub Release exists for it yet.

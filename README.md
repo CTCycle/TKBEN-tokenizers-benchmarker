@@ -1,5 +1,5 @@
 # TKBEN Tokenizer Benchmarker
-Last updated: 2026-09-04
+Last updated: 2026-09-13
 
 [![Release](https://img.shields.io/github/v/release/CTCycle/TKBEN-tokenizers-benchmarker?display_name=tag)](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.14-3776AB?logo=python&logoColor=white)
@@ -62,9 +62,9 @@ Windows users should use the project launcher. From the repository root, run:
 .\start_on_windows.ps1
 ```
 
-Choose **Launch application** from the menu. On first use, the launcher prepares the required local runtimes and dependencies, creates `settings/.env`, starts the application services, waits for them to become ready, and reports the address to open in your browser. The first launch may take a few minutes and requires an internet connection so that missing runtimes and packages can be obtained.
+Choose **Launch application** from the menu. On first use, the launcher prepares the required local runtimes and dependencies, creates `settings/.env`, builds the production frontend when dependencies or the Angular output are missing, starts the application services, waits for them to become ready, and reports the address to open in your browser. The first launch may take a few minutes and requires an internet connection so that missing runtimes and packages can be obtained.
 
-On later launches, the prepared environment is reused when it is still valid. You normally do not need to start the frontend or backend separately on Windows.
+On later launches, the prepared environment and production output are reused when they are still valid. If `app/client/dist/tkben-angular/browser/index.html` is missing, the launcher rebuilds the frontend before starting preview. You normally do not need to start the frontend or backend separately on Windows.
 
 If Windows blocks the automatic browser opening, this does not necessarily mean that TKBEN failed to start. Copy the local URL printed by the launcher and open it manually.
 
@@ -180,10 +180,7 @@ When reviewing a report:
 
 The following full-page captures show the main screens with populated sample data. Your counts, charts, and report values will depend on the datasets, tokenizers, metrics, and sampling choices you use.
 
-The settings view centralizes optional local runtime choices. Most users can keep the generated defaults and work entirely from the launcher.
-
-![Settings](assets/figures/settings.png)
-*Settings page showing the local runtime, port, logging, and integration controls used by the launcher.*
+Operational settings are managed in `settings/.env` and structured application settings are managed in `settings/configurations.json`; the current application has no separate in-app settings page. Hugging Face access keys are managed from the key button in the application header.
 
 Dataset dashboard with a loaded validation session, aggregate statistics, switchable histograms, and word-cloud analytics.
 
@@ -216,6 +213,8 @@ The maintenance menu can help you:
 
 The launcher checks the local database when the application starts and applies required updates automatically. Do not delete the database or saved resource folders manually while the application is running.
 
+Application launch also checks that the configured ports are available. If an existing listener cannot be stopped because it belongs to another permission level, the launcher fails with an actionable error instead of treating the old process as a successful restart.
+
 The **Remove All Data** action is permanent for the local workspace. It removes saved datasets, tokenizer files, reports, logs, and stored Hugging Face access-key material while preserving the application files themselves. Back up anything you may need before confirming this action.
 
 ## 5. Troubleshooting
@@ -227,6 +226,14 @@ Copy the local address printed by the launcher and open it manually. On managed 
 ### The launcher appears to be taking a long time
 
 The first launch may be downloading runtimes, installing packages, preparing the database, or building the web interface. Allow the progress indicators to finish. If there is no progress, check your internet connection and available disk space, close duplicate TKBEN windows, and run the launcher again.
+
+### The launcher says that the Angular output is missing
+
+`Launch application` builds the production frontend automatically when the required entry file is absent. If the build needs to be retried, choose **Rebuild frontend** from the maintenance menu, then launch again. Check the frontend output and launcher log for the first failing command rather than deleting the database or resource folders.
+
+### The launcher cannot stop an existing port listener
+
+The launcher must be able to stop the process already using the configured backend or frontend port. Close the other TKBEN instance or rerun the launcher with the same permissions used to start that process. A failed stop is reported as a startup failure; verify the printed ports before opening the application.
 
 ### The application says that an address or port is already in use
 
@@ -252,6 +259,10 @@ Open the run diagnostics to see which tokenizer failed. Check that the tokenizer
 
 Large datasets, many selected metrics, optional language-model measures, and detailed per-document statistics require more time and memory. Start with a smaller document sample and the default settings. For speed comparisons, repeat runs under similar computer conditions and compare the same sample.
 
+### Configuration validation fails before startup
+
+`settings/.env` is the only source for environment-specific values such as ports, database mode, paths, and boolean launcher settings. `settings/configurations.json` contains the required structured `datasets`, `tokenizers`, `benchmarks`, and `jobs` blocks; unknown blocks or missing/invalid fields are rejected. Boolean values must be written as `true` or `false`. Restore the file from its versioned example or correct the reported field, then restart TKBEN. The environment file is loaded before backend configuration and database modules are imported, so an invalid bootstrap configuration intentionally stops startup early.
+
 ### PDF export does not complete
 
 Open a completed report before exporting and choose a folder where you can create files. If you cancel the native save dialog, no PDF is created and no error is expected. If export still fails, reduce the dashboard to the measures you need and try again.
@@ -265,7 +276,8 @@ Confirm that Python, Node.js, and `uv` are installed and available in the termin
 TKBEN keeps its working data locally so that completed analyses can be reopened after a restart.
 
 - `app/resources`: saved datasets, tokenizer assets, reports, the local database, and logs. Back up the relevant contents of this folder if you need to preserve your work.
-- `settings`: local settings and templates used by the launcher. Most users never need to edit this folder.
+- `settings/.env`: local operational settings and credentials/paths; preserve it across updates and keep it private.
+- `settings/configurations.json`: versioned structured application tuning for datasets, tokenizers, benchmarks, and jobs.
 - `assets/figures`: screenshots used in this guide.
 - `assets/docs`: deeper project and runtime reference material for advanced users and maintainers.
 
@@ -274,6 +286,8 @@ The application does not provide cloud synchronization by default. Moving TKBEN 
 ## 7. Optional Configuration
 
 The Windows launcher creates `settings/.env` automatically and supplies sensible defaults. Most users should leave those defaults unchanged.
+
+Configuration ownership is intentionally split: `.env` owns environment-specific values, while `configurations.json` owns structured application settings. The backend resolves these sources once into an immutable settings snapshot during startup. Do not add database or path overrides to the JSON file, and do not copy secrets into documentation or screenshots.
 
 You may need to edit the local settings only when you want to:
 
@@ -286,7 +300,9 @@ Restart TKBEN after changing `settings/.env`. Keep this file private: it can con
 
 ## 8. Releases and Data Safety
 
-Versioned source releases are available from the [GitHub releases page](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases). A source archive contains the application files, not your local datasets, downloaded tokenizer assets, credentials, logs, or generated reports.
+Versioned source releases are available from the [GitHub releases page](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases). The latest published release is source-only `v4.2.0`. The current `develop` branch contains the post-`v4.2.0` changes being prepared locally as `v4.3.0` with backend package `3.3.0` and frontend package `2.3.0`; that release is not published yet.
+
+A source archive contains the application files, not your local datasets, downloaded tokenizer assets, credentials, logs, or generated reports.
 
 Before updating to a new release:
 

@@ -1,5 +1,5 @@
 # Execution and Data Flow
-Last updated: 2026-08-29
+Last updated: 2026-09-13
 
 ## Layered Architecture
 
@@ -48,18 +48,27 @@ The current import boundary is checked by
 
 ## Configuration and schema flow
 
-`create_app()` resolves the process-level settings snapshot once and places it
-on application state. Lifespan startup, database initialization, repositories,
-and services consume that snapshot rather than independently reloading
-configuration. `.env` owns operational values; `configurations.json` owns
-datasets, tokenizers, benchmarks, and jobs. PostgreSQL uses the fixed
-`postgresql+psycopg` driver when external mode is selected.
+The bootstrap loads `.env` before importing configuration or database modules
+that can resolve environment-derived values. `create_app()` then resolves the
+process-level settings snapshot once and places it on application state.
+Lifespan startup, database initialization, repositories, and services consume
+that snapshot rather than independently reloading configuration. `.env` owns
+operational values; `configurations.json` owns the required datasets,
+tokenizers, benchmarks, and jobs blocks. Unknown or missing structured settings
+and non-canonical booleans fail validation before readiness. PostgreSQL uses the
+fixed `postgresql+psycopg` driver when external mode is selected.
 
 Alembic is the only schema authority. Empty databases upgrade through the
 tracked graph, while non-empty databases without an Alembic version row,
 unknown revisions, multiple heads, or ahead-of-application revisions fail
 explicitly. Revision `0003_canonical_state_cleanup` removes incompatible
 report rows and normalizes direct metric keys and persisted tokenizer sources.
+
+The Windows launcher performs the same startup-oriented checks around the
+runtime: it builds the Angular production output when the required browser
+entry is missing, stops configured-port listeners before launch, and aborts if
+an old listener remains. This prevents a previous process from being mistaken
+for the newly requested backend or preview.
 
 ## Dependency Maps
 
