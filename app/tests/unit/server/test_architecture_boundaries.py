@@ -5,6 +5,7 @@ from pathlib import Path
 
 
 SERVER_ROOT = Path(__file__).resolve().parents[3] / "server"
+REPOSITORY_ROOT = SERVER_ROOT.parents[1]
 
 FORBIDDEN_IMPORTS: dict[str, tuple[str, ...]] = {
     "api": ("server.repositories",),
@@ -23,7 +24,25 @@ FORBIDDEN_IMPORTS: dict[str, tuple[str, ...]] = {
 LEGACY_IMPORTS = (
     "server.domain",
     "server.repositories.serialization",
+    "server.configurations.management",
+    "server.common.utils.types",
 )
+
+REMOVED_COMPATIBILITY_PATHS = (
+    SERVER_ROOT / "domain",
+    SERVER_ROOT / "repositories" / "serialization.py",
+    SERVER_ROOT / "configurations" / "management.py",
+    SERVER_ROOT / "common" / "utils" / "types.py",
+)
+
+LEGACY_CACHE_TOKENS = (
+    "$LegacyCachePaths",
+    ".uv-cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".mypy_cache",
+)
+
 
 ###############################################################################
 def _imported_modules(path: Path) -> list[str]:
@@ -36,6 +55,7 @@ def _imported_modules(path: Path) -> list[str]:
             modules.append(node.module)
     return modules
 
+
 ###############################################################################
 def _production_python_files() -> list[Path]:
     return sorted(
@@ -44,9 +64,46 @@ def _production_python_files() -> list[Path]:
         if not any(part in {".venv", "__pycache__"} for part in path.parts)
     )
 
+
 ###############################################################################
 def _starts_with_module(module: str, prefix: str) -> bool:
     return module == prefix or module.startswith(f"{prefix}.")
+
+
+###############################################################################
+def test_configuration_bootstraps_before_sensitive_imports() -> None:
+    configuration_init = SERVER_ROOT / "configurations" / "__init__.py"
+    tree = ast.parse(
+        configuration_init.read_text(encoding="utf-8"),
+        filename=str(configuration_init),
+    )
+
+    bootstrap_index = next(
+        index
+        for index, node in enumerate(tree.body)
+        if (
+            isinstance(node, ast.Expr)
+            and isinstance(node.value, ast.Call)
+            and isinstance(node.value.func, ast.Name)
+            and node.value.func.id == "ensure_environment_loaded"
+        )
+    )
+    sensitive_import_indices = [
+        index
+        for index, node in enumerate(tree.body)
+        if (
+            isinstance(node, ast.ImportFrom)
+            and node.module
+            in {
+                "server.configurations.settings",
+                "server.configurations.startup",
+            }
+        )
+    ]
+
+    assert sensitive_import_indices
+    assert bootstrap_index < min(sensitive_import_indices)
+
 
 ###############################################################################
 def test_production_layers_respect_dependency_boundaries() -> None:
@@ -62,6 +119,7 @@ def test_production_layers_respect_dependency_boundaries() -> None:
 
     assert not violations, "\n".join(violations)
 
+
 ###############################################################################
 def test_production_code_has_no_legacy_architecture_imports() -> None:
     violations: list[str] = []
@@ -72,3 +130,16 @@ def test_production_code_has_no_legacy_architecture_imports() -> None:
                 violations.append(f"{relative}: imports {module}")
 
     assert not violations, "\n".join(violations)
+
+
+###############################################################################
+def test_removed_compatibility_paths_do_not_return() -> None:
+    existing = [str(path.relative_to(REPOSITORY_ROOT)) for path in REMOVED_COMPATIBILITY_PATHS if path.exists()]
+    assert not existing, "Removed compatibility paths were recreated:\n" + "\n".join(existing)
+
+
+###############################################################################
+def test_launcher_has_no_legacy_cache_compatibility_paths() -> None:
+    launcher = (REPOSITORY_ROOT / "start_on_windows.ps1").read_text(encoding="utf-8")
+    violations = [token for token in LEGACY_CACHE_TOKENS if token in launcher]
+    assert not violations, "Launcher still contains legacy cache compatibility tokens: " + ", ".join(violations)

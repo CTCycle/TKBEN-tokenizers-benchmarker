@@ -13,14 +13,14 @@ import pytest
 from server.configurations import DatabaseSettings
 from server.repositories.database import initializer
 from server.repositories.database import migrations
-from server.repositories.database import sqlite as sqlite_repository
 from server.repositories.database.migrations import DatabaseMigrationError
 from server.repositories.database.sqlite import SQLiteRepository
 
 ###############################################################################
-def _settings() -> DatabaseSettings:
+def _settings(path: Path) -> DatabaseSettings:
     return DatabaseSettings(
         embedded_database=True,
+        sqlite_path=path,
         host=None,
         port=None,
         database_name=None,
@@ -37,9 +37,7 @@ def _configure_database(
     monkeypatch: pytest.MonkeyPatch,
     path: Path,
 ) -> DatabaseSettings:
-    settings = _settings()
-    monkeypatch.setattr(initializer, "DATABASE_PATH", path)
-    monkeypatch.setattr(sqlite_repository, "DATABASE_PATH", path)
+    settings = _settings(path)
     monkeypatch.setattr(
         initializer,
         "get_server_settings",
