@@ -593,6 +593,11 @@ function Test-DependenciesReady {
     return $true
 }
 
+function Test-FrontendBuildReady {
+    $frontendEntry = Join-Path $ClientDir 'dist\tkben-angular\browser\index.html'
+    return Test-Path -LiteralPath $frontendEntry -PathType Leaf
+}
+
 function Stop-PortListeners([int]$Port) {
     $listeners = netstat -ano | Select-String -Pattern ":$Port\s+.*LISTENING\s+(\d+)\s*$"
     $processIds = @($listeners | ForEach-Object {
@@ -601,6 +606,13 @@ function Stop-PortListeners([int]$Port) {
     foreach ($processId in $processIds) {
         Write-Step "Stopping PID $processId on port $Port."
         & taskkill.exe /PID $processId /T /F | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "Could not stop PID $processId on port $Port (taskkill exit code $LASTEXITCODE). Run the launcher with permission to stop the existing listener."
+        }
+    }
+    $remainingProcessId = Get-PortProcessId -Port $Port
+    if ($null -ne $remainingProcessId) {
+        throw "Port $Port is still occupied by PID $remainingProcessId after the stop attempt. Close that process or run the launcher with sufficient permission."
     }
 }
 
@@ -617,10 +629,14 @@ function Launch-Application {
     Import-Environment
     if (-not (Test-DependenciesReady)) {
         Write-Step 'Required application environments are missing or unusable; installing dependencies.'
-        Sync-Dependencies -InstallationType 'Standard'
+        Sync-Dependencies -BuildFrontend -InstallationType 'Standard'
+    }
+    elseif (-not (Test-FrontendBuildReady)) {
+        Write-Step 'Angular production output is missing; building the frontend.'
+        Sync-Frontend -BuildFrontend -UseCachedFrontendDependencies
     }
     else {
-        Write-Ok 'Application environments are ready; skipped dependency installation.'
+        Write-Ok 'Application environments and frontend output are ready; skipped setup.'
     }
     Import-Environment
 
