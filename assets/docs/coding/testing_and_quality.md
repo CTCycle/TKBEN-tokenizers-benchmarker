@@ -1,5 +1,5 @@
 # Testing and Quality
-Last updated: 2026-08-29
+Last updated: 2026-09-13
 
 ## Tooling and Tests
 - Lint and format with Ruff, or the project-standard equivalent if it changes in the future.
@@ -22,6 +22,12 @@ The Windows `app/tests/run_tests.bat` runner additionally supports live
 backend/frontend startup, the configured pytest target, and optional frontend
 test scripts.
 
+Provider and external-database checks are conditional: run them only when a
+usable Hugging Face key or PostgreSQL target is configured, and record an
+unavailable gate explicitly. Live validation should correlate browser state,
+API responses, application logs, and persisted records; a successful HTTP
+status or build alone is not release evidence.
+
 ## Development Cache and Artifact Locations
 - Pytest’s collection cache and temporary test directory are under
   `app/tests/cache/pytest` and `app/tests/cache/pytest-basetemp`.
@@ -31,6 +37,10 @@ test scripts.
 - `app/client/dist`, `app/server/.venv`, and `app/client/node_modules` remain in
   their established locations because they are the runtime build output or
   installed dependency trees rather than tool caches.
+- When the managed cache roots are not writable, use an explicit writable
+  `--basetemp` or repository-local tool cache for validation and record the
+  environment limitation; do not broaden permissions or treat protected cache
+  residue as a product failure.
 
 ## Cross-language Quality Gates
 - Keep architecture layering intact: API -> contracts/services -> repository.

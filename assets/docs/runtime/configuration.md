@@ -1,10 +1,14 @@
 # Configuration
-Last updated: 2026-08-29
+Last updated: 2026-09-13
 
 ## Environment File
 Primary launcher runtime env file:
 - `settings/.env`
 - Created from the versioned `settings/.env.example` template when missing
+- Owns environment-specific runtime values, including ports, database mode and
+  connection fields, filesystem roots, logging, and boolean controls.
+- The backend bootstrap loads this file before importing configuration and
+  database modules that can resolve environment-derived paths or settings.
 
 ## Core Variables
 - `FASTAPI_HOST`
@@ -34,6 +38,18 @@ Primary launcher runtime env file:
 - `settings/configurations.json`
   - `datasets`, `tokenizers`, `benchmarks`, and `jobs`
   - Unknown top-level blocks, including a `database` block, are rejected.
+- Every required structured block and field must be present. The validated
+  configuration is resolved into one immutable `ServerSettings` snapshot for
+  application startup; it is not a second source for environment values.
+
+## Ownership and validation
+
+Do not move values between the two configuration files to work around a
+validation error. `.env` is canonical for operational and environment-specific
+values; `configurations.json` is canonical for structured application tuning.
+Pydantic validation rejects missing or unknown structured settings, and runtime
+booleans accept only `true` or `false`. Invalid input fails before the
+application exposes its health endpoint.
 
 ## Configuration Differences
 ### Dev and Local Webapp
@@ -61,3 +77,9 @@ Primary launcher runtime env file:
 Boolean launcher settings are validated as `true` or `false`; invalid values
 fail fast. The versioned template defaults are `FASTAPI_PORT=5000` and
 `UI_PORT=8000`, and the same values are used by the test harness.
+
+After changing `settings/.env` or `settings/configurations.json`, restart the
+backend (or relaunch TKBEN) so the new process resolves a fresh settings
+snapshot. Existing database rows, reports, and canonical tokenizer artifacts
+remain in the configured resource root unless an explicit data-removal action
+is selected.

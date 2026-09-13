@@ -1,5 +1,5 @@
 # Architecture Review
-Last updated: 2026-08-29
+Last updated: 2026-09-13
 
 ## Current State
 
@@ -22,6 +22,13 @@ orchestrates a run, `BenchmarkJobService` owns the managed execution lifecycle,
 repository/database layer commits the result. Alembic owns the schema graph;
 revision `0003_canonical_state_cleanup` establishes direct metric keys,
 persisted tokenizer sources, and the relational benchmark report summary.
+
+Configuration is also single-owner at runtime. `settings/.env` supplies
+environment-specific values and is loaded before configuration or database
+imports; `settings/configurations.json` supplies the required structured
+datasets, tokenizers, benchmarks, and jobs blocks. Validation rejects unknown
+or missing structured settings and non-canonical boolean values, then exposes
+one immutable settings snapshot to the application.
 
 ## Architectural Strengths
 

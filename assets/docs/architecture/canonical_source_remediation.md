@@ -1,5 +1,5 @@
 # Canonical Source Remediation
-Last updated: 2026-09-10
+Last updated: 2026-09-13
 
 ## Objective
 TKBEN should expose one authoritative implementation and one authoritative source of truth for each responsibility. Runtime compatibility paths are retained only when a current external dependency requires them.
@@ -8,6 +8,8 @@ TKBEN should expose one authoritative implementation and one authoritative sourc
 - `settings/.env` owns environment-specific runtime values.
 - `settings/configurations.json` owns structured application tuning values. Every structured setting is explicit and required; Pydantic validates values but does not provide competing defaults.
 - `server.configurations.get_server_settings()` owns the resolved immutable backend settings object.
+- `server.configurations` loads the environment before importing settings or
+  database surfaces that resolve environment-derived values.
 - Alembic owns schema evolution and one-time data migrations.
 - SQLAlchemy repositories own durable report and catalog persistence.
 - Backend Pydantic contracts own API response semantics.
@@ -20,6 +22,12 @@ TKBEN should expose one authoritative implementation and one authoritative sourc
 
 ## Bootstrap rule
 The environment profile must be loaded before configuration modules that can reach environment-derived paths or database settings are imported. `server.configurations` performs that bootstrap before importing its settings/startup surface.
+
+The bootstrap and validation path is now the merged `develop` behavior. Runtime
+booleans accept only `true` or `false`; structured settings reject missing
+required blocks, unknown blocks, and unknown fields. The application consumes a
+single immutable settings snapshot after validation rather than reconstructing
+configuration from competing sources.
 
 ## Remaining canonicalization work
 The following audit findings require broader contract changes and are intentionally tracked separately from the initial configuration cleanup:
