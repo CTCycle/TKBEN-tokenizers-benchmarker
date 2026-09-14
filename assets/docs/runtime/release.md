@@ -1,5 +1,5 @@
 # Release Procedure
-Last updated: 2026-09-13
+Last updated: 2026-09-14
 
 ## Release model
 
@@ -10,19 +10,16 @@ add packaging as part of a source release.
 The public release version and component versions use the existing repository
 convention:
 
-| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` public | `v4.3.0` prepared |
+| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` public |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | not published |
+| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` |
 | Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` |
 | Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` |
 
-The latest published release is `v4.2.0`. The current `develop` branch has
-post-`v4.2.0` changes and is being prepared locally for `v4.3.0`; the prepared
-component versions are backend `3.3.0` and frontend `2.3.0`. The prepared
-release is not published until the normal synchronization, tagging, and
-GitHub Release steps are completed.
+The latest published release is `v4.3.0`. Its component versions are backend
+`3.3.0` and frontend `2.3.0`.
 
-## Prepared v4.3.0 release notes (unpublished)
+## v4.3.0 release notes
 
 The current release delta is based on verified repository changes after
 `v4.2.0`:
@@ -37,7 +34,8 @@ The current release delta is based on verified repository changes after
   together across service recreation and persistence;
 - make the Windows launcher build missing Angular production output before
   preview, verify the required `index.html`, and fail when an existing port
-  listener cannot be stopped.
+  listener cannot be stopped; redirected launches now capture backend logs for
+  actionable health-check failures.
 
 API version `1.2.0`, benchmark schema version `3`, report version `5`, and
 Alembic revision `0003_canonical_state_cleanup` remain unchanged. Validation
@@ -50,8 +48,7 @@ evidence for this preparation is recorded under `assets/QA/`.
    work and do not make release-preparation edits directly on `main`.
 2. Update the README, `assets/docs`, and this release procedure before the
    final branch synchronization. Keep documentation version references
-   consistent with the release being prepared and distinguish the latest
-   public release from an unpublished local preparation.
+   consistent with the release candidate.
 3. Run the CI-equivalent checks for the intended release surfaces: backend
    compileall, Ruff, BasedPyright, unit tests, and OpenAPI smoke; frontend
    `npm run lint`, `npm run test:unit`, and `npm run build` from `app/client`.

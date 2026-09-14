@@ -300,7 +300,7 @@ Restart TKBEN after changing `settings/.env`. Keep this file private: it can con
 
 ## 8. Releases and Data Safety
 
-Versioned source releases are available from the [GitHub releases page](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases). The latest published release is source-only `v4.2.0`. The current `develop` branch contains the post-`v4.2.0` changes being prepared locally as `v4.3.0` with backend package `3.3.0` and frontend package `2.3.0`; that release is not published yet.
+Versioned source releases are available from the [GitHub releases page](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases). The latest published release is source-only `v4.3.0`, distributed as the application folder plus `start_on_windows.ps1`. No installer, executable, Tauri package, or other packaging layer is required.
 
 A source archive contains the application files, not your local datasets, downloaded tokenizer assets, credentials, logs, or generated reports.
 

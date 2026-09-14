@@ -1,5 +1,5 @@
 # Project Overview
-Last updated: 2026-09-13
+Last updated: 2026-09-14
 
 ## Purpose
 This file is the root index for `assets/docs`. Read it first to find the narrowest topic file for the task at hand.
@@ -11,8 +11,7 @@ preferences. Reports own relational summary fields while JSON stores detail
 fields; incompatible historical rows are rejected or purged rather than
 silently adapted.
 
-The latest published release is `v4.2.0`. The current `develop` branch is being
-prepared locally for unpublished `v4.3.0` with backend package `3.3.0` and
+The latest published release is `v4.3.0` with backend package `3.3.0` and
 frontend package `2.3.0`. Configuration ownership is canonical: `settings/.env`
 owns environment-specific values, `settings/configurations.json` owns required
 structured tuning, and the environment bootstrap runs before configuration or
