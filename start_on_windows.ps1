@@ -605,9 +605,17 @@ function Stop-PortListeners([int]$Port) {
     } | Sort-Object -Unique)
     foreach ($processId in $processIds) {
         Write-Step "Stopping PID $processId on port $Port."
-        & taskkill.exe /PID $processId /T /F | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            throw "Could not stop PID $processId on port $Port (taskkill exit code $LASTEXITCODE). Run the launcher with permission to stop the existing listener."
+        $stopped = $false
+        try {
+            Stop-Process -Id $processId -Force -ErrorAction Stop
+            $stopped = $true
+        }
+        catch {
+            & taskkill.exe /PID $processId /T /F | Out-Null
+            if ($LASTEXITCODE -eq 0) { $stopped = $true }
+        }
+        if (-not $stopped) {
+            throw "Could not stop PID $processId on port $Port. Close the existing listener or run the launcher with permission to stop it."
         }
     }
     $remainingProcessId = Get-PortProcessId -Port $Port
@@ -650,7 +658,12 @@ function Launch-Application {
     if ($env:RELOAD -ieq 'true') { $backendArgs += ' --reload' }
 
     Write-Step 'Starting backend.'
-    if ($env:BACKEND_LOGS_VISIBLE -ieq 'true') {
+    $backendLogDir = Join-Path $AppDir 'resources\logs'
+    Ensure-Directory -Path $backendLogDir
+    $backendLogStem = Join-Path $backendLogDir ('TKBEN_backend_' + (Get-Date -Format 'yyyyMMdd_HHmmss_fff'))
+    $backendStdoutLog = "$backendLogStem.out.log"
+    $backendStderrLog = "$backendLogStem.err.log"
+    if ($env:BACKEND_LOGS_VISIBLE -ieq 'true' -and $script:LauncherInteractive) {
         $escapedPython = $VenvPython.Replace("'", "''")
         $escapedApp = $backendAppPath.Replace("'", "''")
         $backendCommand = "& '$escapedPython' -m uvicorn server.app:app --app-dir '$escapedApp' --host $($env:FASTAPI_HOST) --port $backendPort"
@@ -659,12 +672,20 @@ function Launch-Application {
             -ArgumentList @('-NoProfile', '-NoExit', '-Command', $backendCommand) `
             -WorkingDirectory $RepoRoot -WindowStyle Normal -PassThru
     } else {
-        $backendProcess = Start-Process -FilePath $VenvPython -ArgumentList $backendArgs -WorkingDirectory $RepoRoot -WindowStyle Hidden -PassThru
+        $backendProcess = Start-Process -FilePath $VenvPython `
+            -ArgumentList $backendArgs `
+            -WorkingDirectory $RepoRoot `
+            -WindowStyle Hidden `
+            -RedirectStandardOutput $backendStdoutLog `
+            -RedirectStandardError $backendStderrLog `
+            -PassThru
     }
 
     Invoke-HealthCheck `
         -Uri "http://$($env:FASTAPI_HOST):$backendPort/api/health" `
         -Description 'backend' `
+        -ProcessToMonitor $backendProcess `
+        -FailureLogPath $backendStderrLog `
         -Attempts 60 `
         -IntervalSeconds 1
     $backendPid = if ($backendProcess) { $backendProcess.Id } else { Get-PortProcessId -Port $backendPort }
