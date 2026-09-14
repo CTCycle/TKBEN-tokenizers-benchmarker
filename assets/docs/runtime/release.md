@@ -1,5 +1,5 @@
 # Release Procedure
-Last updated: 2026-09-04
+Last updated: 2026-09-14
 
 ## Release model
 
@@ -10,11 +10,36 @@ add packaging as part of a source release.
 The public release version and component versions use the existing repository
 convention:
 
-| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` |
-| --- | ---: | ---: | ---: | ---: |
-| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` |
-| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` |
-| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` |
+| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` public |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` |
+| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` |
+| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` |
+
+The latest published release is `v4.3.0`. Its component versions are backend
+`3.3.0` and frontend `2.3.0`.
+
+## v4.3.0 release notes
+
+The current release delta is based on verified repository changes after
+`v4.2.0`:
+
+- centralize configuration ownership between `.env` and structured JSON;
+- load the environment before configuration and database imports;
+- reject invalid boolean aliases, missing structured settings, and unknown
+  configuration blocks;
+- remove legacy configuration, namespace, cache, and tokenizer compatibility
+  paths in favor of the canonical implementations;
+- keep custom tokenizer identity and its canonical `tokenizer.json` artifact
+  together across service recreation and persistence;
+- make the Windows launcher build missing Angular production output before
+  preview, verify the required `index.html`, and fail when an existing port
+  listener cannot be stopped; redirected launches now capture backend logs for
+  actionable health-check failures.
+
+API version `1.2.0`, benchmark schema version `3`, report version `5`, and
+Alembic revision `0003_canonical_state_cleanup` remain unchanged. Validation
+evidence for this preparation is recorded under `assets/QA/`.
 
 ## Preparation and validation
 
@@ -23,12 +48,12 @@ convention:
    work and do not make release-preparation edits directly on `main`.
 2. Update the README, `assets/docs`, and this release procedure before the
    final branch synchronization. Keep documentation version references
-   consistent with the release being prepared.
+   consistent with the release candidate.
 3. Run the CI-equivalent checks for the intended release surfaces: backend
    compileall, Ruff, BasedPyright, unit tests, and OpenAPI smoke; frontend
    `npm run lint`, `npm run test:unit`, and `npm run build` from `app/client`.
 4. Launch with `start_on_windows.ps1 -Launch`, verify the backend health
-   endpoint and frontend, then exercise Dataset, Tokenizers, and Cross
+   endpoint and frontend production entry, then exercise Dataset, Tokenizers, and Cross
    Benchmark routes. Prioritize flows changed since the previous release,
    including current schema-3/report-5 persistence, catalog filtering, custom
    tokenizer handling, vocabulary-shape metrics, histogram/CDF views, bounded
@@ -43,10 +68,9 @@ convention:
 
 After validation is release-ready, apply the coordinated minor bump to the
 public tag version, backend package, frontend package, README, and relevant
-documentation. For this release, the public
-version is `v4.2.0`, the backend package is `3.2.0`, and the frontend package is
-`2.2.0`. Commit all release-preparation changes on `develop` before
-synchronizing branches.
+documentation. For the current preparation, the public version is `v4.3.0`,
+the backend package is `3.3.0`, and the frontend package is `2.3.0`. Commit all
+release-preparation changes on `develop` before synchronizing branches.
 
 Synchronize `main` from the validated `develop` commit so the branches point to
 the same tree. Verify both branch tips and the clean worktree before creating

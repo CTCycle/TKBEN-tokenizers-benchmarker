@@ -1,5 +1,5 @@
 # System Overview
-Last updated: 2026-08-29
+Last updated: 2026-09-14
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
@@ -8,6 +8,10 @@ TKBEN is a tokenizer benchmarking platform with:
 - Shared local resources and settings (`app/resources`, `settings`)
 - Alembic-owned persistence with direct metric keys, persisted tokenizer
   sources, and relational benchmark-report summaries
+
+The current public release is `v4.3.0` with backend `3.3.0` and frontend
+`2.3.0`. It remains a source-only folder distribution launched with
+`start_on_windows.ps1` on Windows.
 
 Backend APIs are mounted under `/api/*`. Frontend calls `/api` and relies on the Angular proxy in dev and preview modes.
 
@@ -74,6 +78,12 @@ Source-level structure, with generated and environment-specific folders omitted:
 - Windows launcher:
   - `start_on_windows.ps1` is the single user-facing root entry point for the combined launch and maintenance menu.
 
+Startup resolves one immutable settings snapshot. `settings/.env` is loaded
+before configuration and database imports and owns environment-specific values;
+`settings/configurations.json` owns the required structured application blocks.
+Unknown or missing structured settings and non-canonical boolean values stop
+startup before the application reports readiness.
+
 ## Reporting Service Boundaries
 - `server.services.TokenizersService` owns Hugging Face discovery, catalog,
   download, cache, and custom-tokenizer workflows. Custom tokenizer identity is
@@ -118,5 +128,6 @@ flowchart LR
   - Browser -> Angular preview (`UI_HOST:UI_PORT`) -> proxied `/api` -> FastAPI (`FASTAPI_HOST:FASTAPI_PORT`)
 - The launcher uses the canonical backend environment at `app/server/.venv`,
   installs the locked frontend tree with `npm ci`, builds the frontend when
-  configured, starts both services on the configured defaults (`5000` and
-  `8000`), and opens the configured UI URL.
+  dependencies or `dist/tkben-angular/browser/index.html` are missing, starts
+  both services on the configured defaults (`5000` and `8000`), verifies the
+  configured ports, and opens the configured UI URL.

@@ -1,5 +1,5 @@
 # Persistence
-Last updated: 2026-09-03
+Last updated: 2026-09-13
 
 ## Storage selection
 
@@ -152,3 +152,9 @@ Use the application initializer (launcher option 4 or
 `app/scripts/initialize_database.py`) for an existing database. A non-empty
 unversioned database is intentionally a hard failure and must be restored from a
 versioned backup or recreated.
+
+The current repository head remains `0003_canonical_state_cleanup`; no new
+database migration is required for the public `v4.3.0` release. Ready
+dataset rows, tokenizer rows, reports, and canonical tokenizer artifacts are
+stored under the configured resource root and are retained across application
+restarts unless explicitly deleted.

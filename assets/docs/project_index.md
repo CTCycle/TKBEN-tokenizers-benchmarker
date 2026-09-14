@@ -1,5 +1,5 @@
 # Project Overview
-Last updated: 2026-08-29
+Last updated: 2026-09-14
 
 ## Purpose
 This file is the root index for `assets/docs`. Read it first to find the narrowest topic file for the task at hand.
@@ -10,6 +10,12 @@ tokenizer source/artifact state, and a `BenchmarkStore` that owns dashboard
 preferences. Reports own relational summary fields while JSON stores detail
 fields; incompatible historical rows are rejected or purged rather than
 silently adapted.
+
+The latest published release is `v4.3.0` with backend package `3.3.0` and
+frontend package `2.3.0`. Configuration ownership is canonical: `settings/.env`
+owns environment-specific values, `settings/configurations.json` owns required
+structured tuning, and the environment bootstrap runs before configuration or
+database imports.
 
 ## How To Navigate
 1. Start with this file only.
@@ -54,7 +60,8 @@ silently adapted.
 - `runtime/modes.md`
   - Supported runtime modes and operational differences.
 - `runtime/startup.md`
-  - Launcher commands and startup procedures.
+  - Launcher commands, startup procedures, readiness checks, and first-launch
+    behavior.
 - `runtime/configuration.md`
   - Environment variables and structured settings.
 - `runtime/deployment.md`

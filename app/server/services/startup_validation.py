@@ -1,28 +1,23 @@
 from __future__ import annotations
 
-import os
-from server.common.path import (
-    DATASETS_PATH,
-    LOGS_PATH,
-    TEMPLATES_PATH,
-    TOKENIZERS_PATH,
-)
-from server.configurations.environment import ensure_environment_loaded
+from server.configurations import ServerSettings
+
 
 ###############################################################################
-def ensure_runtime_directories() -> None:
+def ensure_runtime_directories(settings: ServerSettings) -> None:
     for directory in (
-        LOGS_PATH,
-        DATASETS_PATH,
-        TOKENIZERS_PATH,
-        TEMPLATES_PATH,
+        settings.paths.logs,
+        settings.paths.datasets,
+        settings.paths.tokenizers,
+        settings.paths.templates,
     ):
         directory.mkdir(parents=True, exist_ok=True)
 
+
 ###############################################################################
-def build_cors_origins() -> list[str]:
-    ui_host = _normalized_host(os.getenv("UI_HOST", "127.0.0.1"))
-    ui_port = _normalized_port(os.getenv("UI_PORT", "8000"))
+def build_cors_origins(settings: ServerSettings) -> list[str]:
+    ui_host = _normalized_host(settings.network.ui_host)
+    ui_port = settings.network.ui_port
 
     hosts = {ui_host}
     if ui_host == "127.0.0.1":
@@ -32,10 +27,11 @@ def build_cors_origins() -> list[str]:
 
     return sorted(f"http://{host}:{ui_port}" for host in hosts)
 
+
 ###############################################################################
-def run_startup_validations() -> None:
-    ensure_environment_loaded()
-    ensure_runtime_directories()
+def run_startup_validations(settings: ServerSettings) -> None:
+    ensure_runtime_directories(settings)
+
 
 ###############################################################################
 def _normalized_host(raw_host: str) -> str:
@@ -43,14 +39,3 @@ def _normalized_host(raw_host: str) -> str:
     if host in {"0.0.0.0", "::"}:
         return "127.0.0.1"
     return host
-
-###############################################################################
-def _normalized_port(raw_port: str) -> str:
-    port = raw_port.strip() or "8000"
-    try:
-        parsed = int(port)
-    except ValueError as exc:
-        raise RuntimeError(f"UI_PORT must be a valid integer, got: {raw_port}") from exc
-    if parsed < 1 or parsed > 65535:
-        raise RuntimeError(f"UI_PORT must be between 1 and 65535, got: {parsed}")
-    return str(parsed)
