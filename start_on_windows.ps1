@@ -36,16 +36,6 @@ $EnvTemplate = Join-Path $RepoRoot 'settings\.env.example'
 $RuntimeCacheDir = Join-Path $RuntimeDir 'cache'
 $ToolCacheDir = Join-Path $TestsDir 'cache'
 $UvCacheDir = Join-Path $RuntimeCacheDir 'uv'
-$LegacyCachePaths = @(
-    (Join-Path $RepoRoot '.uv-cache'),
-    (Join-Path $RepoRoot '.pytest_cache'),
-    (Join-Path $RepoRoot '.ruff_cache'),
-    (Join-Path $RepoRoot '.mypy_cache'),
-    (Join-Path $AppDir '.uv-cache'),
-    (Join-Path $ServerDir '.uv-cache'),
-    (Join-Path $ClientDir '.uv-cache'),
-    (Join-Path $TestsDir '.uv-cache')
-)
 $PythonVersion = '3.14.2'
 $NodeVersion = '22.23.1'
 $script:NextProgressId = 1
@@ -603,6 +593,11 @@ function Test-DependenciesReady {
     return $true
 }
 
+function Test-FrontendBuildReady {
+    $frontendEntry = Join-Path $ClientDir 'dist\tkben-angular\browser\index.html'
+    return Test-Path -LiteralPath $frontendEntry -PathType Leaf
+}
+
 function Stop-PortListeners([int]$Port) {
     $listeners = netstat -ano | Select-String -Pattern ":$Port\s+.*LISTENING\s+(\d+)\s*$"
     $processIds = @($listeners | ForEach-Object {
@@ -610,7 +605,22 @@ function Stop-PortListeners([int]$Port) {
     } | Sort-Object -Unique)
     foreach ($processId in $processIds) {
         Write-Step "Stopping PID $processId on port $Port."
-        & taskkill.exe /PID $processId /T /F | Out-Null
+        $stopped = $false
+        try {
+            Stop-Process -Id $processId -Force -ErrorAction Stop
+            $stopped = $true
+        }
+        catch {
+            & taskkill.exe /PID $processId /T /F | Out-Null
+            if ($LASTEXITCODE -eq 0) { $stopped = $true }
+        }
+        if (-not $stopped) {
+            throw "Could not stop PID $processId on port $Port. Close the existing listener or run the launcher with permission to stop it."
+        }
+    }
+    $remainingProcessId = Get-PortProcessId -Port $Port
+    if ($null -ne $remainingProcessId) {
+        throw "Port $Port is still occupied by PID $remainingProcessId after the stop attempt. Close that process or run the launcher with sufficient permission."
     }
 }
 
@@ -627,10 +637,14 @@ function Launch-Application {
     Import-Environment
     if (-not (Test-DependenciesReady)) {
         Write-Step 'Required application environments are missing or unusable; installing dependencies.'
-        Sync-Dependencies -InstallationType 'Standard'
+        Sync-Dependencies -BuildFrontend -InstallationType 'Standard'
+    }
+    elseif (-not (Test-FrontendBuildReady)) {
+        Write-Step 'Angular production output is missing; building the frontend.'
+        Sync-Frontend -BuildFrontend -UseCachedFrontendDependencies
     }
     else {
-        Write-Ok 'Application environments are ready; skipped dependency installation.'
+        Write-Ok 'Application environments and frontend output are ready; skipped setup.'
     }
     Import-Environment
 
@@ -644,7 +658,12 @@ function Launch-Application {
     if ($env:RELOAD -ieq 'true') { $backendArgs += ' --reload' }
 
     Write-Step 'Starting backend.'
-    if ($env:BACKEND_LOGS_VISIBLE -ieq 'true') {
+    $backendLogDir = Join-Path $AppDir 'resources\logs'
+    Ensure-Directory -Path $backendLogDir
+    $backendLogStem = Join-Path $backendLogDir ('TKBEN_backend_' + (Get-Date -Format 'yyyyMMdd_HHmmss_fff'))
+    $backendStdoutLog = "$backendLogStem.out.log"
+    $backendStderrLog = "$backendLogStem.err.log"
+    if ($env:BACKEND_LOGS_VISIBLE -ieq 'true' -and $script:LauncherInteractive) {
         $escapedPython = $VenvPython.Replace("'", "''")
         $escapedApp = $backendAppPath.Replace("'", "''")
         $backendCommand = "& '$escapedPython' -m uvicorn server.app:app --app-dir '$escapedApp' --host $($env:FASTAPI_HOST) --port $backendPort"
@@ -653,12 +672,20 @@ function Launch-Application {
             -ArgumentList @('-NoProfile', '-NoExit', '-Command', $backendCommand) `
             -WorkingDirectory $RepoRoot -WindowStyle Normal -PassThru
     } else {
-        $backendProcess = Start-Process -FilePath $VenvPython -ArgumentList $backendArgs -WorkingDirectory $RepoRoot -WindowStyle Hidden -PassThru
+        $backendProcess = Start-Process -FilePath $VenvPython `
+            -ArgumentList $backendArgs `
+            -WorkingDirectory $RepoRoot `
+            -WindowStyle Hidden `
+            -RedirectStandardOutput $backendStdoutLog `
+            -RedirectStandardError $backendStderrLog `
+            -PassThru
     }
 
     Invoke-HealthCheck `
         -Uri "http://$($env:FASTAPI_HOST):$backendPort/api/health" `
         -Description 'backend' `
+        -ProcessToMonitor $backendProcess `
+        -FailureLogPath $backendStderrLog `
         -Attempts 60 `
         -IntervalSeconds 1
     $backendPid = if ($backendProcess) { $backendProcess.Id } else { Get-PortProcessId -Port $backendPort }
@@ -1051,7 +1078,7 @@ function Remove-PythonCaches {
 
 function Clear-ManagedCache {
     $summaries = @()
-    foreach ($cacheRoot in @($RuntimeCacheDir, $ToolCacheDir) + $LegacyCachePaths) {
+    foreach ($cacheRoot in @($RuntimeCacheDir, $ToolCacheDir)) {
         Ensure-Directory $cacheRoot
         $entries = @(Get-ChildItem -LiteralPath $cacheRoot -Force -ErrorAction SilentlyContinue |
             Where-Object { $_.Name -ne '.gitkeep' } |
