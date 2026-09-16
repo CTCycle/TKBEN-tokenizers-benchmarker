@@ -59,7 +59,13 @@ export type RuntimeSettingKey =
     | 'datasets.download_retry_attempts'
     | 'datasets.download_retry_backoff_seconds'
     | 'benchmarks.streaming_batch_size'
-    | 'jobs.polling_interval';
+    | 'benchmarks.default_max_documents'
+    | 'benchmarks.default_warmup_trials'
+    | 'benchmarks.default_timed_trials'
+    | 'benchmarks.default_batch_size'
+    | 'benchmarks.default_parallelism'
+    | 'jobs.polling_interval'
+    | 'jobs.terminal_retention_seconds';
 
 export interface RuntimeTokenizerSettings {
     default_discovery_limit: number;
@@ -80,10 +86,16 @@ export interface RuntimeDatasetSettings {
 
 export interface RuntimeBenchmarkSettings {
     streaming_batch_size: number;
+    default_max_documents: number;
+    default_warmup_trials: number;
+    default_timed_trials: number;
+    default_batch_size: number;
+    default_parallelism: number;
 }
 
 export interface RuntimeJobSettings {
     polling_interval: number;
+    terminal_retention_seconds: number;
 }
 
 export interface RuntimeSettingsValues {
@@ -120,10 +132,16 @@ export interface RuntimeDatasetSettingsPatch {
 
 export interface RuntimeBenchmarkSettingsPatch {
     streaming_batch_size?: number;
+    default_max_documents?: number;
+    default_warmup_trials?: number;
+    default_timed_trials?: number;
+    default_batch_size?: number;
+    default_parallelism?: number;
 }
 
 export interface RuntimeJobSettingsPatch {
     polling_interval?: number;
+    terminal_retention_seconds?: number;
 }
 
 export interface RuntimeSettingsPatchRequest {
