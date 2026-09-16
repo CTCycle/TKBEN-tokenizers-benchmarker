@@ -107,11 +107,17 @@ class _DatasetOverrides(_StrictOverrideModel):
 ###############################################################################
 class _BenchmarkOverrides(_StrictOverrideModel):
     streaming_batch_size: StrictInt | None = Field(default=None, ge=100)
+    default_max_documents: StrictInt | None = Field(default=None, ge=1, le=100_000)
+    default_warmup_trials: StrictInt | None = Field(default=None, ge=0, le=100)
+    default_timed_trials: StrictInt | None = Field(default=None, ge=1, le=200)
+    default_batch_size: StrictInt | None = Field(default=None, ge=1, le=4096)
+    default_parallelism: StrictInt | None = Field(default=None, ge=1, le=128)
 
 
 ###############################################################################
 class _JobsOverrides(_StrictOverrideModel):
     polling_interval: FiniteFloat | None = Field(default=None, ge=0.25)
+    terminal_retention_seconds: FiniteFloat | None = Field(default=None, ge=0.0)
 
 
 ###############################################################################
@@ -162,7 +168,13 @@ class RuntimeSettingsStore:
         "datasets.download_retry_attempts",
         "datasets.download_retry_backoff_seconds",
         "benchmarks.streaming_batch_size",
+        "benchmarks.default_max_documents",
+        "benchmarks.default_warmup_trials",
+        "benchmarks.default_timed_trials",
+        "benchmarks.default_batch_size",
+        "benchmarks.default_parallelism",
         "jobs.polling_interval",
+        "jobs.terminal_retention_seconds",
     )
 
     def __init__(self, defaults: ServerSettings, path: str | Path | None = None) -> None:
