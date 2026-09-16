@@ -1,5 +1,5 @@
 # Architecture Review
-Last updated: 2026-09-13
+Last updated: 2026-09-16
 
 ## Current State
 
@@ -23,12 +23,14 @@ repository/database layer commits the result. Alembic owns the schema graph;
 revision `0003_canonical_state_cleanup` establishes direct metric keys,
 persisted tokenizer sources, and the relational benchmark report summary.
 
-Configuration is also single-owner at runtime. `settings/.env` supplies
-environment-specific values and is loaded before configuration or database
-imports; `settings/configurations.json` supplies the required structured
-datasets, tokenizers, benchmarks, and jobs blocks. Validation rejects unknown
-or missing structured settings and non-canonical boolean values, then exposes
-one immutable settings snapshot to the application.
+Configuration has two deliberately separate ownership layers. `settings/.env`
+and the process environment supply startup, infrastructure, paths, security,
+and secrets and are loaded before configuration or database imports. Typed
+Pydantic runtime models own application defaults, while the optional
+`<TKBEN_DATA_DIR>/runtime-settings.json` stores sparse user overrides for the
+approved runtime fields. The backend validates the merged result and exposes
+one immutable effective settings snapshot to the application; the override
+file is never a source for environment configuration.
 
 ## Architectural Strengths
 
@@ -191,6 +193,9 @@ Completed implementation work:
 10. Added Alembic revision `0003_canonical_state_cleanup`, removed registry-only
     custom tokenizer state, and made incompatible persisted rows fail
     explicitly instead of mapping to empty responses.
+11. Moved application defaults into typed Pydantic runtime models, added the
+    sparse runtime override store and `/api/settings` contracts, and added the
+    Angular Settings page without exposing startup or secret configuration.
 
 ## Architecture Risks
 

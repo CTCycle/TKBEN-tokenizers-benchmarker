@@ -19,5 +19,10 @@ export const routes: Routes = [
         (module) => module.CrossBenchmarkPageComponent,
       ),
   },
+  {
+    path: 'settings',
+    loadComponent: () =>
+      import('./pages/settings-page.component').then((module) => module.SettingsPageComponent),
+  },
   { path: '**', redirectTo: 'dataset' },
 ];

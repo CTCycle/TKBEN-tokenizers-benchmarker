@@ -73,6 +73,7 @@ router = APIRouter(prefix=API_ROUTER_PREFIX_TOKENIZERS, tags=["tokenizers"])
     API_ROUTE_TOKENIZERS_SETTINGS,
     response_model=TokenizerSettingsResponse,
     status_code=status.HTTP_200_OK,
+    deprecated=True,
 )
 async def get_tokenizer_settings() -> TokenizerSettingsResponse:
     return TokenizerSettingsResponse(
@@ -101,10 +102,19 @@ def _build_tokenizer_discovery_query(
     ] = "none",
 ) -> TokenizerDiscoveryQuery:
     settings = get_server_settings().tokenizers
+    requested_limit = settings.default_discovery_limit if limit is None else limit
+    if requested_limit > settings.max_discovery_limit:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "Tokenizer discovery limit must be no greater than the "
+                f"configured maximum ({settings.max_discovery_limit})."
+            ),
+        )
     try:
         return TokenizerDiscoveryQuery(
             search=search,
-            limit=settings.default_discovery_limit if limit is None else limit,
+            limit=requested_limit,
             pipeline_tag=pipeline_tag,
             author=author,
             include_tags=include_tags or [],

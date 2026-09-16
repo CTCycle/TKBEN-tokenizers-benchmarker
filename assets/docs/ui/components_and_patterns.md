@@ -1,5 +1,5 @@
 # Components and Patterns
-Last updated: 2026-08-18
+Last updated: 2026-09-16
 
 ## Navigation
 - Top tab navigation for:
@@ -7,7 +7,10 @@ Last updated: 2026-08-18
   - `/tokenizers`
   - `/cross-benchmark`
 - Active state must be visually explicit with `app-tab--active` and `aria-current="page"`.
-- The route tabs are integrated into the branded header beside the `tkben-logo.png` mark; the header also exposes the Hugging Face key manager as an icon button.
+- The route tabs are integrated into the branded header beside the
+  `tkben-logo.png` mark; the header also exposes the Hugging Face key manager
+  and a Settings gear as icon actions. Settings is an application-level route,
+  not a primary workflow tab.
 
 ## Buttons
 - Primary action:
@@ -24,6 +27,11 @@ Last updated: 2026-08-18
   - bordered fields
   - strong visible focus border and shadow
 - File upload controls are icon-triggered with a hidden native input where required.
+- The Settings page uses three focused tabs—Data, Tokenizers, and Runtime—with
+  typed reactive-form controls, inline descriptions, explicit Save/Reset All
+  actions, and per-field reset affordances for overridden values. It reuses the
+  shared field labels, inputs, buttons, banners, spacing, and focus-visible
+  treatment rather than introducing a new settings component system.
 
 ## Overlays
 - Modal and popover patterns:

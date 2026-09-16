@@ -282,6 +282,65 @@ def test_tokenizer_discovery_validates_combined_query_and_structured_response(
     assert captured["access"] == "public"
 
 ###############################################################################
+def test_tokenizer_discovery_uses_runtime_default_and_legacy_settings_view(
+    monkeypatch,
+) -> None:
+    from server.api import tokenizers as tokenizers_api
+    from server.contracts.tokenizers import TokenizerDiscoveryResponse
+    from server.services.tokenizers import TokenizersService
+
+    class _TokenizerCfg:
+        default_discovery_limit = 7
+        max_discovery_limit = 9
+        max_discovery_candidates = 30
+        metadata_candidate_multiplier = 2
+
+    class _Settings:
+        tokenizers = _TokenizerCfg()
+
+    captured: dict[str, int] = {}
+
+    def fake_discovery(self, query):
+        del self
+        captured["limit"] = query.limit
+        return TokenizerDiscoveryResponse(items=[], count=0, fetched_count=0)
+
+    monkeypatch.setattr(tokenizers_api, "get_server_settings", lambda: _Settings())
+    monkeypatch.setattr(TokenizersService, "discover_tokenizers", fake_discovery)
+
+    client = TestClient(app)
+    response = client.get("/api/tokenizers/discover")
+    legacy_response = client.get("/api/tokenizers/settings")
+
+    assert response.status_code == 200
+    assert captured["limit"] == 7
+    assert legacy_response.status_code == 200
+    assert legacy_response.json() == {
+        "default_discovery_limit": 7,
+        "max_discovery_limit": 9,
+        "max_discovery_candidates": 30,
+        "metadata_candidate_multiplier": 2,
+    }
+
+###############################################################################
+def test_tokenizer_discovery_enforces_runtime_maximum(monkeypatch) -> None:
+    from server.api import tokenizers as tokenizers_api
+
+    class _TokenizerCfg:
+        default_discovery_limit = 7
+        max_discovery_limit = 9
+
+    class _Settings:
+        tokenizers = _TokenizerCfg()
+
+    monkeypatch.setattr(tokenizers_api, "get_server_settings", lambda: _Settings())
+
+    response = TestClient(app).get("/api/tokenizers/discover?limit=10")
+
+    assert response.status_code == 422
+    assert "configured maximum (9)" in response.json()["detail"]
+
+###############################################################################
 def test_tokenizer_discovery_rejects_invalid_query(monkeypatch) -> None:
     from server.services.tokenizers import TokenizersService
 

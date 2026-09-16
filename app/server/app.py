@@ -12,6 +12,7 @@ from server.api.datasets import router as datasets_router
 from server.api.exports import router as exports_router
 from server.api.jobs import router as jobs_router
 from server.api.keys import router as keys_router
+from server.api.settings import router as settings_router
 from server.api.tokenizers import router as tokenizers_router
 from server.common.constants import (
     FASTAPI_DESCRIPTION,
@@ -50,6 +51,7 @@ def register_api_routers(application: FastAPI) -> None:
         benchmarks_router,
         jobs_router,
         keys_router,
+        settings_router,
         exports_router,
     ):
         application.include_router(router, prefix="/api")

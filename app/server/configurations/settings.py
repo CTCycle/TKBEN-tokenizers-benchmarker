@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 from pathlib import Path
 from typing import Any
@@ -56,25 +55,27 @@ class SecuritySettings(_FrozenSettingsModel):
 
 ###############################################################################
 class DatasetSettings(_FrozenSettingsModel):
-    allowed_extensions: tuple[str, ...]
-    column_detection_cutoff: float = Field(ge=0.0, le=1.0)
-    max_upload_bytes: int = Field(ge=1)
-    histogram_bins: int = Field(ge=5, le=100)
-    streaming_batch_size: int = Field(ge=100)
-    log_interval: int = Field(ge=1000)
-    cleanup_downloaded_sources: bool
-    download_timeout_seconds: float = Field(ge=1.0)
-    download_retry_attempts: int = Field(ge=1, le=10)
-    download_retry_backoff_seconds: float = Field(ge=0.0, le=60.0)
+    allowed_extensions: tuple[str, ...] = (".csv", ".xls", ".xlsx")
+    max_upload_bytes: int = Field(default=25 * 1024 * 1024, ge=1)
+    histogram_bins: int = Field(default=20, ge=5, le=100)
+    streaming_batch_size: int = Field(default=10_000, ge=100)
+    log_interval: int = Field(default=100_000, ge=1000)
+    download_timeout_seconds: float = Field(default=180.0, ge=1.0)
+    download_retry_attempts: int = Field(default=3, ge=1, le=10)
+    download_retry_backoff_seconds: float = Field(
+        default=2.0,
+        ge=0.0,
+        le=60.0,
+    )
 
 
 ###############################################################################
 class TokenizerSettings(_FrozenSettingsModel):
-    default_discovery_limit: int = Field(ge=1, le=250)
-    max_discovery_limit: int = Field(ge=1, le=250)
-    max_discovery_candidates: int = Field(ge=1)
-    metadata_candidate_multiplier: int = Field(ge=1, le=10)
-    max_upload_bytes: int = Field(ge=1)
+    default_discovery_limit: int = Field(default=50, ge=1, le=250)
+    max_discovery_limit: int = Field(default=250, ge=1, le=250)
+    max_discovery_candidates: int = Field(default=750, ge=1)
+    metadata_candidate_multiplier: int = Field(default=3, ge=1, le=10)
+    max_upload_bytes: int = Field(default=10 * 1024 * 1024, ge=1)
 
     @model_validator(mode="after")
     def validate_discovery_limits(self) -> "TokenizerSettings":
@@ -91,37 +92,14 @@ class TokenizerSettings(_FrozenSettingsModel):
 
 ###############################################################################
 class BenchmarkSettings(_FrozenSettingsModel):
-    streaming_batch_size: int = Field(ge=100)
-    log_interval: int = Field(ge=100)
+    streaming_batch_size: int = Field(default=1000, ge=100)
+    log_interval: int = Field(default=10_000, ge=100)
 
 
 ###############################################################################
 class JobsSettings(_FrozenSettingsModel):
-    polling_interval: float = Field(gt=0.0)
-    terminal_retention_seconds: float = Field(ge=0.0)
-
-
-###############################################################################
-class ApplicationConfiguration(_FrozenSettingsModel):
-    datasets: DatasetSettings
-    tokenizers: TokenizerSettings
-    benchmarks: BenchmarkSettings
-    jobs: JobsSettings
-
-    @classmethod
-    def from_path(cls, path: str | Path) -> "ApplicationConfiguration":
-        configuration_path = Path(path)
-        if not configuration_path.exists():
-            raise RuntimeError(f"Configuration file not found: {configuration_path}")
-        try:
-            payload = json.loads(configuration_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
-            raise RuntimeError(
-                f"Unable to load configuration from {configuration_path}"
-            ) from exc
-        if not isinstance(payload, dict):
-            raise RuntimeError("Configuration must be a JSON object.")
-        return cls.model_validate(payload)
+    polling_interval: float = Field(default=1.0, ge=0.25)
+    terminal_retention_seconds: float = Field(default=3600.0, ge=0.0)
 
 
 ###############################################################################
@@ -293,15 +271,15 @@ def _load_security_settings(paths: PathSettings) -> SecuritySettings:
 
 
 ###############################################################################
-def build_server_settings(configuration: ApplicationConfiguration) -> ServerSettings:
+def build_server_settings() -> ServerSettings:
     paths = _load_path_settings()
     return ServerSettings(
         database=_load_database_settings(paths),
         paths=paths,
         network=_load_network_settings(),
         security=_load_security_settings(paths),
-        datasets=configuration.datasets,
-        tokenizers=configuration.tokenizers,
-        benchmarks=configuration.benchmarks,
-        jobs=configuration.jobs,
+        datasets=DatasetSettings(),
+        tokenizers=TokenizerSettings(),
+        benchmarks=BenchmarkSettings(),
+        jobs=JobsSettings(),
     )

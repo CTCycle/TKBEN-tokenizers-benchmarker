@@ -5,6 +5,7 @@ app/tests/cache/**
 app/resources/sources/datasets/**
 app/resources/sources/tokenizers/**
 app/resources/logs/**
+app/resources/runtime-settings.json
 app/client/node_modules/
 app/client/dist/
 app/client/dist-ssr/

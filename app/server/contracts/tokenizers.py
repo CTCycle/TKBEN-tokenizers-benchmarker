@@ -41,7 +41,7 @@ class TokenizerDiscoverySort(StrEnum):
 ###############################################################################
 class TokenizerDiscoveryQuery(BaseModel):
     search: str | None = Field(default=None, max_length=160)
-    limit: int = Field(default=50, ge=1, le=250)
+    limit: int = Field(..., ge=1, le=250)
     pipeline_tag: SupportedTokenizerPipeline | None = None
     author: str | None = Field(default=None, max_length=160)
     include_tags: list[str] = Field(default_factory=list)
