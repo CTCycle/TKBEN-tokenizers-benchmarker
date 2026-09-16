@@ -723,10 +723,13 @@ function Launch-Application {
 }
 
 function Install-Dependencies {
+    param(
+        [ValidateSet('Standard', 'Development')]
+        [string]$InstallationType = 'Standard'
+    )
     Import-Environment
     Install-Runtimes
-    $installationType = Read-InstallationType
-    Sync-Dependencies -BuildFrontend -InstallationType $installationType -RuntimesReady
+    Sync-Dependencies -BuildFrontend -InstallationType $InstallationType -RuntimesReady
     Invoke-DatabaseInitialization
     if (Test-Path -LiteralPath $UvCacheDir) { Remove-PathBestEffort -Path $UvCacheDir | Out-Null }
     Write-Ok 'Dependencies installed, frontend built, and database synchronized.'
@@ -1294,7 +1297,10 @@ function Show-Menu {
             Invoke-TrackedLauncherAction -Name $entry.Label -Action {
                 switch ($entry.Key) {
                     'Launch' { Launch-Application; exit 0 }
-                    'Install' { Install-Dependencies }
+                    'Install' {
+                        $installationType = Read-InstallationType
+                        Install-Dependencies -InstallationType $installationType
+                    }
                     'Rebuild' { Rebuild-Frontend }
                     'Database' { Initialize-Database }
                     'Tests' { Run-TestSuite }
