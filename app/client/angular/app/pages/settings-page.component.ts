@@ -15,9 +15,10 @@ import type {
   RuntimeSettingsValues,
 } from '../core/api/api.models';
 
-type SettingsTab = 'data' | 'tokenizers' | 'runtime';
+type SettingsTab = 'data' | 'tokenizers' | 'benchmark' | 'runtime';
 
 const BYTES_PER_MIB = 1024 * 1024;
+const SECONDS_PER_MINUTE = 60;
 
 const wholeNumber: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
   const value = control.value;
@@ -76,6 +77,21 @@ export class SettingsPageComponent {
     tokenizerMaxUploadMiB: new FormControl<number | null>(null, {
       validators: [Validators.required, wholeNumber, Validators.min(1)],
     }),
+    benchmarkDefaultMaxDocuments: new FormControl<number | null>(null, {
+      validators: [Validators.required, wholeNumber, Validators.min(1), Validators.max(100_000)],
+    }),
+    benchmarkDefaultWarmupTrials: new FormControl<number | null>(null, {
+      validators: [Validators.required, wholeNumber, Validators.min(0), Validators.max(100)],
+    }),
+    benchmarkDefaultTimedTrials: new FormControl<number | null>(null, {
+      validators: [Validators.required, wholeNumber, Validators.min(1), Validators.max(200)],
+    }),
+    benchmarkDefaultBatchSize: new FormControl<number | null>(null, {
+      validators: [Validators.required, wholeNumber, Validators.min(1), Validators.max(4096)],
+    }),
+    benchmarkDefaultParallelism: new FormControl<number | null>(null, {
+      validators: [Validators.required, wholeNumber, Validators.min(1), Validators.max(128)],
+    }),
     datasetStreamingBatchSize: new FormControl<number | null>(null, {
       validators: [Validators.required, wholeNumber, Validators.min(100)],
     }),
@@ -84,6 +100,9 @@ export class SettingsPageComponent {
     }),
     jobPollingInterval: new FormControl<number | null>(null, {
       validators: [Validators.required, Validators.min(0.25)],
+    }),
+    jobRetentionMinutes: new FormControl<number | null>(null, {
+      validators: [Validators.required, Validators.min(0)],
     }),
   }, { validators: tokenizerLimits });
 
@@ -107,7 +126,7 @@ export class SettingsPageComponent {
   }
 
   protected handleTabKeydown(event: KeyboardEvent, tab: SettingsTab): void {
-    const tabs: readonly SettingsTab[] = ['data', 'tokenizers', 'runtime'];
+    const tabs: readonly SettingsTab[] = ['data', 'tokenizers', 'benchmark', 'runtime'];
     const index = tabs.indexOf(tab);
     let nextIndex: number | null = null;
     if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (index + 1) % tabs.length;
@@ -155,9 +174,15 @@ export class SettingsPageComponent {
       },
       benchmarks: {
         streaming_batch_size: this.requiredNumber(value.benchmarkStreamingBatchSize),
+        default_max_documents: this.requiredNumber(value.benchmarkDefaultMaxDocuments),
+        default_warmup_trials: this.requiredNumber(value.benchmarkDefaultWarmupTrials),
+        default_timed_trials: this.requiredNumber(value.benchmarkDefaultTimedTrials),
+        default_batch_size: this.requiredNumber(value.benchmarkDefaultBatchSize),
+        default_parallelism: this.requiredNumber(value.benchmarkDefaultParallelism),
       },
       jobs: {
         polling_interval: this.requiredNumber(value.jobPollingInterval),
+        terminal_retention_seconds: this.requiredNumber(value.jobRetentionMinutes) * SECONDS_PER_MINUTE,
       },
     };
     this.hydrateFromServer = true;
@@ -212,7 +237,13 @@ export class SettingsPageComponent {
       case 'datasets.download_retry_attempts': return `${defaults.datasets.download_retry_attempts}`;
       case 'datasets.download_retry_backoff_seconds': return `${defaults.datasets.download_retry_backoff_seconds} seconds`;
       case 'benchmarks.streaming_batch_size': return `${defaults.benchmarks.streaming_batch_size}`;
+      case 'benchmarks.default_max_documents': return `${defaults.benchmarks.default_max_documents}`;
+      case 'benchmarks.default_warmup_trials': return `${defaults.benchmarks.default_warmup_trials}`;
+      case 'benchmarks.default_timed_trials': return `${defaults.benchmarks.default_timed_trials}`;
+      case 'benchmarks.default_batch_size': return `${defaults.benchmarks.default_batch_size}`;
+      case 'benchmarks.default_parallelism': return `${defaults.benchmarks.default_parallelism}`;
       case 'jobs.polling_interval': return `${defaults.jobs.polling_interval} seconds`;
+      case 'jobs.terminal_retention_seconds': return `${defaults.jobs.terminal_retention_seconds / SECONDS_PER_MINUTE} minutes`;
     }
   }
 
@@ -228,9 +259,15 @@ export class SettingsPageComponent {
       maxDiscoveryCandidates: settings.tokenizers.max_discovery_candidates,
       metadataCandidateMultiplier: settings.tokenizers.metadata_candidate_multiplier,
       tokenizerMaxUploadMiB: this.bytesToMib(settings.tokenizers.max_upload_bytes),
+      benchmarkDefaultMaxDocuments: settings.benchmarks.default_max_documents,
+      benchmarkDefaultWarmupTrials: settings.benchmarks.default_warmup_trials,
+      benchmarkDefaultTimedTrials: settings.benchmarks.default_timed_trials,
+      benchmarkDefaultBatchSize: settings.benchmarks.default_batch_size,
+      benchmarkDefaultParallelism: settings.benchmarks.default_parallelism,
       datasetStreamingBatchSize: settings.datasets.streaming_batch_size,
       benchmarkStreamingBatchSize: settings.benchmarks.streaming_batch_size,
       jobPollingInterval: settings.jobs.polling_interval,
+      jobRetentionMinutes: settings.jobs.terminal_retention_seconds / SECONDS_PER_MINUTE,
     }, { emitEvent: false });
     this.form.markAsPristine();
     this.form.markAsUntouched();
