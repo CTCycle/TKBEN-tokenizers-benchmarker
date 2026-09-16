@@ -54,12 +54,30 @@ class RuntimeBenchmarkSettingsResponse(_SettingsContract):
     streaming_batch_size: int = Field(
         description="Benchmark processing batch size for new runs"
     )
+    default_max_documents: int = Field(
+        description="Default maximum document count for new benchmark runs"
+    )
+    default_warmup_trials: int = Field(
+        description="Default warmup trial count for new benchmark runs"
+    )
+    default_timed_trials: int = Field(
+        description="Default timed trial count for new benchmark runs"
+    )
+    default_batch_size: int = Field(
+        description="Default tokenizer encode batch size for new benchmark runs"
+    )
+    default_parallelism: int = Field(
+        description="Default tokenizer parallelism for new benchmark runs"
+    )
 
 
 ###############################################################################
 class RuntimeJobSettingsResponse(_SettingsContract):
     polling_interval: float = Field(
         description="Polling interval for newly created asynchronous jobs in seconds"
+    )
+    terminal_retention_seconds: float = Field(
+        description="Retention time for completed, failed, and cancelled in-memory jobs"
     )
 
 
@@ -85,7 +103,13 @@ RuntimeSettingKey = Literal[
     "datasets.download_retry_attempts",
     "datasets.download_retry_backoff_seconds",
     "benchmarks.streaming_batch_size",
+    "benchmarks.default_max_documents",
+    "benchmarks.default_warmup_trials",
+    "benchmarks.default_timed_trials",
+    "benchmarks.default_batch_size",
+    "benchmarks.default_parallelism",
     "jobs.polling_interval",
+    "jobs.terminal_retention_seconds",
 ]
 
 
@@ -128,11 +152,17 @@ class RuntimeDatasetSettingsPatch(_SettingsPatchContract):
 ###############################################################################
 class RuntimeBenchmarkSettingsPatch(_SettingsPatchContract):
     streaming_batch_size: StrictInt | None = Field(default=None, ge=100)
+    default_max_documents: StrictInt | None = Field(default=None, ge=1, le=100_000)
+    default_warmup_trials: StrictInt | None = Field(default=None, ge=0, le=100)
+    default_timed_trials: StrictInt | None = Field(default=None, ge=1, le=200)
+    default_batch_size: StrictInt | None = Field(default=None, ge=1, le=4096)
+    default_parallelism: StrictInt | None = Field(default=None, ge=1, le=128)
 
 
 ###############################################################################
 class RuntimeJobSettingsPatch(_SettingsPatchContract):
     polling_interval: FiniteFloat | None = Field(default=None, ge=0.25)
+    terminal_retention_seconds: FiniteFloat | None = Field(default=None, ge=0.0)
 
 
 ###############################################################################
