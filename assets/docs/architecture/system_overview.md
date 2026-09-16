@@ -1,5 +1,5 @@
 # System Overview
-Last updated: 2026-09-14
+Last updated: 2026-09-16
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
@@ -26,8 +26,7 @@ Source-level structure, with generated and environment-specific folders omitted:
 ├─ start_on_windows.ps1
 ├─ settings/
 │  ├─ .env
-│  ├─ .env.example
-│  └─ configurations.json
+│  └─ .env.example
 ├─ app/
 │  ├─ client/
 │  │  ├─ package.json
@@ -79,10 +78,13 @@ Source-level structure, with generated and environment-specific folders omitted:
   - `start_on_windows.ps1` is the single user-facing root entry point for the combined launch and maintenance menu.
 
 Startup resolves one immutable settings snapshot. `settings/.env` is loaded
-before configuration and database imports and owns environment-specific values;
-`settings/configurations.json` owns the required structured application blocks.
-Unknown or missing structured settings and non-canonical boolean values stop
-startup before the application reports readiness.
+before configuration and database imports and owns environment-specific values.
+Typed Pydantic models own application runtime defaults, and the optional
+`<TKBEN_DATA_DIR>/runtime-settings.json` stores only validated sparse user
+overrides. `GET/PATCH /api/settings` is the supported editing surface; runtime
+file corruption falls back to typed defaults with a warning and does not block
+startup. No startup, infrastructure, path, security, or secret value is part
+of the Settings API or page.
 
 ## Reporting Service Boundaries
 - `server.services.TokenizersService` owns Hugging Face discovery, catalog,

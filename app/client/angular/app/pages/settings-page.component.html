@@ -1,0 +1,124 @@
+<main class="page-scroll settings-page">
+  <section class="panel settings-panel" aria-labelledby="settings-title">
+    <header class="settings-page-header">
+      <div>
+        <p class="panel-label">Application Settings</p>
+        <h1 id="settings-title">Settings</h1>
+        <p class="panel-description">Tune supported runtime behavior for new operations. Startup, database, network, paths, and secrets remain deployment configuration.</p>
+      </div>
+      @if (store.settings()) {
+        <span class="settings-revision">Revision {{ store.revision() }}</span>
+      }
+    </header>
+
+    @if (store.warning(); as warning) {
+      <p class="settings-warning" role="status">{{ warning }}</p>
+    }
+    @if (store.error(); as error) {
+      <div class="error-banner" role="alert">
+        <span>{{ error }}</span>
+        @if (store.conflict()) {
+          <button class="secondary-button settings-reload-button" type="button" (click)="reloadAfterConflict()">Reload settings</button>
+        }
+      </div>
+    }
+
+    <div class="settings-tabs" role="tablist" aria-label="Settings sections">
+      <button id="settings-tab-data" class="settings-tab" type="button" role="tab" aria-controls="settings-panel-data" [attr.aria-selected]="activeTab() === 'data'" [attr.tabindex]="activeTab() === 'data' ? 0 : -1" (click)="selectTab('data')" (keydown)="handleTabKeydown($event, 'data')">Data</button>
+      <button id="settings-tab-tokenizers" class="settings-tab" type="button" role="tab" aria-controls="settings-panel-tokenizers" [attr.aria-selected]="activeTab() === 'tokenizers'" [attr.tabindex]="activeTab() === 'tokenizers' ? 0 : -1" (click)="selectTab('tokenizers')" (keydown)="handleTabKeydown($event, 'tokenizers')">Tokenizers</button>
+      <button id="settings-tab-runtime" class="settings-tab" type="button" role="tab" aria-controls="settings-panel-runtime" [attr.aria-selected]="activeTab() === 'runtime'" [attr.tabindex]="activeTab() === 'runtime' ? 0 : -1" (click)="selectTab('runtime')" (keydown)="handleTabKeydown($event, 'runtime')">Runtime</button>
+    </div>
+
+    @if (store.loading() && !store.settings()) {
+      <div class="loading-container settings-loading" role="status"><span class="spinner" aria-hidden="true"></span><p>Loading settings…</p></div>
+    } @else if (store.settings()) {
+      <form class="settings-form" [formGroup]="form" (ngSubmit)="saveChanges()">
+        <section id="settings-panel-data" class="settings-section" role="tabpanel" aria-labelledby="settings-tab-data" [hidden]="activeTab() !== 'data'">
+          <header class="settings-section-header"><p class="panel-label">Data</p><p class="panel-description">Controls for dataset uploads, downloads, and newly generated analysis.</p></header>
+
+          <div class="settings-row" [class.settings-row--overridden]="isOverridden('datasets.histogram_bins')">
+            <div class="settings-row-copy"><label class="settings-label" for="settings-histogram-bins">Histogram bins</label><p id="settings-help-histogram-bins" class="settings-help">Number of bins used for newly generated dataset and tokenizer analysis histograms.</p><span class="settings-default">Default: {{ defaultValue('datasets.histogram_bins') }}</span></div>
+            <div class="settings-control"><input id="settings-histogram-bins" class="text-input" type="number" min="5" max="100" step="1" formControlName="histogramBins" aria-describedby="settings-help-histogram-bins" /><button class="settings-reset-button" type="button" [hidden]="!isOverridden('datasets.histogram_bins')" (click)="resetSetting('datasets.histogram_bins')">Reset</button></div>
+          </div>
+
+          <div class="settings-row" [class.settings-row--overridden]="isOverridden('datasets.max_upload_bytes')">
+            <div class="settings-row-copy"><label class="settings-label" for="settings-dataset-upload">Dataset upload limit (MiB)</label><p id="settings-help-dataset-upload" class="settings-help">Maximum size accepted for newly uploaded dataset files.</p><span class="settings-default">Default: {{ defaultValue('datasets.max_upload_bytes') }}</span></div>
+            <div class="settings-control"><input id="settings-dataset-upload" class="text-input" type="number" min="1" step="1" formControlName="datasetMaxUploadMiB" aria-describedby="settings-help-dataset-upload" /><button class="settings-reset-button" type="button" [hidden]="!isOverridden('datasets.max_upload_bytes')" (click)="resetSetting('datasets.max_upload_bytes')">Reset</button></div>
+          </div>
+
+          <div class="settings-row" [class.settings-row--overridden]="isOverridden('datasets.download_timeout_seconds')">
+            <div class="settings-row-copy"><label class="settings-label" for="settings-download-timeout">Dataset download timeout (seconds)</label><p id="settings-help-download-timeout" class="settings-help">Timeout applied to subsequently started dataset downloads.</p><span class="settings-default">Default: {{ defaultValue('datasets.download_timeout_seconds') }}</span></div>
+            <div class="settings-control"><input id="settings-download-timeout" class="text-input" type="number" min="1" step="0.1" formControlName="downloadTimeoutSeconds" aria-describedby="settings-help-download-timeout" /><button class="settings-reset-button" type="button" [hidden]="!isOverridden('datasets.download_timeout_seconds')" (click)="resetSetting('datasets.download_timeout_seconds')">Reset</button></div>
+          </div>
+
+          <div class="settings-row" [class.settings-row--overridden]="isOverridden('datasets.download_retry_attempts')">
+            <div class="settings-row-copy"><label class="settings-label" for="settings-retry-attempts">Download retry attempts</label><p id="settings-help-retry-attempts" class="settings-help">Number of attempts used for subsequently started dataset downloads.</p><span class="settings-default">Default: {{ defaultValue('datasets.download_retry_attempts') }}</span></div>
+            <div class="settings-control"><input id="settings-retry-attempts" class="text-input" type="number" min="1" max="10" step="1" formControlName="downloadRetryAttempts" aria-describedby="settings-help-retry-attempts" /><button class="settings-reset-button" type="button" [hidden]="!isOverridden('datasets.download_retry_attempts')" (click)="resetSetting('datasets.download_retry_attempts')">Reset</button></div>
+          </div>
+
+          <div class="settings-row" [class.settings-row--overridden]="isOverridden('datasets.download_retry_backoff_seconds')">
+            <div class="settings-row-copy"><label class="settings-label" for="settings-retry-backoff">Download retry backoff (seconds)</label><p id="settings-help-retry-backoff" class="settings-help">Delay between retries for subsequently started dataset downloads.</p><span class="settings-default">Default: {{ defaultValue('datasets.download_retry_backoff_seconds') }}</span></div>
+            <div class="settings-control"><input id="settings-retry-backoff" class="text-input" type="number" min="0" max="60" step="0.1" formControlName="downloadRetryBackoffSeconds" aria-describedby="settings-help-retry-backoff" /><button class="settings-reset-button" type="button" [hidden]="!isOverridden('datasets.download_retry_backoff_seconds')" (click)="resetSetting('datasets.download_retry_backoff_seconds')">Reset</button></div>
+          </div>
+        </section>
+
+        <section id="settings-panel-tokenizers" class="settings-section" role="tabpanel" aria-labelledby="settings-tab-tokenizers" [hidden]="activeTab() !== 'tokenizers'">
+          <header class="settings-section-header"><p class="panel-label">Tokenizers</p><p class="panel-description">Discovery and upload limits for the Hugging Face tokenizer workflow.</p></header>
+
+          <div class="settings-row" [class.settings-row--overridden]="isOverridden('tokenizers.default_discovery_limit')">
+            <div class="settings-row-copy"><label class="settings-label" for="settings-default-discovery">Default discovery limit</label><p id="settings-help-default-discovery" class="settings-help">Default number of tokenizer repositories returned when no result limit is supplied.</p><span class="settings-default">Default: {{ defaultValue('tokenizers.default_discovery_limit') }}</span></div>
+            <div class="settings-control"><input id="settings-default-discovery" class="text-input" type="number" min="1" [max]="form.controls.maxDiscoveryLimit.value ?? 250" step="1" formControlName="defaultDiscoveryLimit" aria-describedby="settings-help-default-discovery" /><button class="settings-reset-button" type="button" [hidden]="!isOverridden('tokenizers.default_discovery_limit')" (click)="resetSetting('tokenizers.default_discovery_limit')">Reset</button></div>
+          </div>
+
+          <div class="settings-row" [class.settings-row--overridden]="isOverridden('tokenizers.max_discovery_limit')">
+            <div class="settings-row-copy"><label class="settings-label" for="settings-max-discovery">Maximum discovery limit</label><p id="settings-help-max-discovery" class="settings-help">Upper bound for an individual tokenizer discovery request.</p><span class="settings-default">Default: {{ defaultValue('tokenizers.max_discovery_limit') }}</span></div>
+            <div class="settings-control"><input id="settings-max-discovery" class="text-input" type="number" min="1" max="250" step="1" formControlName="maxDiscoveryLimit" aria-describedby="settings-help-max-discovery" /><button class="settings-reset-button" type="button" [hidden]="!isOverridden('tokenizers.max_discovery_limit')" (click)="resetSetting('tokenizers.max_discovery_limit')">Reset</button></div>
+          </div>
+
+          <div class="settings-row" [class.settings-row--overridden]="isOverridden('tokenizers.max_discovery_candidates')">
+            <div class="settings-row-copy"><label class="settings-label" for="settings-discovery-candidates">Discovery candidate cap</label><p id="settings-help-discovery-candidates" class="settings-help">Maximum candidate repositories considered during filtering. Larger values can increase Hugging Face metadata work, API usage, and latency.</p><span class="settings-default">Default: {{ defaultValue('tokenizers.max_discovery_candidates') }}</span></div>
+            <div class="settings-control"><input id="settings-discovery-candidates" class="text-input" type="number" [attr.min]="form.controls.maxDiscoveryLimit.value ?? 1" step="1" formControlName="maxDiscoveryCandidates" aria-describedby="settings-help-discovery-candidates" /><button class="settings-reset-button" type="button" [hidden]="!isOverridden('tokenizers.max_discovery_candidates')" (click)="resetSetting('tokenizers.max_discovery_candidates')">Reset</button></div>
+          </div>
+
+          <div class="settings-row" [class.settings-row--overridden]="isOverridden('tokenizers.metadata_candidate_multiplier')">
+            <div class="settings-row-copy"><label class="settings-label" for="settings-metadata-multiplier">Metadata candidate multiplier</label><p id="settings-help-metadata-multiplier" class="settings-help">Controls how many additional candidates are fetched before local tokenizer filtering.</p><span class="settings-default">Default: {{ defaultValue('tokenizers.metadata_candidate_multiplier') }}</span></div>
+            <div class="settings-control"><input id="settings-metadata-multiplier" class="text-input" type="number" min="1" max="10" step="1" formControlName="metadataCandidateMultiplier" aria-describedby="settings-help-metadata-multiplier" /><button class="settings-reset-button" type="button" [hidden]="!isOverridden('tokenizers.metadata_candidate_multiplier')" (click)="resetSetting('tokenizers.metadata_candidate_multiplier')">Reset</button></div>
+          </div>
+
+          <div class="settings-row" [class.settings-row--overridden]="isOverridden('tokenizers.max_upload_bytes')">
+            <div class="settings-row-copy"><label class="settings-label" for="settings-tokenizer-upload">Tokenizer upload limit (MiB)</label><p id="settings-help-tokenizer-upload" class="settings-help">Maximum size accepted for a newly uploaded tokenizer JSON file.</p><span class="settings-default">Default: {{ defaultValue('tokenizers.max_upload_bytes') }}</span></div>
+            <div class="settings-control"><input id="settings-tokenizer-upload" class="text-input" type="number" min="1" step="1" formControlName="tokenizerMaxUploadMiB" aria-describedby="settings-help-tokenizer-upload" /><button class="settings-reset-button" type="button" [hidden]="!isOverridden('tokenizers.max_upload_bytes')" (click)="resetSetting('tokenizers.max_upload_bytes')">Reset</button></div>
+          </div>
+
+          @if (tokenizerLimitsInvalid()) {
+            <p class="settings-inline-error" role="alert">Default discovery limit must not exceed the maximum, and the maximum must not exceed the candidate cap.</p>
+          }
+        </section>
+
+        <section id="settings-panel-runtime" class="settings-section" role="tabpanel" aria-labelledby="settings-tab-runtime" [hidden]="activeTab() !== 'runtime'">
+          <header class="settings-section-header"><p class="panel-label">Runtime</p><p class="panel-description">Performance and polling controls applied to newly started operations.</p></header>
+
+          <div class="settings-row" [class.settings-row--overridden]="isOverridden('datasets.streaming_batch_size')">
+            <div class="settings-row-copy"><label class="settings-label" for="settings-dataset-batch">Dataset streaming batch size</label><p id="settings-help-dataset-batch" class="settings-help">Controls batch size for newly started dataset processing. Larger values may use more memory.</p><span class="settings-default">Default: {{ defaultValue('datasets.streaming_batch_size') }}</span></div>
+            <div class="settings-control"><input id="settings-dataset-batch" class="text-input" type="number" min="100" step="1" formControlName="datasetStreamingBatchSize" aria-describedby="settings-help-dataset-batch" /><button class="settings-reset-button" type="button" [hidden]="!isOverridden('datasets.streaming_batch_size')" (click)="resetSetting('datasets.streaming_batch_size')">Reset</button></div>
+          </div>
+
+          <div class="settings-row" [class.settings-row--overridden]="isOverridden('benchmarks.streaming_batch_size')">
+            <div class="settings-row-copy"><label class="settings-label" for="settings-benchmark-batch">Benchmark streaming batch size</label><p id="settings-help-benchmark-batch" class="settings-help">Controls batch size for newly started benchmark runs.</p><span class="settings-default">Default: {{ defaultValue('benchmarks.streaming_batch_size') }}</span></div>
+            <div class="settings-control"><input id="settings-benchmark-batch" class="text-input" type="number" min="100" step="1" formControlName="benchmarkStreamingBatchSize" aria-describedby="settings-help-benchmark-batch" /><button class="settings-reset-button" type="button" [hidden]="!isOverridden('benchmarks.streaming_batch_size')" (click)="resetSetting('benchmarks.streaming_batch_size')">Reset</button></div>
+          </div>
+
+          <div class="settings-row" [class.settings-row--overridden]="isOverridden('jobs.polling_interval')">
+            <div class="settings-row-copy"><label class="settings-label" for="settings-job-polling">Job polling interval (seconds)</label><p id="settings-help-job-polling" class="settings-help">Polling interval used by newly created asynchronous jobs. Existing jobs keep their current interval.</p><span class="settings-default">Default: {{ defaultValue('jobs.polling_interval') }}</span></div>
+            <div class="settings-control"><input id="settings-job-polling" class="text-input" type="number" min="0.25" step="0.25" formControlName="jobPollingInterval" aria-describedby="settings-help-job-polling" /><button class="settings-reset-button" type="button" [hidden]="!isOverridden('jobs.polling_interval')" (click)="resetSetting('jobs.polling_interval')">Reset</button></div>
+          </div>
+        </section>
+
+        <footer class="settings-footer">
+          <button class="secondary-button" type="button" [disabled]="store.saving() || !store.overriddenKeys().length" (click)="resetAll()">Reset all</button>
+          <button class="primary-button" type="submit" [disabled]="store.saving() || store.loading() || !form.dirty || form.invalid">{{ store.saving() ? 'Saving…' : 'Save changes' }}</button>
+        </footer>
+      </form>
+    }
+  </section>
+</main>

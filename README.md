@@ -1,5 +1,5 @@
 # TKBEN Tokenizer Benchmarker
-Last updated: 2026-09-13
+Last updated: 2026-09-16
 
 [![Release](https://img.shields.io/github/v/release/CTCycle/TKBEN-tokenizers-benchmarker?display_name=tag)](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.14-3776AB?logo=python&logoColor=white)
@@ -180,7 +180,7 @@ When reviewing a report:
 
 The following full-page captures show the main screens with populated sample data. Your counts, charts, and report values will depend on the datasets, tokenizers, metrics, and sampling choices you use.
 
-Operational settings are managed in `settings/.env` and structured application settings are managed in `settings/configurations.json`; the current application has no separate in-app settings page. Hugging Face access keys are managed from the key button in the application header.
+Startup and deployment settings are managed in `settings/.env`. Supported application runtime settings are managed from the **Settings** page in the application header; Hugging Face access keys remain managed separately from the key button.
 
 Dataset dashboard with a loaded validation session, aggregate statistics, switchable histograms, and word-cloud analytics.
 
@@ -261,7 +261,7 @@ Large datasets, many selected metrics, optional language-model measures, and det
 
 ### Configuration validation fails before startup
 
-`settings/.env` is the only source for environment-specific values such as ports, database mode, paths, and boolean launcher settings. `settings/configurations.json` contains the required structured `datasets`, `tokenizers`, `benchmarks`, and `jobs` blocks; unknown blocks or missing/invalid fields are rejected. Boolean values must be written as `true` or `false`. Restore the file from its versioned example or correct the reported field, then restart TKBEN. The environment file is loaded before backend configuration and database modules are imported, so an invalid bootstrap configuration intentionally stops startup early.
+`settings/.env` is the source for environment-specific values such as ports, database mode, paths, secrets, and boolean launcher settings. These values are not exposed by the Settings page and changes require a restart. Supported application runtime settings use typed backend defaults plus sparse user overrides in `<TKBEN_DATA_DIR>/runtime-settings.json`; edit them from **Settings** instead of editing generated files. A malformed runtime override file is ignored with a warning so TKBEN can start with typed defaults. The environment file is loaded before backend configuration and database modules are imported, so an invalid bootstrap configuration intentionally stops startup early.
 
 ### PDF export does not complete
 
@@ -276,8 +276,8 @@ Confirm that Python, Node.js, and `uv` are installed and available in the termin
 TKBEN keeps its working data locally so that completed analyses can be reopened after a restart.
 
 - `app/resources`: saved datasets, tokenizer assets, reports, the local database, and logs. Back up the relevant contents of this folder if you need to preserve your work.
-- `settings/.env`: local operational settings and credentials/paths; preserve it across updates and keep it private.
-- `settings/configurations.json`: versioned structured application tuning for datasets, tokenizers, benchmarks, and jobs.
+- `settings/.env`: local startup/deployment settings and credentials/paths; preserve it across updates and keep it private.
+- `app/resources/runtime-settings.json`: generated sparse overrides for supported application runtime settings. It is safe to remove when resetting application data; do not edit it as a substitute for the Settings page.
 - `assets/figures`: screenshots used in this guide.
 - `assets/docs`: deeper project and runtime reference material for advanced users and maintainers.
 
@@ -285,9 +285,9 @@ The application does not provide cloud synchronization by default. Moving TKBEN 
 
 ## 7. Optional Configuration
 
-The Windows launcher creates `settings/.env` automatically and supplies sensible defaults. Most users should leave those defaults unchanged.
+The Windows launcher creates `settings/.env` automatically and supplies sensible defaults. Most users should leave those startup defaults unchanged. Supported application runtime tuning is available from the **Settings** page.
 
-Configuration ownership is intentionally split: `.env` owns environment-specific values, while `configurations.json` owns structured application settings. The backend resolves these sources once into an immutable settings snapshot during startup. Do not add database or path overrides to the JSON file, and do not copy secrets into documentation or screenshots.
+Configuration ownership is intentionally split: `.env` and the process environment own startup, infrastructure, paths, security, and secrets; typed backend models own application defaults; and `<TKBEN_DATA_DIR>/runtime-settings.json` stores only sparse user overrides. The backend combines the typed defaults and overrides into an immutable effective snapshot. The Settings page is the normal editing mechanism. Do not copy secrets into runtime settings, documentation, or screenshots.
 
 You may need to edit the local settings only when you want to:
 
@@ -296,7 +296,7 @@ You may need to edit the local settings only when you want to:
 - change whether backend logs appear in a separate window
 - connect to an externally managed PostgreSQL database instead of the default embedded store
 
-Restart TKBEN after changing `settings/.env`. Keep this file private: it can contain machine-specific paths, database connection details, or other sensitive values. Hugging Face access keys should be added and managed through the application’s key manager rather than placed in screenshots or shared documentation.
+Restart TKBEN after changing `settings/.env`. Keep this file private: it can contain machine-specific paths, database connection details, or other sensitive values. Changes made in **Settings** apply to subsequently started operations without a restart. Hugging Face access keys should be added and managed through the application’s key manager rather than placed in screenshots or shared documentation.
 
 ## 8. Releases and Data Safety
 

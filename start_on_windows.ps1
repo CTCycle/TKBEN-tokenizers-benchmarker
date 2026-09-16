@@ -1042,6 +1042,7 @@ function Remove-AllData {
         (Join-Path $dataRoot 'database.db-wal'),
         (Join-Path $dataRoot 'database.db-shm'),
         (Join-Path $dataRoot 'database.db-journal'),
+        (Join-Path $dataRoot 'runtime-settings.json'),
         (Get-HuggingFaceMaterialPath -DataRoot $dataRoot)
     ) | Select-Object -Unique) {
         if (Test-Path -LiteralPath $dataFile) {

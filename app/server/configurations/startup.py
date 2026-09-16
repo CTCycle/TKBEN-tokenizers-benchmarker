@@ -1,50 +1,85 @@
 from __future__ import annotations
 
-from pathlib import Path
+from collections.abc import Iterable, Mapping
 from threading import RLock
 
-from pydantic import ValidationError
-
-from server.common.path import CONFIGURATIONS_FILE
 from server.configurations.environment import ensure_environment_loaded
-from server.configurations.settings import (
-    ApplicationConfiguration,
-    ServerSettings,
-    build_server_settings,
-)
+from server.configurations.runtime import RuntimeSettingsState, RuntimeSettingsStore
+from server.configurations.settings import ServerSettings, build_server_settings
 
 
 _DEFAULT_SETTINGS_LOCK = RLock()
 _default_settings: ServerSettings | None = None
+_runtime_settings_store: RuntimeSettingsStore | None = None
 
 
 ###############################################################################
-def _resolve_config_path(config_path: str | Path | None = None) -> Path:
-    if config_path is None:
-        return CONFIGURATIONS_FILE
-    return Path(config_path)
-
-
-###############################################################################
-def _load_server_settings(config_path: str | Path | None = None) -> ServerSettings:
+def _initialize_settings_locked() -> None:
+    global _default_settings, _runtime_settings_store
     ensure_environment_loaded(force=True)
-    path = _resolve_config_path(config_path)
-    try:
-        configuration = ApplicationConfiguration.from_path(path)
-    except ValidationError as exc:
-        raise RuntimeError(f"Invalid application settings: {exc}") from exc
-    return build_server_settings(configuration)
+    defaults = build_server_settings()
+    store = RuntimeSettingsStore(defaults)
+    _runtime_settings_store = store
+    _default_settings = store.get_state().settings
 
 
 ###############################################################################
-def get_server_settings(config_path: str | Path | None = None) -> ServerSettings:
+def get_server_settings() -> ServerSettings:
+    """Return the canonical effective immutable settings snapshot."""
+
     global _default_settings
-    if config_path is not None:
-        return _load_server_settings(config_path)
     with _DEFAULT_SETTINGS_LOCK:
         if _default_settings is None:
-            _default_settings = _load_server_settings()
+            _initialize_settings_locked()
+        assert _default_settings is not None
         return _default_settings
+
+
+###############################################################################
+def get_runtime_settings_store() -> RuntimeSettingsStore:
+    with _DEFAULT_SETTINGS_LOCK:
+        if _runtime_settings_store is None:
+            _initialize_settings_locked()
+        assert _runtime_settings_store is not None
+        return _runtime_settings_store
+
+
+###############################################################################
+def get_runtime_settings_state() -> RuntimeSettingsState:
+    return get_runtime_settings_store().get_state()
+
+
+###############################################################################
+def apply_runtime_settings_patch(
+    patch: Mapping[str, Mapping[str, object]],
+    *,
+    expected_revision: int,
+) -> RuntimeSettingsState:
+    global _default_settings
+    with _DEFAULT_SETTINGS_LOCK:
+        store = get_runtime_settings_store()
+        state = store.apply_patch(patch, expected_revision=expected_revision)
+        _default_settings = state.settings
+    return state
+
+
+###############################################################################
+def reset_runtime_settings(
+    *,
+    expected_revision: int,
+    keys: Iterable[str] | None = None,
+    reset_all: bool = False,
+) -> RuntimeSettingsState:
+    global _default_settings
+    with _DEFAULT_SETTINGS_LOCK:
+        store = get_runtime_settings_store()
+        state = store.reset(
+            expected_revision=expected_revision,
+            keys=keys,
+            reset_all=reset_all,
+        )
+        _default_settings = state.settings
+    return state
 
 
 ###############################################################################
@@ -54,6 +89,7 @@ def is_key_reveal_enabled() -> bool:
 
 ###############################################################################
 def reset_settings_cache_for_tests() -> None:
-    global _default_settings
+    global _default_settings, _runtime_settings_store
     with _DEFAULT_SETTINGS_LOCK:
         _default_settings = None
+        _runtime_settings_store = None

@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ExportApiService } from '../core/api/export-api.service';
 import { DatasetStore } from '../core/state/dataset.store';
 import { TokenizersStore } from '../core/state/tokenizers.store';
+import { SettingsStore } from '../core/state/settings.store';
 import { BenchmarkStore } from '../core/state/benchmark.store';
 import type { DatasetMetricCatalogCategory } from '../core/api/api.models';
 import { DatasetPageComponent } from './dataset-page.component';
@@ -248,6 +249,50 @@ describe('TokenizersPageComponent workflow', () => {
     expect(page.downloadProgressVisible()).toBe(false);
     store.busyAction.set('download');
     expect(page.downloadProgressVisible()).toBe(true);
+  });
+
+  it('hydrates discovery defaults and constraints from SettingsStore', () => {
+    const store = {
+      report: signal(null),
+      vocabulary: signal(null),
+      discoveryResults: signal([]),
+      busyAction: signal<string | null>(null),
+      refresh: vi.fn(),
+      select: vi.fn(),
+      discover: vi.fn(),
+      selectedDiscoveryIds: signal<readonly string[]>([]),
+      toggleDiscoverySelection: vi.fn(),
+      download: vi.fn(),
+      remove: vi.fn(),
+      upload: vi.fn(),
+    };
+    const settingsStore = {
+      settings: signal({
+        tokenizers: {
+          default_discovery_limit: 7,
+          max_discovery_limit: 9,
+        },
+      }),
+    };
+    TestBed.configureTestingModule({ providers: [
+      { provide: TokenizersStore, useValue: store },
+      { provide: SettingsStore, useValue: settingsStore },
+      { provide: ExportApiService, useValue: {} },
+    ] });
+    const page = TestBed.runInInjectionContext(() => new TokenizersPageComponent()) as unknown as {
+      discoveryForm: FormGroup;
+      discoverTokenizers: () => void;
+      maxDiscoveryLimit: () => number | null;
+    };
+    TestBed.tick();
+
+    expect(page.discoveryForm.controls['limit'].value).toBe(7);
+    expect(page.maxDiscoveryLimit()).toBe(9);
+    page.discoveryForm.controls['limit'].setValue(10);
+    expect(page.discoveryForm.controls['limit'].invalid).toBe(true);
+    page.discoveryForm.controls['limit'].setValue(7);
+    page.discoverTokenizers();
+    expect(store.discover).toHaveBeenCalledWith(expect.objectContaining({ limit: 7 }));
   });
 });
 

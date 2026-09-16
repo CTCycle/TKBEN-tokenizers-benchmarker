@@ -1,12 +1,17 @@
 # Canonical Source Remediation
-Last updated: 2026-09-13
+Last updated: 2026-09-16
 
 ## Objective
 TKBEN should expose one authoritative implementation and one authoritative source of truth for each responsibility. Runtime compatibility paths are retained only when a current external dependency requires them.
 
 ## Canonical ownership
-- `settings/.env` owns environment-specific runtime values.
-- `settings/configurations.json` owns structured application tuning values. Every structured setting is explicit and required; Pydantic validates values but does not provide competing defaults.
+- `settings/.env` and the process environment own startup and infrastructure
+  values, including network, database, paths, launcher behavior, security, and
+  secrets.
+- Typed Pydantic runtime models own application defaults. The optional
+  `<TKBEN_DATA_DIR>/runtime-settings.json` stores only sparse user overrides for
+  the exact Settings API allowlist; it never stores defaults, environment
+  values, or secrets.
 - `server.configurations.get_server_settings()` owns the resolved immutable backend settings object.
 - `server.configurations` loads the environment before importing settings or
   database surfaces that resolve environment-derived values.
@@ -24,10 +29,12 @@ TKBEN should expose one authoritative implementation and one authoritative sourc
 The environment profile must be loaded before configuration modules that can reach environment-derived paths or database settings are imported. `server.configurations` performs that bootstrap before importing its settings/startup surface.
 
 The bootstrap and validation path is now the merged `develop` behavior. Runtime
-booleans accept only `true` or `false`; structured settings reject missing
-required blocks, unknown blocks, and unknown fields. The application consumes a
-single immutable settings snapshot after validation rather than reconstructing
-configuration from competing sources.
+booleans accept only `true` or `false`; typed environment and runtime models
+reject unknown fields. The application consumes a single immutable effective
+settings snapshot after merging typed defaults and validated sparse overrides,
+rather than reconstructing configuration from competing sources. Runtime
+updates replace only runtime-editable nested models after an atomic persistence
+commit; existing operations retain their captured snapshot.
 
 ## Remaining canonicalization work
 The following audit findings require broader contract changes and are intentionally tracked separately from the initial configuration cleanup:
