@@ -64,9 +64,15 @@ def _runtime_values(settings: ServerSettings) -> RuntimeSettingsValues:
         ),
         benchmarks=RuntimeBenchmarkSettingsResponse(
             streaming_batch_size=settings.benchmarks.streaming_batch_size,
+            default_max_documents=settings.benchmarks.default_max_documents,
+            default_warmup_trials=settings.benchmarks.default_warmup_trials,
+            default_timed_trials=settings.benchmarks.default_timed_trials,
+            default_batch_size=settings.benchmarks.default_batch_size,
+            default_parallelism=settings.benchmarks.default_parallelism,
         ),
         jobs=RuntimeJobSettingsResponse(
             polling_interval=settings.jobs.polling_interval,
+            terminal_retention_seconds=settings.jobs.terminal_retention_seconds,
         ),
     )
 
@@ -81,7 +87,13 @@ def _raise_settings_error(exc: RuntimeSettingsValidationError) -> None:
 
 ###############################################################################
 def _replace_application_snapshot(request: Request) -> None:
-    request.app.state.settings = get_runtime_settings_state().settings
+    settings = get_runtime_settings_state().settings
+    request.app.state.settings = settings
+    job_manager = getattr(request.app.state, "job_manager", None)
+    if job_manager is not None:
+        job_manager.set_terminal_retention_seconds(
+            settings.jobs.terminal_retention_seconds
+        )
 
 
 ###############################################################################
