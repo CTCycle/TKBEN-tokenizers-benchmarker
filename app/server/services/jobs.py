@@ -83,6 +83,12 @@ class JobManager:
         self.terminal_retention_seconds = max(0.0, float(terminal_retention_seconds))
 
     # -------------------------------------------------------------------------
+    def set_terminal_retention_seconds(self, value: float) -> None:
+        with self.lock:
+            self.terminal_retention_seconds = max(0.0, float(value))
+            self._prune_terminal_jobs_locked(monotonic())
+
+    # -------------------------------------------------------------------------
     def start_job(
         self,
         job_type: str,
