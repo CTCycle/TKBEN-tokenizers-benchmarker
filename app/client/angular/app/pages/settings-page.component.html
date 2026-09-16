@@ -26,6 +26,7 @@
     <div class="settings-tabs" role="tablist" aria-label="Settings sections">
       <button id="settings-tab-data" class="settings-tab" type="button" role="tab" aria-controls="settings-panel-data" [attr.aria-selected]="activeTab() === 'data'" [attr.tabindex]="activeTab() === 'data' ? 0 : -1" (click)="selectTab('data')" (keydown)="handleTabKeydown($event, 'data')">Data</button>
       <button id="settings-tab-tokenizers" class="settings-tab" type="button" role="tab" aria-controls="settings-panel-tokenizers" [attr.aria-selected]="activeTab() === 'tokenizers'" [attr.tabindex]="activeTab() === 'tokenizers' ? 0 : -1" (click)="selectTab('tokenizers')" (keydown)="handleTabKeydown($event, 'tokenizers')">Tokenizers</button>
+      <button id="settings-tab-benchmark" class="settings-tab" type="button" role="tab" aria-controls="settings-panel-benchmark" [attr.aria-selected]="activeTab() === 'benchmark'" [attr.tabindex]="activeTab() === 'benchmark' ? 0 : -1" (click)="selectTab('benchmark')" (keydown)="handleTabKeydown($event, 'benchmark')">Benchmark</button>
       <button id="settings-tab-runtime" class="settings-tab" type="button" role="tab" aria-controls="settings-panel-runtime" [attr.aria-selected]="activeTab() === 'runtime'" [attr.tabindex]="activeTab() === 'runtime' ? 0 : -1" (click)="selectTab('runtime')" (keydown)="handleTabKeydown($event, 'runtime')">Runtime</button>
     </div>
 
@@ -95,22 +96,56 @@
           }
         </section>
 
+        <section id="settings-panel-benchmark" class="settings-section" role="tabpanel" aria-labelledby="settings-tab-benchmark" [hidden]="activeTab() !== 'benchmark'">
+          <header class="settings-section-header"><p class="panel-label">Benchmark</p><p class="panel-description">Defaults for new benchmark runs plus the internal streaming batch used while processing them. Every run remains editable before launch.</p></header>
+
+          <div class="settings-row" [class.settings-row--overridden]="isOverridden('benchmarks.default_max_documents')">
+            <div class="settings-row-copy"><label class="settings-label" for="settings-benchmark-documents">Default maximum documents</label><p id="settings-help-benchmark-documents" class="settings-help">Initial document limit shown when a new benchmark run is configured.</p><span class="settings-default">Default: {{ defaultValue('benchmarks.default_max_documents') }}</span></div>
+            <div class="settings-control"><input id="settings-benchmark-documents" class="text-input" type="number" min="1" max="100000" step="1" formControlName="benchmarkDefaultMaxDocuments" aria-describedby="settings-help-benchmark-documents" /><button class="settings-reset-button" type="button" [hidden]="!isOverridden('benchmarks.default_max_documents')" (click)="resetSetting('benchmarks.default_max_documents')">Reset</button></div>
+          </div>
+
+          <div class="settings-row" [class.settings-row--overridden]="isOverridden('benchmarks.default_warmup_trials')">
+            <div class="settings-row-copy"><label class="settings-label" for="settings-benchmark-warmup">Default warmup trials</label><p id="settings-help-benchmark-warmup" class="settings-help">Initial warmup trial count for new benchmark runs.</p><span class="settings-default">Default: {{ defaultValue('benchmarks.default_warmup_trials') }}</span></div>
+            <div class="settings-control"><input id="settings-benchmark-warmup" class="text-input" type="number" min="0" max="100" step="1" formControlName="benchmarkDefaultWarmupTrials" aria-describedby="settings-help-benchmark-warmup" /><button class="settings-reset-button" type="button" [hidden]="!isOverridden('benchmarks.default_warmup_trials')" (click)="resetSetting('benchmarks.default_warmup_trials')">Reset</button></div>
+          </div>
+
+          <div class="settings-row" [class.settings-row--overridden]="isOverridden('benchmarks.default_timed_trials')">
+            <div class="settings-row-copy"><label class="settings-label" for="settings-benchmark-timed">Default timed trials</label><p id="settings-help-benchmark-timed" class="settings-help">Initial measured trial count for new benchmark runs.</p><span class="settings-default">Default: {{ defaultValue('benchmarks.default_timed_trials') }}</span></div>
+            <div class="settings-control"><input id="settings-benchmark-timed" class="text-input" type="number" min="1" max="200" step="1" formControlName="benchmarkDefaultTimedTrials" aria-describedby="settings-help-benchmark-timed" /><button class="settings-reset-button" type="button" [hidden]="!isOverridden('benchmarks.default_timed_trials')" (click)="resetSetting('benchmarks.default_timed_trials')">Reset</button></div>
+          </div>
+
+          <div class="settings-row" [class.settings-row--overridden]="isOverridden('benchmarks.default_batch_size')">
+            <div class="settings-row-copy"><label class="settings-label" for="settings-benchmark-encode-batch">Default encode batch size</label><p id="settings-help-benchmark-encode-batch" class="settings-help">Initial tokenizer encode batch size for new benchmark runs.</p><span class="settings-default">Default: {{ defaultValue('benchmarks.default_batch_size') }}</span></div>
+            <div class="settings-control"><input id="settings-benchmark-encode-batch" class="text-input" type="number" min="1" max="4096" step="1" formControlName="benchmarkDefaultBatchSize" aria-describedby="settings-help-benchmark-encode-batch" /><button class="settings-reset-button" type="button" [hidden]="!isOverridden('benchmarks.default_batch_size')" (click)="resetSetting('benchmarks.default_batch_size')">Reset</button></div>
+          </div>
+
+          <div class="settings-row" [class.settings-row--overridden]="isOverridden('benchmarks.default_parallelism')">
+            <div class="settings-row-copy"><label class="settings-label" for="settings-benchmark-parallelism">Default parallelism</label><p id="settings-help-benchmark-parallelism" class="settings-help">Initial tokenizer worker count for new benchmark runs.</p><span class="settings-default">Default: {{ defaultValue('benchmarks.default_parallelism') }}</span></div>
+            <div class="settings-control"><input id="settings-benchmark-parallelism" class="text-input" type="number" min="1" max="128" step="1" formControlName="benchmarkDefaultParallelism" aria-describedby="settings-help-benchmark-parallelism" /><button class="settings-reset-button" type="button" [hidden]="!isOverridden('benchmarks.default_parallelism')" (click)="resetSetting('benchmarks.default_parallelism')">Reset</button></div>
+          </div>
+
+          <div class="settings-row" [class.settings-row--overridden]="isOverridden('benchmarks.streaming_batch_size')">
+            <div class="settings-row-copy"><label class="settings-label" for="settings-benchmark-batch">Benchmark streaming batch size</label><p id="settings-help-benchmark-batch" class="settings-help">Controls the internal streaming batch for newly started benchmark runs. This is separate from the tokenizer encode batch size above.</p><span class="settings-default">Default: {{ defaultValue('benchmarks.streaming_batch_size') }}</span></div>
+            <div class="settings-control"><input id="settings-benchmark-batch" class="text-input" type="number" min="100" step="1" formControlName="benchmarkStreamingBatchSize" aria-describedby="settings-help-benchmark-batch" /><button class="settings-reset-button" type="button" [hidden]="!isOverridden('benchmarks.streaming_batch_size')" (click)="resetSetting('benchmarks.streaming_batch_size')">Reset</button></div>
+          </div>
+        </section>
+
         <section id="settings-panel-runtime" class="settings-section" role="tabpanel" aria-labelledby="settings-tab-runtime" [hidden]="activeTab() !== 'runtime'">
-          <header class="settings-section-header"><p class="panel-label">Runtime</p><p class="panel-description">Performance and polling controls applied to newly started operations.</p></header>
+          <header class="settings-section-header"><p class="panel-label">Runtime</p><p class="panel-description">Processing, polling, and in-memory job lifecycle controls applied without changing deployment configuration.</p></header>
 
           <div class="settings-row" [class.settings-row--overridden]="isOverridden('datasets.streaming_batch_size')">
             <div class="settings-row-copy"><label class="settings-label" for="settings-dataset-batch">Dataset streaming batch size</label><p id="settings-help-dataset-batch" class="settings-help">Controls batch size for newly started dataset processing. Larger values may use more memory.</p><span class="settings-default">Default: {{ defaultValue('datasets.streaming_batch_size') }}</span></div>
             <div class="settings-control"><input id="settings-dataset-batch" class="text-input" type="number" min="100" step="1" formControlName="datasetStreamingBatchSize" aria-describedby="settings-help-dataset-batch" /><button class="settings-reset-button" type="button" [hidden]="!isOverridden('datasets.streaming_batch_size')" (click)="resetSetting('datasets.streaming_batch_size')">Reset</button></div>
           </div>
 
-          <div class="settings-row" [class.settings-row--overridden]="isOverridden('benchmarks.streaming_batch_size')">
-            <div class="settings-row-copy"><label class="settings-label" for="settings-benchmark-batch">Benchmark streaming batch size</label><p id="settings-help-benchmark-batch" class="settings-help">Controls batch size for newly started benchmark runs.</p><span class="settings-default">Default: {{ defaultValue('benchmarks.streaming_batch_size') }}</span></div>
-            <div class="settings-control"><input id="settings-benchmark-batch" class="text-input" type="number" min="100" step="1" formControlName="benchmarkStreamingBatchSize" aria-describedby="settings-help-benchmark-batch" /><button class="settings-reset-button" type="button" [hidden]="!isOverridden('benchmarks.streaming_batch_size')" (click)="resetSetting('benchmarks.streaming_batch_size')">Reset</button></div>
-          </div>
-
           <div class="settings-row" [class.settings-row--overridden]="isOverridden('jobs.polling_interval')">
             <div class="settings-row-copy"><label class="settings-label" for="settings-job-polling">Job polling interval (seconds)</label><p id="settings-help-job-polling" class="settings-help">Polling interval used by newly created asynchronous jobs. Existing jobs keep their current interval.</p><span class="settings-default">Default: {{ defaultValue('jobs.polling_interval') }}</span></div>
             <div class="settings-control"><input id="settings-job-polling" class="text-input" type="number" min="0.25" step="0.25" formControlName="jobPollingInterval" aria-describedby="settings-help-job-polling" /><button class="settings-reset-button" type="button" [hidden]="!isOverridden('jobs.polling_interval')" (click)="resetSetting('jobs.polling_interval')">Reset</button></div>
+          </div>
+
+          <div class="settings-row" [class.settings-row--overridden]="isOverridden('jobs.terminal_retention_seconds')">
+            <div class="settings-row-copy"><label class="settings-label" for="settings-job-retention">Completed job retention (minutes)</label><p id="settings-help-job-retention" class="settings-help">How long completed, failed, and cancelled in-memory jobs remain available. Lowering this value can prune already completed jobs immediately.</p><span class="settings-default">Default: {{ defaultValue('jobs.terminal_retention_seconds') }}</span></div>
+            <div class="settings-control"><input id="settings-job-retention" class="text-input" type="number" min="0" step="0.5" formControlName="jobRetentionMinutes" aria-describedby="settings-help-job-retention" /><button class="settings-reset-button" type="button" [hidden]="!isOverridden('jobs.terminal_retention_seconds')" (click)="resetSetting('jobs.terminal_retention_seconds')">Reset</button></div>
           </div>
         </section>
 
