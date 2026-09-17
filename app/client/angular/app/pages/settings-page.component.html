@@ -39,7 +39,6 @@
         <div class="loading-container settings-loading" role="status"><span class="spinner" aria-hidden="true"></span><p>Loading settings…</p></div>
       } @else if (store.settings()) {
         <form class="settings-form" [formGroup]="form" (ngSubmit)="saveChanges()">
-          @if (activeTab() !== 'keys') {
         <section id="settings-panel-data" class="settings-section" role="tabpanel" aria-labelledby="settings-tab-data" [hidden]="activeTab() !== 'data'">
           <header class="settings-section-header"><p class="panel-label">Data</p><p class="panel-description">Controls for dataset uploads, downloads, and newly generated analysis.</p></header>
 
@@ -140,17 +139,15 @@
           </div>
         </section>
 
-        <footer class="settings-footer">
+        <footer class="settings-footer" [hidden]="activeTab() === 'keys'">
           <button class="secondary-button" type="button" [disabled]="store.saving() || !store.overriddenKeys().length" (click)="resetAll()">Reset all</button>
           <button class="primary-button" type="submit" [disabled]="store.saving() || store.loading() || !form.dirty || form.invalid">{{ store.saving() ? 'Saving…' : 'Save changes' }}</button>
         </footer>
-        } @else {
-          <section id="settings-panel-keys" class="settings-section settings-key-section" role="tabpanel" aria-labelledby="settings-tab-keys">
-            <header class="settings-section-header"><p class="panel-label">Keys</p><p class="panel-description">Manage stored Hugging Face access keys used for gated downloads.</p></header>
-            <app-hf-access-key-manager />
-          </section>
-        }
       </form>
+      <section id="settings-panel-keys" class="settings-section settings-key-section" role="tabpanel" aria-labelledby="settings-tab-keys" [hidden]="activeTab() !== 'keys'">
+        <header class="settings-section-header"><p class="panel-label">Keys</p><p class="panel-description">Manage stored Hugging Face access keys used for gated downloads.</p></header>
+        <app-hf-access-key-manager />
+      </section>
     }
     </div>
   </div>

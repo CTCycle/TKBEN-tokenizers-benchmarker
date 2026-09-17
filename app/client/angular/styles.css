@@ -4880,10 +4880,11 @@ select:focus-visible {
   margin: 0;
 }
 
+/* Keep Settings navigation close to the viewport edge while preserving readable content. */
 .settings-layout {
   display: grid;
-  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
-  gap: clamp(28px, 4vw, 56px);
+  grid-template-columns: minmax(168px, 200px) minmax(0, 1fr);
+  gap: clamp(18px, 2vw, 30px);
   align-items: start;
 }
 
@@ -4891,7 +4892,7 @@ select:focus-visible {
   position: sticky;
   top: calc(var(--app-chrome-height) + 16px);
   min-width: 0;
-  padding: 4px 16px 12px 0;
+  padding: 4px 12px 12px 0;
   border-inline-end: 1px solid var(--border-default);
 }
 
@@ -5073,6 +5074,13 @@ select:focus-visible {
   font-size: 12px;
 }
 
+.validation-inline-error {
+  grid-column: 1 / -1;
+  margin: 8px 0 0;
+  color: var(--color-danger-text);
+  font-size: 12px;
+}
+
 .settings-loading {
   min-height: 280px;
 }
@@ -5082,6 +5090,10 @@ select:focus-visible {
   justify-content: flex-end;
   gap: 10px;
   padding-top: 24px;
+}
+
+.settings-footer[hidden] {
+  display: none;
 }
 
 .settings-reload-button {
@@ -5102,7 +5114,7 @@ select:focus-visible {
 
   .settings-sidebar {
     position: static;
-    padding: 0 0 8px;
+    padding: 0 0 12px;
     border-inline-end: 0;
     border-bottom: 1px solid var(--border-subtle);
   }
@@ -5115,47 +5127,27 @@ select:focus-visible {
   .settings-tabs {
     flex-direction: row;
     overflow-x: auto;
+    scrollbar-width: thin;
+    padding-bottom: 1px;
   }
 
   .settings-tab {
     width: auto;
-    flex: 1 0 auto;
+    flex: 0 0 auto;
     min-height: 40px;
     padding-inline: 12px;
     border: 0;
     border-bottom: 2px solid transparent;
-    border-radius: 0;
+    border-radius: 6px 6px 0 0;
     text-align: center;
   }
 
   .settings-tab[aria-selected="true"] {
+    border-inline-start-color: transparent;
     border-bottom-color: var(--color-accent);
   }
 
-  .settings-page-header {
-    gap: 12px;
-  }
-
-  .settings-layout {
-    display: block;
-  }
-
-  .settings-sidebar {
-    position: static;
-    padding: 0 0 12px;
-    border-inline-end: 0;
-    border-bottom: 1px solid var(--border-default);
-  }
-
-  .settings-sidebar-label {
-    margin-bottom: 8px;
-  }
-
-  .settings-tabs {
-    flex-direction: row;
-    overflow-x: auto;
-    padding-bottom: 1px;
-  }
+  .settings-page-header { gap: 12px; }
 
   .settings-row {
     grid-template-columns: 1fr;
@@ -5171,23 +5163,6 @@ select:focus-visible {
     text-align: left;
   }
 
-  .settings-tabs {
-    scrollbar-width: thin;
-  }
-
-  .settings-tab {
-    flex: 0 0 auto;
-    border-inline-start: 0;
-    border-bottom: 2px solid transparent;
-    border-radius: 6px 6px 0 0;
-    padding-inline: 12px;
-    text-align: center;
-  }
-
-  .settings-tab[aria-selected="true"] {
-    border-inline-start-color: transparent;
-    border-bottom-color: var(--color-accent);
-  }
   .settings-footer {
     flex-direction: column-reverse;
   }

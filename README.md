@@ -1,9 +1,9 @@
 # TKBEN Tokenizer Benchmarker
-Last updated: 2026-09-16
+Last updated: 2026-09-18
 
 [![Release](https://img.shields.io/github/v/release/CTCycle/TKBEN-tokenizers-benchmarker?display_name=tag)](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.14-3776AB?logo=python&logoColor=white)
-![Node.js](https://img.shields.io/badge/node.js-%3E%3D22-339933?logo=node.js&logoColor=white)
+![Node.js](https://img.shields.io/badge/node.js-22.22.3%2B-339933?logo=node.js&logoColor=white)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![CTCycle Portfolio](https://img.shields.io/badge/CTCycle-Portfolio-58a6ff?style=flat-square)](https://ctcycle.github.io/CTCycle/)
 [![CI](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/workflows/ci.yml?query=branch%3Adevelop)
@@ -73,7 +73,7 @@ If Windows blocks the automatic browser opening, this does not necessarily mean 
 The automatic portable-runtime setup is Windows-only. On macOS or Linux, install these prerequisites using your normal system tools:
 
 - Python 3.14 or newer
-- Node.js 22 or newer
+- Node.js 22.22.3 or newer on a supported Angular engine line (the Windows launcher provisions 22.23.1)
 - `uv`
 
 From the repository root, use two terminals. In the first terminal, prepare and start the local service:

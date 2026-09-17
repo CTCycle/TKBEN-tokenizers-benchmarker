@@ -100,7 +100,7 @@ function Invoke-TrackedLauncherAction {
     )
     Write-Step "Starting $Name"
     try {
-        & $Action
+        $Action.Invoke()
         Write-Ok "$Name completed"
     }
     catch {
@@ -282,9 +282,7 @@ function Invoke-CheckPyVer {
 function Invoke-Npm {
     param([Parameter(ValueFromRemainingArguments)][string[]]$Arguments)
     if (-not (Test-Path -LiteralPath $NpmCmd)) { throw "npm was not installed at $NpmCmd" }
-    $commandLine = '"' + $NpmCmd + '"'
-    if ($Arguments) { $commandLine += ' ' + ($Arguments -join ' ') }
-    & cmd.exe /d /c $commandLine | Out-Host
+    & $NpmCmd @Arguments | Out-Host
     return [int]$LASTEXITCODE
 }
 
@@ -479,13 +477,16 @@ function Get-FrontendSourceFingerprint {
         ) -ErrorAction SilentlyContinue
     ) | Where-Object { $_ -and $_.PSIsContainer -eq $false } | Sort-Object FullName
 
-    $fingerprintInput = ($sourcePaths | ForEach-Object {
-        $relativePath = $_.FullName.Substring($ClientDir.Length).TrimStart('\')
-        '{0}:{1}' -f $relativePath, (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash
+    $relativePaths = [string[]]@($sourcePaths | ForEach-Object {
+        $_.FullName.Substring($ClientDir.Length).TrimStart('\')
+    })
+    [Array]::Sort($relativePaths, [StringComparer]::Ordinal)
+    $fingerprintInput = ($relativePaths | ForEach-Object {
+        '{0}:{1}' -f $_, (Get-FileHash -LiteralPath (Join-Path $ClientDir $_) -Algorithm SHA256).Hash
     }) -join "`n"
     $sha256 = [Security.Cryptography.SHA256]::Create()
     try {
-        return [Convert]::ToHexString($sha256.ComputeHash([Text.Encoding]::UTF8.GetBytes($fingerprintInput)))
+        return ([BitConverter]::ToString($sha256.ComputeHash([Text.Encoding]::UTF8.GetBytes($fingerprintInput)))).Replace('-', '')
     }
     finally {
         $sha256.Dispose()
@@ -589,7 +590,22 @@ function Sync-Frontend {
 
         if ($BuildFrontend) {
             Write-Step 'Building frontend.'
-            $npmExitCode = Invoke-Npm run build
+            # Angular's terminal renderer can terminate the portable launcher
+            # with a native access violation under UTF-8 PowerShell hosts. Keep
+            # the production build non-interactive without changing the caller's
+            # CI setting after the build.
+            $previousCi = [Environment]::GetEnvironmentVariable('CI', 'Process')
+            try {
+                $env:CI = 'true'
+                $npmExitCode = Invoke-Npm run build '--' '--progress=false'
+            }
+            finally {
+                if ($null -eq $previousCi) {
+                    Remove-Item Env:CI -ErrorAction SilentlyContinue
+                } else {
+                    $env:CI = $previousCi
+                }
+            }
             if ($npmExitCode -ne 0) { throw "Frontend build failed with exit code $npmExitCode." }
             Write-FrontendBuildStamp
         }
@@ -709,7 +725,7 @@ function Launch-Application {
     if ($env:RELOAD -ieq 'true') { $backendArgs += ' --reload' }
 
     Write-Step 'Starting backend.'
-    $backendLogDir = Join-Path $AppDir 'resources\logs'
+    $backendLogDir = Get-ApplicationLogRoot -DataRoot (Get-ApplicationDataRoot)
     Ensure-Directory -Path $backendLogDir
     $backendLogStem = Join-Path $backendLogDir ('TKBEN_backend_' + (Get-Date -Format 'yyyyMMdd_HHmmss_fff'))
     $backendStdoutLog = "$backendLogStem.out.log"
@@ -743,7 +759,7 @@ function Launch-Application {
 
     Write-Step 'Starting frontend preview.'
     $previewCommandLine = '"' + $NpmCmd + '" run preview -- --host ' + $env:UI_HOST + ' --port ' + $uiPort + ' --strictPort'
-    $frontendLogDir = Join-Path $AppDir 'resources\logs'
+    $frontendLogDir = $backendLogDir
     Ensure-Directory -Path $frontendLogDir
     $frontendLogStem = Join-Path $frontendLogDir ('TKBEN_frontend_' + (Get-Date -Format 'yyyyMMdd_HHmmss_fff'))
     $frontendStdoutLog = "$frontendLogStem.out.log"

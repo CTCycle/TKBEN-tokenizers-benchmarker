@@ -1,5 +1,5 @@
 # Components and Patterns
-Last updated: 2026-09-17
+Last updated: 2026-09-18
 
 ## Navigation
 - Top tab navigation for:
@@ -8,7 +8,7 @@ Last updated: 2026-09-17
   - `/cross-benchmark`
 - Active state must be visually explicit with `app-tab--active` and `aria-current="page"`.
 - The route tabs are integrated into the branded header beside the
-  `tkben-logo.png` mark; the header exposes a stroked Settings gear as the
+  `tkben-logo.png` mark; the header exposes a stroked Settings sliders icon as the
   only application-level icon action. Settings is an application-level route,
   not a primary workflow tab, and owns provider credentials under its Keys
   section.

@@ -113,7 +113,7 @@
 }
 
 @if (runOpen()) {
-  <button class="modal-overlay" type="button" aria-label="Close benchmark wizard" (click)="runOpen.set(false)"></button>
+  <button class="modal-overlay" type="button" aria-label="Dismiss modal overlay" (click)="runOpen.set(false)"></button>
   <section class="modal-card benchmark-run-modal" role="dialog" aria-modal="true" aria-labelledby="benchmark-run-title" [appModalA11y]="true" (modalEscape)="runOpen.set(false)">
     <header class="dataset-modal-header"><div><h2 id="benchmark-run-title" class="panel-label">Run benchmark</h2><p class="panel-description">Configure a benchmark run before starting the job.</p></div><button class="icon-button subtle" type="button" aria-label="Close benchmark wizard" (click)="runOpen.set(false)">×</button></header>
     <nav class="benchmark-wizard-steps" aria-label="Benchmark wizard steps"><span [class.active]="runStep() === 1" [class.completed]="runStep() > 1">1. Metrics</span><span [class.active]="runStep() === 2" [class.completed]="runStep() > 2">2. Inputs</span><span [class.active]="runStep() === 3">3. Summary</span></nav>

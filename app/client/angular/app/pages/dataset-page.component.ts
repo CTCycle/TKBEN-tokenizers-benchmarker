@@ -1,6 +1,6 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
 import { debounceTime } from 'rxjs';
 import { DatasetStore } from '../core/state/dataset.store';
 import { HistogramChartComponent } from '../components/histogram-chart.component';
@@ -22,6 +22,15 @@ import {
   parseZipfCurve,
   toNumber,
 } from '../core/utils/dataset-dashboard-data';
+
+const documentLengthRange: ValidatorFn = (control) => {
+  const group = control as FormGroup;
+  const minLength = group.controls['minLength']?.value;
+  const maxLength = group.controls['maxLength']?.value;
+  if (minLength === null || minLength === '' || maxLength === null || maxLength === '') return null;
+  if (!Number.isFinite(minLength) || !Number.isFinite(maxLength)) return null;
+  return minLength > maxLength ? { minLengthExceedsMaxLength: true } : null;
+};
 
 interface DatasetFiltersForm {
   search: FormControl<string>;
@@ -135,7 +144,7 @@ export class DatasetPageComponent {
     minLength: new FormControl<number | null>(null, { validators: [Validators.min(0)] }),
     maxLength: new FormControl<number | null>(null, { validators: [Validators.min(0)] }),
     excludeEmpty: new FormControl(true, { nonNullable: true }),
-  });
+  }, { validators: documentLengthRange });
   protected readonly filters = new FormGroup<DatasetFiltersForm>({
     search: new FormControl('', { nonNullable: true }),
     source: new FormControl('', { nonNullable: true }),
@@ -322,6 +331,10 @@ export class DatasetPageComponent {
 
   protected nextValidationStep(): void {
     if (this.validationStep() === 0 && this.store.metricCategories().length > 0 && this.selectedMetricKeys().length === 0) return;
+    if (this.validationStep() === 1 && this.validationForm.invalid) {
+      this.validationForm.markAllAsTouched();
+      return;
+    }
     if (this.validationStep() < 2) this.validationStep.update((step) => (step + 1) as 0 | 1 | 2);
   }
 
@@ -331,7 +344,10 @@ export class DatasetPageComponent {
 
   protected runValidation(): void {
     const datasetName = this.validationDataset();
-    if (!datasetName) return;
+    if (!datasetName || this.validationForm.hasError('minLengthExceedsMaxLength')) {
+      this.validationForm.markAllAsTouched();
+      return;
+    }
     const value = this.validationForm.getRawValue();
     const sessionName = value.sessionName.trim();
     const minLength = value.minLength === null || !Number.isFinite(value.minLength) ? null : Math.max(0, Math.floor(value.minLength));
