@@ -157,7 +157,7 @@ export interface TokenizerDownloadRequest {
 }
 
 /**
- * Download response from tokenizer persistence
+ * Download response for tokenizer persistence
  */
 export interface TokenizerDownloadResponse {
     status: string;
@@ -182,7 +182,7 @@ export interface TokenizerListItem {
 }
 
 /**
- * Persisted tokenizer list response.
+ * Persisted tokenizer list response
  */
 export interface TokenizerListResponse {
     tokenizers: TokenizerListItem[];
