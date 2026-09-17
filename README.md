@@ -64,7 +64,7 @@ Windows users should use the project launcher. From the repository root, run:
 
 Choose **Launch application** from the menu. On first use, the launcher prepares the required local runtimes and dependencies, creates `settings/.env`, builds the production frontend when dependencies or the Angular output are missing, starts the application services, waits for them to become ready, and reports the address to open in your browser. The first launch may take a few minutes and requires an internet connection so that missing runtimes and packages can be obtained.
 
-On later launches, the prepared environment and production output are reused when they are still valid. If `app/client/dist/tkben-angular/browser/index.html` is missing, the launcher rebuilds the frontend before starting preview. You normally do not need to start the frontend or backend separately on Windows.
+On later launches, the prepared environment and production output are reused when they are still valid. The launcher records frontend source/build metadata in `app/client/dist/tkben-angular/.tkben-build.json` and rebuilds before preview whenever the checked-in Angular source, manifests, or portable Node.js version no longer match that metadata. You normally do not need to start the frontend or backend separately on Windows.
 
 If Windows blocks the automatic browser opening, this does not necessarily mean that TKBEN failed to start. Copy the local URL printed by the launcher and open it manually.
 
@@ -180,7 +180,7 @@ When reviewing a report:
 
 The following full-page captures show the main screens with populated sample data. Your counts, charts, and report values will depend on the datasets, tokenizers, metrics, and sampling choices you use.
 
-Startup and deployment settings are managed in `settings/.env`. Supported application runtime settings are managed from the **Settings** page in the application header; Hugging Face access keys remain managed separately from the key button.
+Startup and deployment settings are managed in `settings/.env`. Supported application runtime settings and Hugging Face access keys are managed from the **Settings** page in the application header; open **Settings → Keys** for provider credentials.
 
 Dataset dashboard with a loaded validation session, aggregate statistics, switchable histograms, and word-cloud analytics.
 
@@ -241,7 +241,7 @@ Close another TKBEN instance or the application using that local address, then r
 
 ### A Hugging Face dataset or tokenizer cannot be downloaded
 
-Check the repository name and optional dataset configuration, then retry with a stable network connection. For gated or private resources, accept the source’s terms and add a Hugging Face read-access key using the key button in the application header. If a key is already configured but access is denied, verify that it belongs to an account allowed to use that resource.
+Check the repository name and optional dataset configuration, then retry with a stable network connection. For gated or private resources, accept the source’s terms and add a Hugging Face read-access key from **Settings → Keys**. If a key is already configured but access is denied, verify that it belongs to an account allowed to use that resource.
 
 ### A CSV or Excel upload is rejected or produces little data
 
@@ -296,7 +296,7 @@ You may need to edit the local settings only when you want to:
 - change whether backend logs appear in a separate window
 - connect to an externally managed PostgreSQL database instead of the default embedded store
 
-Restart TKBEN after changing `settings/.env`. Keep this file private: it can contain machine-specific paths, database connection details, or other sensitive values. Changes made in **Settings** apply to subsequently started operations without a restart. Hugging Face access keys should be added and managed through the application’s key manager rather than placed in screenshots or shared documentation.
+Restart TKBEN after changing `settings/.env`. Keep this file private: it can contain machine-specific paths, database connection details, or other sensitive values. Changes made in **Settings** apply to subsequently started operations without a restart. Hugging Face access keys should be added and managed through **Settings → Keys**, rather than placed in screenshots or shared documentation.
 
 ## 8. Releases and Data Safety
 

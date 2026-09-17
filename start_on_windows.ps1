@@ -25,6 +25,7 @@ $NodeExe = Join-Path $NodeDir 'node.exe'
 $NpmCmd = Join-Path $NodeDir 'npm.cmd'
 $ServerDir = Join-Path $RepoRoot 'app\server'
 $ClientDir = Join-Path $RepoRoot 'app\client'
+$FrontendBuildStampPath = Join-Path $ClientDir 'dist\tkben-angular\.tkben-build.json'
 $AppDir = Join-Path $RepoRoot 'app'
 $AssetsDir = Join-Path $RepoRoot 'assets'
 $SettingsDir = Join-Path $RepoRoot 'settings'
@@ -377,7 +378,7 @@ function Import-Environment {
         Ensure-Directory (Join-Path $RuntimeCacheDir $cacheName)
     }
     Ensure-Directory $ToolCacheDir
-    foreach ($cacheName in @('ruff', 'mypy', 'pycache', 'coverage', 'playwright', 'pytest', 'pytest-basetemp', 'angular')) {
+    foreach ($cacheName in @('ruff', 'mypy', 'pycache', 'coverage', 'playwright', 'pytest-state', 'pytest-basetemp-current', 'angular')) {
         Ensure-Directory (Join-Path $ToolCacheDir $cacheName)
     }
     $env:UV_CACHE_DIR = $UvCacheDir
@@ -464,6 +465,33 @@ function Get-FrontendDependencyFingerprint {
     return (($manifestPaths | ForEach-Object { (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash }) -join ':')
 }
 
+function Get-FrontendSourceFingerprint {
+    $sourcePaths = @(
+        Get-ChildItem -LiteralPath (Join-Path $ClientDir 'angular') -Recurse -File
+        Get-ChildItem -LiteralPath (Join-Path $ClientDir 'public') -Recurse -File -ErrorAction SilentlyContinue
+        Get-Item -LiteralPath @(
+            (Join-Path $ClientDir 'angular.json'),
+            (Join-Path $ClientDir 'package.json'),
+            (Join-Path $ClientDir 'package-lock.json'),
+            (Join-Path $ClientDir 'proxy.conf.cjs'),
+            (Join-Path $ClientDir 'tsconfig.json'),
+            (Join-Path $ClientDir 'tsconfig.app.json')
+        ) -ErrorAction SilentlyContinue
+    ) | Where-Object { $_ -and $_.PSIsContainer -eq $false } | Sort-Object FullName
+
+    $fingerprintInput = ($sourcePaths | ForEach-Object {
+        $relativePath = $_.FullName.Substring($ClientDir.Length).TrimStart('\')
+        '{0}:{1}' -f $relativePath, (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash
+    }) -join "`n"
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+        return [Convert]::ToHexString($sha256.ComputeHash([Text.Encoding]::UTF8.GetBytes($fingerprintInput)))
+    }
+    finally {
+        $sha256.Dispose()
+    }
+}
+
 function Test-FrontendDependenciesReady {
     $nodeModulesDir = Join-Path $ClientDir 'node_modules'
     $stampPath = Join-Path $nodeModulesDir '.tkben-dependencies.json'
@@ -491,6 +519,14 @@ function Write-FrontendDependencyStamp {
         packageFingerprint = Get-FrontendDependencyFingerprint
         nodeVersion = (& $NodeExe --version).Trim()
     } | ConvertTo-Json | Set-Content -LiteralPath $stampPath -Encoding utf8
+}
+
+function Write-FrontendBuildStamp {
+    Ensure-Directory -Path (Split-Path -Parent $FrontendBuildStampPath)
+    [ordered]@{
+        sourceFingerprint = Get-FrontendSourceFingerprint
+        nodeVersion = (& $NodeExe --version).Trim()
+    } | ConvertTo-Json | Set-Content -LiteralPath $FrontendBuildStampPath -Encoding utf8
 }
 
 function Sync-Dependencies {
@@ -555,6 +591,7 @@ function Sync-Frontend {
             Write-Step 'Building frontend.'
             $npmExitCode = Invoke-Npm run build
             if ($npmExitCode -ne 0) { throw "Frontend build failed with exit code $npmExitCode." }
+            Write-FrontendBuildStamp
         }
     } finally {
         Pop-Location
@@ -595,7 +632,21 @@ function Test-DependenciesReady {
 
 function Test-FrontendBuildReady {
     $frontendEntry = Join-Path $ClientDir 'dist\tkben-angular\browser\index.html'
-    return Test-Path -LiteralPath $frontendEntry -PathType Leaf
+    if (-not (Test-Path -LiteralPath $frontendEntry -PathType Leaf) -or
+        -not (Test-Path -LiteralPath $FrontendBuildStampPath -PathType Leaf)) {
+        return $false
+    }
+
+    try {
+        $stamp = Get-Content -LiteralPath $FrontendBuildStampPath -Raw | ConvertFrom-Json
+        return (
+            $stamp.sourceFingerprint -eq (Get-FrontendSourceFingerprint) -and
+            $stamp.nodeVersion -eq (& $NodeExe --version).Trim()
+        )
+    }
+    catch {
+        return $false
+    }
 }
 
 function Stop-PortListeners([int]$Port) {
@@ -640,7 +691,7 @@ function Launch-Application {
         Sync-Dependencies -BuildFrontend -InstallationType 'Standard'
     }
     elseif (-not (Test-FrontendBuildReady)) {
-        Write-Step 'Angular production output is missing; building the frontend.'
+        Write-Step 'Angular production output is missing or stale; building the frontend.'
         Sync-Frontend -BuildFrontend -UseCachedFrontendDependencies
     }
     else {

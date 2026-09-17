@@ -1,5 +1,5 @@
 # Release Procedure
-Last updated: 2026-09-14
+Last updated: 2026-09-17
 
 ## Release model
 
@@ -32,10 +32,10 @@ The current release delta is based on verified repository changes after
   paths in favor of the canonical implementations;
 - keep custom tokenizer identity and its canonical `tokenizer.json` artifact
   together across service recreation and persistence;
-- make the Windows launcher build missing Angular production output before
-  preview, verify the required `index.html`, and fail when an existing port
-  listener cannot be stopped; redirected launches now capture backend logs for
-  actionable health-check failures.
+- make the Windows launcher build missing or source-stale Angular production
+  output before preview, verify the required `index.html` and build stamp, and
+  fail when an existing port listener cannot be stopped; redirected launches
+  now capture backend logs for actionable health-check failures.
 
 API version `1.2.0`, benchmark schema version `3`, report version `5`, and
 Alembic revision `0003_canonical_state_cleanup` remain unchanged. Validation

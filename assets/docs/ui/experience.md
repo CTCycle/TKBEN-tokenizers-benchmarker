@@ -1,5 +1,5 @@
 # Experience
-Last updated: 2026-08-19
+Last updated: 2026-09-17
 
 ## Page Structure
 - `DatasetPage`
@@ -9,7 +9,7 @@ Last updated: 2026-08-19
 - `CrossBenchmarkPage`
   - Run and open benchmark reports and compare tokenizer metrics.
 - `AppShell`
-  - Branded header with logo, integrated primary tabs, and Hugging Face key manager access.
+  - Branded header with logo, integrated primary tabs, and a stroked Settings gear. Provider credentials are reached through Settings → Keys.
 
 Navigation hierarchy:
 - Root redirects to `/dataset`.
@@ -28,6 +28,10 @@ Catalog interactions:
 - Keep interaction language consistent with existing labels and panel semantics.
 - Use dismissible errors for recoverable issues.
 - Preserve dashboard-first workflows by loading persisted reports before deep visual analysis.
+- Settings uses a full-width two-column layout: visible left-side navigation for
+  Data, Tokenizers, Runtime, and Keys; the content column expands to the
+  available viewport and falls back to a horizontally scrollable tab row on
+  narrow screens. Keyboard tab navigation remains available.
 - Benchmark report diagnostics must explicitly surface:
   - tokenizer failure rows with `status/error_type/error_message`
   - metric availability state

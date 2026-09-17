@@ -1,5 +1,5 @@
 # System Overview
-Last updated: 2026-09-16
+Last updated: 2026-09-17
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
@@ -68,7 +68,7 @@ Source-level structure, with generated and environment-specific folders omitted:
 - Frontend routing root:
   - `app/client/angular/app/app.routes.ts`
 - Frontend shell:
-  - `app/client/angular/app/components/app-shell.component.ts` provides the branded header, primary route tabs, and Hugging Face key manager control.
+  - `app/client/angular/app/components/app-shell.component.ts` provides the branded header, primary route tabs, and Settings route action. Hugging Face key management is owned by the canonical Settings → Keys section and reuses the existing `/api/keys` service.
 - Frontend data and interaction helpers:
   - Signal stores under `app/client/angular/app/core/state/` own catalog loading,
     report state, polling, and in-memory UI state; only `BenchmarkStore` owns
@@ -130,6 +130,7 @@ flowchart LR
   - Browser -> Angular preview (`UI_HOST:UI_PORT`) -> proxied `/api` -> FastAPI (`FASTAPI_HOST:FASTAPI_PORT`)
 - The launcher uses the canonical backend environment at `app/server/.venv`,
   installs the locked frontend tree with `npm ci`, builds the frontend when
-  dependencies or `dist/tkben-angular/browser/index.html` are missing, starts
-  both services on the configured defaults (`5000` and `8000`), verifies the
-  configured ports, and opens the configured UI URL.
+  dependencies or `dist/tkben-angular/browser/index.html` are missing or the
+  source-fingerprint stamp is stale, starts both services on the configured
+  defaults (`5000` and `8000`), verifies the configured ports, and opens the
+  configured UI URL.
