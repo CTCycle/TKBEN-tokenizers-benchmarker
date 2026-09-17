@@ -1,5 +1,5 @@
 # Experience
-Last updated: 2026-08-19
+Last updated: 2026-09-17
 
 ## Page Structure
 - `DatasetPage`
@@ -8,6 +8,9 @@ Last updated: 2026-08-19
   - Tokenizer selection and reporting plus vocabulary panel.
 - `CrossBenchmarkPage`
   - Run and open benchmark reports and compare tokenizer metrics.
+- `SettingsPage`
+  - Configure supported runtime defaults through a left-side section
+    navigation and background-level form sections.
 - `AppShell`
   - Branded header with logo, integrated primary tabs, and Hugging Face key manager access.
 

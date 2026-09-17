@@ -92,6 +92,9 @@ class TokenizerSettings(_FrozenSettingsModel):
 
 ###############################################################################
 class BenchmarkSettings(_FrozenSettingsModel):
+    default_max_documents: int = Field(default=1000, ge=1, le=100_000)
+    default_batch_size: int = Field(default=16, ge=1, le=4096)
+    default_parallelism: int = Field(default=1, ge=1, le=128)
     streaming_batch_size: int = Field(default=1000, ge=100)
     log_interval: int = Field(default=10_000, ge=100)
 

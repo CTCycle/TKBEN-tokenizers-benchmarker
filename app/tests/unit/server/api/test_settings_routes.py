@@ -46,7 +46,12 @@ def test_get_settings_returns_only_typed_runtime_fields(
         "download_retry_attempts",
         "download_retry_backoff_seconds",
     }
-    assert set(payload["settings"]["benchmarks"]) == {"streaming_batch_size"}
+    assert set(payload["settings"]["benchmarks"]) == {
+        "default_max_documents",
+        "default_batch_size",
+        "default_parallelism",
+        "streaming_batch_size",
+    }
     assert set(payload["settings"]["jobs"]) == {"polling_interval"}
     assert payload["overridden_keys"] == []
     assert payload["warning"] is None
@@ -64,6 +69,7 @@ def test_patch_updates_multiple_fields_and_keeps_partial_overrides(
         json={
             "expected_revision": 0,
             "datasets": {"histogram_bins": 30},
+            "benchmarks": {"default_max_documents": 2500},
             "jobs": {"polling_interval": 2.0},
         },
     )
@@ -73,9 +79,11 @@ def test_patch_updates_multiple_fields_and_keeps_partial_overrides(
     assert payload["revision"] == 1
     assert payload["settings"]["datasets"]["histogram_bins"] == 30
     assert payload["settings"]["datasets"]["streaming_batch_size"] == 10_000
+    assert payload["settings"]["benchmarks"]["default_max_documents"] == 2500
     assert payload["settings"]["jobs"]["polling_interval"] == 2.0
     assert payload["overridden_keys"] == [
         "datasets.histogram_bins",
+        "benchmarks.default_max_documents",
         "jobs.polling_interval",
     ]
 
@@ -89,6 +97,7 @@ def test_patch_updates_multiple_fields_and_keeps_partial_overrides(
     assert follow_up.status_code == 200
     assert follow_up.json()["settings"]["datasets"]["histogram_bins"] == 30
     assert follow_up.json()["settings"]["datasets"]["download_retry_attempts"] == 5
+    assert follow_up.json()["settings"]["benchmarks"]["default_max_documents"] == 2500
 
 
 ###############################################################################
@@ -126,6 +135,9 @@ def test_reset_one_and_reset_all_return_defaults(
         {"expected_revision": 0, "unknown": {"histogram_bins": 30}},
         {"expected_revision": 0, "network": {"fastapi_port": 9000}},
         {"expected_revision": 0, "tokenizers": {"max_discovery_limit": 10}},
+        {"expected_revision": 0, "benchmarks": {"default_max_documents": 0}},
+        {"expected_revision": 0, "benchmarks": {"default_batch_size": 4097}},
+        {"expected_revision": 0, "benchmarks": {"default_parallelism": 129}},
         {"expected_revision": 0, "datasets": None},
     ],
 )

@@ -4900,12 +4900,37 @@ select:focus-visible {
 }
 
 .settings-page {
-  width: min(100%, 980px);
+  width: min(100%, 1120px);
   margin: 0 auto;
 }
 
-.settings-panel {
-  padding: clamp(18px, 3vw, 30px);
+.settings-layout {
+  display: grid;
+  grid-template-columns: minmax(160px, 200px) minmax(0, 1fr);
+  gap: clamp(28px, 5vw, 64px);
+  align-items: start;
+}
+
+.settings-sidebar {
+  position: sticky;
+  top: 24px;
+  min-width: 0;
+  padding: 4px 12px 0 0;
+  border-inline-end: 1px solid var(--border-subtle);
+}
+
+.settings-sidebar-label {
+  margin: 0 0 12px;
+  padding-inline: 12px;
+  color: var(--color-accent);
+  font-size: var(--font-size-caption);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.settings-content {
+  min-width: 0;
 }
 
 .settings-page-header {
@@ -4913,7 +4938,8 @@ select:focus-visible {
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
-  padding-bottom: 20px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .settings-page-header h1 {
@@ -4932,32 +4958,37 @@ select:focus-visible {
 
 .settings-tabs {
   display: flex;
+  flex-direction: column;
   gap: 4px;
-  margin-bottom: 2px;
-  border-bottom: 1px solid var(--border-default);
+  margin: 0;
+  padding: 0;
 }
 
 .settings-tab {
-  min-height: 40px;
-  padding: 0 16px;
-  border: 0;
-  border-bottom: 2px solid transparent;
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-inline-start: 2px solid transparent;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   background: transparent;
   color: var(--color-muted);
   cursor: pointer;
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.06em;
+  text-align: left;
   text-transform: uppercase;
 }
 
 .settings-tab:hover,
 .settings-tab[aria-selected="true"] {
+  background: var(--color-surface-subtle);
   color: var(--color-text);
 }
 
 .settings-tab[aria-selected="true"] {
-  border-bottom-color: var(--color-accent);
+  border-inline-start-color: var(--color-accent);
 }
 
 .settings-tab:focus-visible {
@@ -5091,6 +5122,43 @@ select:focus-visible {
     gap: 4px;
   }
 
+  .settings-layout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .settings-sidebar {
+    position: static;
+    padding: 0 0 8px;
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .settings-sidebar-label {
+    margin-bottom: 8px;
+    padding-inline: 0;
+  }
+
+  .settings-tabs {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .settings-tab {
+    width: auto;
+    flex: 1 0 auto;
+    min-height: 40px;
+    padding-inline: 12px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    text-align: center;
+  }
+
+  .settings-tab[aria-selected="true"] {
+    border-bottom-color: var(--color-accent);
+  }
+
   .settings-page-header {
     gap: 12px;
   }
@@ -5107,15 +5175,6 @@ select:focus-visible {
   .settings-control .text-input {
     max-width: none;
     text-align: left;
-  }
-
-  .settings-tabs {
-    overflow-x: auto;
-  }
-
-  .settings-tab {
-    flex: 1 0 auto;
-    padding-inline: 12px;
   }
 
   .settings-footer {
