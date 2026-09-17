@@ -63,6 +63,9 @@ def _runtime_values(settings: ServerSettings) -> RuntimeSettingsValues:
             download_retry_backoff_seconds=settings.datasets.download_retry_backoff_seconds,
         ),
         benchmarks=RuntimeBenchmarkSettingsResponse(
+            default_max_documents=settings.benchmarks.default_max_documents,
+            default_batch_size=settings.benchmarks.default_batch_size,
+            default_parallelism=settings.benchmarks.default_parallelism,
             streaming_batch_size=settings.benchmarks.streaming_batch_size,
         ),
         jobs=RuntimeJobSettingsResponse(

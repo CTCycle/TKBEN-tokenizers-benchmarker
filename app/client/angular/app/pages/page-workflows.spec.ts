@@ -297,7 +297,7 @@ describe('TokenizersPageComponent workflow', () => {
 });
 
 describe('CrossBenchmarkPageComponent workflow', () => {
-  it('builds a trimmed benchmark request and applies widget visibility', () => {
+  it('builds a trimmed benchmark request, applies settings defaults, and updates widget visibility', () => {
     const store = {
       report: signal({
         dashboard: {
@@ -319,19 +319,36 @@ describe('CrossBenchmarkPageComponent workflow', () => {
       resetLayout: vi.fn(),
       cancel: vi.fn(),
     };
+    const settingsStore = {
+      settings: signal({
+        benchmarks: {
+          default_max_documents: 2500,
+          default_batch_size: 32,
+          default_parallelism: 4,
+        },
+      }),
+    };
     TestBed.configureTestingModule({ providers: [
       { provide: BenchmarkStore, useValue: store },
+      { provide: SettingsStore, useValue: settingsStore },
       { provide: ExportApiService, useValue: {} },
     ] });
     const page = TestBed.runInInjectionContext(() => new CrossBenchmarkPageComponent()) as unknown as {
       runForm: FormGroup;
       runSelectedTokenizers: { set: (value: readonly string[]) => void };
       runSelectedMetricKeys: { set: (value: readonly string[]) => void };
+      openRun: () => void;
       runBenchmark: () => void;
       customizeDraft: { set: (value: readonly string[]) => void };
       applyCustomize: () => void;
     };
 
+    page.openRun();
+    expect(page.runForm.getRawValue()).toMatchObject({
+      maxDocuments: 2500,
+      batchSize: 32,
+      parallelism: 4,
+    });
     page.runForm.patchValue({ dataset: '  custom/default  ', runName: '  quick run  ' });
     page.runSelectedTokenizers.set(['alpha', 'beta']);
     page.runSelectedMetricKeys.set(['eff.speed']);
@@ -342,6 +359,11 @@ describe('CrossBenchmarkPageComponent workflow', () => {
       dataset_name: 'custom/default',
       run_name: 'quick run',
       selected_metric_keys: ['eff.speed'],
+      config: expect.objectContaining({
+        max_documents: 2500,
+        batch_size: 32,
+        parallelism: 4,
+      }),
     }));
 
     page.customizeDraft.set(['visible']);

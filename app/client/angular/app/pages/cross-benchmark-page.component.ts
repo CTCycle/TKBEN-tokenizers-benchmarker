@@ -4,6 +4,7 @@ import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { BenchmarkStore } from '../core/state/benchmark.store';
+import { SettingsStore } from '../core/state/settings.store';
 import { BenchmarkMetricChartComponent } from '../components/benchmark-metric-chart.component';
 import { ExportApiService } from '../core/api/export-api.service';
 import type {
@@ -24,6 +25,7 @@ import { ModalA11yDirective } from '../core/ui/modal-a11y.directive';
 })
 export class CrossBenchmarkPageComponent {
   protected readonly store = inject(BenchmarkStore);
+  private readonly settingsStore = inject(SettingsStore);
   private readonly exportApi = inject(ExportApiService);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly runOpen = signal(false);
@@ -113,7 +115,15 @@ export class CrossBenchmarkPageComponent {
   protected openRun(): void {
     const dataset = this.store.report()?.dataset_name ?? this.store.availableDatasets()[0] ?? '';
     const tokenizers = this.store.report()?.tokenizers_processed ?? [];
-    this.runForm.patchValue({ dataset, tokenizers: tokenizers.join(','), runName: '', maxDocuments: this.store.report()?.config.max_documents ?? 1000 });
+    const benchmarkDefaults = this.settingsStore.settings()?.benchmarks;
+    this.runForm.patchValue({
+      dataset,
+      tokenizers: tokenizers.join(','),
+      runName: '',
+      maxDocuments: benchmarkDefaults?.default_max_documents ?? 1000,
+      batchSize: benchmarkDefaults?.default_batch_size ?? 16,
+      parallelism: benchmarkDefaults?.default_parallelism ?? 1,
+    });
     this.runSelectedMetricKeys.set(this.store.metricCategories().flatMap((category) => category.metrics.map((metric) => metric.key)));
     // The dataset may be preselected, but tokenizers are intentionally left
     // empty so the user explicitly chooses the benchmark inputs.

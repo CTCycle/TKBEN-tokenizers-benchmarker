@@ -1,5 +1,5 @@
 # Configuration
-Last updated: 2026-09-16
+Last updated: 2026-09-17
 
 ## Environment File
 Primary launcher runtime env file:
@@ -45,13 +45,22 @@ ignored by Git, and is independent of whether TKBEN uses SQLite or PostgreSQL.
 The file contains a schema version, revision, and nested overrides; defaults
 are never duplicated in it.
 
-The Settings page and `/api/settings` endpoints expose exactly these 13 fields:
+The Settings page and `/api/settings` endpoints expose exactly these 16 fields,
+grouped in the UI by workflow:
 
+- Data: histogram bins, dataset upload limit, download timeout, retry attempts,
+  and retry backoff.
 - Tokenizers: default discovery limit, maximum discovery limit, discovery
   candidate cap, metadata candidate multiplier, and tokenizer upload limit.
-- Data: histogram bins, dataset streaming batch size, dataset upload limit,
-  download timeout, retry attempts, and retry backoff.
-- Runtime: benchmark streaming batch size and new-job polling interval.
+- Benchmarks: default document cap, default tokenizer batch size, default
+  parallelism, and benchmark streaming batch size.
+- Runtime: dataset streaming batch size and new-job polling interval.
+
+The three benchmark defaults prefill newly opened benchmark-run forms and can
+still be changed for an individual run. They do not alter persisted reports or
+already-open operations. Benchmark methodology choices such as warmup trials,
+timed trials, seed, tokenization flags, and per-document statistics remain
+explicit per-run controls rather than global application settings.
 
 `datasets.log_interval`, `benchmarks.log_interval`, and
 `jobs.terminal_retention_seconds` remain backend-only operational settings.

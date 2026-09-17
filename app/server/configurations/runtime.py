@@ -106,6 +106,9 @@ class _DatasetOverrides(_StrictOverrideModel):
 
 ###############################################################################
 class _BenchmarkOverrides(_StrictOverrideModel):
+    default_max_documents: StrictInt | None = Field(default=None, ge=1, le=100_000)
+    default_batch_size: StrictInt | None = Field(default=None, ge=1, le=4096)
+    default_parallelism: StrictInt | None = Field(default=None, ge=1, le=128)
     streaming_batch_size: StrictInt | None = Field(default=None, ge=100)
 
 
@@ -161,6 +164,9 @@ class RuntimeSettingsStore:
         "datasets.download_timeout_seconds",
         "datasets.download_retry_attempts",
         "datasets.download_retry_backoff_seconds",
+        "benchmarks.default_max_documents",
+        "benchmarks.default_batch_size",
+        "benchmarks.default_parallelism",
         "benchmarks.streaming_batch_size",
         "jobs.polling_interval",
     )
