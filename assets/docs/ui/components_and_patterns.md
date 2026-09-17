@@ -1,5 +1,5 @@
 # Components and Patterns
-Last updated: 2026-09-16
+Last updated: 2026-09-17
 
 ## Navigation
 - Top tab navigation for:
@@ -8,9 +8,10 @@ Last updated: 2026-09-16
   - `/cross-benchmark`
 - Active state must be visually explicit with `app-tab--active` and `aria-current="page"`.
 - The route tabs are integrated into the branded header beside the
-  `tkben-logo.png` mark; the header also exposes the Hugging Face key manager
-  and a Settings gear as icon actions. Settings is an application-level route,
-  not a primary workflow tab.
+  `tkben-logo.png` mark; the header exposes a stroked Settings gear as the
+  only application-level icon action. Settings is an application-level route,
+  not a primary workflow tab, and owns provider credentials under its Keys
+  section.
 
 ## Buttons
 - Primary action:
@@ -27,11 +28,14 @@ Last updated: 2026-09-16
   - bordered fields
   - strong visible focus border and shadow
 - File upload controls are icon-triggered with a hidden native input where required.
-- The Settings page uses three focused tabs—Data, Tokenizers, and Runtime—with
+- The Settings page uses a restrained responsive two-column layout with
+  left-side section navigation for Data, Tokenizers, Runtime, and Keys. Its
   typed reactive-form controls, inline descriptions, explicit Save/Reset All
-  actions, and per-field reset affordances for overridden values. It reuses the
+  actions, conflict reload flow, and per-field reset affordances reuse the
   shared field labels, inputs, buttons, banners, spacing, and focus-visible
-  treatment rather than introducing a new settings component system.
+  treatment rather than introducing a new settings component system. Keys
+  embeds the existing `HfAccessKeyManagerComponent`; it is the canonical
+  `/api/keys` UI and replaces the former header key button/modal path.
 
 ## Overlays
 - Modal and popover patterns:

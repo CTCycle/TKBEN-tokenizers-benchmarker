@@ -1,5 +1,5 @@
 # Testing and Quality
-Last updated: 2026-09-13
+Last updated: 2026-09-17
 
 ## Tooling and Tests
 - Lint and format with Ruff, or the project-standard equivalent if it changes in the future.
@@ -30,7 +30,10 @@ status or build alone is not release evidence.
 
 ## Development Cache and Artifact Locations
 - Pytest’s collection cache and temporary test directory are under
-  `app/tests/cache/pytest` and `app/tests/cache/pytest-basetemp`.
+  `app/tests/cache/pytest-state` and
+  `app/tests/cache/pytest-basetemp-current`. The pytest configuration excludes
+  the complete `cache` subtree from test discovery, so protected residue from
+  older runs cannot be collected as tests.
 - Ruff, mypy, Python bytecode, coverage, Playwright, and Angular persistent-build
   caches are under their respective `app/tests/cache` folders.
 - uv, pip, and npm caches are under their respective `runtimes/cache` folders.

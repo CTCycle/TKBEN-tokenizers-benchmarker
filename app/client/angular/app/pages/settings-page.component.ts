@@ -9,13 +9,16 @@ import {
   Validators,
 } from '@angular/forms';
 import { SettingsStore } from '../core/state/settings.store';
+import { HfAccessKeyManagerComponent } from '../components/hf-access-key-manager.component';
 import type {
   RuntimeSettingKey,
   RuntimeSettingsPatchRequest,
   RuntimeSettingsValues,
 } from '../core/api/api.models';
 
-type SettingsTab = 'data' | 'tokenizers' | 'runtime';
+type SettingsTab = 'data' | 'tokenizers' | 'runtime' | 'keys';
+
+const SETTINGS_TABS: readonly SettingsTab[] = ['data', 'tokenizers', 'runtime', 'keys'];
 
 const BYTES_PER_MIB = 1024 * 1024;
 
@@ -37,7 +40,7 @@ const tokenizerLimits: ValidatorFn = (control: AbstractControl): ValidationError
 
 @Component({
   selector: 'app-settings-page',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, HfAccessKeyManagerComponent],
   templateUrl: './settings-page.component.html',
 })
 export class SettingsPageComponent {
@@ -107,16 +110,15 @@ export class SettingsPageComponent {
   }
 
   protected handleTabKeydown(event: KeyboardEvent, tab: SettingsTab): void {
-    const tabs: readonly SettingsTab[] = ['data', 'tokenizers', 'runtime'];
-    const index = tabs.indexOf(tab);
+    const index = SETTINGS_TABS.indexOf(tab);
     let nextIndex: number | null = null;
-    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (index + 1) % tabs.length;
-    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (index - 1 + tabs.length) % tabs.length;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (index + 1) % SETTINGS_TABS.length;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (index - 1 + SETTINGS_TABS.length) % SETTINGS_TABS.length;
     if (event.key === 'Home') nextIndex = 0;
-    if (event.key === 'End') nextIndex = tabs.length - 1;
+    if (event.key === 'End') nextIndex = SETTINGS_TABS.length - 1;
     if (nextIndex === null) return;
     event.preventDefault();
-    const nextTab = tabs[nextIndex];
+    const nextTab = SETTINGS_TABS[nextIndex];
     this.activeTab.set(nextTab);
     document.getElementById(`settings-tab-${nextTab}`)?.focus();
   }

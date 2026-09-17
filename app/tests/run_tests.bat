@@ -99,7 +99,7 @@ set "CACHE_DIR=%TESTS_DIR%\cache"
 if not exist "%RUNTIME_CACHE_DIR%" mkdir "%RUNTIME_CACHE_DIR%" >nul 2>&1
 for %%D in (uv pip npm) do if not exist "%RUNTIME_CACHE_DIR%\%%D" mkdir "%RUNTIME_CACHE_DIR%\%%D" >nul 2>&1
 if not exist "%CACHE_DIR%" mkdir "%CACHE_DIR%" >nul 2>&1
-for %%D in (ruff mypy pycache coverage playwright pytest pytest-basetemp angular) do if not exist "%CACHE_DIR%\%%D" mkdir "%CACHE_DIR%\%%D" >nul 2>&1
+for %%D in (ruff mypy pycache coverage playwright pytest-state pytest-basetemp-current angular) do if not exist "%CACHE_DIR%\%%D" mkdir "%CACHE_DIR%\%%D" >nul 2>&1
 set "UV_CACHE_DIR=%RUNTIME_CACHE_DIR%\uv"
 set "PIP_CACHE_DIR=%RUNTIME_CACHE_DIR%\pip"
 set "NPM_CONFIG_CACHE=%RUNTIME_CACHE_DIR%\npm"
@@ -196,7 +196,7 @@ if errorlevel 1 (
 )
 popd
 echo [STEP] Running Python tests...
-"%PYTHON_CMD%" -m pytest -c "%TESTS_DIR%\pytest.ini" "%PYTEST_TARGET%" -v --tb=short --basetemp "%CACHE_DIR%\pytest-basetemp" %*
+"%PYTHON_CMD%" -m pytest -c "%TESTS_DIR%\pytest.ini" "%PYTEST_TARGET%" -v --tb=short --basetemp "%CACHE_DIR%\pytest-basetemp-current" %*
 set "PYTEST_RC=%ERRORLEVEL%"
 if "%PYTEST_RC%"=="0" (
   set "PYTEST_PHASE=PASS"

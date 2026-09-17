@@ -324,42 +324,18 @@ app-root {
   fill: currentColor;
   stroke: currentColor;
 }
-.key-manager-backdrop {
-  position: fixed;
-  inset: 0;
-  border: 0;
-  margin: 0;
-  padding: 0;
-  background: rgba(8, 11, 16, 0.62);
-  backdrop-filter: blur(2px);
-  z-index: 1190;
-}
-
-.key-manager-popover {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: min(504px, calc(100vw - 48px));
-  max-height: min(672px, calc(100vh - 48px));
-  background: var(--color-panel);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  z-index: 1200;
-  box-shadow: var(--shadow-modal);
-  overflow: hidden;
-  isolation: isolate;
-}
-
 .key-manager-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.key-manager-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 0 8px;
 }
 
 .key-manager-header .panel-label {
@@ -4900,12 +4876,36 @@ select:focus-visible {
 }
 
 .settings-page {
-  width: min(100%, 980px);
-  margin: 0 auto;
+  width: 100%;
+  margin: 0;
 }
 
-.settings-panel {
-  padding: clamp(18px, 3vw, 30px);
+.settings-layout {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+  gap: clamp(28px, 4vw, 56px);
+  align-items: start;
+}
+
+.settings-sidebar {
+  position: sticky;
+  top: calc(var(--app-chrome-height) + 16px);
+  min-width: 0;
+  padding: 4px 16px 12px 0;
+  border-inline-end: 1px solid var(--border-default);
+}
+
+.settings-sidebar-label {
+  margin: 0 0 12px;
+  color: var(--color-accent);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.settings-content {
+  min-width: 0;
 }
 
 .settings-page-header {
@@ -4932,32 +4932,34 @@ select:focus-visible {
 
 .settings-tabs {
   display: flex;
-  gap: 4px;
-  margin-bottom: 2px;
-  border-bottom: 1px solid var(--border-default);
+  flex-direction: column;
+  gap: 3px;
 }
 
 .settings-tab {
-  min-height: 40px;
-  padding: 0 16px;
+  min-height: 38px;
+  padding: 0 12px;
   border: 0;
-  border-bottom: 2px solid transparent;
+  border-inline-start: 2px solid transparent;
+  border-radius: 0 6px 6px 0;
   background: transparent;
   color: var(--color-muted);
   cursor: pointer;
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.06em;
+  text-align: left;
   text-transform: uppercase;
 }
 
 .settings-tab:hover,
 .settings-tab[aria-selected="true"] {
+  background: var(--color-surface-subtle);
   color: var(--color-text);
 }
 
 .settings-tab[aria-selected="true"] {
-  border-bottom-color: var(--color-accent);
+  border-inline-start-color: var(--color-accent);
 }
 
 .settings-tab:focus-visible {
@@ -4975,7 +4977,8 @@ select:focus-visible {
 }
 
 .settings-section-header {
-  padding: 22px 0 10px;
+  padding: 22px 0 12px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .settings-row {
@@ -5095,6 +5098,27 @@ select:focus-visible {
     gap: 12px;
   }
 
+  .settings-layout {
+    display: block;
+  }
+
+  .settings-sidebar {
+    position: static;
+    padding: 0 0 12px;
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--border-default);
+  }
+
+  .settings-sidebar-label {
+    margin-bottom: 8px;
+  }
+
+  .settings-tabs {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 1px;
+  }
+
   .settings-row {
     grid-template-columns: 1fr;
     gap: 12px;
@@ -5110,12 +5134,21 @@ select:focus-visible {
   }
 
   .settings-tabs {
-    overflow-x: auto;
+    scrollbar-width: thin;
   }
 
   .settings-tab {
-    flex: 1 0 auto;
+    flex: 0 0 auto;
+    border-inline-start: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 6px 6px 0 0;
     padding-inline: 12px;
+    text-align: center;
+  }
+
+  .settings-tab[aria-selected="true"] {
+    border-inline-start-color: transparent;
+    border-bottom-color: var(--color-accent);
   }
 
   .settings-footer {

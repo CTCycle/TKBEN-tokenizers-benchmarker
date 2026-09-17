@@ -1,5 +1,5 @@
 # Runtime Modes
-Last updated: 2026-09-13
+Last updated: 2026-09-17
 
 ## Supported Modes
 ### 1. Local webapp mode
@@ -7,8 +7,9 @@ Last updated: 2026-09-13
 - Frontend: Angular production preview build (`app/client/dist/tkben-angular/browser`)
 - Canonical and sole root launcher: `start_on_windows.ps1`.
 - Uses an Angular production preview build and FastAPI with portable Windows runtimes.
-- Launch checks `app/client/dist/tkben-angular/browser/index.html`; a missing
-  production entry triggers a frontend build before preview starts.
+- Launch checks `app/client/dist/tkben-angular/browser/index.html` and
+  `.tkben-build.json`; a missing or source-stale production build triggers a
+  frontend build before preview starts.
 - Launch stops configured-port listeners first and fails if a listener cannot be
   stopped, so an old process cannot satisfy a new process's readiness check.
 
