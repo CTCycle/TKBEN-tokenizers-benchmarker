@@ -1,39 +1,43 @@
-<main class="page-scroll settings-page">
-  <section class="panel settings-panel" aria-labelledby="settings-title">
-    <header class="settings-page-header">
-      <div>
-        <p class="panel-label">Application Settings</p>
-        <h1 id="settings-title">Settings</h1>
-        <p class="panel-description">Tune supported runtime behavior for new operations. Startup, database, network, paths, and secrets remain deployment configuration.</p>
-      </div>
-      @if (store.settings()) {
-        <span class="settings-revision">Revision {{ store.revision() }}</span>
-      }
-    </header>
+<main class="page-scroll settings-page" aria-labelledby="settings-title">
+  <div class="settings-layout">
+    <aside class="settings-sidebar" aria-label="Settings navigation">
+      <p class="settings-sidebar-label">Settings</p>
+      <nav class="settings-tabs" role="tablist" aria-orientation="vertical" aria-label="Settings sections">
+        <button id="settings-tab-data" class="settings-tab" type="button" role="tab" aria-controls="settings-panel-data" [attr.aria-selected]="activeTab() === 'data'" [attr.tabindex]="activeTab() === 'data' ? 0 : -1" (click)="selectTab('data')" (keydown)="handleTabKeydown($event, 'data')">Data</button>
+        <button id="settings-tab-tokenizers" class="settings-tab" type="button" role="tab" aria-controls="settings-panel-tokenizers" [attr.aria-selected]="activeTab() === 'tokenizers'" [attr.tabindex]="activeTab() === 'tokenizers' ? 0 : -1" (click)="selectTab('tokenizers')" (keydown)="handleTabKeydown($event, 'tokenizers')">Tokenizers</button>
+        <button id="settings-tab-benchmarks" class="settings-tab" type="button" role="tab" aria-controls="settings-panel-benchmarks" [attr.aria-selected]="activeTab() === 'benchmarks'" [attr.tabindex]="activeTab() === 'benchmarks' ? 0 : -1" (click)="selectTab('benchmarks')" (keydown)="handleTabKeydown($event, 'benchmarks')">Benchmarks</button>
+        <button id="settings-tab-runtime" class="settings-tab" type="button" role="tab" aria-controls="settings-panel-runtime" [attr.aria-selected]="activeTab() === 'runtime'" [attr.tabindex]="activeTab() === 'runtime' ? 0 : -1" (click)="selectTab('runtime')" (keydown)="handleTabKeydown($event, 'runtime')">Runtime</button>
+      </nav>
+    </aside>
 
-    @if (store.warning(); as warning) {
-      <p class="settings-warning" role="status">{{ warning }}</p>
-    }
-    @if (store.error(); as error) {
-      <div class="error-banner" role="alert">
-        <span>{{ error }}</span>
-        @if (store.conflict()) {
-          <button class="secondary-button settings-reload-button" type="button" (click)="reloadAfterConflict()">Reload settings</button>
+    <div class="settings-content">
+      <header class="settings-page-header">
+        <div>
+          <p class="panel-label">Application Settings</p>
+          <h1 id="settings-title">Settings</h1>
+          <p class="panel-description">Tune supported runtime behavior for new operations. Startup, database, network, paths, and secrets remain deployment configuration.</p>
+        </div>
+        @if (store.settings()) {
+          <span class="settings-revision">Revision {{ store.revision() }}</span>
         }
-      </div>
-    }
+      </header>
 
-    <div class="settings-tabs" role="tablist" aria-label="Settings sections">
-      <button id="settings-tab-data" class="settings-tab" type="button" role="tab" aria-controls="settings-panel-data" [attr.aria-selected]="activeTab() === 'data'" [attr.tabindex]="activeTab() === 'data' ? 0 : -1" (click)="selectTab('data')" (keydown)="handleTabKeydown($event, 'data')">Data</button>
-      <button id="settings-tab-tokenizers" class="settings-tab" type="button" role="tab" aria-controls="settings-panel-tokenizers" [attr.aria-selected]="activeTab() === 'tokenizers'" [attr.tabindex]="activeTab() === 'tokenizers' ? 0 : -1" (click)="selectTab('tokenizers')" (keydown)="handleTabKeydown($event, 'tokenizers')">Tokenizers</button>
-      <button id="settings-tab-benchmarks" class="settings-tab" type="button" role="tab" aria-controls="settings-panel-benchmarks" [attr.aria-selected]="activeTab() === 'benchmarks'" [attr.tabindex]="activeTab() === 'benchmarks' ? 0 : -1" (click)="selectTab('benchmarks')" (keydown)="handleTabKeydown($event, 'benchmarks')">Benchmarks</button>
-      <button id="settings-tab-runtime" class="settings-tab" type="button" role="tab" aria-controls="settings-panel-runtime" [attr.aria-selected]="activeTab() === 'runtime'" [attr.tabindex]="activeTab() === 'runtime' ? 0 : -1" (click)="selectTab('runtime')" (keydown)="handleTabKeydown($event, 'runtime')">Runtime</button>
-    </div>
+      @if (store.warning(); as warning) {
+        <p class="settings-warning" role="status">{{ warning }}</p>
+      }
+      @if (store.error(); as error) {
+        <div class="error-banner" role="alert">
+          <span>{{ error }}</span>
+          @if (store.conflict()) {
+            <button class="secondary-button settings-reload-button" type="button" (click)="reloadAfterConflict()">Reload settings</button>
+          }
+        </div>
+      }
 
-    @if (store.loading() && !store.settings()) {
-      <div class="loading-container settings-loading" role="status"><span class="spinner" aria-hidden="true"></span><p>Loading settings…</p></div>
-    } @else if (store.settings()) {
-      <form class="settings-form" [formGroup]="form" (ngSubmit)="saveChanges()">
+      @if (store.loading() && !store.settings()) {
+        <div class="loading-container settings-loading" role="status"><span class="spinner" aria-hidden="true"></span><p>Loading settings…</p></div>
+      } @else if (store.settings()) {
+        <form class="settings-form" [formGroup]="form" (ngSubmit)="saveChanges()">
         <section id="settings-panel-data" class="settings-section" role="tabpanel" aria-labelledby="settings-tab-data" [hidden]="activeTab() !== 'data'">
           <header class="settings-section-header"><p class="panel-label">Data</p><p class="panel-description">Controls for dataset uploads, downloads, and newly generated analysis.</p></header>
 
@@ -138,7 +142,8 @@
           <button class="secondary-button" type="button" [disabled]="store.saving() || !store.overriddenKeys().length" (click)="resetAll()">Reset all</button>
           <button class="primary-button" type="submit" [disabled]="store.saving() || store.loading() || !form.dirty || form.invalid">{{ store.saving() ? 'Saving…' : 'Save changes' }}</button>
         </footer>
-      </form>
-    }
-  </section>
+        </form>
+      }
+    </div>
+  </div>
 </main>
