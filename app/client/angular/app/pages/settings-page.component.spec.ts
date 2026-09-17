@@ -22,13 +22,19 @@ const defaults: RuntimeSettingsValues = {
     download_retry_attempts: 3,
     download_retry_backoff_seconds: 2,
   },
-  benchmarks: { streaming_batch_size: 1000 },
+  benchmarks: {
+    default_max_documents: 1000,
+    default_batch_size: 16,
+    default_parallelism: 1,
+    streaming_batch_size: 1000,
+  },
   jobs: { polling_interval: 1 },
 };
 
 const current: RuntimeSettingsValues = {
   ...defaults,
   datasets: { ...defaults.datasets, histogram_bins: 30, max_upload_bytes: 32 * 1024 * 1024 },
+  benchmarks: { ...defaults.benchmarks, default_max_documents: 2500, default_batch_size: 32, default_parallelism: 2 },
   jobs: { polling_interval: 2 },
 };
 
@@ -76,6 +82,9 @@ describe('SettingsPageComponent', () => {
       histogramBins: 30,
       datasetMaxUploadMiB: 32,
       defaultDiscoveryLimit: 50,
+      benchmarkDefaultMaxDocuments: 2500,
+      benchmarkDefaultBatchSize: 32,
+      benchmarkDefaultParallelism: 2,
       jobPollingInterval: 2,
     });
     expect(page.form.pristine).toBe(true);
@@ -83,6 +92,8 @@ describe('SettingsPageComponent', () => {
     page.selectTab('tokenizers');
     expect(page.activeTab()).toBe('tokenizers');
     page.handleTabKeydown(new KeyboardEvent('keydown', { key: 'ArrowRight' }), 'tokenizers');
+    expect(page.activeTab()).toBe('benchmarks');
+    page.handleTabKeydown(new KeyboardEvent('keydown', { key: 'ArrowRight' }), 'benchmarks');
     expect(page.activeTab()).toBe('runtime');
 
     page.form.patchValue({ defaultDiscoveryLimit: 200, maxDiscoveryLimit: 100 });
@@ -96,6 +107,9 @@ describe('SettingsPageComponent', () => {
       datasetMaxUploadMiB: 40,
       tokenizerMaxUploadMiB: 12,
       histogramBins: 25,
+      benchmarkDefaultMaxDocuments: 5000,
+      benchmarkDefaultBatchSize: 64,
+      benchmarkDefaultParallelism: 4,
     });
     page.form.markAsDirty();
     page.saveChanges();
@@ -106,6 +120,11 @@ describe('SettingsPageComponent', () => {
         histogram_bins: 25,
       }),
       tokenizers: expect.objectContaining({ max_upload_bytes: 12 * 1024 * 1024 }),
+      benchmarks: expect.objectContaining({
+        default_max_documents: 5000,
+        default_batch_size: 64,
+        default_parallelism: 4,
+      }),
     }));
   });
 

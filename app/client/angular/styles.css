@@ -4913,7 +4913,8 @@ select:focus-visible {
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
-  padding-bottom: 20px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .settings-page-header h1 {
@@ -5094,6 +5095,43 @@ select:focus-visible {
     gap: 4px;
   }
 
+  .settings-layout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .settings-sidebar {
+    position: static;
+    padding: 0 0 8px;
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .settings-sidebar-label {
+    margin-bottom: 8px;
+    padding-inline: 0;
+  }
+
+  .settings-tabs {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .settings-tab {
+    width: auto;
+    flex: 1 0 auto;
+    min-height: 40px;
+    padding-inline: 12px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    text-align: center;
+  }
+
+  .settings-tab[aria-selected="true"] {
+    border-bottom-color: var(--color-accent);
+  }
+
   .settings-page-header {
     gap: 12px;
   }
@@ -5150,7 +5188,6 @@ select:focus-visible {
     border-inline-start-color: transparent;
     border-bottom-color: var(--color-accent);
   }
-
   .settings-footer {
     flex-direction: column-reverse;
   }

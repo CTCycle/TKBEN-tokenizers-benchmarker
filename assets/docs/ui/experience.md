@@ -8,6 +8,9 @@ Last updated: 2026-09-17
   - Tokenizer selection and reporting plus vocabulary panel.
 - `CrossBenchmarkPage`
   - Run and open benchmark reports and compare tokenizer metrics.
+- `SettingsPage`
+  - Configure supported runtime defaults through a left-side section
+    navigation and background-level form sections.
 - `AppShell`
   - Branded header with logo, integrated primary tabs, and a stroked Settings gear. Provider credentials are reached through Settings → Keys.
 

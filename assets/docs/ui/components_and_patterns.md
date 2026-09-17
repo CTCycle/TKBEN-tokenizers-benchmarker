@@ -29,12 +29,14 @@ Last updated: 2026-09-17
   - strong visible focus border and shadow
 - File upload controls are icon-triggered with a hidden native input where required.
 - The Settings page uses a restrained responsive two-column layout with
-  left-side section navigation for Data, Tokenizers, Runtime, and Keys. Its
-  typed reactive-form controls, inline descriptions, explicit Save/Reset All
+  left-side section navigation for Data, Tokenizers, Benchmarks, Runtime, and
+  Keys. Its typed reactive-form controls, inline descriptions, explicit Save/Reset All
   actions, conflict reload flow, and per-field reset affordances reuse the
   shared field labels, inputs, buttons, banners, spacing, and focus-visible
-  treatment rather than introducing a new settings component system. Keys
-  embeds the existing `HfAccessKeyManagerComponent`; it is the canonical
+  treatment rather than introducing a new settings component system. The
+  Benchmarks section owns recurring workload defaults and benchmark streaming
+  behavior, while run-specific methodology remains in the benchmark wizard.
+  Keys embeds the existing `HfAccessKeyManagerComponent`; it is the canonical
   `/api/keys` UI and replaces the former header key button/modal path.
 
 ## Overlays

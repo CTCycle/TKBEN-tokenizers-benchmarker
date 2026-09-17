@@ -40,7 +40,7 @@ def test_settings_page_round_trip_and_runtime_effect(
     base_url: str,
     api_context: APIRequestContext,
 ) -> None:
-    """Settings are typed, persistent, revisioned, and applied to discovery."""
+    """Settings are typed, persistent, revisioned, and applied to new workflows."""
     original_response = api_context.get("/api/settings")
     assert original_response.ok, original_response.text()
     original = original_response.json()
@@ -50,6 +50,8 @@ def test_settings_page_round_trip_and_runtime_effect(
     candidate_cap = original["settings"]["tokenizers"]["max_discovery_candidates"]
     target_max = min(candidate_cap, 9)
     target_default = min(target_max, 7)
+    benchmark_document_default = defaults["benchmarks"]["default_max_documents"]
+    target_benchmark_documents = 1234 if benchmark_document_default != 1234 else 1235
 
     try:
         page.goto(f"{base_url}/dataset")
@@ -57,8 +59,13 @@ def test_settings_page_round_trip_and_runtime_effect(
         expect(settings_link).to_be_visible()
         settings_link.click()
         expect(page).to_have_url(f"{base_url}/settings")
+        expect(page.locator(".settings-panel")).to_have_count(0)
+        expect(page.locator(".settings-sidebar")).to_be_visible()
+        expect(page.get_by_role("tablist", name="Settings sections")).to_have_attribute(
+            "aria-orientation", "vertical"
+        )
 
-        for tab in ("Data", "Tokenizers", "Runtime"):
+        for tab in ("Data", "Tokenizers", "Benchmarks", "Runtime"):
             expect(page.get_by_role("tab", name=tab)).to_be_visible()
 
         expected_labels_by_tab = {
@@ -76,9 +83,14 @@ def test_settings_page_round_trip_and_runtime_effect(
                 "Metadata candidate multiplier",
                 "Tokenizer upload limit (MiB)",
             ],
+            "Benchmarks": [
+                "Default document cap",
+                "Default tokenizer batch size",
+                "Default parallelism",
+                "Benchmark streaming batch size",
+            ],
             "Runtime": [
                 "Dataset streaming batch size",
-                "Benchmark streaming batch size",
                 "Job polling interval (seconds)",
             ],
         }
@@ -98,18 +110,33 @@ def test_settings_page_round_trip_and_runtime_effect(
         page.get_by_label("Default discovery limit").fill(str(target_default))
         page.get_by_label("Maximum discovery limit").fill(str(target_max))
 
+        page.get_by_role("tab", name="Benchmarks").click()
+        page.get_by_label("Default document cap").fill(str(target_benchmark_documents))
+
         with page.expect_response(
             lambda response: response.request.method == "PATCH"
             and response.url.endswith("/api/settings")
             and response.ok
         ) as save_response:
             save_button.click()
-        assert save_response.value.json()["settings"]["datasets"]["histogram_bins"] == histogram_value
+        saved_settings = save_response.value.json()["settings"]
+        assert saved_settings["datasets"]["histogram_bins"] == histogram_value
+        assert saved_settings["benchmarks"]["default_max_documents"] == target_benchmark_documents
 
         page.reload()
         expect(page.get_by_label("Histogram bins")).to_have_value(str(histogram_value))
         expect(page.get_by_label("Default discovery limit")).to_have_value(str(target_default))
         expect(page.get_by_label("Maximum discovery limit")).to_have_value(str(target_max))
+        expect(page.get_by_label("Default document cap")).to_have_value(str(target_benchmark_documents))
+
+        page.get_by_role("button", name="Cross Benchmark").click()
+        expect(page).to_have_url(f"{base_url}/cross-benchmark")
+        run_benchmark = page.get_by_role("button", name="Run benchmark")
+        expect(run_benchmark).to_be_enabled()
+        run_benchmark.click()
+        page.get_by_role("button", name="Next").click()
+        expect(page.locator("#benchmark-documents")).to_have_value(str(target_benchmark_documents))
+        page.get_by_role("button", name="Close benchmark wizard").click()
 
         over_limit = api_context.get(
             f"/api/tokenizers/discover?limit={target_max + 1}"

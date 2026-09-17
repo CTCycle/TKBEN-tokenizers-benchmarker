@@ -58,6 +58,9 @@ export type RuntimeSettingKey =
     | 'datasets.download_timeout_seconds'
     | 'datasets.download_retry_attempts'
     | 'datasets.download_retry_backoff_seconds'
+    | 'benchmarks.default_max_documents'
+    | 'benchmarks.default_batch_size'
+    | 'benchmarks.default_parallelism'
     | 'benchmarks.streaming_batch_size'
     | 'jobs.polling_interval';
 
@@ -79,6 +82,9 @@ export interface RuntimeDatasetSettings {
 }
 
 export interface RuntimeBenchmarkSettings {
+    default_max_documents: number;
+    default_batch_size: number;
+    default_parallelism: number;
     streaming_batch_size: number;
 }
 
@@ -119,6 +125,9 @@ export interface RuntimeDatasetSettingsPatch {
 }
 
 export interface RuntimeBenchmarkSettingsPatch {
+    default_max_documents?: number;
+    default_batch_size?: number;
+    default_parallelism?: number;
     streaming_batch_size?: number;
 }
 
