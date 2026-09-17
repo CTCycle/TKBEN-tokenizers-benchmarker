@@ -73,6 +73,41 @@ describe('DatasetPageComponent workflow', () => {
     });
   });
 
+  it('blocks inverted document length filters before submission', () => {
+    const store = {
+      report: signal(null),
+      metricCategories: signal(metricCategories),
+      analyze: vi.fn(),
+      refresh: vi.fn(),
+      select: vi.fn(),
+      loadLatest: vi.fn(),
+      download: vi.fn(),
+      upload: vi.fn(),
+      remove: vi.fn(),
+    };
+    TestBed.configureTestingModule({ providers: [
+      { provide: DatasetStore, useValue: store },
+      { provide: ExportApiService, useValue: {} },
+    ] });
+    const page = TestBed.runInInjectionContext(() => new DatasetPageComponent()) as unknown as {
+      openValidation: (datasetName: string) => void;
+      validationForm: FormGroup;
+      validationStep: { set: (value: 0 | 1 | 2) => void; (): number };
+      nextValidationStep: () => void;
+      runValidation: () => void;
+    };
+
+    page.openValidation('custom/demo');
+    page.validationForm.patchValue({ minLength: 100, maxLength: 1 });
+    page.validationStep.set(1);
+    page.nextValidationStep();
+    page.runValidation();
+
+    expect(page.validationForm.hasError('minLengthExceedsMaxLength')).toBe(true);
+    expect(page.validationStep()).toBe(1);
+    expect(store.analyze).not.toHaveBeenCalled();
+  });
+
   it('restores the grouped preset catalogue and keeps manual/upload actions available', () => {
     const store = {
       report: signal(null),

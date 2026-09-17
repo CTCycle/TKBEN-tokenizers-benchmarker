@@ -718,6 +718,7 @@ class DatasetRepository:
             .join(Dataset, Dataset.id == AnalysisSession.dataset_id)
             .where(
                 AnalysisSession.id == int(session_id),
+                AnalysisSession.status == "completed",
             )
             .limit(1)
         )

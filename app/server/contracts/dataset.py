@@ -125,6 +125,24 @@ class DatasetAnalysisRequest(BaseModel):
             raise ValueError("Too many metric keys requested (max 256).")
         return normalized
 
+    # -------------------------------------------------------------------------
+    @field_validator("filters")
+    @classmethod
+    def validate_filter_range(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
+        if value is None:
+            return None
+        min_length = value.get("min_length")
+        max_length = value.get("max_length")
+        if (
+            isinstance(min_length, int)
+            and not isinstance(min_length, bool)
+            and isinstance(max_length, int)
+            and not isinstance(max_length, bool)
+            and min_length > max_length
+        ):
+            raise ValueError("Minimum document length must not exceed maximum document length.")
+        return value
+
 ###############################################################################
 class WordFrequency(BaseModel):
     word: str = Field(..., description=WORD_TOKEN_DESCRIPTION)
