@@ -23,7 +23,12 @@ const response: RuntimeSettingsResponse = {
       download_retry_attempts: 3,
       download_retry_backoff_seconds: 2,
     },
-    benchmarks: { streaming_batch_size: 1000 },
+    benchmarks: {
+      default_max_documents: 2500,
+      default_batch_size: 32,
+      default_parallelism: 2,
+      streaming_batch_size: 1000,
+    },
     jobs: { polling_interval: 2 },
   },
   defaults: {
@@ -42,12 +47,20 @@ const response: RuntimeSettingsResponse = {
       download_retry_attempts: 3,
       download_retry_backoff_seconds: 2,
     },
-    benchmarks: { streaming_batch_size: 1000 },
+    benchmarks: {
+      default_max_documents: 1000,
+      default_batch_size: 16,
+      default_parallelism: 1,
+      streaming_batch_size: 1000,
+    },
     jobs: { polling_interval: 1 },
   },
   overridden_keys: [
     'datasets.histogram_bins',
     'datasets.streaming_batch_size',
+    'benchmarks.default_max_documents',
+    'benchmarks.default_batch_size',
+    'benchmarks.default_parallelism',
     'jobs.polling_interval',
   ],
   warning: null,
@@ -79,8 +92,10 @@ describe('SettingsStore', () => {
     expect(api.get).toHaveBeenCalledTimes(1);
     expect(store.settings()?.datasets.histogram_bins).toBe(30);
     expect(store.defaults()?.datasets.histogram_bins).toBe(20);
+    expect(store.settings()?.benchmarks.default_max_documents).toBe(2500);
     expect(store.revision()).toBe(2);
     expect(store.isOverridden('datasets.histogram_bins')).toBe(true);
+    expect(store.isOverridden('benchmarks.default_batch_size')).toBe(true);
     expect(store.isOverridden('benchmarks.streaming_batch_size')).toBe(false);
     expect(store.loading()).toBe(false);
   });
