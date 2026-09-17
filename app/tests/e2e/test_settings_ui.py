@@ -58,7 +58,7 @@ def test_settings_page_round_trip_and_runtime_effect(
         settings_link.click()
         expect(page).to_have_url(f"{base_url}/settings")
 
-        for tab in ("Data", "Tokenizers", "Runtime"):
+        for tab in ("Data", "Tokenizers", "Benchmarks", "Runtime"):
             expect(page.get_by_role("tab", name=tab)).to_be_visible()
 
         expected_labels_by_tab = {
@@ -76,9 +76,14 @@ def test_settings_page_round_trip_and_runtime_effect(
                 "Metadata candidate multiplier",
                 "Tokenizer upload limit (MiB)",
             ],
+            "Benchmarks": [
+                "Default document cap",
+                "Default tokenizer batch size",
+                "Default parallelism",
+                "Benchmark streaming batch size",
+            ],
             "Runtime": [
                 "Dataset streaming batch size",
-                "Benchmark streaming batch size",
                 "Job polling interval (seconds)",
             ],
         }
