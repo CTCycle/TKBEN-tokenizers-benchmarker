@@ -27,14 +27,16 @@ Last updated: 2026-09-17
   - bordered fields
   - strong visible focus border and shadow
 - File upload controls are icon-triggered with a hidden native input where required.
-- The Settings page uses four focused tabs: Data, Tokenizers, Benchmarks, and
-  Runtime. It uses typed reactive-form controls, inline descriptions, explicit
-  Save/Reset All actions, and per-field reset affordances for overridden
-  values. The Benchmarks tab owns recurring workload defaults and benchmark
-  streaming behavior, while run-specific methodology remains in the benchmark
-  wizard. Settings reuses the shared field labels, inputs, buttons, banners,
-  spacing, and focus-visible treatment rather than introducing a new settings
-  component system.
+- The Settings page uses a left-side vertical navigation for four focused
+  sections: Data, Tokenizers, Benchmarks, and Runtime. The form sections sit
+  directly on the page background rather than inside a card. It uses typed
+  reactive-form controls, inline descriptions, explicit Save/Reset All actions,
+  and per-field reset affordances for overridden values. The Benchmarks section
+  owns recurring workload defaults and benchmark streaming behavior, while
+  run-specific methodology remains in the benchmark wizard. Settings reuses
+  the shared field labels, inputs, buttons, banners, spacing, and
+  focus-visible treatment rather than introducing a new settings component
+  system.
 
 ## Overlays
 - Modal and popover patterns:

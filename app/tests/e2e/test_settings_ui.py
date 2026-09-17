@@ -59,6 +59,11 @@ def test_settings_page_round_trip_and_runtime_effect(
         expect(settings_link).to_be_visible()
         settings_link.click()
         expect(page).to_have_url(f"{base_url}/settings")
+        expect(page.locator(".settings-panel")).to_have_count(0)
+        expect(page.locator(".settings-sidebar")).to_be_visible()
+        expect(page.get_by_role("tablist", name="Settings sections")).to_have_attribute(
+            "aria-orientation", "vertical"
+        )
 
         for tab in ("Data", "Tokenizers", "Benchmarks", "Runtime"):
             expect(page.get_by_role("tab", name=tab)).to_be_visible()
