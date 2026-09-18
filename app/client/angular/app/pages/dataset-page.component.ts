@@ -9,6 +9,7 @@ import { errorMessageAsync } from '../core/api/error-utils';
 import { WordCloudComponent } from '../components/word-cloud.component';
 import { ModalA11yDirective } from '../core/ui/modal-a11y.directive';
 import { formatBenchmarkAxisValue } from '../core/utils/benchmark-dashboard-data';
+import { dashboardFileName } from '../core/utils/dashboard-file-name';
 import {
   buildWordCloudFromWordFrequencies,
   buildZipfCurveFromWordFrequencies,
@@ -409,7 +410,7 @@ export class DatasetPageComponent {
   protected exportDashboard(): void {
     const report = this.store.report();
     if (!report) return;
-    this.exportApi.dashboardPdf({ dashboardType: 'dataset', reportName: `dataset-${report.dataset_name}-report-${report.report_id ?? 'latest'}`, fileName: `dataset-${report.dataset_name}-report.pdf`, dashboardPayload: report as unknown as Record<string, unknown> }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.exportApi.dashboardPdf({ dashboardType: 'dataset', reportName: `dataset-${report.dataset_name}-report-${report.report_id ?? 'latest'}`, fileName: dashboardFileName('dataset', report.dataset_name), dashboardPayload: report as unknown as Record<string, unknown> }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (result) => { const url = URL.createObjectURL(result.blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = result.fileName; anchor.click(); URL.revokeObjectURL(url); },
       error: (error: unknown) => { void errorMessageAsync(error, 'Failed to export dashboard.').then((message) => this.banner.set(message)); },
     });
