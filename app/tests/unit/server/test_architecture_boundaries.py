@@ -143,3 +143,12 @@ def test_launcher_has_no_legacy_cache_compatibility_paths() -> None:
     launcher = (REPOSITORY_ROOT / "start_on_windows.ps1").read_text(encoding="utf-8")
     violations = [token for token in LEGACY_CACHE_TOKENS if token in launcher]
     assert not violations, "Launcher still contains legacy cache compatibility tokens: " + ", ".join(violations)
+
+
+###############################################################################
+def test_interactive_launcher_always_opens_the_backend_terminal() -> None:
+    launcher = (REPOSITORY_ROOT / "start_on_windows.ps1").read_text(encoding="utf-8")
+
+    assert "BACKEND_LOGS_" not in launcher
+    assert "if ($script:LauncherInteractive) {" in launcher
+    assert "-NoExit" in launcher
