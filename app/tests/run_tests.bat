@@ -94,20 +94,18 @@ echo.
 set "PYTEST_TARGET=%TESTS_DIR%"
 if not "%STANDARD_TEST_PYTEST_TARGET%"=="" set "PYTEST_TARGET=%STANDARD_TEST_PYTEST_TARGET%"
 set "QA_DIR=%PROJECT_ROOT%\assets\QA"
-set "RUNTIME_CACHE_DIR=%PROJECT_ROOT%\runtimes\cache"
-set "CACHE_DIR=%TESTS_DIR%\cache"
-if not exist "%RUNTIME_CACHE_DIR%" mkdir "%RUNTIME_CACHE_DIR%" >nul 2>&1
-for %%D in (uv pip npm) do if not exist "%RUNTIME_CACHE_DIR%\%%D" mkdir "%RUNTIME_CACHE_DIR%\%%D" >nul 2>&1
-if not exist "%CACHE_DIR%" mkdir "%CACHE_DIR%" >nul 2>&1
-for %%D in (ruff mypy pycache coverage playwright pytest-state pytest-basetemp-current angular) do if not exist "%CACHE_DIR%\%%D" mkdir "%CACHE_DIR%\%%D" >nul 2>&1
-set "UV_CACHE_DIR=%RUNTIME_CACHE_DIR%\uv"
-set "PIP_CACHE_DIR=%RUNTIME_CACHE_DIR%\pip"
-set "NPM_CONFIG_CACHE=%RUNTIME_CACHE_DIR%\npm"
-set "RUFF_CACHE_DIR=%CACHE_DIR%\ruff"
-set "MYPY_CACHE_DIR=%CACHE_DIR%\mypy"
-set "PYTHONPYCACHEPREFIX=%CACHE_DIR%\pycache"
-set "COVERAGE_FILE=%CACHE_DIR%\coverage\.coverage"
-set "PLAYWRIGHT_BROWSERS_PATH=%CACHE_DIR%\playwright"
+set "CANONICAL_CACHE_DIR=%PROJECT_ROOT%\runtimes\cache"
+if not exist "%CANONICAL_CACHE_DIR%" mkdir "%CANONICAL_CACHE_DIR%" >nul 2>&1
+for %%D in (uv pip npm ruff mypy pycache coverage playwright pytest-state pytest-basetemp-current angular matplotlib) do if not exist "%CANONICAL_CACHE_DIR%\%%D" mkdir "%CANONICAL_CACHE_DIR%\%%D" >nul 2>&1
+set "UV_CACHE_DIR=%CANONICAL_CACHE_DIR%\uv"
+set "PIP_CACHE_DIR=%CANONICAL_CACHE_DIR%\pip"
+set "NPM_CONFIG_CACHE=%CANONICAL_CACHE_DIR%\npm"
+set "RUFF_CACHE_DIR=%CANONICAL_CACHE_DIR%\ruff"
+set "MYPY_CACHE_DIR=%CANONICAL_CACHE_DIR%\mypy"
+set "PYTHONPYCACHEPREFIX=%CANONICAL_CACHE_DIR%\pycache"
+set "COVERAGE_FILE=%CANONICAL_CACHE_DIR%\coverage\.coverage"
+set "MPLCONFIGDIR=%CANONICAL_CACHE_DIR%\matplotlib"
+set "PLAYWRIGHT_BROWSERS_PATH=%CANONICAL_CACHE_DIR%\playwright"
 set "HAS_E2E=0"
 if exist "%TESTS_DIR%\e2e" set "HAS_E2E=1"
 if not exist "%QA_DIR%" mkdir "%QA_DIR%" >nul 2>&1
@@ -196,7 +194,7 @@ if errorlevel 1 (
 )
 popd
 echo [STEP] Running Python tests...
-"%PYTHON_CMD%" -m pytest -c "%TESTS_DIR%\pytest.ini" "%PYTEST_TARGET%" -v --tb=short --basetemp "%CACHE_DIR%\pytest-basetemp-current" %*
+"%PYTHON_CMD%" -m pytest -c "%TESTS_DIR%\pytest.ini" "%PYTEST_TARGET%" -v --tb=short %*
 set "PYTEST_RC=%ERRORLEVEL%"
 if "%PYTEST_RC%"=="0" (
   set "PYTEST_PHASE=PASS"
@@ -255,10 +253,10 @@ echo.
 
 :cleanup
 if "%STARTED_BACKEND%"=="1" (
-  for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R "LISTENING" ^| findstr /R ":%FASTAPI_PORT% "') do taskkill /PID %%P /F >nul 2>&1
+  for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R "LISTENING" ^| findstr /R ":%FASTAPI_PORT% "') do taskkill /PID %%P /T /F >nul 2>&1
 )
 if "%STARTED_FRONTEND%"=="1" (
-  for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R "LISTENING" ^| findstr /R ":%UI_PORT% "') do taskkill /PID %%P /F >nul 2>&1
+  for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R "LISTENING" ^| findstr /R ":%UI_PORT% "') do taskkill /PID %%P /T /F >nul 2>&1
 )
 
 exit /b %TEST_RESULT%

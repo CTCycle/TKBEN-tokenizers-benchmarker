@@ -36,6 +36,9 @@ test = [
     "basedpyright==1.38.2"
 ]
 
+[tool.ruff]
+cache-dir = "../../runtimes/cache/ruff"
+
 [tool.hatch.build.targets.wheel]
 packages = ["server"]
 

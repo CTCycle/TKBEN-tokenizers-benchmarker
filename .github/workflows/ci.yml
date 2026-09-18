@@ -23,6 +23,14 @@ jobs:
     timeout-minutes: 25
     env:
       PYTHONPATH: app
+      UV_CACHE_DIR: ${{ github.workspace }}/runtimes/cache/uv
+      PIP_CACHE_DIR: ${{ github.workspace }}/runtimes/cache/pip
+      RUFF_CACHE_DIR: ${{ github.workspace }}/runtimes/cache/ruff
+      MYPY_CACHE_DIR: ${{ github.workspace }}/runtimes/cache/mypy
+      PYTHONPYCACHEPREFIX: ${{ github.workspace }}/runtimes/cache/pycache
+      COVERAGE_FILE: ${{ github.workspace }}/runtimes/cache/coverage/.coverage
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/runtimes/cache/playwright
+      MPLCONFIGDIR: ${{ github.workspace }}/runtimes/cache/matplotlib
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,8 +44,6 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           version: "0.11.30"
-          enable-cache: true
-          cache-dependency-glob: app/server/uv.lock
 
       - name: Install locked test dependencies
         run: uv sync --locked --project app/server --extra test
@@ -46,7 +52,7 @@ jobs:
         run: uv run --project app/server python -m compileall app/server
 
       - name: Ruff checks
-        run: uv run --project app/server ruff check --isolated app/server app/tests
+        run: uv run --project app/server ruff check --config app/server/pyproject.toml app/server app/tests
 
       - name: BasedPyright
         working-directory: app/server
@@ -56,7 +62,7 @@ jobs:
         run: uv run --project app/server python app/scripts/initialize_database.py
 
       - name: Unit tests
-        run: uv run --project app/server python -m pytest -c app/tests/pytest.ini app/tests/unit -q --basetemp=app/tests/cache/pytest-basetemp-current
+        run: uv run --project app/server python -m pytest -c app/tests/pytest.ini app/tests/unit -q
 
       - name: OpenAPI smoke
         run: uv run --project app/server python -c "from server.app import app; app.openapi()"
@@ -64,6 +70,8 @@ jobs:
   frontend-validation:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      NPM_CONFIG_CACHE: ${{ github.workspace }}/runtimes/cache/npm
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -72,8 +80,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22.22.3"
-          cache: npm
-          cache-dependency-path: app/client/package-lock.json
 
       - name: Install frontend dependencies
         working-directory: app/client

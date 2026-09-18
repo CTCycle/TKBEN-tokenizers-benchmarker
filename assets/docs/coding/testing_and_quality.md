@@ -1,5 +1,5 @@
 # Testing and Quality
-Last updated: 2026-09-17
+Last updated: 2026-09-18
 
 ## Tooling and Tests
 - Lint and format with Ruff, or the project-standard equivalent if it changes in the future.
@@ -29,21 +29,26 @@ API responses, application logs, and persisted records; a successful HTTP
 status or build alone is not release evidence.
 
 ## Development Cache and Artifact Locations
-- Pytest’s collection cache and temporary test directory are under
-  `app/tests/cache/pytest-state` and
-  `app/tests/cache/pytest-basetemp-current`. The pytest configuration excludes
-  the complete `cache` subtree from test discovery, so protected residue from
-  older runs cannot be collected as tests.
-- Ruff, mypy, Python bytecode, coverage, Playwright, and Angular persistent-build
-  caches are under their respective `app/tests/cache` folders.
-- uv, pip, and npm caches are under their respective `runtimes/cache` folders.
+- `runtimes/cache` is the single disposable cache root. Pytest’s collection
+  cache and deterministic basetemp are `runtimes/cache/pytest-state` and
+  `runtimes/cache/pytest-basetemp-current`, including when pytest is invoked
+  directly. The pytest hook also routes bytecode, coverage, Matplotlib, and
+  Playwright state below this root.
+- Ruff, mypy, uv, pip, npm, Angular, and other development-tool caches resolve
+  to named children of `runtimes/cache`; the launcher, batch runner, CI, and
+  tool configuration use the same paths.
+- Downloaded datasets and Hugging Face tokenizer artifacts are persistent
+  application data under `<TKBEN_DATA_DIR>/sources/datasets` and
+  `<TKBEN_DATA_DIR>/sources/tokenizers` (defaulting to `app/resources`). They
+  are not disposable caches and are never removed by cache cleanup.
+- Generic ignore rules for accidental legacy cache names are defensive only;
+  no tool is configured to use an alternative cache root.
 - `app/client/dist`, `app/server/.venv`, and `app/client/node_modules` remain in
   their established locations because they are the runtime build output or
   installed dependency trees rather than tool caches.
-- When the managed cache roots are not writable, use an explicit writable
-  `--basetemp` or repository-local tool cache for validation and record the
-  environment limitation; do not broaden permissions or treat protected cache
-  residue as a product failure.
+- The complete `runtimes/cache` hierarchy can be deleted and recreated without
+  affecting the persistent database, datasets, tokenizer artifacts, logs, or
+  templates.
 
 ## Cross-language Quality Gates
 - Keep architecture layering intact: API -> contracts/services -> repository.
