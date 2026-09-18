@@ -352,8 +352,6 @@ function Import-Environment {
         UI_HOST = '127.0.0.1'
         UI_PORT = '8000'
         RELOAD = 'false'
-        # Backend logs are visible by default when the setting is absent.
-        BACKEND_LOGS_VISIBLE = 'true'
     }
     foreach ($entry in $defaults.GetEnumerator()) {
         Set-Item -Path "Env:$($entry.Key)" -Value $entry.Value
@@ -361,14 +359,6 @@ function Import-Environment {
 
     foreach ($entry in (Read-EnvironmentFile).GetEnumerator()) {
         Set-Item -Path "Env:$($entry.Key)" -Value $entry.Value
-    }
-
-    if ($env:BACKEND_LOGS_VISIBLE -ieq 'true') {
-        $env:BACKEND_LOGS_VISIBLE = 'true'
-    } elseif ($env:BACKEND_LOGS_VISIBLE -ieq 'false') {
-        $env:BACKEND_LOGS_VISIBLE = 'false'
-    } else {
-        throw "BACKEND_LOGS_VISIBLE must be either 'true' or 'false'."
     }
 
     Ensure-Directory $RuntimeCacheDir
@@ -810,7 +800,7 @@ function Launch-Application {
     $backendLogStem = Join-Path $backendLogDir ('TKBEN_backend_' + (Get-Date -Format 'yyyyMMdd_HHmmss_fff'))
     $backendStdoutLog = "$backendLogStem.out.log"
     $backendStderrLog = "$backendLogStem.err.log"
-    if ($env:BACKEND_LOGS_VISIBLE -ieq 'true' -and $script:LauncherInteractive) {
+    if ($script:LauncherInteractive) {
         $escapedPython = $VenvPython.Replace("'", "''")
         $escapedApp = $backendAppPath.Replace("'", "''")
         $backendCommand = "& '$escapedPython' -m uvicorn server.app:app --app-dir '$escapedApp' --host $($env:FASTAPI_HOST) --port $backendPort"

@@ -299,7 +299,6 @@ You may need to edit the local settings only when you want to:
 
 - use a different local address or port because of a conflict
 - store the local workspace somewhere other than the repository’s default data folder
-- change whether backend logs appear in a separate window
 - connect to an externally managed PostgreSQL database instead of the default embedded store
 
 Restart TKBEN after changing `settings/.env`. Keep this file private: it can contain machine-specific paths, database connection details, or other sensitive values. Changes made in **Settings** apply to subsequently started operations without a restart. Hugging Face access keys should be added and managed through **Settings → Keys**, rather than placed in screenshots or shared documentation.
