@@ -14,6 +14,7 @@ ASSETS_DIR = ROOT_DIR / "assets"
 FIGURES_DIR = ASSETS_DIR / "figures"
 QA_DIR = ROOT_DIR / "QA"
 SETTINGS_DIR = (ROOT_DIR / "settings").resolve()
+CACHE_PATH = (ROOT_DIR / "runtimes" / "cache").resolve()
 
 ###############################################################################
 def _resolve_resource_path(configured_path: str | None) -> Path:
@@ -38,6 +39,7 @@ DATABASE_PATH = RESOURCES_PATH / "database.db"
 __all__ = [
     "APP_DIR",
     "ASSETS_DIR",
+    "CACHE_PATH",
     "CLIENT_DIR",
     "DATABASE_PATH",
     "DATASETS_PATH",

@@ -35,7 +35,6 @@ $VenvPython = Join-Path $VenvDir 'Scripts\python.exe'
 $EnvFile = Join-Path $RepoRoot 'settings\.env'
 $EnvTemplate = Join-Path $RepoRoot 'settings\.env.example'
 $RuntimeCacheDir = Join-Path $RuntimeDir 'cache'
-$ToolCacheDir = Join-Path $TestsDir 'cache'
 $UvCacheDir = Join-Path $RuntimeCacheDir 'uv'
 $PythonVersion = '3.14.2'
 $NodeVersion = '22.23.1'
@@ -375,18 +374,18 @@ function Import-Environment {
     foreach ($cacheName in @('uv', 'pip', 'npm')) {
         Ensure-Directory (Join-Path $RuntimeCacheDir $cacheName)
     }
-    Ensure-Directory $ToolCacheDir
-    foreach ($cacheName in @('ruff', 'mypy', 'pycache', 'coverage', 'playwright', 'pytest-state', 'pytest-basetemp-current', 'angular')) {
-        Ensure-Directory (Join-Path $ToolCacheDir $cacheName)
+    foreach ($cacheName in @('ruff', 'mypy', 'pycache', 'coverage', 'playwright', 'pytest-state', 'pytest-basetemp-current', 'angular', 'matplotlib')) {
+        Ensure-Directory (Join-Path $RuntimeCacheDir $cacheName)
     }
     $env:UV_CACHE_DIR = $UvCacheDir
     $env:PIP_CACHE_DIR = Join-Path $RuntimeCacheDir 'pip'
     $env:NPM_CONFIG_CACHE = Join-Path $RuntimeCacheDir 'npm'
-    $env:RUFF_CACHE_DIR = Join-Path $ToolCacheDir 'ruff'
-    $env:MYPY_CACHE_DIR = Join-Path $ToolCacheDir 'mypy'
-    $env:PYTHONPYCACHEPREFIX = Join-Path $ToolCacheDir 'pycache'
-    $env:COVERAGE_FILE = Join-Path (Join-Path $ToolCacheDir 'coverage') '.coverage'
-    $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path $ToolCacheDir 'playwright'
+    $env:RUFF_CACHE_DIR = Join-Path $RuntimeCacheDir 'ruff'
+    $env:MYPY_CACHE_DIR = Join-Path $RuntimeCacheDir 'mypy'
+    $env:PYTHONPYCACHEPREFIX = Join-Path $RuntimeCacheDir 'pycache'
+    $env:COVERAGE_FILE = Join-Path (Join-Path $RuntimeCacheDir 'coverage') '.coverage'
+    $env:MPLCONFIGDIR = Join-Path $RuntimeCacheDir 'matplotlib'
+    $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path $RuntimeCacheDir 'playwright'
     $env:UV_PROJECT_ENVIRONMENT = $VenvDir
     $env:UV_LINK_MODE = 'copy'
     Remove-Item Env:PYTHONHOME -ErrorAction SilentlyContinue
@@ -1142,20 +1141,24 @@ function Remove-AllData {
 }
 
 function Remove-PythonCaches {
-    $cacheDirectories = @(Get-ChildItem -LiteralPath $RepoRoot -Directory -Filter '__pycache__' -Recurse -Force -ErrorAction SilentlyContinue |
+    $venvPrefix = if (Test-Path -LiteralPath $VenvDir) {
+        ((Resolve-Path -LiteralPath $VenvDir).Path).TrimEnd('\') + '\'
+    } else {
+        $null
+    }
+    $cacheDirectories = @(Get-ChildItem -LiteralPath $AppDir -Directory -Filter '__pycache__' -Recurse -Force -ErrorAction SilentlyContinue |
+        Where-Object { [string]::IsNullOrEmpty($venvPrefix) -or -not $_.FullName.StartsWith($venvPrefix, [StringComparison]::OrdinalIgnoreCase) } |
         Sort-Object @{ Expression = { $_.FullName.Length }; Descending = $true }, @{ Expression = { $_.FullName.ToUpperInvariant() }; Descending = $false })
     @($cacheDirectories | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
 }
 
 function Clear-ManagedCache {
     $summaries = @()
-    foreach ($cacheRoot in @($RuntimeCacheDir, $ToolCacheDir)) {
-        Ensure-Directory $cacheRoot
-        $entries = @(Get-ChildItem -LiteralPath $cacheRoot -Force -ErrorAction SilentlyContinue |
-            Where-Object { $_.Name -ne '.gitkeep' } |
-            Sort-Object @{ Expression = { $_.FullName.ToUpperInvariant() }; Descending = $false })
-        $summaries += @($entries | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
-    }
+    Ensure-Directory $RuntimeCacheDir
+    $entries = @(Get-ChildItem -LiteralPath $RuntimeCacheDir -Force -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -ne '.gitkeep' } |
+        Sort-Object @{ Expression = { $_.FullName.ToUpperInvariant() }; Descending = $false })
+    $summaries += @($entries | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
 
     $summaries
 }
@@ -1180,20 +1183,18 @@ function Uninstall-Application {
     if (-not (Confirm-DestructiveAction 'remove downloaded runtimes, dependencies, build output, and Python caches')) { return }
     Write-Step 'Removing downloaded runtimes, dependencies, build output, and Python caches.'
     $summaries = @()
+    $summaries += @(Remove-PythonCaches)
     $directories = @(
         $RuntimeDir,
         $VenvDir,
         (Join-Path $RepoRoot '.venv'),
         (Join-Path $ClientDir 'node_modules'),
-        (Join-Path $ClientDir '.angular'),
         (Join-Path $ClientDir 'dist')
     )
     foreach ($directory in $directories) {
         if (Test-Path -LiteralPath $directory) { $summaries += @(Remove-PathBestEffort -Path $directory) }
     }
     # Project manifests, dependency lockfiles, and tool configuration remain intact.
-    $summaries += @(Remove-PythonCaches)
-    $summaries += @(Clear-ManagedCache)
     $removed = [int](($summaries | Measure-Object -Property RemovedCount -Sum).Sum)
     $skipped = [int](($summaries | Measure-Object -Property SkippedCount -Sum).Sum) +
         [int](($summaries | Measure-Object -Property EnumerationErrorCount -Sum).Sum)
@@ -1289,7 +1290,7 @@ function Get-LauncherMenuEntries {
         [pscustomobject]@{ Section = 'SOURCE CONTROL'; Label = 'Check for updates'; Description = 'Report whether origin/main has a newer revision'; Key = 'Check'; Destructive = $false }
         [pscustomobject]@{ Section = 'SOURCE CONTROL'; Label = 'Update application'; Description = 'Pull the application from the main branch'; Key = 'Update'; Destructive = $false }
         [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Remove logs'; Description = 'Clear generated application logs'; Key = 'Logs'; Destructive = $true }
-        [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Clear cache'; Description = 'Remove downloaded and generated caches'; Key = 'Cache'; Destructive = $true }
+        [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Clear cache'; Description = 'Remove disposable tooling caches'; Key = 'Cache'; Destructive = $true }
         [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Remove all data'; Description = 'Delete the database and user-created files'; Key = 'AllData'; Destructive = $true }
         [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Uninstall application'; Description = 'Remove local runtimes and dependencies'; Key = 'Uninstall'; Destructive = $true }
         [pscustomobject]@{ Section = 'EXIT'; Label = 'Exit'; Description = 'Close this launcher'; Key = 'Exit'; Destructive = $false }

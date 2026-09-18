@@ -1,5 +1,5 @@
 # Persistence
-Last updated: 2026-09-13
+Last updated: 2026-09-18
 
 ## Storage selection
 
@@ -157,4 +157,7 @@ The current repository head remains `0003_canonical_state_cleanup`; no new
 database migration is required for the public `v4.3.0` release. Ready
 dataset rows, tokenizer rows, reports, and canonical tokenizer artifacts are
 stored under the configured resource root and are retained across application
-restarts unless explicitly deleted.
+restarts unless explicitly deleted. The dataset files and tokenizer artifacts
+are persistent application data under `<TKBEN_DATA_DIR>/sources/datasets` and
+`<TKBEN_DATA_DIR>/sources/tokenizers`; they are not part of the disposable
+`runtimes/cache` hierarchy and are not removed by cache cleanup.

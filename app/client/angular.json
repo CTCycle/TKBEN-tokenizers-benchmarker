@@ -9,7 +9,7 @@
     "analytics": false,
     "cache": {
       "enabled": true,
-      "path": "../tests/cache/angular"
+      "path": "../../runtimes/cache/angular"
     }
   },
   "newProjectRoot": "projects",

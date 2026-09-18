@@ -1,5 +1,5 @@
 # Configuration
-Last updated: 2026-09-17
+Last updated: 2026-09-18
 
 ## Environment File
 Primary launcher runtime env file:
@@ -20,7 +20,7 @@ Primary launcher runtime env file:
 - `BACKEND_LOGS_VISIBLE` (accepts only `true` or `false`; an interactive launcher session shows backend logs in a dedicated terminal when `true`, while redirected `-Launch` runs capture stdout and stderr under `app/resources/logs`; defaults to `true` when absent)
 - `ALLOW_KEY_REVEAL`
 - `HF_KEYS_ENCRYPTION_MATERIAL_FILE`
-- `TKBEN_DATA_DIR` (resource root for the embedded database, datasets, tokenizers, and exports; defaults to `app/resources`)
+- `TKBEN_DATA_DIR` (persistent resource root for the embedded database, downloaded datasets, tokenizer artifacts, and exports; defaults to `app/resources`; it is separate from the disposable `runtimes/cache` root)
 - `TKBEN_LOG_DIR` (runtime logs)
 - `DATABASE_EMBEDDED`
 - `DATABASE_HOST`

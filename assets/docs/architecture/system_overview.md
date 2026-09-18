@@ -1,5 +1,5 @@
 # System Overview
-Last updated: 2026-09-17
+Last updated: 2026-09-18
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
@@ -88,9 +88,13 @@ of the Settings API or page.
 
 ## Reporting Service Boundaries
 - `server.services.TokenizersService` owns Hugging Face discovery, catalog,
-  download, cache, and custom-tokenizer workflows. Custom tokenizer identity is
-  stored in the database and its canonical artifact is stored under the
-  tokenizer cache.
+  download, and custom-tokenizer workflows. Custom tokenizer identity is
+  stored in the database and its canonical artifact is stored as persistent
+  application data under `<TKBEN_DATA_DIR>/sources/tokenizers`; downloaded
+  datasets use the corresponding persistent `sources/datasets` location.
+- Disposable tooling and runtime caches are owned by the repository-wide
+  `runtimes/cache` root and are not the storage location for datasets or
+  tokenizer artifacts.
 - `server.services.TokenizerReportingService` owns tokenizer metadata, vocabulary analysis, report generation, and report retrieval.
 - `server.services.BenchmarkService` owns benchmark admission, execution, and runtime result construction.
 - `server.services.BenchmarkReportService` owns benchmark report contract validation, persistence orchestration, and response normalization.
@@ -120,7 +124,8 @@ flowchart LR
     Services --> Repositories[Repositories]
     Repositories --> ORM[SQLAlchemy ORM]
     ORM --> Relational[(SQLite/PostgreSQL)]
-    Services --> Cache[(Filesystem cache and canonical tokenizer artifacts)]
+    Services --> Cache[(Disposable tooling cache\nruntimes/cache)]
+    Services --> Sources[(Persistent datasets and tokenizer artifacts\n<TKBEN_DATA_DIR>/sources)]
     Services --> HF[Hugging Face provider I/O]
     Services --> PDF[PDF export]
 ```
