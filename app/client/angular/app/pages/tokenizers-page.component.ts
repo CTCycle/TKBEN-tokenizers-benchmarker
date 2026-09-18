@@ -8,6 +8,7 @@ import { HistogramChartComponent } from '../components/histogram-chart.component
 import { ExportApiService } from '../core/api/export-api.service';
 import { errorMessageAsync } from '../core/api/error-utils';
 import { ModalA11yDirective } from '../core/ui/modal-a11y.directive';
+import { dashboardFileName } from '../core/utils/dashboard-file-name';
 import type {
   SupportedTokenizerPipeline,
   TokenizerDiscoverySort,
@@ -180,7 +181,7 @@ export class TokenizersPageComponent {
     this.exportApi.dashboardPdf({
       dashboardType: 'tokenizer',
       reportName: `tokenizer-${report.tokenizer_name}-report-${report.report_id}`,
-      fileName: `tokenizer-${report.tokenizer_name}-report-${report.report_id}.pdf`,
+      fileName: dashboardFileName('tokenizer', report.tokenizer_name, `report-${report.report_id}`),
       dashboardPayload: { report, vocabulary_items: this.store.vocabulary()?.items ?? [] } as unknown as Record<string, unknown>,
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (result) => { const url = URL.createObjectURL(result.blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = result.fileName; anchor.click(); URL.revokeObjectURL(url); },
