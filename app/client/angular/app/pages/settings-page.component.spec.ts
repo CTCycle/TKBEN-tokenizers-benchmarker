@@ -70,6 +70,8 @@ describe('SettingsPageComponent', () => {
       resetAll: () => void;
       reloadAfterConflict: () => void;
       tokenizerLimitsInvalid: () => boolean;
+      fieldError: (controlName: string) => string | null;
+      fieldDescribedBy: (helpId: string, controlName: string) => string;
     };
     TestBed.tick();
     return { page, store };
@@ -99,6 +101,30 @@ describe('SettingsPageComponent', () => {
     page.form.patchValue({ defaultDiscoveryLimit: 200, maxDiscoveryLimit: 100 });
     expect(page.tokenizerLimitsInvalid()).toBe(true);
     expect(page.form.invalid).toBe(true);
+  });
+
+  it('explains field-level and cross-field validation failures inline', () => {
+    const { page } = createPage();
+
+    page.form.controls['histogramBins'].setValue(4);
+    page.form.controls['histogramBins'].markAsTouched();
+    expect(page.fieldError('histogramBins')).toBe('Must be at least 5.');
+    expect(page.fieldDescribedBy('settings-help-histogram-bins', 'histogramBins'))
+      .toBe('settings-help-histogram-bins settings-error-histogramBins');
+
+    page.form.controls['downloadRetryAttempts'].setValue(1.5);
+    page.form.controls['downloadRetryAttempts'].markAsTouched();
+    expect(page.fieldError('downloadRetryAttempts')).toBe('Use a whole number.');
+
+    page.form.controls['metadataCandidateMultiplier'].setValue(11);
+    page.form.controls['metadataCandidateMultiplier'].markAsTouched();
+    expect(page.fieldError('metadataCandidateMultiplier')).toBe('Must be no more than 10.');
+
+    page.form.patchValue({ defaultDiscoveryLimit: 200, maxDiscoveryLimit: 100 });
+    page.form.controls['defaultDiscoveryLimit'].markAsTouched();
+    page.form.controls['maxDiscoveryLimit'].markAsTouched();
+    expect(page.fieldError('defaultDiscoveryLimit')).toBe('Must not exceed Maximum discovery limit.');
+    expect(page.fieldError('maxDiscoveryLimit')).toBe('Must be at least Default discovery limit.');
   });
 
   it('converts MiB to bytes and sends an explicit typed save patch', () => {

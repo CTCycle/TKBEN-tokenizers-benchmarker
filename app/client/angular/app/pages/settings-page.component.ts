@@ -210,6 +210,45 @@ export class SettingsPageComponent {
       || this.form.hasError('tokenizerMaximumExceedsCandidates');
   }
 
+  protected fieldError(controlName: string): string | null {
+    const control = this.form.get(controlName);
+    if (!control || (!control.dirty && !control.touched)) return null;
+
+    if (control.hasError('required')) return 'Enter a value.';
+    if (control.hasError('wholeNumber')) return 'Use a whole number.';
+
+    const minimum = control.getError('min') as { min?: number } | null;
+    if (minimum?.min !== undefined) return `Must be at least ${minimum.min}.`;
+
+    const maximum = control.getError('max') as { max?: number } | null;
+    if (maximum?.max !== undefined) return `Must be no more than ${maximum.max}.`;
+
+    if (controlName === 'defaultDiscoveryLimit'
+      && this.form.hasError('tokenizerDefaultExceedsMaximum')) {
+      return 'Must not exceed Maximum discovery limit.';
+    }
+    if (controlName === 'maxDiscoveryLimit') {
+      const lowerBoundError = this.form.hasError('tokenizerDefaultExceedsMaximum');
+      const upperBoundError = this.form.hasError('tokenizerMaximumExceedsCandidates');
+      if (lowerBoundError && upperBoundError) {
+        return 'Must be at least Default discovery limit and no more than Discovery candidate cap.';
+      }
+      if (lowerBoundError) return 'Must be at least Default discovery limit.';
+      if (upperBoundError) return 'Must not exceed Discovery candidate cap.';
+    }
+    if (controlName === 'maxDiscoveryCandidates'
+      && this.form.hasError('tokenizerMaximumExceedsCandidates')) {
+      return 'Must be at least Maximum discovery limit.';
+    }
+
+    return null;
+  }
+
+  protected fieldDescribedBy(helpId: string, controlName: string): string {
+    const errorId = `settings-error-${controlName}`;
+    return this.fieldError(controlName) ? `${helpId} ${errorId}` : helpId;
+  }
+
   protected defaultValue(key: RuntimeSettingKey): string {
     const defaults = this.store.defaults();
     if (!defaults) return '—';

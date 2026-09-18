@@ -104,6 +104,8 @@ def test_settings_page_round_trip_and_runtime_effect(
         histogram = page.get_by_label("Histogram bins")
         histogram.fill("4")
         expect(save_button).to_be_disabled()
+        expect(histogram).to_have_attribute("aria-invalid", "true")
+        expect(page.get_by_text("Must be at least 5.")).to_be_visible()
         histogram.fill(str(histogram_value))
 
         page.get_by_role("tab", name="Tokenizers").click()
