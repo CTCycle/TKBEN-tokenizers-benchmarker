@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [switch]$Launch
+    [switch]$Launch,
+    [switch]$KillAll
 )
 
 $ErrorActionPreference = 'Stop'
@@ -664,11 +665,31 @@ function Test-FrontendBuildReady {
     }
 }
 
-function Stop-PortListeners([int]$Port) {
+function Get-PortProcessIds([int]$Port) {
     $listeners = netstat -ano | Select-String -Pattern ":$Port\s+.*LISTENING\s+(\d+)\s*$"
-    $processIds = @($listeners | ForEach-Object {
+    return @($listeners | ForEach-Object {
         if ($_.Matches.Count) { [int]$_.Matches[0].Groups[1].Value }
     } | Sort-Object -Unique)
+}
+
+function Stop-ProcessTree([int]$ProcessId) {
+    if ($ProcessId -le 0 -or $ProcessId -eq $PID) { return $false }
+    if (-not (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue)) { return $true }
+
+    & taskkill.exe /PID $ProcessId /T /F *> $null
+    if ($LASTEXITCODE -eq 0) { return $true }
+
+    try {
+        Stop-Process -Id $ProcessId -Force -ErrorAction Stop
+        return $true
+    }
+    catch {
+        return -not (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue)
+    }
+}
+
+function Stop-PortListeners([int]$Port) {
+    $processIds = @(Get-PortProcessIds -Port $Port)
     foreach ($processId in $processIds) {
         Write-Step "Stopping PID $processId on port $Port."
         $stopped = $false
@@ -694,6 +715,66 @@ function Get-PortProcessId([int]$Port) {
     $listener = netstat -ano | Select-String -Pattern ":$Port\s+.*LISTENING\s+(\d+)\s*$" | Select-Object -First 1
     if ($listener -and $listener.Matches.Count) { return [int]$listener.Matches[0].Groups[1].Value }
     return $null
+}
+
+function Get-ApplicationProcessIds {
+    $repoMarker = [IO.Path]::GetFullPath($RepoRoot).TrimEnd('\')
+    $processIds = @()
+    try {
+        $processes = Get-CimInstance -ClassName Win32_Process -ErrorAction Stop
+    }
+    catch {
+        throw "Could not inspect TKBEN process command lines: $($_.Exception.Message)"
+    }
+
+    foreach ($process in $processes) {
+        $processId = [int]$process.ProcessId
+        if ($processId -eq $PID) { continue }
+
+        $commandLine = [string]$process.CommandLine
+        if ([string]::IsNullOrWhiteSpace($commandLine) -or
+            $commandLine.IndexOf($repoMarker, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+            continue
+        }
+
+        $isBackend = $commandLine -match '(?i)\buvicorn(?:\.exe)?\s+server\.app:app\b'
+        $isFrontend = $commandLine -match '(?i)(?:npm(?:\.cmd|-cli\.js)?\s+run\s+preview|vite(?:\.cmd|\.js)?\s+preview)'
+        if ($isBackend -or $isFrontend) { $processIds += $processId }
+    }
+    return @($processIds | Sort-Object -Unique)
+}
+
+function Stop-ApplicationProcesses {
+    $processIds = @(
+        Get-ApplicationProcessIds |
+            Where-Object { $_ -and [int]$_ -ne $PID } |
+            Sort-Object -Unique
+    )
+
+    if (-not $processIds) {
+        Write-Ok 'No running TKBEN application processes were found.'
+        return
+    }
+
+    $failedProcessIds = @()
+    foreach ($processId in $processIds) {
+        Write-Step "Stopping TKBEN application process tree rooted at PID $processId."
+        if (-not (Stop-ProcessTree -ProcessId ([int]$processId))) {
+            $failedProcessIds += [int]$processId
+        }
+    }
+
+    $remainingProcessIds = @(
+        Get-ApplicationProcessIds |
+            Where-Object { $_ -and [int]$_ -ne $PID } |
+            Sort-Object -Unique
+    )
+
+    if ($failedProcessIds.Count -gt 0 -or $remainingProcessIds.Count -gt 0) {
+        $blockedProcessIds = @($failedProcessIds + $remainingProcessIds | Sort-Object -Unique) -join ', '
+        throw "Could not stop all TKBEN application processes. Remaining or blocked PIDs: $blockedProcessIds. Close them manually or run the launcher with sufficient permission."
+    }
+    Write-Ok "Stopped $($processIds.Count) TKBEN application process tree root(s)."
 }
 
 # =============================================================================
@@ -1293,6 +1374,7 @@ function Get-LauncherMenuEntries {
         [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Clear cache'; Description = 'Remove disposable tooling caches'; Key = 'Cache'; Destructive = $true }
         [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Remove all data'; Description = 'Delete the database and user-created files'; Key = 'AllData'; Destructive = $true }
         [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Uninstall application'; Description = 'Remove local runtimes and dependencies'; Key = 'Uninstall'; Destructive = $true }
+        [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Kill all application processes'; Description = 'Stop TKBEN backend and frontend process trees'; Key = 'KillAll'; Destructive = $true }
         [pscustomobject]@{ Section = 'EXIT'; Label = 'Exit'; Description = 'Close this launcher'; Key = 'Exit'; Destructive = $false }
     )
 }
@@ -1378,6 +1460,11 @@ function Show-Menu {
                     'Cache' { Clear-Cache }
                     'AllData' { Remove-AllData }
                     'Uninstall' { Uninstall-Application }
+                    'KillAll' {
+                        if (Confirm-DestructiveAction 'stop all TKBEN application processes') {
+                            Stop-ApplicationProcesses
+                        }
+                    }
                 }
             }
         } catch {
@@ -1385,6 +1472,15 @@ function Show-Menu {
         }
         Wait-ForMenu
     }
+}
+
+if ($Launch -and $KillAll) {
+    throw 'Use either -Launch or -KillAll, not both.'
+}
+
+if ($KillAll) {
+    Invoke-TrackedLauncherAction -Name 'stop all application processes' -Action { Stop-ApplicationProcesses }
+    exit 0
 }
 
 if ($Launch) {

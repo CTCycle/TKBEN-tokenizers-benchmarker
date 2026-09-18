@@ -1,5 +1,5 @@
 # Runtime Modes
-Last updated: 2026-09-17
+Last updated: 2026-09-18
 
 ## Supported Modes
 ### 1. Local webapp mode
@@ -24,7 +24,7 @@ Last updated: 2026-09-17
 - Frontend and backend communicate through HTTP JSON APIs under `/api/*`.
 - In local webapp mode, the Angular proxy rewrites `/api/*` to the backend root.
 - The launcher starts the backend and frontend as separate local processes and points the browser to the configured UI URL.
-- `start_on_windows.ps1 -Launch` runs the launch path directly for redirected or automated validation; without the switch, the same script opens the twelve-option maintenance menu.
+- `start_on_windows.ps1 -Launch` runs the launch path directly for redirected or automated validation; `start_on_windows.ps1 -KillAll` stops TKBEN's backend and frontend process trees; without either switch, the same script opens the thirteen-option maintenance menu.
 - The launcher loads `.env` before backend imports and validates structured JSON
   settings before starting services. The browser URL, configured ports, and
   process IDs are printed after both health checks succeed.
