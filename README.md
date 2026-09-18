@@ -68,6 +68,12 @@ On later launches, the prepared environment and production output are reused whe
 
 If Windows blocks the automatic browser opening, this does not necessarily mean that TKBEN failed to start. Copy the local URL printed by the launcher and open it manually.
 
+To stop all TKBEN backend and frontend processes without launching the app, run:
+
+```powershell
+.\start_on_windows.ps1 -KillAll
+```
+
 ### 2.2 macOS / Linux
 
 The automatic portable-runtime setup is Windows-only. On macOS or Linux, install these prerequisites using your normal system tools:

@@ -39,7 +39,18 @@ npm run preview -- --host 127.0.0.1 --port 8000 --strictPort
 ```
 
 ## Maintenance Menu
-Use `.\start_on_windows.ps1` for dependency installation, application updates, update checks, database initialization, tests, log removal, cache cleanup, user-data removal, and uninstall operations.
+Use `.\start_on_windows.ps1` for dependency installation, application updates, update checks, database initialization, tests, log removal, cache cleanup, user-data removal, process cleanup, and uninstall operations.
+
+Use menu option 12, **Kill all application processes**, to stop TKBEN's
+backend and frontend process trees. The equivalent direct command is:
+
+```powershell
+.\start_on_windows.ps1 -KillAll
+```
+
+The cleanup targets TKBEN launch commands rooted in this repository. It does
+not stop unrelated Python or Node.js processes, even when they use the same
+ports.
 
 ### Application updates
 
