@@ -1,5 +1,5 @@
 # Persistence
-Last updated: 2026-09-18
+Last updated: 2026-09-19
 
 ## Storage selection
 
@@ -31,7 +31,8 @@ A non-empty database without an Alembic version row is rejected. Historical
 schemas remain represented by the tracked `0001_pre_alembic_schema` and
 `0002_current_schema` revisions; the `0003_canonical_state_cleanup` revision
 purges incompatible reports and converts persisted metric and tokenizer state
-to the current contract.
+to the current contract, and `0004_benchmark_report_tags` adds the relational
+report tag array without changing the immutable report payload.
 
 ## Canonical tables
 
@@ -78,10 +79,11 @@ logical operation. Vocabulary shape metrics remain in the existing report JSON
 (`metadata.vocabulary_stats` and `token_length_histogram`), so no relational
 migration is needed for those values. Benchmark reports keep immutable
 schema-3/report-5 detail
-JSON plus projected summary columns; list queries do not select the full
-payload. Reports from older contracts are purged by migration and incompatible
-rows fail explicitly if encountered later; dashboard histogram bins remain
-inside the immutable detail payload.
+JSON plus projected summary columns and a non-null relational `tags` JSON array;
+list queries project tags without selecting the full payload. Reports from older
+contracts are purged by migration and incompatible rows fail explicitly if
+encountered later; dashboard histogram bins remain inside the immutable detail
+payload.
 
 Benchmark report snapshots store tokenizer names in JSON because the report is
 an immutable run record; there is no benchmark-report/tokenizer junction table.
@@ -153,8 +155,7 @@ Use the application initializer (launcher option 4 or
 unversioned database is intentionally a hard failure and must be restored from a
 versioned backup or recreated.
 
-The current repository head remains `0003_canonical_state_cleanup`; no new
-database migration is required for the public `v4.3.0` release. Ready
+The current repository head is `0004_benchmark_report_tags`. Ready
 dataset rows, tokenizer rows, reports, and canonical tokenizer artifacts are
 stored under the configured resource root and are retained across application
 restarts unless explicitly deleted. The dataset files and tokenizer artifacts
