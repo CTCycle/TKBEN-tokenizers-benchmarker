@@ -52,9 +52,13 @@ body {
 .benchmark-chart-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; padding: 6px 8px 0; color: var(--color-muted); font-size: 11px; }
 .benchmark-chart-legend span { display: inline-flex; align-items: center; gap: 5px; }
 .benchmark-chart-legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-.dataset-histogram-chart { width: 100%; min-height: 190px; color: rgba(214, 224, 236, 0.42); }
-.dataset-histogram-chart svg { display: block; width: 100%; height: 190px; }
+.dataset-histogram-chart { width: 100%; min-height: 220px; color: rgba(214, 224, 236, 0.42); }
+.dataset-histogram-chart svg { display: block; width: 100%; height: 220px; }
 .dataset-histogram-chart text { fill: #dbe5f1; }
+.dataset-axis-label { fill: var(--color-text); font-size: 12px; font-weight: 600; letter-spacing: 0.01em; }
+.dataset-axis-tick { fill: var(--color-muted); font-size: 11px; }
+.dataset-histogram-chart text.dataset-axis-label { fill: var(--color-text); }
+.dataset-histogram-chart text.dataset-axis-tick { fill: var(--color-muted); }
 .dataset-histogram-bar { fill: var(--color-accent); opacity: 0.78; }
 .dataset-histogram-bar:hover { opacity: 1; }
 .dataset-donut-chart { display: block; width: 100%; height: 280px; margin: 0 auto; }
@@ -1688,7 +1692,14 @@ app-root {
 
 .tokenizer-discovery-advanced-toggle {
   margin-top: 8px;
-  padding: 7px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  padding: 4px 0;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
   font-size: 12px;
 }
 
@@ -1697,10 +1708,35 @@ app-root {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin-top: 8px;
-  padding: 10px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
-  background: var(--color-surface-subtle);
+  padding: 10px 0 2px;
+  border-top: 1px solid var(--color-border-subtle);
+  background: transparent;
+}
+
+.tokenizer-discovery-advanced-toggle:hover,
+.tokenizer-discovery-advanced-toggle:focus-visible {
+  color: var(--color-text);
+}
+
+.tokenizer-discovery-advanced-toggle:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+  border-radius: 4px;
+}
+
+.tokenizer-discovery-advanced-toggle-icon {
+  display: inline-block;
+  width: 12px;
+  color: var(--color-accent);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  transition: transform var(--transition);
+}
+
+.tokenizer-discovery-advanced-toggle[aria-expanded='true'] .tokenizer-discovery-advanced-toggle-icon {
+  transform: rotate(180deg);
 }
 
 .tokenizer-discovery-result-meta {
@@ -1878,9 +1914,8 @@ app-root {
 
 .tokenizer-discovery-form .tokenizer-discovery-advanced-toggle {
   align-self: flex-start;
-  height: 32px;
-  min-height: 32px;
-  padding: 6px 10px;
+  min-height: 28px;
+  padding: 4px 0;
   font-size: 12px;
   margin-top: 0;
 }
@@ -3660,6 +3695,16 @@ select {
   transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
 }
 
+input[type='number'] {
+  color-scheme: dark;
+}
+
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  opacity: 0.68;
+  filter: brightness(0.78);
+}
+
 .text-input:focus-visible,
 .tokenizer-textarea:focus-visible,
 .text-area:focus-visible,
@@ -5194,6 +5239,8 @@ select:focus-visible {
 app-benchmark-metric-chart { display: block; width: 100%; height: 100%; min-width: 0; min-height: 0; }
 .benchmark-custom-chart { display: block; width: 100%; max-width: 100%; height: 100%; min-width: 0; overflow: hidden; }
 .benchmark-custom-chart text { font-family: 'Segoe UI', Roboto, system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.benchmark-axis-label { fill: var(--color-text); font-size: 12px; font-weight: 600; letter-spacing: 0.01em; }
+.benchmark-axis-tick { fill: var(--color-muted); font-size: 11px; }
 .benchmark-svg-bar,
 .benchmark-histogram-bar { vector-effect: non-scaling-stroke; paint-order: stroke fill; stroke: rgba(255, 255, 255, 0.34); stroke-width: 1; transition: filter var(--transition), stroke var(--transition), stroke-width var(--transition); }
 .benchmark-svg-bar:hover,
