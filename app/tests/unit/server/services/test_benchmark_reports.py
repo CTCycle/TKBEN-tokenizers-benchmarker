@@ -137,6 +137,7 @@ def test_benchmark_report_service_round_trip(monkeypatch) -> None:
     assert stored["report_id"] == report_id
     assert stored["dataset_name"] == dataset_name
     assert stored["tokenizers_count"] == 1
+    assert stored["tags"] == []
     assert stored["tokenizer_results"][0]["status"] == "success"
     assert (
         stored["tokenizer_results"][0]["efficiency"]["encode_only_wall_time_seconds"]
@@ -146,15 +147,62 @@ def test_benchmark_report_service_round_trip(monkeypatch) -> None:
         stored_row = session.get(BenchmarkReport, report_id)
         assert stored_row is not None
         assert "status" not in stored_row.payload
+        assert "tags" not in stored_row.payload
         assert "config" in stored_row.payload
     assert summaries.reports[0].report_id == report_id
     assert summaries.reports[0].dataset_name == dataset_name
+    assert summaries.reports[0].tags == []
     assert summaries.total == 1
 
     inconsistent = _build_payload(dataset_name)
     inconsistent["tokenizers_count"] = 2
     with pytest.raises(ValueError, match="tokenizer count disagrees"):
         report_service.save_benchmark_report(inconsistent)
+
+###############################################################################
+def test_benchmark_report_service_updates_and_reloads_tags(monkeypatch) -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    Base.metadata.create_all(engine, checkfirst=True)
+    database = get_database()
+    monkeypatch.setattr(database.backend, "engine", engine)
+
+    dataset_name = "custom/tagged"
+    now = datetime.now(timezone.utc)
+    with Session(bind=engine) as session:
+        session.add(
+            Dataset(
+                name=dataset_name,
+                status="ready",
+                created_at=now,
+                updated_at=now,
+                ready_at=now,
+            )
+        )
+        session.commit()
+
+    service = BenchmarkReportService()
+    report_id = service.save_benchmark_report(_build_payload(dataset_name))
+
+    updated = service.update_benchmark_report_tags(
+        report_id, [" Production ", "cpu", "production", ""]
+    )
+
+    assert updated is not None
+    assert updated.report_id == report_id
+    assert updated.tags == ["Production", "cpu"]
+    loaded = service.load_benchmark_report_by_id(report_id)
+    assert loaded is not None
+    assert loaded["tags"] == ["Production", "cpu"]
+    summary = service.list_benchmark_reports(BenchmarkReportQuery(limit=10))
+    assert summary.reports[0].tags == ["Production", "cpu"]
+
+    with Session(bind=engine) as session:
+        stored_row = session.get(BenchmarkReport, report_id)
+        assert stored_row is not None
+        assert stored_row.tags == ["Production", "cpu"]
+        assert "tags" not in stored_row.payload
+
+    assert service.update_benchmark_report_tags(999, ["missing"]) is None
 
 ###############################################################################
 def test_benchmark_report_service_search_sort_pagination_and_delete(

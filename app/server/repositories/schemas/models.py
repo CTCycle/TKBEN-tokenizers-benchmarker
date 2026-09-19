@@ -319,6 +319,9 @@ class BenchmarkReport(Base):
     tokenizers_count: Mapped[int] = mapped_column(Integer, nullable=False)
     tokenizers_processed: Mapped[list[str]] = mapped_column(JSONArray(), nullable=False)
     selected_metric_keys: Mapped[list[str]] = mapped_column(JSONArray(), nullable=False)
+    tags: Mapped[list[str]] = mapped_column(
+        JSONArray(), nullable=False, default=list, server_default="[]"
+    )
     payload: Mapped[dict[str, Any]] = mapped_column(JSONObject(), nullable=False)
     __table_args__ = (
         CheckConstraint("report_version > 0", name="ck_benchmark_report_version"),

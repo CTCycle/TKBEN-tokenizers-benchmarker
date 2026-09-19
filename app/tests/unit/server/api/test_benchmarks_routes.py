@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
+import pytest
 
 from server.app import app
 
@@ -214,6 +215,62 @@ def test_benchmark_report_delete_route_returns_204_or_404(monkeypatch) -> None:
     assert client.delete("/api/benchmarks/reports/4").status_code == 204
     missing = client.delete("/api/benchmarks/reports/9")
     assert missing.status_code == 404
+
+###############################################################################
+def test_benchmark_report_tags_route_normalizes_and_returns_tags(monkeypatch) -> None:
+    from server.contracts.benchmarks import BenchmarkReportTagsResponse
+    from server.services.benchmark_reports import BenchmarkReportService
+
+    captured = {}
+
+    def fake_update(self, report_id, tags):
+        del self
+        captured["report_id"] = report_id
+        captured["tags"] = tags
+        return BenchmarkReportTagsResponse(report_id=report_id, tags=tags)
+
+    monkeypatch.setattr(
+        BenchmarkReportService,
+        "update_benchmark_report_tags",
+        fake_update,
+    )
+    response = TestClient(app).patch(
+        "/api/benchmarks/reports/7/tags",
+        json={"tags": [" Production ", "cpu", "production", ""]},
+    )
+
+    assert response.status_code == 200
+    assert captured == {"report_id": 7, "tags": ["Production", "cpu"]}
+    assert response.json() == {"report_id": 7, "tags": ["Production", "cpu"]}
+
+###############################################################################
+def test_benchmark_report_tags_route_returns_404_for_missing_report(monkeypatch) -> None:
+    from server.services.benchmark_reports import BenchmarkReportService
+
+    monkeypatch.setattr(
+        BenchmarkReportService,
+        "update_benchmark_report_tags",
+        lambda self, report_id, tags: None,
+    )
+    response = TestClient(app).patch(
+        "/api/benchmarks/reports/404/tags", json={"tags": []}
+    )
+    assert response.status_code == 404
+
+###############################################################################
+@pytest.mark.parametrize(
+    "tags",
+    [
+        ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine"],
+        ["x" * 33],
+        ["valid\ninvalid"],
+    ],
+)
+def test_benchmark_report_tags_route_rejects_invalid_tags(tags) -> None:
+    response = TestClient(app).patch(
+        "/api/benchmarks/reports/7/tags", json={"tags": tags}
+    )
+    assert response.status_code == 422
 
 ###############################################################################
 def test_benchmark_by_id_accepts_cancelled_contract(monkeypatch) -> None:
