@@ -15,7 +15,13 @@ import type {
   BenchmarkVisualizationKind,
 } from '../core/api/api.models';
 import { errorMessageAsync } from '../core/api/error-utils';
-import { classifyBenchmarkDataShape, formatBenchmarkValue } from '../core/utils/benchmark-dashboard-data';
+import {
+  benchmarkComparisonRows,
+  benchmarkComparisonTokenizers,
+  classifyBenchmarkDataShape,
+  formatBenchmarkDelta,
+  formatBenchmarkValue,
+} from '../core/utils/benchmark-dashboard-data';
 import { ModalA11yDirective } from '../core/ui/modal-a11y.directive';
 
 @Component({
@@ -30,21 +36,25 @@ export class CrossBenchmarkPageComponent {
   private readonly destroyRef = inject(DestroyRef);
   protected readonly runOpen = signal(false);
   protected readonly runStep = signal<1 | 2 | 3>(1);
+  protected readonly runMode = signal<'new' | 'clone'>('new');
   protected readonly customizeOpen = signal(false);
   protected readonly reportManagerOpen = signal(false);
   protected readonly reportDeleteConfirmId = signal<number | null>(null);
+  protected readonly editingTagsReportId = signal<number | null>(null);
+  protected readonly tagDraft = signal('');
   protected readonly customizeDraft = signal<readonly string[]>([]);
   protected readonly runSelectedMetricKeys = signal<readonly string[]>([]);
   protected readonly runSelectedTokenizers = signal<readonly string[]>([]);
   protected readonly tokenizerQuery = signal('');
   protected readonly restoreDisabled = signal(false);
   protected readonly exportError = signal<string | null>(null);
+  protected readonly cloneError = signal<string | null>(null);
   protected readonly keyboardGrabbed = signal<string | null>(null);
   protected readonly runForm = new FormGroup({
     dataset: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     tokenizers: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    runName: new FormControl('', { nonNullable: true }),
-    maxDocuments: new FormControl(1000, { nonNullable: true, validators: [Validators.min(1), Validators.max(100000)] }),
+    runName: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(120)] }),
+    maxDocuments: new FormControl(1000, { nonNullable: true, validators: [Validators.min(0), Validators.max(100000)] }),
     warmupTrials: new FormControl(2, { nonNullable: true, validators: [Validators.min(0), Validators.max(100)] }),
     timedTrials: new FormControl(8, { nonNullable: true, validators: [Validators.min(1), Validators.max(200)] }),
     batchSize: new FormControl(16, { nonNullable: true, validators: [Validators.min(1), Validators.max(4096)] }),
@@ -54,6 +64,7 @@ export class CrossBenchmarkPageComponent {
     addSpecialTokens: new FormControl(false, { nonNullable: true }),
     padding: new FormControl(false, { nonNullable: true }),
     truncation: new FormControl(false, { nonNullable: true }),
+    maxLength: new FormControl<number | null>(null, { validators: [Validators.min(1)] }),
     storePerDocumentStats: new FormControl(true, { nonNullable: true }),
     perDocumentSampleSize: new FormControl(500, { nonNullable: true, validators: [Validators.min(1), Validators.max(10000)] }),
   });
@@ -69,6 +80,10 @@ export class CrossBenchmarkPageComponent {
   protected readonly filteredRunTokenizers = computed(() => {
     const query = this.tokenizerQuery().trim().toLowerCase();
     return this.store.availableTokenizers().filter((tokenizer) => !query || tokenizer.toLowerCase().includes(query));
+  });
+  protected readonly comparisonTokenizers = computed(() => {
+    const report = this.store.report();
+    return report ? benchmarkComparisonTokenizers(report.dashboard) : [];
   });
 
   protected openReportManager(): void { this.reportManagerOpen.set(true); }
@@ -104,25 +119,126 @@ export class CrossBenchmarkPageComponent {
   protected cancelDeleteReport(): void { this.reportDeleteConfirmId.set(null); }
   protected deleteReport(reportId: number): void { this.store.deleteReport(reportId); }
 
+  protected startTagEdit(report: BenchmarkReportSummary): void {
+    this.editingTagsReportId.set(report.report_id);
+    this.tagDraft.set((report.tags ?? []).join(', '));
+  }
+
+  protected cancelTagEdit(): void {
+    this.editingTagsReportId.set(null);
+    this.tagDraft.set('');
+  }
+
+  protected updateTagDraft(event: Event): void {
+    this.tagDraft.set((event.target as HTMLInputElement).value);
+  }
+
+  protected saveReportTags(reportId: number): void {
+    if (this.store.updatingReportTagsId() === reportId) return;
+    const tags = this.tagDraft().split(',').map((tag) => tag.trim()).filter(Boolean);
+    this.store.updateReportTags(reportId, tags);
+    this.cancelTagEdit();
+  }
+
+  protected reportTags(report: BenchmarkReportSummary | { tags?: readonly string[] }): readonly string[] {
+    return report.tags ?? [];
+  }
+
+  protected selectBaseline(event: Event): void {
+    const tokenizer = (event.target as HTMLSelectElement).value;
+    this.store.setBaseline(tokenizer || null);
+  }
+
+  protected openCloneRun(): void {
+    const report = this.store.report();
+    if (!report) return;
+    const eligibilityError = this.cloneEligibilityError(report);
+    if (eligibilityError) {
+      this.cloneError.set(eligibilityError);
+      return;
+    }
+    const config = report.config;
+    this.runMode.set('clone');
+    this.cloneError.set(null);
+    this.runForm.patchValue({
+      dataset: report.dataset_name,
+      tokenizers: report.tokenizers_processed.join(','),
+      runName: this.cloneRunName(report),
+      maxDocuments: config.max_documents ?? report.documents_processed,
+      warmupTrials: config.warmup_trials,
+      timedTrials: config.timed_trials,
+      batchSize: config.batch_size,
+      seed: config.seed,
+      parallelism: config.parallelism,
+      includeLmMetrics: config.include_lm_metrics,
+      addSpecialTokens: config.add_special_tokens,
+      padding: config.padding,
+      truncation: config.truncation,
+      maxLength: config.max_length ?? null,
+      storePerDocumentStats: config.store_per_document_stats,
+      perDocumentSampleSize: config.per_document_sample_size,
+    });
+    this.runSelectedMetricKeys.set([...report.selected_metric_keys]);
+    this.runSelectedTokenizers.set([...report.tokenizers_processed]);
+    this.tokenizerQuery.set('');
+    this.runStep.set(3);
+    this.runOpen.set(true);
+  }
+
+  private cloneEligibilityError(report: { dataset_name: string; tokenizers_processed: string[]; selected_metric_keys: string[] }): string | null {
+    if (!this.store.availableDatasets().includes(report.dataset_name)) {
+      return `Cannot clone this benchmark because dataset “${report.dataset_name}” is no longer available.`;
+    }
+    if (report.tokenizers_processed.length > 5) {
+      return 'Cannot clone this benchmark because it contains more than 5 tokenizers.';
+    }
+    const missingTokenizer = report.tokenizers_processed.find((tokenizer) => !this.store.availableTokenizers().includes(tokenizer));
+    if (missingTokenizer) return `Cannot clone this benchmark because tokenizer “${missingTokenizer}” is no longer available.`;
+    const metricKeys = new Set(this.store.metricCategories().flatMap((category) => category.metrics.map((metric) => metric.key)));
+    const missingMetric = report.selected_metric_keys.find((metric) => !metricKeys.has(metric));
+    if (missingMetric) return `Cannot clone this benchmark because metric “${missingMetric}” is no longer available.`;
+    return null;
+  }
+
+  private cloneRunName(report: { report_id: number | null; run_name: string | null }): string {
+    const source = report.run_name?.trim() || `benchmark ${report.report_id ?? 'unknown'}`;
+    return Array.from(`Clone of ${source}`).slice(0, 120).join('');
+  }
+
   protected runBenchmark(): void {
     const value = this.runForm.getRawValue();
     const tokenizers = [...this.runSelectedTokenizers()];
-    if (!value.dataset.trim() || tokenizers.length === 0 || !value.runName.trim() || this.runSelectedMetricKeys().length === 0) return;
-    this.store.run({ tokenizers, dataset_name: value.dataset.trim(), run_name: value.runName.trim(), selected_metric_keys: [...this.runSelectedMetricKeys()], config: { max_documents: value.maxDocuments, warmup_trials: value.warmupTrials, timed_trials: value.timedTrials, batch_size: value.batchSize, seed: value.seed, parallelism: value.parallelism, include_lm_metrics: value.includeLmMetrics, add_special_tokens: value.addSpecialTokens, padding: value.padding, truncation: value.truncation, store_per_document_stats: value.storePerDocumentStats, per_document_sample_size: value.perDocumentSampleSize } });
+    if (this.runForm.controls.runName.invalid || this.runForm.controls.maxLength.invalid || !value.dataset.trim() || tokenizers.length === 0 || !value.runName.trim() || this.runSelectedMetricKeys().length === 0) return;
+    this.store.run({ tokenizers, dataset_name: value.dataset.trim(), run_name: value.runName.trim(), selected_metric_keys: [...this.runSelectedMetricKeys()], config: { max_documents: value.maxDocuments, warmup_trials: value.warmupTrials, timed_trials: value.timedTrials, batch_size: value.batchSize, seed: value.seed, parallelism: value.parallelism, include_lm_metrics: value.includeLmMetrics, add_special_tokens: value.addSpecialTokens, padding: value.padding, truncation: value.truncation, max_length: value.maxLength, store_per_document_stats: value.storePerDocumentStats, per_document_sample_size: value.perDocumentSampleSize } });
     this.runOpen.set(false);
   }
 
   protected openRun(): void {
+    this.initializeNewRun();
+  }
+
+  private initializeNewRun(): void {
     const dataset = this.store.report()?.dataset_name ?? this.store.availableDatasets()[0] ?? '';
-    const tokenizers = this.store.report()?.tokenizers_processed ?? [];
     const benchmarkDefaults = this.settingsStore.settings()?.benchmarks;
+    this.runMode.set('new');
+    this.cloneError.set(null);
     this.runForm.patchValue({
       dataset,
-      tokenizers: tokenizers.join(','),
+      tokenizers: '',
       runName: '',
       maxDocuments: benchmarkDefaults?.default_max_documents ?? 1000,
+      warmupTrials: 2,
+      timedTrials: 8,
       batchSize: benchmarkDefaults?.default_batch_size ?? 16,
+      seed: 42,
       parallelism: benchmarkDefaults?.default_parallelism ?? 1,
+      includeLmMetrics: false,
+      addSpecialTokens: false,
+      padding: false,
+      truncation: false,
+      maxLength: null,
+      storePerDocumentStats: true,
+      perDocumentSampleSize: 500,
     });
     this.runSelectedMetricKeys.set(this.store.metricCategories().flatMap((category) => category.metrics.map((metric) => metric.key)));
     // The dataset may be preselected, but tokenizers are intentionally left
@@ -265,6 +381,26 @@ export class CrossBenchmarkPageComponent {
   protected dataShape(widget: BenchmarkDashboardWidgetData): string {
     return classifyBenchmarkDataShape(widget);
   }
+
+  protected comparisonRows(widget: BenchmarkDashboardWidgetData): ReturnType<typeof benchmarkComparisonRows> {
+    return benchmarkComparisonRows(widget, this.store.baselineTokenizer());
+  }
+
+  protected comparisonDelta(widget: BenchmarkDashboardWidgetData, tokenizer: string): string {
+    const row = this.comparisonRows(widget).find((item) => item.tokenizer === tokenizer);
+    return row?.formattedDelta ?? 'N/A';
+  }
+
+  protected hasComparisonData(widget: BenchmarkDashboardWidgetData): boolean {
+    return Boolean(widget.points?.length || widget.distributions?.length);
+  }
+
+  protected comparisonStripRows(widget: BenchmarkDashboardWidgetData): ReturnType<typeof benchmarkComparisonRows> {
+    const rows = this.comparisonRows(widget);
+    return rows.some((row) => !row.isBaseline && row.deltaPercent !== null) ? rows.filter((row) => !row.isBaseline) : [];
+  }
+
+  protected readonly formatBenchmarkDelta = formatBenchmarkDelta;
 
   protected readonly formatBenchmarkValue = formatBenchmarkValue;
 
