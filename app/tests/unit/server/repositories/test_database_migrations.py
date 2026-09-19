@@ -79,6 +79,7 @@ def test_repeated_initialization_is_current_and_idempotent(
 
     assert _revision(path) == _head()
     assert path.stat().st_size == first_size
+    assert _head() == "0004_benchmark_report_tags"
 
 ###############################################################################
 def test_versioned_pre_cleanup_revision_upgrades_and_preserves_metric_key(

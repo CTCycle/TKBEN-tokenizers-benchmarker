@@ -35,6 +35,12 @@ JSON_ROUTE_EXPECTATIONS = [
     ("/api/benchmarks/reports", "get", 200, "BenchmarkReportListResponse"),
     ("/api/benchmarks/reports/{report_id}", "get", 200, "BenchmarkRunResponse"),
     (
+        "/api/benchmarks/reports/{report_id}/tags",
+        "patch",
+        200,
+        "BenchmarkReportTagsResponse",
+    ),
+    (
         "/api/benchmarks/metrics/catalog",
         "get",
         200,
