@@ -43,7 +43,6 @@ LEGACY_CACHE_TOKENS = (
     ".mypy_cache",
 )
 
-
 ###############################################################################
 def _imported_modules(path: Path) -> list[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -55,7 +54,6 @@ def _imported_modules(path: Path) -> list[str]:
             modules.append(node.module)
     return modules
 
-
 ###############################################################################
 def _production_python_files() -> list[Path]:
     return sorted(
@@ -64,11 +62,9 @@ def _production_python_files() -> list[Path]:
         if not any(part in {".venv", "__pycache__"} for part in path.parts)
     )
 
-
 ###############################################################################
 def _starts_with_module(module: str, prefix: str) -> bool:
     return module == prefix or module.startswith(f"{prefix}.")
-
 
 ###############################################################################
 def test_configuration_bootstraps_before_sensitive_imports() -> None:
@@ -104,7 +100,6 @@ def test_configuration_bootstraps_before_sensitive_imports() -> None:
     assert sensitive_import_indices
     assert bootstrap_index < min(sensitive_import_indices)
 
-
 ###############################################################################
 def test_production_layers_respect_dependency_boundaries() -> None:
     violations: list[str] = []
@@ -119,7 +114,6 @@ def test_production_layers_respect_dependency_boundaries() -> None:
 
     assert not violations, "\n".join(violations)
 
-
 ###############################################################################
 def test_production_code_has_no_legacy_architecture_imports() -> None:
     violations: list[str] = []
@@ -131,19 +125,16 @@ def test_production_code_has_no_legacy_architecture_imports() -> None:
 
     assert not violations, "\n".join(violations)
 
-
 ###############################################################################
 def test_removed_compatibility_paths_do_not_return() -> None:
     existing = [str(path.relative_to(REPOSITORY_ROOT)) for path in REMOVED_COMPATIBILITY_PATHS if path.exists()]
     assert not existing, "Removed compatibility paths were recreated:\n" + "\n".join(existing)
-
 
 ###############################################################################
 def test_launcher_has_no_legacy_cache_compatibility_paths() -> None:
     launcher = (REPOSITORY_ROOT / "start_on_windows.ps1").read_text(encoding="utf-8")
     violations = [token for token in LEGACY_CACHE_TOKENS if token in launcher]
     assert not violations, "Launcher still contains legacy cache compatibility tokens: " + ", ".join(violations)
-
 
 ###############################################################################
 def test_interactive_launcher_always_opens_the_backend_terminal() -> None:

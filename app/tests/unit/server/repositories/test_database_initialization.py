@@ -14,7 +14,6 @@ from server.repositories.database.backend import build_sqlite_backend
 from server.repositories.database.migrations import DatabaseMigrationError
 from server.repositories.schemas.models import Base
 
-
 ###############################################################################
 def _sqlite_settings(database_path: Path) -> DatabaseSettings:
     return DatabaseSettings(
@@ -31,7 +30,6 @@ def _sqlite_settings(database_path: Path) -> DatabaseSettings:
         insert_batch_size=100,
     )
 
-
 ###############################################################################
 def _postgres_settings(*, host: str | None = "127.0.0.1") -> DatabaseSettings:
     return DatabaseSettings(
@@ -47,7 +45,6 @@ def _postgres_settings(*, host: str | None = "127.0.0.1") -> DatabaseSettings:
         connect_timeout=1,
         insert_batch_size=100,
     )
-
 
 ###############################################################################
 def test_missing_sqlite_database_is_created_from_alembic_history(
@@ -83,7 +80,6 @@ def test_missing_sqlite_database_is_created_from_alembic_history(
     finally:
         engine.dispose()
 
-
 ###############################################################################
 def test_unknown_existing_sqlite_database_is_rejected_without_changes(
     tmp_path: Path,
@@ -104,7 +100,6 @@ def test_unknown_existing_sqlite_database_is_rejected_without_changes(
 
     assert hashlib.sha256(database_path.read_bytes()).digest() == before
 
-
 ###############################################################################
 def test_sqlite_backend_does_not_validate_existing_database(tmp_path: Path) -> None:
     database_path = tmp_path / "database.db"
@@ -119,7 +114,6 @@ def test_sqlite_backend_does_not_validate_existing_database(tmp_path: Path) -> N
     backend.engine.dispose()
 
     assert hashlib.sha256(database_path.read_bytes()).digest() == before
-
 
 ###############################################################################
 def test_postgres_startup_runs_the_same_migration_workflow(
@@ -145,7 +139,10 @@ def test_postgres_startup_runs_the_same_migration_workflow(
         lambda received: calls.append(f"ensure:{received.database_name}"),
     )
 
+    ###############################################################################
     class FakeEngine:
+
+        # -------------------------------------------------------------------------
         def dispose(self) -> None:
             calls.append("dispose")
 
@@ -166,27 +163,35 @@ def test_postgres_startup_runs_the_same_migration_workflow(
 
     assert calls == ["ensure:tkben_test", "migrate:tkben_test:True", "dispose"]
 
-
 ###############################################################################
 def test_postgres_connection_check_executes_select_one(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     statements: list[str] = []
 
+    ###############################################################################
     class FakeConnection:
+
+        # -------------------------------------------------------------------------
         def __enter__(self):
             return self
 
+        # -------------------------------------------------------------------------
         def __exit__(self, exc_type, exc_value, traceback):
             return False
 
+        # -------------------------------------------------------------------------
         def execute(self, statement):
             statements.append(str(statement))
 
+    ###############################################################################
     class FakeEngine:
+
+        # -------------------------------------------------------------------------
         def connect(self):
             return FakeConnection()
 
+        # -------------------------------------------------------------------------
         def dispose(self):
             return None
 
@@ -199,7 +204,6 @@ def test_postgres_connection_check_executes_select_one(
     initializer.connect_postgres_database(_postgres_settings())
 
     assert statements == ["SELECT 1"]
-
 
 ###############################################################################
 def test_postgres_initialization_failure_is_returned_as_process_failure(

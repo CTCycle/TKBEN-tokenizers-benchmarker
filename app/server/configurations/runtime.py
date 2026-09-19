@@ -28,26 +28,23 @@ RUNTIME_SETTINGS_WARNING = (
     "Save or reset settings to replace the file."
 )
 
-
 ###############################################################################
 class RuntimeSettingsError(RuntimeError):
     """Base error for application-managed runtime settings operations."""
-
 
 ###############################################################################
 class RuntimeSettingsValidationError(RuntimeSettingsError):
     """Raised when a runtime override cannot produce a valid settings snapshot."""
 
-
 ###############################################################################
 class RuntimeSettingsPersistenceError(RuntimeSettingsError):
     """Raised when a validated runtime settings document cannot be persisted."""
-
 
 ###############################################################################
 class RuntimeSettingsConflictError(RuntimeSettingsError):
     """Raised when a caller tries to update an obsolete settings revision."""
 
+    # -------------------------------------------------------------------------
     def __init__(self, expected_revision: int, actual_revision: int) -> None:
         self.expected_revision = expected_revision
         self.actual_revision = actual_revision
@@ -56,18 +53,17 @@ class RuntimeSettingsConflictError(RuntimeSettingsError):
             "Reload the settings and try again."
         )
 
-
 ###############################################################################
 class _StrictOverrideModel(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
+    # -------------------------------------------------------------------------
     @model_validator(mode="after")
     def reject_explicit_nulls(self) -> "_StrictOverrideModel":
         for field_name in self.model_fields_set:
             if getattr(self, field_name) is None:
                 raise ValueError(f"{field_name} must be provided as a value.")
         return self
-
 
 ###############################################################################
 class _TokenizerOverrides(_StrictOverrideModel):
@@ -84,7 +80,6 @@ class _TokenizerOverrides(_StrictOverrideModel):
         le=10,
     )
     max_upload_bytes: StrictInt | None = Field(default=None, ge=1)
-
 
 ###############################################################################
 class _DatasetOverrides(_StrictOverrideModel):
@@ -103,7 +98,6 @@ class _DatasetOverrides(_StrictOverrideModel):
         le=60.0,
     )
 
-
 ###############################################################################
 class _BenchmarkOverrides(_StrictOverrideModel):
     default_max_documents: StrictInt | None = Field(default=None, ge=1, le=100_000)
@@ -111,11 +105,9 @@ class _BenchmarkOverrides(_StrictOverrideModel):
     default_parallelism: StrictInt | None = Field(default=None, ge=1, le=128)
     streaming_batch_size: StrictInt | None = Field(default=None, ge=100)
 
-
 ###############################################################################
 class _JobsOverrides(_StrictOverrideModel):
     polling_interval: FiniteFloat | None = Field(default=None, ge=0.25)
-
 
 ###############################################################################
 class _RuntimeOverrides(_StrictOverrideModel):
@@ -124,13 +116,11 @@ class _RuntimeOverrides(_StrictOverrideModel):
     benchmarks: _BenchmarkOverrides | None = None
     jobs: _JobsOverrides | None = None
 
-
 ###############################################################################
 class _RuntimeOverrideDocument(_StrictOverrideModel):
     schema_version: StrictInt
     revision: StrictInt = Field(ge=0)
     overrides: _RuntimeOverrides = Field(default_factory=_RuntimeOverrides)
-
 
 ###############################################################################
 @dataclass(frozen=True, slots=True)
@@ -140,7 +130,6 @@ class RuntimeSettingsState:
     revision: int
     overridden_keys: tuple[str, ...]
     warning: str | None
-
 
 ###############################################################################
 class RuntimeSettingsStore:
@@ -171,6 +160,7 @@ class RuntimeSettingsStore:
         "jobs.polling_interval",
     )
 
+    # -------------------------------------------------------------------------
     def __init__(self, defaults: ServerSettings, path: str | Path | None = None) -> None:
         self._lock = RLock()
         self._defaults = defaults
@@ -185,18 +175,22 @@ class RuntimeSettingsStore:
         self._warning: str | None = None
         self._load_from_disk()
 
+    # -------------------------------------------------------------------------
     @property
     def path(self) -> Path:
         return self._path
 
+    # -------------------------------------------------------------------------
     @classmethod
     def editable_keys(cls) -> tuple[str, ...]:
         return cls._EDITABLE_KEYS
 
+    # -------------------------------------------------------------------------
     def get_state(self) -> RuntimeSettingsState:
         with self._lock:
             return self._state()
 
+    # -------------------------------------------------------------------------
     def reload(self) -> RuntimeSettingsState:
         with self._lock:
             self._effective = self._defaults
@@ -206,6 +200,7 @@ class RuntimeSettingsStore:
             self._load_from_disk()
             return self._state()
 
+    # -------------------------------------------------------------------------
     def apply_patch(
         self,
         patch: Mapping[str, Mapping[str, object]] | BaseModel,
@@ -232,6 +227,7 @@ class RuntimeSettingsStore:
             candidate = self._canonicalize_overrides(candidate)
             return self._commit(candidate)
 
+    # -------------------------------------------------------------------------
     def reset(
         self,
         *,
@@ -262,6 +258,7 @@ class RuntimeSettingsStore:
             candidate = self._canonicalize_overrides(candidate)
             return self._commit(candidate)
 
+    # -------------------------------------------------------------------------
     def _state(self) -> RuntimeSettingsState:
         return RuntimeSettingsState(
             settings=self._effective,
@@ -271,6 +268,7 @@ class RuntimeSettingsStore:
             warning=self._warning,
         )
 
+    # -------------------------------------------------------------------------
     def _load_from_disk(self) -> None:
         if not self._path.is_file():
             return
@@ -297,10 +295,12 @@ class RuntimeSettingsStore:
             self._warning = RUNTIME_SETTINGS_WARNING
             logger.warning("Invalid runtime settings overrides; using typed defaults.")
 
+    # -------------------------------------------------------------------------
     def _validate_revision(self, expected_revision: int) -> None:
         if expected_revision != self._revision:
             raise RuntimeSettingsConflictError(expected_revision, self._revision)
 
+    # -------------------------------------------------------------------------
     def _commit(self, overrides: dict[str, dict[str, object]]) -> RuntimeSettingsState:
         effective = self._build_effective(overrides)
         if (
@@ -318,6 +318,7 @@ class RuntimeSettingsStore:
         self._warning = None
         return self._state()
 
+    # -------------------------------------------------------------------------
     def _build_effective(
         self,
         overrides: Mapping[str, Mapping[str, object]],
@@ -356,6 +357,7 @@ class RuntimeSettingsStore:
                 self._format_validation_error(exc)
             ) from exc
 
+    # -------------------------------------------------------------------------
     def _canonicalize_overrides(
         self,
         raw_overrides: Mapping[str, object],
@@ -388,6 +390,7 @@ class RuntimeSettingsStore:
                 canonical[group_name] = non_default
         return canonical
 
+    # -------------------------------------------------------------------------
     def _persist(
         self,
         overrides: Mapping[str, Mapping[str, object]],
@@ -445,12 +448,14 @@ class RuntimeSettingsStore:
                 except OSError:
                     pass
 
+    # -------------------------------------------------------------------------
     def _copy_overrides(
         self,
         overrides: Mapping[str, Mapping[str, object]],
     ) -> dict[str, dict[str, object]]:
         return {group_name: dict(values) for group_name, values in overrides.items()}
 
+    # -------------------------------------------------------------------------
     def _overridden_keys(
         self,
         overrides: Mapping[str, Mapping[str, object]],
@@ -462,6 +467,7 @@ class RuntimeSettingsStore:
             in overrides.get(key.split(".", maxsplit=1)[0], {})
         )
 
+    # -------------------------------------------------------------------------
     def _patch_mapping(
         self,
         patch: Mapping[str, Mapping[str, object]] | BaseModel,
@@ -474,6 +480,7 @@ class RuntimeSettingsStore:
             raise RuntimeSettingsValidationError("Runtime settings patch must be an object.")
         return cast(Mapping[str, object], raw_patch)
 
+    # -------------------------------------------------------------------------
     @staticmethod
     def _format_validation_error(exc: ValidationError) -> str:
         messages: list[str] = []

@@ -15,6 +15,7 @@ from playwright.sync_api import APIRequestContext
 from server.common.path import CACHE_PATH
 
 
+###############################################################################
 def pytest_configure(config: pytest.Config) -> None:
     """Keep direct pytest execution on the repository's canonical cache root."""
 

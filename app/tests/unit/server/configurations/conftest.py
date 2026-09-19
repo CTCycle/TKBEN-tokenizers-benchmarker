@@ -30,6 +30,7 @@ _RUNTIME_ENV_NAMES = (
 _BASE_ENVIRONMENT = {name: os.environ.get(name) for name in _RUNTIME_ENV_NAMES}
 
 
+###############################################################################
 @pytest.fixture(autouse=True)
 def restore_runtime_environment() -> Iterator[None]:
     """Keep dotenv-backed settings tests isolated from process environment leaks."""

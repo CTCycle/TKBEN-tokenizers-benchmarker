@@ -10,7 +10,6 @@ from server.app import app
 from server.configurations import startup
 from server.configurations.runtime import RuntimeSettingsPersistenceError, RuntimeSettingsStore
 
-
 ###############################################################################
 @pytest.fixture
 def settings_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
@@ -19,7 +18,6 @@ def settings_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClie
     monkeypatch.setattr(startup, "_runtime_settings_store", store)
     monkeypatch.setattr(startup, "_default_settings", defaults)
     return TestClient(app)
-
 
 ###############################################################################
 def test_get_settings_returns_only_typed_runtime_fields(
@@ -58,7 +56,6 @@ def test_get_settings_returns_only_typed_runtime_fields(
     assert "DATABASE_PASSWORD" not in response.text
     assert "fastapi_host" not in response.text
     assert "paths" not in response.text
-
 
 ###############################################################################
 def test_patch_updates_multiple_fields_and_keeps_partial_overrides(
@@ -99,7 +96,6 @@ def test_patch_updates_multiple_fields_and_keeps_partial_overrides(
     assert follow_up.json()["settings"]["datasets"]["download_retry_attempts"] == 5
     assert follow_up.json()["settings"]["benchmarks"]["default_max_documents"] == 2500
 
-
 ###############################################################################
 def test_reset_one_and_reset_all_return_defaults(
     settings_client: TestClient,
@@ -125,7 +121,6 @@ def test_reset_one_and_reset_all_return_defaults(
     assert reset_all.json()["overridden_keys"] == []
     assert reset_all.json()["settings"]["datasets"]["max_upload_bytes"] == 25 * 1024 * 1024
 
-
 ###############################################################################
 @pytest.mark.parametrize(
     "payload",
@@ -150,7 +145,6 @@ def test_invalid_unknown_environment_and_incompatible_fields_fail(
     assert response.status_code == 422
     assert settings_client.get("/api/settings").json()["revision"] == 0
 
-
 ###############################################################################
 def test_stale_revision_returns_conflict_without_overwriting(
     settings_client: TestClient,
@@ -167,7 +161,6 @@ def test_stale_revision_returns_conflict_without_overwriting(
     )
     assert stale.status_code == 409
     assert settings_client.get("/api/settings").json()["settings"]["jobs"]["polling_interval"] == 2.0
-
 
 ###############################################################################
 def test_persistence_error_keeps_previous_authoritative_state(
@@ -190,7 +183,6 @@ def test_persistence_error_keeps_previous_authoritative_state(
     current = settings_client.get("/api/settings").json()
     assert current["revision"] == original.revision
     assert current["settings"]["datasets"]["histogram_bins"] == 20
-
 
 ###############################################################################
 def test_corrupt_file_warning_is_sanitized_and_cleared_by_save(

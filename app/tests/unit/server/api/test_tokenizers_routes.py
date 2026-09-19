@@ -289,12 +289,14 @@ def test_tokenizer_discovery_uses_runtime_default_and_legacy_settings_view(
     from server.contracts.tokenizers import TokenizerDiscoveryResponse
     from server.services.tokenizers import TokenizersService
 
+    ###############################################################################
     class _TokenizerCfg:
         default_discovery_limit = 7
         max_discovery_limit = 9
         max_discovery_candidates = 30
         metadata_candidate_multiplier = 2
 
+    ###############################################################################
     class _Settings:
         tokenizers = _TokenizerCfg()
 
@@ -326,10 +328,12 @@ def test_tokenizer_discovery_uses_runtime_default_and_legacy_settings_view(
 def test_tokenizer_discovery_enforces_runtime_maximum(monkeypatch) -> None:
     from server.api import tokenizers as tokenizers_api
 
+    ###############################################################################
     class _TokenizerCfg:
         default_discovery_limit = 7
         max_discovery_limit = 9
 
+    ###############################################################################
     class _Settings:
         tokenizers = _TokenizerCfg()
 

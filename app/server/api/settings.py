@@ -31,7 +31,6 @@ from server.contracts.settings import (
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_SETTINGS, tags=["settings"])
 
-
 ###############################################################################
 def _build_response() -> RuntimeSettingsResponse:
     state = get_runtime_settings_state()
@@ -42,7 +41,6 @@ def _build_response() -> RuntimeSettingsResponse:
         overridden_keys=cast(list[RuntimeSettingKey], list(state.overridden_keys)),
         warning=state.warning,
     )
-
 
 ###############################################################################
 def _runtime_values(settings: ServerSettings) -> RuntimeSettingsValues:
@@ -73,7 +71,6 @@ def _runtime_values(settings: ServerSettings) -> RuntimeSettingsValues:
         ),
     )
 
-
 ###############################################################################
 def _raise_settings_error(exc: RuntimeSettingsValidationError) -> None:
     raise HTTPException(
@@ -81,11 +78,9 @@ def _raise_settings_error(exc: RuntimeSettingsValidationError) -> None:
         detail=str(exc),
     ) from exc
 
-
 ###############################################################################
 def _replace_application_snapshot(request: Request) -> None:
     request.app.state.settings = get_runtime_settings_state().settings
-
 
 ###############################################################################
 @router.get(
@@ -95,7 +90,6 @@ def _replace_application_snapshot(request: Request) -> None:
 )
 async def get_settings() -> RuntimeSettingsResponse:
     return _build_response()
-
 
 ###############################################################################
 @router.patch(
@@ -133,7 +127,6 @@ async def patch_settings(
     response = _build_response()
     _replace_application_snapshot(request)
     return response
-
 
 ###############################################################################
 @router.post(
