@@ -232,11 +232,11 @@ export class DatasetPageComponent {
     const values = this.zipfCurve();
     const maxRank = this.zipfMaxRank();
     const maxFrequency = this.zipfMaxFrequency();
-    return values.map((item) => `${24 + (item.rank / maxRank) * 572},${166 - (item.frequency / maxFrequency) * 140}`).join(' ');
+    return values.map((item) => `${56 + (item.rank / maxRank) * 556},${174 - (item.frequency / maxFrequency) * 148}`).join(' ');
   });
 
-  protected zipfX(fraction: number): number { return 24 + fraction * 572; }
-  protected zipfY(fraction: number): number { return 166 - fraction * 140; }
+  protected zipfX(fraction: number): number { return 56 + fraction * 556; }
+  protected zipfY(fraction: number): number { return 174 - fraction * 148; }
   protected zipfRank(fraction: number): string { return Math.max(1, Math.round(this.zipfMaxRank() * fraction)).toLocaleString(); }
   protected zipfFrequency(fraction: number): string { return this.formatAxis(this.zipfMaxFrequency() * fraction, 'number'); }
 
