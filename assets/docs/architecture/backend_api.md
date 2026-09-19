@@ -1,5 +1,5 @@
 # Backend API
-Last updated: 2026-09-18
+Last updated: 2026-09-19
 
 ## API Prefix
 All routers are included with `prefix="/api"` during backend startup.
@@ -52,6 +52,10 @@ through the manual Hugging Face dataset-ID workflow.
 - `POST /api/benchmarks/run`
 - `GET /api/benchmarks/reports` — returns `{reports, total, offset, limit}`. Optional `search` is applied server-side to `run_name` and `Dataset.name`; `sort=newest|oldest`, `offset`, and `limit` provide deterministic server pagination. List queries fetch summary columns only and never select the JSON payload.
 - `GET /api/benchmarks/reports/{report_id}`
+- `PATCH /api/benchmarks/reports/{report_id}/tags` — replaces the report’s
+  validated tag list and returns `{report_id, tags}`; tags are trimmed,
+  case-insensitively deduplicated, limited to eight entries of 32 characters,
+  and reject control characters.
 - `DELETE /api/benchmarks/reports/{report_id}` — physically deletes the persisted report and returns `204`; nonexistent reports return `404`.
 - `GET /api/benchmarks/metrics/catalog`
   - dashboard widgets use report-v5/schema-3 `default_visualization`, ordered `compatible_visualizations`, and persisted `histogram_bins`; older reports are not listed or loaded

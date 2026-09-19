@@ -1,5 +1,5 @@
 # System Overview
-Last updated: 2026-09-18
+Last updated: 2026-09-19
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
@@ -7,7 +7,7 @@ TKBEN is a tokenizer benchmarking platform with:
 - Angular 22 frontend (`app/client`)
 - Shared local resources and settings (`app/resources`, `settings`)
 - Alembic-owned persistence with direct metric keys, persisted tokenizer
-  sources, and relational benchmark-report summaries
+  sources, and relational benchmark-report summaries and tags
 
 The current public release is `v4.3.0` with backend `3.3.0` and frontend
 `2.3.0`. It remains a source-only folder distribution launched with
@@ -52,7 +52,7 @@ Source-level structure, with generated and environment-specific folders omitted:
 │  │  │  ├─ queries/
 │  │  │  └─ schemas/
 │  │  └─ migrations/
-│  │     └─ versions/0003_canonical_state_cleanup.py
+│  │     └─ versions/0004_benchmark_report_tags.py
 │  ├─ scripts/
 │  ├─ tests/
 │  └─ resources/
@@ -72,7 +72,7 @@ Source-level structure, with generated and environment-specific folders omitted:
 - Frontend data and interaction helpers:
   - Signal stores under `app/client/angular/app/core/state/` own catalog loading,
     report state, polling, and in-memory UI state; only `BenchmarkStore` owns
-    persisted dashboard preferences.
+    persisted dashboard preferences and report-scoped baseline preferences.
   - Pure normalization helpers under `app/client/angular/app/core/utils/` own dataset and chart payload shaping.
 - Windows launcher:
   - `start_on_windows.ps1` is the single user-facing root entry point for the combined launch and maintenance menu.
@@ -98,6 +98,9 @@ of the Settings API or page.
 - `server.services.TokenizerReportingService` owns tokenizer metadata, vocabulary analysis, report generation, and report retrieval.
 - `server.services.BenchmarkService` owns benchmark admission, execution, and runtime result construction.
 - `server.services.BenchmarkReportService` owns benchmark report contract validation, persistence orchestration, and response normalization.
+- `server.repositories.BenchmarkRepository` owns projected report tags and the
+  dedicated tag update transaction; tags are relational metadata outside the
+  immutable benchmark detail payload.
 - `server.repositories.DatasetRepository` owns dataset, analysis-session, metric, and histogram persistence.
 - `server.repositories.TokenizerReportRepository` owns tokenizer report and vocabulary persistence; `TokenizerRepository` owns tokenizer identity/catalog storage.
 - `server.services.dataset_statistics` owns the focused `LengthStatistics` and `HistogramBuilder` components used by dataset analysis.

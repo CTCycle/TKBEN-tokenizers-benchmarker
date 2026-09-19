@@ -1,15 +1,15 @@
 # Project Overview
-Last updated: 2026-09-16
+Last updated: 2026-09-19
 
 ## Purpose
 This file is the root index for `assets/docs`. Read it first to find the narrowest topic file for the task at hand.
 
 The current codebase uses schema-3/report-5 benchmark reports, Alembic revision
-`0003_canonical_state_cleanup`, typed frontend catalog controls, persisted
+`0004_benchmark_report_tags`, typed frontend catalog controls, persisted
 tokenizer source/artifact state, and a `BenchmarkStore` that owns dashboard
-preferences. Reports own relational summary fields while JSON stores detail
-fields; incompatible historical rows are rejected or purged rather than
-silently adapted.
+preferences and report-scoped baseline selections. Reports own relational
+summary fields and tags while JSON stores immutable detail fields; incompatible
+historical rows are rejected or purged rather than silently adapted.
 
 The latest published release is `v4.3.0` with backend package `3.3.0` and
 frontend package `2.3.0`. Configuration ownership is canonical: `settings/.env`
