@@ -1,5 +1,6 @@
 import type {
   BenchmarkDashboardBucketPoint,
+  BenchmarkDashboardData,
   BenchmarkDashboardDistribution,
   BenchmarkDashboardHistogramBin,
   BenchmarkDashboardPoint,
@@ -107,3 +108,98 @@ export const uniqueTokenizers = (widget: BenchmarkDashboardWidgetData): string[]
     ...widget.histogram_bins.map((item) => item.tokenizer),
   ]),
 ];
+
+export interface BenchmarkComparisonRow {
+  tokenizer: string;
+  deltaPercent: number | null;
+  formattedDelta: string;
+  isBaseline: boolean;
+}
+
+type BenchmarkDashboardWidgets = BenchmarkDashboardData | readonly BenchmarkDashboardWidgetData[];
+
+const widgetsFromDashboard = (dashboard: BenchmarkDashboardWidgets): readonly BenchmarkDashboardWidgetData[] =>
+  Array.isArray(dashboard) ? dashboard : (dashboard as BenchmarkDashboardData).widgets;
+
+export const benchmarkPointValue = (
+  widget: BenchmarkDashboardWidgetData,
+  tokenizer: string,
+): number | null => {
+  const point = (widget.points ?? []).find((item) => item.tokenizer === tokenizer);
+  return point && Number.isFinite(point.value) ? point.value : null;
+};
+
+export const benchmarkDistributionMedian = (
+  widget: BenchmarkDashboardWidgetData,
+  tokenizer: string,
+): number | null => {
+  const distribution = (widget.distributions ?? []).find((item) => item.tokenizer === tokenizer);
+  return distribution && Number.isFinite(distribution.median) ? distribution.median : null;
+};
+
+export const benchmarkComparisonTokenizers = (dashboard: BenchmarkDashboardWidgets): string[] => [
+  ...new Set(
+    widgetsFromDashboard(dashboard).flatMap((widget) => [
+      ...(widget.points ?? []).filter((item) => Number.isFinite(item.value)).map((item) => item.tokenizer),
+      ...(widget.distributions ?? []).filter((item) => Number.isFinite(item.median)).map((item) => item.tokenizer),
+    ]),
+  ),
+];
+
+export const relativeBenchmarkDelta = (
+  candidateValue: number | null | undefined,
+  baselineValue: number | null | undefined,
+): number | null => {
+  if (
+    candidateValue === null || candidateValue === undefined
+    || baselineValue === null || baselineValue === undefined
+    || !Number.isFinite(candidateValue)
+    || !Number.isFinite(baselineValue)
+    || baselineValue === 0
+  ) return null;
+  const delta = ((candidateValue - baselineValue) / baselineValue) * 100;
+  return Number.isFinite(delta) ? delta : null;
+};
+
+export const formatBenchmarkDelta = (deltaPercent: number | null, isBaseline = false): string => {
+  if (isBaseline) return 'Baseline';
+  if (deltaPercent === null || !Number.isFinite(deltaPercent)) return 'N/A';
+  return `${deltaPercent > 0 ? '+' : ''}${deltaPercent.toFixed(2)}%`;
+};
+
+export const benchmarkComparisonRows = (
+  widget: BenchmarkDashboardWidgetData,
+  baselineTokenizer: string | null | undefined,
+): BenchmarkComparisonRow[] => {
+  if (!baselineTokenizer) return [];
+
+  if ((widget.distributions ?? []).length) {
+    const baselineValue = benchmarkDistributionMedian(widget, baselineTokenizer);
+    return (widget.distributions ?? []).map((item) => {
+      const isBaseline = item.tokenizer === baselineTokenizer;
+      const deltaPercent = isBaseline ? null : relativeBenchmarkDelta(item.median, baselineValue);
+      return {
+        tokenizer: item.tokenizer,
+        deltaPercent,
+        formattedDelta: formatBenchmarkDelta(deltaPercent, isBaseline),
+        isBaseline,
+      };
+    });
+  }
+
+  if ((widget.points ?? []).length) {
+    const baselineValue = benchmarkPointValue(widget, baselineTokenizer);
+    return (widget.points ?? []).map((item) => {
+      const isBaseline = item.tokenizer === baselineTokenizer;
+      const deltaPercent = isBaseline ? null : relativeBenchmarkDelta(item.value, baselineValue);
+      return {
+        tokenizer: item.tokenizer,
+        deltaPercent,
+        formattedDelta: formatBenchmarkDelta(deltaPercent, isBaseline),
+        isBaseline,
+      };
+    });
+  }
+
+  return [];
+};

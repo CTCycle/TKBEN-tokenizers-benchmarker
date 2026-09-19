@@ -576,6 +576,16 @@ export interface BenchmarkReportSummary {
     tokenizers_count: number;
     tokenizers_processed: string[];
     selected_metric_keys: string[];
+    tags: string[];
+}
+
+export interface BenchmarkReportTagsUpdate {
+    tags: string[];
+}
+
+export interface BenchmarkReportTagsResponse {
+    report_id: number;
+    tags: string[];
 }
 
 export type BenchmarkReportSort = 'newest' | 'oldest';
@@ -697,6 +707,7 @@ export interface BenchmarkRunResponse {
     hardware_profile: BenchmarkHardwareProfile;
     trial_summary: BenchmarkTrialSummary;
     tokenizer_results: BenchmarkTokenizerResult[];
+    tags: string[];
     dashboard: BenchmarkDashboardData;
     per_document_stats: BenchmarkPerDocumentTokenizerStats[];
     runtime_metadata: Record<string, unknown>;
