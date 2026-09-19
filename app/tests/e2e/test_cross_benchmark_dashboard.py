@@ -413,8 +413,8 @@ def test_cross_benchmark_baseline_clone_and_report_tags(
     baseline.select_option("alpha")
     expect(page.get_by_text("Baseline: alpha", exact=True)).to_have_count(3)
     page.get_by_text("View data table").first.click()
-    expect(page.get_by_text("Δ vs baseline", exact=True)).to_be_visible()
-    expect(page.get_by_text("Baseline", exact=True)).to_have_count(2)
+    expect(page.get_by_role("columnheader", name="Δ vs baseline").first).to_be_visible()
+    expect(page.get_by_text("Baseline", exact=True)).to_have_count(3)
 
     page.get_by_role("button", name="Reports (1)").click()
     dialog = page.get_by_role("dialog", name="Benchmark Reports")
