@@ -11,7 +11,6 @@ down_revision = "0003_canonical_state_cleanup"
 branch_labels = None
 depends_on = None
 
-
 ###############################################################################
 def upgrade() -> None:
     op.add_column(
@@ -23,7 +22,6 @@ def upgrade() -> None:
             server_default=sa.text("'[]'"),
         ),
     )
-
 
 ###############################################################################
 def downgrade() -> None:

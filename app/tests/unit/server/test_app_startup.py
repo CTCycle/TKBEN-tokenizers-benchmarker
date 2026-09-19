@@ -8,7 +8,6 @@ from fastapi.testclient import TestClient
 from server import app as app_module
 from server.services import startup_validation
 
-
 ###############################################################################
 def _settings(
     *,
@@ -31,7 +30,6 @@ def _settings(
         jobs=SimpleNamespace(terminal_retention_seconds=3600.0),
     )
 
-
 ###############################################################################
 def test_build_cors_origins_normalizes_local_hosts(tmp_path: Path) -> None:
     settings = _settings(
@@ -46,7 +44,6 @@ def test_build_cors_origins_normalizes_local_hosts(tmp_path: Path) -> None:
     origins = startup_validation.build_cors_origins(settings)
 
     assert origins == ["http://127.0.0.1:8000", "http://localhost:8000"]
-
 
 ###############################################################################
 def test_run_startup_validations_creates_runtime_directories(tmp_path: Path) -> None:
@@ -67,7 +64,6 @@ def test_run_startup_validations_creates_runtime_directories(tmp_path: Path) -> 
     assert datasets_path.is_dir()
     assert tokenizers_path.is_dir()
     assert templates_path.is_dir()
-
 
 ###############################################################################
 def test_create_app_initializes_startup_state(

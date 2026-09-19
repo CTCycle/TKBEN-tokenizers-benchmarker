@@ -25,7 +25,6 @@ from server.configurations.settings import (
     TokenizerSettings,
 )
 
-
 ###############################################################################
 def _server_settings(tmp_path: Path) -> ServerSettings:
     resources = tmp_path / "resources"
@@ -68,7 +67,6 @@ def _server_settings(tmp_path: Path) -> ServerSettings:
         jobs=JobsSettings(),
     )
 
-
 ###############################################################################
 def test_default_only_startup_and_missing_runtime_file(tmp_path: Path) -> None:
     defaults = _server_settings(tmp_path)
@@ -83,7 +81,6 @@ def test_default_only_startup_and_missing_runtime_file(tmp_path: Path) -> None:
     assert state.overridden_keys == ()
     assert state.warning is None
     assert not path.exists()
-
 
 ###############################################################################
 def test_valid_partial_overrides_merge_and_persist_sparsely(tmp_path: Path) -> None:
@@ -117,7 +114,6 @@ def test_valid_partial_overrides_merge_and_persist_sparsely(tmp_path: Path) -> N
     }
     assert "network" not in path.read_text(encoding="utf-8")
 
-
 ###############################################################################
 @pytest.mark.parametrize(
     "patch",
@@ -141,7 +137,6 @@ def test_invalid_unknown_and_environment_fields_are_rejected(
     assert store.get_state().revision == 0
     assert not store.path.exists()
 
-
 ###############################################################################
 def test_tokenizer_cross_field_validation_remains_authoritative(tmp_path: Path) -> None:
     store = RuntimeSettingsStore(_server_settings(tmp_path), tmp_path / "runtime.json")
@@ -159,7 +154,6 @@ def test_tokenizer_cross_field_validation_remains_authoritative(tmp_path: Path) 
         )
 
     assert store.get_state().settings.tokenizers.max_discovery_limit == 250
-
 
 ###############################################################################
 @pytest.mark.parametrize(
@@ -187,7 +181,6 @@ def test_invalid_schema_or_override_file_falls_back_with_warning(
     assert state.warning == runtime_module.RUNTIME_SETTINGS_WARNING
     assert path.read_bytes() == original
 
-
 ###############################################################################
 def test_malformed_runtime_json_is_preserved(tmp_path: Path) -> None:
     path = tmp_path / "runtime-settings.json"
@@ -197,7 +190,6 @@ def test_malformed_runtime_json_is_preserved(tmp_path: Path) -> None:
 
     assert store.get_state().warning is not None
     assert path.read_text(encoding="utf-8") == "{not-json"
-
 
 ###############################################################################
 def test_successful_save_replaces_corrupt_runtime_file(tmp_path: Path) -> None:
@@ -232,7 +224,6 @@ def test_revision_conflict_does_not_write(tmp_path: Path) -> None:
     assert path.read_bytes() == original
     assert store.get_state().settings.datasets.histogram_bins == 30
 
-
 ###############################################################################
 def test_reset_one_value_and_equal_default_remove_the_override(tmp_path: Path) -> None:
     path = tmp_path / "runtime-settings.json"
@@ -263,7 +254,6 @@ def test_reset_one_value_and_equal_default_remove_the_override(tmp_path: Path) -
     assert reset_to_default.settings.datasets.streaming_batch_size == 10_000
     assert reset_to_default.overridden_keys == ("jobs.polling_interval",)
 
-
 ###############################################################################
 def test_reset_all_deletes_empty_runtime_file(tmp_path: Path) -> None:
     path = tmp_path / "runtime-settings.json"
@@ -275,7 +265,6 @@ def test_reset_all_deletes_empty_runtime_file(tmp_path: Path) -> None:
     assert state.settings.datasets.histogram_bins == 20
     assert state.overridden_keys == ()
     assert not path.exists()
-
 
 ###############################################################################
 def test_reset_all_removes_a_valid_empty_runtime_file(tmp_path: Path) -> None:
@@ -291,7 +280,6 @@ def test_reset_all_removes_a_valid_empty_runtime_file(tmp_path: Path) -> None:
     assert state.revision == 4
     assert state.overridden_keys == ()
     assert not path.exists()
-
 
 ###############################################################################
 def test_atomic_write_and_persistence_failure_roll_back_state_and_disk(
@@ -318,7 +306,6 @@ def test_atomic_write_and_persistence_failure_roll_back_state_and_disk(
     assert store.get_state().revision == 1
     assert not list(tmp_path.glob(".runtime-settings.json.*.tmp"))
 
-
 ###############################################################################
 def test_process_restart_and_reload_load_persisted_overrides(tmp_path: Path) -> None:
     path = tmp_path / "runtime-settings.json"
@@ -331,7 +318,6 @@ def test_process_restart_and_reload_load_persisted_overrides(tmp_path: Path) -> 
     assert restarted.get_state().revision == 1
     assert restarted.get_state().warning is None
 
-
 ###############################################################################
 def test_runtime_override_models_are_frozen(tmp_path: Path) -> None:
     store = RuntimeSettingsStore(_server_settings(tmp_path), tmp_path / "runtime.json")
@@ -342,7 +328,6 @@ def test_runtime_override_models_are_frozen(tmp_path: Path) -> None:
 
     with pytest.raises(ValidationError):
         state.settings.datasets.histogram_bins = 20
-
 
 ###############################################################################
 def test_benchmark_defaults_persist_sparsely_and_reset_independently(tmp_path: Path) -> None:

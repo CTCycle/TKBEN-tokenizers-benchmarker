@@ -16,7 +16,6 @@ from server.configurations.startup import (
     reset_settings_cache_for_tests,
 )
 
-
 ###############################################################################
 @pytest.fixture(autouse=True)
 def reset_configuration_state() -> None:
@@ -26,11 +25,9 @@ def reset_configuration_state() -> None:
     reset_settings_cache_for_tests()
     bootstrap.reset_environment_bootstrap_for_tests()
 
-
 ###############################################################################
 def _write_env(path: Path, lines: list[str]) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-
 
 ###############################################################################
 def _configure_environment(
@@ -44,7 +41,6 @@ def _configure_environment(
     reset_settings_cache_for_tests()
     bootstrap.reset_environment_bootstrap_for_tests()
 
-
 ###############################################################################
 def test_bootstrap_environment_overrides_existing_process_values(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -57,7 +53,6 @@ def test_bootstrap_environment_overrides_existing_process_values(
     bootstrap.ensure_environment_loaded()
 
     assert os.getenv("FASTAPI_HOST") == "from_dotenv"
-
 
 ###############################################################################
 def test_missing_environment_is_created_from_example(
@@ -74,7 +69,6 @@ def test_missing_environment_is_created_from_example(
     assert env_path.read_bytes() == template_bytes
     assert os.getenv("FASTAPI_HOST") == "from_template"
 
-
 ###############################################################################
 def test_environment_template_exposes_canonical_runtime_inputs() -> None:
     example = (ROOT_DIR / "settings/.env.example").read_text(encoding="utf-8")
@@ -84,7 +78,6 @@ def test_environment_template_exposes_canonical_runtime_inputs() -> None:
     assert "UI_HOST=127.0.0.1" in example
     assert "DATABASE_EMBEDDED=true" in example
     assert "ALLOW_KEY_REVEAL=false" in example
-
 
 ###############################################################################
 def test_bootstrap_is_idempotent_without_force(
@@ -99,7 +92,6 @@ def test_bootstrap_is_idempotent_without_force(
     bootstrap.ensure_environment_loaded()
 
     assert os.getenv("FASTAPI_HOST") == "first"
-
 
 ###############################################################################
 def test_typed_defaults_resolve_without_structured_json(
@@ -128,7 +120,6 @@ def test_typed_defaults_resolve_without_structured_json(
     assert settings.benchmarks.streaming_batch_size == 1000
     assert settings.jobs.polling_interval == 1.0
     assert not (data_root / "runtime-settings.json").exists()
-
 
 ###############################################################################
 def test_runtime_environment_resolves_into_one_settings_tree(
@@ -172,7 +163,6 @@ def test_runtime_environment_resolves_into_one_settings_tree(
     assert settings.security.allow_key_reveal is True
     assert settings.security.hf_keys_encryption_material_file == material_path.resolve()
 
-
 ###############################################################################
 def test_relative_runtime_paths_are_repository_relative(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -191,7 +181,6 @@ def test_relative_runtime_paths_are_repository_relative(
 
     assert settings.paths.resources == (ROOT_DIR / "custom/runtime-data").resolve()
     assert settings.paths.logs == (ROOT_DIR / "custom/runtime-logs").resolve()
-
 
 ###############################################################################
 def test_external_database_settings_are_explicit(
@@ -220,7 +209,6 @@ def test_external_database_settings_are_explicit(
     assert settings.database.username == "remote_user"
     assert settings.database.ssl is True
 
-
 ###############################################################################
 def test_external_database_requires_host_name_and_user(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -241,7 +229,6 @@ def test_external_database_requires_host_name_and_user(
         match="database.host, database.database_name, database.username",
     ):
         get_server_settings()
-
 
 ###############################################################################
 @pytest.mark.parametrize(
@@ -272,7 +259,6 @@ def test_boolean_aliases_are_rejected(
     with pytest.raises(RuntimeError, match=name):
         get_server_settings()
 
-
 ###############################################################################
 def test_settings_models_are_immutable(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -282,7 +268,6 @@ def test_settings_models_are_immutable(
 
     with pytest.raises(ValidationError):
         settings.datasets.histogram_bins = 99
-
 
 ###############################################################################
 def test_runtime_setting_models_keep_cross_field_and_polling_validation() -> None:
@@ -295,7 +280,6 @@ def test_runtime_setting_models_keep_cross_field_and_polling_validation() -> Non
     with pytest.raises(ValidationError):
         JobsSettings(polling_interval=0.1)
 
-
 ###############################################################################
 def test_key_reveal_policy_uses_canonical_settings(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -307,7 +291,6 @@ def test_key_reveal_policy_uses_canonical_settings(
     )
 
     assert is_key_reveal_enabled() is True
-
 
 ###############################################################################
 def test_hf_key_cipher_uses_configured_material_path(
