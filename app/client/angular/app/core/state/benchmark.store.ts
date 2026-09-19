@@ -15,6 +15,7 @@ import type {
   BenchmarkRunRequest,
   BenchmarkRunResponse,
 } from '../api/api.models';
+import { benchmarkComparisonTokenizers } from '../utils/benchmark-dashboard-data';
 
 @Injectable({ providedIn: 'root' })
 export class BenchmarkStore {
@@ -47,10 +48,15 @@ export class BenchmarkStore {
   readonly layout = signal<readonly string[]>([]);
   readonly hiddenWidgetIds = signal<readonly string[]>([]);
   readonly visualizations = signal<Record<string, string>>({});
+  readonly baselineTokenizer = signal<string | null>(null);
+  readonly updatingReportTagsId = signal<number | null>(null);
   private readonly layoutStorageKey = 'tkben:cross-benchmark-dashboard-layout:v3';
+  private readonly baselineStorageKey = 'tkben:cross-benchmark-baselines:v1';
+  private baselinePreferences: Record<string, string> = {};
 
   constructor() {
     this.restoreLayout();
+    this.restoreBaselinePreferences();
     this.loadWorkspaceMeta();
     this.reportRequests.pipe(
       debounceTime(250),
@@ -120,6 +126,7 @@ export class BenchmarkStore {
 
   selectReport(reportId: number): void {
     this.selectedReportId.set(reportId);
+    this.baselineTokenizer.set(null);
     this.loadReport(reportId);
   }
 
@@ -129,6 +136,7 @@ export class BenchmarkStore {
       next: (report) => {
         if (sequence !== this.reportLoadSequence || this.selectedReportId() !== reportId) return;
         this.report.set(report);
+        this.restoreBaselineForReport(report);
         if (!this.layout().length) {
           this.layout.set(report.dashboard.widgets.map((widget) => widget.widget_id));
           this.hiddenWidgetIds.set(report.dashboard.widgets.filter((widget) => !widget.default_visible).map((widget) => widget.widget_id));
@@ -149,6 +157,7 @@ export class BenchmarkStore {
     const selected = this.selectedReportId() === reportId;
     this.api.deleteReport(reportId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
+        this.removeBaselinePreference(reportId);
         const remaining = visibleReports.filter((item) => item.report_id !== reportId);
         this.reports.set(remaining);
         this.reportTotal.update((total) => Math.max(0, total - 1));
@@ -184,6 +193,7 @@ export class BenchmarkStore {
       next: (report) => {
         this.report.set(report);
         if (report.report_id !== null) this.selectedReportId.set(report.report_id);
+        this.restoreBaselineForReport(report);
         this.busy.set(false);
         this.activeJobId.set(null);
         this.progress.set(100);
@@ -259,6 +269,49 @@ export class BenchmarkStore {
     } catch { /* corrupted storage is ignored */ }
   }
 
+  private restoreBaselinePreferences(): void {
+    try {
+      const raw = localStorage.getItem(this.baselineStorageKey);
+      const parsed: unknown = raw ? JSON.parse(raw) : null;
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return;
+      this.baselinePreferences = Object.fromEntries(
+        Object.entries(parsed).filter(([reportId, tokenizer]) =>
+          /^\d+$/.test(reportId) && typeof tokenizer === 'string' && tokenizer.trim(),
+        ),
+      );
+    } catch { /* corrupted storage is ignored */ }
+  }
+
+  private persistBaselinePreferences(): void {
+    try {
+      localStorage.setItem(this.baselineStorageKey, JSON.stringify(this.baselinePreferences));
+    } catch { /* storage is optional */ }
+  }
+
+  private restoreBaselineForReport(report: BenchmarkRunResponse): void {
+    const reportId = report.report_id;
+    if (reportId === null) {
+      this.baselineTokenizer.set(null);
+      return;
+    }
+    const stored = this.baselinePreferences[String(reportId)] ?? null;
+    if (stored && benchmarkComparisonTokenizers(report.dashboard).includes(stored)) {
+      this.baselineTokenizer.set(stored);
+      return;
+    }
+    this.baselineTokenizer.set(null);
+    if (stored) {
+      delete this.baselinePreferences[String(reportId)];
+      this.persistBaselinePreferences();
+    }
+  }
+
+  private removeBaselinePreference(reportId: number): void {
+    delete this.baselinePreferences[String(reportId)];
+    this.persistBaselinePreferences();
+    if (this.selectedReportId() === reportId) this.baselineTokenizer.set(null);
+  }
+
   private persistLayout(order: readonly string[]): void {
     try {
       localStorage.setItem(this.layoutStorageKey, JSON.stringify({
@@ -280,6 +333,51 @@ export class BenchmarkStore {
     this.persistLayout(this.layout());
   }
 
+  setBaseline(tokenizer: string | null): void {
+    const report = this.report();
+    const reportId = this.selectedReportId();
+    if (!report || reportId === null) {
+      this.baselineTokenizer.set(null);
+      return;
+    }
+
+    if (!tokenizer) {
+      this.baselineTokenizer.set(null);
+      delete this.baselinePreferences[String(reportId)];
+      this.persistBaselinePreferences();
+      return;
+    }
+
+    if (!benchmarkComparisonTokenizers(report.dashboard).includes(tokenizer)) return;
+    this.baselineTokenizer.set(tokenizer);
+    this.baselinePreferences[String(reportId)] = tokenizer;
+    this.persistBaselinePreferences();
+  }
+
+  clearBaseline(): void {
+    this.setBaseline(null);
+  }
+
+  updateReportTags(reportId: number, tags: readonly string[]): void {
+    if (this.updatingReportTagsId() !== null) return;
+    this.updatingReportTagsId.set(reportId);
+    this.error.set(null);
+    this.api.updateReportTags(reportId, [...tags]).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (response) => {
+        this.reports.update((reports) => reports.map((item) => item.report_id === reportId
+          ? { ...item, tags: [...response.tags] }
+          : item));
+        const current = this.report();
+        if (current?.report_id === reportId) this.report.set({ ...current, tags: [...response.tags] });
+        this.updatingReportTagsId.set(null);
+      },
+      error: (error: unknown) => {
+        this.updatingReportTagsId.set(null);
+        this.error.set(errorMessage(error, 'Failed to update benchmark report tags.'));
+      },
+    });
+  }
+
   private requestReportPage(offset: number): void {
     this.reportOffset.set(Math.max(0, offset));
     this.reportRequests.next({
@@ -292,6 +390,7 @@ export class BenchmarkStore {
 
   private clearDashboardReport(): void {
     this.report.set(null);
+    this.baselineTokenizer.set(null);
     this.layout.set([]);
     this.hiddenWidgetIds.set([]);
     this.visualizations.set({});
