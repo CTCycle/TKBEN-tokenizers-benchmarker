@@ -24,6 +24,7 @@ type HistogramView = 'histogram' | 'cumulative';
 export class HistogramChartComponent {
   readonly histogram = input.required<HistogramData>();
   readonly label = input('Histogram');
+  readonly xAxisLabel = input('Length');
   protected readonly view = signal<HistogramView>('histogram');
   protected readonly math = Math;
   protected readonly axisFractions = [0, 0.5, 1] as const;
@@ -56,23 +57,26 @@ export class HistogramChartComponent {
   });
 
   protected setView(view: HistogramView): void { this.view.set(view); }
-  protected tickY(fraction: number): number { return 166 - fraction * 130; }
+  protected plotBottom(): number { return 178; }
+  protected plotHeight(): number { return 136; }
+  protected yAxisLabel(): string { return this.view() === 'cumulative' ? 'Cumulative (%)' : 'Count'; }
+  protected tickY(fraction: number): number { return this.plotBottom() - fraction * this.plotHeight(); }
   protected tickValue(fraction: number): string {
     return this.view() === 'cumulative'
       ? `${Math.round(fraction * 100)}%`
       : formatBenchmarkAxisValue(this.maxCount() * fraction, 'number');
   }
   protected barX(index: number): number {
-    const band = 590 / Math.max(this.histogram().counts.length, 1);
+    const band = 564 / Math.max(this.histogram().counts.length, 1);
     const width = this.barWidth();
-    return 34 + index * band + (band - width) / 2;
+    return 56 + index * band + (band - width) / 2;
   }
-  protected barWidth(): number { return Math.max(3, (560 / Math.max(this.histogram().counts.length, 1)) * 0.78); }
+  protected barWidth(): number { return Math.max(3, (564 / Math.max(this.histogram().counts.length, 1)) * 0.78); }
   protected pointX(index: number): number {
     const count = Math.max(this.histogram().counts.length, 1);
-    return count === 1 ? 330 : 34 + (index / (count - 1)) * 590;
+    return count === 1 ? 338 : 56 + (index / (count - 1)) * 564;
   }
-  protected pointY(value: number): number { return 166 - Math.max(0, Math.min(1, value)) * 130; }
+  protected pointY(value: number): number { return this.plotBottom() - Math.max(0, Math.min(1, value)) * this.plotHeight(); }
   private formatMetric(value: number | null | undefined, digits = 2): string { return value === null || value === undefined ? 'N/A' : value.toFixed(digits); }
   private formatPercentage(value: number | null | undefined): string {
     const formatted = this.formatMetric(value, 1);

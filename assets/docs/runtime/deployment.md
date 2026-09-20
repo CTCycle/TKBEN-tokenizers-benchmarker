@@ -1,11 +1,11 @@
 # Deployment
-Last updated: 2026-09-14
+Last updated: 2026-09-20
 
 ## Dependency Prerequisites
 From project and runtime scripts:
-- Windows launcher mode bootstraps pinned Python 3.14.2, Node.js 22.23.1, and uv locally.
+- Windows launcher mode bootstraps pinned Python 3.14.2 and Node.js 22.23.1 locally; it downloads uv from the current uv release when uv is missing.
 - The launcher downloads portable runtimes into the ignored `runtimes/` directory when they are missing.
-- Manual macOS/Linux use requires system Python 3.14+, Node.js 22+, and uv.
+- Manual macOS/Linux use requires system Python 3.14+, Node.js 22.22.3+ on a supported Angular engine line, and uv.
 
 ## Local Distribution Strategy
 - The repository plus `start_on_windows.ps1` is the supported Windows operational path.
@@ -16,6 +16,6 @@ From project and runtime scripts:
 ## Constraints
 - The repository does not currently include an active Docker runtime configuration in the root.
 - Automatic Python and Node.js downloads target Windows x64.
-- The latest public release is source-only `v4.3.0`; no installer, executable,
+- The latest public release is source-only `v4.4.0`; no installer, executable,
   package, or other binary artifact is part of that release workflow. Extract or
   clone the application folder and run `start_on_windows.ps1` from its root.

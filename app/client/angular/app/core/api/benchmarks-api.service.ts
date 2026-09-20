@@ -4,6 +4,8 @@ import { Observable, tap } from 'rxjs';
 import type {
   BenchmarkMetricCatalogResponse,
   BenchmarkReportListResponse,
+  BenchmarkReportTagsResponse,
+  BenchmarkReportTagsUpdate,
   BenchmarkReportQuery,
   BenchmarkRunRequest,
   BenchmarkRunResponse,
@@ -36,6 +38,11 @@ export class BenchmarksApiService {
 
   deleteReport(reportId: number): Observable<void> {
     return this.http.delete<void>(`/api/benchmarks/reports/${reportId}`);
+  }
+
+  updateReportTags(reportId: number, tags: string[]): Observable<BenchmarkReportTagsResponse> {
+    const payload: BenchmarkReportTagsUpdate = { tags };
+    return this.http.patch<BenchmarkReportTagsResponse>(`/api/benchmarks/reports/${reportId}/tags`, payload);
   }
 
   run(request: BenchmarkRunRequest, onUpdate?: (status: JobStatusResponse) => void, onJobStart?: (job: JobStartResponse) => void): Observable<BenchmarkRunResponse> {

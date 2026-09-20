@@ -111,6 +111,7 @@ class BenchmarkRepository:
                 BenchmarkReport.tokenizers_count,
                 BenchmarkReport.tokenizers_processed,
                 BenchmarkReport.selected_metric_keys,
+                BenchmarkReport.tags,
                 Dataset.name.label("dataset_name"),
             )
             .join(Dataset, Dataset.id == BenchmarkReport.dataset_id)
@@ -242,6 +243,7 @@ class BenchmarkRepository:
             "tokenizers_count",
             "tokenizers_processed",
             "selected_metric_keys",
+            "tags",
             "dataset_name",
         }
         details_payload = {
@@ -259,6 +261,7 @@ class BenchmarkRepository:
             documents_processed=documents_processed,
             tokenizers_count=len(tokenizers_processed),
             tokenizers_processed=tokenizers_processed,
+            tags=[],
             payload=details_payload,
         )
         with self._session() as session:
@@ -268,3 +271,20 @@ class BenchmarkRepository:
         if report_row.id is None:
             raise ValueError("Failed to resolve saved benchmark report id.")
         return int(report_row.id)
+
+    # -------------------------------------------------------------------------
+    def update_benchmark_report_tags(
+        self, report_id: int, tags: list[str]
+    ) -> list[str] | None:
+        with self._session() as session:
+            row = session.execute(
+                select(BenchmarkReport)
+                .where(BenchmarkReport.id == int(report_id))
+                .limit(1)
+            ).scalar_one_or_none()
+            if row is None:
+                return None
+            row.tags = list(tags)
+            session.commit()
+            session.refresh(row)
+            return list(row.tags)

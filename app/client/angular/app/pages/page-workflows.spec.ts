@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ExportApiService } from '../core/api/export-api.service';
 import { DatasetStore } from '../core/state/dataset.store';
 import { TokenizersStore } from '../core/state/tokenizers.store';
+import { SettingsStore } from '../core/state/settings.store';
 import { BenchmarkStore } from '../core/state/benchmark.store';
 import type { DatasetMetricCatalogCategory } from '../core/api/api.models';
 import { DatasetPageComponent } from './dataset-page.component';
@@ -70,6 +71,41 @@ describe('DatasetPageComponent workflow', () => {
       filters: { min_length: 0, max_length: 3, exclude_empty: false },
       metric_parameters: {},
     });
+  });
+
+  it('blocks inverted document length filters before submission', () => {
+    const store = {
+      report: signal(null),
+      metricCategories: signal(metricCategories),
+      analyze: vi.fn(),
+      refresh: vi.fn(),
+      select: vi.fn(),
+      loadLatest: vi.fn(),
+      download: vi.fn(),
+      upload: vi.fn(),
+      remove: vi.fn(),
+    };
+    TestBed.configureTestingModule({ providers: [
+      { provide: DatasetStore, useValue: store },
+      { provide: ExportApiService, useValue: {} },
+    ] });
+    const page = TestBed.runInInjectionContext(() => new DatasetPageComponent()) as unknown as {
+      openValidation: (datasetName: string) => void;
+      validationForm: FormGroup;
+      validationStep: { set: (value: 0 | 1 | 2) => void; (): number };
+      nextValidationStep: () => void;
+      runValidation: () => void;
+    };
+
+    page.openValidation('custom/demo');
+    page.validationForm.patchValue({ minLength: 100, maxLength: 1 });
+    page.validationStep.set(1);
+    page.nextValidationStep();
+    page.runValidation();
+
+    expect(page.validationForm.hasError('minLengthExceedsMaxLength')).toBe(true);
+    expect(page.validationStep()).toBe(1);
+    expect(store.analyze).not.toHaveBeenCalled();
   });
 
   it('restores the grouped preset catalogue and keeps manual/upload actions available', () => {
@@ -249,10 +285,54 @@ describe('TokenizersPageComponent workflow', () => {
     store.busyAction.set('download');
     expect(page.downloadProgressVisible()).toBe(true);
   });
+
+  it('hydrates discovery defaults and constraints from SettingsStore', () => {
+    const store = {
+      report: signal(null),
+      vocabulary: signal(null),
+      discoveryResults: signal([]),
+      busyAction: signal<string | null>(null),
+      refresh: vi.fn(),
+      select: vi.fn(),
+      discover: vi.fn(),
+      selectedDiscoveryIds: signal<readonly string[]>([]),
+      toggleDiscoverySelection: vi.fn(),
+      download: vi.fn(),
+      remove: vi.fn(),
+      upload: vi.fn(),
+    };
+    const settingsStore = {
+      settings: signal({
+        tokenizers: {
+          default_discovery_limit: 7,
+          max_discovery_limit: 9,
+        },
+      }),
+    };
+    TestBed.configureTestingModule({ providers: [
+      { provide: TokenizersStore, useValue: store },
+      { provide: SettingsStore, useValue: settingsStore },
+      { provide: ExportApiService, useValue: {} },
+    ] });
+    const page = TestBed.runInInjectionContext(() => new TokenizersPageComponent()) as unknown as {
+      discoveryForm: FormGroup;
+      discoverTokenizers: () => void;
+      maxDiscoveryLimit: () => number | null;
+    };
+    TestBed.tick();
+
+    expect(page.discoveryForm.controls['limit'].value).toBe(7);
+    expect(page.maxDiscoveryLimit()).toBe(9);
+    page.discoveryForm.controls['limit'].setValue(10);
+    expect(page.discoveryForm.controls['limit'].invalid).toBe(true);
+    page.discoveryForm.controls['limit'].setValue(7);
+    page.discoverTokenizers();
+    expect(store.discover).toHaveBeenCalledWith(expect.objectContaining({ limit: 7 }));
+  });
 });
 
 describe('CrossBenchmarkPageComponent workflow', () => {
-  it('builds a trimmed benchmark request and applies widget visibility', () => {
+  it('builds a trimmed benchmark request, applies settings defaults, and updates widget visibility', () => {
     const store = {
       report: signal({
         dashboard: {
@@ -274,19 +354,36 @@ describe('CrossBenchmarkPageComponent workflow', () => {
       resetLayout: vi.fn(),
       cancel: vi.fn(),
     };
+    const settingsStore = {
+      settings: signal({
+        benchmarks: {
+          default_max_documents: 2500,
+          default_batch_size: 32,
+          default_parallelism: 4,
+        },
+      }),
+    };
     TestBed.configureTestingModule({ providers: [
       { provide: BenchmarkStore, useValue: store },
+      { provide: SettingsStore, useValue: settingsStore },
       { provide: ExportApiService, useValue: {} },
     ] });
     const page = TestBed.runInInjectionContext(() => new CrossBenchmarkPageComponent()) as unknown as {
       runForm: FormGroup;
       runSelectedTokenizers: { set: (value: readonly string[]) => void };
       runSelectedMetricKeys: { set: (value: readonly string[]) => void };
+      openRun: () => void;
       runBenchmark: () => void;
       customizeDraft: { set: (value: readonly string[]) => void };
       applyCustomize: () => void;
     };
 
+    page.openRun();
+    expect(page.runForm.getRawValue()).toMatchObject({
+      maxDocuments: 2500,
+      batchSize: 32,
+      parallelism: 4,
+    });
     page.runForm.patchValue({ dataset: '  custom/default  ', runName: '  quick run  ' });
     page.runSelectedTokenizers.set(['alpha', 'beta']);
     page.runSelectedMetricKeys.set(['eff.speed']);
@@ -297,10 +394,145 @@ describe('CrossBenchmarkPageComponent workflow', () => {
       dataset_name: 'custom/default',
       run_name: 'quick run',
       selected_metric_keys: ['eff.speed'],
+      config: expect.objectContaining({
+        max_documents: 2500,
+        batch_size: 32,
+        parallelism: 4,
+      }),
     }));
 
     page.customizeDraft.set(['visible']);
     page.applyCustomize();
     expect(store.setHiddenWidgetIds).toHaveBeenCalledWith(['hidden']);
+  });
+
+  it('clones an eligible benchmark configuration and keeps new-run initialization separate', () => {
+    const report = {
+      report_id: 42,
+      run_name: 'production benchmark',
+      dataset_name: 'custom/default',
+      documents_processed: 900,
+      tokenizers_processed: ['alpha', 'beta'],
+      selected_metric_keys: ['eff.speed'],
+      config: {
+        max_documents: 750,
+        warmup_trials: 4,
+        timed_trials: 12,
+        batch_size: 64,
+        seed: 99,
+        parallelism: 3,
+        include_lm_metrics: true,
+        add_special_tokens: true,
+        padding: true,
+        truncation: true,
+        max_length: 256,
+        store_per_document_stats: false,
+        per_document_sample_size: 321,
+      },
+      dashboard: { widgets: [] },
+    };
+    const store = {
+      report: signal(report),
+      layout: signal<readonly string[]>([]),
+      hiddenWidgetIds: signal<readonly string[]>([]),
+      availableDatasets: signal(['custom/default']),
+      availableTokenizers: signal(['alpha', 'beta']),
+      metricCategories: signal([{ category_key: 'efficiency', category_label: 'Efficiency', metrics: [{ key: 'eff.speed', label: 'Speed' }] }]),
+      busy: signal(false),
+      run: vi.fn(),
+      setHiddenWidgetIds: vi.fn(),
+      reorder: vi.fn(),
+      resetLayout: vi.fn(),
+      cancel: vi.fn(),
+    };
+    const settingsStore = {
+      settings: signal({ benchmarks: { default_max_documents: 2500, default_batch_size: 32, default_parallelism: 4 } }),
+    };
+    TestBed.configureTestingModule({ providers: [
+      { provide: BenchmarkStore, useValue: store },
+      { provide: SettingsStore, useValue: settingsStore },
+      { provide: ExportApiService, useValue: {} },
+    ] });
+    const page = TestBed.runInInjectionContext(() => new CrossBenchmarkPageComponent()) as unknown as {
+      runForm: FormGroup;
+      runMode: () => 'new' | 'clone';
+      runOpen: () => boolean;
+      runStep: () => 1 | 2 | 3;
+      runSelectedTokenizers: () => readonly string[];
+      runSelectedMetricKeys: () => readonly string[];
+      openCloneRun: () => void;
+      openRun: () => void;
+      runBenchmark: () => void;
+    };
+
+    page.openCloneRun();
+    expect(page.runMode()).toBe('clone');
+    expect(page.runOpen()).toBe(true);
+    expect(page.runStep()).toBe(3);
+    expect(page.runForm.getRawValue()).toMatchObject({
+      dataset: 'custom/default',
+      tokenizers: 'alpha,beta',
+      runName: 'Clone of production benchmark',
+      maxDocuments: 750,
+      warmupTrials: 4,
+      timedTrials: 12,
+      batchSize: 64,
+      seed: 99,
+      parallelism: 3,
+      includeLmMetrics: true,
+      addSpecialTokens: true,
+      padding: true,
+      truncation: true,
+      maxLength: 256,
+      storePerDocumentStats: false,
+      perDocumentSampleSize: 321,
+    });
+    page.runBenchmark();
+    expect(store.run).toHaveBeenCalledWith(expect.objectContaining({
+      config: expect.objectContaining({ max_documents: 750, max_length: 256, per_document_sample_size: 321 }),
+    }));
+
+    page.openRun();
+    expect(page.runMode()).toBe('new');
+    expect(page.runForm.getRawValue()).toMatchObject({ tokenizers: '', runName: '', maxLength: null, maxDocuments: 2500 });
+    expect(page.runSelectedTokenizers()).toEqual([]);
+  });
+
+  it('keeps an ineligible clone inline instead of opening the wizard', () => {
+    const store = {
+      report: signal({
+        report_id: 7,
+        run_name: 'stale run',
+        dataset_name: 'missing/dataset',
+        tokenizers_processed: ['alpha'],
+        selected_metric_keys: ['eff.speed'],
+        dashboard: { widgets: [] },
+      }),
+      layout: signal<readonly string[]>([]),
+      hiddenWidgetIds: signal<readonly string[]>([]),
+      availableDatasets: signal(['custom/default']),
+      availableTokenizers: signal(['alpha']),
+      metricCategories: signal([{ category_key: 'efficiency', category_label: 'Efficiency', metrics: [{ key: 'eff.speed', label: 'Speed' }] }]),
+      busy: signal(false),
+      run: vi.fn(),
+      setHiddenWidgetIds: vi.fn(),
+      reorder: vi.fn(),
+      resetLayout: vi.fn(),
+      cancel: vi.fn(),
+    };
+    TestBed.configureTestingModule({ providers: [
+      { provide: BenchmarkStore, useValue: store },
+      { provide: SettingsStore, useValue: { settings: signal({}) } },
+      { provide: ExportApiService, useValue: {} },
+    ] });
+    const page = TestBed.runInInjectionContext(() => new CrossBenchmarkPageComponent()) as unknown as {
+      openCloneRun: () => void;
+      runOpen: () => boolean;
+      cloneError: () => string | null;
+    };
+
+    page.openCloneRun();
+    expect(page.runOpen()).toBe(false);
+    expect(page.cloneError()).toContain('dataset');
   });
 });

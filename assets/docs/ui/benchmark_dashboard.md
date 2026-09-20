@@ -1,11 +1,19 @@
 # Benchmark Dashboard
-Last updated: 2026-09-04
+Last updated: 2026-09-19
 
 Cross-benchmark reports use schema version 3 and report version 5. The report exposes a normalized `dashboard` payload whose widgets are emitted only for calculated, finite metric series; zero remains a valid calculated value.
 
 Widget definitions are canonical backend definitions. Each provides its category, display metadata, strict `default_visualization`, ordered compatible visualization choices, data-driven width, and default visibility. Scalar points expose `bar` and `horizontal_bar`; interval points expose `interval_bar` and `dot_whisker`; five-number distributions expose `box_plot` and `histogram`; tokenizer-by-bucket comparisons expose `grouped_bar` and `heatmap`. Histogram widgets also expose shared-edge `histogram_bins`. The `BenchmarkStore` persists the committed widget order, hidden IDs, and per-widget choices under `tkben:cross-benchmark-dashboard-layout:v3`; malformed or older storage shapes, including the former array shape, are ignored and the current defaults are used without migration.
 
 The dashboard header can restore the complete default layout. This removes the persisted layout, returning visibility, widget ordering, and visualization choices to the current report defaults; the control is disabled while the active layout already matches those defaults.
+
+The report header provides a report-scoped baseline selector. Baselines are
+stored in `tkben:cross-benchmark-baselines:v1` as a report-ID-to-tokenizer map,
+and only finite point or distribution series can be selected. Candidate deltas
+use `(candidate - baseline) / baseline * 100`; a missing or zero baseline is
+shown as `N/A`. The comparison strip and point/distribution data tables show
+the baseline label and compact delta values without winner, ranking, or
+green/red semantics. Bucket and histogram data remain unchanged.
 
 Visualization switches stay on the same row as their plot titles when the
 available width permits it. Flexible title columns wrap long labels within
@@ -27,5 +35,9 @@ stable accessible representation when a chart is visually dense or unavailable.
 Benchmark PDF export receives the active report plus `visible_widget_ids`, `ordered_widget_ids`, and `visualization_by_widget_id`. The server validates every override against the widget’s compatible list, selects only IDs visible in the payload, orders those IDs by the submitted layout, and renders all eight normalized chart forms with strict parity: vertical/horizontal bars, interval bars/forest plots, box plots/histograms, and grouped bars/heatmaps.
 
 PDF export feedback is shown next to the export control as an accessible success or error message, rather than a browser alert. Cancelling the native save picker remains silent.
+
+The report manager keeps server-backed search, sorting, pagination, and inline
+deletion. It also displays relational report tags and provides an inline
+comma-separated editor; tag updates do not alter the immutable report payload.
 
 Reports from earlier versions are neither listed nor loaded. They must be rerun.

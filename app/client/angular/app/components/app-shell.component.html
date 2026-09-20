@@ -50,18 +50,26 @@
       }
     </nav>
 
-    <button
-      type="button"
-      class="icon-button subtle app-header-key-button"
-      [class.accent]="keyManagerOpen()"
-      aria-label="Manage Hugging Face keys"
-      (click)="toggleKeyManager()"
-    >
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="8" cy="12" r="3" fill="none" stroke-width="2" />
-        <path d="M11 12h10M18 12v3M21 12v2" stroke-width="2" stroke-linecap="round" fill="none" />
-      </svg>
-    </button>
+    <div class="app-header-actions">
+      <a
+        class="icon-button subtle app-header-settings-button"
+        routerLink="/settings"
+        routerLinkActive="accent"
+        [routerLinkActiveOptions]="{ exact: true }"
+        #settingsActive="routerLinkActive"
+        [class.accent]="settingsActive.isActive"
+        [attr.aria-current]="settingsActive.isActive ? 'page' : null"
+        aria-label="Open settings"
+        title="Settings"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+          <circle cx="9" cy="6" r="2" fill="var(--color-surface)" stroke="currentColor" stroke-width="1.8" />
+          <circle cx="15" cy="12" r="2" fill="var(--color-surface)" stroke="currentColor" stroke-width="1.8" />
+          <circle cx="10" cy="18" r="2" fill="var(--color-surface)" stroke="currentColor" stroke-width="1.8" />
+        </svg>
+      </a>
+    </div>
   </header>
 
   <div class="app-main">
@@ -70,7 +78,4 @@
     </section>
   </div>
 
-  @if (keyManagerOpen()) {
-    <app-hf-access-key-manager (closed)="closeKeyManager()" />
-  }
 </div>

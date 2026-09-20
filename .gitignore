@@ -1,10 +1,12 @@
 # Project-specific generated/runtime artifacts
 runtimes/**
-app/tests/cache/**
-!app/tests/cache/.gitkeep
+!runtimes/
+!runtimes/cache/
+!runtimes/cache/.gitkeep
 app/resources/sources/datasets/**
 app/resources/sources/tokenizers/**
 app/resources/logs/**
+app/resources/runtime-settings.json
 app/client/node_modules/
 app/client/dist/
 app/client/dist-ssr/

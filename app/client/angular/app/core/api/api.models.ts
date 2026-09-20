@@ -46,6 +46,109 @@ export interface TokenizerDiscoveryResponse {
     fetched_count: number;
 }
 
+export type RuntimeSettingKey =
+    | 'tokenizers.default_discovery_limit'
+    | 'tokenizers.max_discovery_limit'
+    | 'tokenizers.max_discovery_candidates'
+    | 'tokenizers.metadata_candidate_multiplier'
+    | 'tokenizers.max_upload_bytes'
+    | 'datasets.histogram_bins'
+    | 'datasets.streaming_batch_size'
+    | 'datasets.max_upload_bytes'
+    | 'datasets.download_timeout_seconds'
+    | 'datasets.download_retry_attempts'
+    | 'datasets.download_retry_backoff_seconds'
+    | 'benchmarks.default_max_documents'
+    | 'benchmarks.default_batch_size'
+    | 'benchmarks.default_parallelism'
+    | 'benchmarks.streaming_batch_size'
+    | 'jobs.polling_interval';
+
+export interface RuntimeTokenizerSettings {
+    default_discovery_limit: number;
+    max_discovery_limit: number;
+    max_discovery_candidates: number;
+    metadata_candidate_multiplier: number;
+    max_upload_bytes: number;
+}
+
+export interface RuntimeDatasetSettings {
+    histogram_bins: number;
+    streaming_batch_size: number;
+    max_upload_bytes: number;
+    download_timeout_seconds: number;
+    download_retry_attempts: number;
+    download_retry_backoff_seconds: number;
+}
+
+export interface RuntimeBenchmarkSettings {
+    default_max_documents: number;
+    default_batch_size: number;
+    default_parallelism: number;
+    streaming_batch_size: number;
+}
+
+export interface RuntimeJobSettings {
+    polling_interval: number;
+}
+
+export interface RuntimeSettingsValues {
+    tokenizers: RuntimeTokenizerSettings;
+    datasets: RuntimeDatasetSettings;
+    benchmarks: RuntimeBenchmarkSettings;
+    jobs: RuntimeJobSettings;
+}
+
+export interface RuntimeSettingsResponse {
+    revision: number;
+    settings: RuntimeSettingsValues;
+    defaults: RuntimeSettingsValues;
+    overridden_keys: RuntimeSettingKey[];
+    warning: string | null;
+}
+
+export interface RuntimeTokenizerSettingsPatch {
+    default_discovery_limit?: number;
+    max_discovery_limit?: number;
+    max_discovery_candidates?: number;
+    metadata_candidate_multiplier?: number;
+    max_upload_bytes?: number;
+}
+
+export interface RuntimeDatasetSettingsPatch {
+    histogram_bins?: number;
+    streaming_batch_size?: number;
+    max_upload_bytes?: number;
+    download_timeout_seconds?: number;
+    download_retry_attempts?: number;
+    download_retry_backoff_seconds?: number;
+}
+
+export interface RuntimeBenchmarkSettingsPatch {
+    default_max_documents?: number;
+    default_batch_size?: number;
+    default_parallelism?: number;
+    streaming_batch_size?: number;
+}
+
+export interface RuntimeJobSettingsPatch {
+    polling_interval?: number;
+}
+
+export interface RuntimeSettingsPatchRequest {
+    expected_revision: number;
+    tokenizers?: RuntimeTokenizerSettingsPatch;
+    datasets?: RuntimeDatasetSettingsPatch;
+    benchmarks?: RuntimeBenchmarkSettingsPatch;
+    jobs?: RuntimeJobSettingsPatch;
+}
+
+export interface RuntimeSettingsResetRequest {
+    expected_revision: number;
+    keys?: RuntimeSettingKey[];
+    all?: boolean;
+}
+
 /**
  * Download request for tokenizer persistence
  */
@@ -473,6 +576,16 @@ export interface BenchmarkReportSummary {
     tokenizers_count: number;
     tokenizers_processed: string[];
     selected_metric_keys: string[];
+    tags: string[];
+}
+
+export interface BenchmarkReportTagsUpdate {
+    tags: string[];
+}
+
+export interface BenchmarkReportTagsResponse {
+    report_id: number;
+    tags: string[];
 }
 
 export type BenchmarkReportSort = 'newest' | 'oldest';
@@ -594,6 +707,7 @@ export interface BenchmarkRunResponse {
     hardware_profile: BenchmarkHardwareProfile;
     trial_summary: BenchmarkTrialSummary;
     tokenizer_results: BenchmarkTokenizerResult[];
+    tags: string[];
     dashboard: BenchmarkDashboardData;
     per_document_stats: BenchmarkPerDocumentTokenizerStats[];
     runtime_metadata: Record<string, unknown>;

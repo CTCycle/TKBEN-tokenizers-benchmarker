@@ -12,6 +12,7 @@ from server.api.datasets import router as datasets_router
 from server.api.exports import router as exports_router
 from server.api.jobs import router as jobs_router
 from server.api.keys import router as keys_router
+from server.api.settings import router as settings_router
 from server.api.tokenizers import router as tokenizers_router
 from server.common.constants import (
     FASTAPI_DESCRIPTION,
@@ -25,16 +26,13 @@ from server.repositories.database.initializer import initialize_database
 from server.services.jobs import JobManager
 from server.services.startup_validation import build_cors_origins, run_startup_validations
 
-
 ###############################################################################
 def redirect_to_docs() -> RedirectResponse:
     return RedirectResponse(url="/docs")
 
-
 ###############################################################################
 def backend_healthcheck() -> HealthResponse:
     return HealthResponse(status="ok")
-
 
 ###############################################################################
 def register_api_routers(application: FastAPI) -> None:
@@ -50,15 +48,14 @@ def register_api_routers(application: FastAPI) -> None:
         benchmarks_router,
         jobs_router,
         keys_router,
+        settings_router,
         exports_router,
     ):
         application.include_router(router, prefix="/api")
 
-
 ###############################################################################
 def register_frontend_routes(application: FastAPI) -> None:
     application.add_api_route("/", redirect_to_docs, methods=["GET"])
-
 
 ###############################################################################
 @asynccontextmanager
@@ -69,7 +66,6 @@ async def app_lifespan(application: FastAPI) -> AsyncIterator[None]:
     initialize_database(settings=settings, startup=True)
 
     yield
-
 
 ###############################################################################
 def create_app() -> FastAPI:

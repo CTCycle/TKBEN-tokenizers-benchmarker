@@ -1,5 +1,5 @@
 # Experience
-Last updated: 2026-08-19
+Last updated: 2026-09-19
 
 ## Page Structure
 - `DatasetPage`
@@ -7,9 +7,13 @@ Last updated: 2026-08-19
 - `TokenizerExaminationPage`
   - Tokenizer selection and reporting plus vocabulary panel.
 - `CrossBenchmarkPage`
-  - Run and open benchmark reports and compare tokenizer metrics.
+  - Run and open benchmark reports, compare tokenizer metrics against a
+    report-scoped baseline, clone eligible configurations, and edit report tags.
+- `SettingsPage`
+  - Configure supported runtime defaults through a left-side section
+    navigation and background-level form sections.
 - `AppShell`
-  - Branded header with logo, integrated primary tabs, and Hugging Face key manager access.
+- Branded header with logo, integrated primary tabs, and a stroked Settings sliders icon. Provider credentials are reached through Settings → Keys.
 
 Navigation hierarchy:
 - Root redirects to `/dataset`.
@@ -27,7 +31,13 @@ Catalog interactions:
   - start long operation -> show progress -> poll job -> render result
 - Keep interaction language consistent with existing labels and panel semantics.
 - Use dismissible errors for recoverable issues.
+- Keep clone eligibility and tag validation errors inline; do not use browser
+  alert dialogs for these workflows.
 - Preserve dashboard-first workflows by loading persisted reports before deep visual analysis.
+- Settings uses a full-width two-column layout: visible left-side navigation for
+  Data, Tokenizers, Runtime, and Keys; the content column expands to the
+  available viewport and falls back to a horizontally scrollable tab row on
+  narrow screens. Keyboard tab navigation remains available.
 - Benchmark report diagnostics must explicitly surface:
   - tokenizer failure rows with `status/error_type/error_message`
   - metric availability state
@@ -43,6 +53,8 @@ Required behavior:
 - Multi-column dashboards collapse to fewer columns or a single column.
 - Header and nav paddings plus tab sizing adapt for narrow screens.
 - Modal dimensions and table overflow adjust for mobile and narrow viewports.
+- Baseline controls, comparison strips, report-tag chips, and the clone wizard
+  remain usable without horizontal page overflow.
 - Open modals lock document scrolling and restore the previous scroll position when closed. Benchmark chart sizing also switches to compact behavior at `700px`.
 
 ## Accessibility
@@ -50,6 +62,8 @@ Required behavior:
 - Keep `aria-label`, `aria-expanded`, `aria-controls`, and dialog semantics in interactive components.
 - Maintain a visible `:focus-visible` style on tabs, buttons, and inputs.
 - Ensure charts and tables include textual context so key metrics are not color-only.
+- Comparison deltas must remain text-labeled and must not rely on green/red
+  color semantics.
 - Respect reduced motion via existing `prefers-reduced-motion` overrides.
 
 ## Design Principles
@@ -64,3 +78,5 @@ Required behavior:
 - Treat populated, empty, loading, error, and long-identifier states as required visual states; visual polish must not hide existing diagnostics or controls.
 - Include filtered catalog loading and no-match states, plus the integrated header navigation and logo, in route-level visual review.
 - Include benchmark point, bucket, and distribution widgets, their data-table disclosures, modal scroll locking, and malformed/empty dataset chart payloads in focused component review.
+- Include baseline selection and persistence, clone eligibility/copying, report
+  tag editing, and narrow-screen report-manager/wizard states in benchmark review.

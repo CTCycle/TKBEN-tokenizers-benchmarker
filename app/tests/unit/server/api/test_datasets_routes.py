@@ -65,6 +65,23 @@ def test_dataset_job_start_routes_return_202(monkeypatch) -> None:
     assert analyze_resp.json()["job_id"] == "job-123"
 
 ###############################################################################
+def test_dataset_analysis_rejects_inverted_length_filter(monkeypatch) -> None:
+    manager = DummyJobManager()
+    monkeypatch.setattr(app.state, "job_manager", manager)
+
+    response = TestClient(app).post(
+        "/api/datasets/analyze",
+        json={
+            "dataset_name": "custom/sample",
+            "filters": {"min_length": 100, "max_length": 1},
+        },
+    )
+
+    assert response.status_code == 422
+    assert "Minimum document length must not exceed maximum document length." in response.text
+    assert manager.started_jobs == 0
+
+###############################################################################
 def test_dataset_upload_rejects_oversized_file_before_job_dispatch(monkeypatch) -> None:
     manager = DummyJobManager()
     monkeypatch.setattr(app.state, "job_manager", manager)

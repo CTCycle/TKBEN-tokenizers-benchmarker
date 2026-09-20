@@ -4,12 +4,28 @@ Provides fixtures for Playwright page objects and API client.
 """
 
 import os
+import sys
 import time
 from pathlib import Path
 from typing import Any
 
 import pytest
 from playwright.sync_api import APIRequestContext
+
+from server.common.path import CACHE_PATH
+
+
+###############################################################################
+def pytest_configure(config: pytest.Config) -> None:
+    """Keep direct pytest execution on the repository's canonical cache root."""
+
+    CACHE_PATH.mkdir(parents=True, exist_ok=True)
+    config.option.basetemp = str(CACHE_PATH / "pytest-basetemp-current")
+    sys.pycache_prefix = str(CACHE_PATH / "pycache")
+    os.environ["PYTHONPYCACHEPREFIX"] = str(CACHE_PATH / "pycache")
+    os.environ["COVERAGE_FILE"] = str(CACHE_PATH / "coverage" / ".coverage")
+    os.environ["MPLCONFIGDIR"] = str(CACHE_PATH / "matplotlib")
+    os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(CACHE_PATH / "playwright")
 
 ###############################################################################
 def _read_env(name: str, default: str | None = None) -> str | None:

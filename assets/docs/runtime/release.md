@@ -1,5 +1,5 @@
 # Release Procedure
-Last updated: 2026-09-14
+Last updated: 2026-09-20
 
 ## Release model
 
@@ -10,14 +10,32 @@ add packaging as part of a source release.
 The public release version and component versions use the existing repository
 convention:
 
-| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` public |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` |
-| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` |
-| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` |
+| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` public |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` | `4.4.0` |
+| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` | `3.4.0` |
+| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` | `2.4.0` |
 
-The latest published release is `v4.3.0`. Its component versions are backend
-`3.3.0` and frontend `2.3.0`.
+The latest published release is `v4.4.0`. Its component versions are backend
+`3.4.0` and frontend `2.4.0`.
+
+## v4.4.0 release notes
+
+The current release delta is based on verified repository changes after
+`v4.3.0`:
+
+- add persisted benchmark report tags, report management, and benchmark cloning;
+- add report-scoped baseline selection and dashboard layout persistence;
+- improve catalog filtering, settings validation, benchmark defaults, chart
+  controls, histogram/CDF views, token-shape metrics, and bounded word clouds;
+- centralize disposable caches under `runtimes/cache` and add deterministic
+  Windows launcher cleanup and `-KillAll` process maintenance;
+- keep the launcher’s source-stale frontend detection, local health checks, and
+  actionable redirected backend diagnostics in the supported source-only flow.
+
+API version `1.2.0`, benchmark schema version `3`, report version `5`, and
+Alembic revision `0004_benchmark_report_tags` remain unchanged. Validation
+evidence for this release is recorded under `assets/QA/`.
 
 ## v4.3.0 release notes
 
@@ -32,10 +50,10 @@ The current release delta is based on verified repository changes after
   paths in favor of the canonical implementations;
 - keep custom tokenizer identity and its canonical `tokenizer.json` artifact
   together across service recreation and persistence;
-- make the Windows launcher build missing Angular production output before
-  preview, verify the required `index.html`, and fail when an existing port
-  listener cannot be stopped; redirected launches now capture backend logs for
-  actionable health-check failures.
+- make the Windows launcher build missing or source-stale Angular production
+  output before preview, verify the required `index.html` and build stamp, and
+  fail when an existing port listener cannot be stopped; redirected launches
+  now capture backend logs for actionable health-check failures.
 
 API version `1.2.0`, benchmark schema version `3`, report version `5`, and
 Alembic revision `0003_canonical_state_cleanup` remain unchanged. Validation
@@ -68,8 +86,8 @@ evidence for this preparation is recorded under `assets/QA/`.
 
 After validation is release-ready, apply the coordinated minor bump to the
 public tag version, backend package, frontend package, README, and relevant
-documentation. For the current preparation, the public version is `v4.3.0`,
-the backend package is `3.3.0`, and the frontend package is `2.3.0`. Commit all
+documentation. For the current preparation, the public version is `v4.4.0`,
+the backend package is `3.4.0`, and the frontend package is `2.4.0`. Commit all
 release-preparation changes on `develop` before synchronizing branches.
 
 Synchronize `main` from the validated `develop` commit so the branches point to
