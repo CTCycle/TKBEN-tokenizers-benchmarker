@@ -21,10 +21,12 @@ part of startup configuration.
 
 ## How To Navigate
 1. Start with this file only.
-2. Identify the topic area that matches the task.
-3. Open the smallest leaf file that answers the question.
-4. Open sibling files only when the task clearly crosses topic boundaries.
-5. Do not read the entire tree unless the task explicitly requires broad context.
+2. Read project_status_ledger.md when the task depends on current
+   implementation, validation, blockers, open issues, or revalidation debt.
+3. Identify the topic area that matches the task.
+4. Open the smallest leaf file that answers the question.
+5. Open sibling files only when the task clearly crosses topic boundaries.
+6. Do not read the entire tree unless the task explicitly requires broad context.
 
 ## Naming Rules
 - All documentation files and folders under `assets/docs` use lower-case names.
@@ -35,6 +37,12 @@ part of startup configuration.
 ### Root
 - `project_index.md`
   - Entry point and index for the full documentation tree.
+
+- [project_status_ledger.md](project_status_ledger.md)
+  - Canonical current operational status catalog: component statuses,
+    validation evidence, blockers, open issues, validation debt, and resolved
+    findings. Update it when implementation, validation evidence, or current
+    project risks change; detailed reports remain in their topic documents.
 
 ### Architecture
 - `architecture/architecture_review.md`
@@ -90,6 +98,11 @@ part of startup configuration.
 4. Return here when you need to jump to a different topic branch.
 
 ## Context Rules
+- Treat project_status_ledger.md as the canonical source for current
+  operational project status. Update the affected component, issue, evidence,
+  and validation-debt entries after meaningful implementation or validation
+  work; do not use historical reports as proof of the current state without
+  rechecking the checkout.
 - Read documentation files only when required by the current task.
 - Defer reading until the task proves the file is needed.
 - Keep all affected documents updated whenever implementation changes alter behavior.
