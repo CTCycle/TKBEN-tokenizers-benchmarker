@@ -1,5 +1,5 @@
 # TKBEN Tokenizer Benchmarker
-Last updated: 2026-09-18
+Last updated: 2026-09-20
 
 [![Release](https://img.shields.io/github/v/release/CTCycle/TKBEN-tokenizers-benchmarker?display_name=tag)](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.14-3776AB?logo=python&logoColor=white)
@@ -25,7 +25,7 @@ TKBEN runs locally. The browser is the user interface, while a local Python serv
 
 - **Dataset validation**: choose a predefined or Hugging Face dataset, or upload a local CSV/Excel file. Select the checks you want, choose a sample or document limit, and review saved statistics and visualizations.
 - **Tokenizer examination**: discover or add tokenizer identifiers, download supported assets, or upload a custom `tokenizer.json`. Inspect vocabulary size, token-length and token-shape behavior, special tokens, and a paginated vocabulary preview.
-- **Cross-benchmark comparison**: choose a saved dataset and up to five tokenizers, select benchmark measures, run a repeatable comparison, switch compatible visualization types, customize the dashboard, and export the result as a PDF.
+- **Cross-benchmark comparison**: choose a saved dataset and up to five tokenizers, select benchmark measures, run a repeatable comparison, switch compatible visualization types, customize the dashboard, tag or clone saved reports, and export the result as a PDF.
 
 The application opens on the **Dataset** page and provides three primary pages: **Dataset**, **Tokenizers**, and **Cross Benchmark**. A normal session moves from dataset preparation to tokenizer preparation and then to comparison, but saved reports can be reopened at any time without repeating the work.
 
@@ -161,6 +161,8 @@ Use **Cross Benchmark** to compare tokenizer behavior on the same saved dataset.
 The report dashboard presents comparable metrics as charts. Each widget keeps its compatible visualization switches beside its title, and long titles wrap within the available heading space without covering those controls. Depending on the data, you can switch between compatible chart styles, reorder widgets, hide measures that are not useful for the current question, and open a data table beneath a chart. Dashboard layout choices are saved in the browser for later visits; changing the layout does not rerun the benchmark.
 
 The report also shows tokenizer-specific failures and unavailable measures explicitly. A failed tokenizer is not displayed as a misleading zero-value result. You can cancel an active benchmark from the run wizard; a cancelled run does not create a completed benchmark report.
+
+Saved benchmark reports can be searched and sorted from the report manager, tagged for later retrieval, reopened after a restart, or cloned as the starting point for a new comparison. The selected report can also use another selected tokenizer as its baseline when the comparison supports it.
 
 ### 3.6 Reading results responsibly
 
@@ -304,7 +306,7 @@ Restart TKBEN after changing `settings/.env`. Keep this file private: it can con
 
 ## 8. Releases and Data Safety
 
-Versioned source releases are available from the [GitHub releases page](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases). The latest published release is source-only `v4.3.0`, distributed as the application folder plus `start_on_windows.ps1`. No installer, executable, Tauri package, or other packaging layer is required.
+Versioned source releases are available from the [GitHub releases page](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases). The latest published release is source-only `v4.4.0`, distributed as the application folder plus `start_on_windows.ps1`. No installer, executable, Tauri package, or other packaging layer is required.
 
 A source archive contains the application files, not your local datasets, downloaded tokenizer assets, credentials, logs, or generated reports.
 

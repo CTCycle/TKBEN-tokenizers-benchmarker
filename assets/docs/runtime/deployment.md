@@ -1,5 +1,5 @@
 # Deployment
-Last updated: 2026-09-18
+Last updated: 2026-09-20
 
 ## Dependency Prerequisites
 From project and runtime scripts:
@@ -16,6 +16,6 @@ From project and runtime scripts:
 ## Constraints
 - The repository does not currently include an active Docker runtime configuration in the root.
 - Automatic Python and Node.js downloads target Windows x64.
-- The latest public release is source-only `v4.3.0`; no installer, executable,
+- The latest public release is source-only `v4.4.0`; no installer, executable,
   package, or other binary artifact is part of that release workflow. Extract or
   clone the application folder and run `start_on_windows.ps1` from its root.

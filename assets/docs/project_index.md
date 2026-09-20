@@ -1,5 +1,5 @@
 # Project Overview
-Last updated: 2026-09-19
+Last updated: 2026-09-20
 
 ## Purpose
 This file is the root index for `assets/docs`. Read it first to find the narrowest topic file for the task at hand.
@@ -11,8 +11,8 @@ preferences and report-scoped baseline selections. Reports own relational
 summary fields and tags while JSON stores immutable detail fields; incompatible
 historical rows are rejected or purged rather than silently adapted.
 
-The latest published release is `v4.3.0` with backend package `3.3.0` and
-frontend package `2.3.0`. Configuration ownership is canonical: `settings/.env`
+The latest published release is `v4.4.0` with backend package `3.4.0` and
+frontend package `2.4.0`. Configuration ownership is canonical: `settings/.env`
 and the process environment own startup/infrastructure values, typed backend
 models own application defaults, and sparse user overrides live under
 `<TKBEN_DATA_DIR>/runtime-settings.json`. The environment bootstrap runs before
