@@ -14,6 +14,7 @@ ASSETS_DIR = ROOT_DIR / "assets"
 FIGURES_DIR = ASSETS_DIR / "figures"
 QA_DIR = ROOT_DIR / "QA"
 SETTINGS_DIR = (ROOT_DIR / "settings").resolve()
+CACHE_PATH = (ROOT_DIR / "runtimes" / "cache").resolve()
 
 ###############################################################################
 def _resolve_resource_path(configured_path: str | None) -> Path:
@@ -34,13 +35,12 @@ LOGS_PATH = Path(os.getenv("TKBEN_LOG_DIR", RESOURCES_PATH / "logs")).resolve()
 TEMPLATES_PATH = RESOURCES_PATH / "templates"
 ENV_FILE_PATH = SETTINGS_DIR / ".env"
 ENV_EXAMPLE_FILE_PATH = SETTINGS_DIR / ".env.example"
-CONFIGURATIONS_FILE = SETTINGS_DIR / "configurations.json"
 DATABASE_PATH = RESOURCES_PATH / "database.db"
 __all__ = [
     "APP_DIR",
     "ASSETS_DIR",
+    "CACHE_PATH",
     "CLIENT_DIR",
-    "CONFIGURATIONS_FILE",
     "DATABASE_PATH",
     "DATASETS_PATH",
     "ENV_EXAMPLE_FILE_PATH",

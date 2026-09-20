@@ -13,8 +13,12 @@ const report = {
   report_id: 5,
   dashboard: {
     widgets: [
-      { widget_id: 'visible', default_visible: true },
-      { widget_id: 'hidden', default_visible: false },
+      {
+        widget_id: 'visible', default_visible: true,
+        points: [{ tokenizer: 'alpha', value: 100 }],
+        distributions: [], buckets: [], histogram_bins: [],
+      },
+      { widget_id: 'hidden', default_visible: false, points: [], distributions: [], buckets: [], histogram_bins: [] },
     ],
   },
 } as unknown as BenchmarkRunResponse;
@@ -36,6 +40,8 @@ describe('BenchmarkStore', () => {
       reports: vi.fn().mockReturnValue(of({ reports: [{ report_id: 5 }], total: 1, offset: 0, limit: 25 })),
       metricsCatalog: vi.fn().mockReturnValue(of({ categories: [] })),
       report: vi.fn().mockReturnValue(of(report)),
+      deleteReport: vi.fn().mockReturnValue(of(undefined)),
+      updateReportTags: vi.fn((reportId: number, tags: readonly string[]) => of({ report_id: reportId, tags: [...tags] })),
       run: vi.fn((
         _request: unknown,
         onUpdate: (status: { progress: number }) => void,
@@ -126,5 +132,85 @@ describe('BenchmarkStore', () => {
     store.reorderVisible(0, 1);
 
     expect(store.layout()).toEqual(['second', 'hidden-a', 'first', 'hidden-b', 'third']);
+  });
+
+  it('persists and restores report-specific baselines while switching reports', () => {
+    const reportFive = {
+      ...report,
+      dashboard: {
+        widgets: [{
+          widget_id: 'speed', default_visible: true,
+          points: [
+            { tokenizer: 'alpha', value: 100 },
+            { tokenizer: 'beta', value: 80 },
+          ],
+          distributions: [], buckets: [], histogram_bins: [],
+        }],
+      },
+    } as unknown as BenchmarkRunResponse;
+    const reportSix = {
+      ...reportFive,
+      report_id: 6,
+      dashboard: {
+        widgets: [{
+          widget_id: 'speed', default_visible: true,
+          points: [
+            { tokenizer: 'gamma', value: 100 },
+            { tokenizer: 'delta', value: 80 },
+          ],
+          distributions: [], buckets: [], histogram_bins: [],
+        }],
+      },
+    } as unknown as BenchmarkRunResponse;
+    const api = createApi();
+    api.report.mockImplementation((reportId: number) => of(reportId === 5 ? reportFive : reportSix));
+    const { store } = createStore(api);
+
+    store.setBaseline('alpha');
+    expect(store.baselineTokenizer()).toBe('alpha');
+    expect(JSON.parse(localStorage.getItem('tkben:cross-benchmark-baselines:v1') ?? '{}')).toEqual({ '5': 'alpha' });
+
+    store.selectReport(6);
+    expect(store.baselineTokenizer()).toBeNull();
+    store.setBaseline('gamma');
+    store.selectReport(5);
+    expect(store.baselineTokenizer()).toBe('alpha');
+    store.selectReport(6);
+    expect(store.baselineTokenizer()).toBe('gamma');
+  });
+
+  it('ignores corrupted or invalid baseline preferences and clears only the active report', () => {
+    localStorage.setItem('tkben:cross-benchmark-baselines:v1', '{bad json');
+    const { store } = createStore();
+    expect(store.baselineTokenizer()).toBeNull();
+
+    store.setBaseline(null);
+    expect(JSON.parse(localStorage.getItem('tkben:cross-benchmark-baselines:v1') ?? '{}')).toEqual({});
+  });
+
+  it('removes a deleted report baseline and updates tags without reloading the report', () => {
+    const { api, store } = createStore();
+    store.setBaseline('alpha');
+    expect(store.baselineTokenizer()).toBe('alpha');
+    store.updateReportTags(5, ['Production', 'cpu']);
+
+    expect(store.reports()[0]?.tags).toEqual(['Production', 'cpu']);
+    expect(store.report()?.tags).toEqual(['Production', 'cpu']);
+    expect(api.report).toHaveBeenCalledTimes(1);
+
+    store.deleteReport(5);
+    expect(JSON.parse(localStorage.getItem('tkben:cross-benchmark-baselines:v1') ?? '{}')).toEqual({});
+  });
+
+  it('leaves existing tags unchanged when the tag API fails', () => {
+    const api = createApi();
+    api.updateReportTags.mockImplementation(() => throwError(() => new Error('tag update failed')));
+    const { store } = createStore(api);
+    store.updateReportTags(5, ['new']);
+
+    expect(store.reports()[0]?.tags).toBeUndefined();
+    expect(store.report()?.tags).toBeUndefined();
+    expect(store.error()).toBe('tag update failed');
+    expect(store.updatingReportTagsId()).toBeNull();
   });
 });

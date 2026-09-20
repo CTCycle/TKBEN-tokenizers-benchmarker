@@ -8,6 +8,8 @@ from server.contracts.benchmarks import (
     BenchmarkReportListResponse,
     BenchmarkReportQuery,
     BenchmarkReportSummary,
+    BenchmarkReportTagsResponse,
+    BenchmarkReportTagsUpdate,
     BenchmarkRunResponse,
 )
 from server.repositories.benchmarks import BenchmarkRepository
@@ -124,6 +126,11 @@ class BenchmarkReportService:
         methodology_version = str(row.get("methodology_version") or "").strip()
         if not methodology_version:
             raise ValueError("Benchmark report is missing methodology_version.")
+        tags = row.get("tags")
+        if tags is None:
+            tags = []
+        if not isinstance(tags, list) or not all(isinstance(tag, str) for tag in tags):
+            raise ValueError("Benchmark report tags must be a native JSON array.")
 
         normalized_payload = dict(payload)
         normalized_payload.update(
@@ -139,6 +146,7 @@ class BenchmarkReportService:
                 "tokenizers_count": tokenizers_count,
                 "tokenizers_processed": tokenizers_processed,
                 "selected_metric_keys": selected_metric_keys,
+                "tags": tags,
                 "dataset_name": str(row.get("dataset_name") or ""),
             }
         )
@@ -189,6 +197,7 @@ class BenchmarkReportService:
                         "selected_metric_keys": list(
                             row.get("selected_metric_keys") or []
                         ),
+                        "tags": list(row.get("tags") or []),
                     }
                 )
             )
@@ -202,6 +211,18 @@ class BenchmarkReportService:
     # -------------------------------------------------------------------------
     def delete_benchmark_report(self, report_id: int) -> bool:
         return self.repository.delete_benchmark_report(report_id)
+
+    # -------------------------------------------------------------------------
+    def update_benchmark_report_tags(
+        self, report_id: int, tags: list[str]
+    ) -> BenchmarkReportTagsResponse | None:
+        normalized = BenchmarkReportTagsUpdate(tags=tags)
+        updated = self.repository.update_benchmark_report_tags(
+            report_id, normalized.tags
+        )
+        if updated is None:
+            return None
+        return BenchmarkReportTagsResponse(report_id=report_id, tags=updated)
 
     # -------------------------------------------------------------------------
     def load_benchmark_report_by_id(self, report_id: int) -> dict[str, Any] | None:
@@ -222,6 +243,7 @@ class BenchmarkReportService:
             "tokenizers_count": report_row.tokenizers_count,
             "tokenizers_processed": report_row.tokenizers_processed,
             "selected_metric_keys": report_row.selected_metric_keys,
+            "tags": report_row.tags,
             "payload": report_row.payload,
             "dataset_name": dataset_name,
         }

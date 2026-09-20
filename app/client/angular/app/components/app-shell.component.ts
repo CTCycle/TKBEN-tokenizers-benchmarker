@@ -1,6 +1,6 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
-import { HfAccessKeyManagerComponent } from './hf-access-key-manager.component';
+import { SettingsStore } from '../core/state/settings.store';
 
 interface NavItem {
   readonly path: string;
@@ -10,22 +10,18 @@ interface NavItem {
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterLink, RouterLinkActive, HfAccessKeyManagerComponent],
+  imports: [RouterLink, RouterLinkActive],
   templateUrl: './app-shell.component.html',
 })
 export class AppShellComponent {
-  protected readonly keyManagerOpen = signal(false);
+  private readonly settingsStore = inject(SettingsStore);
   protected readonly navItems: readonly NavItem[] = [
     { path: '/dataset', label: 'Datasets', icon: 'datasets' },
     { path: '/tokenizers', label: 'Tokenizers', icon: 'tokenizers' },
     { path: '/cross-benchmark', label: 'Cross Benchmark', icon: 'benchmark' },
   ];
 
-  protected toggleKeyManager(): void {
-    this.keyManagerOpen.update((open) => !open);
-  }
-
-  protected closeKeyManager(): void {
-    this.keyManagerOpen.set(false);
+  constructor() {
+    this.settingsStore.load();
   }
 }

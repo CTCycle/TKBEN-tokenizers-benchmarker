@@ -11,6 +11,8 @@ from server.contracts.benchmarks import (
     BenchmarkMetricCatalogResponse,
     BenchmarkReportQuery,
     BenchmarkReportListResponse,
+    BenchmarkReportTagsResponse,
+    BenchmarkReportTagsUpdate,
     BenchmarkRunRequest,
     BenchmarkRunResponse,
     BenchmarkReportSort,
@@ -20,6 +22,7 @@ from server.common.constants import (
     API_ROUTE_BENCHMARKS_METRICS_CATALOG,
     API_ROUTE_BENCHMARKS_REPORT_BY_ID,
     API_ROUTE_BENCHMARKS_REPORTS,
+    API_ROUTE_BENCHMARKS_REPORT_TAGS,
     API_ROUTE_BENCHMARKS_RUN,
     API_ROUTER_PREFIX_BENCHMARKS,
 )
@@ -132,6 +135,27 @@ async def get_benchmark_report_by_id(report_id: int) -> BenchmarkRunResponse:
             detail=f"Benchmark report '{report_id}' not found.",
         )
     return BenchmarkRunResponse(**report)
+
+###############################################################################
+@router.patch(
+    API_ROUTE_BENCHMARKS_REPORT_TAGS,
+    response_model=BenchmarkReportTagsResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def update_benchmark_report_tags(
+    report_id: int,
+    payload: BenchmarkReportTagsUpdate,
+) -> BenchmarkReportTagsResponse:
+    service = BenchmarkReportService()
+    updated = await asyncio.to_thread(
+        service.update_benchmark_report_tags, report_id, payload.tags
+    )
+    if updated is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Benchmark report '{report_id}' not found.",
+        )
+    return updated
 
 ###############################################################################
 @router.get(

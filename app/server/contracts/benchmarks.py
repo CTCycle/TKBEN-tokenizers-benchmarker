@@ -292,6 +292,45 @@ class BenchmarkReportSummary(BaseModel):
     tokenizers_count: int = Field(default=0)
     tokenizers_processed: list[str] = Field(default_factory=list)
     selected_metric_keys: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+
+###############################################################################
+class BenchmarkReportTagsUpdate(BaseModel):
+    tags: list[str] = Field(default_factory=list)
+
+    # -------------------------------------------------------------------------
+    @field_validator("tags", mode="before")
+    @classmethod
+    def normalize_tags(cls, value: object) -> object:
+        if not isinstance(value, list):
+            return value
+
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for tag in value:
+            if not isinstance(tag, str):
+                raise ValueError("Tags must be strings.")
+            cleaned = tag.strip()
+            if not cleaned:
+                continue
+            if len(cleaned) > 32:
+                raise ValueError("Tags must be 32 characters or fewer.")
+            if contains_control_chars(cleaned):
+                raise ValueError("Tags cannot contain control characters.")
+            key = cleaned.casefold()
+            if key in seen:
+                continue
+            seen.add(key)
+            normalized.append(cleaned)
+
+        if len(normalized) > 8:
+            raise ValueError("A benchmark report can have at most 8 tags.")
+        return normalized
+
+###############################################################################
+class BenchmarkReportTagsResponse(BaseModel):
+    report_id: int
+    tags: list[str] = Field(default_factory=list)
 
 ###############################################################################
 class BenchmarkReportListResponse(BaseModel):
@@ -329,6 +368,7 @@ class BenchmarkRunResponse(BaseModel):
     )
     trial_summary: BenchmarkTrialSummary = Field(default_factory=BenchmarkTrialSummary)
     tokenizer_results: list[BenchmarkTokenizerResult] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
     dashboard: BenchmarkDashboardData = Field(default_factory=BenchmarkDashboardData)
     per_document_stats: list[BenchmarkPerDocumentTokenizerStats] = Field(
         default_factory=list

@@ -34,6 +34,7 @@ export class BenchmarkMetricChartComponent implements AfterViewInit, OnDestroy {
   protected readonly tokenizers = computed(() => uniqueTokenizers(this.widget()));
   protected readonly widePlot = computed(() => this.widget().width === 'wide' && !this.compact());
   protected readonly axisFractions = [0, 0.25, 0.5, 0.75, 1] as const;
+  protected readonly horizontalAxisFractions = [0, 0.5, 1] as const;
   protected readonly histogramAxisFractions = [0, 0.5, 1] as const;
   protected readonly maxPointValue = computed(() => {
     const raw = Math.max(1, ...this.points().map((item) => Math.abs(item.value)));
@@ -100,27 +101,31 @@ export class BenchmarkMetricChartComponent implements AfterViewInit, OnDestroy {
   }
 
   protected groupedViewBox(): string {
-    return `0 0 ${this.chartWidth()} 230`;
+    return `0 0 ${this.chartWidth()} 260`;
   }
 
   protected forestViewBox(): string {
-    return `0 0 ${this.widePlot() ? 1600 : 440} ${Math.max(280, this.points().length * 72 + 68)}`;
+    return `0 0 ${this.widePlot() ? 1600 : 440} ${this.forestViewBoxHeight()}`;
   }
 
+  protected forestViewBoxHeight(): number { return Math.max(280, this.points().length * 72 + 80); }
+
   protected histogramViewBox(): string {
-    return `0 0 ${this.widePlot() ? 600 : 320} 190`;
+    return `0 0 ${this.widePlot() ? 600 : 320} ${this.histogramViewBoxHeight()}`;
   }
+
+  protected histogramViewBoxHeight(): number { return 220; }
 
   protected boxViewBox(): string {
     return `0 0 ${this.widePlot() ? 1600 : 440} ${this.boxViewBoxHeight()}`;
   }
 
   protected boxViewBoxHeight(): number {
-    return this.widePlot() ? 240 : 300;
+    return this.widePlot() ? 248 : 304;
   }
 
   protected pointPlotLeft(): number {
-    return Math.min(92, Math.max(54, this.chartWidth() * 0.2));
+    return Math.min(112, Math.max(88, this.chartWidth() * 0.18));
   }
 
   protected pointPlotRight(): number {
@@ -129,6 +134,7 @@ export class BenchmarkMetricChartComponent implements AfterViewInit, OnDestroy {
 
   protected pointPlotTop(): number { return 16; }
   protected pointPlotBottom(): number { return 200; }
+  protected pointAxisLabelY(): number { return (this.pointPlotTop() + this.pointPlotBottom()) / 2; }
 
   protected pointX(index: number): number {
     return this.pointPlotLeft() + (index + 0.5) * ((this.pointPlotRight() - this.pointPlotLeft()) / Math.max(this.points().length, 1));
@@ -143,22 +149,46 @@ export class BenchmarkMetricChartComponent implements AfterViewInit, OnDestroy {
   protected pointBarWidth(): number { return Math.min(44, Math.max(12, ((this.pointPlotRight() - this.pointPlotLeft()) / Math.max(this.points().length, 1)) * 0.62)); }
 
   protected horizontalLabelX(): number {
-    return Math.min(150, Math.max(96, this.chartWidth() * 0.26));
+    return Math.min(150, Math.max(112, this.chartWidth() * 0.26));
   }
 
   protected horizontalPlotLeft(): number { return this.horizontalLabelX() + 8; }
   protected horizontalPlotRight(): number { return Math.max(this.horizontalPlotLeft() + 120, this.chartWidth() - 16); }
+  protected horizontalPlotTop(): number { return 28; }
+  protected horizontalPlotBottom(): number { return 198; }
+  protected horizontalAxisLabelY(): number { return (this.horizontalPlotTop() + this.horizontalPlotBottom()) / 2; }
+  protected horizontalTickX(fraction: number): number {
+    return this.horizontalPlotLeft() + fraction * (this.horizontalPlotRight() - this.horizontalPlotLeft());
+  }
+  protected horizontalTickValue(fraction: number): string {
+    return this.formatAxis(this.maxPointValue() * fraction, this.widget().display_format);
+  }
+  protected horizontalBarHeight(): number {
+    return Math.max(4, Math.min(24, ((this.horizontalPlotBottom() - this.horizontalPlotTop()) / Math.max(this.points().length, 1)) * 0.72));
+  }
 
   protected horizontalY(index: number): number {
-    return 34 + (index + 0.5) * (160 / Math.max(this.points().length, 1));
+    return this.horizontalPlotTop() + (index + 0.5) * ((this.horizontalPlotBottom() - this.horizontalPlotTop()) / Math.max(this.points().length, 1));
   }
 
   protected horizontalWidth(value: number): number {
     return (Math.abs(value) / this.maxPointValue()) * (this.horizontalPlotRight() - this.horizontalPlotLeft());
   }
 
-  protected forestPlotStart(): number { return this.widePlot() ? 400 : 112; }
-  protected forestPlotEnd(): number { return this.widePlot() ? 1560 : 416; }
+  protected forestPlotStart(): number { return this.widePlot() ? 400 : 136; }
+  protected forestPlotEnd(): number { return this.widePlot() ? 1560 : 424; }
+
+  protected forestAxisY(): number { return this.forestViewBoxHeight() - 42; }
+  protected forestAxisLabelY(): number { return (28 + this.forestAxisY()) / 2; }
+  protected forestTickX(fraction: number): number {
+    return this.forestPlotStart() + fraction * (this.forestPlotEnd() - this.forestPlotStart());
+  }
+  protected forestTickValue(fraction: number): string {
+    const points = this.points();
+    const min = Math.min(0, ...points.map((item) => item.low));
+    const max = Math.max(1, ...points.map((item) => item.high));
+    return this.formatAxis(min + (max - min) * fraction, this.widget().display_format);
+  }
 
   protected forestScale(value: number): number {
     const points = this.points();
@@ -167,9 +197,10 @@ export class BenchmarkMetricChartComponent implements AfterViewInit, OnDestroy {
     return this.forestPlotStart() + ((value - min) / Math.max(max - min, 1)) * (this.forestPlotEnd() - this.forestPlotStart());
   }
 
-  protected boxPlotStart(): number { return this.widePlot() ? 320 : 116; }
+  protected boxPlotStart(): number { return this.widePlot() ? 320 : 130; }
   protected boxPlotEnd(): number { return this.widePlot() ? 1280 : 404; }
-  protected boxAxisY(): number { return this.boxViewBoxHeight() - 34; }
+  protected boxAxisY(): number { return this.boxViewBoxHeight() - 42; }
+  protected boxAxisLabelY(): number { return (34 + this.boxAxisY()) / 2; }
 
   protected boxScaleX(value: number): number {
     const scale = this.boxScale();
@@ -199,7 +230,7 @@ export class BenchmarkMetricChartComponent implements AfterViewInit, OnDestroy {
   }
 
   protected bucketPlotLeft(): number {
-    return Math.min(80, Math.max(48, this.chartWidth() * 0.12));
+    return Math.min(112, Math.max(76, this.chartWidth() * 0.16));
   }
 
   protected bucketPlotRight(): number {
@@ -218,18 +249,23 @@ export class BenchmarkMetricChartComponent implements AfterViewInit, OnDestroy {
   }
 
   protected histogramHeight(count: number): number {
-    return (count / this.maxHistogramCount()) * 134;
+    return (count / this.maxHistogramCount()) * (this.histogramPlotBottom() - this.histogramPlotTop());
   }
 
-  protected histogramTickY(fraction: number): number { return 160 - fraction * 134; }
+  protected histogramPlotTop(): number { return 42; }
+  protected histogramPlotBottom(): number { return 176; }
+  protected histogramAxisLabelY(): number { return (this.histogramPlotTop() + this.histogramPlotBottom()) / 2; }
+  protected histogramXAxisLabel(): string { return this.widget().unit || 'Value'; }
+  protected histogramTickY(fraction: number): number { return this.histogramPlotBottom() - fraction * (this.histogramPlotBottom() - this.histogramPlotTop()); }
   protected histogramTickValue(fraction: number): string { return this.formatAxis(this.maxHistogramCount() * fraction, 'number'); }
 
-  protected histogramPlotStart(): number { return this.widePlot() ? 45 : 24; }
-  protected histogramPlotEnd(): number { return this.widePlot() ? 555 : 296; }
+  protected histogramPlotStart(): number { return this.widePlot() ? 58 : 42; }
+  protected histogramPlotEnd(): number { return this.widePlot() ? 580 : 306; }
   protected histogramPlotWidth(): number { return this.histogramPlotEnd() - this.histogramPlotStart(); }
 
   protected bucketTickY(fraction: number): number { return this.bucketPlotBottom() - fraction * (this.bucketPlotBottom() - this.bucketPlotTop()); }
   protected bucketTickValue(fraction: number): string { return this.formatAxis(this.maxBucketValue() * fraction, this.widget().display_format); }
+  protected bucketAxisLabelY(): number { return (this.bucketPlotTop() + this.bucketPlotBottom()) / 2; }
   protected bucketBarWidth(): number {
     const groupWidth = (this.bucketPlotRight() - this.bucketPlotLeft()) / Math.max(this.bucketsList().length, 1);
     return Math.min(28, Math.max(6, groupWidth / Math.max(this.tokenizers().length, 1) - 4));

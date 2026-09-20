@@ -13,19 +13,16 @@ SETTINGS_DIR = (ROOT_DIR / "settings").resolve()
 ENV_FILE_PATH = SETTINGS_DIR / ".env"
 ENV_EXAMPLE_FILE_PATH = SETTINGS_DIR / ".env.example"
 
-
 ###############################################################################
 @dataclass
 class EnvironmentBootstrapState:
     lock: Lock = field(default_factory=Lock)
     bootstrapped: bool = False
 
-
 ###############################################################################
 @lru_cache(maxsize=1)
 def _bootstrap_state() -> EnvironmentBootstrapState:
     return EnvironmentBootstrapState()
-
 
 ###############################################################################
 def ensure_environment_loaded(*, force: bool = False) -> Path | None:
@@ -41,7 +38,6 @@ def ensure_environment_loaded(*, force: bool = False) -> Path | None:
         state.bootstrapped = True
         return env_path if env_path.is_file() else None
 
-
 ###############################################################################
 def _ensure_environment_file(env_path: Path) -> None:
     if env_path.is_file():
@@ -56,7 +52,6 @@ def _ensure_environment_file(env_path: Path) -> None:
             destination.write(template_bytes)
     except FileExistsError:
         return
-
 
 ###############################################################################
 def reset_environment_bootstrap_for_tests() -> None:

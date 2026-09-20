@@ -38,6 +38,7 @@ def _route_dashboard_api(page: Page) -> None:
                             "latency.distribution",
                             "fragmentation.bucket",
                         ],
+                        "tags": ["nightly"],
                     }
                 ],
                 "total": 1,
@@ -90,6 +91,7 @@ def _route_dashboard_api(page: Page) -> None:
                 },
                 "trial_summary": {"warmup_trials": 1, "timed_trials": 2},
                 "tokenizer_results": [],
+                "tags": ["nightly"],
                 "per_document_stats": [],
                 "runtime_metadata": {},
                 "raw_observations": {},
@@ -353,6 +355,90 @@ def test_cross_benchmark_dashboard_customization_and_accessible_data(
     expect(page.get_by_text("Tokenization speed values by tokenizer")).to_be_visible()
 
 ###############################################################################
+def test_cross_benchmark_baseline_clone_and_report_tags(
+    page: Page, base_url: str
+) -> None:
+    """Baseline comparison, cloning, and relational report tags stay user-facing."""
+    _route_dashboard_api(page)
+    page.route(
+        "**/api/tokenizers/list",
+        lambda route: route.fulfill(
+            json={
+                "tokenizers": [
+                    {"tokenizer_name": "alpha"},
+                    {"tokenizer_name": "beta"},
+                ],
+                "count": 2,
+            }
+        ),
+    )
+    page.route(
+        "**/api/datasets/list",
+        lambda route: route.fulfill(
+            json={"datasets": [{"dataset_name": "custom/qa"}], "count": 1}
+        ),
+    )
+    page.route(
+        "**/api/benchmarks/metrics/catalog",
+        lambda route: route.fulfill(
+            json={
+                "categories": [
+                    {
+                        "category_key": "benchmark",
+                        "category_label": "Benchmark",
+                        "metrics": [
+                            {"key": key, "label": key, "description": key}
+                            for key in [
+                                "efficiency.speed",
+                                "vocabulary.size",
+                                "latency.distribution",
+                                "fragmentation.bucket",
+                            ]
+                        ],
+                    }
+                ]
+            }
+        ),
+    )
+    page.route(
+        "**/api/benchmarks/reports/101/tags",
+        lambda route: route.fulfill(
+            json={"report_id": 101, "tags": ["nightly", "release"]}
+        ),
+    )
+    page.goto(f"{base_url}/cross-benchmark")
+
+    baseline = page.get_by_label("Baseline")
+    expect(baseline).to_be_visible()
+    baseline.select_option("alpha")
+    expect(page.get_by_text("Baseline: alpha", exact=True)).to_have_count(3)
+    page.get_by_text("View data table").first.click()
+    expect(page.get_by_role("columnheader", name="Δ vs baseline").first).to_be_visible()
+    expect(page.get_by_text("Baseline", exact=True)).to_have_count(3)
+
+    page.get_by_role("button", name="Reports (1)").click()
+    dialog = page.get_by_role("dialog", name="Benchmark Reports")
+    expect(dialog.get_by_text("nightly", exact=True)).to_be_visible()
+    dialog.get_by_role("button", name="Edit tags").click()
+    tags_input = dialog.locator("#report-tags-101")
+    tags_input.fill("nightly, release")
+    with page.expect_request(
+        lambda request: request.method == "PATCH"
+        and request.url.endswith("/reports/101/tags")
+    ):
+        dialog.get_by_role("button", name="Save tags").click()
+    expect(dialog.get_by_text("release", exact=True)).to_be_visible()
+    dialog.get_by_role("button", name="Close benchmark report manager").click()
+
+    page.get_by_role("button", name="Clone benchmark").click()
+    clone_dialog = page.get_by_role("dialog", name="Clone benchmark")
+    expect(clone_dialog).to_be_visible()
+    expect(clone_dialog.get_by_label("Run Name")).to_have_value(
+        "Clone of Dashboard QA"
+    )
+    expect(clone_dialog.get_by_label("Max length")).to_have_value("")
+
+###############################################################################
 def test_cross_benchmark_report_manager_search_pagination_and_inline_delete(
     page: Page, base_url: str
 ) -> None:
@@ -373,6 +459,7 @@ def test_cross_benchmark_report_manager_search_pagination_and_inline_delete(
             "tokenizers_count": 2,
             "tokenizers_processed": ["alpha", "beta"],
             "selected_metric_keys": [],
+            "tags": [],
         }
         for report_id in range(101, 152)
     ]

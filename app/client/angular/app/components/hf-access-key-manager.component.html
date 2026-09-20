@@ -1,15 +1,13 @@
-<button class="key-manager-backdrop" type="button" aria-label="Close key manager" (click)="close()"></button>
-<section class="key-manager-popover" role="dialog" aria-modal="true" aria-labelledby="hf-key-title" [appModalA11y]="true" (modalEscape)="close()">
+<section class="key-manager-section" aria-labelledby="hf-key-title">
   <header class="key-manager-header">
     <div>
       <p id="hf-key-title" class="panel-label">Hugging Face Keys</p>
       <p class="panel-description">Store access keys for gated Hugging Face downloads.</p>
     </div>
-    <button class="icon-button subtle" type="button" aria-label="Close key manager" (click)="close()">×</button>
   </header>
   <div class="key-manager-add-row">
     <input id="hf-key-input" class="text-input" type="password" placeholder="Enter Hugging Face key" [formControl]="key" aria-label="Hugging Face key" />
-    <button class="primary-button" type="button" (click)="addKey()">Add</button>
+    <button class="primary-button" type="button" [disabled]="submitting()" (click)="addKey()">{{ submitting() ? 'Adding…' : 'Add' }}</button>
   </div>
   @if (error()) { <p class="error-banner" role="alert">{{ error() }}</p> }
   @if (key.invalid && key.touched) {

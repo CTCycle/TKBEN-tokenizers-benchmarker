@@ -74,6 +74,7 @@ const schema3Report5WithUnavailableMetrics: BenchmarkRunResponse = {
     },
     resources: { peak_rss_mb: null, memory_delta_mb: null },
   }],
+  tags: [],
   dashboard: {
     widgets: [],
     available_widget_ids: [],

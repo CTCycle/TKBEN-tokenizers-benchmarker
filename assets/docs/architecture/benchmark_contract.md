@@ -1,5 +1,5 @@
 # Benchmark Contract
-Last updated: 2026-08-29
+Last updated: 2026-09-19
 
 ## Benchmark Request Notes
 Benchmark run request config includes tokenizer behavior flags and per-document controls:
@@ -9,6 +9,12 @@ Benchmark run request config includes tokenizer behavior flags and per-document 
 - `max_length`
 - `store_per_document_stats`
 - `per_document_sample_size`
+
+The frontend clone workflow copies the supported dataset, tokenizer, metric,
+and run configuration fields into a new request. It deliberately excludes
+report identity, timestamps, hardware/runtime metadata, results, layout,
+baseline preferences, and tags. Baseline comparison is a frontend report-view
+preference and is not part of the benchmark request contract.
 
 ## Cancellation
 - An active benchmark may be stopped from the run wizard. Cancellation is cooperative: the active job receives a stop request, the engine exits at its next stop-check point, and the job finishes with status `cancelled` without persisting a benchmark report.
@@ -33,6 +39,10 @@ Runtime metadata includes benchmark config echo and dataset scope details:
 - dashboard export accepts `visualization_by_widget_id` and rejects unknown or widget-incompatible overrides
 - `available_metric_keys` and `unavailable_selected_metric_keys` make availability explicit at metric level
 - schema 2/report 4 and every earlier report are not listed or loaded and are not migrated; they must be rerun
+
+Report tags are relational summary metadata. They are returned in list and full
+report contracts, are updated through the dedicated tags endpoint, and are not
+included in the immutable detail payload or benchmark run request.
 
 ## Persistence ownership
 

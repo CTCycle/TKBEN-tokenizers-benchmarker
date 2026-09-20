@@ -1,22 +1,20 @@
 from __future__ import annotations
 
-import json
 import os
 from pathlib import Path
-from typing import Any
 
 import pytest
+from pydantic import ValidationError
 
 from server.common.path import ROOT_DIR
 from server.common.utils.encryption import get_hf_key_cipher
 from server.configurations import environment as bootstrap
-from server.configurations import startup
+from server.configurations.settings import JobsSettings, TokenizerSettings
 from server.configurations.startup import (
     get_server_settings,
     is_key_reveal_enabled,
     reset_settings_cache_for_tests,
 )
-
 
 ###############################################################################
 @pytest.fixture(autouse=True)
@@ -27,66 +25,21 @@ def reset_configuration_state() -> None:
     reset_settings_cache_for_tests()
     bootstrap.reset_environment_bootstrap_for_tests()
 
-
 ###############################################################################
 def _write_env(path: Path, lines: list[str]) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-
 ###############################################################################
-def _write_json(path: Path, payload: dict[str, object]) -> None:
-    path.write_text(json.dumps(payload), encoding="utf-8")
-
-
-###############################################################################
-def _complete_config_json() -> dict[str, Any]:
-    return {
-        "tokenizers": {
-            "default_discovery_limit": 50,
-            "max_discovery_limit": 250,
-            "max_discovery_candidates": 750,
-            "metadata_candidate_multiplier": 3,
-            "max_upload_bytes": 10485760,
-        },
-        "datasets": {
-            "histogram_bins": 20,
-            "streaming_batch_size": 10000,
-            "log_interval": 100000,
-            "max_upload_bytes": 26214400,
-            "download_timeout_seconds": 180.0,
-            "download_retry_attempts": 3,
-            "download_retry_backoff_seconds": 2.0,
-            "cleanup_downloaded_sources": True,
-            "allowed_extensions": [".csv", ".xls", ".xlsx"],
-            "column_detection_cutoff": 0.6,
-        },
-        "benchmarks": {
-            "streaming_batch_size": 1000,
-            "log_interval": 10000,
-        },
-        "jobs": {
-            "polling_interval": 1.0,
-            "terminal_retention_seconds": 3600.0,
-        },
-    }
-
-
-###############################################################################
-def _configure_test_sources(
+def _configure_environment(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     env_lines: list[str],
-) -> Path:
-    config_path = tmp_path / "configurations.json"
-    _write_json(config_path, _complete_config_json())
+) -> None:
     env_path = tmp_path / ".env"
     _write_env(env_path, env_lines)
     monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
-    monkeypatch.setattr(startup, "CONFIGURATIONS_FILE", config_path)
     reset_settings_cache_for_tests()
     bootstrap.reset_environment_bootstrap_for_tests()
-    return config_path
-
 
 ###############################################################################
 def test_bootstrap_environment_overrides_existing_process_values(
@@ -100,7 +53,6 @@ def test_bootstrap_environment_overrides_existing_process_values(
     bootstrap.ensure_environment_loaded()
 
     assert os.getenv("FASTAPI_HOST") == "from_dotenv"
-
 
 ###############################################################################
 def test_missing_environment_is_created_from_example(
@@ -117,16 +69,15 @@ def test_missing_environment_is_created_from_example(
     assert env_path.read_bytes() == template_bytes
     assert os.getenv("FASTAPI_HOST") == "from_template"
 
-
 ###############################################################################
 def test_environment_template_exposes_canonical_runtime_inputs() -> None:
     example = (ROOT_DIR / "settings/.env.example").read_text(encoding="utf-8")
 
     assert "TKBEN_DATA_DIR=app/resources" in example
+    assert "TKBEN_LOG_DIR=app/resources/logs" in example
     assert "UI_HOST=127.0.0.1" in example
     assert "DATABASE_EMBEDDED=true" in example
     assert "ALLOW_KEY_REVEAL=false" in example
-
 
 ###############################################################################
 def test_bootstrap_is_idempotent_without_force(
@@ -142,48 +93,33 @@ def test_bootstrap_is_idempotent_without_force(
 
     assert os.getenv("FASTAPI_HOST") == "first"
 
-
 ###############################################################################
-def test_missing_configuration_file_fails_fast(
+def test_typed_defaults_resolve_without_structured_json(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    env_path = tmp_path / ".env"
-    _write_env(env_path, ["DATABASE_EMBEDDED=true"])
-    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
+    data_root = tmp_path / "runtime-data"
+    _configure_environment(
+        tmp_path,
+        monkeypatch,
+        ["DATABASE_EMBEDDED=true", f"TKBEN_DATA_DIR={data_root}"],
+    )
 
-    with pytest.raises(RuntimeError, match="Configuration file not found"):
-        get_server_settings(config_path=tmp_path / "missing.json")
+    settings = get_server_settings()
 
-
-###############################################################################
-def test_invalid_configuration_file_fails_fast(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    config_path = tmp_path / "configurations.json"
-    config_path.write_text("{invalid-json", encoding="utf-8")
-    env_path = tmp_path / ".env"
-    _write_env(env_path, ["DATABASE_EMBEDDED=true"])
-    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
-
-    with pytest.raises(RuntimeError, match="Unable to load configuration"):
-        get_server_settings(config_path=config_path)
-
-
-###############################################################################
-def test_missing_structured_setting_fails_fast(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    payload = _complete_config_json()
-    del payload["datasets"]["download_timeout_seconds"]
-    config_path = tmp_path / "configurations.json"
-    _write_json(config_path, payload)
-    env_path = tmp_path / ".env"
-    _write_env(env_path, ["DATABASE_EMBEDDED=true"])
-    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
-
-    with pytest.raises(RuntimeError, match="download_timeout_seconds"):
-        get_server_settings(config_path=config_path)
-
+    assert settings.tokenizers.default_discovery_limit == 50
+    assert settings.tokenizers.max_discovery_limit == 250
+    assert settings.tokenizers.max_discovery_candidates == 750
+    assert settings.tokenizers.metadata_candidate_multiplier == 3
+    assert settings.tokenizers.max_upload_bytes == 10 * 1024 * 1024
+    assert settings.datasets.histogram_bins == 20
+    assert settings.datasets.streaming_batch_size == 10_000
+    assert settings.datasets.max_upload_bytes == 25 * 1024 * 1024
+    assert settings.datasets.download_timeout_seconds == 180.0
+    assert settings.datasets.download_retry_attempts == 3
+    assert settings.datasets.download_retry_backoff_seconds == 2.0
+    assert settings.benchmarks.streaming_batch_size == 1000
+    assert settings.jobs.polling_interval == 1.0
+    assert not (data_root / "runtime-settings.json").exists()
 
 ###############################################################################
 def test_runtime_environment_resolves_into_one_settings_tree(
@@ -192,7 +128,7 @@ def test_runtime_environment_resolves_into_one_settings_tree(
     data_root = tmp_path / "runtime-data"
     log_root = tmp_path / "runtime-logs"
     material_path = tmp_path / "secrets" / "hf-material.json"
-    config_path = _configure_test_sources(
+    _configure_environment(
         tmp_path,
         monkeypatch,
         [
@@ -211,7 +147,7 @@ def test_runtime_environment_resolves_into_one_settings_tree(
         ],
     )
 
-    settings = get_server_settings(config_path=config_path)
+    settings = get_server_settings()
 
     assert settings.paths.resources == data_root.resolve()
     assert settings.paths.datasets == (data_root / "sources/datasets").resolve()
@@ -227,12 +163,11 @@ def test_runtime_environment_resolves_into_one_settings_tree(
     assert settings.security.allow_key_reveal is True
     assert settings.security.hf_keys_encryption_material_file == material_path.resolve()
 
-
 ###############################################################################
 def test_relative_runtime_paths_are_repository_relative(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    config_path = _configure_test_sources(
+    _configure_environment(
         tmp_path,
         monkeypatch,
         [
@@ -242,17 +177,16 @@ def test_relative_runtime_paths_are_repository_relative(
         ],
     )
 
-    settings = get_server_settings(config_path=config_path)
+    settings = get_server_settings()
 
     assert settings.paths.resources == (ROOT_DIR / "custom/runtime-data").resolve()
     assert settings.paths.logs == (ROOT_DIR / "custom/runtime-logs").resolve()
-
 
 ###############################################################################
 def test_external_database_settings_are_explicit(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    config_path = _configure_test_sources(
+    _configure_environment(
         tmp_path,
         monkeypatch,
         [
@@ -266,7 +200,7 @@ def test_external_database_settings_are_explicit(
         ],
     )
 
-    settings = get_server_settings(config_path=config_path)
+    settings = get_server_settings()
 
     assert settings.database.embedded_database is False
     assert settings.database.host == "remote-db"
@@ -275,12 +209,11 @@ def test_external_database_settings_are_explicit(
     assert settings.database.username == "remote_user"
     assert settings.database.ssl is True
 
-
 ###############################################################################
 def test_external_database_requires_host_name_and_user(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    config_path = _configure_test_sources(
+    _configure_environment(
         tmp_path,
         monkeypatch,
         [
@@ -295,8 +228,7 @@ def test_external_database_requires_host_name_and_user(
         RuntimeError,
         match="database.host, database.database_name, database.username",
     ):
-        get_server_settings(config_path=config_path)
-
+        get_server_settings()
 
 ###############################################################################
 @pytest.mark.parametrize(
@@ -322,48 +254,37 @@ def test_boolean_aliases_are_rejected(
             "DATABASE_USERNAME=user",
             f"{name}={value}",
         ]
-    config_path = _configure_test_sources(tmp_path, monkeypatch, lines)
+    _configure_environment(tmp_path, monkeypatch, lines)
 
     with pytest.raises(RuntimeError, match=name):
-        get_server_settings(config_path=config_path)
-
-
-###############################################################################
-def test_unknown_json_block_is_rejected(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    payload = _complete_config_json()
-    payload["database"] = {"embedded_database": True}
-    config_path = tmp_path / "configurations.json"
-    _write_json(config_path, payload)
-    env_path = tmp_path / ".env"
-    _write_env(env_path, ["DATABASE_EMBEDDED=true"])
-    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
-
-    with pytest.raises(RuntimeError, match="database"):
-        get_server_settings(config_path=config_path)
-
+        get_server_settings()
 
 ###############################################################################
 def test_settings_models_are_immutable(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    config_path = _configure_test_sources(
-        tmp_path,
-        monkeypatch,
-        ["DATABASE_EMBEDDED=true"],
-    )
-    settings = get_server_settings(config_path=config_path)
+    _configure_environment(tmp_path, monkeypatch, ["DATABASE_EMBEDDED=true"])
+    settings = get_server_settings()
 
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         settings.datasets.histogram_bins = 99
 
+###############################################################################
+def test_runtime_setting_models_keep_cross_field_and_polling_validation() -> None:
+    with pytest.raises(ValidationError):
+        TokenizerSettings(default_discovery_limit=251)
+    with pytest.raises(ValidationError):
+        TokenizerSettings(default_discovery_limit=20, max_discovery_limit=10)
+    with pytest.raises(ValidationError):
+        TokenizerSettings(max_discovery_limit=300, max_discovery_candidates=300)
+    with pytest.raises(ValidationError):
+        JobsSettings(polling_interval=0.1)
 
 ###############################################################################
 def test_key_reveal_policy_uses_canonical_settings(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _configure_test_sources(
+    _configure_environment(
         tmp_path,
         monkeypatch,
         ["DATABASE_EMBEDDED=true", "ALLOW_KEY_REVEAL=true"],
@@ -371,13 +292,12 @@ def test_key_reveal_policy_uses_canonical_settings(
 
     assert is_key_reveal_enabled() is True
 
-
 ###############################################################################
 def test_hf_key_cipher_uses_configured_material_path(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     material_path = tmp_path / "hf-key-material.json"
-    _configure_test_sources(
+    _configure_environment(
         tmp_path,
         monkeypatch,
         [

@@ -1,21 +1,23 @@
 # Project Overview
-Last updated: 2026-09-14
+Last updated: 2026-09-20
 
 ## Purpose
 This file is the root index for `assets/docs`. Read it first to find the narrowest topic file for the task at hand.
 
 The current codebase uses schema-3/report-5 benchmark reports, Alembic revision
-`0003_canonical_state_cleanup`, typed frontend catalog controls, persisted
+`0004_benchmark_report_tags`, typed frontend catalog controls, persisted
 tokenizer source/artifact state, and a `BenchmarkStore` that owns dashboard
-preferences. Reports own relational summary fields while JSON stores detail
-fields; incompatible historical rows are rejected or purged rather than
-silently adapted.
+preferences and report-scoped baseline selections. Reports own relational
+summary fields and tags while JSON stores immutable detail fields; incompatible
+historical rows are rejected or purged rather than silently adapted.
 
-The latest published release is `v4.3.0` with backend package `3.3.0` and
-frontend package `2.3.0`. Configuration ownership is canonical: `settings/.env`
-owns environment-specific values, `settings/configurations.json` owns required
-structured tuning, and the environment bootstrap runs before configuration or
-database imports.
+The latest published release is `v4.4.0` with backend package `3.4.0` and
+frontend package `2.4.0`. Configuration ownership is canonical: `settings/.env`
+and the process environment own startup/infrastructure values, typed backend
+models own application defaults, and sparse user overrides live under
+`<TKBEN_DATA_DIR>/runtime-settings.json`. The environment bootstrap runs before
+configuration or database imports; runtime overrides are optional and are not
+part of startup configuration.
 
 ## How To Navigate
 1. Start with this file only.
@@ -63,7 +65,7 @@ database imports.
   - Launcher commands, startup procedures, readiness checks, and first-launch
     behavior.
 - `runtime/configuration.md`
-  - Environment variables and structured settings.
+  - Environment variables, typed runtime defaults, and persisted user overrides.
 - `runtime/deployment.md`
   - Dependencies and local distribution notes.
 - `runtime/release.md`

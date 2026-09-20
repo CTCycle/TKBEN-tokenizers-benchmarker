@@ -155,3 +155,49 @@ def test_dataset_catalog_filters_ready_rows_by_source_search_and_count(
         search="PUBLIC",
         source="public",
     ) == [{"dataset_name": "public/corpus", "document_count": 12}]
+
+###############################################################################
+def test_dataset_report_by_id_excludes_incomplete_sessions(
+    sqlite_session: Session,
+) -> None:
+    now = datetime.now(timezone.utc)
+    dataset = Dataset(
+        name="custom/report-status",
+        status="ready",
+        document_count=0,
+        created_at=now,
+        updated_at=now,
+        ready_at=now,
+    )
+    sqlite_session.add(dataset)
+    sqlite_session.flush()
+    running = AnalysisSession(
+        dataset_id=dataset.id,
+        status="running",
+        report_version=2,
+        created_at=now,
+        completed_at=None,
+        parameters={},
+        selected_metric_keys=[],
+    )
+    completed = AnalysisSession(
+        dataset_id=dataset.id,
+        status="completed",
+        report_version=2,
+        created_at=now,
+        completed_at=now,
+        parameters={},
+        selected_metric_keys=[],
+    )
+    sqlite_session.add_all([running, completed])
+    sqlite_session.commit()
+
+    database = SimpleNamespace(
+        backend=SimpleNamespace(engine=sqlite_session.bind),
+    )
+    repository = DatasetRepository(DataRepositoryQueries(database))
+
+    assert repository.load_analysis_report_by_session_id(running.id) is None
+    completed_report = repository.load_analysis_report_by_session_id(completed.id)
+    assert completed_report is not None
+    assert completed_report["report_id"] == completed.id

@@ -1,12 +1,14 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { debounceTime } from 'rxjs';
 import { TokenizersStore } from '../core/state/tokenizers.store';
+import { SettingsStore } from '../core/state/settings.store';
 import { HistogramChartComponent } from '../components/histogram-chart.component';
 import { ExportApiService } from '../core/api/export-api.service';
 import { errorMessageAsync } from '../core/api/error-utils';
 import { ModalA11yDirective } from '../core/ui/modal-a11y.directive';
+import { dashboardFileName } from '../core/utils/dashboard-file-name';
 import type {
   SupportedTokenizerPipeline,
   TokenizerDiscoverySort,
@@ -22,6 +24,7 @@ type TokenizerManagerTab = 'discover' | 'add-by-name' | 'upload-json';
 })
 export class TokenizersPageComponent {
   protected readonly store = inject(TokenizersStore);
+  private readonly settingsStore = inject(SettingsStore, { optional: true });
   private readonly exportApi = inject(ExportApiService);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly addTokenizerOpen = signal(false);
@@ -39,7 +42,7 @@ export class TokenizersPageComponent {
   });
   protected readonly discoveryForm = new FormGroup({
     search: new FormControl('', { nonNullable: true }),
-    limit: new FormControl(50, { nonNullable: true }),
+    limit: new FormControl<number | null>(null, { validators: [Validators.required, Validators.min(1)] }),
     pipelineTag: new FormControl<SupportedTokenizerPipeline | ''>('', { nonNullable: true }),
     sort: new FormControl<TokenizerDiscoverySort>('downloads', { nonNullable: true }),
     author: new FormControl('', { nonNullable: true }),
@@ -52,6 +55,20 @@ export class TokenizersPageComponent {
   });
 
   constructor() {
+    effect(() => {
+      const runtimeSettings = this.settingsStore?.settings();
+      if (!runtimeSettings) return;
+      const limit = this.discoveryForm.controls.limit;
+      if (!limit.dirty && limit.value !== runtimeSettings.tokenizers.default_discovery_limit) {
+        limit.setValue(runtimeSettings.tokenizers.default_discovery_limit, { emitEvent: false });
+      }
+      limit.setValidators([
+        Validators.required,
+        Validators.min(1),
+        Validators.max(runtimeSettings.tokenizers.max_discovery_limit),
+      ]);
+      limit.updateValueAndValidity({ emitEvent: false });
+    });
     this.filters.valueChanges.pipe(debounceTime(10), takeUntilDestroyed(this.destroyRef)).subscribe(() => this.refresh());
   }
 
@@ -77,6 +94,9 @@ export class TokenizersPageComponent {
   protected closeAddTokenizer(): void { this.addTokenizerOpen.set(false); }
   protected selectTokenizerTab(tab: TokenizerManagerTab): void { this.activeTokenizerTab.set(tab); }
   protected toggleDiscoveryAdvanced(): void { this.discoveryAdvancedOpen.update((open) => !open); }
+  protected maxDiscoveryLimit(): number | null {
+    return this.settingsStore?.settings()?.tokenizers.max_discovery_limit ?? null;
+  }
   protected handleTokenizerTabKeydown(event: KeyboardEvent, tab: TokenizerManagerTab): void {
     const tabs: readonly TokenizerManagerTab[] = ['discover', 'add-by-name', 'upload-json'];
     const index = tabs.indexOf(tab);
@@ -94,9 +114,8 @@ export class TokenizersPageComponent {
   protected discoverTokenizers(): void {
     const value = this.discoveryForm.getRawValue();
     const splitTags = (raw: string): string[] => [...new Set(raw.split(/[\n,]/).map((tag) => tag.trim()).filter(Boolean))];
-    this.store.discover({
+    const query = {
       search: value.search,
-      limit: value.limit,
       pipeline_tag: value.pipelineTag || undefined,
       author: value.author,
       include_tags: splitTags(value.includeTags),
@@ -106,7 +125,10 @@ export class TokenizersPageComponent {
       vocabulary_operator: value.vocabularyOperator || undefined,
       vocabulary_size: value.vocabularySize ?? undefined,
       vocabulary_sort: value.vocabularySort,
-    });
+    };
+    const configuredLimit = this.settingsStore?.settings()?.tokenizers.default_discovery_limit;
+    const limit = value.limit ?? configuredLimit;
+    this.store.discover(limit === undefined ? query : { ...query, limit });
   }
   protected downloadManualTokenizers(): void {
     const tokenizers = this.manualTokenizerInput().split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean);
@@ -159,7 +181,7 @@ export class TokenizersPageComponent {
     this.exportApi.dashboardPdf({
       dashboardType: 'tokenizer',
       reportName: `tokenizer-${report.tokenizer_name}-report-${report.report_id}`,
-      fileName: `tokenizer-${report.tokenizer_name}-report-${report.report_id}.pdf`,
+      fileName: dashboardFileName('tokenizer', report.tokenizer_name, `report-${report.report_id}`),
       dashboardPayload: { report, vocabulary_items: this.store.vocabulary()?.items ?? [] } as unknown as Record<string, unknown>,
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (result) => { const url = URL.createObjectURL(result.blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = result.fileName; anchor.click(); URL.revokeObjectURL(url); },

@@ -1,5 +1,5 @@
 # Execution and Data Flow
-Last updated: 2026-09-13
+Last updated: 2026-09-16
 
 ## Layered Architecture
 
@@ -23,10 +23,10 @@ dependencies rather than a second domain layer.
     API and service boundary. These modules do not import API, service, or
     repository implementations.
 - `server/configurations/*`
-  - Environment loading, structured settings, startup configuration, and
-    database configuration. One process-level `ServerSettings` snapshot is
-    resolved for application startup; structured JSON contains content
-    catalogs/jobs only and cannot override database settings.
+  - Environment loading, typed startup configuration, typed application
+    runtime defaults, sparse runtime overrides, and database configuration.
+    One process-level `ServerSettings` snapshot is resolved for the application;
+    runtime updates atomically replace only runtime-editable nested models.
 - `server/services/*`
   - Operational business logic, validation, orchestration, and report
     workflows. `services/benchmark_reports.py` owns benchmark report
@@ -52,10 +52,13 @@ The bootstrap loads `.env` before importing configuration or database modules
 that can resolve environment-derived values. `create_app()` then resolves the
 process-level settings snapshot once and places it on application state.
 Lifespan startup, database initialization, repositories, and services consume
-that snapshot rather than independently reloading configuration. `.env` owns
-operational values; `configurations.json` owns the required datasets,
-tokenizers, benchmarks, and jobs blocks. Unknown or missing structured settings
-and non-canonical booleans fail validation before readiness. PostgreSQL uses the
+that snapshot rather than independently reloading configuration. `.env` and the
+process environment own operational values. Typed Pydantic models own
+application defaults, while `RuntimeSettingsStore` merges sparse
+`<TKBEN_DATA_DIR>/runtime-settings.json` overrides and validates the complete
+effective runtime configuration. Settings API updates persist atomically before
+replacing the in-memory snapshot; services created afterward see the new values,
+while existing operations retain their captured snapshot. PostgreSQL uses the
 fixed `postgresql+psycopg` driver when external mode is selected.
 
 Alembic is the only schema authority. Empty databases upgrade through the

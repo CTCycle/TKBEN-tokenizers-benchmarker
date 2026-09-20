@@ -10,7 +10,6 @@ from server.configurations import get_server_settings
 
 MATERIAL_PURPOSE = "hugging_face_access_keys"
 
-
 ###############################################################################
 class SymmetricCipher:
 
@@ -34,11 +33,9 @@ class SymmetricCipher:
         except InvalidToken as exc:
             raise ValueError("Unable to decrypt stored Hugging Face key.") from exc
 
-
 ###############################################################################
 def _material_path() -> Path:
     return get_server_settings().security.hf_keys_encryption_material_file
-
 
 ###############################################################################
 def _read_material_store(path: Path) -> dict[str, object]:
@@ -52,7 +49,6 @@ def _read_material_store(path: Path) -> dict[str, object]:
         raise RuntimeError("Hugging Face key material file must contain an object.")
     return payload
 
-
 ###############################################################################
 def _write_material_store(path: Path, payload: dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -61,7 +57,6 @@ def _write_material_store(path: Path, payload: dict[str, object]) -> None:
         json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     temporary.replace(path)
-
 
 ###############################################################################
 def _get_active_material(payload: dict[str, object]) -> str | None:
@@ -77,7 +72,6 @@ def _get_active_material(payload: dict[str, object]) -> str | None:
         return None
     key_material = record.get("key_material")
     return str(key_material) if isinstance(key_material, str) and key_material else None
-
 
 ###############################################################################
 def _ensure_material() -> str:
@@ -107,7 +101,6 @@ def _ensure_material() -> str:
     record = versions["1"]
     assert isinstance(record, dict)
     return str(record["key_material"])
-
 
 ###############################################################################
 def get_hf_key_cipher() -> SymmetricCipher:

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from server.configurations import ServerSettings
 
-
 ###############################################################################
 def ensure_runtime_directories(settings: ServerSettings) -> None:
     for directory in (
@@ -12,7 +11,6 @@ def ensure_runtime_directories(settings: ServerSettings) -> None:
         settings.paths.templates,
     ):
         directory.mkdir(parents=True, exist_ok=True)
-
 
 ###############################################################################
 def build_cors_origins(settings: ServerSettings) -> list[str]:
@@ -27,11 +25,9 @@ def build_cors_origins(settings: ServerSettings) -> list[str]:
 
     return sorted(f"http://{host}:{ui_port}" for host in hosts)
 
-
 ###############################################################################
 def run_startup_validations(settings: ServerSettings) -> None:
     ensure_runtime_directories(settings)
-
 
 ###############################################################################
 def _normalized_host(raw_host: str) -> str:

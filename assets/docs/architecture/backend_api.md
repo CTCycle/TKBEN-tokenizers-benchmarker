@@ -1,11 +1,22 @@
 # Backend API
-Last updated: 2026-08-29
+Last updated: 2026-09-19
 
 ## API Prefix
 All routers are included with `prefix="/api"` during backend startup.
 
 ## Health
 - `GET /api/health`
+
+## Application Runtime Settings
+- `GET /api/settings` — returns the effective values, typed defaults, current
+  revision, overridden keys, and any recoverable runtime-file warning for the
+  16 supported application settings. It never returns startup, infrastructure,
+  path, database, security, or secret configuration.
+- `PATCH /api/settings` — applies a typed partial update with
+  `expected_revision`; successful writes are authoritative and apply to new
+  operations.
+- `POST /api/settings/reset` — removes selected overrides or all overrides with
+  `expected_revision`. Removing the last override deletes the runtime file.
 
 ## Datasets
 - `GET /api/datasets/list` — returns `{datasets, count}`; optional `search` (trimmed, max 160 characters), `source=all|public|custom`, `document_count_operator=at_least|at_most`, and non-negative `document_count` filters. Filtering is applied server-side to the catalog.
@@ -23,7 +34,8 @@ usable in the local SQLite workflow. The full repository remains available
 through the manual Hugging Face dataset-ID workflow.
 
 ## Tokenizers
-- `GET /api/tokenizers/settings` — returns discovery and metadata candidate limits.
+- `GET /api/tokenizers/settings` — deprecated compatibility response for current
+  discovery and metadata candidate limits; new clients use `/api/settings`.
 - `GET /api/tokenizers/discover` — performs bounded Hugging Face repository discovery. `search`, `author`, `pipeline_tag`, required `include_tags`, `access=all|public|gated`, `sort`, and `limit` are passed to the installed Hub API where supported. The query requests `siblings` metadata and locally requires a usable root-level tokenizer artifact: `tokenizer.json` or a SentencePiece file with tokenizer/config metadata, `vocab.json` plus `merges.txt`, or `vocab.txt` with tokenizer/config metadata. Weight-only, metadata-only, nested-only, and artifact-less repositories are discarded before the response is built. Because artifact validation and existing `exclude_tags`, any-text-task, and vocabulary comparison/order filters are local, the provider query uses bounded overfetch and the configured candidate cap. Discovery remains metadata-only; tokenizer weights are never downloaded or model-loaded. The existing download loader remains the final `AutoTokenizer` compatibility check and removes failed cache artifacts. The response is `{items, count, fetched_count}` with structured repository metadata. Hugging Face failures return a sanitized HTTP 500 rather than a false successful empty result.
 - `GET /api/tokenizers/list` — returns `{tokenizers, count}`; each item includes `tokenizer_name`, `source=huggingface|custom`, `has_report`, and nullable `vocabulary_size`. Optional `search` (trimmed, max 160 characters), `source=all|huggingface|custom`, `vocabulary_size_operator=at_least|at_most`, and non-negative `vocabulary_size` filters are applied server-side.
 - `POST /api/tokenizers/download` — background result includes `failed_details` with sanitized exception summaries; failed downloads remove incomplete cache artifacts.
@@ -40,6 +52,10 @@ through the manual Hugging Face dataset-ID workflow.
 - `POST /api/benchmarks/run`
 - `GET /api/benchmarks/reports` — returns `{reports, total, offset, limit}`. Optional `search` is applied server-side to `run_name` and `Dataset.name`; `sort=newest|oldest`, `offset`, and `limit` provide deterministic server pagination. List queries fetch summary columns only and never select the JSON payload.
 - `GET /api/benchmarks/reports/{report_id}`
+- `PATCH /api/benchmarks/reports/{report_id}/tags` — replaces the report’s
+  validated tag list and returns `{report_id, tags}`; tags are trimmed,
+  case-insensitively deduplicated, limited to eight entries of 32 characters,
+  and reject control characters.
 - `DELETE /api/benchmarks/reports/{report_id}` — physically deletes the persisted report and returns `204`; nonexistent reports return `404`.
 - `GET /api/benchmarks/metrics/catalog`
   - dashboard widgets use report-v5/schema-3 `default_visualization`, ordered `compatible_visualizations`, and persisted `histogram_bins`; older reports are not listed or loaded

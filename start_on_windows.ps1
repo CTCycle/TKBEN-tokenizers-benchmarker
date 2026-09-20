@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [switch]$Launch
+    [switch]$Launch,
+    [switch]$KillAll
 )
 
 $ErrorActionPreference = 'Stop'
@@ -25,6 +26,7 @@ $NodeExe = Join-Path $NodeDir 'node.exe'
 $NpmCmd = Join-Path $NodeDir 'npm.cmd'
 $ServerDir = Join-Path $RepoRoot 'app\server'
 $ClientDir = Join-Path $RepoRoot 'app\client'
+$FrontendBuildStampPath = Join-Path $ClientDir 'dist\tkben-angular\.tkben-build.json'
 $AppDir = Join-Path $RepoRoot 'app'
 $AssetsDir = Join-Path $RepoRoot 'assets'
 $SettingsDir = Join-Path $RepoRoot 'settings'
@@ -34,7 +36,6 @@ $VenvPython = Join-Path $VenvDir 'Scripts\python.exe'
 $EnvFile = Join-Path $RepoRoot 'settings\.env'
 $EnvTemplate = Join-Path $RepoRoot 'settings\.env.example'
 $RuntimeCacheDir = Join-Path $RuntimeDir 'cache'
-$ToolCacheDir = Join-Path $TestsDir 'cache'
 $UvCacheDir = Join-Path $RuntimeCacheDir 'uv'
 $PythonVersion = '3.14.2'
 $NodeVersion = '22.23.1'
@@ -99,7 +100,7 @@ function Invoke-TrackedLauncherAction {
     )
     Write-Step "Starting $Name"
     try {
-        & $Action
+        $Action.Invoke()
         Write-Ok "$Name completed"
     }
     catch {
@@ -281,9 +282,7 @@ function Invoke-CheckPyVer {
 function Invoke-Npm {
     param([Parameter(ValueFromRemainingArguments)][string[]]$Arguments)
     if (-not (Test-Path -LiteralPath $NpmCmd)) { throw "npm was not installed at $NpmCmd" }
-    $commandLine = '"' + $NpmCmd + '"'
-    if ($Arguments) { $commandLine += ' ' + ($Arguments -join ' ') }
-    & cmd.exe /d /c $commandLine | Out-Host
+    & $NpmCmd @Arguments | Out-Host
     return [int]$LASTEXITCODE
 }
 
@@ -353,8 +352,6 @@ function Import-Environment {
         UI_HOST = '127.0.0.1'
         UI_PORT = '8000'
         RELOAD = 'false'
-        # Backend logs are visible by default when the setting is absent.
-        BACKEND_LOGS_VISIBLE = 'true'
     }
     foreach ($entry in $defaults.GetEnumerator()) {
         Set-Item -Path "Env:$($entry.Key)" -Value $entry.Value
@@ -364,30 +361,22 @@ function Import-Environment {
         Set-Item -Path "Env:$($entry.Key)" -Value $entry.Value
     }
 
-    if ($env:BACKEND_LOGS_VISIBLE -ieq 'true') {
-        $env:BACKEND_LOGS_VISIBLE = 'true'
-    } elseif ($env:BACKEND_LOGS_VISIBLE -ieq 'false') {
-        $env:BACKEND_LOGS_VISIBLE = 'false'
-    } else {
-        throw "BACKEND_LOGS_VISIBLE must be either 'true' or 'false'."
-    }
-
     Ensure-Directory $RuntimeCacheDir
     foreach ($cacheName in @('uv', 'pip', 'npm')) {
         Ensure-Directory (Join-Path $RuntimeCacheDir $cacheName)
     }
-    Ensure-Directory $ToolCacheDir
-    foreach ($cacheName in @('ruff', 'mypy', 'pycache', 'coverage', 'playwright', 'pytest', 'pytest-basetemp', 'angular')) {
-        Ensure-Directory (Join-Path $ToolCacheDir $cacheName)
+    foreach ($cacheName in @('ruff', 'mypy', 'pycache', 'coverage', 'playwright', 'pytest-state', 'pytest-basetemp-current', 'angular', 'matplotlib')) {
+        Ensure-Directory (Join-Path $RuntimeCacheDir $cacheName)
     }
     $env:UV_CACHE_DIR = $UvCacheDir
     $env:PIP_CACHE_DIR = Join-Path $RuntimeCacheDir 'pip'
     $env:NPM_CONFIG_CACHE = Join-Path $RuntimeCacheDir 'npm'
-    $env:RUFF_CACHE_DIR = Join-Path $ToolCacheDir 'ruff'
-    $env:MYPY_CACHE_DIR = Join-Path $ToolCacheDir 'mypy'
-    $env:PYTHONPYCACHEPREFIX = Join-Path $ToolCacheDir 'pycache'
-    $env:COVERAGE_FILE = Join-Path (Join-Path $ToolCacheDir 'coverage') '.coverage'
-    $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path $ToolCacheDir 'playwright'
+    $env:RUFF_CACHE_DIR = Join-Path $RuntimeCacheDir 'ruff'
+    $env:MYPY_CACHE_DIR = Join-Path $RuntimeCacheDir 'mypy'
+    $env:PYTHONPYCACHEPREFIX = Join-Path $RuntimeCacheDir 'pycache'
+    $env:COVERAGE_FILE = Join-Path (Join-Path $RuntimeCacheDir 'coverage') '.coverage'
+    $env:MPLCONFIGDIR = Join-Path $RuntimeCacheDir 'matplotlib'
+    $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path $RuntimeCacheDir 'playwright'
     $env:UV_PROJECT_ENVIRONMENT = $VenvDir
     $env:UV_LINK_MODE = 'copy'
     Remove-Item Env:PYTHONHOME -ErrorAction SilentlyContinue
@@ -464,6 +453,36 @@ function Get-FrontendDependencyFingerprint {
     return (($manifestPaths | ForEach-Object { (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash }) -join ':')
 }
 
+function Get-FrontendSourceFingerprint {
+    $sourcePaths = @(
+        Get-ChildItem -LiteralPath (Join-Path $ClientDir 'angular') -Recurse -File
+        Get-ChildItem -LiteralPath (Join-Path $ClientDir 'public') -Recurse -File -ErrorAction SilentlyContinue
+        Get-Item -LiteralPath @(
+            (Join-Path $ClientDir 'angular.json'),
+            (Join-Path $ClientDir 'package.json'),
+            (Join-Path $ClientDir 'package-lock.json'),
+            (Join-Path $ClientDir 'proxy.conf.cjs'),
+            (Join-Path $ClientDir 'tsconfig.json'),
+            (Join-Path $ClientDir 'tsconfig.app.json')
+        ) -ErrorAction SilentlyContinue
+    ) | Where-Object { $_ -and $_.PSIsContainer -eq $false } | Sort-Object FullName
+
+    $relativePaths = [string[]]@($sourcePaths | ForEach-Object {
+        $_.FullName.Substring($ClientDir.Length).TrimStart('\')
+    })
+    [Array]::Sort($relativePaths, [StringComparer]::Ordinal)
+    $fingerprintInput = ($relativePaths | ForEach-Object {
+        '{0}:{1}' -f $_, (Get-FileHash -LiteralPath (Join-Path $ClientDir $_) -Algorithm SHA256).Hash
+    }) -join "`n"
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+        return ([BitConverter]::ToString($sha256.ComputeHash([Text.Encoding]::UTF8.GetBytes($fingerprintInput)))).Replace('-', '')
+    }
+    finally {
+        $sha256.Dispose()
+    }
+}
+
 function Test-FrontendDependenciesReady {
     $nodeModulesDir = Join-Path $ClientDir 'node_modules'
     $stampPath = Join-Path $nodeModulesDir '.tkben-dependencies.json'
@@ -491,6 +510,14 @@ function Write-FrontendDependencyStamp {
         packageFingerprint = Get-FrontendDependencyFingerprint
         nodeVersion = (& $NodeExe --version).Trim()
     } | ConvertTo-Json | Set-Content -LiteralPath $stampPath -Encoding utf8
+}
+
+function Write-FrontendBuildStamp {
+    Ensure-Directory -Path (Split-Path -Parent $FrontendBuildStampPath)
+    [ordered]@{
+        sourceFingerprint = Get-FrontendSourceFingerprint
+        nodeVersion = (& $NodeExe --version).Trim()
+    } | ConvertTo-Json | Set-Content -LiteralPath $FrontendBuildStampPath -Encoding utf8
 }
 
 function Sync-Dependencies {
@@ -553,8 +580,24 @@ function Sync-Frontend {
 
         if ($BuildFrontend) {
             Write-Step 'Building frontend.'
-            $npmExitCode = Invoke-Npm run build
+            # Angular's terminal renderer can terminate the portable launcher
+            # with a native access violation under UTF-8 PowerShell hosts. Keep
+            # the production build non-interactive without changing the caller's
+            # CI setting after the build.
+            $previousCi = [Environment]::GetEnvironmentVariable('CI', 'Process')
+            try {
+                $env:CI = 'true'
+                $npmExitCode = Invoke-Npm run build '--' '--progress=false'
+            }
+            finally {
+                if ($null -eq $previousCi) {
+                    Remove-Item Env:CI -ErrorAction SilentlyContinue
+                } else {
+                    $env:CI = $previousCi
+                }
+            }
             if ($npmExitCode -ne 0) { throw "Frontend build failed with exit code $npmExitCode." }
+            Write-FrontendBuildStamp
         }
     } finally {
         Pop-Location
@@ -595,14 +638,48 @@ function Test-DependenciesReady {
 
 function Test-FrontendBuildReady {
     $frontendEntry = Join-Path $ClientDir 'dist\tkben-angular\browser\index.html'
-    return Test-Path -LiteralPath $frontendEntry -PathType Leaf
+    if (-not (Test-Path -LiteralPath $frontendEntry -PathType Leaf) -or
+        -not (Test-Path -LiteralPath $FrontendBuildStampPath -PathType Leaf)) {
+        return $false
+    }
+
+    try {
+        $stamp = Get-Content -LiteralPath $FrontendBuildStampPath -Raw | ConvertFrom-Json
+        return (
+            $stamp.sourceFingerprint -eq (Get-FrontendSourceFingerprint) -and
+            $stamp.nodeVersion -eq (& $NodeExe --version).Trim()
+        )
+    }
+    catch {
+        return $false
+    }
+}
+
+function Get-PortProcessIds([int]$Port) {
+    $listeners = netstat -ano | Select-String -Pattern ":$Port\s+.*LISTENING\s+(\d+)\s*$"
+    return @($listeners | ForEach-Object {
+        if ($_.Matches.Count) { [int]$_.Matches[0].Groups[1].Value }
+    } | Sort-Object -Unique)
+}
+
+function Stop-ProcessTree([int]$ProcessId) {
+    if ($ProcessId -le 0 -or $ProcessId -eq $PID) { return $false }
+    if (-not (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue)) { return $true }
+
+    & taskkill.exe /PID $ProcessId /T /F *> $null
+    if ($LASTEXITCODE -eq 0) { return $true }
+
+    try {
+        Stop-Process -Id $ProcessId -Force -ErrorAction Stop
+        return $true
+    }
+    catch {
+        return -not (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue)
+    }
 }
 
 function Stop-PortListeners([int]$Port) {
-    $listeners = netstat -ano | Select-String -Pattern ":$Port\s+.*LISTENING\s+(\d+)\s*$"
-    $processIds = @($listeners | ForEach-Object {
-        if ($_.Matches.Count) { [int]$_.Matches[0].Groups[1].Value }
-    } | Sort-Object -Unique)
+    $processIds = @(Get-PortProcessIds -Port $Port)
     foreach ($processId in $processIds) {
         Write-Step "Stopping PID $processId on port $Port."
         $stopped = $false
@@ -630,6 +707,66 @@ function Get-PortProcessId([int]$Port) {
     return $null
 }
 
+function Get-ApplicationProcessIds {
+    $repoMarker = [IO.Path]::GetFullPath($RepoRoot).TrimEnd('\')
+    $processIds = @()
+    try {
+        $processes = Get-CimInstance -ClassName Win32_Process -ErrorAction Stop
+    }
+    catch {
+        throw "Could not inspect TKBEN process command lines: $($_.Exception.Message)"
+    }
+
+    foreach ($process in $processes) {
+        $processId = [int]$process.ProcessId
+        if ($processId -eq $PID) { continue }
+
+        $commandLine = [string]$process.CommandLine
+        if ([string]::IsNullOrWhiteSpace($commandLine) -or
+            $commandLine.IndexOf($repoMarker, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+            continue
+        }
+
+        $isBackend = $commandLine -match '(?i)\buvicorn(?:\.exe)?\s+server\.app:app\b'
+        $isFrontend = $commandLine -match '(?i)(?:npm(?:\.cmd|-cli\.js)?\s+run\s+preview|vite(?:\.cmd|\.js)?\s+preview)'
+        if ($isBackend -or $isFrontend) { $processIds += $processId }
+    }
+    return @($processIds | Sort-Object -Unique)
+}
+
+function Stop-ApplicationProcesses {
+    $processIds = @(
+        Get-ApplicationProcessIds |
+            Where-Object { $_ -and [int]$_ -ne $PID } |
+            Sort-Object -Unique
+    )
+
+    if (-not $processIds) {
+        Write-Ok 'No running TKBEN application processes were found.'
+        return
+    }
+
+    $failedProcessIds = @()
+    foreach ($processId in $processIds) {
+        Write-Step "Stopping TKBEN application process tree rooted at PID $processId."
+        if (-not (Stop-ProcessTree -ProcessId ([int]$processId))) {
+            $failedProcessIds += [int]$processId
+        }
+    }
+
+    $remainingProcessIds = @(
+        Get-ApplicationProcessIds |
+            Where-Object { $_ -and [int]$_ -ne $PID } |
+            Sort-Object -Unique
+    )
+
+    if ($failedProcessIds.Count -gt 0 -or $remainingProcessIds.Count -gt 0) {
+        $blockedProcessIds = @($failedProcessIds + $remainingProcessIds | Sort-Object -Unique) -join ', '
+        throw "Could not stop all TKBEN application processes. Remaining or blocked PIDs: $blockedProcessIds. Close them manually or run the launcher with sufficient permission."
+    }
+    Write-Ok "Stopped $($processIds.Count) TKBEN application process tree root(s)."
+}
+
 # =============================================================================
 # Application lifecycle and validation
 # =============================================================================
@@ -640,7 +777,7 @@ function Launch-Application {
         Sync-Dependencies -BuildFrontend -InstallationType 'Standard'
     }
     elseif (-not (Test-FrontendBuildReady)) {
-        Write-Step 'Angular production output is missing; building the frontend.'
+        Write-Step 'Angular production output is missing or stale; building the frontend.'
         Sync-Frontend -BuildFrontend -UseCachedFrontendDependencies
     }
     else {
@@ -658,12 +795,12 @@ function Launch-Application {
     if ($env:RELOAD -ieq 'true') { $backendArgs += ' --reload' }
 
     Write-Step 'Starting backend.'
-    $backendLogDir = Join-Path $AppDir 'resources\logs'
+    $backendLogDir = Get-ApplicationLogRoot -DataRoot (Get-ApplicationDataRoot)
     Ensure-Directory -Path $backendLogDir
     $backendLogStem = Join-Path $backendLogDir ('TKBEN_backend_' + (Get-Date -Format 'yyyyMMdd_HHmmss_fff'))
     $backendStdoutLog = "$backendLogStem.out.log"
     $backendStderrLog = "$backendLogStem.err.log"
-    if ($env:BACKEND_LOGS_VISIBLE -ieq 'true' -and $script:LauncherInteractive) {
+    if ($script:LauncherInteractive) {
         $escapedPython = $VenvPython.Replace("'", "''")
         $escapedApp = $backendAppPath.Replace("'", "''")
         $backendCommand = "& '$escapedPython' -m uvicorn server.app:app --app-dir '$escapedApp' --host $($env:FASTAPI_HOST) --port $backendPort"
@@ -692,7 +829,7 @@ function Launch-Application {
 
     Write-Step 'Starting frontend preview.'
     $previewCommandLine = '"' + $NpmCmd + '" run preview -- --host ' + $env:UI_HOST + ' --port ' + $uiPort + ' --strictPort'
-    $frontendLogDir = Join-Path $AppDir 'resources\logs'
+    $frontendLogDir = $backendLogDir
     Ensure-Directory -Path $frontendLogDir
     $frontendLogStem = Join-Path $frontendLogDir ('TKBEN_frontend_' + (Get-Date -Format 'yyyyMMdd_HHmmss_fff'))
     $frontendStdoutLog = "$frontendLogStem.out.log"
@@ -723,10 +860,13 @@ function Launch-Application {
 }
 
 function Install-Dependencies {
+    param(
+        [ValidateSet('Standard', 'Development')]
+        [string]$InstallationType = 'Standard'
+    )
     Import-Environment
     Install-Runtimes
-    $installationType = Read-InstallationType
-    Sync-Dependencies -BuildFrontend -InstallationType $installationType -RuntimesReady
+    Sync-Dependencies -BuildFrontend -InstallationType $InstallationType -RuntimesReady
     Invoke-DatabaseInitialization
     if (Test-Path -LiteralPath $UvCacheDir) { Remove-PathBestEffort -Path $UvCacheDir | Out-Null }
     Write-Ok 'Dependencies installed, frontend built, and database synchronized.'
@@ -1042,6 +1182,7 @@ function Remove-AllData {
         (Join-Path $dataRoot 'database.db-wal'),
         (Join-Path $dataRoot 'database.db-shm'),
         (Join-Path $dataRoot 'database.db-journal'),
+        (Join-Path $dataRoot 'runtime-settings.json'),
         (Get-HuggingFaceMaterialPath -DataRoot $dataRoot)
     ) | Select-Object -Unique) {
         if (Test-Path -LiteralPath $dataFile) {
@@ -1071,20 +1212,24 @@ function Remove-AllData {
 }
 
 function Remove-PythonCaches {
-    $cacheDirectories = @(Get-ChildItem -LiteralPath $RepoRoot -Directory -Filter '__pycache__' -Recurse -Force -ErrorAction SilentlyContinue |
+    $venvPrefix = if (Test-Path -LiteralPath $VenvDir) {
+        ((Resolve-Path -LiteralPath $VenvDir).Path).TrimEnd('\') + '\'
+    } else {
+        $null
+    }
+    $cacheDirectories = @(Get-ChildItem -LiteralPath $AppDir -Directory -Filter '__pycache__' -Recurse -Force -ErrorAction SilentlyContinue |
+        Where-Object { [string]::IsNullOrEmpty($venvPrefix) -or -not $_.FullName.StartsWith($venvPrefix, [StringComparison]::OrdinalIgnoreCase) } |
         Sort-Object @{ Expression = { $_.FullName.Length }; Descending = $true }, @{ Expression = { $_.FullName.ToUpperInvariant() }; Descending = $false })
     @($cacheDirectories | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
 }
 
 function Clear-ManagedCache {
     $summaries = @()
-    foreach ($cacheRoot in @($RuntimeCacheDir, $ToolCacheDir)) {
-        Ensure-Directory $cacheRoot
-        $entries = @(Get-ChildItem -LiteralPath $cacheRoot -Force -ErrorAction SilentlyContinue |
-            Where-Object { $_.Name -ne '.gitkeep' } |
-            Sort-Object @{ Expression = { $_.FullName.ToUpperInvariant() }; Descending = $false })
-        $summaries += @($entries | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
-    }
+    Ensure-Directory $RuntimeCacheDir
+    $entries = @(Get-ChildItem -LiteralPath $RuntimeCacheDir -Force -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -ne '.gitkeep' } |
+        Sort-Object @{ Expression = { $_.FullName.ToUpperInvariant() }; Descending = $false })
+    $summaries += @($entries | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
 
     $summaries
 }
@@ -1109,20 +1254,18 @@ function Uninstall-Application {
     if (-not (Confirm-DestructiveAction 'remove downloaded runtimes, dependencies, build output, and Python caches')) { return }
     Write-Step 'Removing downloaded runtimes, dependencies, build output, and Python caches.'
     $summaries = @()
+    $summaries += @(Remove-PythonCaches)
     $directories = @(
         $RuntimeDir,
         $VenvDir,
         (Join-Path $RepoRoot '.venv'),
         (Join-Path $ClientDir 'node_modules'),
-        (Join-Path $ClientDir '.angular'),
         (Join-Path $ClientDir 'dist')
     )
     foreach ($directory in $directories) {
         if (Test-Path -LiteralPath $directory) { $summaries += @(Remove-PathBestEffort -Path $directory) }
     }
     # Project manifests, dependency lockfiles, and tool configuration remain intact.
-    $summaries += @(Remove-PythonCaches)
-    $summaries += @(Clear-ManagedCache)
     $removed = [int](($summaries | Measure-Object -Property RemovedCount -Sum).Sum)
     $skipped = [int](($summaries | Measure-Object -Property SkippedCount -Sum).Sum) +
         [int](($summaries | Measure-Object -Property EnumerationErrorCount -Sum).Sum)
@@ -1218,9 +1361,10 @@ function Get-LauncherMenuEntries {
         [pscustomobject]@{ Section = 'SOURCE CONTROL'; Label = 'Check for updates'; Description = 'Report whether origin/main has a newer revision'; Key = 'Check'; Destructive = $false }
         [pscustomobject]@{ Section = 'SOURCE CONTROL'; Label = 'Update application'; Description = 'Pull the application from the main branch'; Key = 'Update'; Destructive = $false }
         [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Remove logs'; Description = 'Clear generated application logs'; Key = 'Logs'; Destructive = $true }
-        [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Clear cache'; Description = 'Remove downloaded and generated caches'; Key = 'Cache'; Destructive = $true }
+        [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Clear cache'; Description = 'Remove disposable tooling caches'; Key = 'Cache'; Destructive = $true }
         [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Remove all data'; Description = 'Delete the database and user-created files'; Key = 'AllData'; Destructive = $true }
         [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Uninstall application'; Description = 'Remove local runtimes and dependencies'; Key = 'Uninstall'; Destructive = $true }
+        [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Kill all application processes'; Description = 'Stop TKBEN backend and frontend process trees'; Key = 'KillAll'; Destructive = $true }
         [pscustomobject]@{ Section = 'EXIT'; Label = 'Exit'; Description = 'Close this launcher'; Key = 'Exit'; Destructive = $false }
     )
 }
@@ -1293,7 +1437,10 @@ function Show-Menu {
             Invoke-TrackedLauncherAction -Name $entry.Label -Action {
                 switch ($entry.Key) {
                     'Launch' { Launch-Application; exit 0 }
-                    'Install' { Install-Dependencies }
+                    'Install' {
+                        $installationType = Read-InstallationType
+                        Install-Dependencies -InstallationType $installationType
+                    }
                     'Rebuild' { Rebuild-Frontend }
                     'Database' { Initialize-Database }
                     'Tests' { Run-TestSuite }
@@ -1303,6 +1450,11 @@ function Show-Menu {
                     'Cache' { Clear-Cache }
                     'AllData' { Remove-AllData }
                     'Uninstall' { Uninstall-Application }
+                    'KillAll' {
+                        if (Confirm-DestructiveAction 'stop all TKBEN application processes') {
+                            Stop-ApplicationProcesses
+                        }
+                    }
                 }
             }
         } catch {
@@ -1310,6 +1462,15 @@ function Show-Menu {
         }
         Wait-ForMenu
     }
+}
+
+if ($Launch -and $KillAll) {
+    throw 'Use either -Launch or -KillAll, not both.'
+}
+
+if ($KillAll) {
+    Invoke-TrackedLauncherAction -Name 'stop all application processes' -Action { Stop-ApplicationProcesses }
+    exit 0
 }
 
 if ($Launch) {
