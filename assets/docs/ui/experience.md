@@ -34,6 +34,8 @@ Catalog interactions:
   - keep transient connection failures quiet;
   - surface a slow-start message and a retryable failure state when the
     existing launcher readiness window is exceeded;
+  - keep the startup artwork animated while connecting, then pause it in the
+    terminal failure state so the retry action is visually stable;
   - reveal the normal shell only after backend health is confirmed.
 - Keep interaction language consistent with existing labels and panel semantics.
 - Use dismissible errors for recoverable issues.
