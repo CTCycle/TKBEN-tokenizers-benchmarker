@@ -1,0 +1,76 @@
+<main
+  class="startup-screen"
+  aria-labelledby="startup-title"
+  aria-describedby="startup-description"
+  [attr.aria-busy]="status() === 'failed' ? 'false' : 'true'"
+>
+  <div class="startup-layout">
+    <header class="startup-heading">
+      <div class="startup-brand-lockup">
+        <img class="startup-brand-mark" src="/tkben-logo.png" alt="" aria-hidden="true" />
+        <span class="startup-brand-name">TKBEN</span>
+      </div>
+
+      <h1 id="startup-title">Preparing tokenizer benchmarks</h1>
+      <p id="startup-description">
+        Initializing the benchmark environment…
+      </p>
+    </header>
+
+    <section class="startup-visual" aria-hidden="true">
+      <div class="startup-flow">
+        <div class="startup-input-stage">
+          <div class="startup-input-line">
+            <span>The tokenizer benchmarks language</span>
+            <span class="startup-input-cursor"></span>
+          </div>
+        </div>
+
+        <span class="startup-flow-arrow">→</span>
+
+        <div class="startup-token-stage">
+          <span class="startup-token startup-token--one">The</span>
+          <span class="startup-token startup-token--two">token</span>
+          <span class="startup-token startup-token--three">izer</span>
+          <span class="startup-token startup-token--four">bench</span>
+          <span class="startup-token startup-token--five">marks</span>
+          <span class="startup-token startup-token--six">language</span>
+        </div>
+      </div>
+
+      <div class="startup-benchmark-stage">
+        <svg class="startup-chart" viewBox="0 0 720 220" preserveAspectRatio="none">
+          <g class="startup-chart-grid">
+            <line x1="20" y1="62" x2="700" y2="62" />
+            <line x1="20" y1="122" x2="700" y2="122" />
+            <line x1="20" y1="182" x2="700" y2="182" />
+          </g>
+          <path class="startup-chart-area" d="M20 182 150 148 278 164 404 104 530 126 700 58V182Z" />
+          <path class="startup-chart-line" pathLength="1" d="M20 182 150 148 278 164 404 104 530 126 700 58" />
+          <g class="startup-chart-points">
+            <circle cx="150" cy="148" r="4" />
+            <circle cx="278" cy="164" r="4" />
+            <circle cx="404" cy="104" r="4" />
+            <circle cx="530" cy="126" r="4" />
+            <circle cx="700" cy="58" r="4" />
+          </g>
+        </svg>
+      </div>
+    </section>
+
+    <div class="startup-status" aria-live="polite">
+      @if (status() === 'failed') {
+        <div class="startup-error" role="alert">
+          <p>{{ errorMessage() ?? 'The backend could not be reached.' }}</p>
+          <button type="button" class="primary-button" (click)="retry.emit()">
+            Retry connection
+          </button>
+        </div>
+      } @else if (status() === 'slow') {
+        <p class="startup-status-title">Backend startup is taking a little longer…</p>
+      } @else {
+        <p class="startup-status-title">Connecting to the benchmark backend…</p>
+      }
+    </div>
+  </div>
+</main>

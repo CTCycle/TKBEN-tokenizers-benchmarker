@@ -10,6 +10,10 @@ export type SupportedTokenizerPipeline =
     | 'summarization'
     | 'zero-shot-classification';
 
+export interface HealthResponse {
+    status: string;
+}
+
 export type TokenizerDiscoverySort = 'downloads' | 'likes' | 'last_modified' | 'created_at';
 export type TokenizerDiscoveryAccess = 'all' | 'public' | 'gated';
 export type VocabularySort = 'none' | 'ascending' | 'descending';

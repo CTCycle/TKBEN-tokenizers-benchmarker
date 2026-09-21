@@ -818,13 +818,6 @@ function Launch-Application {
             -PassThru
     }
 
-    Invoke-HealthCheck `
-        -Uri "http://$($env:FASTAPI_HOST):$backendPort/api/health" `
-        -Description 'backend' `
-        -ProcessToMonitor $backendProcess `
-        -FailureLogPath $backendStderrLog `
-        -Attempts 60 `
-        -IntervalSeconds 1
     $backendPid = if ($backendProcess) { $backendProcess.Id } else { Get-PortProcessId -Port $backendPort }
 
     Write-Step 'Starting frontend preview.'
@@ -849,7 +842,7 @@ function Launch-Application {
         -IntervalSeconds 1
 
     $url = "http://$($env:UI_HOST):$uiPort"
-    Write-Ok 'Application started successfully.'
+    Write-Ok 'Frontend is ready; opening the application while the backend initializes.'
     Write-Host "Backend: http://$($env:FASTAPI_HOST):$backendPort (PID $backendPid)"
     Write-Host "Frontend: $url (PID $($frontendProcess.Id))"
     try {
@@ -857,6 +850,15 @@ function Launch-Application {
     } catch {
         Write-Host "[WARN] Could not open the browser automatically. Open $url manually." -ForegroundColor Yellow
     }
+
+    Invoke-HealthCheck `
+        -Uri "http://$($env:FASTAPI_HOST):$backendPort/api/health" `
+        -Description 'backend' `
+        -ProcessToMonitor $backendProcess `
+        -FailureLogPath $backendStderrLog `
+        -Attempts 60 `
+        -IntervalSeconds 1
+    Write-Ok 'Application started successfully.'
 }
 
 function Install-Dependencies {
