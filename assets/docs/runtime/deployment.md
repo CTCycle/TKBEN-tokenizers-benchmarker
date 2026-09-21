@@ -1,9 +1,9 @@
 # Deployment
-Last updated: 2026-09-20
+Last updated: 2026-09-21
 
 ## Dependency Prerequisites
 From project and runtime scripts:
-- Windows launcher mode bootstraps pinned Python 3.14.2 and Node.js 22.23.1 locally; it downloads uv from the current uv release when uv is missing.
+- Windows launcher mode bootstraps pinned Python 3.14.7 and Node.js 22.23.1 locally; it replaces an older managed Python runtime when required and downloads uv from the current uv release when uv is missing.
 - The launcher downloads portable runtimes into the ignored `runtimes/` directory when they are missing.
 - Manual macOS/Linux use requires system Python 3.14+, Node.js 22.22.3+ on a supported Angular engine line, and uv.
 

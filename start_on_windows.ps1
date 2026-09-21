@@ -37,7 +37,7 @@ $EnvFile = Join-Path $RepoRoot 'settings\.env'
 $EnvTemplate = Join-Path $RepoRoot 'settings\.env.example'
 $RuntimeCacheDir = Join-Path $RuntimeDir 'cache'
 $UvCacheDir = Join-Path $RuntimeCacheDir 'uv'
-$PythonVersion = '3.14.2'
+$PythonVersion = '3.14.7'
 $NodeVersion = '22.23.1'
 $script:NextProgressId = 1
 $script:ActiveProgressActivities = [Collections.Generic.Dictionary[int, string]]::new()
@@ -222,6 +222,70 @@ function Invoke-DownloadAndExtract {
 # =============================================================================
 # Environment, runtimes, and dependency management
 # =============================================================================
+function Get-PythonVersion {
+    param([Parameter(Mandatory)][string]$PythonExe)
+    $version = (& $PythonExe -c 'import platform; print(platform.python_version())' 2>$null)
+    if ($LASTEXITCODE -ne 0) { return $null }
+    return ([string]$version).Trim()
+}
+
+function Invoke-CheckPyVer {
+    param([Parameter(Mandatory)][string]$PythonExe)
+    $version = Get-PythonVersion -PythonExe $PythonExe
+    if ([string]::IsNullOrWhiteSpace($version)) {
+        throw "Python version check failed for $PythonExe."
+    }
+    return $version
+}
+
+function Install-PythonRuntime {
+    $stagingDir = Join-Path $RuntimeDir ('.python-staging-' + [guid]::NewGuid().ToString('N'))
+    $backupDir = Join-Path $RuntimeDir ('.python-backup-' + [guid]::NewGuid().ToString('N'))
+    $oldRuntimeMoved = $false
+    $newRuntimeInstalled = $false
+
+    try {
+        Write-Step "Downloading Python $PythonVersion (embeddable x64)."
+        $pythonArchive = Join-Path $stagingDir "python-$PythonVersion-embed-amd64.zip"
+        Invoke-DownloadAndExtract `
+            -Uri "https://www.python.org/ftp/python/$PythonVersion/python-$PythonVersion-embed-amd64.zip" `
+            -ArchivePath $pythonArchive `
+            -Destination $stagingDir
+
+        $stagedPythonExe = Join-Path $stagingDir 'python.exe'
+        if (-not (Test-Path -LiteralPath $stagedPythonExe)) {
+            throw "Python was not found in the extracted archive at $stagingDir"
+        }
+        $stagedPythonVersion = Get-PythonVersion -PythonExe $stagedPythonExe
+        if ($stagedPythonVersion -ne $PythonVersion) {
+            throw "Downloaded Python version $stagedPythonVersion does not match $PythonVersion."
+        }
+
+        if (Test-Path -LiteralPath $PythonDir) {
+            Move-Item -LiteralPath $PythonDir -Destination $backupDir -ErrorAction Stop
+            $oldRuntimeMoved = $true
+        }
+        Move-Item -LiteralPath $stagingDir -Destination $PythonDir -ErrorAction Stop
+        $newRuntimeInstalled = $true
+
+        if (Test-Path -LiteralPath $backupDir) {
+            [void](Remove-LauncherPath -Path $backupDir -Activity 'TKBEN: remove Python backup runtime' -Strict)
+        }
+    } catch {
+        if ($newRuntimeInstalled -and (Test-Path -LiteralPath $PythonDir)) {
+            [void](Remove-LauncherPath -Path $PythonDir -Activity 'TKBEN: roll back Python runtime')
+        }
+        if ($oldRuntimeMoved -and (Test-Path -LiteralPath $backupDir) -and -not (Test-Path -LiteralPath $PythonDir)) {
+            Move-Item -LiteralPath $backupDir -Destination $PythonDir -ErrorAction SilentlyContinue
+        }
+        throw
+    } finally {
+        if (Test-Path -LiteralPath $stagingDir) {
+            [void](Remove-LauncherPath -Path $stagingDir -Activity 'TKBEN: remove Python runtime staging directory')
+        }
+    }
+}
+
 function Install-NodeRuntime {
     $stagingDir = Join-Path $RuntimeDir ('.nodejs-staging-' + [guid]::NewGuid().ToString('N'))
     $backupDir = Join-Path $RuntimeDir ('.nodejs-backup-' + [guid]::NewGuid().ToString('N'))
@@ -271,12 +335,6 @@ function Invoke-PatchPth {
     if (-not (Test-Path -LiteralPath $Path)) { throw "Missing Python path file: $Path" }
     (Get-Content -LiteralPath $Path) -replace '^#import site$', 'import site' |
         Set-Content -LiteralPath $Path -Encoding ascii
-}
-
-function Invoke-CheckPyVer {
-    param([Parameter(Mandatory)][string]$PythonExe)
-    & $PythonExe -c 'import platform; print(platform.python_version())'
-    if ($LASTEXITCODE -ne 0) { throw "Python version check failed with exit code $LASTEXITCODE." }
 }
 
 function Invoke-Npm {
@@ -388,20 +446,25 @@ function Import-Environment {
 function Install-Runtimes {
     Write-Step 'Checking portable runtimes.'
     Ensure-Directory $RuntimeDir
-    Ensure-Directory $PythonDir
     Ensure-Directory $UvDir
     Ensure-Directory $NodeDir
 
-    if (-not (Test-Path -LiteralPath $PythonExe)) {
-        Write-Step "Downloading Python $PythonVersion (embeddable x64)."
-        Invoke-DownloadAndExtract `
-            -Uri "https://www.python.org/ftp/python/$PythonVersion/python-$PythonVersion-embed-amd64.zip" `
-            -ArchivePath (Join-Path $PythonDir "python-$PythonVersion-embed-amd64.zip") `
-            -Destination $PythonDir
+    $installedPythonVersion = $null
+    $pythonNeedsInstall = -not (Test-Path -LiteralPath $PythonExe)
+    if (-not $pythonNeedsInstall) {
+        $installedPythonVersion = Get-PythonVersion -PythonExe $PythonExe
+        $pythonNeedsInstall = $installedPythonVersion -ne $PythonVersion
+        if ($pythonNeedsInstall -and $installedPythonVersion) {
+            Write-Step "Replacing incompatible Python $installedPythonVersion with $PythonVersion."
+        }
     }
+    if ($pythonNeedsInstall) { Install-PythonRuntime }
     if (-not (Test-Path -LiteralPath $PythonExe)) { throw "Python was not installed at $PythonExe" }
     Invoke-PatchPth -Path $PythonPth
     $detectedPython = Invoke-CheckPyVer -PythonExe $PythonExe
+    if ($detectedPython -ne $PythonVersion) {
+        throw "Python version $detectedPython is not the required $PythonVersion."
+    }
     Write-Ok "Python ready: $detectedPython"
 
     if (-not (Test-Path -LiteralPath $UvExe)) {
@@ -531,6 +594,17 @@ function Sync-Dependencies {
 
     Import-Environment
     if (-not $RuntimesReady) { Install-Runtimes }
+    $venvPythonVersion = if (Test-Path -LiteralPath $VenvPython) {
+        Get-PythonVersion -PythonExe $VenvPython
+    } else {
+        $null
+    }
+    if ($venvPythonVersion -ne $PythonVersion) {
+        Write-Step "Recreating the backend environment for Python $PythonVersion."
+        Stop-ApplicationProcesses
+        & $UvExe venv --clear --python $PythonExe $VenvDir
+        if ($LASTEXITCODE -ne 0) { throw "uv venv failed with exit code $LASTEXITCODE." }
+    }
     Write-Step 'Installing Python dependencies.'
     $uvArguments = @('sync', '--python', $PythonExe)
     if ($InstallationType -eq 'Development') { $uvArguments += '--all-extras' }
@@ -624,12 +698,12 @@ function Test-DependenciesReady {
         return $false
     }
 
-    & $PythonExe --version *> $null
-    if ($LASTEXITCODE -ne 0) { return $false }
+    if ((Get-PythonVersion -PythonExe $PythonExe) -ne $PythonVersion) { return $false }
     & $UvExe --version *> $null
     if ($LASTEXITCODE -ne 0) { return $false }
     & $NodeExe --version *> $null
     if ($LASTEXITCODE -ne 0) { return $false }
+    if ((Get-PythonVersion -PythonExe $VenvPython) -ne $PythonVersion) { return $false }
     & $VenvPython -c 'import fastapi, uvicorn' *> $null
     if ($LASTEXITCODE -ne 0) { return $false }
 
