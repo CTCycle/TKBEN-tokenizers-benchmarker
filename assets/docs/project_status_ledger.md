@@ -78,8 +78,8 @@ means that a field does not apply.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | architecture.canonical-ownership | VALIDATED | API, contracts, configuration, services, repositories, and frontend state ownership boundaries. | V-20260920: 323 backend unit tests passed, including the architecture-boundary contract; current architecture docs describe the same ownership graph. | Remaining canonicalization follow-ups are tracked as ISSUE-003; no current regression observed. | — | 2026-09-20 | unit | [architecture review](architecture/architecture_review.md), [canonical-source remediation](architecture/canonical_source_remediation.md), [boundary test](../../app/tests/unit/server/test_architecture_boundaries.py) | Revalidate the boundary test after ownership or schema changes. |
 | runtime.startup.local-webapp | VALIDATED | FastAPI readiness, Angular production preview, local API proxy, and empty-state route loading. | V-20260920: backend health returned 200, frontend returned 200, and the browser rendered Dataset, Tokenizers, Cross Benchmark, and Settings routes with no console errors. V-20260921: the canonical launcher opened the frontend before backend readiness and the normal shell transitioned cleanly after health recovered. | This validates the local startup path; it does not validate every launcher menu branch. | — | 2026-09-21 | E2E + manual | [startup](runtime/startup.md), [runtime modes](runtime/modes.md), [system overview](architecture/system_overview.md), [startup test](../../app/tests/unit/server/test_app_startup.py) | Revalidate after launcher or readiness changes. |
-| runtime.windows-launcher | WORKING | start_on_windows.ps1 dependency bootstrap, source-stale build detection, readiness checks, maintenance menu, and process cleanup. | V-20260921: official `-Launch` replaced the existing portable Python 3.14.2 runtime with 3.14.7, recreated the backend venv, synced dependencies, rebuilt the frontend, started backend and preview independently, opened the browser before backend health, then completed backend supervision successfully; `-KillAll` stopped the owned process trees. | Maintenance and non-launch menu branches remain outside this validation pass. | — | 2026-09-21 | integration + manual | [startup](runtime/startup.md), [deployment](runtime/deployment.md), [release procedure](runtime/release.md), [Python 3.14.7 validation](../../assets/QA/python-3.14.7-upgrade-20260921.md) | Validate the maintenance menu and redirected diagnostic branches separately. |
-| configuration.runtime-settings | WORKING | Typed runtime defaults, sparse persisted overrides, revision checks, reset behavior, and Settings API/page. | 323 unit tests passed; the live Settings page rendered all Data, Tokenizers, Benchmarks, Runtime, and Keys sections. | Current run did not execute the browser round-trip, conflict, reset, or new-operation-effect flow. | — | 2026-09-20 | unit + manual | [configuration](runtime/configuration.md), [backend API](architecture/backend_api.md), [Settings E2E](../../app/tests/e2e/test_settings_ui.py) | Run the Settings E2E round-trip and restore the original runtime snapshot. |
+| runtime.windows-launcher | WORKING | start_on_windows.ps1 dependency bootstrap, source-stale build detection, readiness checks, maintenance menu, and process cleanup. | V-20260921: official `-Launch` replaced the existing portable Python 3.14.2 runtime with 3.14.7, recreated the backend venv, synced dependencies, rebuilt the frontend, started backend and preview independently, opened the browser before backend health, and completed backend supervision successfully. A later `-KillAll` attempt was blocked by `Access denied` while inspecting process command lines; the known launcher-owned trees were stopped explicitly. | Maintenance and non-launch menu branches remain outside this validation pass; process-inspection permission remains an environment gap. | Windows process-inspection permission | 2026-09-21 | integration + manual | [startup](runtime/startup.md), [deployment](runtime/deployment.md), [release procedure](runtime/release.md), [Python 3.14.7 validation](../../assets/QA/python-3.14.7-upgrade-20260921.md), [Tier 1 QA record](../../assets/QA/tkben-tier1-20260921.md) | Validate the maintenance menu and redirected diagnostic branches separately, then rerun `-KillAll` with a permitted process-inspection context. |
+| configuration.runtime-settings | WORKING | Typed runtime defaults, sparse persisted overrides, revision checks, reset behavior, and Settings API/page. | V-20260921: 55 focused backend tests passed; the Chrome Settings E2E passed 1/1; the in-app browser rendered all five sections, rejected and recovered from tokenizer cross-field input, and a runtime override survived an official launcher restart before reset-all removed the file. | Full all-16 boundary sweep and complete rendered lifecycle evidence remain broader than this slice. | — | 2026-09-21 | unit + E2E + manual | [configuration](runtime/configuration.md), [backend API](architecture/backend_api.md), [Settings E2E](../../app/tests/e2e/test_settings_ui.py), [Tier 1 QA record](../../assets/QA/tkben-tier1-20260921.md) | Complete the explicit all-16 boundary sweep and keep the component at WORKING until the full lifecycle scope is promoted. |
 | runtime.managed-job-lifecycle | VALIDATED | Start, poll, complete, fail, and cooperatively cancel in-process jobs. | 323 unit tests passed; the current benchmark E2E completed and persisted a report through the managed job path. | Active jobs are held in process memory and are lost on process restart; see ISSUE-001. | — | 2026-09-20 | unit + E2E | [execution and data flow](architecture/execution_and_data_flow.md), [benchmark contract](architecture/benchmark_contract.md), [job tests](../../app/tests/unit/server/services/test_jobs_manager.py) | Keep restart-loss behavior explicit if deployment scope expands. |
 
 ### Backend, persistence, and data workflows
@@ -102,7 +102,7 @@ means that a field does not apply.
 | ui.route-shell-and-empty-states | VALIDATED | Primary navigation, route loading, dataset/tokenizer empty states, benchmark empty state, and Settings shell. | V-20260920: four routes rendered in the in-app browser; browser console error log was empty. | Current visual check used the normal browser viewport, not the full documented responsive matrix. | — | 2026-09-20 | manual | [experience](ui/experience.md), [components and patterns](ui/components_and_patterns.md), [app-flow E2E](../../app/tests/e2e/test_app_flow.py) | Repeat at the required viewport sizes after layout changes. |
 | ui.startup-readiness | VALIDATED | Frontend-first startup screen, asynchronous backend readiness polling, slow-start notice, retryable failure state, and transition into the existing shell. | V-20260921: the canonical launcher opened the frontend before backend health; the in-app browser showed the quiet token stream/benchmark graph while offline, the slow state, the 60-second failure state, and a retry that transitioned into Dataset after backend recovery. Follow-up validation confirmed the rebuilt production preview keeps the artwork moving while connecting and pauses it in the terminal failure state. Focused browser E2E passed 2/2; frontend unit tests 60/60, lint, and production build passed. | The current application has a dark theme only; the graph is intentionally illustrative and not a benchmark measurement. | — | 2026-09-21 | unit + E2E + manual | [startup](runtime/startup.md), [experience](ui/experience.md), [startup E2E](../../app/tests/e2e/test_startup_loading.py) | Revalidate after launcher or readiness changes. |
 | ui.dataset-dashboard | WORKING | Dataset selection, validation controls, persisted analysis dashboard, charts, and export action. | Dataset upload/analyze API E2E passed; the live browser confirmed the empty dashboard and disabled export state. | A populated dashboard was not inspected in the current browser pass. | — | 2026-09-20 | E2E + manual | [experience](ui/experience.md), [dataset E2E](../../app/tests/e2e/test_datasets_api.py) | Add a populated report browser pass covering charts, malformed optional payloads, and export. |
-| ui.settings-page | WORKING | Settings tabs, typed controls, inline validation, persistence, conflict handling, reset, and Keys section navigation. | Unit coverage passed and the rendered page exposed all five sections; the full settings browser lifecycle remains unrun. | Persistence and optimistic-concurrency behavior is not promoted to VALIDATED from this evidence. | — | 2026-09-20 | unit + manual | [configuration](runtime/configuration.md), [experience](ui/experience.md), [Settings E2E](../../app/tests/e2e/test_settings_ui.py) | Run and archive the settings lifecycle E2E. |
+| ui.settings-page | WORKING | Settings tabs, typed controls, inline validation, persistence, conflict handling, reset, and Keys section navigation. | V-20260921: the rendered page exposed all five sections; Chrome browser E2E passed the round-trip/conflict/reset/new-operation scenario; the in-app browser visibly exercised tokenizer cross-field validation and recovery. | Complete all-field boundary coverage and rendered key-management lifecycle remain outside the current slice. | — | 2026-09-21 | unit + E2E + manual | [configuration](runtime/configuration.md), [experience](ui/experience.md), [Settings E2E](../../app/tests/e2e/test_settings_ui.py), [Tier 1 QA record](../../assets/QA/tkben-tier1-20260921.md) | Extend the browser scenario to the remaining field boundaries before promoting the full page scope. |
 | ui.cross-benchmark-workflow | PARTIAL | Benchmark wizard, report manager, baseline selection, clone eligibility, tags, dashboard customization, and populated report rendering. | V-20260920: empty Cross Benchmark state rendered; wizard reached Inputs and correctly disabled Next with no dataset/tokenizer. Backend report round-trip passed separately. | Only empty-state and incomplete-input behavior was live-confirmed; populated report manager, baseline, clone, tags, and chart interactions remain unvalidated in this checkout. | — | 2026-09-20 | E2E + manual | [benchmark dashboard](ui/benchmark_dashboard.md), [experience](ui/experience.md), [cross-benchmark E2E](../../app/tests/e2e/test_cross_benchmark_dashboard.py) | Run the populated report-manager and responsive dashboard E2E before changing this status. |
 | ui.tokenizer-report-and-vocabulary | UNVALIDATED | Tokenizer report generation, vocabulary paging, report dashboard, and vocabulary preview. | Code, API contracts, and unit coverage exist; the provider/report-flow E2E was skipped and no report was available for a populated browser check. | No evidence is sufficient for a current working claim over the full report workflow. | Provider-backed report data or an equivalent local report fixture is required. | — | None | [experience](ui/experience.md), [backend API](architecture/backend_api.md), [tokenizer E2E](../../app/tests/e2e/test_tokenizers_api.py) | Generate a report from an approved local/provider tokenizer and validate paging/rendering. |
 
@@ -115,7 +115,7 @@ means that a field does not apply.
 | deployment.cross-platform-manual | PARTIAL | Manual macOS/Linux startup versus Windows-only automatic bootstrap. | Manual commands are documented and the local app architecture is not inherently Windows-only. | Automatic runtime bootstrap and a full non-Windows validation path are absent. | — | — | None | [runtime modes](runtime/modes.md), [deployment](runtime/deployment.md) | Treat non-Windows support as manual-only until tested and supported explicitly. |
 | deployment.containerized | NOT_IMPLEMENTED | Docker or other active container runtime configuration. | [Runtime modes](runtime/modes.md) explicitly records containerized mode as not implemented; no active root container configuration exists. | This is an absent capability, not a current local-app failure. | — | — | None | [runtime modes](runtime/modes.md), [deployment](runtime/deployment.md) | Add a separately scoped deployment design before implementation. |
 | deployment.binary-packaging | NOT_IMPLEMENTED | Installer, executable, Tauri, portable binary, or package artifact. | [Release procedure](runtime/release.md) states that releases are source-only and contain no binary packaging workflow. | Source-only distribution is the intended current release model. | — | — | None | [release procedure](runtime/release.md) | Do not add packaging work to a source-only release. |
-| test-infrastructure.local-quality-gates | VALIDATED | Backend compile, Ruff, BasedPyright, SQLite initialization, unit tests, OpenAPI smoke, frontend lint, unit tests, and production build. | V-20260920: compile passed for tracked backend source; Ruff passed with a non-failing cache permission warning; BasedPyright reported 0 errors and 1,914 warnings; 323 backend tests, lint, build, and OpenAPI smoke passed. V-20260921: 14 frontend test files/60 tests, lint, production build, 7 launcher architecture tests, 2 startup browser E2E tests, and the Python 3.14.7 upgrade validation passed; the refreshed backend compile, Ruff, BasedPyright, OpenAPI smoke, and 324 unit tests also passed. | Hosted CI and the full browser E2E matrix are separate gates. | — | 2026-09-21 | unit + integration + E2E | [testing and quality](coding/testing_and_quality.md), [CI workflow](../../.github/workflows/ci.yml), [test runner](../../app/tests/run_tests.bat), [startup E2E](../../app/tests/e2e/test_startup_loading.py), [Python 3.14.7 validation](../../assets/QA/python-3.14.7-upgrade-20260921.md) | Keep hosted and live-provider gates explicit in future reports. |
+| test-infrastructure.local-quality-gates | VALIDATED | Backend compile, Ruff, BasedPyright, SQLite initialization, unit tests, OpenAPI smoke, frontend lint, unit tests, and production build. | V-20260920: compile passed for tracked backend source; Ruff passed with a non-failing cache permission warning; BasedPyright reported 0 errors and 1,914 warnings; 323 backend tests, lint, build, and OpenAPI smoke passed. V-20260921: 14 frontend test files/60 tests, lint, production build, 7 launcher architecture tests, 2 startup browser E2E tests, and the Python 3.14.7 upgrade validation passed; refreshed backend compile, Ruff, BasedPyright, OpenAPI smoke, and 324 unit tests passed; Tier 1 focused backend contracts added 55 passing tests. | Hosted CI and the full browser E2E matrix are separate gates. | — | 2026-09-21 | unit + integration + E2E | [testing and quality](coding/testing_and_quality.md), [CI workflow](../../.github/workflows/ci.yml), [test runner](../../app/tests/run_tests.bat), [startup E2E](../../app/tests/e2e/test_startup_loading.py), [Python 3.14.7 validation](../../assets/QA/python-3.14.7-upgrade-20260921.md), [Tier 1 QA record](../../assets/QA/tkben-tier1-20260921.md) | Keep hosted and live-provider gates explicit in future reports. |
 | test-infrastructure.hosted-ci-and-release-evidence | UNVALIDATED | Current hosted CI result and committed detailed QA/release evidence. | The repository workflow is present, but no current hosted run or tracked assets/QA record was available in this checkout. | Local gates must not be presented as hosted-CI or publication proof. | Requires hosted CI access and a non-sensitive QA record. | — | None | [CI workflow](../../.github/workflows/ci.yml), [release procedure](runtime/release.md) | Record hosted result and link the detailed QA artifact before release publication. |
 | api.tokenizers.settings-compatibility | DEPRECATED | Legacy GET /api/tokenizers/settings compatibility response. | The API contract and OpenAPI test retain the endpoint as deprecated; new clients use /api/settings. | Compatibility surface should not become a second settings source. | — | 2026-09-20 | unit | [backend API](architecture/backend_api.md), [configuration](runtime/configuration.md) | Remove only after supported clients no longer depend on it and the removal is validated. |
 
@@ -150,6 +150,88 @@ It does not assert that the component is broken.
 | persistence.postgresql-runtime | BLOCKED | Run disposable PostgreSQL migration, concurrency, rollback, and runtime-equivalence checks. | MEDIUM |
 | ui.responsive-visual-matrix | UNVALIDATED | Review populated, empty, loading, error, and long-identifier states at 1920x1080, 1440x900, 1024x768, and 390x844. | MEDIUM |
 | test-infrastructure.hosted-ci-and-release-evidence | UNVALIDATED | Observe the hosted workflow result and link a detailed non-sensitive QA/release record; do not infer either from local gates. | MEDIUM |
+
+## Validation Campaign Roadmap
+
+Last updated: 2026-09-21
+
+The comprehensive validation roadmap supplied for this repository is normalized
+here into stable slice IDs. This campaign layer does not replace the component
+ledger above: it records what was exercised at a particular revision and keeps
+feature existence, execution, partial behavior, and pass status distinct.
+
+Campaign statuses map to the component taxonomy as follows: PASS is meaningful
+evidence at the stated slice scope; PARTIAL is incomplete or bounded evidence;
+FAIL is a reproduced application defect; BLOCKED is an external or environment
+gate; UNTESTED means the implementation exists but the slice has not been
+exercised; UNKNOWN means the contract itself needs clarification. The execution
+order is dependency-first: Tier 0 environment/startup, Tier 1 foundations,
+Tier 2 local workflows, Tier 3 populated reports/export, Tier 4 external
+providers/PostgreSQL, then Tier 5 resilience/responsive/performance/hosted
+evidence.
+
+| Slice | Feature exists | Exercised | Slice status | Current evidence or next action |
+| --- | --- | --- | --- | --- |
+| T0-01 | yes | yes | PASS | Revision and local quality baseline accepted conditionally at `c48eefa`; refresh only when dependencies or gates change. |
+| T0-02 | yes | yes | PARTIAL | Official `-Launch` passed; stale-build, port-collision, redirected-failure, and clean-bootstrap branches remain. |
+| T0-03 | yes | no | PARTIAL | Maintenance menu branches remain to be exercised in an isolated data root. |
+| T1-01 | yes | yes | PASS | Startup E2E passed 2/2 and the rendered shell reloaded after the persistence restart. |
+| T1-02 | yes | yes | PARTIAL | Chrome Settings E2E passed 1/1; cross-field validation, runtime file persistence across restart, reset, and new-operation effects passed; full all-16 boundary sweep remains. |
+| T1-03 | yes | yes | PARTIAL | Synthetic live key lifecycle passed; complete rendered UI lifecycle and direct database ciphertext inspection remain. |
+| T1-04 | yes | yes | PASS | Focused migration/persistence/settings contracts passed and a runtime override survived an official launcher restart; PostgreSQL remains separate. |
+| T1-05 | yes | yes | PARTIAL | Dataset stale-request browser scenario passed and store units passed; full populated filter matrix and tokenizer live race remain. |
+| T2-01 | yes | yes | PASS | Local dataset API/UI lifecycle evidence exists; CSV/XLSX and complete UI consolidation remain. |
+| T2-02 | yes | yes | PARTIAL | Metric implementation and representative API evidence exist; complete family-level populated dashboard evidence remains. |
+| T2-03 | yes | no | PARTIAL | Quality/structure/compression implementation exists; controlled populated-dashboard campaign remains. |
+| T2-04 | yes | yes | PASS | Custom tokenizer upload/delete API lifecycle passed; restart, re-upload collision, and complete UI coverage remain. |
+| T2-05 | yes | no | UNTESTED | Generate a local tokenizer report and validate persisted dashboard plus vocabulary paging. |
+| T2-06 | yes | yes | PARTIAL | Local benchmark API round-trip passed; complete populated wizard-to-report UI remains. |
+| T2-07 | yes | yes | PARTIAL | Core cooperative job mechanism passed; long-running cancellation and immediate rerun UI remain. |
+| T3-01 | yes | yes | PARTIAL | Engine/unit evidence exists; controlled efficiency, latency, and resource metric campaign remains. |
+| T3-02 | yes | yes | PARTIAL | Contract and representative metric evidence exists; advanced flags and `include_lm_metrics` semantics remain bounded. |
+| T3-03 | yes | yes | PARTIAL | Report service/UI implementation exists; populated pagination, tags, and deletion evidence remains. |
+| T3-04 | yes | yes | PARTIAL | Persistence implementation and unit/mock evidence exist; populated baseline, clone, customization, and reload evidence remains. |
+| T3-05 | yes | yes | PARTIAL | Export routes/services are covered by tests; live dataset, tokenizer, and benchmark PDFs remain uninspected. |
+| T4-01 | yes | no | BLOCKED | Requires approved public Hugging Face network/provider validation. |
+| T4-02 | yes | no | UNTESTED | Requires public dataset network and disk validation. |
+| T4-03 | yes | no | BLOCKED | Requires an explicitly approved gated/private Hugging Face credential. |
+| T4-04 | yes | no | BLOCKED | Requires a disposable PostgreSQL target and credentials. |
+| T5-01 | yes | no | PARTIAL | Known in-process job-loss limitation remains ISSUE-001; restart-during-work evidence is not a pass claim. |
+| T5-02 | yes | no | UNTESTED | Run populated and empty Dataset/Settings responsive and keyboard matrix at documented viewports. |
+| T5-03 | yes | no | UNTESTED | Run populated Tokenizers/Cross Benchmark responsive and keyboard matrix at documented viewports. |
+| T5-04 | yes | no | UNTESTED | Run controlled streaming, memory, cancellation, and responsiveness campaign. |
+| T5-05 | yes | no | PARTIAL | Manual non-Windows startup is documented but not live-validated here. |
+| T5-06 | yes | no | UNTESTED | Correlate hosted CI and release evidence to the exact validated SHA. |
+
+### Tier 1 execution record
+
+The first foundation slice was executed on 2026-09-21 at revision
+`c48eefa8bad8e85d1bc18bcb8cf22042e1f72b38` on Windows using the supported
+launcher. The compact, non-sensitive command/result record is
+[assets/QA/tkben-tier1-20260921.md](../../assets/QA/tkben-tier1-20260921.md).
+
+- `T1-01`: the startup browser suite passed 2/2; the in-app browser rendered
+  Dataset and Settings after the backend/frontend restart.
+- `T1-02`: the Settings browser round-trip passed 1/1 with the installed Chrome
+  channel; the in-app browser also showed the tokenizer cross-field error and
+  recovery. A runtime override survived launcher restart, then reset-all
+  returned the default and removed `runtime-settings.json`.
+- `T1-03`: synthetic key CRUD passed duplicate rejection, single-active
+  switching, active-delete protection, reveal policy, masked responses, and
+  plaintext-absence checks. Synthetic rows were removed and the key list ended
+  empty.
+- `T1-04`: 55 focused backend tests passed, including settings, migration,
+  persistence, and key-route contracts; the runtime persistence restart check
+  passed live.
+- `T1-05`: the dataset stale-response browser scenario passed 1/1; the
+  frontend unit suite passed 60/60 across 14 files, including dataset and
+  tokenizer store behavior.
+
+The repository-local Playwright Chromium executable was unavailable, so the
+browser E2E used the installed Chrome channel. The official `-KillAll` command
+also hit Windows `Access denied` while inspecting process command lines; only
+the known launcher-owned process trees were then stopped explicitly. This is an
+environment/permission gap, not a reproduced application defect.
 
 ## Resolved and Historical Findings
 
