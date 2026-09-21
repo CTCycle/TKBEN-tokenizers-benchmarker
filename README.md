@@ -1,5 +1,5 @@
 # TKBEN Tokenizer Benchmarker
-Last updated: 2026-09-20
+Last updated: 2026-09-21
 
 [![Release](https://img.shields.io/github/v/release/CTCycle/TKBEN-tokenizers-benchmarker?display_name=tag)](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.14-3776AB?logo=python&logoColor=white)
@@ -63,7 +63,7 @@ Windows users should use the project launcher. From the repository root, run:
 
 Choose **Launch application** from the menu. On first use, the launcher prepares the required local runtimes and dependencies, creates `settings/.env`, builds the production frontend when dependencies or the Angular output are missing, starts the application services, waits for them to become ready, and reports the address to open in your browser. The first launch may take a few minutes and requires an internet connection so that missing runtimes and packages can be obtained.
 
-On later launches, the prepared environment and production output are reused when they are still valid. The launcher records frontend source/build metadata in `app/client/dist/tkben-angular/.tkben-build.json` and rebuilds before preview whenever the checked-in Angular source, manifests, or portable Node.js version no longer match that metadata. You normally do not need to start the frontend or backend separately on Windows.
+On later launches, the prepared environment and production output are reused when they are still valid. Backend readiness is recorded in `app/server/.venv/.tkben-dependencies.json`; frontend build readiness is recorded in `app/client/dist/tkben-angular/.tkben-build.json`. The production build fingerprint covers the Angular production inputs, public assets, manifests, and TypeScript build configuration, but not Angular spec files or the development-only proxy configuration. You normally do not need to start the frontend or backend separately on Windows.
 
 If Windows blocks the automatic browser opening, this does not necessarily mean that TKBEN failed to start. Copy the local URL printed by the launcher and open it manually.
 
@@ -220,7 +220,7 @@ The maintenance menu can help you:
 
 The launcher checks the local database when the application starts and applies required updates automatically. Do not delete the database or saved resource folders manually while the application is running.
 
-Application launch also checks that the configured ports are available. If an existing listener cannot be stopped because it belongs to another permission level, the launcher fails with an actionable error instead of treating the old process as a successful restart.
+Application launch checks `FASTAPI_PORT` and `UI_PORT` before dependency work and again immediately before starting services. If listeners are present, the launcher shows each unique PID, process name when available, and occupied configured ports, then asks once before terminating those approved PIDs. Declining, running redirected `-Launch` with a conflict, a denied termination, or a port that remains occupied cancels the launch without silently killing another process. Use the explicit `-KillAll` action when application process-tree cleanup is intended.
 
 The **Remove All Data** action is permanent for the local workspace. It removes saved datasets, tokenizer files, reports, logs, and stored Hugging Face access-key material while preserving the application files themselves. Back up anything you may need before confirming this action.
 
@@ -238,9 +238,9 @@ The first launch may be downloading runtimes, installing packages, preparing the
 
 `Launch application` builds the production frontend automatically when the required entry file is absent. If the build needs to be retried, choose **Rebuild frontend** from the maintenance menu, then launch again. Check the frontend output and launcher log for the first failing command rather than deleting the database or resource folders.
 
-### The launcher cannot stop an existing port listener
+### The launcher reports an existing port listener
 
-The launcher must be able to stop the process already using the configured backend or frontend port. Close the other TKBEN instance or rerun the launcher with the same permissions used to start that process. A failed stop is reported as a startup failure; verify the printed ports before opening the application.
+The launcher lists the process and configured port that conflict, then asks whether those specific listener PIDs may be terminated. Answer `y` only when you recognize the processes. Answering no, using redirected `-Launch`, or lacking permission leaves the listeners untouched and prevents either service from starting. Use `-KillAll` only when you explicitly want TKBEN process-tree cleanup.
 
 ### The application says that an address or port is already in use
 

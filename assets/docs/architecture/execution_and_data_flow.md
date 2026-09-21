@@ -1,5 +1,5 @@
 # Execution and Data Flow
-Last updated: 2026-09-16
+Last updated: 2026-09-21
 
 ## Layered Architecture
 
@@ -68,10 +68,16 @@ explicitly. Revision `0003_canonical_state_cleanup` removes incompatible
 report rows and normalizes direct metric keys and persisted tokenizer sources.
 
 The Windows launcher performs the same startup-oriented checks around the
-runtime: it builds the Angular production output when the required browser
-entry is missing, stops configured-port listeners before launch, and aborts if
-an old listener remains. This prevents a previous process from being mistaken
-for the newly requested backend or preview.
+runtime: it repairs backend and frontend dependency layers independently, builds
+the Angular production output only when its browser entry or deterministic
+production-input stamp is missing or stale, and validates configured-port
+listeners before setup and immediately before process start. An occupied port
+is grouped by unique PID and requires explicit interactive approval before that
+PID receives one direct termination attempt; redirected launch and unresolved
+conflicts abort without silently killing a process tree. This prevents a
+previous or unrelated process from being mistaken for the newly requested
+backend or preview while keeping process-tree cleanup an explicit maintenance
+action.
 
 ## Dependency Maps
 

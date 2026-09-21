@@ -9,7 +9,18 @@ From project and runtime scripts:
 
 ## Local Distribution Strategy
 - The repository plus `start_on_windows.ps1` is the supported Windows operational path.
-- The launcher synchronizes Python dependencies, reuses unchanged frontend dependencies on application launch, builds the frontend when dependencies or the production entry are missing, verifies the configured ports, then starts FastAPI and Angular preview locally.
+- The launcher records backend dependency state from `pyproject.toml` and
+  `uv.lock`, uses `uv sync --locked` only when that state is missing or stale,
+  and repairs frontend dependencies with `npm ci` independently. Application
+  launch rebuilds Angular only when the production entry or deterministic build
+  stamp is missing, malformed, or stale; a backend repair alone does not force a
+  frontend build. Explicit dependency installation and **Rebuild frontend**
+  still build intentionally.
+- Before setup and immediately before process start, the launcher validates the
+  configured ports. If a listener exists, interactive launch displays the unique
+  listener PIDs and occupied ports and asks once before terminating approved
+  PIDs; redirected launch and declined or failed release leave processes intact
+  and abort. `-KillAll` is the explicit TKBEN process-tree cleanup action.
 - The default launcher binds locally with `FASTAPI_HOST=127.0.0.1`.
 - Network-hosted deployments require an external authentication boundary before exposing key management or destructive API routes.
 
