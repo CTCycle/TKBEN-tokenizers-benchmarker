@@ -18,6 +18,7 @@ describe('StartupLoadingComponent', () => {
     expect(element.querySelector('.startup-token-stage')).not.toBeNull();
     expect(element.querySelector('.startup-chart')).not.toBeNull();
     expect(element.querySelector('[role="alert"]')?.textContent).toContain('Backend startup failed.');
+    expect(element.querySelector('.startup-screen--failed')).not.toBeNull();
 
     element.querySelector<HTMLButtonElement>('button')?.click();
     expect(retryCount).toBe(1);
