@@ -143,3 +143,14 @@ def test_interactive_launcher_always_opens_the_backend_terminal() -> None:
     assert "BACKEND_LOGS_" not in launcher
     assert "if ($script:LauncherInteractive) {" in launcher
     assert "-NoExit" in launcher
+
+###############################################################################
+def test_launcher_opens_frontend_before_backend_readiness_wait() -> None:
+    launcher = (REPOSITORY_ROOT / "start_on_windows.ps1").read_text(encoding="utf-8")
+
+    frontend_start = launcher.index("Write-Step 'Starting frontend preview.'")
+    frontend_health = launcher.index("-Description 'frontend preview'", frontend_start)
+    browser_open = launcher.index("Start-Process -FilePath $url", frontend_health)
+    backend_health = launcher.index("-Description 'backend'", browser_open)
+
+    assert frontend_start < frontend_health < browser_open < backend_health

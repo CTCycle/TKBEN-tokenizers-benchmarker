@@ -1,5 +1,5 @@
 # Experience
-Last updated: 2026-09-19
+Last updated: 2026-09-21
 
 ## Page Structure
 - `DatasetPage`
@@ -29,6 +29,12 @@ Catalog interactions:
 ## User Experience Standards
 - Maintain workflow continuity:
   - start long operation -> show progress -> poll job -> render result
+- Startup readiness:
+  - show a branded tokenizer-to-benchmark visual while the backend initializes;
+  - keep transient connection failures quiet;
+  - surface a slow-start message and a retryable failure state when the
+    existing launcher readiness window is exceeded;
+  - reveal the normal shell only after backend health is confirmed.
 - Keep interaction language consistent with existing labels and panel semantics.
 - Use dismissible errors for recoverable issues.
 - Keep clone eligibility and tag validation errors inline; do not use browser
@@ -77,6 +83,8 @@ Required behavior:
 - Check shell alignment, page gutters, panel edges, chart title/plot alignment, contained table overflow, and dialog viewport fit.
 - Treat populated, empty, loading, error, and long-identifier states as required visual states; visual polish must not hide existing diagnostics or controls.
 - Include filtered catalog loading and no-match states, plus the integrated header navigation and logo, in route-level visual review.
+- Include startup loading, slow-start, failure, retry, reduced-motion,
+  normal desktop, and narrow viewport states in launch validation.
 - Include benchmark point, bucket, and distribution widgets, their data-table disclosures, modal scroll locking, and malformed/empty dataset chart payloads in focused component review.
 - Include baseline selection and persistence, clone eligibility/copying, report
   tag editing, and narrow-screen report-manager/wizard states in benchmark review.

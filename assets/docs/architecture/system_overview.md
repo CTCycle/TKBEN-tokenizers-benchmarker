@@ -1,5 +1,5 @@
 # System Overview
-Last updated: 2026-09-20
+Last updated: 2026-09-21
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
@@ -136,6 +136,13 @@ flowchart LR
 ## Runtime Interaction Topology
 - Local webapp mode:
   - Browser -> Angular preview (`UI_HOST:UI_PORT`) -> proxied `/api` -> FastAPI (`FASTAPI_HOST:FASTAPI_PORT`)
+- Startup readiness:
+  - The launcher starts the backend and Angular preview independently, opens
+    the browser after preview readiness, and retains backend process
+    supervision.
+  - Angular renders a startup gate while polling /api/health. AppShell,
+    routing content, and settings loading begin only after the backend reports
+    status ok.
 - The launcher uses the canonical backend environment at `app/server/.venv`,
   installs the locked frontend tree with `npm ci`, builds the frontend when
   dependencies or `dist/tkben-angular/browser/index.html` are missing or the

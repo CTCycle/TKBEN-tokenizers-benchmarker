@@ -1,3 +1,13 @@
-<app-shell>
-  <router-outlet />
-</app-shell>
+@if (startup.status() === 'ready') {
+  <div class="app-ready-transition">
+    <app-shell>
+      <router-outlet />
+    </app-shell>
+  </div>
+} @else {
+  <app-startup-loading
+    [status]="startup.status()"
+    [errorMessage]="startup.errorMessage()"
+    (retry)="startup.retry()"
+  />
+}
