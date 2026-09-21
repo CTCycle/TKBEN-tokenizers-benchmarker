@@ -94,6 +94,25 @@ def test_bootstrap_is_idempotent_without_force(
     assert os.getenv("FASTAPI_HOST") == "first"
 
 ###############################################################################
+def test_settings_initialization_refreshes_after_explicit_bootstrap_reset(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env_path = tmp_path / ".env"
+    _write_env(env_path, ["DATABASE_EMBEDDED=true", "FASTAPI_PORT=5101"])
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
+
+    first = get_server_settings()
+
+    _write_env(env_path, ["DATABASE_EMBEDDED=true", "FASTAPI_PORT=5102"])
+    reset_settings_cache_for_tests()
+    bootstrap.reset_environment_bootstrap_for_tests()
+
+    refreshed = get_server_settings()
+
+    assert first.network.fastapi_port == 5101
+    assert refreshed.network.fastapi_port == 5102
+
+###############################################################################
 def test_typed_defaults_resolve_without_structured_json(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

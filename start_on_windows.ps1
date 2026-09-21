@@ -492,7 +492,6 @@ function Install-Runtimes {
         $nodeNeedsInstall = $installedNodeVersion -ne $NodeVersion
         if ($nodeNeedsInstall) {
             Write-Step "Replacing incompatible Node.js $installedNodeVersion with $NodeVersion."
-            Stop-PortListeners -Port ([int]$env:UI_PORT)
         }
     }
     if ($nodeNeedsInstall) {
@@ -516,19 +515,42 @@ function Get-FrontendDependencyFingerprint {
     return (($manifestPaths | ForEach-Object { (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash }) -join ':')
 }
 
-function Get-FrontendSourceFingerprint {
+function Get-BackendDependencyStampPath {
+    return Join-Path $VenvDir '.tkben-dependencies.json'
+}
+
+function Get-BackendDependencyFingerprint {
+    $manifestPaths = @(
+        (Join-Path $ServerDir 'pyproject.toml'),
+        (Join-Path $ServerDir 'uv.lock')
+    )
+
+    if ($manifestPaths | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) }) {
+        throw 'Backend pyproject.toml and uv.lock are required.'
+    }
+    return (($manifestPaths | ForEach-Object { (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash }) -join ':')
+}
+
+function Get-FrontendBuildInputFiles {
+    $angularRoot = Join-Path $ClientDir 'angular'
     $sourcePaths = @(
-        Get-ChildItem -LiteralPath (Join-Path $ClientDir 'angular') -Recurse -File
+        Get-ChildItem -LiteralPath $angularRoot -Recurse -File |
+            Where-Object { $_.FullName -notmatch '(?i)[\\/]angular[\\/].*\.spec\.ts$' }
         Get-ChildItem -LiteralPath (Join-Path $ClientDir 'public') -Recurse -File -ErrorAction SilentlyContinue
         Get-Item -LiteralPath @(
             (Join-Path $ClientDir 'angular.json'),
             (Join-Path $ClientDir 'package.json'),
             (Join-Path $ClientDir 'package-lock.json'),
-            (Join-Path $ClientDir 'proxy.conf.cjs'),
             (Join-Path $ClientDir 'tsconfig.json'),
             (Join-Path $ClientDir 'tsconfig.app.json')
         ) -ErrorAction SilentlyContinue
     ) | Where-Object { $_ -and $_.PSIsContainer -eq $false } | Sort-Object FullName
+
+    return @($sourcePaths)
+}
+
+function Get-FrontendSourceFingerprint {
+    $sourcePaths = @(Get-FrontendBuildInputFiles)
 
     $relativePaths = [string[]]@($sourcePaths | ForEach-Object {
         $_.FullName.Substring($ClientDir.Length).TrimStart('\')
@@ -551,7 +573,10 @@ function Test-FrontendDependenciesReady {
     $stampPath = Join-Path $nodeModulesDir '.tkben-dependencies.json'
     $npmLockPath = Join-Path $nodeModulesDir '.package-lock.json'
 
-    if (-not (Test-Path -LiteralPath $stampPath) -or -not (Test-Path -LiteralPath $npmLockPath)) {
+    if (-not (Test-Path -LiteralPath $NodeExe -PathType Leaf) -or
+        -not (Test-Path -LiteralPath $NpmCmd -PathType Leaf) -or
+        -not (Test-Path -LiteralPath $stampPath -PathType Leaf) -or
+        -not (Test-Path -LiteralPath $npmLockPath -PathType Leaf)) {
         return $false
     }
 
@@ -578,22 +603,33 @@ function Write-FrontendDependencyStamp {
 function Write-FrontendBuildStamp {
     Ensure-Directory -Path (Split-Path -Parent $FrontendBuildStampPath)
     [ordered]@{
+        stampVersion = 1
         sourceFingerprint = Get-FrontendSourceFingerprint
         nodeVersion = (& $NodeExe --version).Trim()
     } | ConvertTo-Json | Set-Content -LiteralPath $FrontendBuildStampPath -Encoding utf8
 }
 
-function Sync-Dependencies {
+function Write-BackendDependencyStamp {
+    param([ValidateSet('Standard', 'Development')][string]$InstallationType)
+
+    Ensure-Directory -Path (Split-Path -Parent (Get-BackendDependencyStampPath))
+    [ordered]@{
+        stampVersion = 1
+        dependencyFingerprint = Get-BackendDependencyFingerprint
+        pythonVersion = Get-PythonVersion -PythonExe $VenvPython
+        installationProfile = $InstallationType
+    } | ConvertTo-Json | Set-Content -LiteralPath (Get-BackendDependencyStampPath) -Encoding utf8
+}
+
+function Sync-BackendDependencies {
     param(
-        [switch]$BuildFrontend,
-        [switch]$UseCachedFrontendDependencies,
         [switch]$RuntimesReady,
         [ValidateSet('Standard', 'Development')]
         [string]$InstallationType = 'Standard'
     )
 
-    Import-Environment
     if (-not $RuntimesReady) { Install-Runtimes }
+
     $venvPythonVersion = if (Test-Path -LiteralPath $VenvPython) {
         Get-PythonVersion -PythonExe $VenvPython
     } else {
@@ -601,12 +637,20 @@ function Sync-Dependencies {
     }
     if ($venvPythonVersion -ne $PythonVersion) {
         Write-Step "Recreating the backend environment for Python $PythonVersion."
-        Stop-ApplicationProcesses
-        & $UvExe venv --clear --python $PythonExe $VenvDir
-        if ($LASTEXITCODE -ne 0) { throw "uv venv failed with exit code $LASTEXITCODE." }
+        try {
+            & $UvExe venv --clear --python $PythonExe $VenvDir
+            $venvExitCode = $LASTEXITCODE
+        }
+        catch {
+            throw "Could not recreate the backend environment. Files may be locked by a running application process. Use .\start_on_windows.ps1 -KillAll, then retry. Details: $($_.Exception.Message)"
+        }
+        if ($venvExitCode -ne 0) {
+            throw "Could not recreate the backend environment (uv venv exit code $venvExitCode). Files may be locked by a running application process. Use .\start_on_windows.ps1 -KillAll, then retry."
+        }
     }
-    Write-Step 'Installing Python dependencies.'
-    $uvArguments = @('sync', '--python', $PythonExe)
+
+    Write-Step 'Installing Python dependencies from the lockfile.'
+    $uvArguments = @('sync', '--locked', '--python', $PythonExe)
     if ($InstallationType -eq 'Development') { $uvArguments += '--all-extras' }
     Push-Location $ServerDir
     try {
@@ -627,6 +671,20 @@ function Sync-Dependencies {
         Pop-Location
     }
 
+    Write-BackendDependencyStamp -InstallationType $InstallationType
+}
+
+function Sync-Dependencies {
+    param(
+        [switch]$BuildFrontend,
+        [switch]$UseCachedFrontendDependencies,
+        [switch]$RuntimesReady,
+        [ValidateSet('Standard', 'Development')]
+        [string]$InstallationType = 'Standard'
+    )
+
+    if (-not $RuntimesReady) { Install-Runtimes }
+    Sync-BackendDependencies -RuntimesReady -InstallationType $InstallationType
     Sync-Frontend -BuildFrontend:$BuildFrontend -UseCachedFrontendDependencies:$UseCachedFrontendDependencies
 }
 
@@ -636,7 +694,6 @@ function Sync-Frontend {
         [switch]$UseCachedFrontendDependencies
     )
 
-    Stop-PortListeners -Port ([int]$env:UI_PORT)
     Push-Location $ClientDir
     try {
         $frontendInstallRequired = -not $UseCachedFrontendDependencies -or -not (Test-FrontendDependenciesReady)
@@ -678,36 +735,31 @@ function Sync-Frontend {
     }
 }
 
-function Test-DependenciesReady {
-    $frontendPackage = Join-Path $ClientDir 'package.json'
-    $frontendLock = Join-Path $ClientDir 'package-lock.json'
-    $frontendModules = Join-Path $ClientDir 'node_modules'
-    $frontendRunner = Join-Path $frontendModules '.bin\ng.cmd'
+function Test-BackendDependenciesReady {
     $backendEntrypoint = Join-Path $AppDir 'server/app.py'
+    $stampPath = Get-BackendDependencyStampPath
 
-    if (-not (Test-Path -LiteralPath $PythonExe) -or
-        -not (Test-Path -LiteralPath $UvExe) -or
-        -not (Test-Path -LiteralPath $NodeExe) -or
-        -not (Test-Path -LiteralPath $NpmCmd) -or
-        -not (Test-Path -LiteralPath $VenvPython) -or
-        -not (Test-Path -LiteralPath $backendEntrypoint) -or
-        -not (Test-Path -LiteralPath $frontendPackage) -or
-        -not (Test-Path -LiteralPath $frontendLock) -or
-        -not (Test-Path -LiteralPath (Join-Path $frontendModules '.package-lock.json')) -or
-        -not (Test-Path -LiteralPath $frontendRunner)) {
+    if (-not (Test-Path -LiteralPath $PythonExe -PathType Leaf) -or
+        -not (Test-Path -LiteralPath $VenvPython -PathType Leaf) -or
+        -not (Test-Path -LiteralPath $backendEntrypoint -PathType Leaf) -or
+        -not (Test-Path -LiteralPath $stampPath -PathType Leaf)) {
         return $false
     }
 
-    if ((Get-PythonVersion -PythonExe $PythonExe) -ne $PythonVersion) { return $false }
-    & $UvExe --version *> $null
-    if ($LASTEXITCODE -ne 0) { return $false }
-    & $NodeExe --version *> $null
-    if ($LASTEXITCODE -ne 0) { return $false }
-    if ((Get-PythonVersion -PythonExe $VenvPython) -ne $PythonVersion) { return $false }
-    & $VenvPython -c 'import fastapi, uvicorn' *> $null
-    if ($LASTEXITCODE -ne 0) { return $false }
-
-    return $true
+    try {
+        $stamp = Get-Content -LiteralPath $stampPath -Raw | ConvertFrom-Json
+        return (
+            $stamp.stampVersion -eq 1 -and
+            $stamp.dependencyFingerprint -eq (Get-BackendDependencyFingerprint) -and
+            $stamp.pythonVersion -eq $PythonVersion -and
+            $stamp.installationProfile -in @('Standard', 'Development') -and
+            (Get-PythonVersion -PythonExe $PythonExe) -eq $PythonVersion -and
+            (Get-PythonVersion -PythonExe $VenvPython) -eq $stamp.pythonVersion
+        )
+    }
+    catch {
+        return $false
+    }
 }
 
 function Test-FrontendBuildReady {
@@ -720,6 +772,7 @@ function Test-FrontendBuildReady {
     try {
         $stamp = Get-Content -LiteralPath $FrontendBuildStampPath -Raw | ConvertFrom-Json
         return (
+            $stamp.stampVersion -eq 1 -and
             $stamp.sourceFingerprint -eq (Get-FrontendSourceFingerprint) -and
             $stamp.nodeVersion -eq (& $NodeExe --version).Trim()
         )
@@ -729,11 +782,158 @@ function Test-FrontendBuildReady {
     }
 }
 
-function Get-PortProcessIds([int]$Port) {
-    $listeners = netstat -ano | Select-String -Pattern ":$Port\s+.*LISTENING\s+(\d+)\s*$"
-    return @($listeners | ForEach-Object {
-        if ($_.Matches.Count) { [int]$_.Matches[0].Groups[1].Value }
-    } | Sort-Object -Unique)
+function Get-ConfiguredLaunchPorts {
+    $portValues = @(
+        [pscustomobject]@{ Name = 'FASTAPI_PORT'; Value = [string]$env:FASTAPI_PORT },
+        [pscustomobject]@{ Name = 'UI_PORT'; Value = [string]$env:UI_PORT }
+    )
+    $ports = foreach ($portValue in $portValues) {
+        if ([string]::IsNullOrWhiteSpace($portValue.Value) -or $portValue.Value -notmatch '^\d+$') {
+            throw "$($portValue.Name) must be an integer between 1 and 65535."
+        }
+        $port = 0
+        if (-not [int]::TryParse($portValue.Value, [Globalization.NumberStyles]::Integer, [Globalization.CultureInfo]::InvariantCulture, [ref]$port) -or
+            $port -lt 1 -or $port -gt 65535) {
+            throw "$($portValue.Name) must be an integer between 1 and 65535."
+        }
+        $port
+    }
+    if ($ports[0] -eq $ports[1]) {
+        throw "FASTAPI_PORT and UI_PORT must be different configured ports; both are $($ports[0])."
+    }
+    return [int[]]$ports
+}
+
+function Get-PortListenerRecords {
+    param([Parameter(Mandatory)][int[]]$Ports)
+
+    $targetPorts = @{}
+    foreach ($port in $Ports) { $targetPorts[[int]$port] = $true }
+    if ($targetPorts.Count -eq 0) { return @() }
+
+    try {
+        $netstatLines = @(netstat.exe -ano 2>$null)
+        if ($LASTEXITCODE -ne 0) { throw "netstat exited with code $LASTEXITCODE." }
+    }
+    catch {
+        throw "Could not inspect configured port listeners: $($_.Exception.Message)"
+    }
+
+    $seen = @{}
+    foreach ($line in $netstatLines) {
+        $match = [regex]::Match([string]$line, '^\s*TCP\S*\s+\S+:(\d+)\s+\S+\s+LISTENING\s+(\d+)\s*$')
+        if (-not $match.Success) { continue }
+        $port = [int]$match.Groups[1].Value
+        $processId = [int]$match.Groups[2].Value
+        if (-not $targetPorts.ContainsKey($port) -or $processId -le 0) { continue }
+        $key = "$port`:$processId"
+        if ($seen.ContainsKey($key)) { continue }
+        $seen[$key] = $true
+        [pscustomobject]@{
+            Port = $port
+            ProcessId = $processId
+        }
+    }
+}
+
+function Get-PortConflictProcesses {
+    param([Parameter(Mandatory)][object[]]$ListenerRecords)
+
+    foreach ($group in @($ListenerRecords | Group-Object -Property ProcessId | Sort-Object { [int]$_.Name })) {
+        $processId = [int]$group.Name
+        $processName = 'unavailable'
+        $metadataError = $null
+        try {
+            $processName = (Get-Process -Id $processId -ErrorAction Stop).ProcessName
+        }
+        catch {
+            $metadataError = $_.Exception.Message
+        }
+        [pscustomobject]@{
+            ProcessId = $processId
+            ProcessName = $processName
+            Ports = @($group.Group | ForEach-Object { [int]$_.Port } | Sort-Object -Unique)
+            MetadataError = $metadataError
+        }
+    }
+}
+
+function Write-PortConflictReport {
+    param([Parameter(Mandatory)][object[]]$Conflicts)
+
+    Write-Host 'Configured launch ports are occupied:' -ForegroundColor Yellow
+    foreach ($conflict in $Conflicts) {
+        $ports = (@($conflict.Ports | Sort-Object -Unique) -join ', ')
+        Write-Host "  PID $($conflict.ProcessId) ($($conflict.ProcessName)) -> port(s) $ports" -ForegroundColor Yellow
+    }
+}
+
+function Confirm-ReleaseLaunchPorts {
+    param(
+        [Parameter(Mandatory)][int[]]$Ports,
+        [int]$ReacquireRetries = 0
+    )
+
+    $initialRecords = @(Get-PortListenerRecords -Ports $Ports)
+    if ($initialRecords.Count -eq 0) { return $true }
+
+    $conflicts = @(Get-PortConflictProcesses -ListenerRecords $initialRecords)
+    Write-PortConflictReport -Conflicts $conflicts
+    if (-not $script:LauncherInteractive) {
+        $details = @($conflicts | ForEach-Object {
+            "PID $($_.ProcessId) ($($_.ProcessName)) on port(s) $(@($_.Ports | Sort-Object -Unique) -join ', ')"
+        }) -join '; '
+        throw "Cannot launch while configured ports are occupied: $details. No process was terminated."
+    }
+
+    Clear-LauncherProgress
+    $confirmation = ([string](Read-Host 'Terminate the listed listener processes once to release the configured ports? [y/N]')).Trim()
+    if ($confirmation -notmatch '^(?i:y|yes)$') {
+        Write-Host '[INFO] Launch cancelled. No listener processes were terminated.' -ForegroundColor DarkGray
+        return $false
+    }
+
+    $approvedProcessIds = @($conflicts | ForEach-Object { [int]$_.ProcessId } | Sort-Object -Unique)
+    $currentRecords = @(Get-PortListenerRecords -Ports $Ports)
+    $terminationErrors = [Collections.Generic.List[string]]::new()
+    foreach ($processId in $approvedProcessIds) {
+        if (-not (@($currentRecords | Where-Object { [int]$_.ProcessId -eq $processId }))) {
+            continue
+        }
+        if ($processId -le 0 -or $processId -eq $PID) {
+            [void]$terminationErrors.Add("PID $processId cannot be terminated by the launcher.")
+            continue
+        }
+        try {
+            Stop-Process -Id $processId -Force -ErrorAction Stop
+        }
+        catch {
+            [void]$terminationErrors.Add("PID ${processId}: $($_.Exception.Message)")
+        }
+    }
+
+    $remainingRecords = @(Get-PortListenerRecords -Ports $Ports)
+    if ($remainingRecords.Count -gt 0) {
+        $remainingConflicts = @(Get-PortConflictProcesses -ListenerRecords $remainingRecords)
+        $newConflicts = @($remainingConflicts | Where-Object { $approvedProcessIds -notcontains [int]$_.ProcessId })
+        if ($newConflicts.Count -gt 0 -and $ReacquireRetries -lt 1) {
+            Write-Host '[WARN] A new process claimed a configured port during release; requesting confirmation again.' -ForegroundColor Yellow
+            return Confirm-ReleaseLaunchPorts -Ports $Ports -ReacquireRetries ($ReacquireRetries + 1)
+        }
+        Write-PortConflictReport -Conflicts $remainingConflicts
+        $details = @($remainingConflicts | ForEach-Object {
+            "PID $($_.ProcessId) ($($_.ProcessName)) on port(s) $(@($_.Ports | Sort-Object -Unique) -join ', ')"
+        }) -join '; '
+        if ($terminationErrors.Count -gt 0) {
+            $details += " Termination errors: $($terminationErrors -join ' | ')."
+        }
+        throw "Configured launch ports remain occupied: $details No service was started."
+    }
+
+    if ($terminationErrors.Count -gt 0) {
+        Write-Host "[WARN] Listener termination reported errors, but all configured ports are now free: $($terminationErrors -join ' | ')" -ForegroundColor Yellow
+    }
+    return $true
 }
 
 function Stop-ProcessTree([int]$ProcessId) {
@@ -750,35 +950,6 @@ function Stop-ProcessTree([int]$ProcessId) {
     catch {
         return -not (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue)
     }
-}
-
-function Stop-PortListeners([int]$Port) {
-    $processIds = @(Get-PortProcessIds -Port $Port)
-    foreach ($processId in $processIds) {
-        Write-Step "Stopping PID $processId on port $Port."
-        $stopped = $false
-        try {
-            Stop-Process -Id $processId -Force -ErrorAction Stop
-            $stopped = $true
-        }
-        catch {
-            & taskkill.exe /PID $processId /T /F | Out-Null
-            if ($LASTEXITCODE -eq 0) { $stopped = $true }
-        }
-        if (-not $stopped) {
-            throw "Could not stop PID $processId on port $Port. Close the existing listener or run the launcher with permission to stop it."
-        }
-    }
-    $remainingProcessId = Get-PortProcessId -Port $Port
-    if ($null -ne $remainingProcessId) {
-        throw "Port $Port is still occupied by PID $remainingProcessId after the stop attempt. Close that process or run the launcher with sufficient permission."
-    }
-}
-
-function Get-PortProcessId([int]$Port) {
-    $listener = netstat -ano | Select-String -Pattern ":$Port\s+.*LISTENING\s+(\d+)\s*$" | Select-Object -First 1
-    if ($listener -and $listener.Matches.Count) { return [int]$listener.Matches[0].Groups[1].Value }
-    return $null
 }
 
 function Get-ApplicationProcessIds {
@@ -846,23 +1017,38 @@ function Stop-ApplicationProcesses {
 # =============================================================================
 function Launch-Application {
     Import-Environment
-    if (-not (Test-DependenciesReady)) {
-        Write-Step 'Required application environments are missing or unusable; installing dependencies.'
-        Sync-Dependencies -BuildFrontend -InstallationType 'Standard'
+    $launchPorts = @(Get-ConfiguredLaunchPorts)
+    if (-not (Confirm-ReleaseLaunchPorts -Ports $launchPorts)) { return $false }
+
+    $runtimesReady = $false
+    if (-not (Test-BackendDependenciesReady)) {
+        Write-Step 'Backend environment is missing or stale; synchronizing backend dependencies.'
+        Install-Runtimes
+        $runtimesReady = $true
+        Sync-BackendDependencies -RuntimesReady -InstallationType 'Standard'
     }
-    elseif (-not (Test-FrontendBuildReady)) {
+
+    if (-not (Test-FrontendDependenciesReady)) {
+        Write-Step 'Frontend dependencies are missing or stale; installing them without rebuilding yet.'
+        if (-not $runtimesReady) {
+            Install-Runtimes
+            $runtimesReady = $true
+        }
+        Sync-Frontend -UseCachedFrontendDependencies
+    }
+
+    if (-not (Test-FrontendBuildReady)) {
         Write-Step 'Angular production output is missing or stale; building the frontend.'
         Sync-Frontend -BuildFrontend -UseCachedFrontendDependencies
     }
     else {
         Write-Ok 'Application environments and frontend output are ready; skipped setup.'
     }
-    Import-Environment
 
-    $backendPort = [int]$env:FASTAPI_PORT
-    $uiPort = [int]$env:UI_PORT
-    Stop-PortListeners -Port $backendPort
-    Stop-PortListeners -Port $uiPort
+    if (-not (Confirm-ReleaseLaunchPorts -Ports $launchPorts)) { return $false }
+
+    $backendPort = [int]$launchPorts[0]
+    $uiPort = [int]$launchPorts[1]
 
     $backendAppPath = Join-Path $RepoRoot 'app'
     $backendArgs = "-m uvicorn server.app:app --app-dir `"$backendAppPath`" --host `"$($env:FASTAPI_HOST)`" --port $backendPort"
@@ -892,7 +1078,7 @@ function Launch-Application {
             -PassThru
     }
 
-    $backendPid = if ($backendProcess) { $backendProcess.Id } else { Get-PortProcessId -Port $backendPort }
+    $backendPid = if ($backendProcess) { $backendProcess.Id } else { $null }
 
     Write-Step 'Starting frontend preview.'
     $previewCommandLine = '"' + $NpmCmd + '" run preview -- --host ' + $env:UI_HOST + ' --port ' + $uiPort + ' --strictPort'
@@ -933,6 +1119,7 @@ function Launch-Application {
         -Attempts 60 `
         -IntervalSeconds 1
     Write-Ok 'Application started successfully.'
+    return $true
 }
 
 function Install-Dependencies {
@@ -1512,7 +1699,7 @@ function Show-Menu {
         try {
             Invoke-TrackedLauncherAction -Name $entry.Label -Action {
                 switch ($entry.Key) {
-                    'Launch' { Launch-Application; exit 0 }
+                    'Launch' { if (Launch-Application) { exit 0 } }
                     'Install' {
                         $installationType = Read-InstallationType
                         Install-Dependencies -InstallationType $installationType
@@ -1550,8 +1737,15 @@ if ($KillAll) {
 }
 
 if ($Launch) {
-    Invoke-TrackedLauncherAction -Name 'launch application' -Action { Launch-Application }
-    exit 0
+    $launchResult = @()
+    try {
+        $launchResult = @(Invoke-TrackedLauncherAction -Name 'launch application' -Action { Launch-Application })
+    }
+    catch {
+        exit 1
+    }
+    if (@($launchResult | Where-Object { $_ -is [bool] -and $_ }).Count -gt 0) { exit 0 }
+    exit 1
 }
 
 Show-Menu

@@ -15,7 +15,7 @@ _runtime_settings_store: RuntimeSettingsStore | None = None
 ###############################################################################
 def _initialize_settings_locked() -> None:
     global _default_settings, _runtime_settings_store
-    ensure_environment_loaded(force=True)
+    ensure_environment_loaded()
     defaults = build_server_settings()
     store = RuntimeSettingsStore(defaults)
     _runtime_settings_store = store

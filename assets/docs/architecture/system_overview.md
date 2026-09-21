@@ -143,9 +143,11 @@ flowchart LR
   - Angular renders a startup gate while polling /api/health. AppShell,
     routing content, and settings loading begin only after the backend reports
     status ok.
-- The launcher uses the canonical backend environment at `app/server/.venv`,
-  installs the locked frontend tree with `npm ci`, builds the frontend when
-  dependencies or `dist/tkben-angular/browser/index.html` are missing or the
-  source-fingerprint stamp is stale, starts both services on the configured
-  defaults (`5000` and `8000`), verifies the configured ports, and opens the
-  configured UI URL.
+  - The launcher uses the canonical backend environment at `app/server/.venv`,
+  records backend lockfile readiness, installs the frontend tree with `npm ci`
+  only when its dependency stamp is stale, and builds the frontend only when
+  its deterministic production-input stamp is missing or stale. It validates
+  the configured ports before setup and immediately before starting both
+  services; occupied ports require explicit interactive approval for individual
+  listener PIDs. It then starts both services on the configured defaults (`5000`
+  and `8000`) and opens the configured UI URL.

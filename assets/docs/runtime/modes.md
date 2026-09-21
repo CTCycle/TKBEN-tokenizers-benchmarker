@@ -1,5 +1,5 @@
 # Runtime Modes
-Last updated: 2026-09-18
+Last updated: 2026-09-21
 
 ## Supported Modes
 ### 1. Local webapp mode
@@ -10,8 +10,12 @@ Last updated: 2026-09-18
 - Launch checks `app/client/dist/tkben-angular/browser/index.html` and
   `.tkben-build.json`; a missing or source-stale production build triggers a
   frontend build before preview starts.
-- Launch stops configured-port listeners first and fails if a listener cannot be
-  stopped, so an old process cannot satisfy a new process's readiness check.
+- Launch validates the configured backend and UI ports before setup and again
+  before process start. Occupied ports are grouped by unique PID and shown with
+  process names when available; interactive launch asks before terminating the
+  approved PIDs once, while redirected launch aborts without terminating
+  anything. The explicit `-KillAll` action remains the separate process-tree
+  cleanup path.
 
 ### 2. Test runtime mode
 - Uses the local backend and frontend test environments managed by `app/tests/run_tests.bat`.
