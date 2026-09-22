@@ -88,7 +88,7 @@ means that a field does not apply.
 | architecture.canonical-ownership | VALIDATED | API, contracts, configuration, services, repositories, and frontend state ownership boundaries. | V-20260920: 323 backend unit tests passed, including the architecture-boundary contract; current architecture docs describe the same ownership graph. | Remaining canonicalization follow-ups are tracked as ISSUE-003; no current regression observed. | — | 2026-09-20 | unit | [architecture review](architecture/architecture_review.md), [canonical-source remediation](architecture/canonical_source_remediation.md), [boundary test](../../app/tests/unit/server/test_architecture_boundaries.py) | Revalidate the boundary test after ownership or schema changes. |
 | runtime.startup.local-webapp | VALIDATED | FastAPI readiness, Angular production preview, local API proxy, restart, and major-route loading. | V-20260922: Windows clean bootstrap returned backend health 200 and the browser rendered Dataset; Linux manual startup returned health 200, proxied `/api/datasets/list`, rendered Dataset/Tokenizers/Cross Benchmark/Settings, and recovered after backend restart. | This validates the exercised startup routes; populated report dashboards and responsive layouts remain separate. | — | 2026-09-22 | E2E + manual | [startup](runtime/startup.md), [runtime modes](runtime/modes.md), [system overview](architecture/system_overview.md), [gate-closure QA record](../../assets/QA/tkben-partial-gates-20260922.md) | Revalidate after launcher or readiness changes. |
 | runtime.windows-launcher | VALIDATED | `start_on_windows.ps1` dependency bootstrap, pinned runtimes, port-conflict handling, stamped dependency/build reuse, readiness, maintenance menu, and process cleanup. | V-20260922: clean bootstrap and warm reuse passed; all 13 menu routes were exercised, including both install profiles, expected `Update` refusal on `develop`, destructive decline/approval, and Kill All. Malformed/missing stamps, stale frontend build, backend-only stale state, invalid port, redirected conflict, quoted preview cleanup, and a port reacquisition between checks were exercised. The launcher contract suite passes 19/19. A safety-gated disposable Windows run used a real elevated synthetic listener; approved termination produced localized `Accesso negato`, the listener remained on the configured port, and no service started. | The repository-standard runner has separate host ACL failures in its Ruff, BasedPyright, and Python phases; these do not affect the launcher evidence and are recorded in the QA record. | — | 2026-09-22 | unit + integration + manual | [startup](runtime/startup.md), [deployment](runtime/deployment.md), [launcher QA record](../../assets/QA/tkben-partial-gates-20260922.md), [contract tests](../../app/tests/unit/server/test_windows_launcher_contract.py), [permission harness](../../app/tests/integration/windows/test_launcher_port_permissions.ps1) | Revalidate after launcher or readiness changes. |
-| configuration.runtime-settings | WORKING | Typed runtime defaults, sparse persisted overrides, revision checks, reset behavior, and Settings API/page. | V-20260922: 56 focused backend tests passed; the installed-Chrome Settings E2E passed 2/2, including the backend-derived all-16 browser matrix, 38 invalid cases, valid boundaries, tokenizer relationship states, MiB-to-byte persistence, reload hydration, conflict, reset, and new-operation effects; final restoration left defaults active with no runtime-settings file. | The T1-02 slice is closed; the broader component remains WORKING because this gate does not promote component status beyond its separately tracked lifecycle scope. | — | 2026-09-22 | unit + E2E + manual | [configuration](runtime/configuration.md), [backend API](architecture/backend_api.md), [Settings E2E](../../app/tests/e2e/test_settings_ui.py), [T1-02 closure QA record](../../assets/QA/tkben-t1-02-settings-boundary-20260922.md), [Tier 1 QA record](../../assets/QA/tkben-tier1-20260921.md) | Keep the broader component at WORKING until its separate lifecycle scope is promoted. |
+| configuration.runtime-settings | WORKING | Typed runtime defaults, sparse persisted overrides, revision checks, reset behavior, and Settings API/page. | V-20260922 at `41f265a`: all 504 backend unit tests passed with an isolated cache under the canonical cache root; installed-Chrome Settings E2E passed 2/2; in-app browser save/reload and two backend restarts preserved settings and then reset to defaults; downstream new-work effects and revision conflict passed. The repository runner's Python collection remains blocked by access denied on a generated cache subtree. | The T1-02 slice is closed; the broader component remains WORKING because this gate does not promote component status beyond its separately tracked lifecycle scope. | — | 2026-09-22 | unit + E2E + manual | [configuration](runtime/configuration.md), [backend API](architecture/backend_api.md), [Settings E2E](../../app/tests/e2e/test_settings_ui.py), [T1-02 lifecycle QA record](../../assets/QA/tkben-t1-02-runtime-settings-20260922.md), [earlier T1-02 boundary QA](../../assets/QA/tkben-t1-02-settings-boundary-20260922.md), [Tier 1 QA record](../../assets/QA/tkben-tier1-20260921.md) | Keep the broader component at WORKING until its separate lifecycle scope is promoted. |
 | runtime.managed-job-lifecycle | VALIDATED | Start, poll, complete, fail, cancel, persist, and reconcile managed jobs across application restart. | V-20260922: 212 backend unit tests passed. Linux restart E2E kept completed upload job `c079b263` addressable, retained its 25,000-document dataset, and reconciled active analysis job `3fa194eb` to `failed` with an explicit restart-interruption error. | Job runners are not checkpointed or resumed; pending/running jobs fail deterministically on restart by design. | — | 2026-09-22 | unit + E2E | [execution and data flow](architecture/execution_and_data_flow.md), [persistence](architecture/persistence.md), [job tests](../../app/tests/unit/server/services/test_jobs_manager.py), [gate-closure QA record](../../assets/QA/tkben-partial-gates-20260922.md) | Keep non-resumption explicit unless runner checkpointing and idempotency are designed. |
 
 ### Backend, persistence, and data workflows
@@ -182,7 +182,7 @@ evidence.
 | T0-02 | yes | yes | PASS | V-20260922 at `e864197c`: clean bootstrap, warm reuse, missing/malformed stamps, stale build, backend-only repair, invalid ports, redirected conflict, and a real port reacquisition race passed; the launcher contract suite passed 19/19; and the safety-gated harness reproduced a real localized `Stop-Process` access denial against synthetic PID 39516 on port 63335. The listener remained, the blocked PID/port and termination error were reported, and no backend/frontend service started. |
 | T0-03 | yes | yes | PASS | All 13 maintenance-menu routes were exercised in a disposable Windows checkout, including Standard/Development installs, expected update refusal on `develop`, destructive declines/approvals, cleanup, uninstall, and Kill All. |
 | T1-01 | yes | yes | PASS | Startup E2E passed 2/2 and the rendered shell reloaded after the persistence restart. |
-| T1-02 | yes | yes | PASS | V-20260922: the installed-Chrome Settings E2E passed 2/2, including the deterministic backend-derived 16-field matrix (38 invalid cases, valid boundaries, integer/decimal semantics, all tokenizer relationship states), one all-fields PATCH/revision/overridden-key round-trip, reload hydration, and the preserved conflict/reset/new-operation lifecycle. |
+| T1-02 | yes | yes | PASS | V-20260922 at `41f265a`: all 16 fields, boundaries, sparse persistence, restart, 409 conflict, individual/reset-all semantics, and new-work effects have backend, Chrome E2E, and in-app browser evidence; see the [current T1-02 QA record](../../assets/QA/tkben-t1-02-runtime-settings-20260922.md). |
 | T1-03 | yes | yes | PARTIAL | Synthetic live key lifecycle passed; complete rendered UI lifecycle and direct database ciphertext inspection remain. |
 | T1-04 | yes | yes | PASS | Focused migration/persistence/settings contracts passed and a runtime override survived an official launcher restart; PostgreSQL remains separate. |
 | T1-05 | yes | yes | PARTIAL | Dataset stale-request browser scenario passed and store units passed; full populated filter matrix and tokenizer live race remain. |
@@ -257,6 +257,39 @@ browser E2E used the installed Chrome channel. The official `-KillAll` command
 also hit Windows `Access denied` while inspecting process command lines; only
 the known launcher-owned process trees were then stopped explicitly. This is an
 environment/permission gap, not a reproduced application defect.
+
+### T1-02 runtime settings evidence refresh
+
+The validation additions were committed on `develop` at revision
+`41f265af004fd9dd99eaa0445a3c04000d6b106c`. The current acceptance evidence and
+field-by-field schema matrix are recorded in
+[the T1-02 runtime settings QA record](../../assets/QA/tkben-t1-02-runtime-settings-20260922.md).
+
+- **Schema matrix:** All 16 public settings were derived from the current
+  request schema and cross-checked against typed defaults, editable keys, UI
+  controls, sparse persistence representation, and runtime consumers. The
+  field-by-field matrix is in the linked QA record.
+- **Validation and atomicity:** Backend coverage passed numeric boundaries,
+  malformed and empty/null input, tokenizer cross-field constraints, and
+  rejected mixed updates without in-memory or persisted mutation.
+- **Persistence lifecycle:** Sparse-store recreation resolved omitted fields
+  to defaults. In the in-app browser, five saved overrides survived Settings
+  reload and backend restart; the API returned the exact overrides and default
+  snapshot.
+- **Conflicts and resets:** Stale revision updates returned HTTP 409 without
+  replacing newer values. Individual reset retained the unrelated streaming
+  override; reset-all followed by another backend restart restored defaults
+  and left no `runtime-settings.json`.
+- **Downstream effects:** New dataset, tokenizer-discovery, benchmark-prefill,
+  streaming, and job workflows used changed settings. E2E-created dataset and
+  tokenizer inputs were removed; completed upload-job history remains under
+  normal terminal-job retention, and existing artifacts were not rewritten.
+- **Regression and browser gates:** The isolated backend unit suite passed
+  504/504; Settings E2E passed 2/2; Ruff, BasedPyright, 60 Angular unit tests,
+  frontend lint, and production build passed. The repository runner's Python
+  collection remains blocked by access denied on a generated
+  `app/tests/cache/pytest` directory. Commands and browser steps are recorded
+  in the QA artifact.
 
 ## Resolved and Historical Findings
 
