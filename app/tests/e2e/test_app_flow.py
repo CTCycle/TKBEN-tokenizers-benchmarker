@@ -4,12 +4,19 @@ Targets datasets, tokenizers, and cross benchmark workflows.
 """
 
 import re
-from urllib.parse import quote
+from datetime import datetime, timezone
+from urllib.parse import parse_qs, quote, urlparse
 from uuid import uuid4
 
 import pytest
 from playwright.sync_api import Page, expect
 from playwright.sync_api import APIRequestContext
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from server.repositories.datasets import DatasetRepository
+from server.repositories.schemas.models import Tokenizer, TokenizerReport
+from server.services.tokenizers import TokenizersService
 
 ###############################################################################
 def _upload_dataset_for_ui_test(
@@ -42,6 +49,147 @@ def _upload_dataset_for_ui_test(
     assert job_status.get("status") == "completed", job_status.get("error")
     return dataset_name
 
+
+###############################################################################
+def _request_query(url: str) -> dict[str, list[str]]:
+    return parse_qs(urlparse(url).query, keep_blank_values=True)
+
+
+###############################################################################
+def _matches_catalog_request(request, endpoint: str, expected: dict[str, list[str]]) -> bool:
+    return (
+        urlparse(request.url).path.endswith(endpoint)
+        and _request_query(request.url) == expected
+    )
+
+
+###############################################################################
+def _expect_catalog_request(
+    page: Page,
+    endpoint: str,
+    expected: dict[str, list[str]],
+    action,
+) -> None:
+    with page.expect_request(
+        lambda request: _matches_catalog_request(request, endpoint, expected)
+    ):
+        action()
+
+
+###############################################################################
+def _seed_dataset_catalog_fixture(rows: list[tuple[str, int]]) -> None:
+    repository = DatasetRepository()
+    for dataset_name, document_count in rows:
+        dataset_id = repository.begin_dataset_import(dataset_name)
+        repository.finalize_dataset_import(dataset_id, document_count)
+
+
+###############################################################################
+def _cleanup_dataset_catalog_fixture(dataset_names: list[str]) -> None:
+    repository = DatasetRepository()
+    for dataset_name in dataset_names:
+        repository.delete_dataset(dataset_name)
+
+
+###############################################################################
+def _seed_tokenizer_catalog_fixture(
+    rows: list[tuple[str, str, int]],
+    artifact: bytes,
+) -> None:
+    service = TokenizersService()
+    for tokenizer_name, source, vocabulary_size in rows:
+        service.repository.upsert_tokenizer_source(tokenizer_name, source=source)
+        service.persist_custom_tokenizer_artifact(tokenizer_name, artifact)
+        with Session(bind=service.repository.database.backend.engine) as session:
+            tokenizer_id = session.execute(
+                select(Tokenizer.id).where(Tokenizer.name == tokenizer_name)
+            ).scalar_one()
+            session.add(
+                TokenizerReport(
+                    tokenizer_id=int(tokenizer_id),
+                    report_version=5,
+                    created_at=datetime.now(timezone.utc),
+                    metadata_json={"vocabulary_size": vocabulary_size},
+                    token_length_histogram={},
+                )
+            )
+            session.commit()
+
+
+###############################################################################
+def _cleanup_tokenizer_catalog_fixture(tokenizer_names: list[str]) -> None:
+    service = TokenizersService()
+    for tokenizer_name in tokenizer_names:
+        service.remove_tokenizer(tokenizer_name)
+
+
+###############################################################################
+def _expected_dataset_names(
+    catalog: list[dict],
+    *,
+    search: str = "",
+    source: str = "all",
+    operator: str = "at_least",
+    document_count: int | None = None,
+) -> list[str]:
+    search_term = search.strip().casefold()
+    expected = []
+    for item in catalog:
+        name = str(item["dataset_name"])
+        count = int(item.get("document_count") or 0)
+        if search_term and search_term not in name.casefold():
+            continue
+        is_custom = name.startswith("custom/")
+        if source == "custom" and not is_custom:
+            continue
+        if source == "public" and is_custom:
+            continue
+        if document_count is not None:
+            if operator == "at_most" and count > document_count:
+                continue
+            if operator == "at_least" and count < document_count:
+                continue
+        expected.append(name)
+    return sorted(expected)
+
+
+###############################################################################
+def _expected_tokenizer_names(
+    catalog: list[dict],
+    *,
+    search: str = "",
+    source: str = "all",
+    operator: str = "at_least",
+    vocabulary_size: int | None = None,
+) -> list[str]:
+    search_term = search.strip().casefold()
+    expected = []
+    for item in catalog:
+        name = str(item["tokenizer_name"])
+        item_source = str(item.get("source") or "")
+        item_size = item.get("vocabulary_size")
+        if search_term and search_term not in name.casefold():
+            continue
+        if source != "all" and item_source != source:
+            continue
+        if vocabulary_size is not None:
+            if item_size is None:
+                continue
+            if operator == "at_most" and int(item_size) > vocabulary_size:
+                continue
+            if operator == "at_least" and int(item_size) < vocabulary_size:
+                continue
+        expected.append(name)
+    return sorted(expected)
+
+
+###############################################################################
+def _assert_rendered_catalog_names(locator, expected: list[str]) -> None:
+    expect(locator).to_have_count(len(expected))
+    for name in expected:
+        expect(locator.filter(has_text=name)).to_have_count(1)
+    assert sorted(text.strip() for text in locator.all_text_contents()) == expected
+
 ###############################################################################
 class TestAppShell:
     """Tests for core layout and routing."""
@@ -59,6 +207,182 @@ class TestAppShell:
 ###############################################################################
 class TestDatasetPage:
     """Tests for dataset page UI elements."""
+
+    # -------------------------------------------------------------------------
+    def test_populated_catalog_filter_matrix(
+        self,
+        page: Page,
+        base_url: str,
+        api_context: APIRequestContext,
+    ) -> None:
+        """Dataset controls serialize every supported filter and render the API result."""
+        baseline_response = api_context.get("/api/datasets/list")
+        assert baseline_response.ok, baseline_response.text()
+        baseline_catalog = baseline_response.json().get("datasets", [])
+
+        suffix = uuid4().hex[:8]
+        fixture_rows = [
+            (f"hf/t1-05-alpha-{suffix}", 2),
+            (f"hf/t1-05-beta-{suffix}", 5),
+            (f"custom/t1-05-gamma-{suffix}", 5),
+            (f"custom/t1-05-delta-{suffix}", 8),
+        ]
+        fixture_names = [name for name, _ in fixture_rows]
+        _seed_dataset_catalog_fixture(fixture_rows)
+        catalog = [*baseline_catalog, *(
+            {"dataset_name": name, "document_count": count}
+            for name, count in fixture_rows
+        )]
+
+        try:
+            request_urls: list[str] = []
+            page.on(
+                "request",
+                lambda request: request_urls.append(request.url)
+                if urlparse(request.url).path.endswith("/api/datasets/list")
+                else None,
+            )
+            page.goto(f"{base_url}/dataset")
+
+            dataset_names = page.locator(
+                ".dataset-preview-row:not(.dataset-preview-row--header) .dataset-preview-name"
+            )
+            expected_all = _expected_dataset_names(catalog)
+            _assert_rendered_catalog_names(dataset_names, expected_all)
+            assert any(
+                _request_query(url) == {}
+                for url in request_urls
+            )
+
+            search = page.get_by_label("Search datasets")
+            source = page.get_by_label("Source")
+            operator = page.get_by_label("Documents comparison")
+            document_count = page.get_by_label("Document count")
+            search_term = f"beta-{suffix}"
+
+            _expect_catalog_request(
+                page,
+                "/api/datasets/list",
+                {
+                    "search": [search_term],
+                    "document_count_operator": ["at_least"],
+                },
+                lambda: search.fill(f"  {search_term}  "),
+            )
+            _assert_rendered_catalog_names(dataset_names, [fixture_rows[1][0]])
+
+            def clear_search_and_select_public() -> None:
+                search.fill("")
+                source.select_option("public")
+
+            _expect_catalog_request(
+                page,
+                "/api/datasets/list",
+                {
+                    "source": ["public"],
+                    "document_count_operator": ["at_least"],
+                },
+                clear_search_and_select_public,
+            )
+            public_expected = _expected_dataset_names(catalog, source="public")
+            _assert_rendered_catalog_names(dataset_names, public_expected)
+
+            _expect_catalog_request(
+                page,
+                "/api/datasets/list",
+                {
+                    "source": ["custom"],
+                    "document_count_operator": ["at_least"],
+                },
+                lambda: source.select_option("custom"),
+            )
+            custom_expected = _expected_dataset_names(catalog, source="custom")
+            _assert_rendered_catalog_names(dataset_names, custom_expected)
+
+            def select_all_and_set_at_least_boundary() -> None:
+                source.select_option("")
+                document_count.fill("5")
+
+            _expect_catalog_request(
+                page,
+                "/api/datasets/list",
+                {
+                    "document_count_operator": ["at_least"],
+                    "document_count": ["5"],
+                },
+                select_all_and_set_at_least_boundary,
+            )
+            at_least_expected = _expected_dataset_names(
+                catalog, document_count=5
+            )
+            _assert_rendered_catalog_names(dataset_names, at_least_expected)
+
+            _expect_catalog_request(
+                page,
+                "/api/datasets/list",
+                {
+                    "document_count_operator": ["at_most"],
+                    "document_count": ["5"],
+                },
+                lambda: operator.select_option("at_most"),
+            )
+            at_most_expected = _expected_dataset_names(
+                catalog, operator="at_most", document_count=5
+            )
+            _assert_rendered_catalog_names(dataset_names, at_most_expected)
+
+            def set_combined_dataset_filters() -> None:
+                search.fill(f"  {search_term}  ")
+                source.select_option("public")
+                operator.select_option("at_least")
+
+            combined_query = {
+                "search": [search_term],
+                "source": ["public"],
+                "document_count_operator": ["at_least"],
+                "document_count": ["5"],
+            }
+            _expect_catalog_request(
+                page,
+                "/api/datasets/list",
+                combined_query,
+                set_combined_dataset_filters,
+            )
+            combined_expected = _expected_dataset_names(
+                catalog,
+                search=search_term,
+                source="public",
+                document_count=5,
+            )
+            _assert_rendered_catalog_names(dataset_names, combined_expected)
+
+            no_match_term = f"no-match-{suffix}"
+            no_match_query = {**combined_query, "search": [no_match_term]}
+            _expect_catalog_request(
+                page,
+                "/api/datasets/list",
+                no_match_query,
+                lambda: search.fill(no_match_term),
+            )
+            expect(dataset_names).to_have_count(0)
+            expect(
+                page.get_by_text("No datasets match the current filters.", exact=True)
+            ).to_be_visible()
+
+            def clear_dataset_filters() -> None:
+                search.fill("")
+                source.select_option("")
+                document_count.fill("")
+
+            _expect_catalog_request(
+                page,
+                "/api/datasets/list",
+                {"document_count_operator": ["at_least"]},
+                clear_dataset_filters,
+            )
+            _assert_rendered_catalog_names(dataset_names, expected_all)
+        finally:
+            _cleanup_dataset_catalog_fixture(fixture_names)
 
     # -------------------------------------------------------------------------
     def test_catalog_race_keeps_loading_owned_by_newest_request(
@@ -274,6 +598,349 @@ class TestDatasetPage:
 ###############################################################################
 class TestTokenizersPage:
     """Tests for tokenizers page UI elements."""
+
+    # -------------------------------------------------------------------------
+    def test_populated_catalog_filter_matrix(
+        self,
+        page: Page,
+        base_url: str,
+        api_context: APIRequestContext,
+        tiny_tokenizer_json: bytes,
+    ) -> None:
+        """Tokenizer controls serialize source and vocabulary filters end to end."""
+        baseline_response = api_context.get("/api/tokenizers/list")
+        assert baseline_response.ok, baseline_response.text()
+        baseline_catalog = baseline_response.json().get("tokenizers", [])
+
+        suffix = uuid4().hex[:8]
+        fixture_rows = [
+            (f"hf/t1-05-alpha-{suffix}", "huggingface", 2),
+            (f"hf/t1-05-beta-{suffix}", "huggingface", 5),
+            (f"CUSTOM_t1-05-gamma-{suffix}", "custom", 5),
+            (f"CUSTOM_t1-05-delta-{suffix}", "custom", 8),
+        ]
+        fixture_names = [name for name, _, _ in fixture_rows]
+        _seed_tokenizer_catalog_fixture(fixture_rows, tiny_tokenizer_json)
+        catalog = [
+            *baseline_catalog,
+            *(
+                {
+                    "tokenizer_name": name,
+                    "source": source,
+                    "vocabulary_size": vocabulary_size,
+                }
+                for name, source, vocabulary_size in fixture_rows
+            ),
+        ]
+
+        try:
+            request_urls: list[str] = []
+            page.on(
+                "request",
+                lambda request: request_urls.append(request.url)
+                if urlparse(request.url).path.endswith("/api/tokenizers/list")
+                else None,
+            )
+            page.goto(f"{base_url}/tokenizers")
+
+            tokenizer_names = page.locator(".tokenizer-preview-name")
+            expected_all = _expected_tokenizer_names(catalog)
+            _assert_rendered_catalog_names(tokenizer_names, expected_all)
+            assert any(
+                _request_query(url) == {}
+                for url in request_urls
+            )
+
+            search = page.get_by_label("Search tokenizers")
+            source = page.get_by_label("Source")
+            operator = page.get_by_label("Vocabulary comparison")
+            vocabulary_size = page.get_by_label("Vocabulary size")
+            search_term = f"beta-{suffix}"
+
+            _expect_catalog_request(
+                page,
+                "/api/tokenizers/list",
+                {
+                    "search": [search_term],
+                    "vocabulary_size_operator": ["at_least"],
+                },
+                lambda: search.fill(f"  {search_term}  "),
+            )
+            _assert_rendered_catalog_names(tokenizer_names, [fixture_rows[1][0]])
+
+            def clear_search_and_select_huggingface() -> None:
+                search.fill("")
+                source.select_option("hugging_face")
+
+            _expect_catalog_request(
+                page,
+                "/api/tokenizers/list",
+                {
+                    "source": ["huggingface"],
+                    "vocabulary_size_operator": ["at_least"],
+                },
+                clear_search_and_select_huggingface,
+            )
+            huggingface_expected = _expected_tokenizer_names(
+                catalog, source="huggingface"
+            )
+            _assert_rendered_catalog_names(tokenizer_names, huggingface_expected)
+
+            _expect_catalog_request(
+                page,
+                "/api/tokenizers/list",
+                {
+                    "source": ["custom"],
+                    "vocabulary_size_operator": ["at_least"],
+                },
+                lambda: source.select_option("custom"),
+            )
+            custom_expected = _expected_tokenizer_names(catalog, source="custom")
+            _assert_rendered_catalog_names(tokenizer_names, custom_expected)
+
+            def select_all_and_set_at_least_boundary() -> None:
+                source.select_option("")
+                vocabulary_size.fill("5")
+
+            _expect_catalog_request(
+                page,
+                "/api/tokenizers/list",
+                {
+                    "vocabulary_size_operator": ["at_least"],
+                    "vocabulary_size": ["5"],
+                },
+                select_all_and_set_at_least_boundary,
+            )
+            at_least_expected = _expected_tokenizer_names(
+                catalog, vocabulary_size=5
+            )
+            _assert_rendered_catalog_names(tokenizer_names, at_least_expected)
+
+            _expect_catalog_request(
+                page,
+                "/api/tokenizers/list",
+                {
+                    "vocabulary_size_operator": ["at_most"],
+                    "vocabulary_size": ["5"],
+                },
+                lambda: operator.select_option("at_most"),
+            )
+            at_most_expected = _expected_tokenizer_names(
+                catalog, operator="at_most", vocabulary_size=5
+            )
+            _assert_rendered_catalog_names(tokenizer_names, at_most_expected)
+
+            def set_combined_tokenizer_filters() -> None:
+                search.fill(f"  {search_term}  ")
+                source.select_option("hugging_face")
+                operator.select_option("at_least")
+
+            combined_query = {
+                "search": [search_term],
+                "source": ["huggingface"],
+                "vocabulary_size_operator": ["at_least"],
+                "vocabulary_size": ["5"],
+            }
+            _expect_catalog_request(
+                page,
+                "/api/tokenizers/list",
+                combined_query,
+                set_combined_tokenizer_filters,
+            )
+            combined_expected = _expected_tokenizer_names(
+                catalog,
+                search=search_term,
+                source="huggingface",
+                vocabulary_size=5,
+            )
+            _assert_rendered_catalog_names(tokenizer_names, combined_expected)
+
+            no_match_term = f"no-match-{suffix}"
+            no_match_query = {**combined_query, "search": [no_match_term]}
+            _expect_catalog_request(
+                page,
+                "/api/tokenizers/list",
+                no_match_query,
+                lambda: search.fill(no_match_term),
+            )
+            expect(tokenizer_names).to_have_count(0)
+            expect(
+                page.get_by_text("No tokenizers match the current filters.", exact=True)
+            ).to_be_visible()
+
+            def clear_tokenizer_filters() -> None:
+                search.fill("")
+                source.select_option("")
+                vocabulary_size.fill("")
+
+            _expect_catalog_request(
+                page,
+                "/api/tokenizers/list",
+                {"vocabulary_size_operator": ["at_least"]},
+                clear_tokenizer_filters,
+            )
+            _assert_rendered_catalog_names(tokenizer_names, expected_all)
+        finally:
+            _cleanup_tokenizer_catalog_fixture(fixture_names)
+
+    # -------------------------------------------------------------------------
+    def test_tokenizer_catalog_race_keeps_newest_rows_and_loading_state(
+        self, page: Page, base_url: str
+    ) -> None:
+        """Stale tokenizer catalog responses cannot replace the newest request."""
+        page.add_init_script(
+            """
+            (() => {
+              const nativeFetch = globalThis.fetch.bind(globalThis);
+              globalThis.fetch = (input, init) => {
+                const requestUrl = new URL(
+                  typeof input === 'string' ? input : input.url,
+                  window.location.href,
+                );
+                if (!requestUrl.pathname.endsWith('/api/tokenizers/list')) {
+                  return nativeFetch(input, init);
+                }
+                const search = requestUrl.searchParams.get('search') || '';
+                const delays = {
+                  first: 2000,
+                  second: 200,
+                  reset: 0,
+                  fast: 600,
+                  slow: 2000,
+                };
+                const datasetName = search ? `custom/race-${search}` : 'custom/base';
+                const body = search === 'reset'
+                  ? { tokenizers: [], count: 0 }
+                  : search
+                    ? { tokenizers: [{ tokenizer_name: datasetName, source: 'custom', vocabulary_size: 3 }], count: 1 }
+                    : { tokenizers: [], count: 0 };
+                return new Promise((resolve) => {
+                  window.setTimeout(() => resolve(new Response(JSON.stringify(body), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                  })), delays[search] ?? 0);
+                });
+              };
+            })();
+            """
+        )
+        page.goto(f"{base_url}/tokenizers")
+        expect(
+            page.get_by_text("No tokenizers match the current filters.", exact=True)
+        ).to_be_visible()
+        search = page.get_by_label("Search tokenizers")
+
+        search.fill("first")
+        page.wait_for_timeout(320)
+        search.fill("second")
+        page.wait_for_timeout(500)
+        expect(page.get_by_text("Loading tokenizers...", exact=True)).to_have_count(0)
+        expect(
+            page.locator(".tokenizer-preview-row").filter(has_text="custom/race-second")
+        ).to_have_count(1)
+        expect(
+            page.locator(".tokenizer-preview-row").filter(has_text="custom/race-first")
+        ).to_have_count(0)
+
+        page.wait_for_timeout(500)
+        expect(
+            page.locator(".tokenizer-preview-row").filter(has_text="custom/race-second")
+        ).to_have_count(1)
+        expect(
+            page.locator(".tokenizer-preview-row").filter(has_text="custom/race-first")
+        ).to_have_count(0)
+
+        search.fill("reset")
+        page.wait_for_timeout(400)
+        expect(
+            page.get_by_text("No tokenizers match the current filters.", exact=True)
+        ).to_be_visible()
+
+        search.fill("fast")
+        page.wait_for_timeout(320)
+        search.fill("slow")
+        page.wait_for_timeout(400)
+        expect(page.get_by_text("Loading tokenizers...", exact=True)).to_be_visible()
+        expect(
+            page.locator(".tokenizer-preview-row").filter(has_text="custom/race-fast")
+        ).to_have_count(0)
+        page.wait_for_timeout(2200)
+        expect(page.get_by_text("Loading tokenizers...", exact=True)).to_have_count(0)
+        expect(
+            page.locator(".tokenizer-preview-row").filter(has_text="custom/race-slow")
+        ).to_have_count(1)
+        expect(
+            page.locator(".tokenizer-preview-row").filter(has_text="custom/race-fast")
+        ).to_have_count(0)
+
+    # -------------------------------------------------------------------------
+    def test_tokenizer_discovery_race_ignores_stale_results_and_errors(
+        self, page: Page, base_url: str
+    ) -> None:
+        """Discovery sequencing ignores an obsolete response or error in either order."""
+        page.add_init_script(
+            """
+            (() => {
+              const nativeFetch = globalThis.fetch.bind(globalThis);
+              globalThis.fetch = (input, init) => {
+                const requestUrl = new URL(
+                  typeof input === 'string' ? input : input.url,
+                  window.location.href,
+                );
+                if (requestUrl.pathname.endsWith('/api/tokenizers/list')) {
+                  return Promise.resolve(new Response('{"tokenizers":[],"count":0}', {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                  }));
+                }
+                if (!requestUrl.pathname.endsWith('/api/tokenizers/discover')) {
+                  return nativeFetch(input, init);
+                }
+                const search = requestUrl.searchParams.get('search') || '';
+                const isError = search === 'old-error' || search === 'new-error';
+                const delay = search === 'old-error' || search === 'old-success' ? 700 : 150;
+                const body = isError
+                  ? { detail: `discovery ${search} failed` }
+                  : { items: [{ identifier: `local/${search}`, pipeline_tag: 'fill-mask', downloads: 1, likes: 1, gated: false, tags: [], vocabulary_size: 3 }], count: 1, fetched_count: 1 };
+                return new Promise((resolve) => {
+                  window.setTimeout(() => resolve(new Response(JSON.stringify(body), {
+                    status: isError ? 500 : 200,
+                    headers: { 'Content-Type': 'application/json' },
+                  })), delay);
+                });
+              };
+            })();
+            """
+        )
+        page.goto(f"{base_url}/tokenizers")
+        page.get_by_role("button", name="Add tokenizer").click()
+        dialog = page.get_by_role("dialog", name="Tokenizer Manager")
+        search = dialog.get_by_label("Search")
+        form = dialog.locator("form.tokenizer-discovery-form")
+
+        search.fill("old-error")
+        form.evaluate("(form) => form.requestSubmit()")
+        page.wait_for_timeout(100)
+        search.fill("new-success")
+        form.evaluate("(form) => form.requestSubmit()")
+        page.wait_for_timeout(400)
+        expect(dialog.get_by_text("local/new-success", exact=True)).to_be_visible()
+        expect(dialog.get_by_role("alert")).to_have_count(0)
+        page.wait_for_timeout(500)
+        expect(dialog.get_by_text("local/new-success", exact=True)).to_be_visible()
+        expect(dialog.get_by_role("alert")).to_have_count(0)
+
+        search.fill("old-success")
+        form.evaluate("(form) => form.requestSubmit()")
+        page.wait_for_timeout(100)
+        search.fill("new-error")
+        form.evaluate("(form) => form.requestSubmit()")
+        page.wait_for_timeout(400)
+        expect(dialog.get_by_role("alert")).to_be_visible()
+        expect(dialog.get_by_text("local/old-success", exact=True)).to_have_count(0)
+        page.wait_for_timeout(500)
+        expect(dialog.get_by_role("alert")).to_be_visible()
+        expect(dialog.get_by_text("local/old-success", exact=True)).to_have_count(0)
 
     # -------------------------------------------------------------------------
     def test_tokenizer_manager_discovery_controls_and_empty_state(
