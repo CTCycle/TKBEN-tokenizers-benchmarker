@@ -79,7 +79,53 @@ def test_repeated_initialization_is_current_and_idempotent(
 
     assert _revision(path) == _head()
     assert path.stat().st_size == first_size
-    assert _head() == "0004_benchmark_report_tags"
+    assert _head() == "0005_managed_job_lifecycle"
+
+###############################################################################
+def test_existing_0004_database_upgrades_with_job_lifecycle_table(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "database.db"
+    settings = _configure_database(monkeypatch, path)
+
+    repository = SQLiteRepository(
+        settings, enforce_foreign_keys=False, begin_immediate=True
+    )
+    try:
+        with repository.engine.connect() as connection:
+            with connection.begin():
+                config = migrations.build_alembic_config()
+                config.attributes["connection"] = connection
+                command.upgrade(config, "0004_benchmark_report_tags")
+            with connection.begin():
+                now = datetime.now(timezone.utc)
+                connection.execute(
+                    text(
+                        "INSERT INTO dataset "
+                        "(name, status, document_count, created_at, updated_at, ready_at) "
+                        "VALUES ('preserved', 'ready', 0, :now, :now, :now)"
+                    ),
+                    {"now": now},
+                )
+    finally:
+        repository.engine.dispose()
+
+    initializer.run_database_initialization()
+
+    engine = create_engine(f"sqlite:///{path}", future=True)
+    try:
+        assert _revision(path) == "0005_managed_job_lifecycle"
+        assert "managed_job" in inspect(engine).get_table_names()
+        with engine.connect() as connection:
+            assert (
+                connection.execute(
+                    text("SELECT count(*) FROM dataset WHERE name='preserved'")
+                ).scalar_one()
+                == 1
+            )
+    finally:
+        engine.dispose()
 
 ###############################################################################
 def test_versioned_pre_cleanup_revision_upgrades_and_preserves_metric_key(

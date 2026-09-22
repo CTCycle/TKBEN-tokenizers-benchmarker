@@ -37,6 +37,7 @@ $EnvFile = Join-Path $RepoRoot 'settings\.env'
 $EnvTemplate = Join-Path $RepoRoot 'settings\.env.example'
 $RuntimeCacheDir = Join-Path $RuntimeDir 'cache'
 $UvCacheDir = Join-Path $RuntimeCacheDir 'uv'
+$UvVersion = '0.12.17'
 $PythonVersion = '3.14.7'
 $NodeVersion = '22.23.1'
 $script:NextProgressId = 1
@@ -100,7 +101,7 @@ function Invoke-TrackedLauncherAction {
     )
     Write-Step "Starting $Name"
     try {
-        $Action.Invoke()
+        & $Action
         Write-Ok "$Name completed"
     }
     catch {
@@ -467,15 +468,26 @@ function Install-Runtimes {
     }
     Write-Ok "Python ready: $detectedPython"
 
-    if (-not (Test-Path -LiteralPath $UvExe)) {
+    $installedUvVersion = $null
+    if (Test-Path -LiteralPath $UvExe) {
+        $installedUvOutput = ([string](& $UvExe --version 2>$null)).Trim()
+        if ($LASTEXITCODE -eq 0 -and $installedUvOutput -match '^uv\s+([^\s]+)') {
+            $installedUvVersion = $Matches[1]
+        }
+    }
+    if ($installedUvVersion -ne $UvVersion) {
         $uvArchive = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') {
             'uv-aarch64-pc-windows-msvc.zip'
         } else {
             'uv-x86_64-pc-windows-msvc.zip'
         }
-        Write-Step 'Downloading uv (portable).'
+        if (Test-Path -LiteralPath $UvDir) {
+            [void](Remove-LauncherPath -Path $UvDir -Activity 'TKBEN: replace uv runtime')
+        }
+        Ensure-Directory $UvDir
+        Write-Step "Downloading uv $UvVersion (portable)."
         Invoke-DownloadAndExtract `
-            -Uri "https://github.com/astral-sh/uv/releases/latest/download/$uvArchive" `
+            -Uri "https://github.com/astral-sh/uv/releases/download/$UvVersion/$uvArchive" `
             -ArchivePath (Join-Path $UvDir 'uv.zip') `
             -Destination $UvDir
         $foundUv = Invoke-FindUv -SearchRoot $UvDir
@@ -484,7 +496,11 @@ function Install-Runtimes {
             Copy-Item -LiteralPath $foundUv -Destination $UvExe -Force
         }
     }
-    Write-Ok (& $UvExe --version)
+    $detectedUvOutput = ([string](& $UvExe --version 2>$null)).Trim()
+    if ($LASTEXITCODE -ne 0 -or $detectedUvOutput -notmatch "^uv\s+$([regex]::Escape($UvVersion))(?:\s|$)") {
+        throw "uv version '$detectedUvOutput' is not the required $UvVersion."
+    }
+    Write-Ok "uv ready: $detectedUvOutput"
 
     $nodeNeedsInstall = -not (Test-Path -LiteralPath $NodeExe)
     if (-not $nodeNeedsInstall) {
@@ -741,12 +757,17 @@ function Test-BackendDependenciesReady {
 
     if (-not (Test-Path -LiteralPath $PythonExe -PathType Leaf) -or
         -not (Test-Path -LiteralPath $VenvPython -PathType Leaf) -or
+        -not (Test-Path -LiteralPath $UvExe -PathType Leaf) -or
         -not (Test-Path -LiteralPath $backendEntrypoint -PathType Leaf) -or
         -not (Test-Path -LiteralPath $stampPath -PathType Leaf)) {
         return $false
     }
 
     try {
+        $uvVersionOutput = ([string](& $UvExe --version 2>$null)).Trim()
+        if ($LASTEXITCODE -ne 0 -or $uvVersionOutput -notmatch "^uv\s+$([regex]::Escape($UvVersion))(?:\s|$)") {
+            return $false
+        }
         $stamp = Get-Content -LiteralPath $stampPath -Raw | ConvertFrom-Json
         return (
             $stamp.stampVersion -eq 1 -and
@@ -962,6 +983,11 @@ function Get-ApplicationProcessIds {
         throw "Could not inspect TKBEN process command lines: $($_.Exception.Message)"
     }
 
+    $processesById = @{}
+    foreach ($process in $processes) {
+        $processesById[[int]$process.ProcessId] = $process
+    }
+
     foreach ($process in $processes) {
         $processId = [int]$process.ProcessId
         if ($processId -eq $PID) { continue }
@@ -973,10 +999,26 @@ function Get-ApplicationProcessIds {
         }
 
         $isBackend = $commandLine -match '(?i)\buvicorn(?:\.exe)?\s+server\.app:app\b'
-        $isFrontend = $commandLine -match '(?i)(?:npm(?:\.cmd|-cli\.js)?\s+run\s+preview|vite(?:\.cmd|\.js)?\s+preview)'
+        $isFrontend = $commandLine -match '(?i)(?:npm(?:\.cmd|-cli\.js)?"?\s+run\s+preview|vite(?:\.cmd|\.js)?"?\s+preview)'
         if ($isBackend -or $isFrontend) { $processIds += $processId }
     }
-    return @($processIds | Sort-Object -Unique)
+
+    $matchedProcessIds = @($processIds | Sort-Object -Unique)
+    $rootProcessIds = @()
+    foreach ($candidateProcessId in $matchedProcessIds) {
+        $candidate = $processesById[[int]$candidateProcessId]
+        $hasMatchedAncestor = $false
+        while ($candidate -and [int]$candidate.ParentProcessId -gt 0) {
+            $parentProcessId = [int]$candidate.ParentProcessId
+            if ($matchedProcessIds -contains $parentProcessId) {
+                $hasMatchedAncestor = $true
+                break
+            }
+            $candidate = $processesById[$parentProcessId]
+        }
+        if (-not $hasMatchedAncestor) { $rootProcessIds += [int]$candidateProcessId }
+    }
+    return @($rootProcessIds | Sort-Object -Unique)
 }
 
 function Stop-ApplicationProcesses {

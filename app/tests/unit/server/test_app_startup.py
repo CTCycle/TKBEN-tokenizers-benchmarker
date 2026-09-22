@@ -94,6 +94,17 @@ def test_create_app_initializes_startup_state(
         "initialize_database",
         lambda **kwargs: calls.append(f"database:{kwargs['startup']}"),
     )
+    repository = object()
+    monkeypatch.setattr(app_module, "JobRepository", lambda: repository)
+
+    class StubJobManager:
+        def __init__(self, terminal_retention_seconds, repository=None) -> None:
+            self.repository = repository
+
+        def restore_persisted_jobs(self) -> None:
+            calls.append("jobs:restored")
+
+    monkeypatch.setattr(app_module, "JobManager", StubJobManager)
 
     application = app_module.create_app()
 
@@ -106,4 +117,7 @@ def test_create_app_initializes_startup_state(
         f"logging:{settings.paths.logs}",
         "validated:True",
         "database:True",
+        "jobs:restored",
     ]
+    assert application.state.job_repository is repository
+    assert application.state.job_manager.repository is repository

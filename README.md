@@ -94,6 +94,7 @@ In the second terminal, prepare and start the web interface:
 ```bash
 cd app/client
 npm ci
+npm run build
 npm run preview -- --host 127.0.0.1 --port 8000 --strictPort
 ```
 

@@ -1,5 +1,5 @@
 # Startup
-Last updated: 2026-09-21
+Last updated: 2026-09-22
 
 ## Local Webapp Mode
 Windows recommended:
@@ -17,9 +17,9 @@ still using the same launcher:
 
 What it does:
 - opens the single combined launch-and-maintenance menu
-- installs pinned portable Python and Node.js on first use, and downloads uv from the current uv release when it is missing
+- installs pinned portable Python 3.14.7, Node.js 22.23.1, and uv 0.12.17 on first use; an existing uv runtime with another version is replaced
 - creates `settings/.env` from the versioned example when missing
-- records the backend dependency fingerprint for `app/server/pyproject.toml` and `app/server/uv.lock` in `app/server/.venv/.tkben-dependencies.json`; the stamp includes the Python version and `Standard` or `Development` profile. A valid Development stamp satisfies the Standard runtime launch requirement. Normal launch validates this stamp without probing imports or running `uv --version`; `uv sync --locked` is used only when backend repair is required.
+- records the backend dependency fingerprint for `app/server/pyproject.toml` and `app/server/uv.lock` in `app/server/.venv/.tkben-dependencies.json`; the stamp includes the Python version and `Standard` or `Development` profile. A valid Development stamp satisfies the Standard runtime launch requirement. Normal launch validates the stamp and pinned Python/uv versions without probing imports; `uv sync --locked` is used only when backend repair is required.
 - synchronizes Python dependencies and reuses the frontend dependency tree on application launch when the backend stamp, frontend package stamp, and portable runtime versions are unchanged; it performs `npm ci` for stale or missing frontend dependencies without implying a production rebuild. The dependency maintenance option prompts for `Development` (including Ruff, BasedPyright, and pytest extras) or `Standard` (runtime dependencies only), then intentionally rebuilds the frontend and synchronizes the database to the latest Alembic head. Use menu option 3 to rebuild only the Angular frontend; it reuses valid frontend dependencies and runs `npm ci` when missing or stale without synchronizing Python dependencies. Application launch rebuilds only when `dist/tkben-angular/browser/index.html` is missing, the build stamp is missing or malformed, its fingerprint is stale, or the portable Node.js version differs. Production fingerprint inputs are `angular/**` excluding `*.spec.ts`, `public/**`, `angular.json`, `package.json`, `package-lock.json`, `tsconfig.json`, and `tsconfig.app.json`; `tsconfig.spec.json`, `proxy.conf.cjs`, `scripts/preview.mjs`, caches, logs, and documentation do not invalidate the production build.
 - validates `FASTAPI_PORT` and `UI_PORT` as distinct ports in the range 1 through 65535 before setup work and repeats the check immediately before starting services. When a configured port is occupied, it shows one row per unique PID with its process name when available and every occupied configured port, then requests one explicit confirmation. Only approved listener PIDs receive a single `Stop-Process -Force`; no process tree is inferred. A declined prompt, redirected `-Launch`, denied termination, or remaining listener aborts without starting services. A newly appearing listener is shown again for a new interactive decision and is never silently terminated. Use menu option 12 or `-KillAll` for the separate explicit TKBEN process-tree cleanup action.
 - keeps all disposable runtime, package-manager, pytest, and development-tool caches under the single canonical root `runtimes/cache`. Menu option 9 removes that root and legacy Python bytecode outside it; locked or admin-only files are reported and skipped so cleanup continues. Downloaded datasets and Hugging Face tokenizer artifacts remain persistent application data under `<TKBEN_DATA_DIR>/sources/...`; menu option 10 is the separate operation that permanently removes the embedded database, downloaded/uploaded sources, logs, and Hugging Face key material after confirmation while preserving application files, templates, and `.gitkeep` sentinels. If `DATABASE_EMBEDDED=false`, the external database is not modified. If the managed uv cache causes a sync failure, the launcher clears that cache on a best-effort basis and retries once. On Windows, maintenance and build commands invoke the portable `npm.cmd` from PowerShell (Windows dispatches `.cmd` through `cmd.exe`), while the preview process is launched through `cmd.exe` so repository paths containing spaces work reliably. Non-interactive Angular builds disable the progress renderer because the portable console renderer can terminate with a native access violation; the same production configuration is used. The launcher verifies the portable Node.js version and replaces an older runtime when required by the frontend dependency engines.
@@ -48,6 +48,12 @@ readiness experience:
    opens. A backend process exit or 60-attempt timeout includes the redirected
    backend log tail, while the browser shows a retryable startup error.
 
+FastAPI startup restores retained job history after the database migration.
+Jobs previously marked `pending` or `running` become `failed` with an explicit
+application-restart error and remain available at their original job IDs.
+The launcher does not resume interrupted dataset analyses, downloads, or
+benchmarks.
+
 Temporary connection failures during backend initialization are expected and
 are kept out of the normal user-facing error state. The browser reports a
 slow-start notice after 15 seconds and a retryable failure after the same
@@ -64,8 +70,13 @@ uv sync
 uv run python -m uvicorn server.app:app --app-dir .. --host 127.0.0.1 --port 5000
 cd ../client
 npm ci
+npm run build
 npm run preview -- --host 127.0.0.1 --port 8000 --strictPort
 ```
+
+The production preview serves `dist/tkben-angular/browser`; a fresh checkout
+must run `npm run build` after installing frontend dependencies and before
+starting the preview server.
 
 ## Maintenance Menu
 Use `.\start_on_windows.ps1` for dependency installation, application updates, update checks, database initialization, tests, log removal, cache cleanup, user-data removal, process cleanup, and uninstall operations.

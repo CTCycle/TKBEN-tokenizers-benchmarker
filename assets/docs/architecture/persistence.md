@@ -1,5 +1,5 @@
 # Persistence
-Last updated: 2026-09-19
+Last updated: 2026-09-22
 
 ## Storage selection
 
@@ -31,13 +31,14 @@ A non-empty database without an Alembic version row is rejected. Historical
 schemas remain represented by the tracked `0001_pre_alembic_schema` and
 `0002_current_schema` revisions; the `0003_canonical_state_cleanup` revision
 purges incompatible reports and converts persisted metric and tokenizer state
-to the current contract, and `0004_benchmark_report_tags` adds the relational
-report tag array without changing the immutable report payload.
+to the current contract, `0004_benchmark_report_tags` adds the relational
+report tag array without changing the immutable report payload, and
+`0005_managed_job_lifecycle` adds durable managed-job lifecycle records.
 
 ## Canonical tables
 
 The schema contains `dataset`, `dataset_document`, `analysis_session`,
-`metric_value`, `histogram_artifact`, `tokenizer`,
+`metric_value`, `histogram_artifact`, `managed_job`, `tokenizer`,
 `tokenizer_vocabulary`, `tokenizer_report`, `benchmark_report`, and
 `hf_access_keys`. The obsolete `dataset_validation_report` table is removed.
 
@@ -53,6 +54,17 @@ erDiagram
     DATASET_DOCUMENT o|--o{ METRIC_VALUE : scopes
     TOKENIZER ||--o{ TOKENIZER_VOCABULARY : contains
     TOKENIZER ||--o| TOKENIZER_REPORT : current_report
+    MANAGED_JOB {
+        string job_id PK
+        string job_type
+        string status
+        float progress
+        json result
+        string error
+        string failure_reason
+        datetime created_at
+        datetime completed_at
+    }
 ```
 
 `HF_ACCESS_KEYS` is intentionally standalone: it stores encrypted provider
@@ -103,13 +115,24 @@ Persistence ownership follows the repository/service split:
   represented by `DatasetRepository`.
 - `repositories/tokenizer_reports.py` owns tokenizer report and vocabulary
   persistence and is represented by `TokenizerReportRepository`.
+- `repositories/jobs.py` owns durable job lifecycle records and is represented
+  by `JobRepository`; `JobManager` coordinates runner state and writes through
+  that repository.
 - `services/benchmark_reports.py` owns benchmark report persistence
   orchestration through `BenchmarkReportService`.
 - The report service uses the benchmark repository/database boundary for
   transactions and summary/payload queries.
 
 Repositories and services use the current schema and response contracts without
-compatibility aliases or implicit row creation.
+compatibility aliases or implicit row creation. Managed jobs are independent
+of feature-table rows; their result payload is retained with the job record.
+
+At application startup, `JobManager` restores retained job rows after Alembic
+initialization. Pending or running rows are terminalized as `failed` with an
+application-restart error and an internal `failure_reason`; the public job API
+keeps its existing response shape. Completed, failed, and cancelled results
+remain queryable until terminal-job retention prunes them. No runner is
+automatically restarted.
 
 ## Backend and transaction guarantees
 
@@ -129,7 +152,10 @@ histogram array compatibility.
 
 The SQLite persistence contract covers schema creation, foreign keys, lifecycle
 visibility, composite ownership, partial uniqueness, value-shape constraints,
-cascades, rollback, active-key uniqueness, and keyset document streaming.
+cascades, rollback, active-key uniqueness, keyset document streaming, and
+upgrade from `0004_benchmark_report_tags` with managed-job persistence. Restart
+reconciliation and result/error retention are covered by the managed-job
+service and API tests.
 PostgreSQL integration validation must be run against a disposable database
 before claiming PostgreSQL runtime equivalence.
 
@@ -155,10 +181,11 @@ Use the application initializer (launcher option 4 or
 unversioned database is intentionally a hard failure and must be restored from a
 versioned backup or recreated.
 
-The current repository head is `0004_benchmark_report_tags`. Ready
-dataset rows, tokenizer rows, reports, and canonical tokenizer artifacts are
-stored under the configured resource root and are retained across application
-restarts unless explicitly deleted. The dataset files and tokenizer artifacts
-are persistent application data under `<TKBEN_DATA_DIR>/sources/datasets` and
+The current repository head is `0005_managed_job_lifecycle`. Managed-job rows,
+ready dataset rows, tokenizer rows, reports, and canonical tokenizer artifacts
+are stored under the configured resource root and are retained across
+application restarts unless explicitly deleted. Dataset files and tokenizer
+artifacts are persistent application data under
+`<TKBEN_DATA_DIR>/sources/datasets` and
 `<TKBEN_DATA_DIR>/sources/tokenizers`; they are not part of the disposable
 `runtimes/cache` hierarchy and are not removed by cache cleanup.
