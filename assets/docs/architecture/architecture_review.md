@@ -1,5 +1,5 @@
 # Architecture Review
-Last updated: 2026-09-16
+Last updated: 2026-09-22
 
 ## Current State
 
@@ -196,12 +196,17 @@ Completed implementation work:
 11. Moved application defaults into typed Pydantic runtime models, added the
     sparse runtime override store and `/api/settings` contracts, and added the
     Angular Settings page without exposing startup or secret configuration.
+12. Added `JobRepository` and Alembic revision
+    `0005_managed_job_lifecycle`; startup now restores job history and marks
+    previously pending/running work as failed with an application-restart
+    reason instead of losing its ID or attempting unsafe resumption.
 
 ## Architecture Risks
 
-- The managed job registry remains in-process, so process restart loses active
-  job state; this is acceptable for the local-app scope but is a deployment
-  constraint.
+- Managed workers still run in-process and cannot be resumed after restart.
+  Persisted lifecycle rows keep the original job ID queryable and reconcile
+  unfinished work to a terminal failure; operation-specific partial side
+  effects still require their own recovery handling.
 - Synchronous SQLAlchemy repositories require continued worker-thread use from
   async endpoints; the architecture test cannot prove runtime scheduling.
 - Hugging Face availability, configured credentials, and PostgreSQL concurrency

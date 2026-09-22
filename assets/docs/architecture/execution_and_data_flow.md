@@ -1,5 +1,5 @@
 # Execution and Data Flow
-Last updated: 2026-09-21
+Last updated: 2026-09-22
 
 ## Layered Architecture
 
@@ -207,10 +207,20 @@ sequenceDiagram
 ## Managed Jobs
 
 Long-running download, analysis, benchmark, and export operations run through
-`JobManager`. Endpoints return after job creation; polling reads in-memory
-status, and cancellation sets a cooperative cancellation event consumed by the
+`JobManager`. `JobRepository` persists each job's type, status, progress,
+result/error, timestamps, and internal failure reason in `managed_job`.
+Endpoints return after job creation; polling reads the manager's synchronized
+state, and cancellation sets a cooperative cancellation event consumed by the
 runner. Initialization failures and conflicts are translated by the managed
 job HTTP adapter rather than leaking worker exceptions.
+
+After database migration, application startup loads retained job records and
+prunes expired terminal records. A job left `pending` or `running` is changed
+to `failed` with an explicit application-restart error and an internal
+`application_restart` reason. The API continues to return that job under its
+original ID, and cancellation rejects the reconciled terminal state. Workers
+are not resumed: current runners do not have generic checkpoints or safe
+idempotency guarantees.
 
 ```mermaid
 sequenceDiagram
@@ -218,11 +228,18 @@ sequenceDiagram
     participant API as Job endpoint
     participant JM as JobManager
     participant Worker as Background worker
+    participant Repo as JobRepository
+    participant DB as managed_job table
 
     UI->>API: start operation
     API->>JM: start(kind, callable)
+    JM->>Repo: persist pending state
+    Repo->>DB: commit lifecycle row
     JM->>Worker: run callable
     API-->>UI: job_id and initial status
+    Worker->>JM: progress or terminal result
+    JM->>Repo: persist state and result/error
+    Repo->>DB: commit lifecycle update
     loop until terminal state
         UI->>API: GET /jobs/{job_id}
         API->>JM: read status
@@ -232,6 +249,7 @@ sequenceDiagram
     UI->>API: POST /jobs/{job_id}/cancel
     API->>JM: request cooperative cancellation
     Worker-->>JM: cancelled or completed
+    Note over JM,DB: Startup restores rows and reconciles in-flight jobs as failed.
 ```
 
 ## Benchmark Persistence Flow

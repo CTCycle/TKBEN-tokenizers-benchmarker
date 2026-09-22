@@ -358,3 +358,32 @@ class HFAccessKey(Base):
         ),
         Index("ix_hf_access_keys_active_id", "is_active", "id"),
     )
+
+###############################################################################
+class ManagedJob(Base):
+    __tablename__ = "managed_job"
+    job_id: Mapped[str] = mapped_column(String(8), primary_key=True)
+    job_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    progress: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSONObject())
+    error: Mapped[str | None] = mapped_column(Text)
+    failure_reason: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'running', 'completed', 'failed', 'cancelled')",
+            name="ck_managed_job_status",
+        ),
+        CheckConstraint(
+            "progress >= 0 AND progress <= 100", name="ck_managed_job_progress"
+        ),
+        CheckConstraint(
+            "(status IN ('pending', 'running') AND completed_at IS NULL) OR "
+            "(status IN ('completed', 'failed', 'cancelled') AND completed_at IS NOT NULL)",
+            name="ck_managed_job_completion_timestamp",
+        ),
+        Index("ix_managed_job_status_created_at", "status", "created_at"),
+        Index("ix_managed_job_completed_at", "completed_at"),
+    )

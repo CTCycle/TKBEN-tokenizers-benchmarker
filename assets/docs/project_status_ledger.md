@@ -1,5 +1,5 @@
 # Project Status Ledger
-Last updated: 2026-09-21
+Last updated: 2026-09-22
 
 This document is the canonical catalog of the current operational state of
 TKBEN. It summarizes what is implemented, what has been observed working,
@@ -15,6 +15,11 @@ after restoring the repository-managed Python and frontend dependencies.
 V-20260921 adds launcher/configuration evidence on local develop revision
 4a0e77f with the scoped working-tree changes described below. Statuses describe
 this checkout and must be refreshed after behavioral changes.
+
+V-20260922 adds gate-closure evidence from the develop checkout at base HEAD
+`4b608b7d44a22767e665669cfc420409ffd2f006`. The job persistence and launcher
+changes in this validation cycle are uncommitted working-tree changes; the
+record links to their detailed disposable-environment evidence.
 
 ## Maintenance Rules
 
@@ -59,12 +64,16 @@ means that a field does not apply.
   dataset analysis, custom-tokenizer upload/deletion, benchmark report
   round-trip, frontend quality gates, and the exercised UI routes are
   VALIDATED in the current bootstrap evidence.
-- No reproducible application defect was observed in this bootstrap, so there
-  is no active BROKEN component. This does not make unvalidated areas
-  implicitly safe.
+- Durable job visibility and restart reconciliation are VALIDATED at unit and
+  Linux E2E levels. The Windows portable bootstrap is VALIDATED on the exercised
+  Windows host; the broader launcher remains PARTIAL because denied process
+  termination was not safely forced.
+- Two Windows launcher defects were reproduced and corrected during validation:
+  script-block invocation mishandled ordinary stderr, and Kill All missed a
+  quoted npm preview process while also matching nested process roots.
 - Hugging Face live discovery/report flows and PostgreSQL runtime equivalence
   are BLOCKED by conditional external-provider/database gates.
-- Windows launcher maintenance branches, runtime-settings persistence,
+- Windows launcher permission-denied cleanup, runtime-settings persistence,
   populated report dashboards, tokenizer reports, PDF export, hosted CI, and
   the documented responsive visual matrix remain validation debt.
 - Containerized deployment and binary packaging are explicitly
@@ -78,17 +87,17 @@ means that a field does not apply.
 | Component | Status | Scope | Evidence | Known Issues | Blocker | Last Validated | Validation Level | Related Docs | Next Action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | architecture.canonical-ownership | VALIDATED | API, contracts, configuration, services, repositories, and frontend state ownership boundaries. | V-20260920: 323 backend unit tests passed, including the architecture-boundary contract; current architecture docs describe the same ownership graph. | Remaining canonicalization follow-ups are tracked as ISSUE-003; no current regression observed. | — | 2026-09-20 | unit | [architecture review](architecture/architecture_review.md), [canonical-source remediation](architecture/canonical_source_remediation.md), [boundary test](../../app/tests/unit/server/test_architecture_boundaries.py) | Revalidate the boundary test after ownership or schema changes. |
-| runtime.startup.local-webapp | VALIDATED | FastAPI readiness, Angular production preview, local API proxy, and empty-state route loading. | V-20260920: backend health returned 200, frontend returned 200, and the browser rendered Dataset, Tokenizers, Cross Benchmark, and Settings routes with no console errors. V-20260921: the canonical launcher opened the frontend before backend readiness and the normal shell transitioned cleanly after health recovered. | This validates the local startup path; it does not validate every launcher menu branch. | — | 2026-09-21 | E2E + manual | [startup](runtime/startup.md), [runtime modes](runtime/modes.md), [system overview](architecture/system_overview.md), [startup test](../../app/tests/unit/server/test_app_startup.py) | Revalidate after launcher or readiness changes. |
-| runtime.windows-launcher | WORKING | start_on_windows.ps1 dependency bootstrap, explicit port-conflict handling, stamped dependency/build reuse, readiness checks, maintenance menu, and process cleanup. | V-20260921 launcher follow-up: full repair path used locked backend sync and rebuilt the frontend; five warm redirected `-Launch` runs exited 0 and reused valid state; backend-only stamp repair did not rebuild Angular; redirected conflicts aborted without termination; interactive decline preserved the listener; interactive approval terminated only the approved PID; and one PID owning both ports was grouped once with both ports. The existing frontend-first readiness contract remains covered. | Maintenance and non-launch menu branches remain outside this validation pass; permission-denied termination and the port-reacquisition race were not forced. | Windows process-inspection permission for broader cleanup validation | 2026-09-21 | unit + integration + manual | [startup](runtime/startup.md), [deployment](runtime/deployment.md), [release procedure](runtime/release.md), [launcher QA record](../../assets/QA/tkben-launcher-startup-20260921.md), [Python 3.14.7 validation](../../assets/QA/python-3.14.7-upgrade-20260921.md), [Tier 1 QA record](../../assets/QA/tkben-tier1-20260921.md) | Validate the maintenance menu, redirected diagnostics, denied termination, and reacquisition race separately; rerun `-KillAll` with permitted process inspection. |
+| runtime.startup.local-webapp | VALIDATED | FastAPI readiness, Angular production preview, local API proxy, restart, and major-route loading. | V-20260922: Windows clean bootstrap returned backend health 200 and the browser rendered Dataset; Linux manual startup returned health 200, proxied `/api/datasets/list`, rendered Dataset/Tokenizers/Cross Benchmark/Settings, and recovered after backend restart. | This validates the exercised startup routes; populated report dashboards and responsive layouts remain separate. | — | 2026-09-22 | E2E + manual | [startup](runtime/startup.md), [runtime modes](runtime/modes.md), [system overview](architecture/system_overview.md), [gate-closure QA record](../../assets/QA/tkben-partial-gates-20260922.md) | Revalidate after launcher or readiness changes. |
+| runtime.windows-launcher | PARTIAL | `start_on_windows.ps1` dependency bootstrap, pinned runtimes, port-conflict handling, stamped dependency/build reuse, readiness, maintenance menu, and process cleanup. | V-20260922: clean bootstrap and warm reuse passed; all 13 menu routes were exercised, including both install profiles, expected `Update` refusal on `develop`, destructive decline/approval, and Kill All. Malformed/missing stamps, stale frontend build, backend-only stale state, invalid port, redirected conflict, quoted preview cleanup, and a port reacquisition between checks were exercised. | The permission-denied process-termination branch was not safely forced on this managed host; no system or foreign process was targeted. | — | 2026-09-22 | unit + integration + manual | [startup](runtime/startup.md), [deployment](runtime/deployment.md), [launcher QA record](../../assets/QA/tkben-partial-gates-20260922.md), [contract tests](../../app/tests/unit/server/test_windows_launcher_contract.py) | Validate denied termination in a disposable privilege-isolated Windows harness before promoting the full launcher scope. |
 | configuration.runtime-settings | WORKING | Typed runtime defaults, sparse persisted overrides, revision checks, reset behavior, and Settings API/page. | V-20260921: 55 focused backend tests passed; the Chrome Settings E2E passed 1/1; the in-app browser rendered all five sections, rejected and recovered from tokenizer cross-field input, and a runtime override survived an official launcher restart before reset-all removed the file. | Full all-16 boundary sweep and complete rendered lifecycle evidence remain broader than this slice. | — | 2026-09-21 | unit + E2E + manual | [configuration](runtime/configuration.md), [backend API](architecture/backend_api.md), [Settings E2E](../../app/tests/e2e/test_settings_ui.py), [Tier 1 QA record](../../assets/QA/tkben-tier1-20260921.md) | Complete the explicit all-16 boundary sweep and keep the component at WORKING until the full lifecycle scope is promoted. |
-| runtime.managed-job-lifecycle | VALIDATED | Start, poll, complete, fail, and cooperatively cancel in-process jobs. | 323 unit tests passed; the current benchmark E2E completed and persisted a report through the managed job path. | Active jobs are held in process memory and are lost on process restart; see ISSUE-001. | — | 2026-09-20 | unit + E2E | [execution and data flow](architecture/execution_and_data_flow.md), [benchmark contract](architecture/benchmark_contract.md), [job tests](../../app/tests/unit/server/services/test_jobs_manager.py) | Keep restart-loss behavior explicit if deployment scope expands. |
+| runtime.managed-job-lifecycle | VALIDATED | Start, poll, complete, fail, cancel, persist, and reconcile managed jobs across application restart. | V-20260922: 212 backend unit tests passed. Linux restart E2E kept completed upload job `c079b263` addressable, retained its 25,000-document dataset, and reconciled active analysis job `3fa194eb` to `failed` with an explicit restart-interruption error. | Job runners are not checkpointed or resumed; pending/running jobs fail deterministically on restart by design. | — | 2026-09-22 | unit + E2E | [execution and data flow](architecture/execution_and_data_flow.md), [persistence](architecture/persistence.md), [job tests](../../app/tests/unit/server/services/test_jobs_manager.py), [gate-closure QA record](../../assets/QA/tkben-partial-gates-20260922.md) | Keep non-resumption explicit unless runner checkpointing and idempotency are designed. |
 
 ### Backend, persistence, and data workflows
 
 | Component | Status | Scope | Evidence | Known Issues | Blocker | Last Validated | Validation Level | Related Docs | Next Action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| backend.api-contracts | VALIDATED | /api/* routing, request/response contracts, health, settings, datasets, tokenizers, benchmarks, jobs, keys, and exports. | V-20260920: OpenAPI smoke passed; 323 unit tests and 9 focused live API checks passed. | Provider-dependent paths are separately bounded below. | — | 2026-09-20 | unit + integration + E2E | [backend API](architecture/backend_api.md), [OpenAPI test](../../app/tests/unit/server/test_openapi_schema.py) | Re-run focused API checks when a contract or route changes. |
-| persistence.sqlite-alembic | VALIDATED | Embedded SQLite initialization, migration locking, current schema, report/tag persistence, rollback, and lifecycle visibility. | V-20260920: database initialization reached Alembic head 0004_benchmark_report_tags; 323 unit tests passed, including migration and persistence contracts. | The application intentionally rejects incompatible or unversioned non-empty databases rather than adapting them silently. | — | 2026-09-20 | integration + unit | [persistence](architecture/persistence.md), [database initialization](../../app/tests/unit/server/repositories/test_database_initialization.py), [migration tests](../../app/tests/unit/server/repositories/test_database_migrations.py), [persistence tests](../../app/tests/unit/server/repositories/test_persistence_contract.py) | Re-run migration and persistence contracts for schema changes. |
+| backend.api-contracts | VALIDATED | /api/* routing, request/response contracts, health, settings, datasets, tokenizers, benchmarks, jobs, keys, and exports. | V-20260922: 212 backend unit tests passed; after a real restart, `GET /api/jobs/3fa194eb` returned the same job as failed instead of 404, and terminal cancellation conflict behavior is covered by route tests. | Provider-dependent paths are separately bounded below. | — | 2026-09-22 | unit + integration + E2E | [backend API](architecture/backend_api.md), [OpenAPI test](../../app/tests/unit/server/test_openapi_schema.py), [gate-closure QA record](../../assets/QA/tkben-partial-gates-20260922.md) | Re-run focused API checks when a contract or route changes. |
+| persistence.sqlite-alembic | VALIDATED | Embedded SQLite initialization, migration locking, current schema, report/tag persistence, rollback, and managed-job lifecycle rows. | V-20260922: migration tests cover SQLite upgrade from 0004 to 0005; Windows clean bootstrap and Linux startup reached Alembic head `0005_managed_job_lifecycle`; the restart E2E preserved the active/completed job rows and test dataset. | The application intentionally rejects incompatible or unversioned non-empty databases rather than adapting them silently. | — | 2026-09-22 | integration + unit + E2E | [persistence](architecture/persistence.md), [database initialization](../../app/tests/unit/server/repositories/test_database_initialization.py), [migration tests](../../app/tests/unit/server/repositories/test_database_migrations.py), [persistence tests](../../app/tests/unit/server/repositories/test_persistence_contract.py), [gate-closure QA record](../../assets/QA/tkben-partial-gates-20260922.md) | Re-run migration and persistence contracts for schema changes. |
 | persistence.postgresql-runtime | BLOCKED | External PostgreSQL initialization, migration locking, concurrency, and runtime equivalence with SQLite. | Unit coverage exercises initializer branches, but no disposable PostgreSQL target was available in V-20260920. | SQLite success must not be promoted to PostgreSQL equivalence. | Requires a disposable PostgreSQL target and configured connection/credentials. | — | None | [persistence](architecture/persistence.md), [configuration](runtime/configuration.md) | Provision a disposable target and run the documented PostgreSQL integration validation. |
 | data.dataset-import-and-analysis | VALIDATED | CSV upload, ready-state persistence, list visibility, missing-dataset handling, asynchronous analysis, histograms, and statistics. | V-20260920: all dataset API E2E cases passed, including upload and analysis of a small CSV; generated records were removed and list state returned to empty. | Large files and remote dataset downloads remain dependent on local disk/network conditions. | — | 2026-09-20 | E2E + unit | [backend API](architecture/backend_api.md), [persistence](architecture/persistence.md), [dataset E2E](../../app/tests/e2e/test_datasets_api.py) | Revalidate download and large-streaming paths when those surfaces change. |
 | data.custom-tokenizer-storage | VALIDATED | Custom tokenizer JSON compatibility, canonical artifact storage, catalog visibility, and deletion. | V-20260920: valid upload/deletion and invalid-input API E2E cases passed; generated tokenizer artifacts were removed afterward. | Report generation for a persisted tokenizer was not included in the current run. | — | 2026-09-20 | E2E + unit | [system overview](architecture/system_overview.md), [benchmark contract](architecture/benchmark_contract.md), [tokenizer E2E](../../app/tests/e2e/test_tokenizers_api.py) | Add the custom-tokenizer report/vocabulary path to the next live validation. |
@@ -112,11 +121,11 @@ means that a field does not apply.
 | Component | Status | Scope | Evidence | Known Issues | Blocker | Last Validated | Validation Level | Related Docs | Next Action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | deployment.source-only-local | VALIDATED | Supported source-folder distribution, current version alignment, and local production frontend artifact. | Current checkout is tag v4.4.0; backend package is 3.4.0, frontend package is 2.4.0, and production build passed. | GitHub-hosted release publication was not rechecked in this bootstrap. | — | 2026-09-20 | manual + integration | [release procedure](runtime/release.md), [deployment](runtime/deployment.md), [system overview](architecture/system_overview.md) | Recheck remote tag/release and hosted CI before the next publication. |
-| deployment.windows-portable-bootstrap | WORKING | Automatic Windows Python/Node bootstrap, stamped dependency repair, deterministic build reuse, and local launch path. | V-20260921: canonical `-Launch` completed the full locked repair path, recreated both dependency/build stamps, reused a valid frontend during backend-only repair, and passed five warm startup runs. | Clean-machine Python first install, Node download/replace, and the full maintenance menu remain unvalidated. | — | 2026-09-21 | integration + manual | [runtime modes](runtime/modes.md), [startup](runtime/startup.md), [deployment](runtime/deployment.md), [launcher QA record](../../assets/QA/tkben-launcher-startup-20260921.md), [Python 3.14.7 validation](../../assets/QA/python-3.14.7-upgrade-20260921.md) | Exercise clean-machine/removed-runtime and maintenance-menu paths separately. |
-| deployment.cross-platform-manual | PARTIAL | Manual macOS/Linux startup versus Windows-only automatic bootstrap. | Manual commands are documented and the local app architecture is not inherently Windows-only. | Automatic runtime bootstrap and a full non-Windows validation path are absent. | — | — | None | [runtime modes](runtime/modes.md), [deployment](runtime/deployment.md) | Treat non-Windows support as manual-only until tested and supported explicitly. |
+| deployment.windows-portable-bootstrap | VALIDATED | Automatic Windows Python/Node/uv bootstrap, stamped dependency repair, deterministic build reuse, and local launch path. | V-20260922: clean Windows 11 bootstrap from absent managed runtimes, `.venv`, `node_modules`, build output, stamps, database, and `.env` downloaded Python 3.14.7, Node 22.23.1, and uv 0.12.17; created the environment file, synced locked dependencies, migrated to 0005, built Angular, wrote stamps, and started both services. Warm launch reused all three stamps; stale uv 0.12.16 was replaced by the pin. | Evidence is host-specific; it does not establish every Windows edition or hardware architecture. | — | 2026-09-22 | integration + manual | [runtime modes](runtime/modes.md), [startup](runtime/startup.md), [deployment](runtime/deployment.md), [gate-closure QA record](../../assets/QA/tkben-partial-gates-20260922.md) | Repeat on supported Windows architectures when the portable runtime pins change. |
+| deployment.cross-platform-manual | PARTIAL | Manual Linux/macOS startup versus Windows-only automatic bootstrap. | V-20260922: clean manual startup, API proxy, four browser routes, service restart, persistent job reconciliation, and clean shutdown passed in a disposable Ubuntu 26.04 container. | macOS and hosted `ubuntu-latest` were not exercised. The container used Python 3.14.4 while CI pins 3.14.7; Linux success does not claim macOS or hosted-CI validation. | — | 2026-09-22 | E2E + manual | [runtime modes](runtime/modes.md), [deployment](runtime/deployment.md), [gate-closure QA record](../../assets/QA/tkben-partial-gates-20260922.md) | Validate the exact hosted runner and macOS separately before expanding the scope. |
 | deployment.containerized | NOT_IMPLEMENTED | Docker or other active container runtime configuration. | [Runtime modes](runtime/modes.md) explicitly records containerized mode as not implemented; no active root container configuration exists. | This is an absent capability, not a current local-app failure. | — | — | None | [runtime modes](runtime/modes.md), [deployment](runtime/deployment.md) | Add a separately scoped deployment design before implementation. |
 | deployment.binary-packaging | NOT_IMPLEMENTED | Installer, executable, Tauri, portable binary, or package artifact. | [Release procedure](runtime/release.md) states that releases are source-only and contain no binary packaging workflow. | Source-only distribution is the intended current release model. | — | — | None | [release procedure](runtime/release.md) | Do not add packaging work to a source-only release. |
-| test-infrastructure.local-quality-gates | VALIDATED | Backend compile, Ruff, BasedPyright, SQLite initialization, unit tests, OpenAPI smoke, frontend lint, unit tests, and production build. | V-20260921: compileall and Ruff passed; BasedPyright passed with 0 errors and 1,914 warnings; the run-tests wrapper passed Ruff, BasedPyright, and 335 unit tests; focused launcher/settings/architecture tests passed; frontend lint, 14-file/60-test unit suite, and production build passed; five database-initializer runs succeeded. | Hosted CI, full live browser E2E, and provider/database gates are separate. | — | 2026-09-21 | unit + integration | [testing and quality](coding/testing_and_quality.md), [CI workflow](../../.github/workflows/ci.yml), [test runner](../../app/tests/run_tests.bat), [launcher QA record](../../assets/QA/tkben-launcher-startup-20260921.md) | Keep hosted and live-provider gates explicit in future reports. |
+| test-infrastructure.local-quality-gates | VALIDATED | Backend compile, Ruff, BasedPyright, SQLite initialization, unit tests, OpenAPI smoke, frontend lint, unit tests, and production build. | V-20260922: 212 server unit tests passed; Ruff passed; BasedPyright passed with 0 errors and 1,953 existing warnings; frontend lint and 14-file/60-test unit suite passed; launcher contract tests passed 17/17 and the production build passed in clean bootstrap and stale-build repair. Windows menu test-suite run passed 378 tests with 4 skips before the final launcher contract additions. | Hosted CI, full live browser E2E, and provider/database gates are separate. | — | 2026-09-22 | unit + integration | [testing and quality](coding/testing_and_quality.md), [CI workflow](../../.github/workflows/ci.yml), [test runner](../../app/tests/run_tests.bat), [gate-closure QA record](../../assets/QA/tkben-partial-gates-20260922.md) | Keep hosted and live-provider gates explicit in future reports. |
 | test-infrastructure.hosted-ci-and-release-evidence | UNVALIDATED | Current hosted CI result and committed detailed QA/release evidence. | The repository workflow is present, but no current hosted run or tracked assets/QA record was available in this checkout. | Local gates must not be presented as hosted-CI or publication proof. | Requires hosted CI access and a non-sensitive QA record. | — | None | [CI workflow](../../.github/workflows/ci.yml), [release procedure](runtime/release.md) | Record hosted result and link the detailed QA artifact before release publication. |
 | api.tokenizers.settings-compatibility | DEPRECATED | Legacy GET /api/tokenizers/settings compatibility response. | The API contract and OpenAPI test retain the endpoint as deprecated; new clients use /api/settings. | Compatibility surface should not become a second settings source. | — | 2026-09-20 | unit | [backend API](architecture/backend_api.md), [configuration](runtime/configuration.md) | Remove only after supported clients no longer depend on it and the removal is validated. |
 
@@ -128,7 +137,6 @@ evidence; none is being mislabeled as a BROKEN component.
 
 | ID | Affected component | Severity | Concise description | Current impact | Reproduction or evidence | Suspected cause | Blocker | Remediation status | Required revalidation | Related documentation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| ISSUE-001 | runtime.managed-job-lifecycle | MEDIUM | Active jobs are stored in an in-process registry and are not recoverable after a process restart. | A restart can lose the status and result of an active operation. | Start a long-running job, restart the backend, and observe that the prior in-memory job state is unavailable; this is also recorded as an architecture risk. | In-process job registry by design. | None for the local-app scope. | Accepted local-scope limitation; open for any broader deployment scope. | If deployment scope expands, add durable job state and restart/recovery E2E coverage. | [architecture review](architecture/architecture_review.md#architecture-risks), [execution and data flow](architecture/execution_and_data_flow.md#managed-jobs) |
 | ISSUE-002 | deployment.network-auth-boundary | HIGH | Network-hosted deployments require an external authentication boundary before exposing key-management or destructive routes. | A network deployment without that boundary would expose sensitive operational actions beyond the local-app threat model. | The supported deployment documentation states the external-auth requirement; the repository does not provide that boundary. | Deployment scope is intentionally local/source-only. | An external authentication layer is not part of this repository. | Open pre-deployment requirement; not a local-webapp defect. | Before any network-hosted deployment, document and validate authentication, authorization, key protection, and destructive-route controls. | [deployment](runtime/deployment.md#constraints), [configuration](runtime/configuration.md#security-controls) |
 | ISSUE-003 | architecture.canonical-ownership | MEDIUM | Several canonicalization follow-ups remain: environment-derived paths, duplicate metric representations, export dictionaries, handwritten frontend contracts, duplicated catalog metadata, and toolchain version declarations. | Future changes can drift across duplicated sources even though current ownership boundaries are explicit. | The remaining-work list is recorded in the canonical-source remediation document. | Historical duplication outside the first cleanup scope. | Broader contract/migration work is required; no current defect was reproduced. | Open planned architecture work. | Revalidate affected contracts, migration behavior, and UI/API parity after each follow-up. | [canonical-source remediation](architecture/canonical_source_remediation.md#remaining-canonicalization-work) |
 
@@ -142,7 +150,7 @@ It does not assert that the component is broken.
 
 | Component | Current confidence | Missing validation | Priority |
 | --- | --- | --- | --- |
-| runtime.windows-launcher | WORKING | Exercise the maintenance menu and `-KillAll` with permitted process inspection, then force denied-termination and port-reacquisition races; the official `-Launch` repair, warm reuse, stale-build, backend-only repair, and port-conflict paths are recorded in V-20260921. | HIGH |
+| runtime.windows-launcher | PARTIAL | Force denied-termination behavior in a disposable privilege-isolated Windows harness; clean bootstrap, every menu route, stamp repair, redirect conflicts, invalid ports, and port reacquisition passed in V-20260922. | HIGH |
 | configuration.runtime-settings | WORKING | Run the Settings browser round-trip, inline invalid-value checks, optimistic-concurrency conflict, reset, and new-operation effect; restore the original snapshot. | HIGH |
 | ui.cross-benchmark-workflow | PARTIAL | Exercise a populated report manager, dashboard customization, baseline persistence, clone eligibility, inline tags, data tables, and responsive layouts. | HIGH |
 | ui.tokenizer-report-and-vocabulary | UNVALIDATED | Generate a report from an approved local/provider tokenizer and validate report rendering plus offset/limit paging. | HIGH |
@@ -154,7 +162,7 @@ It does not assert that the component is broken.
 
 ## Validation Campaign Roadmap
 
-Last updated: 2026-09-21
+Last updated: 2026-09-22
 
 The comprehensive validation roadmap supplied for this repository is normalized
 here into stable slice IDs. This campaign layer does not replace the component
@@ -174,8 +182,8 @@ evidence.
 | Slice | Feature exists | Exercised | Slice status | Current evidence or next action |
 | --- | --- | --- | --- | --- |
 | T0-01 | yes | yes | PASS | Revision and local quality baseline accepted conditionally at `c48eefa`; refresh only when dependencies or gates change. |
-| T0-02 | yes | yes | PARTIAL | Official `-Launch` passed; stale-build, port-collision, redirected-failure, and clean-bootstrap branches remain. |
-| T0-03 | yes | no | PARTIAL | Maintenance menu branches remain to be exercised in an isolated data root. |
+| T0-02 | yes | yes | PARTIAL | Clean bootstrap, warm reuse, missing/malformed stamps, stale build, backend-only repair, invalid ports, redirected conflict, and a real port reacquisition race passed. Permission-denied termination was not safely forced. |
+| T0-03 | yes | yes | PASS | All 13 maintenance-menu routes were exercised in a disposable Windows checkout, including Standard/Development installs, expected update refusal on `develop`, destructive declines/approvals, cleanup, uninstall, and Kill All. |
 | T1-01 | yes | yes | PASS | Startup E2E passed 2/2 and the rendered shell reloaded after the persistence restart. |
 | T1-02 | yes | yes | PARTIAL | Chrome Settings E2E passed 1/1; cross-field validation, runtime file persistence across restart, reset, and new-operation effects passed; full all-16 boundary sweep remains. |
 | T1-03 | yes | yes | PARTIAL | Synthetic live key lifecycle passed; complete rendered UI lifecycle and direct database ciphertext inspection remain. |
@@ -197,11 +205,11 @@ evidence.
 | T4-02 | yes | no | UNTESTED | Requires public dataset network and disk validation. |
 | T4-03 | yes | no | BLOCKED | Requires an explicitly approved gated/private Hugging Face credential. |
 | T4-04 | yes | no | BLOCKED | Requires a disposable PostgreSQL target and credentials. |
-| T5-01 | yes | no | PARTIAL | Known in-process job-loss limitation remains ISSUE-001; restart-during-work evidence is not a pass claim. |
+| T5-01 | yes | yes | PASS | Real Linux restart E2E kept the same active-job ID addressable as terminal `failed` with an interruption reason; a completed upload job and its 25,000-document dataset remained persisted. |
 | T5-02 | yes | no | UNTESTED | Run populated and empty Dataset/Settings responsive and keyboard matrix at documented viewports. |
 | T5-03 | yes | no | UNTESTED | Run populated Tokenizers/Cross Benchmark responsive and keyboard matrix at documented viewports. |
 | T5-04 | yes | no | UNTESTED | Run controlled streaming, memory, cancellation, and responsiveness campaign. |
-| T5-05 | yes | no | PARTIAL | Manual non-Windows startup is documented but not live-validated here. |
+| T5-05 | yes | yes | PARTIAL | Linux manual startup, proxy, major routes, restart, reconciliation, and shutdown passed in Ubuntu 26.04; macOS and hosted `ubuntu-latest` remain untested. |
 | T5-06 | yes | no | UNTESTED | Correlate hosted CI and release evidence to the exact validated SHA. |
 
 ### Tier 1 execution record
@@ -242,6 +250,7 @@ regression is reproduced.
 
 | Finding | Current state | Provenance |
 | --- | --- | --- |
+| ISSUE-001: active jobs disappeared on restart | Resolved for job visibility and lifecycle state; migration 0005 persists job metadata, and startup reconciles prior `pending`/`running` jobs to `failed` with a restart-interruption reason. Linux restart E2E proved the original job ID remains addressable and the completed upload/data remain persisted. Job resumption remains intentionally unsupported. | [gate-closure QA record](../../assets/QA/tkben-partial-gates-20260922.md), [architecture review](architecture/architecture_review.md#architecture-risks), [persistence](architecture/persistence.md) |
 | Architecture P1: ambiguous backend ownership | Resolved; contracts, configuration, observations, repositories, and report orchestration now have explicit homes. | [architecture review findings](architecture/architecture_review.md#findings) |
 | Architecture P2: benchmark admission mixed route and execution concerns | Resolved; BenchmarkService.prepare_run() is the admission boundary and execution keeps a defensive dataset check. | [architecture review findings](architecture/architecture_review.md#findings) |
 | Architecture P3: redundant frontend API type alias | Resolved; consumers use the canonical API model module. | [architecture review findings](architecture/architecture_review.md#findings) |
@@ -298,3 +307,45 @@ Cleanup:
 This evidence does not establish live Hugging Face, PostgreSQL, hosted CI,
 official launcher, populated report-dashboard, PDF, or full responsive visual
 coverage. Those boundaries remain explicit in the ledger above.
+
+## Validation Evidence: Gate Closure
+
+Evidence identifier: V-20260922. The validated source changes are an
+uncommitted working tree based on develop HEAD
+`4b608b7d44a22767e665669cfc420409ffd2f006`; detailed commands, state checks,
+versions, and remaining gaps are in the
+[gate-closure QA record](../../assets/QA/tkben-partial-gates-20260922.md).
+
+- Windows 11 Pro, Windows PowerShell 5.1: all 13 launcher menu routes passed in
+  a disposable checkout. Both install profiles, rebuild, database init, tests,
+  update check, the expected `develop` update refusal, and each destructive
+  route's decline/approval behavior were exercised. Sentinels confirmed the
+  expected data/log/cache/uninstall preservation boundaries.
+- A clean Windows bootstrap started without managed Python, Node, uv, backend
+  environment, frontend dependencies/build, stamps, database, or generated
+  `.env`. It pinned Python 3.14.7, Node 22.23.1, and uv 0.12.17, installed from
+  lockfiles, migrated SQLite to 0005, built Angular, wrote all stamps, and
+  reached backend/frontend readiness. Warm launch skipped setup with all stamp
+  hashes and timestamps unchanged. A stale uv 0.12.16 was replaced by the pin.
+- Windows launcher failure checks covered malformed/missing stamps, stale
+  frontend build, backend-only repair, invalid port configuration, a redirected
+  launch conflict, and a listener that reclaimed port 5000 between the two
+  checks. The launcher aborted without terminating the synthetic listener.
+  Permission-denied termination remains untested; therefore the wider launcher
+  component remains PARTIAL.
+- Ubuntu 26.04 manual startup reached health and frontend readiness; the
+  browser rendered Dataset, Tokenizers, Cross Benchmark, and Settings, and the
+  `/api/*` proxy worked. A real backend restart left active job `3fa194eb`
+  addressable as failed with an interruption reason, kept completed upload job
+  `c079b263` addressable, and retained the 25,000-document test dataset.
+  Existing application feature tables were empty before this scenario, so this
+  evidence does not claim preservation of pre-existing populated reports,
+  tags, settings, or tokenizer artifacts.
+- macOS and hosted `ubuntu-latest` remain unvalidated. The container's system
+  Python was 3.14.4, while CI pins 3.14.7; Linux evidence remains PARTIAL at the
+  broader macOS/Linux component scope.
+- Current local gates: 212 backend unit tests passed; Ruff passed; BasedPyright
+  reported 0 errors and 1,953 warnings; frontend lint and all 60 frontend unit
+  tests passed; 17 launcher contract tests passed; the manual Windows test-menu
+  run passed 378 tests with 4 skips before the final launcher contract-test
+  additions. Hosted CI is not inferred from these local results.

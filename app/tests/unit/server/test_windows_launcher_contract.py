@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 
@@ -17,6 +18,18 @@ def _section(function_name: str, next_function_name: str | None = None) -> str:
 
 def test_launcher_has_no_always_rebuild_switch() -> None:
     assert "ALWAYS_REBUILD" not in LAUNCHER
+
+
+def test_launcher_pins_and_checks_the_uv_runtime_version() -> None:
+    install_runtimes = _section("Install-Runtimes", "Sync-BackendDependencies")
+    readiness = _section("Test-BackendDependenciesReady", "Test-FrontendBuildReady")
+
+    assert "$UvVersion = '0.12.17'" in LAUNCHER
+    assert "/download/$UvVersion/$uvArchive" in install_runtimes
+    assert "not the required $UvVersion" in install_runtimes
+    assert "releases/latest" not in install_runtimes
+    assert "$UvExe --version" in readiness
+    assert "Escape($UvVersion)" in readiness
 
 
 def test_launch_guards_ports_before_starting_services() -> None:
@@ -101,3 +114,92 @@ def test_public_operations_initialize_environment_once() -> None:
     assert launch.count("Import-Environment") == 1
     assert "Import-Environment" not in sync
     assert "Import-Environment" not in frontend
+
+
+def test_tracked_actions_invoke_scriptblocks_without_method_stream_conversion() -> None:
+    tracked = _section("Invoke-TrackedLauncherAction", "Ensure-Directory")
+
+    assert "& $Action" in tracked
+    assert "$Action.Invoke()" not in tracked
+
+
+def test_launcher_maintenance_menu_routes_are_all_dispatched() -> None:
+    menu = _section("Get-LauncherMenuEntries", "Write-MenuItem")
+    dispatch = _section("Show-Menu")
+
+    menu_keys = set(re.findall(r"Key\s*=\s*'([A-Za-z]+)'", menu))
+    dispatch_keys = set(re.findall(r"^\s*'([A-Za-z]+)'\s*\{", dispatch, re.MULTILINE))
+
+    assert menu_keys == {
+        "Launch",
+        "Install",
+        "Rebuild",
+        "Database",
+        "Tests",
+        "Check",
+        "Update",
+        "Logs",
+        "Cache",
+        "AllData",
+        "Uninstall",
+        "KillAll",
+        "Exit",
+    }
+    assert dispatch_keys == menu_keys - {"Exit"}
+
+
+def test_launcher_install_and_destructive_routes_keep_explicit_guards() -> None:
+    profiles = _section("Read-InstallationType", "Invoke-DatabaseInitialization")
+    confirmation = _section("Confirm-DestructiveAction", "Remove-Logs")
+    menu = _section("Get-LauncherMenuEntries", "Write-MenuItem")
+    dispatch = _section("Show-Menu")
+
+    assert "'Standard'" in profiles
+    assert "'Development'" in profiles
+    for key in ("Logs", "Cache", "AllData", "Uninstall", "KillAll"):
+        assert re.search(rf"Key\s*=\s*'{key}'.*Destructive\s*=\s*\$true", menu)
+    assert "requires an interactive console" in confirmation
+    assert "return $false" in confirmation
+    assert "-notmatch '^(?i:y|yes)$'" in confirmation
+    assert "Confirm-DestructiveAction" in dispatch
+
+
+def test_update_route_fails_closed_on_develop_without_switching_branches() -> None:
+    update = _section("Update-Application", "Check-ForUpdates")
+
+    assert "$branch -ne 'main'" in update
+    assert "clean Git working tree" in update
+    assert "No files were changed." in update
+    assert not re.search(
+        r"^\s*&\s*git\s+(checkout|switch)\b",
+        update,
+        re.MULTILINE | re.IGNORECASE,
+    )
+
+
+def test_killall_recognizes_quoted_npm_preview_processes() -> None:
+    process_scan = _section("Get-ApplicationProcessIds", "Stop-ApplicationProcesses")
+    match = re.search(
+        r"\$isFrontend\s*=\s*\$commandLine\s+-match\s+'([^']+)'",
+        process_scan,
+    )
+
+    assert match is not None
+    frontend_pattern = match.group(1)
+    assert re.search(
+        frontend_pattern,
+        '"C:\\TKBEN\\runtimes\\nodejs\\npm.cmd" run preview -- --port 8000',
+    )
+    assert re.search(
+        frontend_pattern,
+        '"C:\\TKBEN\\runtimes\\nodejs\\node_modules\\npm\\bin\\npm-cli.js" run preview',
+    )
+
+
+def test_killall_stops_only_outermost_matching_process_trees() -> None:
+    process_scan = _section("Get-ApplicationProcessIds", "Stop-ApplicationProcesses")
+
+    assert "$processesById" in process_scan
+    assert "$matchedProcessIds -contains $parentProcessId" in process_scan
+    assert "$hasMatchedAncestor" in process_scan
+    assert "return @($rootProcessIds | Sort-Object -Unique)" in process_scan

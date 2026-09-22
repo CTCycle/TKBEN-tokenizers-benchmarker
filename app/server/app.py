@@ -23,6 +23,7 @@ from server.common.utils.logger import configure_logging
 from server.configurations import get_server_settings
 from server.contracts.health import HealthResponse
 from server.repositories.database.initializer import initialize_database
+from server.repositories.jobs import JobRepository
 from server.services.jobs import JobManager
 from server.services.startup_validation import build_cors_origins, run_startup_validations
 
@@ -64,6 +65,15 @@ async def app_lifespan(application: FastAPI) -> AsyncIterator[None]:
 
     run_startup_validations(settings)
     initialize_database(settings=settings, startup=True)
+
+    job_repository = JobRepository()
+    job_manager = JobManager(
+        terminal_retention_seconds=settings.jobs.terminal_retention_seconds,
+        repository=job_repository,
+    )
+    job_manager.restore_persisted_jobs()
+    application.state.job_repository = job_repository
+    application.state.job_manager = job_manager
 
     yield
 
