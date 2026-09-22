@@ -183,7 +183,7 @@ evidence.
 | T0-03 | yes | yes | PASS | All 13 maintenance-menu routes were exercised in a disposable Windows checkout, including Standard/Development installs, expected update refusal on `develop`, destructive declines/approvals, cleanup, uninstall, and Kill All. |
 | T1-01 | yes | yes | PASS | Startup E2E passed 2/2 and the rendered shell reloaded after the persistence restart. |
 | T1-02 | yes | yes | PASS | V-20260922 at `41f265a`: all 16 fields, boundaries, sparse persistence, restart, 409 conflict, individual/reset-all semantics, and new-work effects have backend, Chrome E2E, and in-app browser evidence; see the [current T1-02 QA record](../../assets/QA/tkben-t1-02-runtime-settings-20260922.md). |
-| T1-03 | yes | yes | PARTIAL | Synthetic live key lifecycle passed; complete rendered UI lifecycle and direct database ciphertext inspection remain. |
+| T1-03 | yes | yes | PASS | V-20260922 at `09805b7`: rendered Settings > Keys lifecycle and direct SQLite ciphertext inspection passed with masked API responses, reveal-policy `403`, single-active switching, active-delete protection, and cleanup; supplied-credential coverage was skipped because `TKBEN_TEST_HF_KEY` was unavailable. See the [T1-03 QA record](../../assets/QA/tkben-t1-03-key-management-20260922.md). |
 | T1-04 | yes | yes | PASS | Focused migration/persistence/settings contracts passed and a runtime override survived an official launcher restart; PostgreSQL remains separate. |
 | T1-05 | yes | yes | PARTIAL | Dataset stale-request browser scenario passed and store units passed; full populated filter matrix and tokenizer live race remain. |
 | T2-01 | yes | yes | PASS | Local dataset API/UI lifecycle evidence exists; CSV/XLSX and complete UI consolidation remain. |
@@ -290,6 +290,27 @@ field-by-field schema matrix are recorded in
   collection remains blocked by access denied on a generated
   `app/tests/cache/pytest` directory. Commands and browser steps are recorded
   in the QA artifact.
+
+### T1-03 closure follow-up
+
+The T1-03 closure was executed on 2026-09-22 at revision
+`09805b7062325b6180ef956419c1d5db1b4d2e89` on Windows using the supported
+launcher with disposable validation ports and data. The detailed non-sensitive
+record is the [T1-03 QA record](../../assets/QA/tkben-t1-03-key-management-20260922.md).
+
+- The rendered Settings > Keys flow passed add, masking, duplicate rejection,
+  activation/deactivation/reactivation, single-active switching,
+  active-delete protection, inactive deletion, reveal-policy denial, and final
+  empty-state rendering.
+- Direct SQLite inspection passed for validation-created rows: ciphertext was
+  present and did not equal or contain the generated plaintext. The encryption
+  material file was confirmed separate from the database. No secret or
+  ciphertext value was recorded.
+- Validation-created keys and the isolated data directory were removed. The
+  isolated API and SQLite key counts returned to zero, the pre-existing port
+  5000 backend remained at zero keys, and ports 5001/8001 had no listeners.
+- `TKBEN_TEST_HF_KEY` was unavailable, so the supplied-credential-specific
+  test was skipped without substituting or logging a live secret.
 
 ## Resolved and Historical Findings
 
