@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from math import ceil
 from urllib.parse import parse_qs, urlparse
+from uuid import uuid4
 
 from playwright.sync_api import APIRequestContext, Locator, Page, expect
 from server.configurations.settings import (
@@ -257,6 +258,18 @@ def _above_bound(value: Number) -> Number:
     if isinstance(value, int):
         return value + 1
     return round(value + 0.01, 2)
+
+
+def _alternate_setting_value(group: str, field: str, current: Number) -> Number:
+    minimum = _backend_bound(group, field, "ge")
+    maximum = _backend_bound(group, field, "le")
+    step = 1 if isinstance(current, int) else 0.25
+    candidate = current + step
+    if maximum is not None and candidate > maximum:
+        candidate = current - step
+    assert minimum is not None and candidate >= minimum
+    assert maximum is None or candidate <= maximum
+    return candidate
 
 
 def _build_setting_specs() -> tuple[SettingFieldSpec, ...]:
@@ -703,6 +716,8 @@ def test_settings_page_round_trip_and_runtime_effect(
     page: Page,
     base_url: str,
     api_context: APIRequestContext,
+    job_waiter,
+    tiny_tokenizer_json: bytes,
 ) -> None:
     """Settings are typed, persistent, revisioned, and applied to new workflows."""
     original_response = api_context.get("/api/settings")
@@ -716,6 +731,26 @@ def test_settings_page_round_trip_and_runtime_effect(
     target_default = min(target_max, 7)
     benchmark_document_default = defaults["benchmarks"]["default_max_documents"]
     target_benchmark_documents = 1234 if benchmark_document_default != 1234 else 1235
+    target_benchmark_batch = _alternate_setting_value(
+        "benchmarks",
+        "default_batch_size",
+        defaults["benchmarks"]["default_batch_size"],
+    )
+    target_benchmark_parallelism = _alternate_setting_value(
+        "benchmarks",
+        "default_parallelism",
+        defaults["benchmarks"]["default_parallelism"],
+    )
+    target_polling_interval = _alternate_setting_value(
+        "jobs",
+        "polling_interval",
+        defaults["jobs"]["polling_interval"],
+    )
+    dataset_filename = f"settings_runtime_{uuid4().hex}.csv"
+    dataset_name = f"custom/{dataset_filename.removesuffix('.csv')}"
+    tokenizer_filename = f"settings_runtime_{uuid4().hex}.json"
+    dataset_created = False
+    tokenizer_name: str | None = None
 
     try:
         page.goto(f"{base_url}/dataset")
@@ -778,6 +813,15 @@ def test_settings_page_round_trip_and_runtime_effect(
 
         page.get_by_role("tab", name="Benchmarks").click()
         page.get_by_label("Default document cap").fill(str(target_benchmark_documents))
+        page.get_by_label("Default tokenizer batch size").fill(
+            str(target_benchmark_batch)
+        )
+        page.get_by_label("Default parallelism").fill(str(target_benchmark_parallelism))
+
+        page.get_by_role("tab", name="Runtime").click()
+        page.get_by_label("Job polling interval (seconds)").fill(
+            str(target_polling_interval)
+        )
 
         with page.expect_response(
             lambda response: (
@@ -793,6 +837,14 @@ def test_settings_page_round_trip_and_runtime_effect(
             saved_settings["benchmarks"]["default_max_documents"]
             == target_benchmark_documents
         )
+        assert (
+            saved_settings["benchmarks"]["default_batch_size"] == target_benchmark_batch
+        )
+        assert (
+            saved_settings["benchmarks"]["default_parallelism"]
+            == target_benchmark_parallelism
+        )
+        assert saved_settings["jobs"]["polling_interval"] == target_polling_interval
 
         page.reload()
         expect(page.get_by_label("Histogram bins")).to_have_value(str(histogram_value))
@@ -805,6 +857,55 @@ def test_settings_page_round_trip_and_runtime_effect(
         expect(page.get_by_label("Default document cap")).to_have_value(
             str(target_benchmark_documents)
         )
+        expect(page.get_by_label("Default tokenizer batch size")).to_have_value(
+            str(target_benchmark_batch)
+        )
+        expect(page.get_by_label("Default parallelism")).to_have_value(
+            str(target_benchmark_parallelism)
+        )
+        expect(page.get_by_label("Job polling interval (seconds)")).to_have_value(
+            str(target_polling_interval)
+        )
+
+        upload_response = api_context.post(
+            "/api/datasets/upload",
+            multipart={
+                "file": {
+                    "name": dataset_filename,
+                    "mimeType": "text/csv",
+                    "buffer": b"text\nhello there\nanother small document\n",
+                }
+            },
+        )
+        assert upload_response.status == 202, upload_response.text()
+        upload_job = upload_response.json()
+        dataset_created = True
+        assert upload_job["poll_interval"] == target_polling_interval
+        upload_status = job_waiter(
+            upload_job["job_id"],
+            poll_interval=upload_job["poll_interval"],
+            timeout_seconds=300.0,
+        )
+        assert upload_status.get("status") == "completed", upload_status.get("error")
+        upload_result = upload_status.get("result", {})
+        assert upload_result.get("dataset_name") == dataset_name
+        uploaded_histogram = upload_result.get("histogram", {})
+        assert len(uploaded_histogram.get("bins", [])) == histogram_value
+
+        tokenizer_upload = api_context.post(
+            "/api/tokenizers/upload",
+            multipart={
+                "file": {
+                    "name": tokenizer_filename,
+                    "mimeType": "application/json",
+                    "buffer": tiny_tokenizer_json,
+                }
+            },
+        )
+        assert tokenizer_upload.ok, tokenizer_upload.text()
+        tokenizer_payload = tokenizer_upload.json()
+        assert tokenizer_payload.get("is_compatible") is True
+        tokenizer_name = tokenizer_payload["tokenizer_name"]
 
         page.get_by_role("button", name="Cross Benchmark").click()
         expect(page).to_have_url(f"{base_url}/cross-benchmark")
@@ -814,6 +915,20 @@ def test_settings_page_round_trip_and_runtime_effect(
         page.get_by_role("button", name="Next").click()
         expect(page.locator("#benchmark-documents")).to_have_value(
             str(target_benchmark_documents)
+        )
+        page.get_by_placeholder("Search tokenizers").fill(tokenizer_name)
+        tokenizer_option = page.locator(".benchmark-wizard-tokenizer-option").filter(
+            has_text=tokenizer_name
+        )
+        expect(tokenizer_option).to_be_visible()
+        tokenizer_option.get_by_role("checkbox").check()
+        page.get_by_label("Dataset").select_option(dataset_name)
+        page.get_by_role("button", name="Next").click()
+        expect(page.get_by_label("Batch size")).to_have_value(
+            str(target_benchmark_batch)
+        )
+        expect(page.get_by_label("Parallelism")).to_have_value(
+            str(target_benchmark_parallelism)
         )
         page.get_by_role("button", name="Close benchmark wizard").click()
 
@@ -880,4 +995,20 @@ def test_settings_page_round_trip_and_runtime_effect(
             str(histogram_default)
         )
     finally:
-        _restore_runtime_settings(api_context, original)
+        try:
+            if dataset_created:
+                deleted = api_context.delete(
+                    "/api/datasets/delete",
+                    params={"dataset_name": dataset_name},
+                )
+                assert deleted.status == 200, deleted.text()
+        finally:
+            try:
+                if tokenizer_name is not None:
+                    deleted_tokenizer = api_context.delete(
+                        "/api/tokenizers/delete",
+                        params={"tokenizer_name": tokenizer_name},
+                    )
+                    assert deleted_tokenizer.status == 200, deleted_tokenizer.text()
+            finally:
+                _restore_runtime_settings(api_context, original)
