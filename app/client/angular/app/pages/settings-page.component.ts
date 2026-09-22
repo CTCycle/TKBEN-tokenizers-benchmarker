@@ -33,9 +33,10 @@ const tokenizerLimits: ValidatorFn = (control: AbstractControl): ValidationError
   const maxLimit = group.controls['maxDiscoveryLimit']?.value;
   const candidateCap = group.controls['maxDiscoveryCandidates']?.value;
   if (![defaultLimit, maxLimit, candidateCap].every((value) => typeof value === 'number' && Number.isFinite(value))) return null;
-  if (defaultLimit > maxLimit) return { tokenizerDefaultExceedsMaximum: true };
-  if (maxLimit > candidateCap) return { tokenizerMaximumExceedsCandidates: true };
-  return null;
+  const errors: ValidationErrors = {};
+  if (defaultLimit > maxLimit) errors['tokenizerDefaultExceedsMaximum'] = true;
+  if (maxLimit > candidateCap) errors['tokenizerMaximumExceedsCandidates'] = true;
+  return Object.keys(errors).length ? errors : null;
 };
 
 @Component({
@@ -214,6 +215,10 @@ export class SettingsPageComponent {
     const control = this.form.get(controlName);
     if (!control || (!control.dirty && !control.touched)) return null;
 
+    if (controlName === 'defaultDiscoveryLimit'
+      && this.form.hasError('tokenizerDefaultExceedsMaximum')) {
+      return 'Must not exceed Maximum discovery limit.';
+    }
     if (control.hasError('required')) return 'Enter a value.';
     if (control.hasError('wholeNumber')) return 'Use a whole number.';
 
@@ -223,10 +228,6 @@ export class SettingsPageComponent {
     const maximum = control.getError('max') as { max?: number } | null;
     if (maximum?.max !== undefined) return `Must be no more than ${maximum.max}.`;
 
-    if (controlName === 'defaultDiscoveryLimit'
-      && this.form.hasError('tokenizerDefaultExceedsMaximum')) {
-      return 'Must not exceed Maximum discovery limit.';
-    }
     if (controlName === 'maxDiscoveryLimit') {
       const lowerBoundError = this.form.hasError('tokenizerDefaultExceedsMaximum');
       const upperBoundError = this.form.hasError('tokenizerMaximumExceedsCandidates');

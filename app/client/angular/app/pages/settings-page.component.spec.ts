@@ -125,6 +125,14 @@ describe('SettingsPageComponent', () => {
     page.form.controls['maxDiscoveryLimit'].markAsTouched();
     expect(page.fieldError('defaultDiscoveryLimit')).toBe('Must not exceed Maximum discovery limit.');
     expect(page.fieldError('maxDiscoveryLimit')).toBe('Must be at least Default discovery limit.');
+
+    page.form.patchValue({ defaultDiscoveryLimit: 200, maxDiscoveryLimit: 100, maxDiscoveryCandidates: 50 });
+    page.form.controls['defaultDiscoveryLimit'].markAsTouched();
+    page.form.controls['maxDiscoveryLimit'].markAsTouched();
+    page.form.controls['maxDiscoveryCandidates'].markAsTouched();
+    expect(page.fieldError('defaultDiscoveryLimit')).toBe('Must not exceed Maximum discovery limit.');
+    expect(page.fieldError('maxDiscoveryLimit')).toBe('Must be at least Default discovery limit and no more than Discovery candidate cap.');
+    expect(page.fieldError('maxDiscoveryCandidates')).toBe('Must be at least Maximum discovery limit.');
   });
 
   it('converts MiB to bytes and sends an explicit typed save patch', () => {
