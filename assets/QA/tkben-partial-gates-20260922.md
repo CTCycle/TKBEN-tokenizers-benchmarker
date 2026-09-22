@@ -142,37 +142,59 @@ ports 5000, 8000, 16500, and 18000 were free.
 ## T0-02 permission-denied follow-up
 
 Date: 2026-09-22
-Repository revision: `4a7f875eb9fcfe3b5eaf69e2cf9f82f672e03bf8`
-Change state: the launcher contract additions and privilege harness are
-uncommitted working-tree changes based on that revision.
+Repository revision: `e864197c33b1e6a157fa5db33f6781df848c2d20`
+Change state: the production launcher was not changed. The launcher contract
+tests and safety-gated privilege harness are committed; this record captures
+the successful isolated run at that revision.
 
-The production launcher was not changed. The new
-`app/tests/integration/windows/test_launcher_port_permissions.ps1` harness is
-explicitly safety-gated: it refuses redirected input/output, refuses an
-elevated launcher token, requires `-AllowDisposableEnvironment`, clones a
-disposable checkout, starts only synthetic listeners, and cleans up the
-privileged listener through its own elevated helper context. The real
-privilege-isolated run was not executed on this managed host because it does
-not provide a disposable Windows VM, Windows Sandbox, or equivalent isolated
-boundary. No system or foreign process was targeted.
+Harness safety boundary:
 
-Local regression evidence:
+- Environment: Microsoft Windows 11 Pro, version `10.0.26200`, build `26200`,
+  64-bit.
+- The launcher ran under the current non-elevated test account; account names
+  are intentionally omitted. The synthetic protected listener ran under a
+  separate elevated helper identity approved through UAC.
+- The harness requires `-AllowDisposableEnvironment`, refuses redirected I/O
+  and an elevated launcher token, clones a disposable checkout, starts only
+  synthetic listeners, and removes them through their own helper contexts. No
+  system or foreign process was targeted.
 
-- The exact requested focused command was attempted and stopped during pytest
-  collection because this checkout does not add `app` to `PYTHONPATH`
-  (`ModuleNotFoundError: No module named 'server'`).
-- With the repository runner's `PYTHONPATH=app` setup, the focused launcher
-  contract suite passed `19 passed`.
+Successful privilege-isolated run:
+
+- Exact invocation:
+  `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\app\tests\integration\windows\test_launcher_port_permissions.ps1 -AllowDisposableEnvironment`
+- Selected protected `FASTAPI_PORT`: `63335`; protected synthetic PID: `39516`.
+  `netstat -ano` confirmed that PID owned the selected port before launch.
+- The normal interactive `-Launch` path received `yes` through the shared
+  console input buffer. The termination attempt was not mocked.
+- The launcher reported the remaining `PID 39516`/port `63335` conflict and a
+  real localized `Stop-Process -Force -ErrorAction Stop` failure:
+  `Accesso negato` (access denied).
+- The fresh post-termination listener check found the protected listener still
+  alive and owning the port. The launcher exited through its failure path and
+  printed `No service was started`; neither FastAPI nor Angular preview was
+  started.
+- The unprivileged sentinel listener remained alive, and the harness's
+  before/after process checks found no unrelated termination or new service
+  process. Cleanup completed through the helper contexts after the assertions.
+- The harness ended with `[OK] Real permission-denied launch validation passed.`
+
+Local regression and quality-gate evidence:
+
+- The focused launcher contract suite passed `19 passed` with `PYTHONPATH=app`.
+  PowerShell parsing and `git diff --check` also passed.
 - The isolated backend/unit run passed `349 passed, 19 warnings`.
-- `app/tests/run_tests.bat` completed Ruff, BasedPyright (`0 errors`), live
-  service readiness, frontend unit tests (`14 files, 60 tests`), and cleanup,
-  but its Python phase failed during collection on the existing ACL-protected
-  `app/tests/runtimes/cache/pytest` path with `WinError 5: Access denied`.
-  This is recorded as an environment residue; permissions were not widened or
-  the path deleted. No TKBEN listener remained on ports 5000 or 8000.
+- At this revision, `app/tests/run_tests.bat` reported live server readiness,
+  frontend bootstrap, and frontend unit tests (`14 files, 60 tests`) as PASS;
+  frontend E2E was SKIPPED. Ruff and BasedPyright could not spawn their
+  tool executables because of the existing Windows `WinError 5: Access denied`
+  environment boundary, and Python collection hit the existing ACL-protected
+  `app/tests/runtimes/cache/pytest` path with the same error. The runner's
+  cleanup hung after its summary; only its exact TKBEN processes were stopped,
+  and ports 5000 and 8000 were verified free. Permissions were not widened and
+  the protected cache path was not deleted.
 
-Permission-denied acceptance fields remain unobserved: protected PID/port,
-real `Stop-Process` denial, listener survival, launcher output, and
-backend/frontend non-start evidence. T0-02 and `runtime.windows-launcher`
-therefore remain `PARTIAL` until the harness is run in the required isolated
-Windows boundary.
+T0-02 permission-denied acceptance is now evidenced at the required isolated
+Windows boundary. The production failure-closed implementation required no
+change; the standard-runner ACL failures remain separately recorded as an
+environment limitation rather than an application failure.
