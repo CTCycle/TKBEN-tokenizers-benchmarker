@@ -53,8 +53,45 @@ def test_port_release_uses_one_explicit_process_termination_without_tree_kill() 
 
     assert "Read-Host" in release
     assert "Stop-Process -Id $processId -Force" in release
+    assert "Stop-Process -Id $processId -Force -ErrorAction Stop" in release
+    assert "foreach ($processId in $approvedProcessIds)" in release
     assert "Stop-ProcessTree" not in release
     assert "taskkill.exe" not in release
+
+
+def test_port_release_captures_termination_errors_and_rechecks_listeners() -> None:
+    release = _section("Confirm-ReleaseLaunchPorts", "Stop-ProcessTree")
+
+    termination_attempt = release.index(
+        "Stop-Process -Id $processId -Force -ErrorAction Stop"
+    )
+    termination_catch = release.index("catch {", termination_attempt)
+    termination_error_record = release.index(
+        "$terminationErrors.Add", termination_catch
+    )
+    remaining_listener_check = release.index(
+        "$remainingRecords = @(Get-PortListenerRecords -Ports $Ports)"
+    )
+
+    assert termination_attempt < termination_catch < termination_error_record
+    assert termination_error_record < remaining_listener_check
+    assert "$remainingRecords.Count -gt 0" in release
+    assert "Configured launch ports remain occupied" in release
+    assert "$remainingConflicts" in release
+    assert "Termination errors:" in release
+    assert "No service was started." in release
+
+
+def test_launch_starts_services_only_after_both_port_checks_succeed() -> None:
+    launch = _section("Launch-Application", "Install-Dependencies")
+
+    first_check = launch.index("Confirm-ReleaseLaunchPorts")
+    second_check = launch.index("Confirm-ReleaseLaunchPorts", first_check + 1)
+    first_service_start = launch.index("Start-Process", second_check)
+
+    assert first_check < second_check < first_service_start
+    assert "Stop-ProcessTree" not in launch
+    assert "taskkill.exe" not in launch
 
 
 def test_backend_repair_is_not_coupled_to_frontend_build() -> None:
