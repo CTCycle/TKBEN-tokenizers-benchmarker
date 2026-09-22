@@ -63,6 +63,7 @@ $terminationDenied = $false
 $servicesStarted = $false
 $cleanupPassed = $true
 $resultStatus = 'UNRUN'
+$accessDeniedPattern = '(?i)access is denied|permission denied|not permitted|accesso negato|zugriff verweigert|accès refusé|acceso denegado'
 
 function Write-HarnessStep([string]$Message) {
     Write-Host "[STEP] $Message" -ForegroundColor Cyan
@@ -325,7 +326,7 @@ function Write-EvidenceRecord {
     $cleanupProof = if ($cleanupPassed) { 'passed' } else { 'failed' }
     $relevantOutput = @(
         $launcherOutput -split '\r?\n' |
-            Where-Object { $_ -match '(?i)Configured launch ports remain occupied|Termination errors:|No service was started|access is denied' } |
+            Where-Object { $_ -match "(?i)Configured launch ports remain occupied|Termination errors:|No service was started|$accessDeniedPattern" } |
             Select-Object -First 6 |
             ForEach-Object { ($_ -replace '[A-Za-z]:\\[^\s]+', '<path>').Trim() }
     ) -join ' | '
@@ -444,7 +445,7 @@ finally {
 
     $launcherExitCode = $launcherProcess.ExitCode
     $launcherOutput = if (Test-Path -LiteralPath $launcherLogPath) { Get-Content -LiteralPath $launcherLogPath -Raw } else { '' }
-    $terminationDenied = $launcherOutput -match '(?i)access is denied|permission denied|not permitted'
+    $terminationDenied = $launcherOutput -match $accessDeniedPattern
     Assert-Harness ($launcherExitCode -ne 0) "The protected-listener launch unexpectedly exited with code $launcherExitCode."
     Assert-Harness $terminationDenied 'Launcher output did not contain a genuine access-denied/permission-denied termination error.'
     Assert-Harness ($launcherOutput -match '(?i)Configured launch ports remain occupied') 'Launcher output did not report the remaining occupied configured port.'
