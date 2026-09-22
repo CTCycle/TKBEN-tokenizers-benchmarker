@@ -233,10 +233,23 @@ public static class TkbenConsoleInput
         uint recordCount,
         out uint written);
 
-    public static void WriteText(string value)
+    public static void ClearLineAndWriteText(string value)
     {
-        var records = new InputRecord[value.Length * 2 + 2];
+        var records = new InputRecord[value.Length * 2 + 12];
         var index = 0;
+
+        // The launcher shares this console with the harness. Clear anything
+        // already typed at the prompt so a manual keystroke cannot turn the
+        // intended answer into a different response such as "yyes".
+        records[index++] = KeyRecord(true, '\0', 0x24);
+        records[index++] = KeyRecord(false, '\0', 0x24);
+        records[index++] = KeyRecord(true, '\0', 0x10, 0x0010);
+        records[index++] = KeyRecord(true, '\0', 0x23, 0x0010);
+        records[index++] = KeyRecord(false, '\0', 0x23, 0x0010);
+        records[index++] = KeyRecord(false, '\0', 0x10);
+        records[index++] = KeyRecord(true, '\0', 0x08);
+        records[index++] = KeyRecord(false, '\0', 0x08);
+
         foreach (var character in value)
         {
             records[index++] = KeyRecord(true, character, 0);
@@ -244,15 +257,20 @@ public static class TkbenConsoleInput
         }
         records[index++] = KeyRecord(true, '\r', 0x0d);
         records[index] = KeyRecord(false, '\r', 0x0d);
+        WriteRecords(records, index);
+    }
+
+    private static void WriteRecords(InputRecord[] records, int count)
+    {
         var handle = GetStdHandle(-10);
         uint written;
-        if (!WriteConsoleInput(handle, records, (uint)records.Length, out written))
+        if (!WriteConsoleInput(handle, records, (uint)count, out written))
         {
             throw new InvalidOperationException("WriteConsoleInput failed with Win32 error " + Marshal.GetLastWin32Error() + ".");
         }
     }
 
-    private static InputRecord KeyRecord(bool down, char character, ushort virtualKey)
+    private static InputRecord KeyRecord(bool down, char character, ushort virtualKey, uint controlKeyState = 0)
     {
         return new InputRecord
         {
@@ -264,7 +282,7 @@ public static class TkbenConsoleInput
                 VirtualKeyCode = virtualKey,
                 VirtualScanCode = 0,
                 UnicodeChar = character,
-                ControlKeyState = 0
+                ControlKeyState = controlKeyState
             }
         };
     }
@@ -305,9 +323,10 @@ exit $LASTEXITCODE
 
     # Import-Environment and the port prompt are intentionally before any
     # dependency/setup work. Buffering the answer in the shared console keeps
-    # the child genuinely interactive while remaining unattended.
+    # the child genuinely interactive while remaining unattended. Do not type
+    # into the launcher prompt; the harness clears the line and supplies yes.
     Start-Sleep -Seconds 3
-    [TkbenConsoleInput]::WriteText('yes')
+    [TkbenConsoleInput]::ClearLineAndWriteText('yes')
     return $process
 }
 
@@ -427,7 +446,7 @@ finally {
     Add-ConsoleInputWriter
     $beforeProcesses = @(Get-ProcessCommandLines)
     $launcherPath = Join-Path $checkoutRoot 'start_on_windows.ps1'
-    Write-HarnessStep 'Running the normal interactive launcher path and supplying yes to its termination prompt.'
+    Write-HarnessStep 'Running the normal interactive launcher path and supplying yes to its termination prompt. Do not type into the launcher prompt.'
     $launcherProcess = Start-InteractiveLauncher -LauncherPath $launcherPath -WorkingDirectory $checkoutRoot -LogPath $launcherLogPath
 
     $deadline = [datetime]::UtcNow.AddSeconds(45)
