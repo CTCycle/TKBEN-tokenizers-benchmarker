@@ -21,6 +21,12 @@ V-20260922 adds gate-closure evidence from the develop checkout at
 privilege-isolated harness, and permission-denied evidence are committed; the
 record links to their detailed disposable-environment evidence.
 
+V-20260922 also adds T1-05 catalogue-filtering and race evidence at validated
+implementation revision `993e52e8f0617d4bf98a60d62b4c5d5588541218`. The
+populated Dataset and Tokenizer matrices, live catalogue races, deterministic
+discovery race, regression gates, and cleanup are recorded in the [T1-05 QA
+record](../../assets/QA/tkben-t1-05-catalog-filtering-races-20260922.md).
+
 ## Maintenance Rules
 
 Future coding and validation agents must:
@@ -185,7 +191,7 @@ evidence.
 | T1-02 | yes | yes | PASS | V-20260922 at `41f265a`: all 16 fields, boundaries, sparse persistence, restart, 409 conflict, individual/reset-all semantics, and new-work effects have backend, Chrome E2E, and in-app browser evidence; see the [current T1-02 QA record](../../assets/QA/tkben-t1-02-runtime-settings-20260922.md). |
 | T1-03 | yes | yes | PASS | V-20260922 at `09805b7`: rendered Settings > Keys lifecycle and direct SQLite ciphertext inspection passed with masked API responses, reveal-policy `403`, single-active switching, active-delete protection, and cleanup; supplied-credential coverage was skipped because `TKBEN_TEST_HF_KEY` was unavailable. See the [T1-03 QA record](../../assets/QA/tkben-t1-03-key-management-20260922.md). |
 | T1-04 | yes | yes | PASS | Focused migration/persistence/settings contracts passed and a runtime override survived an official launcher restart; PostgreSQL remains separate. |
-| T1-05 | yes | yes | PARTIAL | Dataset stale-request browser scenario passed and store units passed; full populated filter matrix and tokenizer live race remain. |
+| T1-05 | yes | yes | PASS | V-20260922 at `993e52e8f0617d4bf98a60d62b4c5d5588541218`: populated Dataset and Tokenizer filter matrices passed for search, source, exact numeric boundaries, combined/no-match/reset states; the Dataset stale-request case, both Tokenizer catalogue completion orders, and deterministic Tokenizer discovery stale-result/stale-error cases passed. Frontend 60/60, lint, production build, and relevant backend route/filter tests passed. See the [T1-05 QA record](../../assets/QA/tkben-t1-05-catalog-filtering-races-20260922.md). |
 | T2-01 | yes | yes | PASS | Local dataset API/UI lifecycle evidence exists; CSV/XLSX and complete UI consolidation remain. |
 | T2-02 | yes | yes | PARTIAL | Metric implementation and representative API evidence exist; complete family-level populated dashboard evidence remains. |
 | T2-03 | yes | no | PARTIAL | Quality/structure/compression implementation exists; controlled populated-dashboard campaign remains. |
@@ -232,6 +238,13 @@ launcher. The compact, non-sensitive command/result record is
 - `T1-05`: the dataset stale-response browser scenario passed 1/1; the
   frontend unit suite passed 60/60 across 14 files, including dataset and
   tokenizer store behavior.
+- `T1-05` closure at implementation revision `993e52e8f0617d4bf98a60d62b4c5d5588541218`:
+  the populated Dataset and Tokenizer filter matrices passed end to end with
+  request-query and rendered-row assertions; the Tokenizer catalogue race
+  passed in both completion orders; deterministic discovery stale-result and
+  stale-error cases passed; local fixture state was removed afterward. The
+  detailed command, environment, and cleanup record is the [T1-05 QA
+  record](../../assets/QA/tkben-t1-05-catalog-filtering-races-20260922.md).
 
 ### T1-02 closure follow-up
 
