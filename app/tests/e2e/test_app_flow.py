@@ -3,8 +3,12 @@ E2E tests for UI navigation and page rendering.
 Targets datasets, tokenizers, and cross benchmark workflows.
 """
 
+import csv
+import io
+import math
 import re
 from datetime import datetime, timezone
+from pathlib import Path
 from urllib.parse import parse_qs, quote, urlparse
 from uuid import uuid4
 
@@ -207,6 +211,279 @@ class TestAppShell:
 ###############################################################################
 class TestDatasetPage:
     """Tests for dataset page UI elements."""
+
+    # -------------------------------------------------------------------------
+    def test_validation_pipeline_populates_all_metric_families_and_persists_dashboard(
+        self,
+        page: Page,
+        base_url: str,
+        api_context: APIRequestContext,
+        job_waiter,
+    ) -> None:
+        """A populated local dataset should exercise every metric family in the UI."""
+        dataset_stem = f"qa_t2_02_{uuid4().hex[:10]}"
+        dataset_name = f"custom/{dataset_stem}"
+        filename = f"{dataset_stem}.csv"
+        documents = [
+            "The cat sat. The cat sat!",
+            "The cat sat. The cat sat!",
+            "Visit https://example.com and email me@test.com.\n<tag>AA 123</tag>",
+            "Café, unusual vocabulary crosses several paragraphs.\n"
+            "A second line adds longer words and varied punctuation!",
+        ]
+        dataset_created = False
+        browser_errors: list[str] = []
+
+        catalog_response = api_context.get("/api/datasets/metrics/catalog")
+        assert catalog_response.ok, catalog_response.text()
+        categories = catalog_response.json().get("categories", [])
+        expected_category_keys = {
+            "corpus_scale",
+            "lexical_diversity",
+            "word_character_signals",
+            "document_quality",
+            "structural_regularity",
+            "compression_redundancy",
+        }
+        assert {
+            category.get("category_key") for category in categories
+        } == expected_category_keys
+        metric_keys = {
+            metric["key"]
+            for category in categories
+            for metric in category.get("metrics", [])
+            if isinstance(metric.get("key"), str)
+        }
+        assert metric_keys
+
+        csv_buffer = io.StringIO(newline="")
+        writer = csv.writer(csv_buffer, lineterminator="\n")
+        writer.writerow(["text"])
+        writer.writerows((document,) for document in documents)
+
+        try:
+            upload_response = api_context.post(
+                "/api/datasets/upload",
+                multipart={
+                    "file": {
+                        "name": filename,
+                        "mimeType": "text/csv",
+                        "buffer": csv_buffer.getvalue().encode("utf-8"),
+                    }
+                },
+            )
+            assert upload_response.ok, (
+                f"Dataset upload failed: {upload_response.status} {upload_response.text()}"
+            )
+            dataset_created = True
+            upload_job = upload_response.json()
+            upload_job_id = upload_job.get("job_id")
+            assert upload_job_id, "Missing job_id in upload response"
+            upload_status = job_waiter(
+                upload_job_id,
+                poll_interval=upload_job.get("poll_interval", 1.0),
+                timeout_seconds=300.0,
+            )
+            assert upload_status.get("status") == "completed", upload_status.get("error")
+            assert upload_status.get("result", {}).get("document_count") == len(documents)
+
+            page.on(
+                "console",
+                lambda message: browser_errors.append(message.text)
+                if message.type == "error"
+                else None,
+            )
+            page.goto(f"{base_url}/dataset")
+            dataset_row = page.locator(".dataset-preview-row").filter(
+                has_text=dataset_name
+            ).first
+            expect(dataset_row).to_be_visible()
+            dataset_row.get_by_role(
+                "button", name=f"Run validation pipeline for {dataset_name}"
+            ).click()
+
+            for category in categories:
+                expect(
+                    page.get_by_role(
+                        "checkbox", name=category["category_label"], exact=True
+                    )
+                ).to_be_checked()
+
+            page.get_by_role("button", name="Next", exact=True).click()
+            expect(page.get_by_role("radio", name="Fraction", exact=True)).to_be_checked()
+            expect(
+                page.get_by_role(
+                    "checkbox", name="Exclude empty documents", exact=True
+                )
+            ).to_be_checked()
+            page.get_by_role("button", name="Next", exact=True).click()
+            expect(
+                page.locator(".validation-summary")
+            ).to_contain_text(f"Selected metrics: {len(metric_keys)}")
+
+            with page.expect_request(
+                lambda request: request.method == "POST"
+                and urlparse(request.url).path == "/api/datasets/analyze"
+            ) as analyze_request:
+                page.get_by_role("button", name="Run Validation", exact=True).click()
+            request_payload = analyze_request.value.post_data_json
+            assert request_payload.get("dataset_name") == dataset_name
+            assert set(request_payload.get("selected_metric_keys", [])) == metric_keys
+            assert request_payload.get("sampling") == {"fraction": 1}
+            assert request_payload.get("filters") == {
+                "min_length": None,
+                "max_length": None,
+                "exclude_empty": True,
+            }
+
+            dashboard = page.locator(".dataset-dashboard")
+            expect(
+                dashboard.locator(".panel-description").first
+            ).to_contain_text(
+                f"Latest persisted session for {dataset_name}", timeout=300_000
+            )
+
+            report_response = api_context.get(
+                "/api/datasets/reports/latest",
+                params={"dataset_name": dataset_name},
+            )
+            assert report_response.ok, report_response.text()
+            report = report_response.json()
+            assert report.get("report_id")
+            assert set(report.get("selected_metric_keys", [])) == metric_keys
+            aggregate = report.get("aggregate_statistics", {})
+            family_signals = {
+                "corpus_scale": ["corpus.document_count", "doc.length_mean"],
+                "lexical_diversity": ["words.shannon_entropy", "words.zipf_slope"],
+                "word_character_signals": [
+                    "chars.entropy",
+                    "chars.punctuation_ratio",
+                ],
+                "document_quality": [
+                    "quality.exact_duplicate_rate",
+                    "quality.near_duplicate_rate",
+                ],
+                "structural_regularity": [
+                    "structure.url_density",
+                    "structure.email_density",
+                    "structure.html_tag_ratio",
+                ],
+                "compression_redundancy": [
+                    "compression.ratio",
+                    "compression.avg_repetition_factor",
+                ],
+            }
+            for family, keys in family_signals.items():
+                for key in keys:
+                    value = aggregate.get(key)
+                    assert isinstance(value, (int, float)) and math.isfinite(value), (
+                        f"{family} metric {key} was not a finite aggregate: {value!r}"
+                    )
+            nonzero_signals = (
+                "corpus.document_count",
+                "doc.length_mean",
+                "words.shannon_entropy",
+                "chars.entropy",
+                "chars.punctuation_ratio",
+                "quality.exact_duplicate_rate",
+                "structure.url_density",
+                "structure.email_density",
+                "compression.ratio",
+            )
+            for key in nonzero_signals:
+                assert abs(aggregate[key]) > 0, f"Metric {key} was zero"
+
+            histogram_payloads = {
+                "hist.document_length": report.get("document_length_histogram"),
+                "hist.word_length": report.get("word_length_histogram"),
+            }
+            for histogram_key, histogram in histogram_payloads.items():
+                assert isinstance(histogram, dict), histogram_key
+                assert histogram.get("bins") and histogram.get("counts"), histogram_key
+                assert sum(histogram["counts"]) > 0, histogram_key
+            assert report.get("most_common_words")
+            assert report.get("word_cloud_terms")
+
+            expect(dashboard.get_by_text("Aggregate Stats", exact=True)).to_be_visible()
+            expect(dashboard.get_by_text("Word Metrics", exact=True)).to_be_visible()
+            expect(
+                dashboard.get_by_role(
+                    "img", name="Character composition donut chart", exact=True
+                )
+            ).to_be_visible()
+            histogram_charts = dashboard.locator(".dataset-histogram-chart")
+            for index, histogram_name in enumerate((
+                "Document length histogram",
+                "Word length histogram",
+            )):
+                histogram_chart = histogram_charts.nth(index)
+                expect(
+                    histogram_chart.get_by_role(
+                        "img", name=re.compile(histogram_name)
+                    )
+                ).to_be_visible()
+                assert histogram_chart.locator(".dataset-histogram-bar").count() > 0
+            expect(dashboard.locator(".dataset-zipf-chart")).to_be_visible()
+            expect(dashboard.get_by_text("Entropy Gauge", exact=True)).to_be_visible()
+            expect(
+                dashboard.get_by_text("Duplicate Indicators", exact=True)
+            ).to_be_visible()
+            expect(dashboard.get_by_text("Concentration", exact=True)).to_be_visible()
+            expect(dashboard.locator(".dataset-word-cloud-term").first).to_be_visible()
+
+            for metric_label in ("Mean length", "Length CV", "Vocabulary size", "Entropy"):
+                metric_row = dashboard.locator(".dataset-table tr").filter(
+                    has_text=metric_label
+                )
+                expect(metric_row).to_be_visible()
+                expect(metric_row.locator("td")).not_to_have_text("—")
+            expect(
+                dashboard.locator(".dataset-table tr").filter(has_text="Empty count")
+            ).to_contain_text("0")
+
+            page.reload()
+            dataset_row = page.locator(".dataset-preview-row").filter(
+                has_text=dataset_name
+            ).first
+            with page.expect_response(
+                lambda response: response.request.method == "GET"
+                and "/api/datasets/reports/latest" in response.url
+                and dataset_stem in response.url
+            ):
+                dataset_row.click(position={"x": 20, "y": 20})
+            dashboard = page.locator(".dataset-dashboard")
+            expect(
+                dashboard.locator(".panel-description").first
+            ).to_contain_text(f"Latest persisted session for {dataset_name}")
+            expect(dashboard.get_by_text("Aggregate Stats", exact=True)).to_be_visible()
+            expect(dashboard.locator(".dataset-word-cloud-term").first).to_be_visible()
+            assert not browser_errors, f"Browser console errors: {browser_errors}"
+
+            screenshot_dir = (
+                Path(__file__).resolve().parents[3]
+                / "runtimes"
+                / "cache"
+                / "t2-02-validation-logs"
+            )
+            screenshot_dir.mkdir(parents=True, exist_ok=True)
+            page.screenshot(
+                path=str(
+                    screenshot_dir
+                    / "tkben-t2-02-dataset-metric-families-20260922.png"
+                ),
+                full_page=True,
+            )
+        finally:
+            if dataset_created:
+                delete_response = api_context.delete(
+                    "/api/datasets/delete", params={"dataset_name": dataset_name}
+                )
+                assert delete_response.status in {200, 404}, delete_response.text()
+                latest_after_cleanup = api_context.get(
+                    "/api/datasets/reports/latest",
+                    params={"dataset_name": dataset_name},
+                )
+                assert latest_after_cleanup.status == 404, latest_after_cleanup.text()
 
     # -------------------------------------------------------------------------
     def test_populated_catalog_filter_matrix(
