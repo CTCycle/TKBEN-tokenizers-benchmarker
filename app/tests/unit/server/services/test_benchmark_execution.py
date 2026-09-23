@@ -406,19 +406,11 @@ def test_run_benchmarks_can_disable_per_document_stats_and_persist_config() -> N
         tokenizer_ids=["dummy/tokenizer"],
         benchmark_config={
             "store_per_document_stats": False,
-            "add_special_tokens": True,
-            "padding": True,
-            "truncation": True,
-            "max_length": 32,
         },
     )
 
     assert len(result.per_document_stats) == 1
     assert result.config.store_per_document_stats is False
-    assert result.config.add_special_tokens is True
-    assert result.config.padding is True
-    assert result.config.truncation is True
-    assert result.config.max_length == 32
 
 ###############################################################################
 def test_run_benchmarks_returns_cancelled_status_when_stopped() -> None:

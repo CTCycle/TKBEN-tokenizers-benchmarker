@@ -25,7 +25,6 @@ class BenchmarkRunConfig(BaseModel):
     batch_size: int = Field(default=16, ge=1, le=4096)
     seed: int = Field(default=42)
     parallelism: int = Field(default=1, ge=1, le=128)
-    include_lm_metrics: bool = Field(default=False)
     add_special_tokens: bool = Field(default=False)
     padding: bool = Field(default=False)
     truncation: bool = Field(default=False)

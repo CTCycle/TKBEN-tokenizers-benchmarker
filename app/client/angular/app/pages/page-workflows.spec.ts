@@ -421,7 +421,6 @@ describe('CrossBenchmarkPageComponent workflow', () => {
         batch_size: 64,
         seed: 99,
         parallelism: 3,
-        include_lm_metrics: true,
         add_special_tokens: true,
         padding: true,
         truncation: true,
@@ -479,7 +478,6 @@ describe('CrossBenchmarkPageComponent workflow', () => {
       batchSize: 64,
       seed: 99,
       parallelism: 3,
-      includeLmMetrics: true,
       addSpecialTokens: true,
       padding: true,
       truncation: true,
@@ -489,7 +487,20 @@ describe('CrossBenchmarkPageComponent workflow', () => {
     });
     page.runBenchmark();
     expect(store.run).toHaveBeenCalledWith(expect.objectContaining({
-      config: expect.objectContaining({ max_documents: 750, max_length: 256, per_document_sample_size: 321 }),
+      config: {
+        max_documents: 750,
+        warmup_trials: 4,
+        timed_trials: 12,
+        batch_size: 64,
+        seed: 99,
+        parallelism: 3,
+        add_special_tokens: true,
+        padding: true,
+        truncation: true,
+        max_length: 256,
+        store_per_document_stats: false,
+        per_document_sample_size: 321,
+      },
     }));
 
     page.openRun();

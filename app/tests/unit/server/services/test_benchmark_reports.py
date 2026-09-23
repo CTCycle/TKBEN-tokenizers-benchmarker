@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 import pytest
 
-from server.contracts.benchmarks import BenchmarkReportQuery
+from server.contracts.benchmarks import BenchmarkReportQuery, BenchmarkRunResponse
 from server.repositories.database.backend import get_database
 from server.repositories.schemas.models import Base, BenchmarkReport, Dataset
 from server.services.benchmark_reports import BenchmarkReportService
@@ -31,7 +31,6 @@ def _build_payload(dataset_name: str) -> dict:
             "batch_size": 16,
             "seed": 42,
             "parallelism": 1,
-            "include_lm_metrics": False,
             "add_special_tokens": False,
             "padding": False,
             "truncation": False,
@@ -318,3 +317,22 @@ def test_benchmark_report_service_rejects_json_encoded_storage() -> None:
                 },
             }
         )
+
+###############################################################################
+def test_typed_report_response_omits_undeclared_config_properties() -> None:
+    response = BenchmarkRunResponse.model_validate(
+        {
+            "dataset_name": "custom/legacy-config",
+            "documents_processed": 1,
+            "config": {
+                "warmup_trials": 0,
+                "timed_trials": 1,
+                "batch_size": 1,
+                "seed": 42,
+                "parallelism": 1,
+                "unrecognized_option": True,
+            },
+        }
+    )
+
+    assert "unrecognized_option" not in response.model_dump()["config"]

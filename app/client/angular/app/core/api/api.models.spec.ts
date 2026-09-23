@@ -21,7 +21,6 @@ const schema3Report5WithUnavailableMetrics: BenchmarkRunResponse = {
     batch_size: 1,
     seed: 42,
     parallelism: 1,
-    include_lm_metrics: false,
   },
   hardware_profile: {
     runtime: '',

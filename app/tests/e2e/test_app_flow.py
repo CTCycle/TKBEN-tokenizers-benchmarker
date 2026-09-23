@@ -1678,7 +1678,7 @@ class TestCrossBenchmarkPage:
                     '"selected_metric_keys":["eff.encode_tokens_per_second_mean"],"dataset_name":"custom/sample",'
                     '"documents_processed":2,"tokenizers_processed":["ok/tokenizer","broken/tokenizer"],'
                     '"tokenizers_count":2,"config":{"max_documents":0,"warmup_trials":2,"timed_trials":8,'
-                    '"batch_size":16,"seed":42,"parallelism":1,"include_lm_metrics":false,'
+                    '"batch_size":16,"seed":42,"parallelism":1,'
                     '"add_special_tokens":false,"padding":false,"truncation":false,"max_length":null,'
                     '"store_per_document_stats":false,"per_document_sample_size":500},'
                     '"hardware_profile":{"runtime":"","os":"","cpu_model":null,"cpu_logical_cores":null,"memory_total_mb":null},'

@@ -417,7 +417,6 @@ export interface BenchmarkRunConfig {
     batch_size: number;
     seed: number;
     parallelism: number;
-    include_lm_metrics: boolean;
     add_special_tokens?: boolean;
     padding?: boolean;
     truncation?: boolean;

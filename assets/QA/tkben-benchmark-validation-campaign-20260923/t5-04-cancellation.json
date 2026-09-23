@@ -1,0 +1,915 @@
+{
+  "gate": "T5-04",
+  "workload_documents": 10000,
+  "visible_progress": {
+    "job_id": "6c46764f",
+    "job_type": "benchmark_run",
+    "status": "running",
+    "progress": 20.0,
+    "result": null,
+    "error": null
+  },
+  "progress_indicator_text": "Benchmark running (20%)\n\nCancel benchmark",
+  "cancelled_job_status": "cancelled",
+  "cancelled_run_report_found": false,
+  "cancel_click_response_ms": 216.88979999453295,
+  "backend_rss_samples_mb": [
+    262.09375,
+    262.09375,
+    262.09375,
+    262.09375,
+    262.09375,
+    262.09375,
+    262.09375,
+    262.09375
+  ],
+  "backend_rss_error": null,
+  "rerun_rendered": true,
+  "rerun_report": {
+    "status": "success",
+    "schema_version": 3,
+    "methodology_version": "semantic_honesty",
+    "report_id": 1,
+    "report_version": 5,
+    "created_at": "2026-09-23T18:24:19.480841Z",
+    "run_name": "T2-07 rerun t2_07_6a982e8d",
+    "selected_metric_keys": [
+      "eff.encode_tokens_per_second_mean",
+      "lat.encode_latency_distribution",
+      "res.peak_rss_mb",
+      "res.memory_delta_mb",
+      "doc.tokens_count_distribution"
+    ],
+    "dataset_name": "custom/t2_07_6a982e8d",
+    "documents_processed": 2,
+    "tokenizers_processed": [
+      "CUSTOM_b7d3c"
+    ],
+    "tokenizers_count": 1,
+    "config": {
+      "max_documents": 2,
+      "warmup_trials": 0,
+      "timed_trials": 1,
+      "batch_size": 16,
+      "seed": 99,
+      "parallelism": 2,
+      "add_special_tokens": true,
+      "padding": true,
+      "truncation": true,
+      "max_length": 4,
+      "store_per_document_stats": true,
+      "per_document_sample_size": 2
+    },
+    "hardware_profile": {
+      "runtime": "3.14.7",
+      "os": "Windows-11-10.0.26200-SP0",
+      "cpu_model": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",
+      "cpu_logical_cores": 12,
+      "memory_total_mb": 32108.05859375
+    },
+    "trial_summary": {
+      "warmup_trials": 0,
+      "timed_trials": 1
+    },
+    "tokenizer_results": [
+      {
+        "tokenizer": "CUSTOM_b7d3c",
+        "status": "success",
+        "error_type": null,
+        "error_message": null,
+        "tokenizer_family": "unknown",
+        "runtime_backend": "transformers_auto",
+        "vocabulary_size": 8,
+        "added_tokens": 0,
+        "special_token_share": 0.0,
+        "efficiency": {
+          "encode_tokens_per_second_mean": 21621.621621621623,
+          "encode_tokens_per_second_ci95_low": 21621.621621621623,
+          "encode_tokens_per_second_ci95_high": 21621.621621621623,
+          "encode_chars_per_second_mean": 189189.1891891892,
+          "encode_bytes_per_second_mean": 189189.1891891892,
+          "encode_only_wall_time_seconds": 0.00037,
+          "dataset_stream_wall_time_seconds": 0.005929699997068383,
+          "postprocess_wall_time_seconds": 0.001166899994132109,
+          "end_to_end_wall_time_seconds": 0.1446395999955712,
+          "load_time_seconds": 0.0
+        },
+        "latency": {
+          "encode_latency_p50_ms": 0.185,
+          "encode_latency_p95_ms": 0.185,
+          "encode_latency_p99_ms": 0.185,
+          "sample_count": 1
+        },
+        "fidelity": {
+          "exact_round_trip_rate": null,
+          "normalized_round_trip_rate": null,
+          "unknown_token_rate": null,
+          "byte_fallback_rate": null,
+          "lossless_encodability_rate": null
+        },
+        "fragmentation": {
+          "tokens_per_character": null,
+          "characters_per_token": null,
+          "tokens_per_byte": null,
+          "bytes_per_token": null,
+          "pieces_per_word_mean": null,
+          "fragmentation_by_word_length_bucket": []
+        },
+        "resources": {
+          "peak_rss_mb": 262.12109375,
+          "memory_delta_mb": 0.0
+        }
+      }
+    ],
+    "tags": [],
+    "dashboard": {
+      "widgets": [
+        {
+          "widget_id": "benchmark.meta.vocabulary_size",
+          "metric_keys": [
+            "meta.vocabulary_size"
+          ],
+          "category_key": "metadata",
+          "category_label": "Tokenizer metadata",
+          "label": "Vocabulary size",
+          "description": "Vocabulary size",
+          "unit": "tokens",
+          "display_format": "count",
+          "default_visualization": "bar",
+          "compatible_visualizations": [
+            "bar",
+            "horizontal_bar"
+          ],
+          "default_visible": true,
+          "width": "standard",
+          "points": [
+            {
+              "tokenizer": "CUSTOM_b7d3c",
+              "value": 8.0,
+              "interval_low": null,
+              "interval_high": null
+            }
+          ],
+          "distributions": [],
+          "buckets": [],
+          "histogram_bins": []
+        },
+        {
+          "widget_id": "benchmark.meta.added_tokens",
+          "metric_keys": [
+            "meta.added_tokens"
+          ],
+          "category_key": "metadata",
+          "category_label": "Tokenizer metadata",
+          "label": "Added token count",
+          "description": "Added token count",
+          "unit": "tokens",
+          "display_format": "count",
+          "default_visualization": "bar",
+          "compatible_visualizations": [
+            "bar",
+            "horizontal_bar"
+          ],
+          "default_visible": false,
+          "width": "standard",
+          "points": [
+            {
+              "tokenizer": "CUSTOM_b7d3c",
+              "value": 0.0,
+              "interval_low": null,
+              "interval_high": null
+            }
+          ],
+          "distributions": [],
+          "buckets": [],
+          "histogram_bins": []
+        },
+        {
+          "widget_id": "benchmark.meta.special_token_share",
+          "metric_keys": [
+            "meta.special_token_share"
+          ],
+          "category_key": "metadata",
+          "category_label": "Tokenizer metadata",
+          "label": "Special-token share",
+          "description": "Special-token share",
+          "unit": "%",
+          "display_format": "percent",
+          "default_visualization": "bar",
+          "compatible_visualizations": [
+            "bar",
+            "horizontal_bar"
+          ],
+          "default_visible": false,
+          "width": "standard",
+          "points": [
+            {
+              "tokenizer": "CUSTOM_b7d3c",
+              "value": 0.0,
+              "interval_low": null,
+              "interval_high": null
+            }
+          ],
+          "distributions": [],
+          "buckets": [],
+          "histogram_bins": []
+        },
+        {
+          "widget_id": "benchmark.eff.encode_tokens_per_second_mean",
+          "metric_keys": [
+            "eff.encode_tokens_per_second_mean",
+            "eff.encode_tokens_per_second_ci95"
+          ],
+          "category_key": "efficiency",
+          "category_label": "Efficiency",
+          "label": "Tokens per second",
+          "description": "Tokens per second",
+          "unit": "tokens/s",
+          "display_format": "throughput",
+          "default_visualization": "interval_bar",
+          "compatible_visualizations": [
+            "interval_bar",
+            "dot_whisker"
+          ],
+          "default_visible": true,
+          "width": "standard",
+          "points": [
+            {
+              "tokenizer": "CUSTOM_b7d3c",
+              "value": 21621.621621621623,
+              "interval_low": 21621.621621621623,
+              "interval_high": 21621.621621621623
+            }
+          ],
+          "distributions": [],
+          "buckets": [],
+          "histogram_bins": []
+        },
+        {
+          "widget_id": "benchmark.eff.encode_chars_per_second_mean",
+          "metric_keys": [
+            "eff.encode_chars_per_second_mean"
+          ],
+          "category_key": "efficiency",
+          "category_label": "Efficiency",
+          "label": "Characters per second",
+          "description": "Characters per second",
+          "unit": "chars/s",
+          "display_format": "throughput",
+          "default_visualization": "bar",
+          "compatible_visualizations": [
+            "bar",
+            "horizontal_bar"
+          ],
+          "default_visible": true,
+          "width": "standard",
+          "points": [
+            {
+              "tokenizer": "CUSTOM_b7d3c",
+              "value": 189189.1891891892,
+              "interval_low": null,
+              "interval_high": null
+            }
+          ],
+          "distributions": [],
+          "buckets": [],
+          "histogram_bins": []
+        },
+        {
+          "widget_id": "benchmark.eff.encode_bytes_per_second_mean",
+          "metric_keys": [
+            "eff.encode_bytes_per_second_mean"
+          ],
+          "category_key": "efficiency",
+          "category_label": "Efficiency",
+          "label": "Bytes per second",
+          "description": "Bytes per second",
+          "unit": "bytes/s",
+          "display_format": "throughput",
+          "default_visualization": "bar",
+          "compatible_visualizations": [
+            "bar",
+            "horizontal_bar"
+          ],
+          "default_visible": false,
+          "width": "standard",
+          "points": [
+            {
+              "tokenizer": "CUSTOM_b7d3c",
+              "value": 189189.1891891892,
+              "interval_low": null,
+              "interval_high": null
+            }
+          ],
+          "distributions": [],
+          "buckets": [],
+          "histogram_bins": []
+        },
+        {
+          "widget_id": "benchmark.eff.encode_only_wall_time_seconds",
+          "metric_keys": [
+            "eff.encode_only_wall_time_seconds"
+          ],
+          "category_key": "efficiency",
+          "category_label": "Efficiency",
+          "label": "Encode-only time",
+          "description": "Encode-only time",
+          "unit": "s",
+          "display_format": "seconds",
+          "default_visualization": "bar",
+          "compatible_visualizations": [
+            "bar",
+            "horizontal_bar"
+          ],
+          "default_visible": false,
+          "width": "standard",
+          "points": [
+            {
+              "tokenizer": "CUSTOM_b7d3c",
+              "value": 0.00037,
+              "interval_low": null,
+              "interval_high": null
+            }
+          ],
+          "distributions": [],
+          "buckets": [],
+          "histogram_bins": []
+        },
+        {
+          "widget_id": "benchmark.eff.dataset_stream_wall_time_seconds",
+          "metric_keys": [
+            "eff.dataset_stream_wall_time_seconds"
+          ],
+          "category_key": "efficiency",
+          "category_label": "Efficiency",
+          "label": "Dataset stream time",
+          "description": "Dataset stream time",
+          "unit": "s",
+          "display_format": "seconds",
+          "default_visualization": "bar",
+          "compatible_visualizations": [
+            "bar",
+            "horizontal_bar"
+          ],
+          "default_visible": false,
+          "width": "standard",
+          "points": [
+            {
+              "tokenizer": "CUSTOM_b7d3c",
+              "value": 0.005929699997068383,
+              "interval_low": null,
+              "interval_high": null
+            }
+          ],
+          "distributions": [],
+          "buckets": [],
+          "histogram_bins": []
+        },
+        {
+          "widget_id": "benchmark.eff.postprocess_wall_time_seconds",
+          "metric_keys": [
+            "eff.postprocess_wall_time_seconds"
+          ],
+          "category_key": "efficiency",
+          "category_label": "Efficiency",
+          "label": "Post-processing time",
+          "description": "Post-processing time",
+          "unit": "s",
+          "display_format": "seconds",
+          "default_visualization": "bar",
+          "compatible_visualizations": [
+            "bar",
+            "horizontal_bar"
+          ],
+          "default_visible": false,
+          "width": "standard",
+          "points": [
+            {
+              "tokenizer": "CUSTOM_b7d3c",
+              "value": 0.001166899994132109,
+              "interval_low": null,
+              "interval_high": null
+            }
+          ],
+          "distributions": [],
+          "buckets": [],
+          "histogram_bins": []
+        },
+        {
+          "widget_id": "benchmark.eff.end_to_end_wall_time_seconds",
+          "metric_keys": [
+            "eff.end_to_end_wall_time_seconds"
+          ],
+          "category_key": "efficiency",
+          "category_label": "Efficiency",
+          "label": "End-to-end time",
+          "description": "End-to-end time",
+          "unit": "s",
+          "display_format": "seconds",
+          "default_visualization": "bar",
+          "compatible_visualizations": [
+            "bar",
+            "horizontal_bar"
+          ],
+          "default_visible": false,
+          "width": "standard",
+          "points": [
+            {
+              "tokenizer": "CUSTOM_b7d3c",
+              "value": 0.1446395999955712,
+              "interval_low": null,
+              "interval_high": null
+            }
+          ],
+          "distributions": [],
+          "buckets": [],
+          "histogram_bins": []
+        },
+        {
+          "widget_id": "benchmark.eff.load_time_seconds",
+          "metric_keys": [
+            "eff.load_time_seconds"
+          ],
+          "category_key": "efficiency",
+          "category_label": "Efficiency",
+          "label": "Load time",
+          "description": "Load time",
+          "unit": "s",
+          "display_format": "seconds",
+          "default_visualization": "bar",
+          "compatible_visualizations": [
+            "bar",
+            "horizontal_bar"
+          ],
+          "default_visible": false,
+          "width": "standard",
+          "points": [
+            {
+              "tokenizer": "CUSTOM_b7d3c",
+              "value": 0.0,
+              "interval_low": null,
+              "interval_high": null
+            }
+          ],
+          "distributions": [],
+          "buckets": [],
+          "histogram_bins": []
+        },
+        {
+          "widget_id": "benchmark.lat.encode_latency_p50_ms",
+          "metric_keys": [
+            "lat.encode_latency_p50_ms"
+          ],
+          "category_key": "latency",
+          "category_label": "Latency",
+          "label": "Latency p50",
+          "description": "Latency p50",
+          "unit": "ms",
+          "display_format": "milliseconds",
+          "default_visualization": "bar",
+          "compatible_visualizations": [
+            "bar",
+            "horizontal_bar"
+          ],
+          "default_visible": true,
+          "width": "standard",
+          "points": [
+            {
+              "tokenizer": "CUSTOM_b7d3c",
+              "value": 0.185,
+              "interval_low": null,
+              "interval_high": null
+            }
+          ],
+          "distributions": [],
+          "buckets": [],
+          "histogram_bins": []
+        },
+        {
+          "widget_id": "benchmark.lat.encode_latency_p95_ms",
+          "metric_keys": [
+            "lat.encode_latency_p95_ms"
+          ],
+          "category_key": "latency",
+          "category_label": "Latency",
+          "label": "Latency p95",
+          "description": "Latency p95",
+          "unit": "ms",
+          "display_format": "milliseconds",
+          "default_visualization": "bar",
+          "compatible_visualizations": [
+            "bar",
+            "horizontal_bar"
+          ],
+          "default_visible": false,
+          "width": "standard",
+          "points": [
+            {
+              "tokenizer": "CUSTOM_b7d3c",
+              "value": 0.185,
+              "interval_low": null,
+              "interval_high": null
+            }
+          ],
+          "distributions": [],
+          "buckets": [],
+          "histogram_bins": []
+        },
+        {
+          "widget_id": "benchmark.lat.encode_latency_p99_ms",
+          "metric_keys": [
+            "lat.encode_latency_p99_ms"
+          ],
+          "category_key": "latency",
+          "category_label": "Latency",
+          "label": "Latency p99",
+          "description": "Latency p99",
+          "unit": "ms",
+          "display_format": "milliseconds",
+          "default_visualization": "bar",
+          "compatible_visualizations": [
+            "bar",
+            "horizontal_bar"
+          ],
+          "default_visible": false,
+          "width": "standard",
+          "points": [
+            {
+              "tokenizer": "CUSTOM_b7d3c",
+              "value": 0.185,
+              "interval_low": null,
+              "interval_high": null
+            }
+          ],
+          "distributions": [],
+          "buckets": [],
+          "histogram_bins": []
+        },
+        {
+          "widget_id": "benchmark.lat.sample_count",
+          "metric_keys": [
+            "lat.sample_count"
+          ],
+          "category_key": "latency",
+          "category_label": "Latency",
+          "label": "Timed observation count",
+          "description": "Timed observation count",
+          "unit": "observations",
+          "display_format": "count",
+          "default_visualization": "bar",
+          "compatible_visualizations": [
+            "bar",
+            "horizontal_bar"
+          ],
+          "default_visible": false,
+          "width": "standard",
+          "points": [
+            {
+              "tokenizer": "CUSTOM_b7d3c",
+              "value": 1.0,
+              "interval_low": null,
+              "interval_high": null
+            }
+          ],
+          "distributions": [],
+          "buckets": [],
+          "histogram_bins": []
+        },
+        {
+          "widget_id": "benchmark.lat.encode_latency_distribution",
+          "metric_keys": [
+            "lat.encode_latency_distribution"
+          ],
+          "category_key": "latency",
+          "category_label": "Latency",
+          "label": "Timed-observation latency distribution",
+          "description": "Timed-observation latency distribution",
+          "unit": "ms",
+          "display_format": "milliseconds",
+          "default_visualization": "box_plot",
+          "compatible_visualizations": [
+            "box_plot",
+            "histogram"
+          ],
+          "default_visible": false,
+          "width": "wide",
+          "points": [],
+          "distributions": [
+            {
+              "tokenizer": "CUSTOM_b7d3c",
+              "min": 0.185,
+              "q1": 0.185,
+              "median": 0.185,
+              "q3": 0.185,
+              "max": 0.185,
+              "sample_count": 1
+            }
+          ],
+          "buckets": [],
+          "histogram_bins": [
+            {
+              "tokenizer": "CUSTOM_b7d3c",
+              "bin_low": -0.315,
+              "bin_high": 0.685,
+              "count": 1,
+              "proportion": 1.0
+            }
+          ]
+        },
+        {
+          "widget_id": "benchmark.res.peak_rss_mb",
+          "metric_keys": [
+            "res.peak_rss_mb"
+          ],
+          "category_key": "resources",
+          "category_label": "Resources",
+          "label": "Peak RSS",
+          "description": "Peak RSS",
+          "unit": "MB",
+          "display_format": "megabytes",
+          "default_visualization": "bar",
+          "compatible_visualizations": [
+            "bar",
+            "horizontal_bar"
+          ],
+          "default_visible": false,
+          "width": "standard",
+          "points": [
+            {
+              "tokenizer": "CUSTOM_b7d3c",
+              "value": 262.12109375,
+              "interval_low": null,
+              "interval_high": null
+            }
+          ],
+          "distributions": [],
+          "buckets": [],
+          "histogram_bins": []
+        },
+        {
+          "widget_id": "benchmark.res.memory_delta_mb",
+          "metric_keys": [
+            "res.memory_delta_mb"
+          ],
+          "category_key": "resources",
+          "category_label": "Resources",
+          "label": "Memory delta",
+          "description": "Memory delta",
+          "unit": "MB",
+          "display_format": "megabytes",
+          "default_visualization": "bar",
+          "compatible_visualizations": [
+            "bar",
+            "horizontal_bar"
+          ],
+          "default_visible": false,
+          "width": "standard",
+          "points": [
+            {
+              "tokenizer": "CUSTOM_b7d3c",
+              "value": 0.0,
+              "interval_low": null,
+              "interval_high": null
+            }
+          ],
+          "distributions": [],
+          "buckets": [],
+          "histogram_bins": []
+        },
+        {
+          "widget_id": "benchmark.doc.tokens_count_distribution",
+          "metric_keys": [
+            "doc.tokens_count_distribution"
+          ],
+          "category_key": "per_document",
+          "category_label": "Per-document",
+          "label": "Token-count distribution",
+          "description": "Token-count distribution",
+          "unit": "tokens",
+          "display_format": "count",
+          "default_visualization": "box_plot",
+          "compatible_visualizations": [
+            "box_plot",
+            "histogram"
+          ],
+          "default_visible": false,
+          "width": "wide",
+          "points": [],
+          "distributions": [
+            {
+              "tokenizer": "CUSTOM_b7d3c",
+              "min": 4.0,
+              "q1": 4.0,
+              "median": 4.0,
+              "q3": 4.0,
+              "max": 4.0,
+              "sample_count": 2
+            }
+          ],
+          "buckets": [],
+          "histogram_bins": [
+            {
+              "tokenizer": "CUSTOM_b7d3c",
+              "bin_low": 3.5,
+              "bin_high": 4.5,
+              "count": 2,
+              "proportion": 1.0
+            }
+          ]
+        },
+        {
+          "widget_id": "benchmark.doc.bytes_per_token_distribution",
+          "metric_keys": [
+            "doc.bytes_per_token_distribution"
+          ],
+          "category_key": "per_document",
+          "category_label": "Per-document",
+          "label": "Bytes-per-token distribution",
+          "description": "Bytes-per-token distribution",
+          "unit": "ratio",
+          "display_format": "ratio",
+          "default_visualization": "box_plot",
+          "compatible_visualizations": [
+            "box_plot",
+            "histogram"
+          ],
+          "default_visible": false,
+          "width": "wide",
+          "points": [],
+          "distributions": [
+            {
+              "tokenizer": "CUSTOM_b7d3c",
+              "min": 8.75,
+              "q1": 8.75,
+              "median": 8.75,
+              "q3": 8.75,
+              "max": 8.75,
+              "sample_count": 2
+            }
+          ],
+          "buckets": [],
+          "histogram_bins": [
+            {
+              "tokenizer": "CUSTOM_b7d3c",
+              "bin_low": 8.25,
+              "bin_high": 9.25,
+              "count": 2,
+              "proportion": 1.0
+            }
+          ]
+        }
+      ],
+      "available_widget_ids": [
+        "benchmark.meta.vocabulary_size",
+        "benchmark.meta.added_tokens",
+        "benchmark.meta.special_token_share",
+        "benchmark.eff.encode_tokens_per_second_mean",
+        "benchmark.eff.encode_chars_per_second_mean",
+        "benchmark.eff.encode_bytes_per_second_mean",
+        "benchmark.eff.encode_only_wall_time_seconds",
+        "benchmark.eff.dataset_stream_wall_time_seconds",
+        "benchmark.eff.postprocess_wall_time_seconds",
+        "benchmark.eff.end_to_end_wall_time_seconds",
+        "benchmark.eff.load_time_seconds",
+        "benchmark.lat.encode_latency_p50_ms",
+        "benchmark.lat.encode_latency_p95_ms",
+        "benchmark.lat.encode_latency_p99_ms",
+        "benchmark.lat.sample_count",
+        "benchmark.lat.encode_latency_distribution",
+        "benchmark.res.peak_rss_mb",
+        "benchmark.res.memory_delta_mb",
+        "benchmark.doc.tokens_count_distribution",
+        "benchmark.doc.bytes_per_token_distribution"
+      ],
+      "available_metric_keys": [
+        "meta.vocabulary_size",
+        "meta.added_tokens",
+        "meta.special_token_share",
+        "eff.encode_tokens_per_second_mean",
+        "eff.encode_chars_per_second_mean",
+        "eff.encode_bytes_per_second_mean",
+        "eff.encode_only_wall_time_seconds",
+        "eff.dataset_stream_wall_time_seconds",
+        "eff.postprocess_wall_time_seconds",
+        "eff.end_to_end_wall_time_seconds",
+        "eff.load_time_seconds",
+        "lat.encode_latency_p50_ms",
+        "lat.encode_latency_p95_ms",
+        "lat.encode_latency_p99_ms",
+        "lat.sample_count",
+        "lat.encode_latency_distribution",
+        "res.peak_rss_mb",
+        "res.memory_delta_mb",
+        "doc.tokens_count_distribution",
+        "doc.bytes_per_token_distribution"
+      ],
+      "unavailable_selected_metric_keys": []
+    },
+    "per_document_stats": [
+      {
+        "tokenizer": "CUSTOM_b7d3c",
+        "tokens_count": [
+          4,
+          4
+        ],
+        "bytes_per_token": [
+          8.75,
+          8.75
+        ],
+        "pieces_per_word": [
+          null,
+          null
+        ],
+        "encode_latency_ms": [
+          null,
+          null
+        ],
+        "peak_rss_mb": [
+          null,
+          null
+        ]
+      }
+    ],
+    "runtime_metadata": {
+      "python_version": "3.14.7 (tags/v3.14.7:823f032, Aug  5 2026, 10:51:32) [MSC v.1944 64 bit (AMD64)]",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "machine": "AMD64",
+      "processor": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD",
+      "cpu_count": 12,
+      "cpu_count_physical": 6,
+      "memory_total_mb": 32108.05859375,
+      "package_versions": {
+        "tokenizers": "0.22.2",
+        "transformers": "4.57.3",
+        "tiktoken": "not-installed",
+        "sentencepiece": "0.2.1",
+        "numpy": "2.4.1",
+        "pandas": "3.0.0",
+        "fastapi": "0.128.0"
+      },
+      "environment": {
+        "TOKENIZERS_PARALLELISM": "",
+        "OMP_NUM_THREADS": "",
+        "MKL_NUM_THREADS": "",
+        "RAYON_NUM_THREADS": "",
+        "PYTHONHASHSEED": ""
+      },
+      "dataset_total_documents_available": 10000,
+      "dataset_documents_benchmarked": 2,
+      "dataset_total_chars": 70,
+      "dataset_total_utf8_bytes": 70,
+      "benchmark_config": {
+        "warmup_trials": 0,
+        "timed_trials": 1,
+        "batch_size": 16,
+        "seed": 99,
+        "parallelism": 2,
+        "max_documents": 2,
+        "add_special_tokens": true,
+        "padding": true,
+        "truncation": true,
+        "max_length": 4,
+        "store_per_document_stats": true,
+        "per_document_sample_size": 2
+      },
+      "tokenizer_metadata": [
+        {
+          "tokenizer_name": "CUSTOM_b7d3c",
+          "tokenizer_class": "Tokenizer",
+          "is_fast": false,
+          "name_or_path": null,
+          "model_max_length": null,
+          "special_tokens_map": {}
+        }
+      ],
+      "benchmark_timing_boundaries": {
+        "encode_only_definition": "Timed tokenizer encode trials only; warmup excluded.",
+        "dataset_stream_definition": "Time spent streaming and spooling dataset rows before tokenizer trials.",
+        "postprocess_definition": "Time spent computing post-trial metrics from replayed rows.",
+        "latency_summary_definition": "Latency percentiles and distributions are computed from all timed batch observations, normalized by documents per batch."
+      },
+      "end_to_end_benchmark_seconds": 0.1811461000033887
+    },
+    "raw_observations": {
+      "CUSTOM_b7d3c": [
+        {
+          "trial_index": 0,
+          "batch_index": 0,
+          "documents": 2,
+          "elapsed_ns": 370000,
+          "token_count": 8,
+          "input_utf8_bytes": 70,
+          "rss_before_mb": 262.12109375,
+          "rss_after_mb": 262.12109375,
+          "peak_rss_mb": 262.12109375
+        }
+      ]
+    }
+  },
+  "browser_errors": [],
+  "browser_http_errors": [],
+  "screenshots": [
+    "t5-04-running-progress.png",
+    "t5-04-completed-rerun.png"
+  ]
+}
