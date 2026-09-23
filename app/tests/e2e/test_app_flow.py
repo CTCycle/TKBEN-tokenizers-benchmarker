@@ -213,6 +213,240 @@ class TestDatasetPage:
     """Tests for dataset page UI elements."""
 
     # -------------------------------------------------------------------------
+    def test_quality_structure_compression_metrics_persist_and_render(
+        self,
+        page: Page,
+        base_url: str,
+        api_context: APIRequestContext,
+    ) -> None:
+        """A controlled dataset should persist quality, structure, and compression metrics."""
+        dataset_stem = f"qa_t2_03_{uuid4().hex[:10]}"
+        dataset_name = f"custom/{dataset_stem}"
+        documents = [
+            "The cat sat. The cat sat!",
+            "The cat sat. The cat sat!",
+            "Visit https://example.com\nEmail me@test.com\n<tag>AA 123</tag>",
+            "",
+        ]
+        target_categories = {
+            "corpus_scale",
+            "document_quality",
+            "structural_regularity",
+            "compression_redundancy",
+        }
+        expected_aggregates = {
+            "corpus.document_count": 4.0,
+            "doc.length_mean": 27.75,
+            "quality.empty_rate": 0.25,
+            "quality.near_empty_rate": 0.25,
+            "quality.duplicate_rate": 0.25,
+            "quality.exact_duplicate_rate": 0.25,
+            "quality.near_duplicate_rate": 0.25,
+            "quality.language_consistency": 0.5,
+            "quality.avg_sentence_count": 1.75,
+            "quality.avg_sentence_length": 3.4285714285714284,
+            "quality.sentence_length_variance": 0.5306122448979611,
+            "structure.avg_paragraph_count": 0.75,
+            "structure.line_break_density": 0.018018018018018018,
+            "structure.html_tag_ratio": 0.0990990990990991,
+            "structure.url_density": 0.041666666666666664,
+            "structure.email_density": 0.041666666666666664,
+            "compression.ratio": 1.3243243243243243,
+            "compression.chars_per_unique_word": 8.538461538461538,
+            "compression.avg_repetition_factor": 1.8461538461538463,
+            "compression.bigram_repetition_rate": 0.19047619047619047,
+        }
+        dataset_created = False
+        dataset_id: int | None = None
+        browser_errors: list[str] = []
+
+        catalog_response = api_context.get("/api/datasets/metrics/catalog")
+        assert catalog_response.ok, catalog_response.text()
+        categories = catalog_response.json().get("categories", [])
+        target_metric_keys = {
+            metric["key"]
+            for category in categories
+            if category.get("category_key") in target_categories
+            for metric in category.get("metrics", [])
+        }
+        assert target_metric_keys
+
+        csv_buffer = io.StringIO(newline="")
+        writer = csv.writer(csv_buffer, lineterminator="\n")
+        writer.writerow(["text"])
+        writer.writerows((document,) for document in documents)
+        csv_buffer.seek(0)
+        csv_documents = list(csv.DictReader(csv_buffer))
+        assert len(csv_documents) == len(documents)
+
+        try:
+            # The CSV importer filters blank texts, so persist the parsed rows
+            # directly to preserve a genuine empty document in this fixture.
+            repository = DatasetRepository()
+            dataset_id = repository.begin_dataset_import(dataset_name)
+            repository.save_document_batch(
+                [
+                    {
+                        "dataset_id": dataset_id,
+                        "ordinal": ordinal,
+                        "text": row["text"],
+                    }
+                    for ordinal, row in enumerate(csv_documents)
+                ]
+            )
+            repository.finalize_dataset_import(dataset_id, len(documents))
+            dataset_created = True
+            assert repository.count_dataset_documents(dataset_name) == len(documents)
+
+            page.on(
+                "console",
+                lambda message: browser_errors.append(message.text)
+                if message.type == "error"
+                else None,
+            )
+            page.goto(f"{base_url}/dataset")
+            dataset_row = page.locator(".dataset-preview-row").filter(
+                has_text=dataset_name
+            ).first
+            expect(dataset_row).to_be_visible()
+            dataset_row.get_by_role(
+                "button", name=f"Run validation pipeline for {dataset_name}"
+            ).click()
+
+            for category in categories:
+                category_checkbox = page.get_by_role(
+                    "checkbox", name=category["category_label"], exact=True
+                )
+                if category.get("category_key") in target_categories:
+                    expect(category_checkbox).to_be_checked()
+                else:
+                    category_checkbox.uncheck()
+
+            page.get_by_role("button", name="Next", exact=True).click()
+            exclude_empty = page.get_by_role(
+                "checkbox", name="Exclude empty documents", exact=True
+            )
+            expect(exclude_empty).to_be_checked()
+            exclude_empty.uncheck()
+            page.get_by_role("button", name="Next", exact=True).click()
+            expect(page.locator(".validation-summary")).to_contain_text(
+                f"Selected metrics: {len(target_metric_keys)}"
+            )
+            expect(page.locator(".validation-summary")).to_contain_text(
+                "exclude_empty=false"
+            )
+
+            with page.expect_request(
+                lambda request: request.method == "POST"
+                and urlparse(request.url).path == "/api/datasets/analyze"
+            ) as analyze_request:
+                page.get_by_role("button", name="Run Validation", exact=True).click()
+            request_payload = analyze_request.value.post_data_json
+            assert request_payload.get("dataset_name") == dataset_name
+            assert set(request_payload.get("selected_metric_keys", [])) == target_metric_keys
+            assert request_payload.get("filters", {}).get("exclude_empty") is False
+
+            dashboard = page.locator(".dataset-dashboard")
+            expect(
+                dashboard.locator(".panel-description").first
+            ).to_contain_text(
+                f"Latest persisted session for {dataset_name}", timeout=300_000
+            )
+
+            report_response = api_context.get(
+                "/api/datasets/reports/latest",
+                params={"dataset_name": dataset_name},
+            )
+            assert report_response.ok, report_response.text()
+            report = report_response.json()
+            assert report.get("report_id")
+            assert set(report.get("selected_metric_keys", [])) == target_metric_keys
+            aggregate = report.get("aggregate_statistics", {})
+            for metric_key, expected in expected_aggregates.items():
+                actual = aggregate.get(metric_key)
+                assert isinstance(actual, (int, float)) and math.isclose(
+                    float(actual), expected, rel_tol=1e-9, abs_tol=1e-9
+                ), f"{metric_key}: expected {expected}, got {actual!r}"
+
+            expect(dashboard.get_by_text("Aggregate Stats", exact=True)).to_be_visible()
+            expect(
+                dashboard.locator(".dataset-table tr").filter(
+                    has_text="Num documents"
+                )
+            ).to_contain_text("4")
+            expect(
+                dashboard.locator(".dataset-table tr").filter(
+                    has_text="Empty count"
+                )
+            ).to_contain_text("1")
+            duplicate_panel = dashboard.locator(".dataset-extras-item").filter(
+                has_text="Duplicate Indicators"
+            )
+            expect(duplicate_panel).to_be_visible()
+            exact_duplicate_row = duplicate_panel.locator(
+                ".dataset-indicator-row"
+            ).filter(has_text="Exact duplicate rate")
+            expect(exact_duplicate_row).to_be_visible()
+            expect(exact_duplicate_row).to_contain_text("%")
+            expect(exact_duplicate_row).not_to_contain_text("—")
+
+            page.reload()
+            dataset_row = page.locator(".dataset-preview-row").filter(
+                has_text=dataset_name
+            ).first
+            with page.expect_response(
+                lambda response: response.request.method == "GET"
+                and "/api/datasets/reports/latest" in response.url
+                and dataset_stem in response.url
+            ):
+                dataset_row.click(position={"x": 20, "y": 20})
+            dashboard = page.locator(".dataset-dashboard")
+            expect(
+                dashboard.locator(".panel-description").first
+            ).to_contain_text(f"Latest persisted session for {dataset_name}")
+            expect(dashboard.get_by_text("Aggregate Stats", exact=True)).to_be_visible()
+            expect(
+                dashboard.locator(".dataset-table tr").filter(
+                    has_text="Num documents"
+                )
+            ).to_contain_text("4")
+            exact_duplicate_row = dashboard.locator(
+                ".dataset-extras-item"
+            ).filter(has_text="Duplicate Indicators").locator(
+                ".dataset-indicator-row"
+            ).filter(has_text="Exact duplicate rate")
+            expect(exact_duplicate_row).to_contain_text("%")
+            persisted_report = api_context.get(
+                "/api/datasets/reports/latest",
+                params={"dataset_name": dataset_name},
+            )
+            assert persisted_report.ok, persisted_report.text()
+            assert persisted_report.json().get("report_id") == report.get("report_id")
+            assert not browser_errors, f"Browser console errors: {browser_errors}"
+
+            screenshot_path = (
+                Path(__file__).resolve().parents[3]
+                / "assets"
+                / "QA"
+                / "tkben-t2-03-dataset-quality-structure-compression-20260923.png"
+            )
+            screenshot_path.parent.mkdir(parents=True, exist_ok=True)
+            page.screenshot(path=str(screenshot_path), full_page=True)
+        finally:
+            if dataset_created:
+                delete_response = api_context.delete(
+                    "/api/datasets/delete", params={"dataset_name": dataset_name}
+                )
+                assert delete_response.status in {200, 404}, delete_response.text()
+                latest_after_cleanup = api_context.get(
+                    "/api/datasets/reports/latest",
+                    params={"dataset_name": dataset_name},
+                )
+                assert latest_after_cleanup.status == 404, latest_after_cleanup.text()
+            elif dataset_id is not None:
+                DatasetRepository().delete_incomplete_dataset(dataset_id)
+
+    # -------------------------------------------------------------------------
     def test_validation_pipeline_populates_all_metric_families_and_persists_dashboard(
         self,
         page: Page,
