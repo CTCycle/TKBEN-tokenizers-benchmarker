@@ -1,5 +1,5 @@
 # Project Status Ledger
-Last updated: 2026-09-22
+Last updated: 2026-09-23
 
 This document is the canonical catalog of the current operational state of
 TKBEN. It summarizes what is implemented, what has been observed working,
@@ -26,6 +26,11 @@ implementation revision `993e52e8f0617d4bf98a60d62b4c5d5588541218`. The
 populated Dataset and Tokenizer matrices, live catalogue races, deterministic
 discovery race, regression gates, and cleanup are recorded in the [T1-05 QA
 record](../../assets/QA/tkben-t1-05-catalog-filtering-races-20260922.md).
+
+V-20260923 adds the controlled T2-03 dataset quality, structure, and compression
+dashboard evidence at implementation revision `de1aaee6a229bfb7ff64b163761fc78c144efaf8`.
+The focused Chrome E2E, metric contract checks, rendered reload, and cleanup are
+recorded in the [T2-03 QA record](../../assets/QA/tkben-t2-03-dataset-quality-structure-compression-20260923.md).
 
 ## Maintenance Rules
 
@@ -116,7 +121,7 @@ means that a field does not apply.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | ui.route-shell-and-empty-states | VALIDATED | Primary navigation, route loading, dataset/tokenizer empty states, benchmark empty state, and Settings shell. | V-20260920: four routes rendered in the in-app browser; browser console error log was empty. | Current visual check used the normal browser viewport, not the full documented responsive matrix. | — | 2026-09-20 | manual | [experience](ui/experience.md), [components and patterns](ui/components_and_patterns.md), [app-flow E2E](../../app/tests/e2e/test_app_flow.py) | Repeat at the required viewport sizes after layout changes. |
 | ui.startup-readiness | VALIDATED | Frontend-first startup screen, asynchronous backend readiness polling, slow-start notice, retryable failure state, and transition into the existing shell. | V-20260921: the canonical launcher opened the frontend before backend health; the in-app browser showed the quiet token stream/benchmark graph while offline, the slow state, the 60-second failure state, and a retry that transitioned into Dataset after backend recovery. Follow-up validation confirmed the rebuilt production preview keeps the artwork moving while connecting and pauses it in the terminal failure state. Focused browser E2E passed 2/2; frontend unit tests 60/60, lint, and production build passed. | The current application has a dark theme only; the graph is intentionally illustrative and not a benchmark measurement. | — | 2026-09-21 | unit + E2E + manual | [startup](runtime/startup.md), [experience](ui/experience.md), [startup E2E](../../app/tests/e2e/test_startup_loading.py) | Revalidate after launcher or readiness changes. |
-| ui.dataset-dashboard | WORKING | Dataset selection, validation controls, persisted analysis dashboard, charts, and export action. | V-20260922: a local six-family validation flow populated and restored the dashboard after reload; see the [T2-02 QA record](../../assets/QA/tkben-t2-02-dataset-metric-families-20260922.md). | Export and malformed optional-payload behavior remain unvalidated. | — | 2026-09-22 | E2E + manual | [experience](ui/experience.md), [dataset E2E](../../app/tests/e2e/test_datasets_api.py) | Validate export and malformed optional-payload handling before promoting the full component scope. |
+| ui.dataset-dashboard | WORKING | Dataset selection, validation controls, persisted analysis dashboard, charts, and export action. | V-20260923: T2-03 controlled quality/structure/compression dashboard flow populated and restored after reload; metric unit tests passed 78/78. See the [T2-03 QA record](../../assets/QA/tkben-t2-03-dataset-quality-structure-compression-20260923.md). Earlier T2-02 six-family coverage is recorded in the [T2-02 QA record](../../assets/QA/tkben-t2-02-dataset-metric-families-20260922.md). | Export and malformed optional-payload behavior remain unvalidated. | — | 2026-09-23 | unit + E2E + manual | [experience](ui/experience.md), [dataset E2E](../../app/tests/e2e/test_datasets_api.py) | Validate export and malformed optional-payload handling before promoting the full component scope. |
 | ui.settings-page | WORKING | Settings tabs, typed controls, inline validation, persistence, conflict handling, reset, and Keys section navigation. | V-20260922: the rendered Settings route had no overlay or console errors; Chrome browser E2E passed 2/2 with all 16 controls, boundary errors, cross-field recovery, persistence, reload hydration, conflict, reset, and new-operation effects. | Rendered key-management lifecycle remains outside the current slice. | — | 2026-09-22 | unit + E2E + manual | [configuration](runtime/configuration.md), [experience](ui/experience.md), [Settings E2E](../../app/tests/e2e/test_settings_ui.py), [T1-02 closure QA record](../../assets/QA/tkben-t1-02-settings-boundary-20260922.md), [Tier 1 QA record](../../assets/QA/tkben-tier1-20260921.md) | Complete the separate rendered key-management lifecycle before promoting the full page scope. |
 | ui.cross-benchmark-workflow | PARTIAL | Benchmark wizard, report manager, baseline selection, clone eligibility, tags, dashboard customization, and populated report rendering. | V-20260920: empty Cross Benchmark state rendered; wizard reached Inputs and correctly disabled Next with no dataset/tokenizer. Backend report round-trip passed separately. | Only empty-state and incomplete-input behavior was live-confirmed; populated report manager, baseline, clone, tags, and chart interactions remain unvalidated in this checkout. | — | 2026-09-20 | E2E + manual | [benchmark dashboard](ui/benchmark_dashboard.md), [experience](ui/experience.md), [cross-benchmark E2E](../../app/tests/e2e/test_cross_benchmark_dashboard.py) | Run the populated report-manager and responsive dashboard E2E before changing this status. |
 | ui.tokenizer-report-and-vocabulary | UNVALIDATED | Tokenizer report generation, vocabulary paging, report dashboard, and vocabulary preview. | Code, API contracts, and unit coverage exist; the provider/report-flow E2E was skipped and no report was available for a populated browser check. | No evidence is sufficient for a current working claim over the full report workflow. | Provider-backed report data or an equivalent local report fixture is required. | — | None | [experience](ui/experience.md), [backend API](architecture/backend_api.md), [tokenizer E2E](../../app/tests/e2e/test_tokenizers_api.py) | Generate a report from an approved local/provider tokenizer and validate paging/rendering. |
@@ -165,7 +170,7 @@ It does not assert that the component is broken.
 
 ## Validation Campaign Roadmap
 
-Last updated: 2026-09-22
+Last updated: 2026-09-23
 
 The comprehensive validation roadmap supplied for this repository is normalized
 here into stable slice IDs. This campaign layer does not replace the component
@@ -194,7 +199,7 @@ evidence.
 | T1-05 | yes | yes | PASS | V-20260922 at `993e52e8f0617d4bf98a60d62b4c5d5588541218`: populated Dataset and Tokenizer filter matrices passed for search, source, exact numeric boundaries, combined/no-match/reset states; the Dataset stale-request case, both Tokenizer catalogue completion orders, and deterministic Tokenizer discovery stale-result/stale-error cases passed. Frontend 60/60, lint, production build, and relevant backend route/filter tests passed. See the [T1-05 QA record](../../assets/QA/tkben-t1-05-catalog-filtering-races-20260922.md). |
 | T2-01 | yes | yes | PASS | Local dataset API/UI lifecycle evidence exists; CSV/XLSX and complete UI consolidation remain. |
 | T2-02 | yes | yes | PASS | V-20260922 at base revision `0993e900d44897975f495dc6a7f7acd520d6a70a`: all six metric families were selected, analyzed, persisted, rendered in the populated dashboard, and restored after reload; metric unit tests passed 78/78 and dataset-analysis API E2E passed 1/1. See the [T2-02 QA record](../../assets/QA/tkben-t2-02-dataset-metric-families-20260922.md). |
-| T2-03 | yes | no | PARTIAL | Quality/structure/compression implementation exists; controlled populated-dashboard campaign remains. |
+| T2-03 | yes | yes | PASS | V-20260923 at implementation revision `de1aaee6`: the controlled four-document dataset included an exact duplicate pair, URL/email/HTML structure, and an empty document; selected keys and aggregates matched the metric contract, and the populated report restored after reload. Focused Chrome E2E passed 1/1, metric unit tests passed 78/78, and the dataset/report were removed. See the [T2-03 QA record](../../assets/QA/tkben-t2-03-dataset-quality-structure-compression-20260923.md). |
 | T2-04 | yes | yes | PASS | Custom tokenizer upload/delete API lifecycle passed; restart, re-upload collision, and complete UI coverage remain. |
 | T2-05 | yes | no | UNTESTED | Generate a local tokenizer report and validate persisted dashboard plus vocabulary paging. |
 | T2-06 | yes | yes | PARTIAL | Local benchmark API round-trip passed; complete populated wizard-to-report UI remains. |
