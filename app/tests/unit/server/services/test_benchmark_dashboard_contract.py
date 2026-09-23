@@ -271,6 +271,43 @@ def test_pdf_renderer_covers_all_canonical_visualizations() -> None:
             plt.close(figure)
 
 ###############################################################################
+def test_pdf_benchmark_chart_labels_shorten_long_tokenizer_names() -> None:
+    service = DashboardExportService()
+    tokenizer_name = "CUSTOM_t3_05_export_validation_20260923"
+    expected_label = "CUSTOM_...260923"
+
+    for visualization, compatible, label_axis in (
+        ("bar", ["bar"], "x"),
+        ("horizontal_bar", ["horizontal_bar"], "y"),
+    ):
+        figure, axis = plt.subplots()
+        try:
+            service._render_normalized_benchmark_widget(
+                axis,
+                _widget(
+                    visualization,
+                    compatible=compatible,
+                    points=[{"tokenizer": tokenizer_name, "value": 23.0}],
+                )
+                | {"visualization": visualization},
+            )
+
+            labels = (
+                axis.get_xticklabels()
+                if label_axis == "x"
+                else axis.get_yticklabels()
+            )
+            assert [label.get_text() for label in labels] == [expected_label]
+            if visualization == "horizontal_bar":
+                assert axis.get_xlabel() == "value"
+                assert axis.get_ylabel() == "Tokenizer"
+            else:
+                assert axis.get_xlabel() == "Tokenizer"
+                assert axis.get_ylabel() == "value"
+        finally:
+            plt.close(figure)
+
+###############################################################################
 def test_pdf_export_rejects_unknown_and_incompatible_overrides() -> None:
     service = DashboardExportService()
     source = {

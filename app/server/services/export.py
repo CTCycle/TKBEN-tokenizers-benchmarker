@@ -587,12 +587,37 @@ class DashboardExportService(DashboardExportFormatting):
                 color=MUTED_TEXT,
             )
             if len(page_widgets) == 1:
-                axes = [fig.add_axes((0.07, 0.1, 0.88, 0.66))]
-            else:
+                widget = page_widgets[0]
+                label_gutter = widget.get("visualization") in {
+                    "box_plot",
+                    "dot_whisker",
+                    "heatmap",
+                    "horizontal_bar",
+                }
                 axes = [
-                    fig.add_axes((0.07, 0.1, 0.4, 0.66)),
-                    fig.add_axes((0.55, 0.1, 0.4, 0.66)),
+                    fig.add_axes(
+                        (
+                            0.17 if label_gutter else 0.07,
+                            0.1,
+                            0.78 if label_gutter else 0.88,
+                            0.66,
+                        )
+                    )
                 ]
+            else:
+                axes = []
+                for index, widget in enumerate(page_widgets):
+                    left = 0.07 if index == 0 else 0.55
+                    width = 0.4
+                    if widget.get("visualization") in {
+                        "box_plot",
+                        "dot_whisker",
+                        "heatmap",
+                        "horizontal_bar",
+                    }:
+                        left += 0.10
+                        width -= 0.10
+                    axes.append(fig.add_axes((left, 0.1, width, 0.66)))
             for axis, widget in zip(axes, page_widgets, strict=True):
                 self._render_normalized_benchmark_widget(axis, widget)
             pdf.savefig(fig)
@@ -645,7 +670,6 @@ class DashboardExportService(DashboardExportFormatting):
                 maximum = max(stat["whishi"] for stat in stats)
                 if minimum > 0 and maximum / minimum >= 50:
                     ax.set_xscale("log")
-                    ax.set_xlabel(f"{unit} (log scale)")
             else:
                 ax.text(
                     0.5,
@@ -762,7 +786,6 @@ class DashboardExportService(DashboardExportFormatting):
             values = [self._to_number(row.get("value")) for row in rows]
             if rows:
                 ax.barh(labels, values, color=SECONDARY_COLOR)
-                ax.set_xlabel(unit)
             else:
                 ax.text(
                     0.5,
@@ -847,7 +870,22 @@ class DashboardExportService(DashboardExportFormatting):
                     va="center",
                     color=MUTED_TEXT,
                 )
-        ax.set_ylabel(unit)
+        if visualization in {"bar", "interval_bar"}:
+            ax.set_xlabel("Tokenizer")
+            ax.set_ylabel(unit)
+        elif visualization in {"box_plot", "dot_whisker", "horizontal_bar"}:
+            x_label = f"{unit} (log scale)" if visualization == "box_plot" and ax.get_xscale() == "log" else unit
+            ax.set_xlabel(x_label)
+            ax.set_ylabel("Tokenizer")
+        elif visualization == "grouped_bar":
+            ax.set_xlabel("Bucket")
+            ax.set_ylabel(unit)
+        elif visualization == "heatmap":
+            ax.set_xlabel("Bucket")
+            ax.set_ylabel("Tokenizer")
+        elif visualization == "histogram":
+            ax.set_xlabel(unit)
+            ax.set_ylabel("Count")
         ax.set_axisbelow(True)
 
     # -------------------------------------------------------------------------
