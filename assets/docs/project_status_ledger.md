@@ -57,9 +57,11 @@ record](../../assets/QA/tkben-t3-03-04-cross-benchmark-workflows-20260923.md).
 
 The Cross Benchmark workflow component is now VALIDATED. T5-03 remains PARTIAL
 because its Tokenizers responsive and keyboard coverage has not been completed.
-Hugging Face and PostgreSQL gates remain BLOCKED; T3-01/02/05, T4-02, T5-02,
-T5-04/05/06, and the remaining responsive matrix are still open as listed
-below.
+Hosted CI run 35875638854 passed for implementation commit
+`dc8cae26ea81b1c621c800168d5b3581c9fab04f`; T5-06 remains PARTIAL because
+release publication evidence is separate. Hugging Face and PostgreSQL gates
+remain BLOCKED; T3-01/02/05, T4-02, T5-02, T5-04/05, and the remaining
+responsive matrix are still open as listed below.
 
 ## Maintenance Rules
 
@@ -166,7 +168,7 @@ means that a field does not apply.
 | deployment.containerized | NOT_IMPLEMENTED | Docker or other active container runtime configuration. | [Runtime modes](runtime/modes.md) explicitly records containerized mode as not implemented; no active root container configuration exists. | This is an absent capability, not a current local-app failure. | — | — | None | [runtime modes](runtime/modes.md), [deployment](runtime/deployment.md) | Add a separately scoped deployment design before implementation. |
 | deployment.binary-packaging | NOT_IMPLEMENTED | Installer, executable, Tauri, portable binary, or package artifact. | [Release procedure](runtime/release.md) states that releases are source-only and contain no binary packaging workflow. | Source-only distribution is the intended current release model. | — | — | None | [release procedure](runtime/release.md) | Do not add packaging work to a source-only release. |
 | test-infrastructure.local-quality-gates | VALIDATED | Backend compile, Ruff, BasedPyright, SQLite initialization, unit tests, OpenAPI smoke, frontend lint, unit tests, and production build. | V-20260922: 212 server unit tests passed; Ruff passed; BasedPyright passed with 0 errors and 1,953 existing warnings; frontend lint and 14-file/60-test unit suite passed; launcher contract tests passed 17/17 and the production build passed in clean bootstrap and stale-build repair. Windows menu test-suite run passed 378 tests with 4 skips before the final launcher contract additions. | Hosted CI, full live browser E2E, and provider/database gates are separate. | — | 2026-09-22 | unit + integration | [testing and quality](coding/testing_and_quality.md), [CI workflow](../../.github/workflows/ci.yml), [test runner](../../app/tests/run_tests.bat), [gate-closure QA record](../../assets/QA/tkben-partial-gates-20260922.md) | Keep hosted and live-provider gates explicit in future reports. |
-| test-infrastructure.hosted-ci-and-release-evidence | UNVALIDATED | Current hosted CI result and committed detailed QA/release evidence. | The QA record and scoped local evidence are prepared; the exact pushed revision's hosted workflow has not yet been observed. | Local gates must not be presented as hosted-CI or publication proof. | Requires hosted CI access and a non-sensitive QA record. | — | None | [CI workflow](../../.github/workflows/ci.yml), [release procedure](runtime/release.md), [T3-03/04 QA record](../../assets/QA/tkben-t3-03-04-cross-benchmark-workflows-20260923.md) | Check the pushed SHA's hosted workflow and record its actual result; assess release evidence separately. |
+| test-infrastructure.hosted-ci-and-release-evidence | PARTIAL | Current hosted CI result and committed detailed QA/release evidence. | Hosted CI run 35875638854 passed for pushed implementation commit `dc8cae26ea81b1c621c800168d5b3581c9fab04f`; both frontend and backend validation jobs succeeded. See the [T3-03/04 QA record](../../assets/QA/tkben-t3-03-04-cross-benchmark-workflows-20260923.md). | Release publication evidence was not checked and cannot be inferred from CI. | Release audit is outside this validation scope. | 2026-09-23 | hosted CI | [CI workflow](../../.github/workflows/ci.yml), [run 35875638854](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/35875638854), [release procedure](runtime/release.md), [T3-03/04 QA record](../../assets/QA/tkben-t3-03-04-cross-benchmark-workflows-20260923.md) | Validate release publication and correlate it with a separately selected release SHA. |
 | api.tokenizers.settings-compatibility | DEPRECATED | Legacy GET /api/tokenizers/settings compatibility response. | The API contract and OpenAPI test retain the endpoint as deprecated; new clients use /api/settings. | Compatibility surface should not become a second settings source. | — | 2026-09-20 | unit | [backend API](architecture/backend_api.md), [configuration](runtime/configuration.md) | Remove only after supported clients no longer depend on it and the removal is validated. |
 
 ## Open Issues
@@ -194,7 +196,7 @@ It does not assert that the component is broken.
 | integration.huggingface-discovery-and-download | BLOCKED | Run the opt-in provider discovery, gated/public access, download, and report-flow tests with approved credentials and network. | HIGH |
 | persistence.postgresql-runtime | BLOCKED | Run disposable PostgreSQL migration, concurrency, rollback, and runtime-equivalence checks. | MEDIUM |
 | ui.responsive-visual-matrix | PARTIAL | Populated Cross Benchmark dashboard and report/clone/customize dialogs passed viewport bounds and keyboard-dismiss checks at all four sizes. Tokenizers, Dataset, and Settings routes plus empty, loading, error, and long-identifier states remain. | MEDIUM |
-| test-infrastructure.hosted-ci-and-release-evidence | UNVALIDATED | Observe the exact pushed SHA's hosted workflow after push; release publication evidence remains a separate follow-up. | MEDIUM |
+| test-infrastructure.hosted-ci-and-release-evidence | PARTIAL | Hosted CI and committed QA evidence passed for `dc8cae26ea81b1c621c800168d5b3581c9fab04f`; validate release publication separately. | MEDIUM |
 
 ## Validation Campaign Roadmap
 
@@ -246,7 +248,7 @@ evidence.
 | T5-03 | yes | yes | PARTIAL | V-20260923: populated Cross Benchmark view plus report-manager, clone, and customize dialogs passed visual bounds checks at 1920x1080, 1440x900, 1024x768, and 390x844; Escape and focus-return behavior passed. Tokenizers route responsive/keyboard coverage remains. See the [T3-03/04 QA record](../../assets/QA/tkben-t3-03-04-cross-benchmark-workflows-20260923.md). |
 | T5-04 | yes | no | UNTESTED | Run controlled streaming, memory, cancellation, and responsiveness campaign. |
 | T5-05 | yes | yes | PARTIAL | Linux manual startup, proxy, major routes, restart, reconciliation, and shutdown passed in Ubuntu 26.04; macOS and hosted `ubuntu-latest` remain untested. |
-| T5-06 | yes | no | UNTESTED | Correlate hosted CI and release evidence to the exact validated SHA. |
+| T5-06 | yes | yes | PARTIAL | Hosted CI run 35875638854 passed for exact pushed implementation commit `dc8cae26ea81b1c621c800168d5b3581c9fab04f` (frontend and backend jobs); release publication evidence remains separate. See the [T3-03/04 QA record](../../assets/QA/tkben-t3-03-04-cross-benchmark-workflows-20260923.md). |
 
 ### Tier 1 execution record
 

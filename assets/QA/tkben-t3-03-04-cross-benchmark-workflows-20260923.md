@@ -71,8 +71,8 @@ Visual evidence captured from the populated report:
 | T5-02 | UNTESTED | Dataset/Settings responsive and keyboard matrix remains. |
 | T5-04 | UNTESTED | Resource, streaming, and responsiveness campaign remains. |
 | T5-05 | PARTIAL | Linux manual startup is recorded; macOS and hosted `ubuntu-latest` remain. |
-| T5-06 | UNTESTED | Exact pushed-SHA hosted CI and release evidence are pending; CI alone will not establish release publication. |
+| T5-06 | PARTIAL | Hosted CI passed for implementation commit `dc8cae26ea81b1c621c800168d5b3581c9fab04f`; release publication evidence remains unchecked. |
 
 The broader responsive visual matrix is PARTIAL: this report flow passed its populated-state viewport checks, while Tokenizers, Dataset, and Settings routes and empty/loading/error/long-identifier states remain. The dashboard/PDF component remains WORKING until populated-report PDF download and rendered parity are checked. Containerized deployment and binary packaging remain NOT_IMPLEMENTED by design.
 
-Hosted CI will be checked after the scoped commit is pushed. This report does not infer hosted workflow or release status from local results.
+Hosted workflow [run 35875638854](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/35875638854) completed successfully for pushed implementation commit `dc8cae26ea81b1c621c800168d5b3581c9fab04f`. Both `frontend-validation` and `backend-validation` jobs succeeded. This establishes CI evidence only; release publication remains outside this validation scope, so T5-06 remains PARTIAL.
