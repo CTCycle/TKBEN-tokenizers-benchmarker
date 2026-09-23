@@ -4379,6 +4379,18 @@ select:focus-visible {
   padding: 20px;
 }
 
+.benchmark-job-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.benchmark-job-progress .loading-container {
+  padding: 20px 0;
+}
+
 .loading-container p {
   margin: 0;
   font-size: 14px;

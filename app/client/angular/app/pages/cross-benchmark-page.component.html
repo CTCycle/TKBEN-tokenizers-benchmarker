@@ -84,7 +84,14 @@
       </main>
     }
 
-    @if (store.busy()) { <p class="loading-container" role="status">Benchmark running{{ store.progress() !== null ? ' (' + store.progress() + '%)' : '…' }}</p> }
+    @if (store.busy()) {
+      <div class="benchmark-job-progress">
+        <p class="loading-container" role="status">{{ store.cancellationRequested() ? 'Benchmark cancellation requested' : 'Benchmark running' }}{{ store.progress() !== null ? ' (' + store.progress() + '%)' : '…' }}</p>
+        @if (store.activeJobId()) {
+          <button class="secondary-button" type="button" [disabled]="store.cancellationRequested()" (click)="cancelBenchmark()">{{ store.cancellationRequested() ? 'Cancelling…' : 'Cancel benchmark' }}</button>
+        }
+      </div>
+    }
   </div>
 </main>
 
