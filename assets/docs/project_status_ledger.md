@@ -32,6 +32,12 @@ dashboard evidence at implementation revision `de1aaee6a229bfb7ff64b163761fc78c1
 The focused Chrome E2E, metric contract checks, rendered reload, and cleanup are
 recorded in the [T2-03 QA record](../../assets/QA/tkben-t2-03-dataset-quality-structure-compression-20260923.md).
 
+V-20260923 also closes T2-05 against application revision
+`5cf39a0a49e7f51e57438520901bda3551e96600`. A local 1,207-entry custom
+tokenizer report persisted and rendered across reload, with complete API and UI
+vocabulary paging evidence in the [T2-05 QA
+record](../../assets/QA/tkben-t2-05-tokenizer-report-vocabulary-20260923.md).
+
 ## Maintenance Rules
 
 Future coding and validation agents must:
@@ -84,8 +90,8 @@ means that a field does not apply.
   quoted npm preview process while also matching nested process roots.
 - Hugging Face live discovery/report flows and PostgreSQL runtime equivalence
   are BLOCKED by conditional external-provider/database gates.
-- Populated report dashboards, tokenizer reports, PDF export, hosted CI, and
-  the documented responsive visual matrix remain validation debt.
+- Populated Cross Benchmark dashboards, PDF export, hosted CI, and the documented
+  responsive visual matrix remain validation debt.
 - Containerized deployment and binary packaging are explicitly
   NOT_IMPLEMENTED; source-only local distribution is the supported release
   model.
@@ -124,7 +130,7 @@ means that a field does not apply.
 | ui.dataset-dashboard | WORKING | Dataset selection, validation controls, persisted analysis dashboard, charts, and export action. | V-20260923: T2-03 controlled quality/structure/compression dashboard flow populated and restored after reload; metric unit tests passed 78/78. See the [T2-03 QA record](../../assets/QA/tkben-t2-03-dataset-quality-structure-compression-20260923.md). Earlier T2-02 six-family coverage is recorded in the [T2-02 QA record](../../assets/QA/tkben-t2-02-dataset-metric-families-20260922.md). | Export and malformed optional-payload behavior remain unvalidated. | — | 2026-09-23 | unit + E2E + manual | [experience](ui/experience.md), [dataset E2E](../../app/tests/e2e/test_datasets_api.py) | Validate export and malformed optional-payload handling before promoting the full component scope. |
 | ui.settings-page | WORKING | Settings tabs, typed controls, inline validation, persistence, conflict handling, reset, and Keys section navigation. | V-20260922: the rendered Settings route had no overlay or console errors; Chrome browser E2E passed 2/2 with all 16 controls, boundary errors, cross-field recovery, persistence, reload hydration, conflict, reset, and new-operation effects. | Rendered key-management lifecycle remains outside the current slice. | — | 2026-09-22 | unit + E2E + manual | [configuration](runtime/configuration.md), [experience](ui/experience.md), [Settings E2E](../../app/tests/e2e/test_settings_ui.py), [T1-02 closure QA record](../../assets/QA/tkben-t1-02-settings-boundary-20260922.md), [Tier 1 QA record](../../assets/QA/tkben-tier1-20260921.md) | Complete the separate rendered key-management lifecycle before promoting the full page scope. |
 | ui.cross-benchmark-workflow | PARTIAL | Benchmark wizard, report manager, baseline selection, clone eligibility, tags, dashboard customization, and populated report rendering. | V-20260920: empty Cross Benchmark state rendered; wizard reached Inputs and correctly disabled Next with no dataset/tokenizer. Backend report round-trip passed separately. | Only empty-state and incomplete-input behavior was live-confirmed; populated report manager, baseline, clone, tags, and chart interactions remain unvalidated in this checkout. | — | 2026-09-20 | E2E + manual | [benchmark dashboard](ui/benchmark_dashboard.md), [experience](ui/experience.md), [cross-benchmark E2E](../../app/tests/e2e/test_cross_benchmark_dashboard.py) | Run the populated report-manager and responsive dashboard E2E before changing this status. |
-| ui.tokenizer-report-and-vocabulary | UNVALIDATED | Tokenizer report generation, vocabulary paging, report dashboard, and vocabulary preview. | Code, API contracts, and unit coverage exist; the provider/report-flow E2E was skipped and no report was available for a populated browser check. | No evidence is sufficient for a current working claim over the full report workflow. | Provider-backed report data or an equivalent local report fixture is required. | — | None | [experience](ui/experience.md), [backend API](architecture/backend_api.md), [tokenizer E2E](../../app/tests/e2e/test_tokenizers_api.py) | Generate a report from an approved local/provider tokenizer and validate paging/rendering. |
+| ui.tokenizer-report-and-vocabulary | VALIDATED | Tokenizer report generation, vocabulary paging, report dashboard, and vocabulary preview. | V-20260923: a local 1,207-entry custom tokenizer generated and persisted a report; reload restored the same report ID and the populated UI navigated three vocabulary pages. API item IDs were contiguous across offsets 0, 500, and 1,000. Focused Chrome E2E passed 1/1 and 34 report, vocabulary, route, and service unit tests passed. See the [T2-05 QA record](../../assets/QA/tkben-t2-05-tokenizer-report-vocabulary-20260923.md). | — | — | 2026-09-23 | unit + E2E | [experience](ui/experience.md), [backend API](architecture/backend_api.md), [tokenizer E2E](../../app/tests/e2e/test_tokenizers_api.py), [T2-05 QA record](../../assets/QA/tkben-t2-05-tokenizer-report-vocabulary-20260923.md) | Revalidate after tokenizer report or vocabulary paging changes. |
 
 ### Distribution and test infrastructure
 
@@ -161,7 +167,6 @@ It does not assert that the component is broken.
 | Component | Current confidence | Missing validation | Priority |
 | --- | --- | --- | --- |
 | ui.cross-benchmark-workflow | PARTIAL | Exercise a populated report manager, dashboard customization, baseline persistence, clone eligibility, inline tags, data tables, and responsive layouts. | HIGH |
-| ui.tokenizer-report-and-vocabulary | UNVALIDATED | Generate a report from an approved local/provider tokenizer and validate report rendering plus offset/limit paging. | HIGH |
 | benchmark.dashboard-and-pdf-export | WORKING | Download and inspect a PDF from a populated report, including visualization overrides and chart/data-table parity. | MEDIUM |
 | integration.huggingface-discovery-and-download | BLOCKED | Run the opt-in provider discovery, gated/public access, download, and report-flow tests with approved credentials and network. | HIGH |
 | persistence.postgresql-runtime | BLOCKED | Run disposable PostgreSQL migration, concurrency, rollback, and runtime-equivalence checks. | MEDIUM |
@@ -201,7 +206,7 @@ evidence.
 | T2-02 | yes | yes | PASS | V-20260922 at base revision `0993e900d44897975f495dc6a7f7acd520d6a70a`: all six metric families were selected, analyzed, persisted, rendered in the populated dashboard, and restored after reload; metric unit tests passed 78/78 and dataset-analysis API E2E passed 1/1. See the [T2-02 QA record](../../assets/QA/tkben-t2-02-dataset-metric-families-20260922.md). |
 | T2-03 | yes | yes | PASS | V-20260923 at implementation revision `de1aaee6`: the controlled four-document dataset included an exact duplicate pair, URL/email/HTML structure, and an empty document; selected keys and aggregates matched the metric contract, and the populated report restored after reload. Focused Chrome E2E passed 1/1, metric unit tests passed 78/78, and the dataset/report were removed. See the [T2-03 QA record](../../assets/QA/tkben-t2-03-dataset-quality-structure-compression-20260923.md). |
 | T2-04 | yes | yes | PASS | Custom tokenizer upload/delete API lifecycle passed; restart, re-upload collision, and complete UI coverage remain. |
-| T2-05 | yes | no | UNTESTED | Generate a local tokenizer report and validate persisted dashboard plus vocabulary paging. |
+| T2-05 | yes | yes | PASS | V-20260923: local 1,207-entry custom tokenizer report persisted and reopened with the same report ID; API pages returned 500/500/207 contiguous entries and the populated UI exercised first/middle/final navigation. Focused Chrome E2E passed 1/1; see the [T2-05 QA record](../../assets/QA/tkben-t2-05-tokenizer-report-vocabulary-20260923.md). |
 | T2-06 | yes | yes | PARTIAL | Local benchmark API round-trip passed; complete populated wizard-to-report UI remains. |
 | T2-07 | yes | yes | PARTIAL | Core cooperative job mechanism passed; long-running cancellation and immediate rerun UI remain. |
 | T3-01 | yes | yes | PARTIAL | Engine/unit evidence exists; controlled efficiency, latency, and resource metric campaign remains. |
