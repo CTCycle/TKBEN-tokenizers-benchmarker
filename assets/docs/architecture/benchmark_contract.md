@@ -1,5 +1,5 @@
 # Benchmark Contract
-Last updated: 2026-09-19
+Last updated: 2026-09-23
 
 ## Benchmark Request Notes
 Benchmark run request config includes tokenizer behavior flags and per-document controls:
@@ -15,6 +15,8 @@ and run configuration fields into a new request. It deliberately excludes
 report identity, timestamps, hardware/runtime metadata, results, layout,
 baseline preferences, and tags. Baseline comparison is a frontend report-view
 preference and is not part of the benchmark request contract.
+Typed configuration responses serialize only the supported tokenizer
+execution fields declared by the current contract.
 
 ## Cancellation
 - An active benchmark may be stopped from the run wizard. Cancellation is cooperative: the active job receives a stop request, the engine exits at its next stop-check point, and the job finishes with status `cancelled` without persisting a benchmark report.
@@ -24,6 +26,10 @@ Each tokenizer result includes status and optional error details for failure iso
 - `status`
 - `error_type`
 - `error_message`
+
+Timed raw observations include resident-set samples before and after each
+encoding batch. Report peak RSS is the largest observed sample; memory delta is
+the non-negative rise from the first timed batch baseline to that peak.
 
 Runtime metadata includes benchmark config echo and dataset scope details:
 - `dataset_total_documents_available`

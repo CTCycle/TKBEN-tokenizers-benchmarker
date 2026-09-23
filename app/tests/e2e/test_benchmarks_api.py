@@ -98,7 +98,6 @@ def test_benchmark_report_round_trip_includes_reproducibility_metadata(
             "batch_size": 2,
             "seed": 42,
             "parallelism": 1,
-            "include_lm_metrics": False,
             "store_per_document_stats": True,
             "per_document_sample_size": 2,
         },

@@ -74,7 +74,6 @@ def _route_dashboard_api(page: Page) -> None:
                     "batch_size": 1,
                     "seed": 42,
                     "parallelism": 1,
-                    "include_lm_metrics": False,
                     "add_special_tokens": False,
                     "padding": False,
                     "truncation": False,

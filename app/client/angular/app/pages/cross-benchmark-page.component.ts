@@ -60,7 +60,6 @@ export class CrossBenchmarkPageComponent {
     batchSize: new FormControl(16, { nonNullable: true, validators: [Validators.min(1), Validators.max(4096)] }),
     seed: new FormControl(42, { nonNullable: true }),
     parallelism: new FormControl(1, { nonNullable: true, validators: [Validators.min(1), Validators.max(128)] }),
-    includeLmMetrics: new FormControl(false, { nonNullable: true }),
     addSpecialTokens: new FormControl(false, { nonNullable: true }),
     padding: new FormControl(false, { nonNullable: true }),
     truncation: new FormControl(false, { nonNullable: true }),
@@ -170,7 +169,6 @@ export class CrossBenchmarkPageComponent {
       batchSize: config.batch_size,
       seed: config.seed,
       parallelism: config.parallelism,
-      includeLmMetrics: config.include_lm_metrics,
       addSpecialTokens: config.add_special_tokens,
       padding: config.padding,
       truncation: config.truncation,
@@ -209,7 +207,7 @@ export class CrossBenchmarkPageComponent {
     const value = this.runForm.getRawValue();
     const tokenizers = [...this.runSelectedTokenizers()];
     if (this.runForm.controls.runName.invalid || this.runForm.controls.maxLength.invalid || !value.dataset.trim() || tokenizers.length === 0 || !value.runName.trim() || this.runSelectedMetricKeys().length === 0) return;
-    this.store.run({ tokenizers, dataset_name: value.dataset.trim(), run_name: value.runName.trim(), selected_metric_keys: [...this.runSelectedMetricKeys()], config: { max_documents: value.maxDocuments, warmup_trials: value.warmupTrials, timed_trials: value.timedTrials, batch_size: value.batchSize, seed: value.seed, parallelism: value.parallelism, include_lm_metrics: value.includeLmMetrics, add_special_tokens: value.addSpecialTokens, padding: value.padding, truncation: value.truncation, max_length: value.maxLength, store_per_document_stats: value.storePerDocumentStats, per_document_sample_size: value.perDocumentSampleSize } });
+    this.store.run({ tokenizers, dataset_name: value.dataset.trim(), run_name: value.runName.trim(), selected_metric_keys: [...this.runSelectedMetricKeys()], config: { max_documents: value.maxDocuments, warmup_trials: value.warmupTrials, timed_trials: value.timedTrials, batch_size: value.batchSize, seed: value.seed, parallelism: value.parallelism, add_special_tokens: value.addSpecialTokens, padding: value.padding, truncation: value.truncation, max_length: value.maxLength, store_per_document_stats: value.storePerDocumentStats, per_document_sample_size: value.perDocumentSampleSize } });
     this.runOpen.set(false);
   }
 
@@ -232,7 +230,6 @@ export class CrossBenchmarkPageComponent {
       batchSize: benchmarkDefaults?.default_batch_size ?? 16,
       seed: 42,
       parallelism: benchmarkDefaults?.default_parallelism ?? 1,
-      includeLmMetrics: false,
       addSpecialTokens: false,
       padding: false,
       truncation: false,

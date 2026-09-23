@@ -265,7 +265,7 @@ Open the run diagnostics to see which tokenizer failed. Check that the tokenizer
 
 ### A benchmark is slow or the numbers vary between runs
 
-Large datasets, many selected metrics, optional language-model measures, and detailed per-document statistics require more time and memory. Start with a smaller document sample and the default settings. For speed comparisons, repeat runs under similar computer conditions and compare the same sample.
+Large datasets, many selected metrics, and detailed per-document statistics require more time and memory. Start with a smaller document sample and the default settings. For speed comparisons, repeat runs under similar computer conditions and compare the same sample.
 
 ### Configuration validation fails before startup
 

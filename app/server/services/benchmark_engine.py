@@ -95,6 +95,8 @@ def run_tokenizer_trials(
                     ),
                     elapsed_ns=int(elapsed_ns),
                     peak_rss_mb=peak_rss_mb,
+                    rss_before_mb=float(rss_before / (1024 * 1024)),
+                    rss_after_mb=float(rss_after / (1024 * 1024)),
                 )
             )
     return observations

@@ -25,6 +25,8 @@ class BatchObservation:
     elapsed_ns: int
     peak_rss_mb: float | None
     error_count: int = 0
+    rss_before_mb: float | None = None
+    rss_after_mb: float | None = None
 
 ###############################################################################
 @dataclass(frozen=True)

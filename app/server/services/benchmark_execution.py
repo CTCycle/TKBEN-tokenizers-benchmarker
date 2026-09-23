@@ -444,6 +444,19 @@ class BenchmarkServiceExecutionMixin:
                 tokenizer_wall_time_seconds = max(
                     0.0, time.perf_counter() - tokenizer_started_at
                 )
+                rss_samples = [
+                    float(obs.peak_rss_mb)
+                    for obs in observations
+                    if isinstance(obs.peak_rss_mb, int | float)
+                ]
+                rss_start = next(
+                    (
+                        float(obs.rss_before_mb)
+                        for obs in observations
+                        if isinstance(obs.rss_before_mb, int | float)
+                    ),
+                    None,
+                )
                 tokenizer_results.append(
                     self.result_builder._build_tokenizer_result(
                         tokenizer_name=name,
@@ -481,20 +494,15 @@ class BenchmarkServiceExecutionMixin:
                         compression_bytes_per_character=compression_bytes_per_character,
                         fragmentation_buckets=fragmentation_buckets,
                         peak_rss_mb=(
-                            max(values)
-                            if (
-                                values := [
-                                    float(obs.peak_rss_mb)
-                                    for obs in observations
-                                    if isinstance(obs.peak_rss_mb, int | float)
-                                ]
-                            )
-                            and metric_plan.needs_resources
+                            max(rss_samples)
+                            if rss_samples and metric_plan.needs_resources
                             else None
                         ),
                         memory_delta_mb=(
-                            max(values) - min(values)
-                            if values and metric_plan.needs_resources
+                            max(0.0, max(rss_samples) - rss_start)
+                            if rss_samples
+                            and rss_start is not None
+                            and metric_plan.needs_resources
                             else None
                         ),
                     )
@@ -540,6 +548,9 @@ class BenchmarkServiceExecutionMixin:
                         "elapsed_ns": int(obs.elapsed_ns),
                         "token_count": int(obs.token_count),
                         "input_utf8_bytes": int(obs.input_utf8_bytes),
+                        "rss_before_mb": obs.rss_before_mb,
+                        "rss_after_mb": obs.rss_after_mb,
+                        "peak_rss_mb": obs.peak_rss_mb,
                     }
                     for obs in observations
                 ]
@@ -595,9 +606,6 @@ class BenchmarkServiceExecutionMixin:
                 "batch_size": int((benchmark_config or {}).get("batch_size", 16)),
                 "seed": int((benchmark_config or {}).get("seed", 42)),
                 "parallelism": int((benchmark_config or {}).get("parallelism", 1)),
-                "include_lm_metrics": bool(
-                    (benchmark_config or {}).get("include_lm_metrics", False)
-                ),
                 "add_special_tokens": add_special_tokens,
                 "padding": padding,
                 "truncation": truncation,
@@ -607,12 +615,21 @@ class BenchmarkServiceExecutionMixin:
             }
         )
 
+        runtime_metadata = collect_runtime_environment()
+        cpu_logical_cores = runtime_metadata.get("cpu_count")
+        memory_total_mb = runtime_metadata.get("memory_total_mb")
         hardware_profile = BenchmarkHardwareProfile(
             runtime=platform.python_version(),
             os=platform.platform(),
             cpu_model=platform.processor() or None,
-            cpu_logical_cores=None,
-            memory_total_mb=None,
+            cpu_logical_cores=(
+                cpu_logical_cores if isinstance(cpu_logical_cores, int) else None
+            ),
+            memory_total_mb=(
+                float(memory_total_mb)
+                if isinstance(memory_total_mb, (int, float))
+                else None
+            ),
         )
 
         dashboard = self.result_builder.build_dashboard_data(
@@ -622,7 +639,6 @@ class BenchmarkServiceExecutionMixin:
             resolved_metric_keys,
         )
 
-        runtime_metadata = collect_runtime_environment()
         runtime_metadata["dataset_total_documents_available"] = int(doc_count)
         runtime_metadata["dataset_documents_benchmarked"] = int(num_docs)
         runtime_metadata["dataset_total_chars"] = int(dataset_total_chars)
@@ -631,6 +647,8 @@ class BenchmarkServiceExecutionMixin:
             "warmup_trials": warmup_trials,
             "timed_trials": timed_trials,
             "batch_size": batch_size,
+            "seed": int((benchmark_config or {}).get("seed", 42)),
+            "parallelism": int((benchmark_config or {}).get("parallelism", 1)),
             "max_documents": max_documents_limit,
             "add_special_tokens": add_special_tokens,
             "padding": padding,
