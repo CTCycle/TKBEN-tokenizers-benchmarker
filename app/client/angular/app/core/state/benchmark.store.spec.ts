@@ -216,6 +216,17 @@ describe('BenchmarkStore', () => {
     expect(store.baselineTokenizer()).toBe('gamma');
   });
 
+  it('restores a valid report-specific baseline from browser storage', () => {
+    localStorage.setItem(
+      'tkben:cross-benchmark-baselines:v1',
+      JSON.stringify({ '5': 'alpha' }),
+    );
+
+    const { store } = createStore();
+
+    expect(store.baselineTokenizer()).toBe('alpha');
+  });
+
   it('ignores corrupted or invalid baseline preferences and clears only the active report', () => {
     localStorage.setItem('tkben:cross-benchmark-baselines:v1', '{bad json');
     const { store } = createStore();
