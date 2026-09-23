@@ -45,4 +45,15 @@ describe('dataset dashboard normalization', () => {
     ]);
     expect(parseZipfCurve(Array.from({ length: 250 }, (_, index) => ({ rank: index + 1, frequency: 1 })))).toHaveLength(200);
   });
+
+  it('returns safe histogram series for malformed optional payloads', () => {
+    expect(toHistogramSeries({ bins: ['0-1'], counts: 'invalid' })).toEqual([]);
+    expect(toHistogramSeries({
+      bins: ['0-1', null],
+      counts: [3, '4', 'not-a-count', -1, Number.POSITIVE_INFINITY],
+    })).toEqual([
+      { bin: '0-1', count: 3 },
+      { bin: '1', count: 4 },
+    ]);
+  });
 });

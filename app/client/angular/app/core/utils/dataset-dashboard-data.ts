@@ -1,4 +1,4 @@
-import type { HistogramData, WordCloudTerm, WordFrequency } from '../api/api.models';
+import type { WordCloudTerm, WordFrequency } from '../api/api.models';
 
 export const toNumber = (value: unknown, fallback = 0): number => {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -40,18 +40,24 @@ export const metricDisplayValue = (
     : '—'
 );
 
-export const toHistogramSeries = (histogram: HistogramData | null): { bin: string; count: number }[] => {
-  if (!histogram) {
-    return [];
-  }
-  return histogram.counts.map((count, index) => ({
-    bin: histogram.bins[index] ?? String(index),
-    count,
-  }));
-};
-
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+export const toHistogramSeries = (histogram: unknown): { bin: string; count: number }[] => {
+  if (!isRecord(histogram) || !Array.isArray(histogram['counts'])) {
+    return [];
+  }
+  const bins = Array.isArray(histogram['bins']) ? histogram['bins'] : [];
+  return histogram['counts'].flatMap((value, index) => {
+    const count = toNumber(value, Number.NaN);
+    if (!Number.isFinite(count) || count < 0) {
+      return [];
+    }
+    const rawBin = bins[index];
+    const bin = typeof rawBin === 'string' && rawBin ? rawBin : String(index);
+    return [{ bin, count }];
+  });
+};
 
 export const parseWordFrequencyItems = (value: unknown): WordFrequency[] => {
   if (!Array.isArray(value)) {

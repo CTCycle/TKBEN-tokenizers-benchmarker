@@ -61,14 +61,19 @@ class DashboardExportFormatting:
         return candidate if isinstance(candidate, dict) else {}
 
     # -------------------------------------------------------------------------
-    def _short_name(self, tokenizer_name: str, max_length: int = 24) -> str:
+    def _short_name(self, tokenizer_name: str, max_length: int = 16) -> str:
         trimmed = tokenizer_name.strip()
         if not trimmed:
             return "N/A"
         short = trimmed.split("/")[-1] or trimmed
         if len(short) <= max_length:
             return short
-        return f"{short[: max(1, max_length - 3)]}..."
+        available_length = max(0, max_length - 3)
+        prefix_length = (available_length + 1) // 2
+        suffix_length = available_length - prefix_length
+        if suffix_length == 0:
+            return f"{short[:prefix_length]}..."
+        return f"{short[:prefix_length]}...{short[-suffix_length:]}"
 
     # -------------------------------------------------------------------------
     def _to_number(self, value: Any, fallback: float = 0.0) -> float:
