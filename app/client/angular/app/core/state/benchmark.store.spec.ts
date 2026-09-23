@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BenchmarksApiService } from '../api/benchmarks-api.service';
 import { DatasetsApiService } from '../api/datasets-api.service';
@@ -80,7 +80,7 @@ describe('BenchmarkStore', () => {
     expect(store.reportsLoading()).toBe(false);
   });
 
-  it('propagates job progress, refreshes after success, and cancels the active job', () => {
+  it('propagates job progress and refreshes after success', () => {
     const { api, jobsApi, store } = createStore();
 
     store.run({ dataset_name: 'custom/demo' } as never);
@@ -99,6 +99,43 @@ describe('BenchmarkStore', () => {
 
     store.cancel();
     expect(jobsApi.cancel).not.toHaveBeenCalled();
+  });
+
+  it('requests cancellation once and allows an immediate rerun after cancellation', () => {
+    const api = createApi();
+    const { jobsApi, store } = createStore(api);
+    const pendingRun = new Subject<BenchmarkRunResponse>();
+    api.run.mockImplementation((_request, _onUpdate, onJobStart) => {
+      onJobStart({ job_id: 'job-cancelled' });
+      return pendingRun;
+    });
+
+    store.run({ dataset_name: 'custom/demo' } as never);
+    expect(store.busy()).toBe(true);
+    expect(store.activeJobId()).toBe('job-cancelled');
+
+    store.cancel();
+    store.cancel();
+    expect(jobsApi.cancel).toHaveBeenCalledTimes(1);
+    expect(jobsApi.cancel).toHaveBeenCalledWith('job-cancelled');
+    expect(store.cancellationRequested()).toBe(true);
+
+    pendingRun.error(new Error('Job was cancelled.'));
+    expect(store.busy()).toBe(false);
+    expect(store.activeJobId()).toBeNull();
+    expect(store.cancellationRequested()).toBe(false);
+    expect(store.error()).toBe('Job was cancelled.');
+
+    api.run.mockImplementation((_request, _onUpdate, onJobStart) => {
+      onJobStart({ job_id: 'job-rerun' });
+      return of(report);
+    });
+    store.run({ dataset_name: 'custom/demo' } as never);
+
+    expect(store.busy()).toBe(false);
+    expect(store.activeJobId()).toBeNull();
+    expect(store.error()).toBeNull();
+    expect(store.report()).toBe(report);
   });
 
   it('deduplicates hidden widgets and preserves visualization settings while reordering', () => {
