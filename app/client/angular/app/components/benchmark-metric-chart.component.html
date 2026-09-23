@@ -149,7 +149,7 @@
               <line [attr.x1]="pointX(index) - 6" [attr.x2]="pointX(index) + 6" [attr.y1]="pointY(item.high)" [attr.y2]="pointY(item.high)" stroke="#facc15" stroke-width="2" />
               <line [attr.x1]="pointX(index) - 6" [attr.x2]="pointX(index) + 6" [attr.y1]="pointY(item.low)" [attr.y2]="pointY(item.low)" stroke="#facc15" stroke-width="2" />
             }
-            <text [attr.x]="pointX(index)" y="226" class="benchmark-axis-tick" text-anchor="end" [attr.transform]="'rotate(-30 ' + pointX(index) + ' 226)'">{{ item.label }}</text>
+            <text [attr.x]="pointX(index)" [attr.y]="points().length === 1 ? 218 : 226" class="benchmark-axis-tick" [attr.text-anchor]="points().length === 1 ? 'middle' : 'end'" [attr.aria-label]="item.tokenizer" [attr.transform]="points().length === 1 ? null : 'rotate(-30 ' + pointX(index) + ' 226)'">{{ item.label }}</text>
           }
         }
         <text [attr.x]="chartWidth() / 2" y="252" class="benchmark-axis-label" text-anchor="middle">{{ visualization() === 'horizontal_bar' ? widget().unit : 'Tokenizer' }}</text>
