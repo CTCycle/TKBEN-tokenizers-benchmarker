@@ -2,7 +2,7 @@
 
 Date: 2026-09-23
 Result: PASS for the local wizard-to-report generation, rendering, and reload slice
-Validated checkout baseline: `develop` at `05a57f1`, with the focused E2E addition in this validation change
+Validated E2E implementation commit: `f736f9386a119df0bec330cd7a6e7212fd6a61e7`
 Environment: Windows, official `start_on_windows.ps1 -Launch`, isolated SQLite data and log roots under `runtimes/cache/t2-06-validation-data-20260923` and `runtimes/cache/t2-06-validation-logs-20260923`, API on port 5000, production preview on port 8000, installed Chrome.
 
 ## Coverage
