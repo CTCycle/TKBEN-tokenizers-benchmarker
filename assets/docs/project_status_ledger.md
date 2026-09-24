@@ -98,8 +98,8 @@ record](../../assets/QA/tkben-t2-04-t5-03-tokenizer-validation-20260924/README.m
 The Cross Benchmark workflow component is now VALIDATED. The aggregate
 responsive matrix remains PARTIAL because Dataset and Settings route coverage
 is still open.
-Hosted CI run 35875638854 passed for implementation commit
-`dc8cae26ea81b1c621c800168d5b3581c9fab04f`; T5-06 remains PARTIAL because
+Hosted CI run 36006192379 passed for the exact pushed validation commit
+`90619baf8c956548bf864659a9da4a4e56c9bfa0`; T5-06 remains PARTIAL because
 release publication evidence is separate. Hugging Face and PostgreSQL gates
 remain BLOCKED; T4-02, T5-02, T5-05, and the remaining responsive matrix are
 still open as listed below.
@@ -243,7 +243,7 @@ It does not assert that the component is broken.
 | integration.huggingface-discovery-and-download | BLOCKED | Run the opt-in provider discovery, gated/public access, download, and report-flow tests with approved credentials and network. | HIGH |
 | persistence.postgresql-runtime | BLOCKED | Run disposable PostgreSQL migration, concurrency, rollback, and runtime-equivalence checks. | MEDIUM |
 | ui.responsive-visual-matrix | PARTIAL | Populated Cross Benchmark and Tokenizers report/manager flows, plus Tokenizers empty, loading, controlled-error, and long-identifier states, passed at all four documented viewport sizes. Tokenizer Manager arrow/end navigation, Escape dismissal, and focus return passed. Dataset and Settings route/state matrices remain uncovered; see the [Tokenizers QA record](../../assets/QA/tkben-t2-04-t5-03-tokenizer-validation-20260924/README.md). | MEDIUM |
-| test-infrastructure.hosted-ci-and-release-evidence | PARTIAL | Hosted CI and committed QA evidence passed for `dc8cae26ea81b1c621c800168d5b3581c9fab04f`; validate release publication separately. | MEDIUM |
+| test-infrastructure.hosted-ci-and-release-evidence | PARTIAL | Hosted CI run 36006192379 passed for exact pushed commit `90619baf8c956548bf864659a9da4a4e56c9bfa0`, and committed QA evidence is present; release publication remains unverified. | MEDIUM |
 
 ## Validation Campaign Roadmap
 
@@ -295,7 +295,7 @@ evidence.
 | T5-03 | yes | yes | PASS | V-20260923 covered the populated Cross Benchmark view and report-manager, clone, and customize dialogs at 1920x1080, 1440x900, 1024x768, and 390x844; Escape and focus return passed. V-20260924 completed Tokenizers empty/loading/error/populated/report states and Tokenizer Manager bounds plus ArrowRight/End/Escape/focus return at the same four sizes. Dataset and Settings remain under T5-02 and the aggregate responsive debt. See the [T3-03/04 QA record](../../assets/QA/tkben-t3-03-04-cross-benchmark-workflows-20260923.md) and [Tokenizers QA record](../../assets/QA/tkben-t2-04-t5-03-tokenizer-validation-20260924/README.md). |
 | T5-04 | yes | yes | PASS | V-20260923: official Windows launcher streamed a 10,000-document run to visible 20% progress; cancellation reached terminal `cancelled` with no report saved, eight backend RSS samples were collected, and a two-document rerun completed and rendered without browser or HTTP errors. See the [benchmark validation campaign QA record](../../assets/QA/tkben-benchmark-validation-campaign-20260923/README.md). Browser heap was not instrumented; the gate's live progress, cancellation, available resource metrics, and rerun checks passed. |
 | T5-05 | yes | yes | PARTIAL | Linux manual startup, proxy, major routes, restart, reconciliation, and shutdown passed in Ubuntu 26.04; macOS and hosted `ubuntu-latest` remain untested. |
-| T5-06 | yes | yes | PARTIAL | Hosted CI run 35875638854 passed for exact pushed implementation commit `dc8cae26ea81b1c621c800168d5b3581c9fab04f` (frontend and backend jobs); release publication evidence remains separate. See the [T3-03/04 QA record](../../assets/QA/tkben-t3-03-04-cross-benchmark-workflows-20260923.md). |
+| T5-06 | yes | yes | PARTIAL | Hosted CI run 36006192379 completed successfully for exact pushed commit `90619baf8c956548bf864659a9da4a4e56c9bfa0`; release publication evidence remains unverified. See the [T3-03/04 QA record](../../assets/QA/tkben-t3-03-04-cross-benchmark-workflows-20260923.md) and [Tokenizers QA record](../../assets/QA/tkben-t2-04-t5-03-tokenizer-validation-20260924/README.md). |
 
 ### Tier 1 execution record
 
