@@ -2,10 +2,18 @@ from __future__ import annotations
 
 import platform
 import re
+import threading
 import time
 import unicodedata
+from concurrent.futures import (
+    FIRST_COMPLETED,
+    CancelledError,
+    Future,
+    ThreadPoolExecutor,
+    wait,
+)
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, ClassVar, cast
 
 import numpy as np
@@ -29,7 +37,10 @@ from server.services.benchmark_engine import (
     run_tokenizer_trials,
     summarize_observations,
 )
-from server.services.benchmark_metric_plan import build_metric_plan
+from server.services.benchmark_metric_plan import (
+    BenchmarkMetricPlan,
+    build_metric_plan,
+)
 from server.services.benchmark_metadata import collect_runtime_environment
 from server.services.benchmark_spool import BenchmarkTextSpool
 from server.services.benchmark_streams import iter_limited_rows
@@ -59,6 +70,42 @@ class SpooledTextBatchFactory:
     # -------------------------------------------------------------------------
     def __call__(self) -> Any:
         return self.spool.iter_text_batches(self.batch_size)
+
+###############################################################################
+@dataclass(frozen=True)
+class _TokenizerExecutionResult:
+    index: int
+    tokenizer_name: str
+    tokenizer_result: BenchmarkTokenizerResult | None
+    per_document_stats: BenchmarkPerDocumentTokenizerStats | None
+    raw_observations: list[dict[str, object]]
+    success: bool
+    cancelled: bool
+
+###############################################################################
+@dataclass
+class _TokenizerConcurrencyTracker:
+    lock: threading.Lock = field(default_factory=threading.Lock)
+    active_workers: int = 0
+    max_active_workers: int = 0
+
+    # -------------------------------------------------------------------------
+    def enter(self) -> None:
+        with self.lock:
+            self.active_workers += 1
+            self.max_active_workers = max(
+                self.max_active_workers, self.active_workers
+            )
+
+    # -------------------------------------------------------------------------
+    def exit(self) -> None:
+        with self.lock:
+            self.active_workers -= 1
+
+    # -------------------------------------------------------------------------
+    def maximum(self) -> int:
+        with self.lock:
+            return self.max_active_workers
 
 ###############################################################################
 class BenchmarkServiceExecutionMixin:
@@ -187,416 +234,139 @@ class BenchmarkServiceExecutionMixin:
         if progress_callback:
             progress_callback(20.0)
 
-        tokenizer_results: list[BenchmarkTokenizerResult] = []
-        per_document_stats: list[BenchmarkPerDocumentTokenizerStats] = []
-        cancelled = False
-        total_tokenizers = len(tokenizers)
-        progress_base = 20.0
-        progress_span = 80.0
-        per_tokenizer_span = (
-            progress_span / total_tokenizers if total_tokenizers > 0 else progress_span
+        requested_parallelism = BenchmarkRunConfig.model_validate(
+            {"parallelism": config_payload.get("parallelism", 1)}
+        ).parallelism
+        effective_parallelism = min(
+            requested_parallelism, len(tokenizers)
         )
+        concurrency_tracker = _TokenizerConcurrencyTracker()
+        indexed_tokenizers = list(tokenizers.items())
+        worker_results: dict[int, _TokenizerExecutionResult] = {}
+        pending: dict[Future[_TokenizerExecutionResult], tuple[int, str]] = {}
+        next_tokenizer_index = 0
+        completed_tokenizer_count = 0
+        cancelled = False
 
-        for index, (name, tokenizer) in enumerate(tokenizers.items()):
-            if should_stop and should_stop():
-                cancelled = True
-                break
-
-            logger.info("Processing tokenizer: %s", name)
-            try:
-                tokenizer_started_at = time.perf_counter()
-                adapter = UniversalTokenizerAdapter(
-                    tokenizer_id=name, tokenizer=tokenizer
-                )
-                observations = run_tokenizer_trials(
-                    tokenizer=adapter,
-                    text_batches_factory=SpooledTextBatchFactory(spool, batch_size),
-                    config=TokenizerRunConfig(
-                        add_special_tokens=add_special_tokens,
-                        padding=padding,
-                        truncation=truncation,
-                        max_length=max_length,
-                        batch_size=batch_size,
-                    ),
-                    warmup_trials=warmup_trials,
-                    timed_trials=timed_trials,
-                    should_stop=should_stop,
-                )
-                if not observations:
-                    if should_stop and should_stop():
-                        raise BenchmarkCancelledError("Benchmark run cancelled.")
-                    raise RuntimeError("No observations collected for tokenizer run.")
-                observation_summary = summarize_observations(observations)
-                trial_tokenization_speeds_tps: list[float] = []
-                for trial_index in sorted({obs.trial_index for obs in observations}):
-                    trial_obs = [
-                        obs for obs in observations if obs.trial_index == trial_index
-                    ]
-                    trial_elapsed_ns = sum(obs.elapsed_ns for obs in trial_obs)
-                    trial_tokens = sum(obs.token_count for obs in trial_obs)
-                    trial_tokenization_speeds_tps.append(
-                        float(trial_tokens / (trial_elapsed_ns / 1_000_000_000.0))
-                        if trial_elapsed_ns > 0
-                        else 0.0
-                    )
-                postprocess_started_at = time.perf_counter()
-                sample_rows: list[dict[str, Any]] = []
-                unknown_token_count_total = 0
-                unknown_token_count_measurable = False
-                total_tokens = 0
-                total_chars = 0
-                total_bytes = 0
-                fragmentation_token_total = 0
-                fragmentation_word_piece_counts: list[int] = []
-                fragmentation_bucket_values: dict[str, list[float]] = {
-                    "short_1_4": [],
-                    "medium_5_8": [],
-                    "long_9_plus": [],
-                }
-                round_trip_token_fidelity: list[float] = []
-                round_trip_text_fidelity: list[float] = []
-                for row_id, text_value in spool.iter_rows():
-                    if should_stop and should_stop():
-                        raise BenchmarkCancelledError("Benchmark run cancelled.")
-                    encoded_batch = adapter.encode_batch(
-                        [text_value],
-                        add_special_tokens=add_special_tokens,
-                        padding=padding,
-                        truncation=truncation,
-                        max_length=max_length,
-                    )
-                    encoded_ids = (
-                        encoded_batch.input_ids_by_doc[0]
-                        if encoded_batch.input_ids_by_doc
-                        else []
-                    )
-                    token_count = len(encoded_ids)
-                    total_tokens += token_count
-                    total_chars += len(text_value)
-                    total_bytes += len(text_value.encode("utf-8"))
-                    if (
-                        encoded_batch.unknown_counts
-                        and encoded_batch.unknown_counts[0] is not None
-                    ):
-                        unknown_token_count_measurable = True
-                        unknown_token_count_total += int(
-                            encoded_batch.unknown_counts[0] or 0
-                        )
-                    pieces_per_word: float | None = None
-                    if metric_plan.needs_fragmentation:
-                        fragmentation_encoded = adapter.encode_batch(
-                            [text_value],
-                            add_special_tokens=False,
-                            padding=False,
-                            truncation=False,
-                            max_length=None,
-                        )
-                        fragmentation_token_total += (
-                            fragmentation_encoded.token_counts[0]
-                            if fragmentation_encoded.token_counts
-                            else 0
-                        )
-                        words = re.findall(r"\b\w+\b", text_value, flags=re.UNICODE)
-                        if words:
-                            encoded_words = adapter.encode_batch(
-                                words,
-                                add_special_tokens=False,
-                                padding=False,
-                                truncation=False,
-                                max_length=None,
-                            )
-                            word_piece_counts = [
-                                int(value)
-                                for value in encoded_words.token_counts[: len(words)]
-                            ]
-                            fragmentation_word_piece_counts.extend(word_piece_counts)
-                            for word, piece_count in zip(
-                                words, word_piece_counts, strict=False
-                            ):
-                                fragmentation_bucket_values[
-                                    self.result_builder._fragmentation_bucket_label(
-                                        len(word)
-                                    )
-                                ].append(float(piece_count))
-                            pieces_per_word = float(np.mean(word_piece_counts))
-                    decoded_text = self.tools.safe_decode(tokenizer, encoded_ids)
-                    if metric_plan.needs_round_trip:
-                        rt_token_ids = self.tools.extract_token_ids(
-                            tokenizer.encode(decoded_text)
-                        )
-                        round_trip_token_fidelity.append(
-                            float(rt_token_ids == encoded_ids)
-                        )
-                        round_trip_text_fidelity.append(
-                            float(
-                                unicodedata.normalize("NFC", decoded_text)
-                                == unicodedata.normalize("NFC", text_value)
-                            )
-                        )
-                    if (
-                        metric_plan.needs_per_document_stats
-                        and len(sample_rows) < per_document_sample_size
-                    ):
-                        sample_rows.append(
-                            {
-                                "text_id": row_id,
-                                "tokens_count": token_count,
-                                "bytes_per_token": (
-                                    len(text_value.encode("utf-8")) / token_count
-                                )
-                                if token_count > 0
-                                else 0.0,
-                                "pieces_per_word": pieces_per_word,
-                            }
-                        )
-
-                elapsed = max(
-                    _as_float(observation_summary["total_time_seconds"]), 1e-9
-                )
-                throughput_chars_per_sec = _as_float(
-                    observation_summary["documents_per_second"]
-                ) * ((total_chars / num_docs) if num_docs else 0.0)
-                throughput_bytes_per_sec = (
-                    (float(total_bytes) / elapsed) if elapsed > 0 else 0.0
-                )
-
-                vocab_result = self.result_builder._extract_vocab_result(tokenizer)
-                if isinstance(vocab_result, (Mapping, Sequence)):
-                    vocabulary_size = int(len(vocab_result))
-                else:
-                    vocabulary_size = 0
-
-                fragmentation_buckets: list[BenchmarkFragmentationBucket] = []
-                if metric_plan.needs_fragmentation:
-                    subword_fertility: float | None = (
-                        float(np.mean(fragmentation_word_piece_counts))
-                        if fragmentation_word_piece_counts
-                        else 0.0
-                    )
-                    fragmentation_buckets = [
-                        BenchmarkFragmentationBucket(
-                            bucket=bucket,
-                            pieces_per_word_mean=float(np.mean(values)),
-                        )
-                        for bucket, values in fragmentation_bucket_values.items()
-                        if values
-                    ]
-                else:
-                    subword_fertility = None
-
-                oov_rate: float | None = None
-                if metric_plan.needs_unknown_rate and total_tokens > 0:
-                    if unknown_token_count_measurable:
-                        oov_rate = unknown_token_count_total / total_tokens
-
-                if metric_plan.needs_character_coverage:
-                    vocab_tokens: set[str] = set()
-                    if isinstance(vocab_result, Mapping):
-                        vocab_tokens = {str(tok) for tok in vocab_result.keys()}
-                    elif isinstance(vocab_result, Sequence):
-                        vocab_tokens = {str(tok) for tok in vocab_result}
-
-                    normalized_vocab_tokens = {
-                        normalize_vocabulary_token(token) for token in vocab_tokens
-                    }
-                    dataset_chars = set()
-                    for _, text_value in spool.iter_rows():
-                        dataset_chars.update(text_value)
-                    vocab_chars: set[str] = set()
-                    for token_item in normalized_vocab_tokens:
-                        for ch in token_item:
-                            vocab_chars.add(ch)
-                    intersection = dataset_chars.intersection(vocab_chars)
-                    character_coverage: float | None = (
-                        (len(intersection) / max(1, len(dataset_chars)) * 100.0)
-                        if dataset_chars
-                        else 0.0
-                    )
-                else:
-                    character_coverage = None
-
-                compression_chars_per_token: float | None = (
-                    float(total_chars / fragmentation_token_total)
-                    if fragmentation_token_total > 0
-                    else None
-                )
-                compression_bytes_per_character: float | None = (
-                    float(fragmentation_token_total / total_bytes)
-                    if metric_plan.needs_fragmentation and total_bytes > 0
-                    else None
-                )
-                round_trip_fidelity_rate: float | None = (
-                    float(np.mean(round_trip_token_fidelity))
-                    if metric_plan.needs_round_trip and round_trip_token_fidelity
-                    else None
-                )
-                round_trip_text_rate: float | None = (
-                    float(np.mean(round_trip_text_fidelity))
-                    if metric_plan.needs_round_trip and round_trip_text_fidelity
-                    else None
-                )
-                postprocess_wall_time_seconds = max(
-                    0.0, time.perf_counter() - postprocess_started_at
-                )
-                encode_only_wall_time_seconds = float(
-                    observation_summary.get("total_time_seconds", 0.0) or 0.0
-                )
-                tokenizer_wall_time_seconds = max(
-                    0.0, time.perf_counter() - tokenizer_started_at
-                )
-                rss_samples = [
-                    float(obs.peak_rss_mb)
-                    for obs in observations
-                    if isinstance(obs.peak_rss_mb, int | float)
-                ]
-                rss_start = next(
-                    (
-                        float(obs.rss_before_mb)
-                        for obs in observations
-                        if isinstance(obs.rss_before_mb, int | float)
-                    ),
-                    None,
-                )
-                tokenizer_results.append(
-                    self.result_builder._build_tokenizer_result(
-                        tokenizer_name=name,
-                        status="success",
-                        trial_tokenization_speeds_tps=trial_tokenization_speeds_tps,
-                        throughput_chars_per_sec=float(throughput_chars_per_sec),
-                        encode_only_wall_time_seconds=float(
-                            encode_only_wall_time_seconds
-                        ),
-                        dataset_stream_wall_time_seconds=float(
-                            dataset_stream_wall_time_seconds
-                        ),
-                        postprocess_wall_time_seconds=float(
-                            postprocess_wall_time_seconds
-                        ),
-                        total_processing_time_seconds=float(
-                            tokenizer_wall_time_seconds
-                        ),
-                        observed_latency_ms=[
-                            (obs.elapsed_ns / 1_000_000.0) / max(1, obs.documents)
-                            for obs in observations
-                        ]
-                        if metric_plan.needs_latency
-                        else [],
-                        latency_sample_count=(
-                            len(observations) if metric_plan.needs_latency else 0
-                        ),
-                        vocabulary_size=int(vocabulary_size),
-                        oov_rate=oov_rate,
-                        character_coverage=character_coverage,
-                        round_trip_fidelity_rate=round_trip_fidelity_rate,
-                        round_trip_text_fidelity_rate=round_trip_text_rate,
-                        subword_fertility=subword_fertility,
-                        compression_chars_per_token=compression_chars_per_token,
-                        compression_bytes_per_character=compression_bytes_per_character,
-                        fragmentation_buckets=fragmentation_buckets,
-                        peak_rss_mb=(
-                            max(rss_samples)
-                            if rss_samples and metric_plan.needs_resources
-                            else None
-                        ),
-                        memory_delta_mb=(
-                            max(0.0, max(rss_samples) - rss_start)
-                            if rss_samples
-                            and rss_start is not None
-                            and metric_plan.needs_resources
-                            else None
-                        ),
-                    )
-                )
-                if metric_plan.needs_throughput:
-                    tokenizer_results[
-                        -1
-                    ].efficiency.encode_bytes_per_second_mean = float(
-                        throughput_bytes_per_sec
-                    )
-                else:
-                    tokenizer_results[-1].efficiency = tokenizer_results[
-                        -1
-                    ].efficiency.model_copy(
-                        update={
-                            field: None
-                            for field in tokenizer_results[-1].efficiency.model_fields
-                        }
-                    )
-
-                if metric_plan.needs_per_document_stats:
-                    sampled_data = pd.DataFrame(sample_rows)
-                    per_document_stats.append(
-                        self.result_builder._build_per_document_stats(
-                            tokenizer_name=name,
-                            data=sampled_data,
-                            per_document_latency_ms=(
-                                [
-                                    (obs.elapsed_ns / 1_000_000.0)
-                                    / max(1, obs.documents)
-                                    for obs in observations[: len(sampled_data)]
-                                ]
-                                if metric_plan.needs_per_document_latency
-                                else [None for _ in range(len(sampled_data))]
-                            ),
-                        )
-                    )
-                self._raw_observations[name] = [
-                    {
-                        "trial_index": int(obs.trial_index),
-                        "batch_index": int(obs.batch_index),
-                        "documents": int(obs.documents),
-                        "elapsed_ns": int(obs.elapsed_ns),
-                        "token_count": int(obs.token_count),
-                        "input_utf8_bytes": int(obs.input_utf8_bytes),
-                        "rss_before_mb": obs.rss_before_mb,
-                        "rss_after_mb": obs.rss_after_mb,
-                        "peak_rss_mb": obs.peak_rss_mb,
-                    }
-                    for obs in observations
-                ]
-            except Exception as exc:
-                if isinstance(exc, BenchmarkCancelledError):
+        with ThreadPoolExecutor(max_workers=effective_parallelism) as executor:
+            while (
+                next_tokenizer_index < len(indexed_tokenizers)
+                and len(pending) < effective_parallelism
+            ):
+                if should_stop and should_stop():
                     cancelled = True
                     break
-                logger.exception("Benchmark failed for tokenizer %s", name)
-                tokenizer_results.append(
-                    self.result_builder._build_tokenizer_result(
-                        tokenizer_name=name,
-                        status="failed",
-                        error_type=type(exc).__name__,
-                        error_message=str(exc),
-                        trial_tokenization_speeds_tps=[],
-                        throughput_chars_per_sec=0.0,
-                        encode_only_wall_time_seconds=0.0,
-                        dataset_stream_wall_time_seconds=float(
-                            dataset_stream_wall_time_seconds
-                        ),
-                        postprocess_wall_time_seconds=0.0,
-                        total_processing_time_seconds=0.0,
-                        observed_latency_ms=[],
-                        latency_sample_count=0,
-                        vocabulary_size=0,
-                        oov_rate=None,
-                        character_coverage=None,
-                        round_trip_fidelity_rate=0.0,
-                        round_trip_text_fidelity_rate=0.0,
-                        subword_fertility=0.0,
-                        compression_chars_per_token=0.0,
-                        compression_bytes_per_character=0.0,
-                        fragmentation_buckets=[],
-                        peak_rss_mb=0.0,
-                        memory_delta_mb=0.0,
-                    )
+                name, tokenizer = indexed_tokenizers[next_tokenizer_index]
+                future = executor.submit(
+                    self._run_tokenizer_worker,
+                    index=next_tokenizer_index,
+                    tokenizer_name=name,
+                    tokenizer=tokenizer,
+                    spool=spool,
+                    batch_size=batch_size,
+                    num_docs=num_docs,
+                    dataset_stream_wall_time_seconds=dataset_stream_wall_time_seconds,
+                    metric_plan=metric_plan,
+                    warmup_trials=warmup_trials,
+                    timed_trials=timed_trials,
+                    add_special_tokens=add_special_tokens,
+                    padding=padding,
+                    truncation=truncation,
+                    max_length=max_length,
+                    per_document_sample_size=per_document_sample_size,
+                    should_stop=should_stop,
+                    concurrency_tracker=concurrency_tracker,
                 )
-                self._raw_observations[name] = [
-                    {
-                        "error": type(exc).__name__,
-                        "message": str(exc),
-                    }
-                ]
+                pending[future] = (next_tokenizer_index, name)
+                next_tokenizer_index += 1
 
-            if progress_callback:
-                progress_callback(progress_base + ((index + 1) * per_tokenizer_span))
+            while pending:
+                done, _ = wait(pending, return_when=FIRST_COMPLETED)
+                for future in sorted(done, key=lambda item: pending[item][0]):
+                    index, name = pending.pop(future)
+                    try:
+                        worker_result = future.result()
+                    except CancelledError:
+                        worker_result = _TokenizerExecutionResult(
+                            index=index,
+                            tokenizer_name=name,
+                            tokenizer_result=None,
+                            per_document_stats=None,
+                            raw_observations=[],
+                            success=False,
+                            cancelled=True,
+                        )
+                    worker_results[index] = worker_result
+                    completed_tokenizer_count += 1
+                    if worker_result.cancelled:
+                        cancelled = True
+                    if progress_callback:
+                        progress_callback(
+                            min(
+                                99.0,
+                                20.0
+                                + (completed_tokenizer_count / len(tokenizers)) * 79.0,
+                            )
+                        )
+
+                if should_stop and should_stop():
+                    cancelled = True
+                if cancelled:
+                    for future in pending:
+                        _ = future.cancel()
+                    continue
+
+                while (
+                    next_tokenizer_index < len(indexed_tokenizers)
+                    and len(pending) < effective_parallelism
+                ):
+                    if should_stop and should_stop():
+                        cancelled = True
+                        break
+                    name, tokenizer = indexed_tokenizers[next_tokenizer_index]
+                    future = executor.submit(
+                        self._run_tokenizer_worker,
+                        index=next_tokenizer_index,
+                        tokenizer_name=name,
+                        tokenizer=tokenizer,
+                        spool=spool,
+                        batch_size=batch_size,
+                        num_docs=num_docs,
+                        dataset_stream_wall_time_seconds=dataset_stream_wall_time_seconds,
+                        metric_plan=metric_plan,
+                        warmup_trials=warmup_trials,
+                        timed_trials=timed_trials,
+                        add_special_tokens=add_special_tokens,
+                        padding=padding,
+                        truncation=truncation,
+                        max_length=max_length,
+                        per_document_sample_size=per_document_sample_size,
+                        should_stop=should_stop,
+                        concurrency_tracker=concurrency_tracker,
+                    )
+                    pending[future] = (next_tokenizer_index, name)
+                    next_tokenizer_index += 1
+
+        ordered_worker_results = [
+            worker_results[index]
+            for index in range(len(indexed_tokenizers))
+            if index in worker_results
+        ]
+        tokenizer_results = [
+            result.tokenizer_result
+            for result in ordered_worker_results
+            if result.tokenizer_result is not None
+        ]
+        per_document_stats = [
+            result.per_document_stats
+            for result in ordered_worker_results
+            if result.per_document_stats is not None
+        ]
+        self._raw_observations = {
+            result.tokenizer_name: result.raw_observations
+            for result in ordered_worker_results
+            if result.raw_observations
+        }
 
         config = BenchmarkRunConfig.model_validate(
             {
@@ -643,6 +413,12 @@ class BenchmarkServiceExecutionMixin:
         runtime_metadata["dataset_documents_benchmarked"] = int(num_docs)
         runtime_metadata["dataset_total_chars"] = int(dataset_total_chars)
         runtime_metadata["dataset_total_utf8_bytes"] = int(dataset_total_utf8_bytes)
+        runtime_metadata["benchmark_execution"] = {
+            "requested_parallelism": requested_parallelism,
+            "effective_parallelism": effective_parallelism,
+            "tokenizer_count": len(tokenizers),
+            "max_concurrent_workers_observed": concurrency_tracker.maximum(),
+        }
         runtime_metadata["benchmark_config"] = {
             "warmup_trials": warmup_trials,
             "timed_trials": timed_trials,
@@ -702,6 +478,507 @@ class BenchmarkServiceExecutionMixin:
             per_document_stats=per_document_stats,
             runtime_metadata=runtime_metadata,
             raw_observations=getattr(self, "_raw_observations", {}),
+        )
+
+    # -------------------------------------------------------------------------
+    def _run_tokenizer_worker(
+        self,
+        *,
+        index: int,
+        tokenizer_name: str,
+        tokenizer: Any,
+        spool: BenchmarkTextSpool,
+        batch_size: int,
+        num_docs: int,
+        dataset_stream_wall_time_seconds: float,
+        metric_plan: BenchmarkMetricPlan,
+        warmup_trials: int,
+        timed_trials: int,
+        add_special_tokens: bool,
+        padding: bool,
+        truncation: bool,
+        max_length: int | None,
+        per_document_sample_size: int,
+        should_stop: Callable[[], bool] | None,
+        concurrency_tracker: _TokenizerConcurrencyTracker,
+    ) -> _TokenizerExecutionResult:
+        concurrency_tracker.enter()
+        try:
+            return self._execute_tokenizer_workload(
+                index=index,
+                tokenizer_name=tokenizer_name,
+                tokenizer=tokenizer,
+                spool=spool,
+                batch_size=batch_size,
+                num_docs=num_docs,
+                dataset_stream_wall_time_seconds=dataset_stream_wall_time_seconds,
+                metric_plan=metric_plan,
+                warmup_trials=warmup_trials,
+                timed_trials=timed_trials,
+                add_special_tokens=add_special_tokens,
+                padding=padding,
+                truncation=truncation,
+                max_length=max_length,
+                per_document_sample_size=per_document_sample_size,
+                should_stop=should_stop,
+            )
+        finally:
+            concurrency_tracker.exit()
+
+    # -------------------------------------------------------------------------
+    def _execute_tokenizer_workload(
+        self,
+        *,
+        index: int,
+        tokenizer_name: str,
+        tokenizer: Any,
+        spool: BenchmarkTextSpool,
+        batch_size: int,
+        num_docs: int,
+        dataset_stream_wall_time_seconds: float,
+        metric_plan: BenchmarkMetricPlan,
+        warmup_trials: int,
+        timed_trials: int,
+        add_special_tokens: bool,
+        padding: bool,
+        truncation: bool,
+        max_length: int | None,
+        per_document_sample_size: int,
+        should_stop: Callable[[], bool] | None,
+    ) -> _TokenizerExecutionResult:
+        name = tokenizer_name
+        worker_tokenizer_results: list[BenchmarkTokenizerResult] = []
+        worker_per_document_stats: list[BenchmarkPerDocumentTokenizerStats] = []
+        worker_raw_observations: dict[str, list[dict[str, object]]] = {}
+        if should_stop and should_stop():
+            return _TokenizerExecutionResult(
+                index=index,
+                tokenizer_name=name,
+                tokenizer_result=None,
+                per_document_stats=None,
+                raw_observations=[],
+                success=False,
+                cancelled=True,
+            )
+        logger.info("Processing tokenizer: %s", name)
+        try:
+            tokenizer_started_at = time.perf_counter()
+            adapter = UniversalTokenizerAdapter(
+                tokenizer_id=name, tokenizer=tokenizer
+            )
+            observations = run_tokenizer_trials(
+                tokenizer=adapter,
+                text_batches_factory=SpooledTextBatchFactory(spool, batch_size),
+                config=TokenizerRunConfig(
+                    add_special_tokens=add_special_tokens,
+                    padding=padding,
+                    truncation=truncation,
+                    max_length=max_length,
+                    batch_size=batch_size,
+                ),
+                warmup_trials=warmup_trials,
+                timed_trials=timed_trials,
+                should_stop=should_stop,
+            )
+            if not observations:
+                if should_stop and should_stop():
+                    raise BenchmarkCancelledError("Benchmark run cancelled.")
+                raise RuntimeError("No observations collected for tokenizer run.")
+            observation_summary = summarize_observations(observations)
+            trial_tokenization_speeds_tps: list[float] = []
+            for trial_index in sorted({obs.trial_index for obs in observations}):
+                trial_obs = [
+                    obs for obs in observations if obs.trial_index == trial_index
+                ]
+                trial_elapsed_ns = sum(obs.elapsed_ns for obs in trial_obs)
+                trial_tokens = sum(obs.token_count for obs in trial_obs)
+                trial_tokenization_speeds_tps.append(
+                    float(trial_tokens / (trial_elapsed_ns / 1_000_000_000.0))
+                    if trial_elapsed_ns > 0
+                    else 0.0
+                )
+            postprocess_started_at = time.perf_counter()
+            sample_rows: list[dict[str, Any]] = []
+            unknown_token_count_total = 0
+            unknown_token_count_measurable = False
+            total_tokens = 0
+            total_chars = 0
+            total_bytes = 0
+            fragmentation_token_total = 0
+            fragmentation_word_piece_counts: list[int] = []
+            fragmentation_bucket_values: dict[str, list[float]] = {
+                "short_1_4": [],
+                "medium_5_8": [],
+                "long_9_plus": [],
+            }
+            round_trip_token_fidelity: list[float] = []
+            round_trip_text_fidelity: list[float] = []
+            for row_id, text_value in spool.iter_rows():
+                if should_stop and should_stop():
+                    raise BenchmarkCancelledError("Benchmark run cancelled.")
+                encoded_batch = adapter.encode_batch(
+                    [text_value],
+                    add_special_tokens=add_special_tokens,
+                    padding=padding,
+                    truncation=truncation,
+                    max_length=max_length,
+                )
+                encoded_ids = (
+                    encoded_batch.input_ids_by_doc[0]
+                    if encoded_batch.input_ids_by_doc
+                    else []
+                )
+                token_count = len(encoded_ids)
+                total_tokens += token_count
+                total_chars += len(text_value)
+                total_bytes += len(text_value.encode("utf-8"))
+                if (
+                    encoded_batch.unknown_counts
+                    and encoded_batch.unknown_counts[0] is not None
+                ):
+                    unknown_token_count_measurable = True
+                    unknown_token_count_total += int(
+                        encoded_batch.unknown_counts[0] or 0
+                    )
+                pieces_per_word: float | None = None
+                if metric_plan.needs_fragmentation:
+                    fragmentation_encoded = adapter.encode_batch(
+                        [text_value],
+                        add_special_tokens=False,
+                        padding=False,
+                        truncation=False,
+                        max_length=None,
+                    )
+                    fragmentation_token_total += (
+                        fragmentation_encoded.token_counts[0]
+                        if fragmentation_encoded.token_counts
+                        else 0
+                    )
+                    words = re.findall(r"\b\w+\b", text_value, flags=re.UNICODE)
+                    if words:
+                        encoded_words = adapter.encode_batch(
+                            words,
+                            add_special_tokens=False,
+                            padding=False,
+                            truncation=False,
+                            max_length=None,
+                        )
+                        word_piece_counts = [
+                            int(value)
+                            for value in encoded_words.token_counts[: len(words)]
+                        ]
+                        fragmentation_word_piece_counts.extend(word_piece_counts)
+                        for word, piece_count in zip(
+                            words, word_piece_counts, strict=False
+                        ):
+                            fragmentation_bucket_values[
+                                self.result_builder._fragmentation_bucket_label(
+                                    len(word)
+                                )
+                            ].append(float(piece_count))
+                        pieces_per_word = float(np.mean(word_piece_counts))
+                decoded_text = self.tools.safe_decode(tokenizer, encoded_ids)
+                if metric_plan.needs_round_trip:
+                    rt_token_ids = self.tools.extract_token_ids(
+                        tokenizer.encode(decoded_text)
+                    )
+                    round_trip_token_fidelity.append(
+                        float(rt_token_ids == encoded_ids)
+                    )
+                    round_trip_text_fidelity.append(
+                        float(
+                            unicodedata.normalize("NFC", decoded_text)
+                            == unicodedata.normalize("NFC", text_value)
+                        )
+                    )
+                if (
+                    metric_plan.needs_per_document_stats
+                    and len(sample_rows) < per_document_sample_size
+                ):
+                    sample_rows.append(
+                        {
+                            "text_id": row_id,
+                            "tokens_count": token_count,
+                            "bytes_per_token": (
+                                len(text_value.encode("utf-8")) / token_count
+                            )
+                            if token_count > 0
+                            else 0.0,
+                            "pieces_per_word": pieces_per_word,
+                        }
+                    )
+
+            elapsed = max(
+                _as_float(observation_summary["total_time_seconds"]), 1e-9
+            )
+            throughput_chars_per_sec = _as_float(
+                observation_summary["documents_per_second"]
+            ) * ((total_chars / num_docs) if num_docs else 0.0)
+            throughput_bytes_per_sec = (
+                (float(total_bytes) / elapsed) if elapsed > 0 else 0.0
+            )
+
+            vocab_result = self.result_builder._extract_vocab_result(tokenizer)
+            if isinstance(vocab_result, (Mapping, Sequence)):
+                vocabulary_size = int(len(vocab_result))
+            else:
+                vocabulary_size = 0
+
+            fragmentation_buckets: list[BenchmarkFragmentationBucket] = []
+            if metric_plan.needs_fragmentation:
+                subword_fertility: float | None = (
+                    float(np.mean(fragmentation_word_piece_counts))
+                    if fragmentation_word_piece_counts
+                    else 0.0
+                )
+                fragmentation_buckets = [
+                    BenchmarkFragmentationBucket(
+                        bucket=bucket,
+                        pieces_per_word_mean=float(np.mean(values)),
+                    )
+                    for bucket, values in fragmentation_bucket_values.items()
+                    if values
+                ]
+            else:
+                subword_fertility = None
+
+            oov_rate: float | None = None
+            if metric_plan.needs_unknown_rate and total_tokens > 0:
+                if unknown_token_count_measurable:
+                    oov_rate = unknown_token_count_total / total_tokens
+
+            if metric_plan.needs_character_coverage:
+                vocab_tokens: set[str] = set()
+                if isinstance(vocab_result, Mapping):
+                    vocab_tokens = {str(tok) for tok in vocab_result.keys()}
+                elif isinstance(vocab_result, Sequence):
+                    vocab_tokens = {str(tok) for tok in vocab_result}
+
+                normalized_vocab_tokens = {
+                    normalize_vocabulary_token(token) for token in vocab_tokens
+                }
+                dataset_chars = set()
+                for _, text_value in spool.iter_rows():
+                    dataset_chars.update(text_value)
+                vocab_chars: set[str] = set()
+                for token_item in normalized_vocab_tokens:
+                    for ch in token_item:
+                        vocab_chars.add(ch)
+                intersection = dataset_chars.intersection(vocab_chars)
+                character_coverage: float | None = (
+                    (len(intersection) / max(1, len(dataset_chars)) * 100.0)
+                    if dataset_chars
+                    else 0.0
+                )
+            else:
+                character_coverage = None
+
+            compression_chars_per_token: float | None = (
+                float(total_chars / fragmentation_token_total)
+                if fragmentation_token_total > 0
+                else None
+            )
+            compression_bytes_per_character: float | None = (
+                float(fragmentation_token_total / total_bytes)
+                if metric_plan.needs_fragmentation and total_bytes > 0
+                else None
+            )
+            round_trip_fidelity_rate: float | None = (
+                float(np.mean(round_trip_token_fidelity))
+                if metric_plan.needs_round_trip and round_trip_token_fidelity
+                else None
+            )
+            round_trip_text_rate: float | None = (
+                float(np.mean(round_trip_text_fidelity))
+                if metric_plan.needs_round_trip and round_trip_text_fidelity
+                else None
+            )
+            postprocess_wall_time_seconds = max(
+                0.0, time.perf_counter() - postprocess_started_at
+            )
+            encode_only_wall_time_seconds = float(
+                observation_summary.get("total_time_seconds", 0.0) or 0.0
+            )
+            tokenizer_wall_time_seconds = max(
+                0.0, time.perf_counter() - tokenizer_started_at
+            )
+            rss_samples = [
+                float(obs.peak_rss_mb)
+                for obs in observations
+                if isinstance(obs.peak_rss_mb, int | float)
+            ]
+            rss_start = next(
+                (
+                    float(obs.rss_before_mb)
+                    for obs in observations
+                    if isinstance(obs.rss_before_mb, int | float)
+                ),
+                None,
+            )
+            worker_tokenizer_results.append(
+                self.result_builder._build_tokenizer_result(
+                    tokenizer_name=name,
+                    status="success",
+                    trial_tokenization_speeds_tps=trial_tokenization_speeds_tps,
+                    throughput_chars_per_sec=float(throughput_chars_per_sec),
+                    encode_only_wall_time_seconds=float(
+                        encode_only_wall_time_seconds
+                    ),
+                    dataset_stream_wall_time_seconds=float(
+                        dataset_stream_wall_time_seconds
+                    ),
+                    postprocess_wall_time_seconds=float(
+                        postprocess_wall_time_seconds
+                    ),
+                    total_processing_time_seconds=float(
+                        tokenizer_wall_time_seconds
+                    ),
+                    observed_latency_ms=[
+                        (obs.elapsed_ns / 1_000_000.0) / max(1, obs.documents)
+                        for obs in observations
+                    ]
+                    if metric_plan.needs_latency
+                    else [],
+                    latency_sample_count=(
+                        len(observations) if metric_plan.needs_latency else 0
+                    ),
+                    vocabulary_size=int(vocabulary_size),
+                    oov_rate=oov_rate,
+                    character_coverage=character_coverage,
+                    round_trip_fidelity_rate=round_trip_fidelity_rate,
+                    round_trip_text_fidelity_rate=round_trip_text_rate,
+                    subword_fertility=subword_fertility,
+                    compression_chars_per_token=compression_chars_per_token,
+                    compression_bytes_per_character=compression_bytes_per_character,
+                    fragmentation_buckets=fragmentation_buckets,
+                    peak_rss_mb=(
+                        max(rss_samples)
+                        if rss_samples and metric_plan.needs_resources
+                        else None
+                    ),
+                    memory_delta_mb=(
+                        max(0.0, max(rss_samples) - rss_start)
+                        if rss_samples
+                        and rss_start is not None
+                        and metric_plan.needs_resources
+                        else None
+                    ),
+                )
+            )
+            if metric_plan.needs_throughput:
+                worker_tokenizer_results[
+                    -1
+                ].efficiency.encode_bytes_per_second_mean = float(
+                    throughput_bytes_per_sec
+                )
+            else:
+                worker_tokenizer_results[-1].efficiency = worker_tokenizer_results[
+                    -1
+                ].efficiency.model_copy(
+                    update={
+                        field: None
+                        for field in worker_tokenizer_results[
+                            -1
+                        ].efficiency.model_fields
+                    }
+                )
+
+            if metric_plan.needs_per_document_stats:
+                sampled_data = pd.DataFrame(sample_rows)
+                worker_per_document_stats.append(
+                    self.result_builder._build_per_document_stats(
+                        tokenizer_name=name,
+                        data=sampled_data,
+                        per_document_latency_ms=(
+                            [
+                                (obs.elapsed_ns / 1_000_000.0)
+                                / max(1, obs.documents)
+                                for obs in observations[: len(sampled_data)]
+                            ]
+                            if metric_plan.needs_per_document_latency
+                            else [None for _ in range(len(sampled_data))]
+                        ),
+                    )
+                )
+            worker_raw_observations[name] = [
+                {
+                    "trial_index": int(obs.trial_index),
+                    "batch_index": int(obs.batch_index),
+                    "documents": int(obs.documents),
+                    "elapsed_ns": int(obs.elapsed_ns),
+                    "token_count": int(obs.token_count),
+                    "input_utf8_bytes": int(obs.input_utf8_bytes),
+                    "rss_before_mb": obs.rss_before_mb,
+                    "rss_after_mb": obs.rss_after_mb,
+                    "peak_rss_mb": obs.peak_rss_mb,
+                }
+                for obs in observations
+            ]
+        except Exception as exc:
+            if isinstance(exc, BenchmarkCancelledError):
+                return _TokenizerExecutionResult(
+                    index=index,
+                    tokenizer_name=name,
+                    tokenizer_result=None,
+                    per_document_stats=None,
+                    raw_observations=[],
+                    success=False,
+                    cancelled=True,
+                )
+            logger.exception("Benchmark failed for tokenizer %s", name)
+            worker_tokenizer_results.append(
+                self.result_builder._build_tokenizer_result(
+                    tokenizer_name=name,
+                    status="failed",
+                    error_type=type(exc).__name__,
+                    error_message=str(exc),
+                    trial_tokenization_speeds_tps=[],
+                    throughput_chars_per_sec=0.0,
+                    encode_only_wall_time_seconds=0.0,
+                    dataset_stream_wall_time_seconds=float(
+                        dataset_stream_wall_time_seconds
+                    ),
+                    postprocess_wall_time_seconds=0.0,
+                    total_processing_time_seconds=0.0,
+                    observed_latency_ms=[],
+                    latency_sample_count=0,
+                    vocabulary_size=0,
+                    oov_rate=None,
+                    character_coverage=None,
+                    round_trip_fidelity_rate=0.0,
+                    round_trip_text_fidelity_rate=0.0,
+                    subword_fertility=0.0,
+                    compression_chars_per_token=0.0,
+                    compression_bytes_per_character=0.0,
+                    fragmentation_buckets=[],
+                    peak_rss_mb=0.0,
+                    memory_delta_mb=0.0,
+                )
+            )
+            worker_raw_observations[name] = [
+                {
+                    "error": type(exc).__name__,
+                    "message": str(exc),
+                }
+            ]
+
+        tokenizer_result = (
+            worker_tokenizer_results[0] if worker_tokenizer_results else None
+        )
+        per_doc_result = (
+            worker_per_document_stats[0] if worker_per_document_stats else None
+        )
+        return _TokenizerExecutionResult(
+            index=index,
+            tokenizer_name=name,
+            tokenizer_result=tokenizer_result,
+            per_document_stats=per_doc_result,
+            raw_observations=worker_raw_observations.get(name, []),
+            success=(
+                tokenizer_result is not None
+                and tokenizer_result.status == "success"
+            ),
+            cancelled=False,
         )
 
     # -------------------------------------------------------------------------

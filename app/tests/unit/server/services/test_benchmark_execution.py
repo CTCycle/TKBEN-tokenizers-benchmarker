@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from typing import Any
 
 import server.services.benchmark_execution as benchmark_execution_module
@@ -147,7 +148,7 @@ def test_run_benchmarks_enforces_max_documents_limit() -> None:
     assert len(result.per_document_stats[0].tokens_count) == 2
 
 ###############################################################################
-def test_run_benchmarks_isolates_tokenizer_failure() -> None:
+def test_run_benchmarks_isolates_tokenizer_failure(monkeypatch) -> None:
     service = BenchmarkService()
     rows = [
         (10, "alpha beta"),
@@ -168,17 +169,30 @@ def test_run_benchmarks_isolates_tokenizer_failure() -> None:
         "broken/tokenizer": BrokenTokenizer(),
     }
 
+    original_run_trials = benchmark_execution_module.run_tokenizer_trials
+    start_barrier = threading.Barrier(2)
+
+    def synchronized_run_trials(**kwargs: Any) -> list[BatchObservation]:
+        start_barrier.wait(timeout=10)
+        return original_run_trials(**kwargs)
+
+    monkeypatch.setattr(
+        benchmark_execution_module, "run_tokenizer_trials", synchronized_run_trials
+    )
+
     result = service.run_benchmarks(
         dataset_name="custom/ds",
         tokenizer_ids=["ok/tokenizer", "broken/tokenizer"],
+        benchmark_config={"parallelism": 2},
     )
 
     assert isinstance(result, BenchmarkRunResponse)
     assert len(result.tokenizer_results) == 2
-    assert {r.tokenizer for r in result.tokenizer_results} == {
+    assert [r.tokenizer for r in result.tokenizer_results] == [
         "ok/tokenizer",
         "broken/tokenizer",
-    }
+    ]
+    assert [r.status for r in result.tokenizer_results] == ["success", "failed"]
     assert "broken/tokenizer" in result.raw_observations
     assert result.raw_observations["broken/tokenizer"][0]["error"] == "RuntimeError"
     efficiency_widget = next(
@@ -189,6 +203,198 @@ def test_run_benchmarks_isolates_tokenizer_failure() -> None:
     chart_tokenizers = {point.tokenizer for point in efficiency_widget.points}
     assert "ok/tokenizer" in chart_tokenizers
     assert "broken/tokenizer" not in chart_tokenizers
+
+###############################################################################
+def _service_with_tokenizers(tokenizers: dict[str, Any]) -> BenchmarkService:
+    service = BenchmarkService()
+    rows = [(10, "alpha beta"), (11, "gamma")]
+    service.get_dataset_document_count = lambda dataset_name: len(rows)  # type: ignore[method-assign]
+    service.stream_dataset_rows_from_database = lambda dataset_name: iter(rows)  # type: ignore[method-assign]
+    service.load_tokenizers = lambda tokenizer_ids: tokenizers  # type: ignore[method-assign]
+    return service
+
+###############################################################################
+def test_run_benchmarks_parallelism_one_processes_tokenizers_serially() -> None:
+    service = _service_with_tokenizers(
+        {"first/tokenizer": DummyTokenizer(), "second/tokenizer": DummyTokenizer()}
+    )
+
+    result = service.run_benchmarks(
+        dataset_name="custom/ds",
+        tokenizer_ids=["first/tokenizer", "second/tokenizer"],
+        benchmark_config={"parallelism": 1},
+    )
+
+    assert result.status == "success"
+    assert [item.tokenizer for item in result.tokenizer_results] == [
+        "first/tokenizer",
+        "second/tokenizer",
+    ]
+    execution = result.runtime_metadata["benchmark_execution"]
+    assert execution["requested_parallelism"] == 1
+    assert execution["effective_parallelism"] == 1
+    assert execution["tokenizer_count"] == 2
+    assert execution["max_concurrent_workers_observed"] == 1
+
+###############################################################################
+def test_run_benchmarks_parallelism_two_overlaps_tokenizer_workloads(
+    monkeypatch,
+) -> None:
+    service = _service_with_tokenizers(
+        {"first/tokenizer": DummyTokenizer(), "second/tokenizer": DummyTokenizer()}
+    )
+    original_run_trials = benchmark_execution_module.run_tokenizer_trials
+    start_barrier = threading.Barrier(2)
+
+    def synchronized_run_trials(**kwargs: Any) -> list[BatchObservation]:
+        start_barrier.wait(timeout=10)
+        return original_run_trials(**kwargs)
+
+    monkeypatch.setattr(
+        benchmark_execution_module, "run_tokenizer_trials", synchronized_run_trials
+    )
+    result = service.run_benchmarks(
+        dataset_name="custom/ds",
+        tokenizer_ids=["first/tokenizer", "second/tokenizer"],
+        benchmark_config={"parallelism": 2},
+    )
+
+    assert result.status == "success"
+    assert result.runtime_metadata["benchmark_execution"][
+        "max_concurrent_workers_observed"
+    ] == 2
+
+###############################################################################
+def test_run_benchmarks_caps_workers_and_preserves_input_order(monkeypatch) -> None:
+    class DoubleTokenCountTokenizer(DummyTokenizer):
+        def encode(self, text: str) -> list[int]:
+            encoded = super().encode(text)
+            return [token_id for token_id in encoded for _ in range(2)]
+
+    service = _service_with_tokenizers(
+        {
+            "first/tokenizer": DummyTokenizer(),
+            "second/tokenizer": DoubleTokenCountTokenizer(),
+        }
+    )
+    original_execute = service._execute_tokenizer_workload
+    second_completed = threading.Event()
+    completion_order: list[str] = []
+    completion_lock = threading.Lock()
+
+    def finish_second_first(**kwargs: Any):
+        tokenizer_name = kwargs["tokenizer_name"]
+        if tokenizer_name == "first/tokenizer":
+            assert second_completed.wait(timeout=10)
+        result = original_execute(**kwargs)
+        with completion_lock:
+            completion_order.append(tokenizer_name)
+        if tokenizer_name == "second/tokenizer":
+            second_completed.set()
+        return result
+
+    monkeypatch.setattr(service, "_execute_tokenizer_workload", finish_second_first)
+    progress: list[float] = []
+    coordinator_thread = threading.get_ident()
+    callback_threads: list[int] = []
+
+    def record_progress(value: float) -> None:
+        progress.append(value)
+        callback_threads.append(threading.get_ident())
+
+    result = service.run_benchmarks(
+        dataset_name="custom/ds",
+        tokenizer_ids=["first/tokenizer", "second/tokenizer"],
+        benchmark_config={"parallelism": 128, "store_per_document_stats": True},
+        progress_callback=record_progress,
+    )
+
+    assert result.status == "success"
+    assert completion_order == ["second/tokenizer", "first/tokenizer"]
+    assert [item.tokenizer for item in result.tokenizer_results] == [
+        "first/tokenizer",
+        "second/tokenizer",
+    ]
+    assert [item.tokenizer for item in result.per_document_stats] == [
+        "first/tokenizer",
+        "second/tokenizer",
+    ]
+    assert list(result.raw_observations) == ["first/tokenizer", "second/tokenizer"]
+    first_tokens = sum(
+        int(item["token_count"])
+        for item in result.raw_observations["first/tokenizer"]
+    )
+    second_tokens = sum(
+        int(item["token_count"])
+        for item in result.raw_observations["second/tokenizer"]
+    )
+    assert second_tokens == first_tokens * 2
+    assert result.per_document_stats[0].tokens_count == [2, 1]
+    assert result.per_document_stats[1].tokens_count == [4, 2]
+    execution = result.runtime_metadata["benchmark_execution"]
+    assert result.config.parallelism == 128
+    assert result.runtime_metadata["benchmark_config"]["parallelism"] == 128
+    assert execution["requested_parallelism"] == 128
+    assert execution["effective_parallelism"] == 2
+    assert execution["tokenizer_count"] == 2
+    assert execution["max_concurrent_workers_observed"] == 2
+    assert progress == sorted(progress)
+    assert progress[-1] == 99.0
+    assert set(callback_threads) == {coordinator_thread}
+
+    throughput_widget = next(
+        widget
+        for widget in result.dashboard.widgets
+        if "eff.encode_tokens_per_second_mean" in widget.metric_keys
+    )
+    assert [point.tokenizer for point in throughput_widget.points] == [
+        "first/tokenizer",
+        "second/tokenizer",
+    ]
+
+###############################################################################
+def test_run_benchmarks_cancellation_stops_scheduling_parallel_work(
+    monkeypatch,
+) -> None:
+    service = _service_with_tokenizers(
+        {
+            "first/tokenizer": DummyTokenizer(),
+            "second/tokenizer": DummyTokenizer(),
+            "third/tokenizer": DummyTokenizer(),
+        }
+    )
+    start_barrier = threading.Barrier(2)
+    stop_requested = threading.Event()
+    run_calls: list[str] = []
+    calls_lock = threading.Lock()
+
+    def cancel_after_both_start(**kwargs: Any) -> list[BatchObservation]:
+        start_barrier.wait(timeout=10)
+        with calls_lock:
+            run_calls.append(kwargs["tokenizer"].tokenizer_id)
+        stop_requested.set()
+        return []
+
+    monkeypatch.setattr(
+        benchmark_execution_module, "run_tokenizer_trials", cancel_after_both_start
+    )
+    result = service.run_benchmarks(
+        dataset_name="custom/ds",
+        tokenizer_ids=[
+            "first/tokenizer",
+            "second/tokenizer",
+            "third/tokenizer",
+        ],
+        benchmark_config={"parallelism": 2},
+        should_stop=stop_requested.is_set,
+    )
+
+    assert result.status == "cancelled"
+    assert len(run_calls) == 2
+    assert set(run_calls) == {"first/tokenizer", "second/tokenizer"}
+    assert result.runtime_metadata["benchmark_execution"][
+        "effective_parallelism"
+    ] == 2
 
 ###############################################################################
 def test_run_benchmarks_uses_trial_level_speeds_for_ci() -> None:
