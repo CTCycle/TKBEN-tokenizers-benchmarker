@@ -110,6 +110,51 @@ def test_dataset_upload_rejects_oversized_file_before_job_dispatch(monkeypatch) 
     assert manager.started_jobs == 0
 
 ###############################################################################
+def test_dataset_upload_accepts_limit_and_rejects_one_byte_over(monkeypatch) -> None:
+    limit = 25 * 1024 * 1024
+    manager = DummyJobManager()
+    captured_upload_sizes: list[int] = []
+    original_start_job = manager.start_job
+
+    def capture_start_job(job_type, runner, args=(), kwargs=None):
+        if job_type == "dataset_upload" and kwargs is not None:
+            captured_upload_sizes.append(len(kwargs["file_content"]))
+        return original_start_job(job_type, runner, args=args, kwargs=kwargs)
+
+    monkeypatch.setattr(manager, "start_job", capture_start_job)
+    monkeypatch.setattr(app.state, "job_manager", manager)
+
+    from server.api import datasets as datasets_api
+
+    class _DatasetCfg:
+        allowed_extensions = (".csv", ".xlsx")
+        max_upload_bytes = limit
+
+    class _Settings:
+        datasets = _DatasetCfg()
+        jobs = type("JobsCfg", (), {"polling_interval": 1.0})()
+
+    monkeypatch.setattr(datasets_api, "get_server_settings", lambda: _Settings())
+
+    payload = b"text\n" + b"x" * (limit - len(b"text\n"))
+    client = TestClient(app)
+    accepted = client.post(
+        "/api/datasets/upload",
+        files={"file": ("near-limit.csv", payload, "text/csv")},
+    )
+
+    assert accepted.status_code == 202
+    assert captured_upload_sizes == [limit]
+
+    rejected = client.post(
+        "/api/datasets/upload",
+        files={"file": ("near-limit.csv", payload + b"x", "text/csv")},
+    )
+
+    assert rejected.status_code == 413
+    assert manager.started_jobs == 1
+
+###############################################################################
 def test_dataset_list_passes_catalog_filters_to_service(monkeypatch) -> None:
     from server.services.datasets import DatasetService
 
