@@ -38,7 +38,7 @@
     <header class="dataset-modal-header">
       <div>
         <p id="dataset-selector-title" class="panel-label">Add dataset</p>
-        <p id="dataset-selector-description" class="panel-description">Choose a predefined dataset, enter a Hugging Face dataset name, or upload a local CSV/Excel file.</p>
+        <p id="dataset-selector-description" class="panel-description">Choose a predefined dataset, enter a Hugging Face dataset name, or upload a local CSV/XLSX file.</p>
       </div>
       <div class="dataset-modal-actions">
         <button class="icon-button subtle" type="button" aria-label="Close dataset selector" (click)="closeAddDataset()">×</button>
@@ -91,7 +91,7 @@
       </section>
 
       <section id="dataset-panel-custom" class="dataset-modal-panel dataset-modal-panel--focused" role="tabpanel" aria-labelledby="dataset-tab-custom" tabindex="0" [hidden]="activeDatasetTab() !== 'custom'">
-        <div class="dataset-upload-content"><div class="dataset-upload-icon" aria-hidden="true">↑</div><p class="panel-label">Upload a custom dataset</p><p class="panel-description">Choose a CSV or Excel file. The existing upload workflow will validate it, persist the dataset, and add it to the local catalogue.</p><input #datasetFileInput id="dataset-file-upload" class="hidden-file-input" type="file" accept=".csv,.xls,.xlsx" aria-label="Upload custom dataset file" (change)="uploadFile($event)" /><button class="primary-button dataset-upload-button" type="button" [disabled]="store.busyAction() === 'upload'" (click)="datasetFileInput.click()">{{ store.busyAction() === 'upload' ? 'Uploading…' : 'Choose CSV or Excel file' }}</button></div>
+        <div class="dataset-upload-content"><div class="dataset-upload-icon" aria-hidden="true">↑</div><p class="panel-label">Upload a custom dataset</p><p class="panel-description">Choose a CSV or XLSX file. The existing upload workflow will validate it, persist the dataset, and add it to the local catalogue.</p><input #datasetFileInput id="dataset-file-upload" class="hidden-file-input" type="file" accept=".csv,.xlsx" aria-label="Upload custom dataset file" (change)="uploadFile($event)" /><button class="primary-button dataset-upload-button" type="button" [disabled]="store.busyAction() === 'upload'" (click)="datasetFileInput.click()">{{ store.busyAction() === 'upload' ? 'Uploading…' : 'Choose CSV or XLSX file' }}</button></div>
       </section>
     </div>
 

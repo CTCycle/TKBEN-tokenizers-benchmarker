@@ -1,0 +1,4 @@
+text,source
+A small CSV sample with repeated words for import validation.,synthetic
+"A second row exercises punctuation, numbers 42, and UTF-8 café.",synthetic
+A third row makes the preview and analysis observable.,synthetic

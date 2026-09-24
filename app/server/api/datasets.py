@@ -124,14 +124,14 @@ async def download_dataset(
 )
 async def upload_custom_dataset(
     request: Request,
-    file: UploadFile = File(..., description="CSV or Excel file to upload"),
+    file: UploadFile = File(..., description="CSV or XLSX file to upload"),
 ) -> JobStartResponse:
     allowed_extensions = set(get_server_settings().datasets.allowed_extensions)
     normalized_filename, _ = validate_upload_filename(
         file,
         extension_allowed=allowed_extensions.__contains__,
         unsupported_detail=lambda extension: (
-            f"Unsupported file type: {extension}. Use .csv, .xlsx, or .xls"
+            f"Unsupported file type: {extension}. Use .csv or .xlsx"
         ),
         validate_stem_before_extension=True,
     )
