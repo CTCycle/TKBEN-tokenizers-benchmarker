@@ -53,6 +53,6 @@ the adjusted runner, and the canonical cache root remained unchanged.
   connection credentials are configured, and the Docker engine is unavailable.
   The local service was not treated as disposable.
 - Manual PDF inspection of other visualization overrides and vocabulary exports
-  beyond 23 entries remains open. Hosted CI evidence is available for the prior
-  validation commit, while release publication evidence remains **PARTIAL** and
+  beyond 23 entries remains open. Hosted CI run 36060275436 passed on the storage-validation commit
+  `e870e135b5163044bf11565ff4ead8e3a72a4871`; release publication evidence remains **PARTIAL** and
   was not part of this storage slice.
