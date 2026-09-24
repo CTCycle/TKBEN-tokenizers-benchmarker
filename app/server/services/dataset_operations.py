@@ -62,6 +62,21 @@ class DatasetServiceOperationsMixin:
     retry_delay_seconds: ClassVar[Callable[..., float]]
 
     # -------------------------------------------------------------------------
+    def _cleanup_failed_dataset_import(
+        self,
+        dataset_id: int,
+        dataset_name: str,
+    ) -> None:
+        try:
+            self.dataset_repository.delete_incomplete_dataset(dataset_id)
+        except Exception:
+            logger.exception(
+                "Failed to clean up partially persisted dataset after import "
+                "failure: %s",
+                dataset_name,
+            )
+
+    # -------------------------------------------------------------------------
     def persist_dataset(
         self,
         dataset: Dataset | DatasetDict | IterableDataset,
@@ -82,46 +97,52 @@ class DatasetServiceOperationsMixin:
         length_counts: dict[int, int] = {}
         total_documents = stats.document_count if stats.document_count > 0 else 1
 
-        for text in self._iterate_texts(dataset, text_column, remove_invalid):
-            if should_stop and should_stop():
-                self.dataset_repository.delete_incomplete_dataset(dataset_id)
-                return self.histogram_from_counts(stats, length_counts), saved_count
-            text_length = len(text)
-            length_counts[text_length] = length_counts.get(text_length, 0) + 1
-            batch.append(
-                {
-                    "dataset_id": dataset_id,
-                    "ordinal": saved_count + len(batch),
-                    "text": text,
-                }
-            )
+        try:
+            for text in self._iterate_texts(dataset, text_column, remove_invalid):
+                if should_stop and should_stop():
+                    self.dataset_repository.delete_incomplete_dataset(dataset_id)
+                    return self.histogram_from_counts(stats, length_counts), saved_count
+                text_length = len(text)
+                length_counts[text_length] = length_counts.get(text_length, 0) + 1
+                batch.append(
+                    {
+                        "dataset_id": dataset_id,
+                        "ordinal": saved_count + len(batch),
+                        "text": text,
+                    }
+                )
 
-            if len(batch) >= batch_size:
+                if len(batch) >= batch_size:
+                    self.dataset_repository.save_document_batch(batch)
+                    saved_count += len(batch)
+                    if saved_count - last_logged >= self.log_interval:
+                        logger.info("Saved %d documents so far...", saved_count)
+                        last_logged = saved_count
+                    if progress_callback:
+                        progress_value = (
+                            progress_base
+                            + (saved_count / total_documents) * progress_span
+                        )
+                        progress_callback(progress_value)
+                    batch.clear()
+
+            if batch:
                 self.dataset_repository.save_document_batch(batch)
                 saved_count += len(batch)
-                if saved_count - last_logged >= self.log_interval:
-                    logger.info("Saved %d documents so far...", saved_count)
-                    last_logged = saved_count
                 if progress_callback:
                     progress_value = (
                         progress_base + (saved_count / total_documents) * progress_span
                     )
                     progress_callback(progress_value)
-                batch.clear()
 
-        if batch:
-            self.dataset_repository.save_document_batch(batch)
-            saved_count += len(batch)
-            if progress_callback:
-                progress_value = (
-                    progress_base + (saved_count / total_documents) * progress_span
-                )
-                progress_callback(progress_value)
+            logger.info("Completed saving %d documents to database", saved_count)
+            if progress_callback and stats.document_count == 0:
+                progress_callback(progress_base + progress_span)
+            self.dataset_repository.finalize_dataset_import(dataset_id, saved_count)
+        except Exception:
+            self._cleanup_failed_dataset_import(dataset_id, dataset_name)
+            raise
 
-        logger.info("Completed saving %d documents to database", saved_count)
-        if progress_callback and stats.document_count == 0:
-            progress_callback(progress_base + progress_span)
-        self.dataset_repository.finalize_dataset_import(dataset_id, saved_count)
         return self.histogram_from_counts(stats, length_counts), saved_count
 
     # -------------------------------------------------------------------------
@@ -404,48 +425,53 @@ class DatasetServiceOperationsMixin:
         dataset_id = self.dataset_repository.ensure_dataset_id(dataset_name)
         cancelled = False
 
-        for text in self._iterate_dataframe_texts(df, text_column, remove_invalid):
-            if self.stop_requested(should_stop):
-                cancelled = True
-                break
-            text_length = len(text)
-            length_counts[text_length] = length_counts.get(text_length, 0) + 1
-            batch.append(
-                {
-                    "dataset_id": dataset_id,
-                    "ordinal": saved_count + len(batch),
-                    "text": text,
-                }
-            )
+        try:
+            for text in self._iterate_dataframe_texts(df, text_column, remove_invalid):
+                if self.stop_requested(should_stop):
+                    cancelled = True
+                    break
+                text_length = len(text)
+                length_counts[text_length] = length_counts.get(text_length, 0) + 1
+                batch.append(
+                    {
+                        "dataset_id": dataset_id,
+                        "ordinal": saved_count + len(batch),
+                        "text": text,
+                    }
+                )
 
-            if len(batch) >= batch_size:
+                if len(batch) >= batch_size:
+                    self.dataset_repository.save_document_batch(batch)
+                    saved_count += len(batch)
+                    if saved_count - last_logged >= self.log_interval:
+                        logger.info("Saved %d documents so far...", saved_count)
+                        last_logged = saved_count
+                    if progress_callback:
+                        progress_value = (
+                            15.0
+                            + (saved_count / max(stats.document_count, 1)) * 85.0
+                        )
+                        progress_callback(progress_value)
+                    batch.clear()
+
+            if batch:
                 self.dataset_repository.save_document_batch(batch)
                 saved_count += len(batch)
-                if saved_count - last_logged >= self.log_interval:
-                    logger.info("Saved %d documents so far...", saved_count)
-                    last_logged = saved_count
                 if progress_callback:
                     progress_value = (
                         15.0 + (saved_count / max(stats.document_count, 1)) * 85.0
                     )
                     progress_callback(progress_value)
-                batch.clear()
 
-        if batch:
-            self.dataset_repository.save_document_batch(batch)
-            saved_count += len(batch)
-            if progress_callback:
-                progress_value = (
-                    15.0 + (saved_count / max(stats.document_count, 1)) * 85.0
-                )
-                progress_callback(progress_value)
+            if cancelled and saved_count < stats.document_count:
+                self.dataset_repository.delete_incomplete_dataset(dataset_id)
+                return {}
 
-        if cancelled and saved_count < stats.document_count:
-            self.dataset_repository.delete_incomplete_dataset(dataset_id)
-            return {}
-
-        logger.info("Completed saving %d documents from uploaded file", saved_count)
-        self.dataset_repository.finalize_dataset_import(dataset_id, saved_count)
+            logger.info("Completed saving %d documents from uploaded file", saved_count)
+            self.dataset_repository.finalize_dataset_import(dataset_id, saved_count)
+        except Exception:
+            self._cleanup_failed_dataset_import(dataset_id, dataset_name)
+            raise
 
         return {
             "dataset_name": dataset_name,

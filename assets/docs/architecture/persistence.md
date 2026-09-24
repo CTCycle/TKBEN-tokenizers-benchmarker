@@ -1,5 +1,5 @@
 # Persistence
-Last updated: 2026-09-22
+Last updated: 2026-09-24
 
 ## Storage selection
 
@@ -78,8 +78,10 @@ duplicating every composite key column.
 Datasets are imported as `loading` records and become visible only after all
 documents are inserted and the row is finalized as `ready`. Documents have a
 dataset-local ordinal and the ready document count is stored on `dataset`.
-Failed or cancelled loading imports are deleted and database cascades remove
-their documents.
+Failed or cancelled loading imports attempt to delete the loading row, and
+database cascades remove their documents when that deletion commits. If storage
+pressure also prevents cleanup from committing, the failure is logged and the
+incomplete row may remain until storage is available for cleanup.
 
 Metric values carry the owning dataset, store the canonical metric key directly,
 enforce composite session/document ownership, require exactly one value
@@ -155,7 +157,11 @@ visibility, composite ownership, partial uniqueness, value-shape constraints,
 cascades, rollback, active-key uniqueness, keyset document streaming, and
 upgrade from `0004_benchmark_report_tags` with managed-job persistence. Restart
 reconciliation and result/error retention are covered by the managed-job
-service and API tests.
+service and API tests. Controlled SQLite `SQLITE_FULL` validation confirms that
+failed custom-upload and Hugging Face dataset persistence imports clean up their
+partial rows and can be retried after storage capacity returns; it does not
+simulate exhaustion of the host filesystem. See the [dataset storage QA
+record](../../assets/QA/tkben-data-upload-storage-20260924/README.md).
 PostgreSQL integration validation must be run against a disposable database
 before claiming PostgreSQL runtime equivalence.
 
