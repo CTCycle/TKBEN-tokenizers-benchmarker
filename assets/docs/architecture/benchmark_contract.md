@@ -1,5 +1,5 @@
 # Benchmark Contract
-Last updated: 2026-09-23
+Last updated: 2026-09-24
 
 ## Benchmark Request Notes
 Benchmark run request config includes tokenizer behavior flags and per-document controls:
@@ -17,6 +17,15 @@ baseline preferences, and tags. Baseline comparison is a frontend report-view
 preference and is not part of the benchmark request contract.
 Typed configuration responses serialize only the supported tokenizer
 execution fields declared by the current contract.
+
+`parallelism` is the maximum number of tokenizer workloads that may run
+concurrently within one benchmark. Its public validation range remains 1–128;
+the effective worker count is the smaller of the requested value and the
+number of loaded tokenizers. A value of 1 runs tokenizer workloads serially.
+The coordinator merges worker results in input order and owns report/progress
+aggregation. Runtime metadata `benchmark_execution` records
+`requested_parallelism`, `effective_parallelism`, `tokenizer_count`, and
+`max_concurrent_workers_observed`.
 
 ## Cancellation
 - An active benchmark may be stopped from the run wizard. Cancellation is cooperative: the active job receives a stop request, the engine exits at its next stop-check point, and the job finishes with status `cancelled` without persisting a benchmark report.
