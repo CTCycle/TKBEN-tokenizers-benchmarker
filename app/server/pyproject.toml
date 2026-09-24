@@ -11,6 +11,7 @@ dependencies = [
     "uvicorn[standard]>=0.40.0",
     "numpy==2.4.1",
     "pandas==3.0.0",
+    "openpyxl==3.1.5",
     "tqdm==4.67.1",
     "alembic==1.19.1",
     "SQLAlchemy==2.0.46",

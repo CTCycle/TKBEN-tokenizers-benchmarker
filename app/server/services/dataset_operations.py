@@ -321,7 +321,7 @@ class DatasetServiceOperationsMixin:
         should_stop: Callable[[], bool] | None = None,
     ) -> dict[str, Any]:
         """
-        Process an uploaded CSV/Excel file and persist to database.
+        Process an uploaded CSV/XLSX file and persist to database.
 
         Args:
             file_content: Raw bytes of the uploaded file.
@@ -348,10 +348,8 @@ class DatasetServiceOperationsMixin:
                 progress_callback(100.0)
             return self.build_persisted_dataset_payload(dataset_name)
 
-        if extension not in (".csv", ".xlsx", ".xls"):
-            raise ValueError(
-                f"Unsupported file type: {extension}. Use .csv, .xlsx, or .xls"
-            )
+        if extension not in (".csv", ".xlsx"):
+            raise ValueError(f"Unsupported file type: {extension}. Use .csv or .xlsx")
 
         # Load into DataFrame based on file extension
         try:

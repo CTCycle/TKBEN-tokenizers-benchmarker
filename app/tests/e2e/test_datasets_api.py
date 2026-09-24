@@ -3,6 +3,10 @@ E2E tests for dataset API endpoints.
 Covers /api/datasets/list, /api/datasets/upload, and /api/datasets/analyze.
 """
 
+from io import BytesIO
+from uuid import uuid4
+
+from openpyxl import Workbook
 from playwright.sync_api import APIRequestContext
 
 ###############################################################################
@@ -39,6 +43,22 @@ def test_upload_rejects_invalid_extension(api_context: APIRequestContext) -> Non
     assert "Unsupported file type" in data.get("detail", "")
 
 ###############################################################################
+def test_upload_rejects_legacy_xls_file(api_context: APIRequestContext) -> None:
+    """The upload contract is limited to supported CSV and XLSX formats."""
+    response = api_context.post(
+        "/api/datasets/upload",
+        multipart={
+            "file": {
+                "name": "legacy.xls",
+                "mimeType": "application/vnd.ms-excel",
+                "buffer": b"not an XLSX workbook",
+            }
+        },
+    )
+    assert response.status == 400
+    assert "Use .csv or .xlsx" in response.json().get("detail", "")
+
+###############################################################################
 def test_upload_accepts_csv_and_returns_histogram(
     uploaded_dataset: dict,
 ) -> None:
@@ -52,6 +72,53 @@ def test_upload_accepts_csv_and_returns_histogram(
     assert "counts" in histogram
     assert "min_length" in histogram
     assert "max_length" in histogram
+
+###############################################################################
+def test_upload_accepts_xlsx_and_returns_histogram(
+    api_context: APIRequestContext,
+    job_waiter,
+) -> None:
+    """Uploading an XLSX file should persist its text rows and histogram."""
+    dataset_name = f"custom/e2e_xlsx_import_{uuid4().hex}"
+    filename = f"{dataset_name.removeprefix('custom/')}.xlsx"
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.append(["text", "source"])
+    worksheet.append(["First workbook document.", "synthetic"])
+    worksheet.append(["Second document includes UTF-8 café.", "synthetic"])
+    worksheet.append(["Third document exercises Excel import.", "synthetic"])
+    buffer = BytesIO()
+    workbook.save(buffer)
+
+    response = api_context.post(
+        "/api/datasets/upload",
+        multipart={
+            "file": {
+                "name": filename,
+                "mimeType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "buffer": buffer.getvalue(),
+            }
+        },
+    )
+    assert response.status == 202, response.text()
+    job = response.json()
+    job_id = job.get("job_id")
+    assert job_id, "Missing job_id in XLSX upload response"
+    job_status = job_waiter(
+        job_id,
+        poll_interval=job.get("poll_interval", 1.0),
+        timeout_seconds=300.0,
+    )
+    assert job_status.get("status") == "completed", job_status.get("error")
+
+    result = job_status.get("result", {})
+    assert result.get("dataset_name") == dataset_name
+    assert result.get("document_count") == 3
+    assert result.get("saved_count") == 3
+    histogram = result.get("histogram", {})
+    assert histogram.get("counts")
+    assert histogram.get("min_length") is not None
+    assert histogram.get("max_length") is not None
 
 ###############################################################################
 def test_analyze_missing_dataset_returns_404(

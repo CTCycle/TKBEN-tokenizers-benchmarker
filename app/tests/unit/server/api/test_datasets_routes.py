@@ -90,7 +90,7 @@ def test_dataset_upload_rejects_oversized_file_before_job_dispatch(monkeypatch) 
 
     ###############################################################################
     class _DatasetCfg:
-        allowed_extensions = (".csv", ".xls", ".xlsx")
+        allowed_extensions = (".csv", ".xlsx")
         max_upload_bytes = 4
 
     ###############################################################################

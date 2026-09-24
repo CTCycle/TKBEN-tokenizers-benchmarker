@@ -51,7 +51,7 @@ class SecuritySettings(_FrozenSettingsModel):
 
 ###############################################################################
 class DatasetSettings(_FrozenSettingsModel):
-    allowed_extensions: tuple[str, ...] = (".csv", ".xls", ".xlsx")
+    allowed_extensions: tuple[str, ...] = (".csv", ".xlsx")
     max_upload_bytes: int = Field(default=25 * 1024 * 1024, ge=1)
     histogram_bins: int = Field(default=20, ge=5, le=100)
     streaming_batch_size: int = Field(default=10_000, ge=100)
