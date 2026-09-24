@@ -6,10 +6,12 @@ Covers /api/tokenizers/settings, /api/tokenizers/discover, /api/tokenizers/uploa
 import json
 import os
 import re
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
 from playwright.sync_api import APIRequestContext, Page, expect
+from server.common.path import TOKENIZERS_PATH
 
 
 RUN_HF_DISCOVERY = os.getenv("E2E_RUN_HF_DISCOVERY", "").lower() in ("1", "true", "yes")
@@ -18,17 +20,25 @@ RUN_TOKENIZER_REPORT_FLOW = os.getenv("E2E_RUN_TOKENIZER_REPORT_FLOW", "").lower
     "true",
     "yes",
 )
+RUN_TOKENIZER_UI_LIFECYCLE = os.getenv(
+    "E2E_RUN_TOKENIZER_UI_LIFECYCLE", ""
+).lower() in ("1", "true", "yes")
+TOKENIZER_RESTART_EXPECTED_NAME = os.getenv("E2E_TOKENIZER_EXPECTED_NAME", "").strip()
+TOKENIZER_RESTART_STEM = "qa_t2_04_restart_long_identifier_0123456789abcdef"
 
 
 ###############################################################################
-def _build_wordlevel_tokenizer_json(vocabulary_size: int = 3) -> bytes:
+def _build_wordlevel_tokenizer_json(
+    vocabulary_size: int = 3,
+    token_prefix: str = "qa_t2_05_",
+) -> bytes:
     from tokenizers import Tokenizer
     from tokenizers.models import WordLevel
     from tokenizers.pre_tokenizers import Whitespace
 
     vocab = {"[UNK]": 0}
     vocab.update(
-        {f"qa_t2_05_{token_id:04d}": token_id for token_id in range(1, vocabulary_size)}
+        {f"{token_prefix}{token_id:04d}": token_id for token_id in range(1, vocabulary_size)}
     )
     tokenizer = Tokenizer(WordLevel(vocab=vocab, unk_token="[UNK]"))
     tokenizer.pre_tokenizer = Whitespace()
@@ -41,6 +51,15 @@ def _build_wordlevel_tokenizer_json(vocabulary_size: int = 3) -> bytes:
     if isinstance(payload, dict):
         payload = json.dumps(payload)
     return str(payload).encode("utf-8")
+
+
+def _assert_tokenizer_artifact_matches_vocabulary(
+    artifact_path: Path,
+    expected_payload: bytes,
+) -> None:
+    stored = json.loads(artifact_path.read_text(encoding="utf-8"))
+    expected = json.loads(expected_payload)
+    assert stored["model"]["vocab"] == expected["model"]["vocab"]
 
 
 ###############################################################################
@@ -145,9 +164,17 @@ def test_upload_accepts_valid_tokenizer_json(api_context: APIRequestContext) -> 
     )
     assert response.ok
     data = response.json()
-    assert data.get("status") == "success"
-    assert data.get("tokenizer_name", "").startswith("CUSTOM_")
-    assert data.get("is_compatible") is True
+    tokenizer_name = str(data.get("tokenizer_name", ""))
+    try:
+        assert data.get("status") == "success"
+        assert tokenizer_name.startswith("CUSTOM_")
+        assert data.get("is_compatible") is True
+    finally:
+        if tokenizer_name:
+            deleted = api_context.delete(
+                f"/api/tokenizers/delete?tokenizer_name={tokenizer_name}"
+            )
+            assert deleted.status == 200, deleted.text()
 
 
 ###############################################################################
@@ -354,6 +381,32 @@ def test_tokenizer_report_flow_supports_paged_vocabulary(
             )
         )
 
+        screenshot_dir_value = os.getenv("TKBEN_TOKENIZER_QA_SCREENSHOT_DIR")
+        if screenshot_dir_value:
+            screenshot_dir = Path(screenshot_dir_value)
+            screenshot_dir.mkdir(parents=True, exist_ok=True)
+            original_viewport = {"width": 1280, "height": 720}
+            for width, height in (
+                (1920, 1080),
+                (1440, 900),
+                (1024, 768),
+                (390, 844),
+            ):
+                page.set_viewport_size({"width": width, "height": height})
+                page.evaluate("window.scrollTo(0, 0)")
+                dimensions = page.evaluate(
+                    "() => ({viewport: window.innerWidth, document: document.documentElement.scrollWidth})"
+                )
+                assert dimensions["document"] <= dimensions["viewport"] + 1, (
+                    f"Tokenizer report overflows at {width}x{height}: {dimensions}"
+                )
+                page.screenshot(
+                    path=str(screenshot_dir / f"tokenizers-report-{width}x{height}.png"),
+                    full_page=False,
+                )
+            page.set_viewport_size(original_viewport)
+            page.evaluate("window.scrollTo(0, 0)")
+
         screenshot_path = os.getenv("TKBEN_T2_05_SCREENSHOT")
         if screenshot_path:
             page.screenshot(path=screenshot_path, full_page=True)
@@ -399,3 +452,354 @@ def test_tokenizer_report_flow_supports_paged_vocabulary(
             ).status
             == 404
         )
+
+
+###############################################################################
+@pytest.mark.skipif(
+    not RUN_TOKENIZER_UI_LIFECYCLE,
+    reason="Set E2E_RUN_TOKENIZER_UI_LIFECYCLE=1 to enable.",
+)
+def test_custom_tokenizer_ui_lifecycle_and_responsive_states(
+    api_context: APIRequestContext,
+    page: Page,
+    base_url: str,
+) -> None:
+    """Exercise the local upload UI, overwrite collision, and responsive states."""
+    screenshot_dir_value = os.getenv("TKBEN_TOKENIZER_QA_SCREENSHOT_DIR")
+    screenshot_dir = Path(screenshot_dir_value) if screenshot_dir_value else None
+    if screenshot_dir:
+        screenshot_dir.mkdir(parents=True, exist_ok=True)
+
+    tokenizer_name = f"CUSTOM_{TOKENIZER_RESTART_STEM}"
+    stale_fixture = api_context.delete(
+        f"/api/tokenizers/delete?tokenizer_name={tokenizer_name}"
+    )
+    assert stale_fixture.status in (200, 404), stale_fixture.text()
+
+    def fulfill_empty_discovery(route) -> None:
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({"count": 0, "items": []}),
+        )
+
+    page.route("**/api/tokenizers/discover*", fulfill_empty_discovery)
+    page.goto(f"{base_url}/tokenizers", wait_until="domcontentloaded")
+    # The empty catalogue and a controlled slow response make the transient
+    # states observable without contacting the external provider.
+    page.get_by_label("Search tokenizers", exact=True).fill(
+        "tkben-t2-04-no-catalog-match"
+    )
+    page.get_by_label("Source", exact=True).select_option("custom")
+    expect(page.get_by_text("No tokenizers match the current filters.")).to_be_visible()
+    if screenshot_dir:
+        page.set_viewport_size({"width": 390, "height": 844})
+        page.screenshot(
+            path=str(screenshot_dir / "tokenizers-empty-390x844.png"),
+            full_page=False,
+        )
+
+    pending_catalog_routes = []
+
+    def hold_catalog(route) -> None:
+        pending_catalog_routes.append(route)
+
+    page.set_viewport_size({"width": 1024, "height": 768})
+    page.route("**/api/tokenizers/list*", hold_catalog)
+    try:
+        page.reload(wait_until="domcontentloaded")
+        expect(page.get_by_text("Loading tokenizers...", exact=True)).to_be_visible(
+            timeout=10_000
+        )
+        assert pending_catalog_routes, "Tokenizer list request was not intercepted."
+        if screenshot_dir:
+            page.screenshot(
+                path=str(screenshot_dir / "tokenizers-loading-1024x768.png"),
+                full_page=False,
+            )
+        for width, height in (
+            (1920, 1080),
+            (1440, 900),
+            (1024, 768),
+            (390, 844),
+        ):
+            page.set_viewport_size({"width": width, "height": height})
+            page.evaluate("window.scrollTo(0, 0)")
+            dimensions = page.evaluate(
+                "() => ({viewport: window.innerWidth, document: document.documentElement.scrollWidth})"
+            )
+            assert dimensions["document"] <= dimensions["viewport"] + 1, (
+                f"Loading tokenizer route overflows at {width}x{height}: {dimensions}"
+            )
+    finally:
+        for route in pending_catalog_routes:
+            route.continue_()
+        page.unroute("**/api/tokenizers/list*", hold_catalog)
+    expect(page.get_by_text("Loading tokenizers...", exact=True)).to_be_hidden(
+        timeout=10_000
+    )
+
+    def fail_catalog(route) -> None:
+        route.fulfill(
+            status=503,
+            content_type="application/json",
+            body=json.dumps({"detail": "Controlled Tokenizers catalogue error"}),
+        )
+
+    page.route("**/api/tokenizers/list*", fail_catalog)
+    page.reload(wait_until="domcontentloaded")
+    expect(page.get_by_role("alert")).to_contain_text(
+        "Controlled Tokenizers catalogue error", timeout=10_000
+    )
+    for width, height in (
+        (1920, 1080),
+        (1440, 900),
+        (1024, 768),
+        (390, 844),
+    ):
+        page.set_viewport_size({"width": width, "height": height})
+        page.evaluate("window.scrollTo(0, 0)")
+        dimensions = page.evaluate(
+            "() => ({viewport: window.innerWidth, document: document.documentElement.scrollWidth})"
+        )
+        assert dimensions["document"] <= dimensions["viewport"] + 1, (
+            f"Error tokenizer route overflows at {width}x{height}: {dimensions}"
+        )
+        if screenshot_dir and width == 1024:
+            page.screenshot(
+                path=str(screenshot_dir / "tokenizers-error-1024x768.png"),
+                full_page=False,
+            )
+    page.unroute("**/api/tokenizers/list*", fail_catalog)
+    page.reload(wait_until="domcontentloaded")
+    expect(page.get_by_role("alert")).to_have_count(0, timeout=10_000)
+    page.get_by_label("Search tokenizers", exact=True).fill(
+        "tkben-t2-04-no-catalog-match"
+    )
+    page.get_by_label("Source", exact=True).select_option("custom")
+    expect(page.get_by_text("No tokenizers match the current filters.")).to_be_visible(
+        timeout=10_000
+    )
+
+    add_button = page.get_by_role("button", name="Add tokenizer", exact=True)
+    for width, height in (
+        (1920, 1080),
+        (1440, 900),
+        (1024, 768),
+        (390, 844),
+    ):
+        page.set_viewport_size({"width": width, "height": height})
+        page.evaluate("window.scrollTo(0, 0)")
+        dimensions = page.evaluate(
+            "() => ({viewport: window.innerWidth, document: document.documentElement.scrollWidth})"
+        )
+        assert dimensions["document"] <= dimensions["viewport"] + 1, (
+            f"Empty tokenizer route overflows at {width}x{height}: {dimensions}"
+        )
+
+        add_button.click()
+        dialog = page.get_by_role("dialog", name="Tokenizer Manager")
+        expect(dialog).to_be_visible()
+        bounds = dialog.bounding_box()
+        assert bounds is not None
+        assert bounds["x"] >= -1 and bounds["x"] + bounds["width"] <= width + 1, (
+            f"Tokenizer manager is horizontally clipped at {width}x{height}: {bounds}"
+        )
+        assert bounds["y"] >= -1 and bounds["y"] + bounds["height"] <= height + 1, (
+            f"Tokenizer manager is vertically clipped at {width}x{height}: {bounds}"
+        )
+        if screenshot_dir and width == 390:
+            page.screenshot(
+                path=str(screenshot_dir / "tokenizers-manager-390x844.png"),
+                full_page=False,
+            )
+
+        discover_tab = page.get_by_role("tab", name="Discover", exact=True)
+        discover_tab.press("ArrowRight")
+        expect(page.get_by_role("tab", name="Add by name", exact=True)).to_have_attribute(
+            "aria-selected", "true"
+        )
+        page.get_by_role("tab", name="Add by name", exact=True).press("End")
+        upload_tab = page.get_by_role("tab", name="Upload JSON", exact=True)
+        expect(upload_tab).to_have_attribute("aria-selected", "true")
+        page.keyboard.press("Escape")
+        expect(dialog).to_be_hidden()
+        expect(add_button).to_be_focused()
+
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.get_by_label("Search tokenizers", exact=True).fill(TOKENIZER_RESTART_STEM)
+    page.get_by_label("Source", exact=True).select_option("custom")
+    expect(page.get_by_text("No tokenizers match the current filters.")).to_be_visible(
+        timeout=10_000
+    )
+    filename = f"{TOKENIZER_RESTART_STEM}.json"
+    artifact_path = Path(TOKENIZERS_PATH) / tokenizer_name.replace("/", "__") / "tokenizer.json"
+    keep_for_restart = os.getenv("E2E_TOKENIZER_KEEP_FOR_RESTART", "").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    completed = False
+    try:
+        first_payload = _build_wordlevel_tokenizer_json(
+            vocabulary_size=5,
+            token_prefix="qa_t2_04_original_",
+        )
+        second_payload = _build_wordlevel_tokenizer_json(
+            vocabulary_size=7,
+            token_prefix="qa_t2_04_replacement_",
+        )
+        for payload in (first_payload, second_payload):
+            add_button.click()
+            page.get_by_role("tab", name="Upload JSON", exact=True).click()
+            with page.expect_response(
+                lambda response: (
+                    response.request.method == "POST"
+                    and response.url.endswith("/api/tokenizers/upload")
+                ),
+                timeout=30_000,
+            ) as upload_response_info:
+                page.locator("#tokenizer-json-upload").set_input_files(
+                    {
+                        "name": filename,
+                        "mimeType": "application/json",
+                        "buffer": payload,
+                    }
+                )
+            upload_response = upload_response_info.value
+            assert upload_response.status == 200, upload_response.text()
+            assert upload_response.json().get("tokenizer_name") == tokenizer_name
+            expect(page.get_by_text(tokenizer_name, exact=True)).to_be_visible(
+                timeout=30_000
+            )
+            _assert_tokenizer_artifact_matches_vocabulary(artifact_path, payload)
+
+        listed = api_context.get("/api/tokenizers/list")
+        assert listed.ok, listed.text()
+        matching_entries = [
+            item
+            for item in listed.json().get("tokenizers", [])
+            if item.get("tokenizer_name") == tokenizer_name
+        ]
+        assert len(matching_entries) == 1, matching_entries
+        _assert_tokenizer_artifact_matches_vocabulary(artifact_path, second_payload)
+
+        for width, height in (
+            (1920, 1080),
+            (1440, 900),
+            (1024, 768),
+            (390, 844),
+        ):
+            page.set_viewport_size({"width": width, "height": height})
+            page.evaluate("window.scrollTo(0, 0)")
+            dimensions = page.evaluate(
+                "() => ({viewport: window.innerWidth, document: document.documentElement.scrollWidth})"
+            )
+            assert dimensions["document"] <= dimensions["viewport"] + 1, (
+                f"Long tokenizer identifier overflows at {width}x{height}: {dimensions}"
+            )
+            expect(page.get_by_text(tokenizer_name, exact=True)).to_be_visible()
+            if screenshot_dir:
+                page.screenshot(
+                    path=str(
+                        screenshot_dir / f"tokenizers-populated-{width}x{height}.png"
+                    ),
+                    full_page=False,
+                )
+        completed = True
+    finally:
+        if not (completed and keep_for_restart):
+            deleted = api_context.delete(
+                f"/api/tokenizers/delete?tokenizer_name={tokenizer_name}"
+            )
+            assert deleted.status in (200, 404), deleted.text()
+
+    page.set_viewport_size({"width": 1280, "height": 720})
+
+
+###############################################################################
+@pytest.mark.skipif(
+    not TOKENIZER_RESTART_EXPECTED_NAME,
+    reason="Set E2E_TOKENIZER_EXPECTED_NAME after the launcher restart.",
+)
+def test_custom_tokenizer_survives_restart_and_ui_deletion(
+    api_context: APIRequestContext,
+    job_waiter,
+    page: Page,
+    base_url: str,
+) -> None:
+    """Verify a custom upload survives restart, runs, and deletes from the UI."""
+    tokenizer_name = TOKENIZER_RESTART_EXPECTED_NAME
+    assert tokenizer_name == f"CUSTOM_{TOKENIZER_RESTART_STEM}"
+    artifact_path = Path(TOKENIZERS_PATH) / tokenizer_name.replace("/", "__") / "tokenizer.json"
+
+    listed = api_context.get("/api/tokenizers/list")
+    assert listed.ok, listed.text()
+    matching_entries = [
+        item
+        for item in listed.json().get("tokenizers", [])
+        if item.get("tokenizer_name") == tokenizer_name
+    ]
+    assert len(matching_entries) == 1, matching_entries
+    assert artifact_path.is_file()
+
+    page.route(
+        "**/api/tokenizers/discover*",
+        lambda route: route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({"count": 0, "items": []}),
+        ),
+    )
+    page.goto(f"{base_url}/tokenizers", wait_until="domcontentloaded")
+    expect(page.get_by_text(tokenizer_name, exact=True)).to_be_visible(timeout=30_000)
+
+    report_button = page.get_by_role(
+        "button",
+        name=f"Generate or open tokenizer report for {tokenizer_name}",
+        exact=True,
+    )
+    with page.expect_response(
+        lambda response: (
+            response.request.method == "POST"
+            and response.url.endswith("/api/tokenizers/reports/generate")
+        ),
+        timeout=30_000,
+    ) as generate_response_info:
+        report_button.click()
+    generate_response = generate_response_info.value
+    assert generate_response.status == 202, generate_response.text()
+    generate_job = generate_response.json()
+    job_status = job_waiter(
+        str(generate_job.get("job_id", "")),
+        poll_interval=generate_job.get("poll_interval", 1.0),
+        timeout_seconds=300.0,
+    )
+    assert job_status.get("status") == "completed", job_status.get("error")
+    report_payload = job_status.get("result", {})
+    report_id = int(report_payload["report_id"])
+    assert report_payload.get("vocabulary_size") == 7
+    latest = api_context.get(
+        f"/api/tokenizers/reports/latest?tokenizer_name={tokenizer_name}"
+    )
+    assert latest.ok, latest.text()
+    assert latest.json().get("report_id") == report_id
+    assert latest.json().get("vocabulary_size") == 7
+    vocabulary = page.get_by_role("table", name="Tokenizer vocabulary preview")
+    expect(vocabulary).to_contain_text("qa_t2_04_replacement_0001", timeout=30_000)
+
+    page.on("dialog", lambda dialog: dialog.accept())
+    page.get_by_role(
+        "button", name=f"Remove {tokenizer_name}", exact=True
+    ).click()
+    expect(page.get_by_text(tokenizer_name, exact=True)).to_have_count(0, timeout=30_000)
+    refreshed = api_context.get("/api/tokenizers/list")
+    assert refreshed.ok, refreshed.text()
+    assert tokenizer_name not in {
+        str(item.get("tokenizer_name"))
+        for item in refreshed.json().get("tokenizers", [])
+    }
+    assert api_context.get(
+        f"/api/tokenizers/reports/latest?tokenizer_name={tokenizer_name}"
+    ).status == 404
+    assert not artifact_path.exists()
