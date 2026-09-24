@@ -1,8 +1,8 @@
 # Startup
-Last updated: 2026-09-22
+Last updated: 2026-09-24
 
 ## Local Webapp Mode
-Windows recommended:
+Supported Windows release path:
 
 ```powershell
 .\start_on_windows.ps1
@@ -62,7 +62,7 @@ restarts the readiness gate without changing the requested route; refreshing
 after readiness loads the normal application directly.
 
 ## Manual Local Mode
-Cross-platform manual startup:
+Best-effort manual startup outside the supported Windows x64 release path:
 
 ```bash
 cd app/server

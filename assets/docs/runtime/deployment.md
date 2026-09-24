@@ -1,15 +1,16 @@
 # Deployment
-Last updated: 2026-09-22
+Last updated: 2026-09-24
 
 ## Dependency Prerequisites
 From project and runtime scripts:
 - Windows launcher mode bootstraps pinned Python 3.14.7, Node.js 22.23.1, and uv 0.12.17 locally; it replaces managed runtimes when their versions differ from these pins.
 - The launcher downloads portable runtimes into the ignored `runtimes/` directory when they are missing.
-- Manual macOS/Linux use requires system Python 3.14+, Node.js 22.22.3+ on a supported Angular engine line, and uv.
+- Windows x64 is the supported release target. Manual execution on other operating systems is unsupported and outside release validation.
 - On a fresh manual checkout, run `npm run build` after `npm ci` before starting `npm run preview`; the preview serves the production output under `dist/tkben-angular/browser`.
 
 ## Local Distribution Strategy
 - The repository plus `start_on_windows.ps1` is the supported Windows operational path.
+- CI runner operating systems and diagnostic manual runs on other platforms do not extend the Windows release support contract.
 - The launcher records backend dependency state from `pyproject.toml` and
   `uv.lock`, uses `uv sync --locked` only when that state is missing or stale,
   and repairs frontend dependencies with `npm ci` independently. Application
@@ -29,8 +30,9 @@ From project and runtime scripts:
 - The repository does not currently include an active Docker runtime configuration in the root.
 - Automatic Python and Node.js downloads target Windows x64.
 - Manual Linux startup, browser routes, and backend restart reconciliation were
-  exercised on Ubuntu 26.04 on 2026-09-22. This evidence does not validate
-  macOS; a separate macOS run is required before making that platform claim.
+  exercised on Ubuntu 26.04 on 2026-09-22 as diagnostic evidence only. Linux and
+  macOS are not supported release targets; no additional platform validation is
+  planned or required for the Windows release.
 - The latest public release is source-only `v4.4.0`; no installer, executable,
   package, or other binary artifact is part of that release workflow. Extract or
   clone the application folder and run `start_on_windows.ps1` from its root.

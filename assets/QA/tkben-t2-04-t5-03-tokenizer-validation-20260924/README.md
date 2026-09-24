@@ -2,6 +2,8 @@
 
 **Date:** 2026-09-24
 
+**Last updated:** 2026-09-24
+
 **Result:** T2-04 PASS; T2-05 revalidation PASS; Tokenizers portion of T5-03 PASS
 
 **Application revision exercised:** `3150c1603fc3a7cc74bfdc91d88068b80dd651c0`
@@ -33,5 +35,5 @@
 - Hugging Face discovery/download and gated-provider behavior remain **BLOCKED** pending an approved provider credential/network run.
 - PostgreSQL runtime equivalence remains **BLOCKED** pending a disposable PostgreSQL target and credentials.
 - The aggregate responsive matrix remains **PARTIAL**: Dataset and Settings routes have not received their responsive state/keyboard matrix. T5-02 remains **UNTESTED**.
-- T5-05 remains **PARTIAL** pending macOS and hosted `ubuntu-latest` validation. T5-06 remains **PARTIAL** because release publication was not checked.
+- T5-05 is **OUT_OF_SCOPE** for the supported Windows x64 release target; the Ubuntu manual run is diagnostic evidence only, and no macOS or hosted Ubuntu runtime validation is planned. T5-06 remains **PARTIAL** because release publication was not checked.
 - The report export matrix remains **WORKING** pending manual review of other visualization overrides and vocabulary exports larger than 23 entries.
