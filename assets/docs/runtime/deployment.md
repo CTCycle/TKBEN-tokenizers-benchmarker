@@ -1,5 +1,5 @@
 # Deployment
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
 ## Dependency Prerequisites
 From project and runtime scripts:
@@ -33,6 +33,6 @@ From project and runtime scripts:
   exercised on Ubuntu 26.04 on 2026-09-22 as diagnostic evidence only. Linux and
   macOS are not supported release targets; no additional platform validation is
   planned or required for the Windows release.
-- The latest public release is source-only `v4.4.0`; no installer, executable,
+- The latest public release is source-only `v4.5.0`; no installer, executable,
   package, or other binary artifact is part of that release workflow. Extract or
   clone the application folder and run `start_on_windows.ps1` from its root.

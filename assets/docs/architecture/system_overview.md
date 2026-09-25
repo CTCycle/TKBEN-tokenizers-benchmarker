@@ -1,5 +1,5 @@
 # System Overview
-Last updated: 2026-09-21
+Last updated: 2026-09-25
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
@@ -9,8 +9,8 @@ TKBEN is a tokenizer benchmarking platform with:
 - Alembic-owned persistence with direct metric keys, persisted tokenizer
   sources, and relational benchmark-report summaries and tags
 
-The current public release is `v4.4.0` with backend `3.4.0` and frontend
-`2.4.0`. It remains a source-only folder distribution launched with
+The current public release is `v4.5.0` with backend `3.5.0` and frontend
+`2.5.0`. It remains a source-only folder distribution launched with
 `start_on_windows.ps1` on Windows.
 
 Backend APIs are mounted under `/api/*`. Frontend calls `/api` and relies on the Angular proxy in dev and preview modes.
@@ -52,7 +52,8 @@ Source-level structure, with generated and environment-specific folders omitted:
 │  │  │  ├─ queries/
 │  │  │  └─ schemas/
 │  │  └─ migrations/
-│  │     └─ versions/0004_benchmark_report_tags.py
+│  │     ├─ versions/0004_benchmark_report_tags.py
+│  │     └─ versions/0005_managed_job_lifecycle.py
 │  ├─ scripts/
 │  ├─ tests/
 │  └─ resources/

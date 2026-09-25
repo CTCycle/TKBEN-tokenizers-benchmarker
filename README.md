@@ -1,5 +1,5 @@
 # TKBEN Tokenizer Benchmarker
-Last updated: 2026-09-21
+Last updated: 2026-09-25
 
 [![Release](https://img.shields.io/github/v/release/CTCycle/TKBEN-tokenizers-benchmarker?display_name=tag)](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.14-3776AB?logo=python&logoColor=white)
@@ -307,7 +307,7 @@ Restart TKBEN after changing `settings/.env`. Keep this file private: it can con
 
 ## 8. Releases and Data Safety
 
-Versioned source releases are available from the [GitHub releases page](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases). The latest published release is source-only `v4.4.0`, distributed as the application folder plus `start_on_windows.ps1`. No installer, executable, Tauri package, or other packaging layer is required.
+Versioned source releases are available from the [GitHub releases page](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases). The latest published release is source-only `v4.5.0`, distributed as the application folder plus `start_on_windows.ps1`. No installer, executable, Tauri package, or other packaging layer is required.
 
 A source archive contains the application files, not your local datasets, downloaded tokenizer assets, credentials, logs, or generated reports.
 

@@ -1,5 +1,5 @@
 # Release Procedure
-Last updated: 2026-09-20
+Last updated: 2026-09-25
 
 ## Release model
 
@@ -10,14 +10,34 @@ add packaging as part of a source release.
 The public release version and component versions use the existing repository
 convention:
 
-| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` public |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` | `4.4.0` |
-| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` | `3.4.0` |
-| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` | `2.4.0` |
+| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` | `v4.5.0` public |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` | `4.4.0` | `4.5.0` |
+| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` | `3.4.0` | `3.5.0` |
+| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` | `2.4.0` | `2.5.0` |
 
-The latest published release is `v4.4.0`. Its component versions are backend
-`3.4.0` and frontend `2.4.0`.
+The latest published release is `v4.5.0`. Its component versions are backend
+`3.5.0` and frontend `2.5.0`.
+
+## v4.5.0 release notes
+
+The current release delta is based on verified repository changes after
+`v4.4.0`:
+
+- add durable managed-job lifecycle metadata, restart reconciliation, and the
+  Alembic `0005_managed_job_lifecycle` migration;
+- apply configured benchmark parallelism and strengthen progress, cancellation,
+  resource-observation, and immediate-rerun behavior;
+- complete dataset and tokenizer catalog filtering, metric dashboards, custom
+  tokenizer persistence, vocabulary reporting, and cross-benchmark report
+  management;
+- expand dashboard visualization and source-only PDF export coverage; and
+- harden the Windows launcher readiness, cache/process cleanup, and local
+  source-distribution validation path.
+
+API version `1.2.0`, benchmark schema version `3`, and report version `5`
+remain unchanged. Validation evidence for this release is recorded under
+`assets/QA/`.
 
 ## v4.4.0 release notes
 
@@ -86,8 +106,8 @@ evidence for this preparation is recorded under `assets/QA/`.
 
 After validation is release-ready, apply the coordinated minor bump to the
 public tag version, backend package, frontend package, README, and relevant
-documentation. For the current preparation, the public version is `v4.4.0`,
-the backend package is `3.4.0`, and the frontend package is `2.4.0`. Commit all
+documentation. For the current preparation, the public version is `v4.5.0`,
+the backend package is `3.5.0`, and the frontend package is `2.5.0`. Commit all
 release-preparation changes on `develop` before synchronizing branches.
 
 Synchronize `main` from the validated `develop` commit so the branches point to
