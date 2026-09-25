@@ -9,12 +9,11 @@ architecture decisions, implementation plans, test code, and validation
 records remain in their dedicated documents; this ledger links to them rather
 than copying their narratives.
 
-The historical bootstrap baseline is checkout e318852 (tag v4.4.0), with local
-develop and main aligned. The current application implementation under
-validation is `develop` at `21ed4ff6d32fceb5b8e6521e96b1ac9dcd0c75d2`; the
-worktree was clean before this validation record was added. Historical v4.4.0
-release/tag/CI evidence below is retained for provenance and does not validate
-this current candidate.
+The historical bootstrap baseline is checkout e318852 (tag v4.4.0). The v4.5.0
+release commit is `f8dee1da9084138bd52f3d08437269d3821ba5d6`; remote `main` and
+`develop` now both point to it, and annotated tag `v4.5.0` targets the same
+commit. The post-release ledger update is recorded below. Historical v4.4.0
+release/tag/CI evidence remains retained for provenance.
 V-20260921 adds launcher/configuration evidence on local develop revision
 4a0e77f with the scoped working-tree changes described below. Statuses describe
 this checkout and must be refreshed after behavioral changes.
@@ -122,11 +121,14 @@ QA record](../../assets/QA/tkben-data-upload-storage-20260924/README.md).
 The Cross Benchmark workflow component and the aggregate responsive visual
 matrix are now VALIDATED. Hosted CI run 36060275436 passed for storage-validation
 commit `e870e135b5163044bf11565ff4ead8e3a72a4871`; both frontend and backend
-jobs succeeded. V-20260925 also records the current-candidate local release
-suite; the candidate-specific hosted-CI result will be appended to the [T5-06 QA
-record](../../assets/QA/tkben-t5-06-current-candidate-20260925/README.md).
-T5-06 remains PARTIAL because no `main` synchronization, annotated tag, or
-public release was performed in this task. The public Hugging Face tokenizer
+jobs succeeded. V-20260925 also records the current release suite at release
+commit `f8dee1da9084138bd52f3d08437269d3821ba5d6`; hosted CI run
+[36158666979](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36158666979)
+passed for that exact SHA with successful backend and frontend jobs. Remote
+`main` and `develop` are synchronized at the same commit, annotated tag
+`v4.5.0` has object SHA `4a49670c25a224f8218d7feb2fe07ec8e8690ae2`, and the
+[public source-only release](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases/tag/v4.5.0)
+is published. T5-06 is now PASS. The public Hugging Face tokenizer
 flow is validated; gated access remains BLOCKED and PostgreSQL runtime
 equivalence is now VALIDATED as listed below. T5-05 is OUT_OF_SCOPE for the
 Windows x64 release target.
@@ -151,14 +153,12 @@ and T4-03 remains BLOCKED. See the [HF provider evidence](../../assets/QA/tkben-
 and [key-storage evidence](../../assets/QA/tkben-open-validation-debt-20260925/hf-key-storage-evidence.json). The key, isolated database, and separate encryption material were removed after evidence capture; app processes and validation ports were cleaned up. PostgreSQL was left untouched.
 
 A fixed-size VHD could not be provisioned because host OS authorization denied
-the request, so physical disk-exhaustion recovery remains PARTIAL. Read-only
-GitHub API verification identifies v4.4.0 as the latest public release. The
-remote and local annotated tag object SHA is `82ad6c69052d00d75d2b01eb16fbbc5268054602`,
-which targets commit `e318852542755fd54731e19a38f7ef231c0e6ee6`. Hosted CI run
-35501626659 completed successfully for that commit with both frontend and
-backend jobs successful; main's matching CI run 35499881089 also passed. No
-new release was published during this validation. See the [release audit](../../assets/QA/tkben-open-validation-debt-20260925/release-audit.json)
+the request, so physical disk-exhaustion recovery remains PARTIAL. The
+pre-release GitHub API audit identified v4.4.0 as the latest public release at
+that time; its tag and CI evidence remains in the [release audit](../../assets/QA/tkben-open-validation-debt-20260925/release-audit.json)
 and [QA record](../../assets/QA/tkben-open-validation-debt-20260925/README.md).
+The subsequent v4.5.0 publication is recorded in the current T5-06 closure
+below.
 The existing host PostgreSQL listener was not contacted; no disposable target
 or credentials were available. T4-02 remains PASS.
 
@@ -172,8 +172,8 @@ defect was reproduced. T4-03 remains BLOCKED because no successful authorized
 gated-repository download/report exists; the user has deferred this external,
 non-blocking check. Physical disk exhaustion remains PARTIAL because host
 authorization denied the bounded-volume attempt and is also deferred as
-optional validation debt. T5-06 remains PARTIAL because no main
-synchronization, tag, or release was performed. See the [validation-gate
+optional validation debt. T5-06 was PARTIAL at this pre-release audit; its
+subsequent v4.5.0 closure is recorded below. See the [validation-gate
 re-audit](../../assets/QA/tkben-validation-gate-recheck-20260925/README.md).
 
 ## Maintenance Rules
@@ -282,13 +282,13 @@ means that a field does not apply.
 
 | Component | Status | Scope | Evidence | Known Issues | Blocker | Last Validated | Validation Level | Related Docs | Next Action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| deployment.source-only-local | PARTIAL | Supported Windows x64 source-folder distribution, current version alignment, and local production frontend artifact. | V-20260925: clean application revision `21ed4ff6d32fceb5b8e6521e96b1ac9dcd0c75d2` passed the local CI-equivalent release suite; evidence commit `4c5cbc9` passed candidate-specific hosted CI run [36148106588](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36148106588). No `main` synchronization, annotated tag, or public release was performed. Historical v4.4.0 evidence remains provenance only. | Current-candidate release evidence is complete through hosted CI; source-release publication is not part of this task. | A coordinated release workflow is still required before publication. | 2026-09-25 | manual + integration + hosted CI | [release procedure](runtime/release.md), [deployment](runtime/deployment.md), [system overview](architecture/system_overview.md), [T5-06 QA record](../../assets/QA/tkben-t5-06-current-candidate-20260925/README.md), [release audit](../../assets/QA/tkben-open-validation-debt-20260925/release-audit.json) | Keep PARTIAL until a release is intentionally synchronized and published. |
+| deployment.source-only-local | VALIDATED | Supported Windows x64 source-folder distribution, current version alignment, and local production frontend artifact. | V-20260925: release commit `f8dee1da9084138bd52f3d08437269d3821ba5d6` passed the local CI-equivalent suite; hosted CI run [36158666979](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36158666979) passed both jobs; remote `main` and `develop` are synchronized; annotated tag `v4.5.0` and the [public source-only release](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases/tag/v4.5.0) point to the verified commit. | T4-03 gated Hugging Face access and physical low-disk recovery remain separately bounded validation debt. | — | 2026-09-25 | manual + integration + hosted CI | [release procedure](runtime/release.md), [deployment](runtime/deployment.md), [system overview](architecture/system_overview.md), [T5-06 QA record](../../assets/QA/tkben-t5-06-current-candidate-20260925/README.md) | Revalidate after release-process or source-distribution changes. |
 | deployment.windows-portable-bootstrap | VALIDATED | Automatic Windows Python/Node/uv bootstrap, stamped dependency repair, deterministic build reuse, and local launch path. | V-20260922: clean Windows 11 bootstrap from absent managed runtimes, `.venv`, `node_modules`, build output, stamps, database, and `.env` downloaded Python 3.14.7, Node 22.23.1, and uv 0.12.17; created the environment file, synced locked dependencies, migrated to 0005, built Angular, wrote stamps, and started both services. Warm launch reused all three stamps; stale uv 0.12.16 was replaced by the pin. | Evidence is host-specific; it does not establish every Windows edition or hardware architecture. | — | 2026-09-22 | integration + manual | [runtime modes](runtime/modes.md), [startup](runtime/startup.md), [deployment](runtime/deployment.md), [gate-closure QA record](../../assets/QA/tkben-partial-gates-20260922.md) | Repeat on supported Windows architectures when the portable runtime pins change. |
 | deployment.cross-platform-manual | OUT_OF_SCOPE | Manual startup outside the supported Windows x64 release target. | V-20260922: a Linux manual startup, API proxy, four browser routes, service restart, persistent job reconciliation, and clean shutdown were exercised in a disposable Ubuntu 26.04 container as diagnostic evidence. | Linux/macOS manual execution is not a supported release target. The Linux run does not establish platform support; no macOS or hosted Ubuntu runtime validation is planned. | — | 2026-09-24 | E2E + manual | [runtime modes](runtime/modes.md), [deployment](runtime/deployment.md), [gate-closure QA record](../../assets/QA/tkben-partial-gates-20260922.md) | None; non-Windows platform validation is outside release scope. |
 | deployment.containerized | NOT_IMPLEMENTED | Docker or other active container runtime configuration. | [Runtime modes](runtime/modes.md) explicitly records containerized mode as not implemented; no active root container configuration exists. | This is an absent capability, not a current local-app failure. | — | — | None | [runtime modes](runtime/modes.md), [deployment](runtime/deployment.md) | Add a separately scoped deployment design before implementation. |
 | deployment.binary-packaging | NOT_IMPLEMENTED | Installer, executable, Tauri, portable binary, or package artifact. | [Release procedure](runtime/release.md) states that releases are source-only and contain no binary packaging workflow. | Source-only distribution is the intended current release model. | — | — | None | [release procedure](runtime/release.md) | Do not add packaging work to a source-only release. |
-| test-infrastructure.local-quality-gates | VALIDATED | Backend compile, Ruff, BasedPyright, SQLite initialization, unit tests, OpenAPI smoke, frontend lint, unit tests, and production build. | V-20260925: current implementation revision `21ed4ff6d32fceb5b8e6521e96b1ac9dcd0c75d2` passed compileall, Ruff, BasedPyright (0 errors), Alembic initialization at `0005_managed_job_lifecycle`, 517 backend unit tests, OpenAPI smoke, frontend lint, 63 frontend unit tests, and production build. | Hosted CI, full browser E2E outside this campaign, and provider/database gates remain separate. | — | 2026-09-25 | unit + E2E + integration | [testing and quality](coding/testing_and_quality.md), [CI workflow](../../.github/workflows/ci.yml), [test runner](../../app/tests/run_tests.bat), [T5-06 QA record](../../assets/QA/tkben-t5-06-current-candidate-20260925/README.md) | Keep hosted and live-provider gates explicit in future reports. |
-| test-infrastructure.hosted-ci-and-release-evidence | PARTIAL | Hosted CI result, public release/tag commit correlation, and detailed QA evidence. | V-20260925: evidence commit `4c5cbc9` passed candidate-specific hosted CI run [36148106588](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36148106588), with both backend and frontend jobs successful. Historical v4.4.0 tag/release evidence remains separately linked for provenance. | Candidate CI is validated; no `main` synchronization, annotated tag, or public release was performed. | Requires the intentional release workflow before publication. | 2026-09-25 | hosted CI + manual | [CI workflow](../../.github/workflows/ci.yml), [release procedure](runtime/release.md), [T5-06 QA record](../../assets/QA/tkben-t5-06-current-candidate-20260925/README.md), [release audit](../../assets/QA/tkben-open-validation-debt-20260925/release-audit.json) | Keep PARTIAL until a release is intentionally synchronized and published. |
+| test-infrastructure.local-quality-gates | VALIDATED | Backend compile, Ruff, BasedPyright, SQLite initialization, unit tests, OpenAPI smoke, frontend lint, unit tests, and production build. | V-20260925: release implementation revision `f8dee1da9084138bd52f3d08437269d3821ba5d6` passed compileall, Ruff, BasedPyright (0 errors), Alembic initialization at `0005_managed_job_lifecycle`, 517 backend unit tests, OpenAPI smoke, frontend lint, 63 frontend unit tests, and production build. | Hosted CI, full browser E2E outside this campaign, and provider/database gates remain separate. | — | 2026-09-25 | unit + E2E + integration | [testing and quality](coding/testing_and_quality.md), [CI workflow](../../.github/workflows/ci.yml), [test runner](../../app/tests/run_tests.bat), [T5-06 QA record](../../assets/QA/tkben-t5-06-current-candidate-20260925/README.md) | Keep hosted and live-provider gates explicit in future reports. |
+| test-infrastructure.hosted-ci-and-release-evidence | VALIDATED | Hosted CI result, public release/tag commit correlation, and detailed QA evidence. | V-20260925: release commit `f8dee1da9084138bd52f3d08437269d3821ba5d6` passed hosted CI run [36158666979](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36158666979), with both backend and frontend jobs successful; remote `main` and `develop` are aligned; annotated tag `v4.5.0` and the [public GitHub Release](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases/tag/v4.5.0) target that commit. | T4-03 gated Hugging Face access and physical low-disk recovery remain separate validation debt. | — | 2026-09-25 | hosted CI + manual | [CI workflow](../../.github/workflows/ci.yml), [release procedure](runtime/release.md), [T5-06 QA record](../../assets/QA/tkben-t5-06-current-candidate-20260925/README.md) | Revalidate after release-process changes. |
 | api.tokenizers.settings-compatibility | DEPRECATED | Legacy GET /api/tokenizers/settings compatibility response. | The API contract and OpenAPI test retain the endpoint as deprecated; new clients use /api/settings. | Compatibility surface should not become a second settings source. | — | 2026-09-20 | unit | [backend API](architecture/backend_api.md), [configuration](runtime/configuration.md) | Remove only after supported clients no longer depend on it and the removal is validated. |
 
 ## Open Issues
@@ -317,16 +317,16 @@ It does not assert that the component is broken.
 
 ### Current release gate
 
-The current application candidate at `21ed4ff6d32fceb5b8e6521e96b1ac9dcd0c75d2`
-was validated from a clean `develop` tip. The local release suite passed, and
-evidence commit `4c5cbc9` passed candidate-specific hosted CI run
-[36148106588](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36148106588),
-with both jobs successful. See the [T5-06 QA
-record](../../assets/QA/tkben-t5-06-current-candidate-20260925/README.md).
-Release readiness remains PARTIAL because this task did not synchronize `main`,
-create an annotated tag, or publish a release. T4-03 is still BLOCKED pending
-an already-authorized gated Hugging Face repository; physical low-disk recovery
-remains PARTIAL pending a host-authorized bounded volume.
+The current application release commit is `f8dee1da9084138bd52f3d08437269d3821ba5d6`.
+The local release suite passed, and hosted CI run
+[36158666979](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36158666979)
+passed for that exact SHA with both jobs successful. Remote `main` and
+`develop` are synchronized, annotated tag `v4.5.0` points to the commit, and
+the [public source-only release](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases/tag/v4.5.0)
+is published. Release readiness is now VALIDATED. T4-03 is still BLOCKED
+pending an already-authorized gated Hugging Face repository; physical low-disk
+recovery remains PARTIAL pending a host-authorized bounded volume. See the
+[T5-06 QA record](../../assets/QA/tkben-t5-06-current-candidate-20260925/README.md).
 
 ## Validation Campaign Roadmap
 
@@ -378,7 +378,7 @@ evidence.
 | T5-03 | yes | yes | PASS | V-20260923 covered the populated Cross Benchmark view and report-manager, clone, and customize dialogs at 1920x1080, 1440x900, 1024x768, and 390x844; Escape and focus return passed. V-20260924 completed Tokenizers empty/loading/error/populated/report states and Tokenizer Manager bounds plus ArrowRight/End/Escape/focus return at the same four sizes. V-20260924 also closed the Dataset/Settings responsive slice under T5-02. See the [T3-03/04 QA record](../../assets/QA/tkben-t3-03-04-cross-benchmark-workflows-20260923.md), [Tokenizers QA record](../../assets/QA/tkben-t2-04-t5-03-tokenizer-validation-20260924/README.md), and [Dataset and Settings QA record](../../assets/QA/tkben-t2-01-t4-02-t5-02-dataset-settings-validation-20260924/README.md). |
 | T5-04 | yes | yes | PASS | V-20260923: official Windows launcher streamed a 10,000-document run to visible 20% progress; cancellation reached terminal `cancelled` with no report saved, eight backend RSS samples were collected, and a two-document rerun completed and rendered without browser or HTTP errors. See the [benchmark validation campaign QA record](../../assets/QA/tkben-benchmark-validation-campaign-20260923/README.md). Browser heap was not instrumented; the gate's live progress, cancellation, available resource metrics, and rerun checks passed. |
 | T5-05 | — | — | OUT_OF_SCOPE | Release support and release validation target Windows x64. The Ubuntu 26.04 manual run is diagnostic evidence only; macOS and hosted Ubuntu runtime validation are not planned or required. Hosted CI remains tracked separately under T5-06. |
-| T5-06 | yes | yes | PARTIAL | V-20260925: clean application revision `21ed4ff6d32fceb5b8e6521e96b1ac9dcd0c75d2` passed the local release suite, and evidence commit `4c5cbc9` passed candidate-specific hosted CI run [36148106588](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36148106588) with successful backend and frontend jobs. The V-20260925 re-audit found no implementation regression, but no `main` synchronization, annotated tag, or public release was performed, so this slice remains PARTIAL. Historical release/tag evidence remains in the [release audit](../../assets/QA/tkben-open-validation-debt-20260925/release-audit.json); see also the [validation-gate re-audit](../../assets/QA/tkben-validation-gate-recheck-20260925/README.md). |
+| T5-06 | yes | yes | PASS | V-20260925: release commit `f8dee1da9084138bd52f3d08437269d3821ba5d6` passed the local release suite and exact hosted CI run [36158666979](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36158666979) with successful backend and frontend jobs. Remote `main` and `develop` were synchronized at that SHA, annotated tag `v4.5.0` was pushed, and the [public source-only GitHub Release](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases/tag/v4.5.0) was published. See the [T5-06 QA record](../../assets/QA/tkben-t5-06-current-candidate-20260925/README.md) for the release boundary and remaining independent limits. |
 
 ### Tier 1 execution record
 
@@ -503,7 +503,7 @@ regression is reproduced.
 | Architecture P2: benchmark admission mixed route and execution concerns | Resolved; BenchmarkService.prepare_run() is the admission boundary and execution keeps a defensive dataset check. | [architecture review findings](architecture/architecture_review.md#findings) |
 | Architecture P3: redundant frontend API type alias | Resolved; consumers use the canonical API model module. | [architecture review findings](architecture/architecture_review.md#findings) |
 | Legacy configuration, cache, tokenizer, report, and dashboard ownership paths | Removed or canonicalized; incompatible persisted rows fail explicitly instead of being silently adapted. | [canonical-source remediation](architecture/canonical_source_remediation.md), [architecture remediation](architecture/architecture_review.md#remediation) |
-| v4.4.0 report tags, benchmark cloning, dashboard persistence, chart controls, and cache/launcher cleanup | Included in the current tagged source-only release; detailed live evidence still requires the release gates listed above. | [v4.4.0 release notes](runtime/release.md#v4.4.0-release-notes) |
+| v4.4.0 report tags, benchmark cloning, dashboard persistence, chart controls, and cache/launcher cleanup | Included in the v4.4.0 tagged source-only release; detailed live evidence is retained as historical provenance. | [v4.4.0 release notes](runtime/release.md#v4.4.0-release-notes) |
 
 ## Validation Evidence: Current Bootstrap
 
