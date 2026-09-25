@@ -36,12 +36,16 @@ for this local suite.
 
 ## Hosted and release boundary
 
-The evidence commit is pushed to `develop` so the repository's `CI` workflow
-can validate this exact candidate. The matching run and job conclusions will
-be appended here after completion. No `main` synchronization, annotated tag,
-or GitHub Release publication is part of this task; therefore `T5-06` and
-source-only release readiness remain `PARTIAL` until that separate release
-workflow is completed.
+The evidence commit was pushed to `develop` as `4c5cbc98805adf249e4a83b0605c0bf2d5a9ad30`.
+Hosted CI run [36148106588](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36148106588)
+completed successfully for that exact SHA. Both
+[`backend-validation`](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36148106588/job/108114229311)
+and
+[`frontend-validation`](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36148106588/job/108114229626)
+completed with `success`. No `main` synchronization, annotated tag, or GitHub
+Release publication is part of this task; therefore `T5-06` and source-only
+release readiness remain `PARTIAL` until that separate release workflow is
+completed.
 
 ## Remaining limits
 
