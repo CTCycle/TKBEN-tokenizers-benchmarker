@@ -19,6 +19,10 @@ BENCHMARK_REPORT_VERSION = 5
 BENCHMARK_SCHEMA_VERSION = 3
 
 ###############################################################################
+def _is_sqlite() -> bool:
+    return op.get_bind().dialect.name == "sqlite"
+
+###############################################################################
 def _purge_incompatible_reports() -> None:
     bind = op.get_bind()
     bind.execute(
@@ -186,6 +190,30 @@ def _remove_historical_custom_tokenizers() -> None:
     bind.execute(sa.text("DELETE FROM tokenizer WHERE name LIKE 'CUSTOM_%'"))
 
 ###############################################################################
+def _add_tokenizer_source() -> None:
+    source_column = sa.Column(
+        "source",
+        sa.String(32),
+        nullable=False,
+        server_default=sa.text("'huggingface'"),
+    )
+    if _is_sqlite():
+        with op.batch_alter_table("tokenizer", recreate="always") as batch:
+            batch.add_column(source_column)
+            batch.create_check_constraint(
+                "ck_tokenizer_source",
+                "source IN ('huggingface', 'custom')",
+            )
+        return
+
+    op.add_column("tokenizer", source_column)
+    op.create_check_constraint(
+        "ck_tokenizer_source",
+        "tokenizer",
+        "source IN ('huggingface', 'custom')",
+    )
+
+###############################################################################
 def _remove_metric_catalog() -> None:
     op.drop_index("ix_metric_type_category", table_name="metric_type")
     op.drop_table("metric_type")
@@ -198,19 +226,7 @@ def upgrade() -> None:
     _migrate_histograms()
     _remove_metric_catalog()
     _remove_historical_custom_tokenizers()
-    with op.batch_alter_table("tokenizer", recreate="always") as batch:
-        batch.add_column(
-            sa.Column(
-                "source",
-                sa.String(32),
-                nullable=False,
-                server_default=sa.text("'huggingface'"),
-            )
-        )
-        batch.create_check_constraint(
-            "ck_tokenizer_source",
-            "source IN ('huggingface', 'custom')",
-        )
+    _add_tokenizer_source()
 
 ###############################################################################
 def downgrade() -> None:

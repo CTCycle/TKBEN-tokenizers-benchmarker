@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
+from importlib import import_module
 from pathlib import Path
 from types import SimpleNamespace
 
 from alembic import command
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import Column, create_engine, inspect, text
+from sqlalchemy.schema import DefaultClause
 from sqlalchemy.orm import Session
 import pytest
 
@@ -64,6 +66,88 @@ def _revision(path: Path) -> str | None:
             ).scalar_one_or_none()
     finally:
         engine.dispose()
+
+###############################################################################
+def test_postgres_metric_check_uses_alembic_table_argument_order(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    migration = import_module("server.migrations.versions.0002_current_schema")
+    calls: list[tuple[str, tuple[object, ...], dict[str, object]]] = []
+    bind = SimpleNamespace(dialect=SimpleNamespace(name="postgresql"))
+    expression = "metric_value_check_expression"
+
+    monkeypatch.setattr(migration.op, "get_bind", lambda: bind)
+    monkeypatch.setattr(
+        migration.op,
+        "drop_constraint",
+        lambda *args, **kwargs: calls.append(("drop", args, kwargs)),
+    )
+    monkeypatch.setattr(
+        migration.op,
+        "create_check_constraint",
+        lambda *args, **kwargs: calls.append(("create", args, kwargs)),
+    )
+
+    migration._alter_metric_value_check(expression)
+
+    assert calls == [
+        (
+            "drop",
+            ("ck_metric_exactly_one_value", "metric_value"),
+            {"type_": "check"},
+        ),
+        (
+            "create",
+            ("ck_metric_exactly_one_value", "metric_value", expression),
+            {},
+        ),
+    ]
+
+###############################################################################
+def test_postgres_tokenizer_source_adds_in_place_without_rebuilding_table(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    migration = import_module("server.migrations.versions.0003_canonical_state_cleanup")
+    calls: list[tuple[str, tuple[object, ...], dict[str, object]]] = []
+    bind = SimpleNamespace(dialect=SimpleNamespace(name="postgresql"))
+
+    monkeypatch.setattr(migration.op, "get_bind", lambda: bind)
+    monkeypatch.setattr(
+        migration.op,
+        "add_column",
+        lambda *args, **kwargs: calls.append(("add", args, kwargs)),
+    )
+    monkeypatch.setattr(
+        migration.op,
+        "create_check_constraint",
+        lambda *args, **kwargs: calls.append(("check", args, kwargs)),
+    )
+    monkeypatch.setattr(
+        migration.op,
+        "batch_alter_table",
+        lambda *args, **kwargs: pytest.fail("PostgreSQL must not rebuild tokenizer."),
+    )
+
+    migration._add_tokenizer_source()
+
+    assert len(calls) == 2
+    assert calls[0][0] == "add"
+    assert calls[0][1][0] == "tokenizer"
+    source_column = calls[0][1][1]
+    assert isinstance(source_column, Column)
+    assert source_column.name == "source"
+    assert source_column.nullable is False
+    assert isinstance(source_column.server_default, DefaultClause)
+    assert str(source_column.server_default.arg) == "'huggingface'"
+    assert calls[1] == (
+        "check",
+        (
+            "ck_tokenizer_source",
+            "tokenizer",
+            "source IN ('huggingface', 'custom')",
+        ),
+        {},
+    )
 
 ###############################################################################
 def test_repeated_initialization_is_current_and_idempotent(
