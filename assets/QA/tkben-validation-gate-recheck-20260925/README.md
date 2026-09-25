@@ -16,8 +16,9 @@ already closed in the ledger. The actionable re-audit covered:
 - the current-candidate hosted-CI/release boundary.
 
 No application defect was reproduced and no production-code change was needed.
-The residual statuses remain honest: T4-03 is `BLOCKED`, physical disk
-exhaustion is `PARTIAL`, and T5-06/source release readiness is `PARTIAL`.
+The residual statuses remain honest: T4-03 is `BLOCKED` but deferred as an
+external, non-blocking check; physical disk exhaustion is `PARTIAL` but
+optional; and T5-06/source release readiness is `PARTIAL`.
 
 ## Current validation-gate inventory
 
@@ -66,19 +67,19 @@ was not removed or modified.
 
 ### T4-03: gated Hugging Face provider
 
-The current environment had no opt-in `TKBEN_TEST_HF_KEY`,
-`TKBEN_TEST_HF_USE_STORED_KEY`, or `TKBEN_TEST_HF_GATED_REPO` setting. No
-credential was read, entered, or transmitted, and the live provider test was
-not rerun after the earlier isolated credential cleanup. The same-day provider
-record remains the current evidence: Hub authentication and the public
-`bert-base-uncased` flow passed, but the three discovered gated candidates all
-failed with `provider_denied_or_download_failed`; no access terms were
-accepted and no gated report was generated.
+The re-audit process had no opt-in `TKBEN_TEST_HF_KEY`,
+`TKBEN_TEST_HF_USE_STORED_KEY`, or `TKBEN_TEST_HF_GATED_REPO` setting. This is
+not evidence that the available HF key is invalid: the same-day provider
+record shows Hub authentication at HTTP 200 and a successful public
+`bert-base-uncased` flow. The unresolved external boundary is that the three
+discovered gated candidates all failed with
+`provider_denied_or_download_failed`; no access terms were accepted and no
+gated report was generated.
 
 Final status: `BLOCKED`.
 
-Next action: rerun the opt-in flow only when a user-authorized key and an
-already-authorized gated repository are available. A gated report must be
+This gate is intentionally deferred by the user as an external,
+non-blocking check. If it is selected in a future task, a gated report must be
 downloaded, persisted, rendered after reload, and cleaned up before T4-03 can
 be promoted.
 
@@ -91,9 +92,10 @@ retry behavior.
 
 Final status: `PARTIAL`.
 
-Next action: repeat the upload and dataset-backed import failure/recovery flow
-on a host-authorized bounded volume, then verify incomplete-row cleanup and a
-same-name retry after capacity is restored.
+This is optional deferred validation debt, not a current blocker. If it is
+selected in a future task, repeat the upload and dataset-backed import
+failure/recovery flow on a host-authorized bounded volume, then verify
+incomplete-row cleanup and a same-name retry after capacity is restored.
 
 ### T5-06/source release
 
