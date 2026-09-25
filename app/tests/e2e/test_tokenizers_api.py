@@ -3,18 +3,39 @@ E2E tests for tokenizer API endpoints.
 Covers /api/tokenizers/settings, /api/tokenizers/discover, /api/tokenizers/upload, and per-item deletion.
 """
 
+from collections.abc import Generator
 import json
 import os
 import re
 from pathlib import Path
+from typing import Any
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote
+from urllib.request import Request, urlopen
 from uuid import uuid4
 
 import pytest
 from playwright.sync_api import APIRequestContext, Page, expect
 from server.common.path import TOKENIZERS_PATH
+from server.services.keys import HFAccessKeyService
 
 
 RUN_HF_DISCOVERY = os.getenv("E2E_RUN_HF_DISCOVERY", "").lower() in ("1", "true", "yes")
+RUN_HF_PROVIDER_FLOW = os.getenv("E2E_RUN_HF_PROVIDER_FLOW", "").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+TEST_HF_KEY_ENV = "TKBEN_TEST_HF_KEY"
+USE_STORED_HF_KEY_ENV = "TKBEN_TEST_HF_USE_STORED_KEY"
+RUN_HF_USE_STORED_KEY = os.getenv(USE_STORED_HF_KEY_ENV, "").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+PUBLIC_HF_TOKENIZER_ID = "bert-base-uncased"
+GATED_HF_TOKENIZER_ID = os.getenv("TKBEN_TEST_HF_GATED_REPO", "").strip()
+MAX_GATED_HF_CANDIDATES = 3
 RUN_TOKENIZER_REPORT_FLOW = os.getenv("E2E_RUN_TOKENIZER_REPORT_FLOW", "").lower() in (
     "1",
     "true",
@@ -110,6 +131,473 @@ def test_discover_tokenizers_supports_empty_result(
     )
     assert response.ok
     assert response.json().get("items") == []
+
+
+###############################################################################
+@pytest.fixture
+def active_hf_test_key(api_context: APIRequestContext) -> Generator[int, None, None]:
+    """Use a supplied key or one explicitly opted-in stored test key."""
+    key_value = os.getenv(TEST_HF_KEY_ENV, "")
+    baseline_response = api_context.get("/api/keys")
+    assert baseline_response.status == 200
+    baseline_keys = baseline_response.json().get("keys", [])
+
+    if not key_value:
+        if not RUN_HF_USE_STORED_KEY:
+            pytest.skip(
+                f"Set {TEST_HF_KEY_ENV} or explicitly opt in with "
+                f"{USE_STORED_HF_KEY_ENV}=1."
+            )
+        if len(baseline_keys) != 1:
+            pytest.fail(
+                "Stored-key HF E2E requires exactly one key in the disposable store."
+            )
+        stored_key = baseline_keys[0]
+        key_id = stored_key.get("id")
+        if (
+            not isinstance(key_id, int)
+            or stored_key.get("is_active") is not True
+            or "key_value" in stored_key
+            or not stored_key.get("masked_preview")
+        ):
+            pytest.fail(
+                "Stored-key HF E2E requires one active, masked key; no key changes were made."
+            )
+        yield key_id
+        return
+
+    if not key_value.startswith("hf_") or any(
+        character.isspace() for character in key_value
+    ):
+        pytest.fail(f"{TEST_HF_KEY_ENV} is not a valid Hugging Face key; value withheld.")
+    if baseline_keys:
+        pytest.fail(
+            "HF provider E2E requires an empty disposable key store; no key changes were made."
+        )
+
+    create_response = api_context.post(
+        "/api/keys",
+        data={"key_value": key_value},
+    )
+    assert create_response.status == 201, (
+        f"Adding the supplied validation key returned HTTP {create_response.status}."
+    )
+    created_key = create_response.json()
+    assert "key_value" not in created_key
+    key_id = created_key.get("id")
+    assert isinstance(key_id, int)
+
+    active = False
+    try:
+        activate_response = api_context.post(f"/api/keys/{key_id}/activate")
+        assert activate_response.status == 200, (
+            f"Activating the supplied validation key returned HTTP {activate_response.status}."
+        )
+        active = True
+        yield key_id
+    finally:
+        try:
+            if active:
+                deactivate_response = api_context.post(
+                    f"/api/keys/{key_id}/deactivate"
+                )
+                assert deactivate_response.status == 200, (
+                    "Cleanup could not deactivate the validation-created key."
+                )
+        finally:
+            delete_response = api_context.delete(
+                f"/api/keys/{key_id}?confirm=true"
+            )
+            assert delete_response.status == 200, (
+                "Cleanup could not delete the validation-created key."
+            )
+            after_cleanup = api_context.get("/api/keys")
+            assert after_cleanup.status == 200
+            assert after_cleanup.json().get("keys", []) == []
+
+
+def _run_tokenizer_job(
+    api_context: APIRequestContext,
+    job_waiter,
+    route: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    response = api_context.post(route, data=payload)
+    assert response.status == 202, f"Starting {route} returned HTTP {response.status}."
+    start = response.json()
+    job_id = str(start.get("job_id", ""))
+    assert job_id, f"Starting {route} did not return a job ID."
+    job = job_waiter(
+        job_id,
+        poll_interval=start.get("poll_interval", 1.0),
+        timeout_seconds=600.0,
+    )
+    assert job.get("status") == "completed", f"The {route} job did not complete."
+    result = job.get("result")
+    assert isinstance(result, dict), f"The {route} job returned no result."
+    return result
+
+
+def _download_hf_tokenizer(
+    api_context: APIRequestContext,
+    job_waiter,
+    tokenizer_id: str,
+) -> bool:
+    result = _run_tokenizer_job(
+        api_context,
+        job_waiter,
+        "/api/tokenizers/download",
+        {"tokenizers": [tokenizer_id]},
+    )
+    succeeded = tokenizer_id in (
+        result.get("downloaded", []) + result.get("already_downloaded", [])
+    )
+    return succeeded and result.get("failed_count", 0) == 0
+
+
+def _delete_hf_tokenizer(
+    api_context: APIRequestContext, tokenizer_id: str, *, may_be_absent: bool
+) -> None:
+    response = api_context.delete(
+        "/api/tokenizers/delete?tokenizer_name="
+        f"{quote(tokenizer_id, safe='')}"
+    )
+    allowed_statuses = (200, 404) if may_be_absent else (200,)
+    assert response.status in allowed_statuses, (
+        "Cleanup could not delete a validation-created provider tokenizer."
+    )
+
+
+def _try_download_hf_tokenizer(
+    api_context: APIRequestContext,
+    job_waiter,
+    tokenizer_id: str,
+) -> tuple[bool, str]:
+    """Try one gated candidate without retaining provider error details."""
+    try:
+        result = _run_tokenizer_job(
+            api_context,
+            job_waiter,
+            "/api/tokenizers/download",
+            {"tokenizers": [tokenizer_id]},
+        )
+    except AssertionError:
+        return False, "job_failed_or_invalid"
+    except Exception as exc:  # noqa: BLE001 - record only the exception type.
+        return False, f"job_error_{type(exc).__name__}"
+
+    succeeded = tokenizer_id in (
+        result.get("downloaded", []) + result.get("already_downloaded", [])
+    )
+    if succeeded and result.get("failed_count", 0) == 0:
+        return True, "downloaded"
+    return False, "provider_denied_or_download_failed"
+
+
+def _generate_hf_tokenizer_report(
+    api_context: APIRequestContext,
+    job_waiter,
+    tokenizer_id: str,
+) -> tuple[int, int]:
+    result = _run_tokenizer_job(
+        api_context,
+        job_waiter,
+        "/api/tokenizers/reports/generate",
+        {"tokenizer_name": tokenizer_id},
+    )
+    report_id = result.get("report_id")
+    vocabulary_size = result.get("vocabulary_size")
+    assert isinstance(report_id, int)
+    assert isinstance(vocabulary_size, int) and vocabulary_size > 0
+
+    latest = api_context.get(
+        "/api/tokenizers/reports/latest?tokenizer_name="
+        f"{quote(tokenizer_id, safe='')}"
+    )
+    assert latest.status == 200, (
+        f"The latest report for the downloaded tokenizer returned HTTP {latest.status}."
+    )
+    latest_payload = latest.json()
+    assert latest_payload.get("report_id") == report_id
+    assert latest_payload.get("vocabulary_size") == vocabulary_size
+
+    vocabulary = api_context.get(
+        f"/api/tokenizers/reports/{report_id}/vocabulary?offset=0&limit=20"
+    )
+    assert vocabulary.status == 200, (
+        f"The vocabulary page for report {report_id} returned HTTP {vocabulary.status}."
+    )
+    vocabulary_payload = vocabulary.json()
+    assert vocabulary_payload.get("total") == vocabulary_size
+    assert vocabulary_payload.get("items")
+    return report_id, vocabulary_size
+
+
+def _assert_hf_report_renders(
+    page: Page,
+    base_url: str,
+    tokenizer_id: str,
+    report_id: int,
+    screenshot_name: str,
+) -> None:
+    browser_errors: list[str] = []
+    browser_http_errors: list[tuple[int, str]] = []
+    page.on("pageerror", lambda error: browser_errors.append(str(error)))
+    page.on(
+        "response",
+        lambda response: (
+            browser_http_errors.append((response.status, response.url))
+            if response.status >= 400
+            else None
+        ),
+    )
+
+    def assert_report_visible() -> None:
+        report_button = page.get_by_role(
+            "button",
+            name=f"Generate or open tokenizer report for {tokenizer_id}",
+            exact=True,
+        )
+        expect(report_button).to_be_visible(timeout=30_000)
+        report_button.click()
+        dashboard = page.get_by_role("region", name="Tokenizers Dashboard")
+        expect(dashboard.locator(".panel-description").first).to_have_text(
+            f"Report {report_id} for {tokenizer_id}",
+            timeout=30_000,
+        )
+        expect(dashboard.get_by_role("table").first).to_be_visible()
+        vocabulary_panel = page.get_by_role(
+            "complementary", name="Vocabulary Preview"
+        )
+        expect(vocabulary_panel).to_be_visible()
+        expect(
+            vocabulary_panel.locator(".tokenizer-vocabulary-footer .panel-description")
+        ).to_contain_text("Showing")
+
+    page.goto(f"{base_url}/tokenizers")
+    assert_report_visible()
+
+    screenshot_dir_value = os.getenv("TKBEN_TOKENIZER_QA_SCREENSHOT_DIR")
+    screenshot_dir = Path(screenshot_dir_value) if screenshot_dir_value else None
+    if screenshot_dir is not None:
+        screenshot_dir.mkdir(parents=True, exist_ok=True)
+        page.screenshot(
+            path=str(screenshot_dir / screenshot_name),
+            full_page=True,
+        )
+
+    page.reload()
+    assert_report_visible()
+    if screenshot_dir is not None:
+        page.evaluate(
+            """() => {
+                for (const element of document.querySelectorAll("*")) {
+                    if (element.scrollTop) element.scrollTop = 0;
+                }
+                window.scrollTo(0, 0);
+            }"""
+        )
+        screenshot_path = Path(screenshot_name)
+        reloaded_name = (
+            f"{screenshot_path.stem}-after-reload{screenshot_path.suffix}"
+        )
+        page.screenshot(
+            path=str(screenshot_dir / reloaded_name),
+            full_page=True,
+        )
+    assert browser_errors == [], browser_errors
+    assert browser_http_errors == [], browser_http_errors
+
+
+@pytest.mark.skipif(
+    not RUN_HF_PROVIDER_FLOW,
+    reason="Set E2E_RUN_HF_PROVIDER_FLOW=1 to enable live provider flows.",
+)
+def test_hf_active_credential_authenticates_with_hub(
+    active_hf_test_key: int,
+) -> None:
+    """Confirm the active encrypted key authenticates without exposing identity."""
+    del active_hf_test_key
+    credential = HFAccessKeyService().get_active_key()
+    request = Request(
+        "https://huggingface.co/api/whoami-v2",
+        headers={"Authorization": f"Bearer {credential}"},
+    )
+    try:
+        with urlopen(request, timeout=30) as response:
+            status = response.status
+            payload = json.load(response)
+    except HTTPError as error:
+        status = error.code
+        payload = None
+    except URLError as error:
+        pytest.fail(
+            "Hugging Face credential authentication could not reach the provider "
+            f"({type(error).__name__})."
+        )
+
+    assert status == 200 and isinstance(payload, dict), (
+        f"Hugging Face credential authentication returned HTTP {status}."
+    )
+    print(
+        "HF_PROVIDER_AUTH status=authenticated endpoint=whoami identity=withheld"
+    )
+
+
+@pytest.mark.skipif(
+    not RUN_HF_PROVIDER_FLOW,
+    reason="Set E2E_RUN_HF_PROVIDER_FLOW=1 to enable live provider flows.",
+)
+def test_hf_public_tokenizer_download_report_flow(
+    active_hf_test_key: int,
+    api_context: APIRequestContext,
+    job_waiter,
+    page: Page,
+    base_url: str,
+) -> None:
+    """Exercise a public Hub tokenizer through download, report, and rendered reload."""
+    del active_hf_test_key
+    tokenizer_id = PUBLIC_HF_TOKENIZER_ID
+
+    discovery = api_context.get(
+        "/api/tokenizers/discover?search=bert-base-uncased&limit=10"
+        "&sort=downloads&access=public"
+    )
+    assert discovery.status == 200, (
+        f"Public Hugging Face discovery returned HTTP {discovery.status}."
+    )
+    discovery_items = discovery.json().get("items", [])
+    assert discovery_items
+    assert all(
+        isinstance(item.get("identifier"), str)
+        and item.get("identifier")
+        and "vocabulary_size" in item
+        for item in discovery_items
+    )
+    assert any(
+        item.get("identifier") == tokenizer_id
+        or item.get("identifier", "").endswith(f"/{tokenizer_id}")
+        for item in discovery_items
+    ), f"{tokenizer_id} (including a canonical owner-qualified ID) was not present in public discovery."
+
+    downloaded = False
+    try:
+        downloaded = _download_hf_tokenizer(api_context, job_waiter, tokenizer_id)
+        assert downloaded, (
+            "The public Hugging Face tokenizer did not download with the supplied key."
+        )
+        report_id, vocabulary_size = _generate_hf_tokenizer_report(
+            api_context,
+            job_waiter,
+            tokenizer_id,
+        )
+        _assert_hf_report_renders(
+            page,
+            base_url,
+            tokenizer_id,
+            report_id,
+            "tokenizers-report-hf-public.png",
+        )
+    finally:
+        _delete_hf_tokenizer(
+            api_context,
+            tokenizer_id,
+            may_be_absent=not downloaded,
+        )
+    print(
+        "HF_PROVIDER_FLOW public status=pass "
+        f"tokenizer={tokenizer_id} report_id={report_id} "
+        f"vocabulary_size={vocabulary_size} rendered_after_reload=pass "
+        "tokenizer_cleanup=pass"
+    )
+
+
+@pytest.mark.skipif(
+    not RUN_HF_PROVIDER_FLOW,
+    reason="Set E2E_RUN_HF_PROVIDER_FLOW=1 to enable live provider flows.",
+)
+def test_hf_gated_tokenizer_download_report_flow(
+    active_hf_test_key: int,
+    api_context: APIRequestContext,
+    job_waiter,
+    page: Page,
+    base_url: str,
+) -> None:
+    """Exercise one already-authorized gated Hub tokenizer, when available."""
+    del active_hf_test_key
+    gated_query = "/api/tokenizers/discover?access=gated&limit=10&sort=downloads"
+    if GATED_HF_TOKENIZER_ID:
+        gated_query += f"&search={quote(GATED_HF_TOKENIZER_ID, safe='')}"
+    gated_discovery = api_context.get(
+        gated_query
+    )
+    assert gated_discovery.status == 200, (
+        f"Gated Hugging Face discovery returned HTTP {gated_discovery.status}."
+    )
+
+    items = gated_discovery.json().get("items", [])
+    discovered_ids = [
+        item["identifier"]
+        for item in items
+        if isinstance(item.get("identifier"), str) and item.get("identifier")
+    ]
+    if GATED_HF_TOKENIZER_ID:
+        if GATED_HF_TOKENIZER_ID not in discovered_ids:
+            pytest.skip(
+                "The configured repository was not returned by gated discovery; "
+                "no download was attempted and T4-03 remains BLOCKED."
+            )
+        candidates = [GATED_HF_TOKENIZER_ID]
+    else:
+        candidates = [
+            identifier for identifier in discovered_ids
+        ][:MAX_GATED_HF_CANDIDATES]
+    if not candidates:
+        pytest.skip(
+            "Gated discovery returned no tokenizer candidates; T4-03 remains BLOCKED."
+        )
+
+    tokenizer_id: str | None = None
+    for candidate in candidates:
+        success, outcome = _try_download_hf_tokenizer(
+            api_context, job_waiter, candidate
+        )
+        print(f"HF_GATED_CANDIDATE {candidate} outcome={outcome}")
+        if success:
+            tokenizer_id = candidate
+            break
+        _delete_hf_tokenizer(api_context, candidate, may_be_absent=True)
+    if tokenizer_id is None:
+        pytest.skip(
+            "No gated tokenizer download succeeded with the supplied key; "
+            "T4-03 remains BLOCKED."
+        )
+
+    try:
+        report_id, vocabulary_size = _generate_hf_tokenizer_report(
+            api_context,
+            job_waiter,
+            tokenizer_id,
+        )
+        _assert_hf_report_renders(
+            page,
+            base_url,
+            tokenizer_id,
+            report_id,
+            "tokenizers-report-hf-gated.png",
+        )
+    finally:
+        _delete_hf_tokenizer(
+            api_context,
+            tokenizer_id,
+            may_be_absent=False,
+        )
+    print(
+        "HF_PROVIDER_FLOW gated status=pass "
+        f"tokenizer={tokenizer_id} report_id={report_id} "
+        f"vocabulary_size={vocabulary_size} rendered_after_reload=pass "
+        "tokenizer_cleanup=pass"
+    )
 
 
 ###############################################################################

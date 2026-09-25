@@ -36,7 +36,7 @@ def _alter_metric_value_check(expression: str) -> None:
 
     op.drop_constraint("ck_metric_exactly_one_value", "metric_value", type_="check")
     op.create_check_constraint(
-        "ck_metric_exactly_one_value", expression, "metric_value"
+        "ck_metric_exactly_one_value", "metric_value", expression
     )
 
 ###############################################################################
