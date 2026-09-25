@@ -58,9 +58,9 @@ The release-preparation commit was pushed to `develop` as
 `f8dee1da9084138bd52f3d08437269d3821ba5d6`. Hosted CI run
 [36158666979](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36158666979)
 completed successfully for that exact SHA, with both backend and frontend jobs
-successful. Remote `main` and `develop` were then verified at closure commit
-`1dd59e755bdca5f16be354a75b7ac053ac0d2e17`; the tag and release remain
-anchored to the tested release commit.
+successful. Remote `main` and `develop` were then verified after release
+closure and remained aligned through the documentation-only evidence updates;
+the tag and release remain anchored to the tested release commit.
 
 The annotated tag `v4.5.0` was pushed with tag-object SHA
 `4a49670c25a224f8218d7feb2fe07ec8e8690ae2`, peeling to the release commit.
