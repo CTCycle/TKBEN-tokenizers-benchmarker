@@ -1,5 +1,5 @@
 # Release Procedure
-Last updated: 2026-09-25
+Last updated: 2026-09-26
 
 ## Release model
 
@@ -36,8 +36,9 @@ The current release delta is based on verified repository changes after
   source-distribution validation path.
 
 API version `1.2.0`, benchmark schema version `3`, and report version `5`
-remain unchanged. Validation evidence for this release is recorded under
-`assets/QA/`.
+remain unchanged. The current validation outcome, remaining limitations, and
+release traceability are recorded in the [project status
+ledger](../project_status_ledger.md#release-gate).
 
 ## v4.4.0 release notes
 
@@ -54,8 +55,9 @@ The current release delta is based on verified repository changes after
   actionable redirected backend diagnostics in the supported source-only flow.
 
 API version `1.2.0`, benchmark schema version `3`, report version `5`, and
-Alembic revision `0004_benchmark_report_tags` remain unchanged. Validation
-evidence for this release is recorded under `assets/QA/`.
+Alembic revision `0004_benchmark_report_tags` remain unchanged. Its durable
+validation history is summarized in the [project status
+ledger](../project_status_ledger.md#resolved-and-historical-findings).
 
 ## v4.3.0 release notes
 
@@ -76,8 +78,9 @@ The current release delta is based on verified repository changes after
   now capture backend logs for actionable health-check failures.
 
 API version `1.2.0`, benchmark schema version `3`, report version `5`, and
-Alembic revision `0003_canonical_state_cleanup` remain unchanged. Validation
-evidence for this preparation is recorded under `assets/QA/`.
+Alembic revision `0003_canonical_state_cleanup` remain unchanged. Its durable
+validation history is summarized in the [project status
+ledger](../project_status_ledger.md#resolved-and-historical-findings).
 
 ## Preparation and validation
 
@@ -99,8 +102,11 @@ evidence for this preparation is recorded under `assets/QA/`.
 5. Run the focused live API/UI tests when the local services are available.
    Inspect browser console output and application logs; classify expected
    test-injected failures separately from release-blocking errors.
-6. Record the validation evidence in `assets/QA/`. Do not claim skipped,
-   unavailable-provider, or unverified checks as passed.
+6. Record the current status, evidence summary, skipped checks, unavailable
+   providers, and unresolved limitations in the [project status
+   ledger](../project_status_ledger.md). Do not claim skipped, unavailable-
+   provider, or unverified checks as passed; retain raw logs only as temporary
+   run output when they are needed for diagnosis.
 
 ## Versioning and synchronization
 
