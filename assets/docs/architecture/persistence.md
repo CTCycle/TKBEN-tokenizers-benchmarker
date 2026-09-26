@@ -1,5 +1,5 @@
 # Persistence
-Last updated: 2026-09-24
+Last updated: 2026-09-26
 
 ## Storage selection
 
@@ -160,10 +160,16 @@ reconciliation and result/error retention are covered by the managed-job
 service and API tests. Controlled SQLite `SQLITE_FULL` validation confirms that
 failed custom-upload and Hugging Face dataset persistence imports clean up their
 partial rows and can be retried after storage capacity returns; it does not
-simulate exhaustion of the host filesystem. See the [dataset storage QA
-record](../../assets/QA/tkben-data-upload-storage-20260924/README.md).
-PostgreSQL integration validation must be run against a disposable database
-before claiming PostgreSQL runtime equivalence.
+simulate exhaustion of the host filesystem. The current ledger records this as
+PARTIAL validation debt.
+
+PostgreSQL integration was subsequently validated against an isolated
+PostgreSQL 18.6 database: concurrent initialization, Alembic migration to
+`0005_managed_job_lifecycle`, SQLite-equivalent UI behavior, restart recovery,
+and injected-failure rollback/retry passed. The existing host listener was not
+contacted, so the evidence does not claim general deployment equivalence.
+See the [project status ledger](../project_status_ledger.md) for the current
+gate and historical migration-failure reconciliation.
 
 ## Migration workflow
 

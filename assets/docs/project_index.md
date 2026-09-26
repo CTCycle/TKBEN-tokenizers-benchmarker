@@ -1,5 +1,5 @@
 # Project Overview
-Last updated: 2026-09-25
+Last updated: 2026-09-26
 
 ## Purpose
 This file is the root index for `assets/docs`. Read it first to find the narrowest topic file for the task at hand.
@@ -43,8 +43,9 @@ part of startup configuration.
 - [project_status_ledger.md](project_status_ledger.md)
   - Canonical current operational status catalog: component statuses,
     validation evidence, blockers, open issues, validation debt, and resolved
-    findings. Update it when implementation, validation evidence, or current
-    project risks change; detailed reports remain in their topic documents.
+    findings. It also contains the consolidated history of the former QA
+    archive. Update it when implementation, validation evidence, or current
+    project risks change; do not recreate duplicate standalone QA reports.
 
 ### Architecture
 - `architecture/architecture_review.md`
@@ -92,6 +93,12 @@ part of startup configuration.
   - Practical UI implementation standards for spacing, typography, colors, components, and responsive polish.
 - `ui/benchmark_dashboard.md`
   - Normalized cross-benchmark dashboard contract, customization, persistence, and version policy.
+
+The former `assets/QA` archive is intentionally not maintained. Durable
+validation outcomes, limitations, status transitions, and release evidence
+belong in `project_status_ledger.md` or the relevant topic document; temporary
+logs and screenshots may be generated during a future run but are not a
+documentation source of truth.
 
 ## Reading Order
 1. Read this root index.

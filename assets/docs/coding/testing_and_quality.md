@@ -1,5 +1,5 @@
 # Testing and Quality
-Last updated: 2026-09-18
+Last updated: 2026-09-26
 
 ## Tooling and Tests
 - Lint and format with Ruff, or the project-standard equivalent if it changes in the future.
@@ -27,6 +27,12 @@ usable Hugging Face key or PostgreSQL target is configured, and record an
 unavailable gate explicitly. Live validation should correlate browser state,
 API responses, application logs, and persisted records; a successful HTTP
 status or build alone is not release evidence.
+
+The [project status ledger](../project_status_ledger.md) is the maintained
+record of validation gates and outcomes. Summarize meaningful evidence there,
+including skipped, blocked, partial, failed, and deferred checks. Raw logs,
+screenshots, generated reports, and disposable databases are run artifacts,
+not a second source of truth.
 
 ## Development Cache and Artifact Locations
 - `runtimes/cache` is the single disposable cache root. Pytest’s collection

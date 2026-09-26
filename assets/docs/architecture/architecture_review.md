@@ -1,5 +1,5 @@
 # Architecture Review
-Last updated: 2026-09-22
+Last updated: 2026-09-26
 
 ## Current State
 
@@ -209,8 +209,10 @@ Completed implementation work:
   effects still require their own recovery handling.
 - Synchronous SQLAlchemy repositories require continued worker-thread use from
   async endpoints; the architecture test cannot prove runtime scheduling.
-- Hugging Face availability, configured credentials, and PostgreSQL concurrency
-  remain environment-dependent runtime gates rather than static guarantees.
+- Hugging Face availability and configured credentials remain environment-
+  dependent runtime gates. PostgreSQL concurrency and rollback were validated
+  against an isolated PostgreSQL 18.6 target, but that evidence does not claim
+  every deployment topology or the pre-existing host listener.
 - The benchmark execution mixin is still a larger orchestration unit than the
   persistence boundary. Future decomposition should be driven by a concrete
   behavior or testability need and preserve the current report contract.
@@ -218,7 +220,7 @@ Completed implementation work:
   is populated; the UI must continue to render unavailable values as empty
   states rather than synthetic zeroes.
 
-The validation record for this review is kept under
-`assets/QA/architecture-remediation-20260820`; the executable import and
-removed-symbol contract is
+The current validation status and historical remediation outcomes are recorded
+in the [project status ledger](../project_status_ledger.md). The executable
+import and removed-symbol contract is
 `tests/unit/server/test_architecture_boundaries.py`.
