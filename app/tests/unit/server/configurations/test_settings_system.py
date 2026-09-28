@@ -73,22 +73,22 @@ def test_missing_environment_is_created_from_example(
 def test_environment_template_exposes_canonical_runtime_inputs() -> None:
     example = (ROOT_DIR / "settings/.env.example").read_text(encoding="utf-8")
 
-    assert "TKBEN_DATA_DIR=resources" in example
-    assert "TKBEN_LOG_DIR=resources/logs" in example
+    assert "TKBEN_DATA_DIR=data" in example
+    assert "TKBEN_LOG_DIR=data/logs" in example
     assert "UI_HOST=127.0.0.1" in example
     assert "DATABASE_EMBEDDED=true" in example
     assert "ALLOW_KEY_REVEAL=false" in example
 
 ###############################################################################
-def test_default_runtime_paths_use_repository_resources(
+def test_default_runtime_paths_use_repository_data(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _configure_environment(tmp_path, monkeypatch, ["DATABASE_EMBEDDED=true"])
 
     settings = get_server_settings()
-    default_root = (ROOT_DIR / "resources").resolve()
+    default_root = (ROOT_DIR / "data").resolve()
 
-    assert settings.paths.resources == default_root
+    assert settings.paths.data == default_root
     assert settings.paths.logs == (default_root / "logs").resolve()
     assert settings.database.sqlite_path == (default_root / "database.db").resolve()
     assert settings.security.hf_keys_encryption_material_file == (
@@ -184,7 +184,7 @@ def test_runtime_environment_resolves_into_one_settings_tree(
 
     settings = get_server_settings()
 
-    assert settings.paths.resources == data_root.resolve()
+    assert settings.paths.data == data_root.resolve()
     assert settings.paths.datasets == (data_root / "sources/datasets").resolve()
     assert settings.paths.tokenizers == (data_root / "sources/tokenizers").resolve()
     assert settings.paths.logs == log_root.resolve()
@@ -214,7 +214,7 @@ def test_relative_runtime_paths_are_repository_relative(
 
     settings = get_server_settings()
 
-    assert settings.paths.resources == (ROOT_DIR / "custom/runtime-data").resolve()
+    assert settings.paths.data == (ROOT_DIR / "custom/runtime-data").resolve()
     assert settings.paths.logs == (ROOT_DIR / "custom/runtime-logs").resolve()
 
 ###############################################################################

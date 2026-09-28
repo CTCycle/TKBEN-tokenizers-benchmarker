@@ -45,7 +45,7 @@ not a second source of truth.
   tool configuration use the same paths.
 - Downloaded datasets and Hugging Face tokenizer artifacts are persistent
   application data under `<TKBEN_DATA_DIR>/sources/datasets` and
-  `<TKBEN_DATA_DIR>/sources/tokenizers` (defaulting to `resources`). They
+  `<TKBEN_DATA_DIR>/sources/tokenizers` (defaulting to `data`). They
   are not disposable caches and are never removed by cache cleanup.
 - Generic ignore rules for accidental legacy cache names are defensive only;
   no tool is configured to use an alternative cache root.

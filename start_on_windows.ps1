@@ -181,7 +181,7 @@ function Resolve-ConfiguredPath {
 function Get-ApplicationDataRoot {
     return Resolve-ConfiguredPath `
         -ConfiguredPath (Get-EnvironmentSetting -Key 'TKBEN_DATA_DIR') `
-        -DefaultPath (Join-Path $RepoRoot 'resources')
+        -DefaultPath (Join-Path $RepoRoot 'data')
 }
 
 function Get-ApplicationLogRoot {

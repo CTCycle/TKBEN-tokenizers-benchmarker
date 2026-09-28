@@ -5,7 +5,7 @@ Last updated: 2026-09-28
 TKBEN is a tokenizer benchmarking platform with:
 - FastAPI backend (`app/server`)
 - Angular 22 frontend (`app/client`)
-- Shared local resources and settings (`resources`, `settings`)
+- Shared local data and settings (`data`, `settings`)
 - Alembic-owned persistence with direct metric keys, persisted tokenizer
   sources, and relational benchmark-report summaries and tags
 
@@ -56,7 +56,7 @@ Source-level structure, with generated and environment-specific folders omitted:
 │  │     └─ versions/0005_managed_job_lifecycle.py
 │  ├─ scripts/
 │  └─ tests/
-├─ resources/
+├─ data/
 └─ LICENSE
 ```
 

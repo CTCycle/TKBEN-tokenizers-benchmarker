@@ -167,7 +167,7 @@ class RuntimeSettingsStore:
         self._path = (
             Path(path)
             if path is not None
-            else defaults.paths.resources / RUNTIME_SETTINGS_FILENAME
+            else defaults.paths.data / RUNTIME_SETTINGS_FILENAME
         ).expanduser().resolve()
         self._effective = defaults
         self._overrides: dict[str, dict[str, object]] = {}

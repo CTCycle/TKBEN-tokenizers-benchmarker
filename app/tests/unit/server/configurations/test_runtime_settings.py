@@ -49,11 +49,11 @@ def _non_finite_runtime_float_cases():
 
 ###############################################################################
 def _server_settings(tmp_path: Path) -> ServerSettings:
-    resources = tmp_path / "resources"
+    data = tmp_path / "data"
     return ServerSettings(
         database=DatabaseSettings(
             embedded_database=True,
-            sqlite_path=resources / "database.db",
+            sqlite_path=data / "database.db",
             host=None,
             port=None,
             database_name=None,
@@ -65,12 +65,12 @@ def _server_settings(tmp_path: Path) -> ServerSettings:
             insert_batch_size=1000,
         ),
         paths=PathSettings(
-            resources=resources,
-            sources=resources / "sources",
-            datasets=resources / "sources/datasets",
-            tokenizers=resources / "sources/tokenizers",
-            logs=resources / "logs",
-            templates=resources / "templates",
+            data=data,
+            sources=data / "sources",
+            datasets=data / "sources/datasets",
+            tokenizers=data / "sources/tokenizers",
+            logs=data / "logs",
+            templates=data / "templates",
         ),
         network=NetworkSettings(
             fastapi_host="127.0.0.1",
@@ -81,7 +81,7 @@ def _server_settings(tmp_path: Path) -> ServerSettings:
         ),
         security=SecuritySettings(
             allow_key_reveal=False,
-            hf_keys_encryption_material_file=resources / "hf-key-material.json",
+            hf_keys_encryption_material_file=data / "hf-key-material.json",
         ),
         datasets=DatasetSettings(),
         tokenizers=TokenizerSettings(),
