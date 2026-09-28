@@ -19,7 +19,7 @@ CACHE_PATH = (ROOT_DIR / "runtimes" / "cache").resolve()
 ###############################################################################
 def _resolve_resource_path(configured_path: str | None) -> Path:
     if not configured_path:
-        return (APP_DIR / "resources").resolve()
+        return (ROOT_DIR / "resources").resolve()
 
     resource_path = Path(configured_path).expanduser()
     if not resource_path.is_absolute():

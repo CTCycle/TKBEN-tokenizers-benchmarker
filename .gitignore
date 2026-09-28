@@ -4,10 +4,10 @@ runtimes/**
 !runtimes/
 !runtimes/cache/
 !runtimes/cache/.gitkeep
-app/resources/sources/datasets/**
-app/resources/sources/tokenizers/**
-app/resources/logs/**
-app/resources/runtime-settings.json
+resources/sources/datasets/**
+resources/sources/tokenizers/**
+resources/logs/**
+resources/runtime-settings.json
 app/client/node_modules/
 app/client/dist/
 app/client/dist-ssr/
@@ -69,4 +69,4 @@ Thumbs.db
 # Local configuration
 ruff.toml
 settings/.env
-app/resources/hf-key-material.json
+resources/hf-key-material.json

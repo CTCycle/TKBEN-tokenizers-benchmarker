@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from server.common.path import APP_DIR, ROOT_DIR
+from server.common.path import ROOT_DIR
 
 
 ###############################################################################
@@ -171,7 +171,7 @@ def _resolve_runtime_path(configured_path: str | None, default_path: Path) -> Pa
 
 ###############################################################################
 def _load_path_settings() -> PathSettings:
-    resources = _resolve_runtime_path(os.getenv("TKBEN_DATA_DIR"), APP_DIR / "resources")
+    resources = _resolve_runtime_path(os.getenv("TKBEN_DATA_DIR"), ROOT_DIR / "resources")
     sources = resources / "sources"
     return PathSettings(
         resources=resources,
