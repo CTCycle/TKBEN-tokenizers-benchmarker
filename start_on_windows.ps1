@@ -1522,9 +1522,17 @@ function Remove-PythonCaches {
     } else {
         $null
     }
-    $cacheDirectories = @(Get-ChildItem -LiteralPath $AppDir -Directory -Filter '__pycache__' -Recurse -Force -ErrorAction SilentlyContinue |
+    $cacheRoots = @($ServerDir, $AppDir) | Select-Object -Unique
+    $cacheDirectories = @(
+        foreach ($cacheRoot in $cacheRoots) {
+            if (Test-Path -LiteralPath $cacheRoot -PathType Container) {
+                Get-ChildItem -LiteralPath $cacheRoot -Directory -Filter '__pycache__' -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+    ) |
+        Sort-Object -Property FullName -Unique |
         Where-Object { [string]::IsNullOrEmpty($venvPrefix) -or -not $_.FullName.StartsWith($venvPrefix, [StringComparison]::OrdinalIgnoreCase) } |
-        Sort-Object @{ Expression = { $_.FullName.Length }; Descending = $true }, @{ Expression = { $_.FullName.ToUpperInvariant() }; Descending = $false })
+        Sort-Object @{ Expression = { $_.FullName.Length }; Descending = $true }, @{ Expression = { $_.FullName.ToUpperInvariant() }; Descending = $false }
     @($cacheDirectories | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
 }
 
