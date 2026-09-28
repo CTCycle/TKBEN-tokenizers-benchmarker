@@ -279,13 +279,13 @@ Open a completed report before exporting and choose a folder where you can creat
 
 Confirm that Python, Node.js, and `uv` are installed and available in the terminal you are using. Run the commands from the repository directories shown above, use a shell with permission to read the project, and keep the backend and frontend terminals separate. The Windows launcher is not available on these platforms, so the two manual processes must both be started.
 
-## 6. Saved Data and Resources
+## 6. Saved Data
 
 TKBEN keeps its working data locally so that completed analyses can be reopened after a restart.
 
-- `resources`: saved datasets, tokenizer assets, reports, the local database, and logs. Back up the relevant contents of this folder if you need to preserve your work.
+- `data`: saved datasets, tokenizer assets, reports, the local database, and logs. Back up the relevant contents of this folder if you need to preserve your work.
 - `settings/.env`: local startup/deployment settings and credentials/paths; preserve it across updates and keep it private.
-- `resources/runtime-settings.json`: generated sparse overrides for supported application runtime settings. It is safe to remove when resetting application data; do not edit it as a substitute for the Settings page.
+- `data/runtime-settings.json`: generated sparse overrides for supported application runtime settings. It is safe to remove when resetting application data; do not edit it as a substitute for the Settings page.
 - `assets/figures`: screenshots used in this guide.
 - `assets/docs`: deeper project and runtime reference material for advanced users and maintainers.
 
@@ -300,7 +300,7 @@ Configuration ownership is intentionally split: `.env` and the process environme
 You may need to edit the local settings only when you want to:
 
 - use a different local address or port because of a conflict
-- store the local workspace somewhere other than the repository’s default `resources` folder by setting `TKBEN_DATA_DIR` to a repository-relative or absolute path
+- store the local workspace somewhere other than the repository’s default `data` folder by setting `TKBEN_DATA_DIR` to a repository-relative or absolute path
 - connect to an externally managed PostgreSQL database instead of the default embedded store
 
 Restart TKBEN after changing `settings/.env`. Keep this file private: it can contain machine-specific paths, database connection details, or other sensitive values. Changes made in **Settings** apply to subsequently started operations without a restart. Hugging Face access keys should be added and managed through **Settings → Keys**, rather than placed in screenshots or shared documentation.

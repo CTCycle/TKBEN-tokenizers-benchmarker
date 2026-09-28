@@ -3,8 +3,8 @@ Last updated: 2026-09-28
 
 ## Storage selection
 
-Embedded SQLite is the default local store at `resources/database.db`. Set
-`TKBEN_DATA_DIR` to override the resource root with a repository-relative or
+Embedded SQLite is the default local store at `data/database.db`. Set
+`TKBEN_DATA_DIR` to override the data root with a repository-relative or
 absolute path; the embedded database then uses
 `<TKBEN_DATA_DIR>/database.db`. The PostgreSQL backend is selected with
 `DATABASE_EMBEDDED=false` and the explicit PostgreSQL fields in `settings/.env`;
@@ -196,7 +196,7 @@ versioned backup or recreated.
 
 The current repository head is `0005_managed_job_lifecycle`. Managed-job rows,
 ready dataset rows, tokenizer rows, reports, and canonical tokenizer artifacts
-are stored under the configured resource root and are retained across
+are stored under the configured data root and are retained across
 application restarts unless explicitly deleted. Dataset files and tokenizer
 artifacts are persistent application data under
 `<TKBEN_DATA_DIR>/sources/datasets` and

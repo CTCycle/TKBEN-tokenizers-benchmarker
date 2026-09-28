@@ -17,25 +17,25 @@ SETTINGS_DIR = (ROOT_DIR / "settings").resolve()
 CACHE_PATH = (ROOT_DIR / "runtimes" / "cache").resolve()
 
 ###############################################################################
-def _resolve_resource_path(configured_path: str | None) -> Path:
+def _resolve_data_path(configured_path: str | None) -> Path:
     if not configured_path:
-        return (ROOT_DIR / "resources").resolve()
+        return (ROOT_DIR / "data").resolve()
 
-    resource_path = Path(configured_path).expanduser()
-    if not resource_path.is_absolute():
-        resource_path = ROOT_DIR / resource_path
-    return resource_path.resolve()
+    data_path = Path(configured_path).expanduser()
+    if not data_path.is_absolute():
+        data_path = ROOT_DIR / data_path
+    return data_path.resolve()
 
 
-RESOURCES_PATH = _resolve_resource_path(os.getenv("TKBEN_DATA_DIR"))
-SOURCES_PATH = RESOURCES_PATH / "sources"
+DATA_PATH = _resolve_data_path(os.getenv("TKBEN_DATA_DIR"))
+SOURCES_PATH = DATA_PATH / "sources"
 DATASETS_PATH = SOURCES_PATH / "datasets"
 TOKENIZERS_PATH = SOURCES_PATH / "tokenizers"
-LOGS_PATH = Path(os.getenv("TKBEN_LOG_DIR", RESOURCES_PATH / "logs")).resolve()
-TEMPLATES_PATH = RESOURCES_PATH / "templates"
+LOGS_PATH = Path(os.getenv("TKBEN_LOG_DIR", DATA_PATH / "logs")).resolve()
+TEMPLATES_PATH = DATA_PATH / "templates"
 ENV_FILE_PATH = SETTINGS_DIR / ".env"
 ENV_EXAMPLE_FILE_PATH = SETTINGS_DIR / ".env.example"
-DATABASE_PATH = RESOURCES_PATH / "database.db"
+DATABASE_PATH = DATA_PATH / "database.db"
 __all__ = [
     "APP_DIR",
     "ASSETS_DIR",
@@ -48,7 +48,7 @@ __all__ = [
     "FIGURES_DIR",
     "LOGS_PATH",
     "QA_DIR",
-    "RESOURCES_PATH",
+    "DATA_PATH",
     "ROOT_DIR",
     "SERVER_DIR",
     "SETTINGS_DIR",

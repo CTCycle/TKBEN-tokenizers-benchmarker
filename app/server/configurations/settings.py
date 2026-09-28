@@ -29,7 +29,7 @@ class DatabaseSettings(_FrozenSettingsModel):
 
 ###############################################################################
 class PathSettings(_FrozenSettingsModel):
-    resources: Path
+    data: Path
     sources: Path
     datasets: Path
     tokenizers: Path
@@ -171,15 +171,15 @@ def _resolve_runtime_path(configured_path: str | None, default_path: Path) -> Pa
 
 ###############################################################################
 def _load_path_settings() -> PathSettings:
-    resources = _resolve_runtime_path(os.getenv("TKBEN_DATA_DIR"), ROOT_DIR / "resources")
-    sources = resources / "sources"
+    data = _resolve_runtime_path(os.getenv("TKBEN_DATA_DIR"), ROOT_DIR / "data")
+    sources = data / "sources"
     return PathSettings(
-        resources=resources,
+        data=data,
         sources=sources,
         datasets=sources / "datasets",
         tokenizers=sources / "tokenizers",
-        logs=_resolve_runtime_path(os.getenv("TKBEN_LOG_DIR"), resources / "logs"),
-        templates=resources / "templates",
+        logs=_resolve_runtime_path(os.getenv("TKBEN_LOG_DIR"), data / "logs"),
+        templates=data / "templates",
     )
 
 ###############################################################################
@@ -187,7 +187,7 @@ def _load_database_settings(paths: PathSettings) -> DatabaseSettings:
     embedded_database = _read_env_bool("DATABASE_EMBEDDED", True)
     connect_timeout = _read_env_int("DATABASE_CONNECT_TIMEOUT", 30, minimum=1)
     insert_batch_size = _read_env_int("DATABASE_INSERT_BATCH_SIZE", 1000, minimum=1)
-    sqlite_path = paths.resources / "database.db"
+    sqlite_path = paths.data / "database.db"
 
     if embedded_database:
         return DatabaseSettings(
@@ -253,7 +253,7 @@ def _load_security_settings(paths: PathSettings) -> SecuritySettings:
         allow_key_reveal=_read_env_bool("ALLOW_KEY_REVEAL", False),
         hf_keys_encryption_material_file=_resolve_runtime_path(
             os.getenv("HF_KEYS_ENCRYPTION_MATERIAL_FILE"),
-            paths.resources / "hf-key-material.json",
+            paths.data / "hf-key-material.json",
         ),
     )
 
