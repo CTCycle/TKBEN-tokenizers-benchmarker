@@ -1,5 +1,5 @@
 # Testing and Quality
-Last updated: 2026-09-26
+Last updated: 2026-09-28
 
 ## Tooling and Tests
 - Lint and format with Ruff, or the project-standard equivalent if it changes in the future.
@@ -45,7 +45,7 @@ not a second source of truth.
   tool configuration use the same paths.
 - Downloaded datasets and Hugging Face tokenizer artifacts are persistent
   application data under `<TKBEN_DATA_DIR>/sources/datasets` and
-  `<TKBEN_DATA_DIR>/sources/tokenizers` (defaulting to `app/resources`). They
+  `<TKBEN_DATA_DIR>/sources/tokenizers` (defaulting to `resources`). They
   are not disposable caches and are never removed by cache cleanup.
 - Generic ignore rules for accidental legacy cache names are defensive only;
   no tool is configured to use an alternative cache root.

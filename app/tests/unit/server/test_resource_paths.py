@@ -5,8 +5,8 @@ from pathlib import Path
 from server.common.path import ROOT_DIR, _resolve_resource_path
 
 ###############################################################################
-def test_default_resource_path_is_app_resources() -> None:
-    assert _resolve_resource_path(None) == (ROOT_DIR / "app/resources").resolve()
+def test_default_resource_path_is_repository_resources() -> None:
+    assert _resolve_resource_path(None) == (ROOT_DIR / "resources").resolve()
 
 ###############################################################################
 def test_relative_resource_path_is_root_relative() -> None:

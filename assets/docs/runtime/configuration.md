@@ -1,5 +1,5 @@
 # Configuration
-Last updated: 2026-09-18
+Last updated: 2026-09-28
 
 ## Environment File
 Primary launcher runtime env file:
@@ -19,7 +19,7 @@ Primary launcher runtime env file:
 - `RELOAD`
 - `ALLOW_KEY_REVEAL`
 - `HF_KEYS_ENCRYPTION_MATERIAL_FILE`
-- `TKBEN_DATA_DIR` (persistent resource root for the embedded database, downloaded datasets, tokenizer artifacts, and exports; defaults to `app/resources`; it is separate from the disposable `runtimes/cache` root)
+- `TKBEN_DATA_DIR` (persistent resource root for the embedded database, downloaded datasets, tokenizer artifacts, and exports; defaults to `resources`; set it to a repository-relative or absolute path to use a different root; it is separate from the disposable `runtimes/cache` root)
 - `TKBEN_LOG_DIR` (runtime logs)
 - `DATABASE_EMBEDDED`
 - `DATABASE_HOST`
@@ -39,7 +39,7 @@ resolved once for the running process.
 ## Application Runtime Settings
 Typed Pydantic models own the defaults for application behavior. The optional
 application-managed file `<TKBEN_DATA_DIR>/runtime-settings.json` stores only
-sparse user overrides. It is created under `app/resources` by default, is
+sparse user overrides. It is created under `resources` by default, is
 ignored by Git, and is independent of whether TKBEN uses SQLite or PostgreSQL.
 The file contains a schema version, revision, and nested overrides; defaults
 are never duplicated in it.
@@ -83,7 +83,7 @@ without changing the current snapshot.
 
 ### Persistence Toggle
 - Database mode and connection fields always come from `settings/.env` through the `DATABASE_*` variables. This is the same source used by Alembic and the database initializer; runtime settings cannot override it.
-- `DATABASE_EMBEDDED=true` uses SQLite (`<TKBEN_DATA_DIR>/database.db`; defaults to `app/resources/database.db`).
+- `DATABASE_EMBEDDED=true` uses SQLite (`<TKBEN_DATA_DIR>/database.db`; defaults to `resources/database.db`).
 - `DATABASE_EMBEDDED=false` uses PostgreSQL with the explicit `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `DATABASE_SSL`, and `DATABASE_SSL_CA` fields. The engine is fixed to `postgresql+psycopg`.
 
 ### Job Lifecycle
@@ -96,7 +96,7 @@ without changing the current snapshot.
 
 ### Security Controls
 - `ALLOW_KEY_REVEAL=false` keeps plaintext Hugging Face key reveal disabled by default.
-- Hugging Face access-key encryption material is generated and persisted in the external JSON file configured by `HF_KEYS_ENCRYPTION_MATERIAL_FILE` (default `app/resources/hf-key-material.json`). Keep this file private and do not copy it into database backups.
+- Hugging Face access-key encryption material is generated and persisted in the external JSON file configured by `HF_KEYS_ENCRYPTION_MATERIAL_FILE` (default `resources/hf-key-material.json`). Keep this file private and do not copy it into database backups.
 - `FASTAPI_HOST` controls the interface on which the backend listens. Network exposure requires appropriate deployment-level access controls.
 
 Boolean launcher settings are validated as `true` or `false`; invalid values

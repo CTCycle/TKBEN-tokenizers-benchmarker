@@ -20,6 +20,17 @@ def test_launcher_has_no_always_rebuild_switch() -> None:
     assert "ALWAYS_REBUILD" not in LAUNCHER
 
 
+def test_launcher_uses_repository_resources_as_the_default_data_root() -> None:
+    data_root = _section("Get-ApplicationDataRoot", "Get-ApplicationLogRoot")
+
+    assert "-DefaultPath (Join-Path $RepoRoot 'resources')" in data_root
+    assert "Join-Path $AppDir 'resources'" not in data_root
+
+
+def test_launcher_log_cleanup_respects_the_configured_log_root() -> None:
+    assert "Get-ApplicationLogRoot -DataRoot (Get-ApplicationDataRoot)" in LAUNCHER
+
+
 def test_launcher_pins_and_checks_the_uv_runtime_version() -> None:
     install_runtimes = _section("Install-Runtimes", "Sync-BackendDependencies")
     readiness = _section("Test-BackendDependenciesReady", "Test-FrontendBuildReady")

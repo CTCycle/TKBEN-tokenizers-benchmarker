@@ -1,10 +1,11 @@
 # Persistence
-Last updated: 2026-09-26
+Last updated: 2026-09-28
 
 ## Storage selection
 
-Embedded SQLite is the default local store at `app/resources/database.db`. Set
-`TKBEN_DATA_DIR` to override the resource root; the embedded database then uses
+Embedded SQLite is the default local store at `resources/database.db`. Set
+`TKBEN_DATA_DIR` to override the resource root with a repository-relative or
+absolute path; the embedded database then uses
 `<TKBEN_DATA_DIR>/database.db`. The PostgreSQL backend is selected with
 `DATABASE_EMBEDDED=false` and the explicit PostgreSQL fields in `settings/.env`;
 the engine is fixed to `postgresql+psycopg`. Database access is injected through

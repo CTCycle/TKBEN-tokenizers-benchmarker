@@ -181,7 +181,7 @@ function Resolve-ConfiguredPath {
 function Get-ApplicationDataRoot {
     return Resolve-ConfiguredPath `
         -ConfiguredPath (Get-EnvironmentSetting -Key 'TKBEN_DATA_DIR') `
-        -DefaultPath (Join-Path $AppDir 'resources')
+        -DefaultPath (Join-Path $RepoRoot 'resources')
 }
 
 function Get-ApplicationLogRoot {
@@ -1237,7 +1237,7 @@ function Confirm-DestructiveAction([string]$Description) {
 
 function Remove-Logs {
     if (-not (Confirm-DestructiveAction 'remove application log files')) { return }
-    $logDir = Join-Path $RepoRoot 'app\resources\logs'
+    $logDir = Get-ApplicationLogRoot -DataRoot (Get-ApplicationDataRoot)
     $logs = @(Get-ChildItem -LiteralPath $logDir -Filter '*.log' -File -ErrorAction SilentlyContinue |
         Sort-Object @{ Expression = { $_.FullName.ToUpperInvariant() }; Descending = $false })
     $summary = @($logs | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
