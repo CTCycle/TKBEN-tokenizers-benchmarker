@@ -8,7 +8,6 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from server.common.path import ROOT_DIR
 
-
 ###############################################################################
 class _FrozenSettingsModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)

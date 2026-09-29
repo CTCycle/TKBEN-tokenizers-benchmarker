@@ -53,11 +53,9 @@ def _upload_dataset_for_ui_test(
     assert job_status.get("status") == "completed", job_status.get("error")
     return dataset_name
 
-
 ###############################################################################
 def _request_query(url: str) -> dict[str, list[str]]:
     return parse_qs(urlparse(url).query, keep_blank_values=True)
-
 
 ###############################################################################
 def _matches_catalog_request(request, endpoint: str, expected: dict[str, list[str]]) -> bool:
@@ -65,7 +63,6 @@ def _matches_catalog_request(request, endpoint: str, expected: dict[str, list[st
         urlparse(request.url).path.endswith(endpoint)
         and _request_query(request.url) == expected
     )
-
 
 ###############################################################################
 def _expect_catalog_request(
@@ -79,7 +76,6 @@ def _expect_catalog_request(
     ):
         action()
 
-
 ###############################################################################
 def _seed_dataset_catalog_fixture(rows: list[tuple[str, int]]) -> None:
     repository = DatasetRepository()
@@ -87,13 +83,11 @@ def _seed_dataset_catalog_fixture(rows: list[tuple[str, int]]) -> None:
         dataset_id = repository.begin_dataset_import(dataset_name)
         repository.finalize_dataset_import(dataset_id, document_count)
 
-
 ###############################################################################
 def _cleanup_dataset_catalog_fixture(dataset_names: list[str]) -> None:
     repository = DatasetRepository()
     for dataset_name in dataset_names:
         repository.delete_dataset(dataset_name)
-
 
 ###############################################################################
 def _seed_tokenizer_catalog_fixture(
@@ -119,13 +113,11 @@ def _seed_tokenizer_catalog_fixture(
             )
             session.commit()
 
-
 ###############################################################################
 def _cleanup_tokenizer_catalog_fixture(tokenizer_names: list[str]) -> None:
     service = TokenizersService()
     for tokenizer_name in tokenizer_names:
         service.remove_tokenizer(tokenizer_name)
-
 
 ###############################################################################
 def _expected_dataset_names(
@@ -156,7 +148,6 @@ def _expected_dataset_names(
         expected.append(name)
     return sorted(expected)
 
-
 ###############################################################################
 def _expected_tokenizer_names(
     catalog: list[dict],
@@ -185,7 +176,6 @@ def _expected_tokenizer_names(
                 continue
         expected.append(name)
     return sorted(expected)
-
 
 ###############################################################################
 def _assert_rendered_catalog_names(locator, expected: list[str]) -> None:

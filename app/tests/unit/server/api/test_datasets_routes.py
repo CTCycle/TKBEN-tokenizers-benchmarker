@@ -126,10 +126,12 @@ def test_dataset_upload_accepts_limit_and_rejects_one_byte_over(monkeypatch) -> 
 
     from server.api import datasets as datasets_api
 
+    ###############################################################################
     class _DatasetCfg:
         allowed_extensions = (".csv", ".xlsx")
         max_upload_bytes = limit
 
+    ###############################################################################
     class _Settings:
         datasets = _DatasetCfg()
         jobs = type("JobsCfg", (), {"polling_interval": 1.0})()

@@ -21,6 +21,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 QA_DIR = REPO_ROOT / "assets" / "QA"
 
 
+###############################################################################
 def _create_report_in_wizard(
     *,
     api_context: APIRequestContext,
@@ -118,6 +119,7 @@ def _create_report_in_wizard(
     return report
 
 
+###############################################################################
 def _seed_manager_reports(
     source_report: dict[str, Any], stem: str, count: int
 ) -> list[int]:
@@ -148,6 +150,7 @@ def _seed_manager_reports(
     return created
 
 
+###############################################################################
 def _assert_live_announcement_is_visually_hidden(page: Page) -> None:
     announcer = page.locator(".cdk-live-announcer-element")
     expect(announcer).to_have_text("Dialog closed")
@@ -158,6 +161,7 @@ def _assert_live_announcement_is_visually_hidden(page: Page) -> None:
     )
 
 
+###############################################################################
 @pytest.mark.skipif(
     not RUN_BENCHMARKS,
     reason="Set E2E_RUN_BENCHMARKS=1 to enable local benchmark execution.",

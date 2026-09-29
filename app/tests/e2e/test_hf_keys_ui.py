@@ -18,6 +18,7 @@ from server.configurations.settings import build_server_settings
 TEST_KEY_ENV = "TKBEN_TEST_HF_KEY"
 
 
+###############################################################################
 def _read_keys(api_context: APIRequestContext) -> list[dict[str, Any]]:
     response = api_context.get("/api/keys")
     if response.status != 200:
@@ -29,6 +30,7 @@ def _read_keys(api_context: APIRequestContext) -> list[dict[str, Any]]:
     return keys
 
 
+###############################################################################
 def _assert_public_list(
     api_context: APIRequestContext, plaintext_values: tuple[str, ...]
 ) -> list[dict[str, Any]]:
@@ -41,6 +43,7 @@ def _assert_public_list(
     return keys
 
 
+###############################################################################
 def _key_row(panel: Locator, keys: list[dict[str, Any]], key_id: int) -> Locator:
     try:
         index = next(
@@ -53,12 +56,14 @@ def _key_row(panel: Locator, keys: list[dict[str, Any]], key_id: int) -> Locator
     return rows.nth(index)
 
 
+###############################################################################
 def _expect_key_response(response: Any, method: str, path_suffix: str) -> bool:
     return response.request.method == method and urlparse(response.url).path.endswith(
         path_suffix
     )
 
 
+###############################################################################
 def _add_key(page: Page, key_value: str) -> dict[str, Any]:
     key_input = page.get_by_role("textbox", name="Hugging Face key")
     key_input.fill(key_value)
@@ -78,6 +83,7 @@ def _add_key(page: Page, key_value: str) -> dict[str, Any]:
     return item
 
 
+###############################################################################
 def _sqlite_paths() -> tuple[Path, Path, Path]:
     settings = build_server_settings()
     if not settings.database.embedded_database:
@@ -91,6 +97,7 @@ def _sqlite_paths() -> tuple[Path, Path, Path]:
     )
 
 
+###############################################################################
 def _assert_ciphertext(key_id: int, plaintext: str) -> None:
     database_path, material_path, _ = _sqlite_paths()
     if not database_path.is_file():
@@ -110,6 +117,7 @@ def _assert_ciphertext(key_id: int, plaintext: str) -> None:
         pytest.fail("The database contains the plaintext key instead of ciphertext.")
 
 
+###############################################################################
 def _assert_active_count(expected: int) -> None:
     database_path, _, _ = _sqlite_paths()
     with sqlite3.connect(database_path) as connection:
@@ -120,6 +128,7 @@ def _assert_active_count(expected: int) -> None:
         pytest.fail("The SQLite active-key count did not match the expected state.")
 
 
+###############################################################################
 def _assert_database_key_state(
     expected_ids: set[int], expected_active_ids: set[int]
 ) -> None:
@@ -132,6 +141,7 @@ def _assert_database_key_state(
         pytest.fail("The SQLite active-key state did not return to its pre-test state.")
 
 
+###############################################################################
 def _assert_plaintext_absent_from_logs(plaintext_values: tuple[str, ...]) -> None:
     _, _, log_directory = _sqlite_paths()
     if not log_directory.is_dir():
@@ -145,6 +155,7 @@ def _assert_plaintext_absent_from_logs(plaintext_values: tuple[str, ...]) -> Non
             pytest.fail("An application log could not be checked for plaintext keys.")
 
 
+###############################################################################
 def _cleanup_created_keys(
     api_context: APIRequestContext,
     created_ids: set[int],
@@ -169,6 +180,7 @@ def _cleanup_created_keys(
             pytest.fail("Cleanup could not restore the original active key.")
 
 
+###############################################################################
 def _settings_keys_panel(page: Page, base_url: str) -> Locator:
     page.goto(f"{base_url}/settings")
     tab = page.get_by_role("tab", name="Keys")
@@ -179,6 +191,7 @@ def _settings_keys_panel(page: Page, base_url: str) -> Locator:
     return panel
 
 
+###############################################################################
 def test_settings_keys_rendered_lifecycle_and_sqlite_ciphertext(
     page: Page, base_url: str, api_context: APIRequestContext
 ) -> None:
@@ -398,6 +411,7 @@ def test_settings_keys_rendered_lifecycle_and_sqlite_ciphertext(
         _assert_database_key_state(baseline_ids, original_active_ids)
 
 
+###############################################################################
 @pytest.mark.skipif(
     not os.environ.get(TEST_KEY_ENV),
     reason="TKBEN_TEST_HF_KEY is unavailable; supplied-credential coverage was skipped.",

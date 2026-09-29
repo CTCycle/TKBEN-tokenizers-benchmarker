@@ -18,6 +18,7 @@ from server.configurations.settings import ServerSettings
 from server.contracts.settings import RuntimeSettingsPatchRequest
 
 
+###############################################################################
 def _runtime_setting_fields():
     """Derive editable fields and constraints from the public request schema."""
     for group, group_field in RuntimeSettingsPatchRequest.model_fields.items():
@@ -39,6 +40,7 @@ def _runtime_setting_fields():
             )
 
 
+###############################################################################
 def _constraint(field, name: str):
     return next(
         (
@@ -50,6 +52,7 @@ def _constraint(field, name: str):
     )
 
 
+###############################################################################
 def _runtime_setting_spec(group: str, name: str):
     return next(
         spec
@@ -58,6 +61,7 @@ def _runtime_setting_spec(group: str, name: str):
     )
 
 
+###############################################################################
 def _alternate_schema_value(group: str, name: str):
     _group, _name, request_field, settings_field = _runtime_setting_spec(group, name)
     current = settings_field.default
@@ -72,6 +76,7 @@ def _alternate_schema_value(group: str, name: str):
     return candidate
 
 
+###############################################################################
 def _boundary_patch(group: str, name: str, value: object) -> dict[str, object]:
     values = {name: value}
     if group == "tokenizers":
@@ -104,6 +109,7 @@ def _boundary_patch(group: str, name: str, value: object) -> dict[str, object]:
     return {group: values}
 
 
+###############################################################################
 def _invalid_setting_cases():
     cases = []
     for group, name, request_field, settings_field in _runtime_setting_fields():
@@ -126,6 +132,7 @@ def _invalid_setting_cases():
     return cases
 
 
+###############################################################################
 def _numeric_boundary_cases():
     cases = []
     for group, name, request_field, settings_field in _runtime_setting_fields():
@@ -138,6 +145,7 @@ def _numeric_boundary_cases():
     return cases
 
 
+###############################################################################
 def _companion_override(group: str) -> tuple[str, str, object, object]:
     companion_group, companion_name = (
         ("datasets", "histogram_bins")
@@ -149,7 +157,6 @@ def _companion_override(group: str) -> tuple[str, str, object, object]:
     original = field.default
     return companion_group, companion_name, original + 1, original + 2
 
-
 ###############################################################################
 @pytest.fixture
 def settings_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
@@ -158,7 +165,6 @@ def settings_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClie
     monkeypatch.setattr(startup, "_runtime_settings_store", store)
     monkeypatch.setattr(startup, "_default_settings", defaults)
     return TestClient(app)
-
 
 ###############################################################################
 def test_get_settings_returns_only_typed_runtime_fields(
@@ -199,6 +205,7 @@ def test_get_settings_returns_only_typed_runtime_fields(
     assert "paths" not in response.text
 
 
+###############################################################################
 def test_public_runtime_matrix_matches_typed_backend_schema() -> None:
     fields = list(_runtime_setting_fields())
     api_keys = {f"{group}.{name}" for group, name, _, _ in fields}
@@ -210,6 +217,7 @@ def test_public_runtime_matrix_matches_typed_backend_schema() -> None:
         assert _constraint(request_field, "le") == _constraint(settings_field, "le")
 
 
+###############################################################################
 @pytest.mark.parametrize(
     ("group", "name", "value", "boundary"),
     _numeric_boundary_cases(),
@@ -231,6 +239,7 @@ def test_patch_accepts_every_runtime_numeric_boundary(
     assert response.json()["settings"][group][name] == value
 
 
+###############################################################################
 @pytest.mark.parametrize(("group", "name", "value", "case"), _invalid_setting_cases())
 def test_rejected_runtime_setting_update_preserves_persisted_snapshot(
     settings_client: TestClient,
@@ -266,6 +275,7 @@ def test_rejected_runtime_setting_update_preserves_persisted_snapshot(
     assert store.path.read_bytes() == persisted_before
 
 
+###############################################################################
 def test_invalid_tokenizer_relationships_do_not_partially_persist(
     settings_client: TestClient,
 ) -> None:
@@ -325,6 +335,7 @@ def test_invalid_tokenizer_relationships_do_not_partially_persist(
         assert store.path.read_bytes() == persisted_before
 
 
+###############################################################################
 def test_new_workflows_use_saved_runtime_settings(
     settings_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
@@ -429,7 +440,10 @@ def test_new_workflows_use_saved_runtime_settings(
 
     joined_timeouts: list[float | None] = []
 
+    ###############################################################################
     class CapturingThread(threading.Thread):
+
+        # -------------------------------------------------------------------------
         def join(self, timeout: float | None = None) -> None:
             joined_timeouts.append(timeout)
             super().join(timeout=timeout)
@@ -463,10 +477,14 @@ def test_new_workflows_use_saved_runtime_settings(
 
     captured_candidate_limits: list[int] = []
 
+    ###############################################################################
     class FakeHfApi:
+
+        # -------------------------------------------------------------------------
         def __init__(self, token: str | None) -> None:
             del token
 
+        # -------------------------------------------------------------------------
         def list_models(self, **kwargs):
             captured_candidate_limits.append(kwargs["limit"])
             return []
@@ -527,15 +545,20 @@ def test_new_workflows_use_saved_runtime_settings(
     ]
     assert observed_benchmark_batches == [target_benchmark_batch]
 
+    ###############################################################################
     class NewJobManager:
+
+        # -------------------------------------------------------------------------
         def is_job_running(self, _job_type: str | None = None) -> bool:
             return False
 
+        # -------------------------------------------------------------------------
         def start_job(self, job_type, runner, args=(), kwargs=None):
             del runner, args, kwargs
             self.job_type = job_type
             return "settings-workflow-job"
 
+        # -------------------------------------------------------------------------
         def get_job_status(self, _job_id: str):
             return {"job_type": self.job_type, "status": "pending"}
 
@@ -551,7 +574,6 @@ def test_new_workflows_use_saved_runtime_settings(
         ),
     )
     assert job.poll_interval == target_poll_interval
-
 
 ###############################################################################
 def test_patch_updates_multiple_fields_and_keeps_partial_overrides(
@@ -592,7 +614,6 @@ def test_patch_updates_multiple_fields_and_keeps_partial_overrides(
     assert follow_up.json()["settings"]["datasets"]["download_retry_attempts"] == 5
     assert follow_up.json()["settings"]["benchmarks"]["default_max_documents"] == 2500
 
-
 ###############################################################################
 def test_reset_one_and_reset_all_return_defaults(
     settings_client: TestClient,
@@ -626,7 +647,6 @@ def test_reset_one_and_reset_all_return_defaults(
         reset_all.json()["settings"]["datasets"]["max_upload_bytes"] == 25 * 1024 * 1024
     )
 
-
 ###############################################################################
 @pytest.mark.parametrize(
     "payload",
@@ -651,7 +671,6 @@ def test_invalid_unknown_environment_and_incompatible_fields_fail(
     assert response.status_code == 422
     assert settings_client.get("/api/settings").json()["revision"] == 0
 
-
 ###############################################################################
 def test_stale_revision_returns_conflict_without_overwriting(
     settings_client: TestClient,
@@ -674,7 +693,6 @@ def test_stale_revision_returns_conflict_without_overwriting(
         == 2.0
     )
 
-
 ###############################################################################
 def test_persistence_error_keeps_previous_authoritative_state(
     settings_client: TestClient,
@@ -696,7 +714,6 @@ def test_persistence_error_keeps_previous_authoritative_state(
     current = settings_client.get("/api/settings").json()
     assert current["revision"] == original.revision
     assert current["settings"]["datasets"]["histogram_bins"] == 20
-
 
 ###############################################################################
 def test_corrupt_file_warning_is_sanitized_and_cleared_by_save(

@@ -43,6 +43,7 @@ METRIC_KEYS = {
 DOCUMENT_DISTRIBUTION_METRIC_KEY = "doc.tokens_count_distribution"
 
 
+###############################################################################
 def _campaign_tokenizer_json() -> bytes:
     tokenizer = Tokenizer(
         models.WordLevel(
@@ -67,6 +68,7 @@ def _campaign_tokenizer_json() -> bytes:
     return tokenizer.to_str().encode("utf-8")
 
 
+###############################################################################
 def _select_metric(
     dialog: Locator,
     api_context: APIRequestContext,
@@ -106,6 +108,7 @@ def _select_metric(
     dialog.get_by_role("button", name="Next").click()
 
 
+###############################################################################
 def _set_document_limit(dialog: Locator, value: int) -> None:
     slider = dialog.locator("#benchmark-documents")
     slider.evaluate(
@@ -124,6 +127,7 @@ def _set_document_limit(dialog: Locator, value: int) -> None:
     expect(slider).to_have_value(str(value))
 
 
+###############################################################################
 def _start_benchmark(
     *,
     page: Page,
@@ -197,6 +201,7 @@ def _start_benchmark(
     return job_id, payload
 
 
+###############################################################################
 def _wait_for_running_progress(
     api_context: APIRequestContext,
     job_id: str,
@@ -220,6 +225,7 @@ def _wait_for_running_progress(
     )
 
 
+###############################################################################
 @pytest.mark.skipif(
     not RUN_BENCHMARKS,
     reason="Set E2E_RUN_BENCHMARKS=1 to enable local benchmark execution.",

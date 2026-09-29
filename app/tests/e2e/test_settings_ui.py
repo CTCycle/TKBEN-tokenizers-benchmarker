@@ -20,12 +20,14 @@ Number = int | float
 BYTES_PER_MIB = 1024 * 1024
 
 
+###############################################################################
 @dataclass(frozen=True)
 class InvalidSettingCase:
     value: Number
     expected_error: str
 
 
+###############################################################################
 @dataclass(frozen=True)
 class SettingFieldSpec:
     tab: str
@@ -235,6 +237,7 @@ _FIELD_BLUEPRINTS = (
 )
 
 
+###############################################################################
 def _backend_bound(group: str, field: str, attribute: str) -> Number | None:
     field_info = SETTING_MODELS[group].model_fields[field]
     for constraint in field_info.metadata:
@@ -244,22 +247,26 @@ def _backend_bound(group: str, field: str, attribute: str) -> Number | None:
     return None
 
 
+###############################################################################
 def _number_text(value: Number) -> str:
     return f"{value:g}" if isinstance(value, float) else str(value)
 
 
+###############################################################################
 def _below_bound(value: Number) -> Number:
     if isinstance(value, int):
         return value - 1
     return round(value - 0.01, 2)
 
 
+###############################################################################
 def _above_bound(value: Number) -> Number:
     if isinstance(value, int):
         return value + 1
     return round(value + 0.01, 2)
 
 
+###############################################################################
 def _alternate_setting_value(group: str, field: str, current: Number) -> Number:
     minimum = _backend_bound(group, field, "ge")
     maximum = _backend_bound(group, field, "le")
@@ -272,6 +279,7 @@ def _alternate_setting_value(group: str, field: str, current: Number) -> Number:
     return candidate
 
 
+###############################################################################
 def _build_setting_specs() -> tuple[SettingFieldSpec, ...]:
     specs: list[SettingFieldSpec] = []
     for (
@@ -377,21 +385,25 @@ assert set(ALL_RUNTIME_SETTING_KEYS) == {
 }
 
 
+###############################################################################
 def _input_text(value: Number) -> str:
     return _number_text(value)
 
 
+###############################################################################
 def _fill_control(control: Locator, value: Number) -> None:
     control.fill(_input_text(value))
     control.press("Tab")
 
 
+###############################################################################
 def _api_value(spec: SettingFieldSpec, value: Number) -> Number:
     if spec.api_multiplier == 1:
         return value
     return int(value * spec.api_multiplier)
 
 
+###############################################################################
 def _set_tokenizer_values(
     page: Page,
     *,
@@ -405,6 +417,7 @@ def _set_tokenizer_values(
     _fill_control(page.get_by_label("Discovery candidate cap"), candidate_cap)
 
 
+###############################################################################
 def _set_tokenizer_boundary_context(
     page: Page,
     spec: SettingFieldSpec,
@@ -442,6 +455,7 @@ def _set_tokenizer_boundary_context(
         )
 
 
+###############################################################################
 def _set_tokenizer_invalid_context(
     page: Page,
     spec: SettingFieldSpec,
@@ -467,6 +481,7 @@ def _set_tokenizer_invalid_context(
     )
 
 
+###############################################################################
 def _assert_restored_runtime_settings(
     api_context: APIRequestContext,
     original: dict,
@@ -476,7 +491,6 @@ def _assert_restored_runtime_settings(
     restored = response.json()
     assert restored["settings"] == original["settings"]
     assert restored["overridden_keys"] == original.get("overridden_keys", [])
-
 
 ###############################################################################
 def _restore_runtime_settings(
@@ -505,7 +519,6 @@ def _restore_runtime_settings(
 
     restore_response = api_context.patch("/api/settings", data=patch)
     assert restore_response.ok, restore_response.text()
-
 
 ###############################################################################
 def test_settings_all_field_boundaries_and_persistence(
@@ -709,7 +722,6 @@ def test_settings_all_field_boundaries_and_persistence(
     finally:
         _restore_runtime_settings(api_context, original)
         _assert_restored_runtime_settings(api_context, original)
-
 
 ###############################################################################
 def test_settings_page_round_trip_and_runtime_effect(

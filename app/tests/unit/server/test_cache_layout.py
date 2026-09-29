@@ -5,11 +5,9 @@ from pathlib import Path
 
 from server.common.path import CACHE_PATH, DATASETS_PATH, ROOT_DIR, TOKENIZERS_PATH
 
-
 ###############################################################################
 def _read(relative_path: str) -> str:
     return (ROOT_DIR / relative_path).read_text(encoding="utf-8")
-
 
 ###############################################################################
 def test_disposable_cache_root_is_separate_from_persistent_source_data() -> None:
@@ -21,12 +19,10 @@ def test_disposable_cache_root_is_separate_from_persistent_source_data() -> None
     assert CACHE_PATH not in DATASETS_PATH.parents
     assert CACHE_PATH not in TOKENIZERS_PATH.parents
 
-
 ###############################################################################
 def test_pytest_temp_path_uses_the_canonical_root(tmp_path: Path) -> None:
     assert CACHE_PATH in tmp_path.parents
     assert tmp_path.parts[: len(CACHE_PATH.parts)] == CACHE_PATH.parts
-
 
 ###############################################################################
 def test_tooling_configuration_points_to_the_canonical_cache_root() -> None:
@@ -66,7 +62,6 @@ def test_tooling_configuration_points_to_the_canonical_cache_root() -> None:
         "matplotlib",
     ):
         assert f"runtimes/cache/{cache_name}" in ci or cache_name in runner
-
 
 ###############################################################################
 def test_persistent_source_paths_are_not_reclassified_as_cache_constants() -> None:
