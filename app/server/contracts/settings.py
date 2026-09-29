@@ -4,11 +4,9 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, StrictInt, field_validator, model_validator
 
-
 ###############################################################################
 class _SettingsContract(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
-
 
 ###############################################################################
 class _SettingsPatchContract(_SettingsContract):

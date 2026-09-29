@@ -43,6 +43,7 @@ CONFIG_FIELDS = {
 }
 
 
+###############################################################################
 def _tokenizer_json() -> bytes:
     tokenizer = Tokenizer(
         models.WordLevel(
@@ -69,6 +70,7 @@ def _tokenizer_json() -> bytes:
     return tokenizer.to_str().encode("utf-8")
 
 
+###############################################################################
 def _config(
     *,
     documents: int = 60,
@@ -100,18 +102,21 @@ def _config(
     }
 
 
+###############################################################################
 def _total_observed_tokens(report: dict[str, Any], tokenizer_name: str) -> int:
     observations = report.get("raw_observations", {}).get(tokenizer_name, [])
     assert observations and all("token_count" in row for row in observations)
     return sum(int(row["token_count"]) for row in observations)
 
 
+###############################################################################
 def _assert_config_shape(report: dict[str, Any], expected: dict[str, Any]) -> None:
     actual = report.get("config", {})
     assert set(actual) == CONFIG_FIELDS
     assert actual == expected
 
 
+###############################################################################
 @pytest.mark.skipif(
     not RUN_BENCHMARKS,
     reason="Set E2E_RUN_BENCHMARKS=1 to enable benchmark execution.",

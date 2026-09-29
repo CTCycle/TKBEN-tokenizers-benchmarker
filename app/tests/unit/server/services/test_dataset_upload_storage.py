@@ -16,6 +16,7 @@ from server.repositories.schemas.models import Base, Dataset, DatasetDocument
 from server.services.datasets import DatasetService
 
 
+###############################################################################
 def _build_service(monkeypatch: pytest.MonkeyPatch) -> tuple[DatasetService, Engine]:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     event.listen(engine, "connect", SQLiteRepository.enable_foreign_keys)
@@ -33,6 +34,7 @@ def _build_service(monkeypatch: pytest.MonkeyPatch) -> tuple[DatasetService, Eng
     return service, engine
 
 
+###############################################################################
 def test_near_limit_csv_import_persists_large_text(monkeypatch) -> None:
     service, engine = _build_service(monkeypatch)
     try:
@@ -66,6 +68,7 @@ def test_near_limit_csv_import_persists_large_text(monkeypatch) -> None:
         engine.dispose()
 
 
+###############################################################################
 @pytest.mark.parametrize("import_kind", ["upload", "download"])
 def test_sqlite_full_cleans_partial_import_and_retry_succeeds(
     monkeypatch,

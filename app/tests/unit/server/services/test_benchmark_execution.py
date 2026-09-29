@@ -266,7 +266,11 @@ def test_run_benchmarks_parallelism_two_overlaps_tokenizer_workloads(
 
 ###############################################################################
 def test_run_benchmarks_caps_workers_and_preserves_input_order(monkeypatch) -> None:
+
+    ###############################################################################
     class DoubleTokenCountTokenizer(DummyTokenizer):
+
+        # -------------------------------------------------------------------------
         def encode(self, text: str) -> list[int]:
             encoded = super().encode(text)
             return [token_id for token_id in encoded for _ in range(2)]

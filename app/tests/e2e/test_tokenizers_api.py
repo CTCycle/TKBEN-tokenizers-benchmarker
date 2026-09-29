@@ -47,7 +47,6 @@ RUN_TOKENIZER_UI_LIFECYCLE = os.getenv(
 TOKENIZER_RESTART_EXPECTED_NAME = os.getenv("E2E_TOKENIZER_EXPECTED_NAME", "").strip()
 TOKENIZER_RESTART_STEM = "qa_t2_04_restart_long_identifier_0123456789abcdef"
 
-
 ###############################################################################
 def _build_wordlevel_tokenizer_json(
     vocabulary_size: int = 3,
@@ -74,6 +73,7 @@ def _build_wordlevel_tokenizer_json(
     return str(payload).encode("utf-8")
 
 
+###############################################################################
 def _assert_tokenizer_artifact_matches_vocabulary(
     artifact_path: Path,
     expected_payload: bytes,
@@ -81,7 +81,6 @@ def _assert_tokenizer_artifact_matches_vocabulary(
     stored = json.loads(artifact_path.read_text(encoding="utf-8"))
     expected = json.loads(expected_payload)
     assert stored["model"]["vocab"] == expected["model"]["vocab"]
-
 
 ###############################################################################
 def test_get_tokenizer_settings(api_context: APIRequestContext) -> None:
@@ -94,7 +93,6 @@ def test_get_tokenizer_settings(api_context: APIRequestContext) -> None:
     assert "max_discovery_candidates" in data
     assert "metadata_candidate_multiplier" in data
     assert 1 <= data["default_discovery_limit"] <= data["max_discovery_limit"]
-
 
 ###############################################################################
 @pytest.mark.skipif(
@@ -118,7 +116,6 @@ def test_discover_tokenizers_returns_bounded_structured_catalog(
     )
     assert all("vocabulary_size" in item for item in items)
 
-
 ###############################################################################
 @pytest.mark.skipif(
     not RUN_HF_DISCOVERY, reason="Set E2E_RUN_HF_DISCOVERY=1 to enable."
@@ -131,7 +128,6 @@ def test_discover_tokenizers_supports_empty_result(
     )
     assert response.ok
     assert response.json().get("items") == []
-
 
 ###############################################################################
 @pytest.fixture
@@ -216,6 +212,7 @@ def active_hf_test_key(api_context: APIRequestContext) -> Generator[int, None, N
             assert after_cleanup.json().get("keys", []) == []
 
 
+###############################################################################
 def _run_tokenizer_job(
     api_context: APIRequestContext,
     job_waiter,
@@ -238,6 +235,7 @@ def _run_tokenizer_job(
     return result
 
 
+###############################################################################
 def _download_hf_tokenizer(
     api_context: APIRequestContext,
     job_waiter,
@@ -255,6 +253,7 @@ def _download_hf_tokenizer(
     return succeeded and result.get("failed_count", 0) == 0
 
 
+###############################################################################
 def _delete_hf_tokenizer(
     api_context: APIRequestContext, tokenizer_id: str, *, may_be_absent: bool
 ) -> None:
@@ -268,6 +267,7 @@ def _delete_hf_tokenizer(
     )
 
 
+###############################################################################
 def _try_download_hf_tokenizer(
     api_context: APIRequestContext,
     job_waiter,
@@ -294,6 +294,7 @@ def _try_download_hf_tokenizer(
     return False, "provider_denied_or_download_failed"
 
 
+###############################################################################
 def _generate_hf_tokenizer_report(
     api_context: APIRequestContext,
     job_waiter,
@@ -333,6 +334,7 @@ def _generate_hf_tokenizer_report(
     return report_id, vocabulary_size
 
 
+###############################################################################
 def _assert_hf_report_renders(
     page: Page,
     base_url: str,
@@ -409,6 +411,7 @@ def _assert_hf_report_renders(
     assert browser_http_errors == [], browser_http_errors
 
 
+###############################################################################
 @pytest.mark.skipif(
     not RUN_HF_PROVIDER_FLOW,
     reason="Set E2E_RUN_HF_PROVIDER_FLOW=1 to enable live provider flows.",
@@ -444,6 +447,7 @@ def test_hf_active_credential_authenticates_with_hub(
     )
 
 
+###############################################################################
 @pytest.mark.skipif(
     not RUN_HF_PROVIDER_FLOW,
     reason="Set E2E_RUN_HF_PROVIDER_FLOW=1 to enable live provider flows.",
@@ -512,6 +516,7 @@ def test_hf_public_tokenizer_download_report_flow(
     )
 
 
+###############################################################################
 @pytest.mark.skipif(
     not RUN_HF_PROVIDER_FLOW,
     reason="Set E2E_RUN_HF_PROVIDER_FLOW=1 to enable live provider flows.",
@@ -599,7 +604,6 @@ def test_hf_gated_tokenizer_download_report_flow(
         "tokenizer_cleanup=pass"
     )
 
-
 ###############################################################################
 def test_upload_rejects_invalid_extension(api_context: APIRequestContext) -> None:
     """POST /api/tokenizers/upload should reject non-json files."""
@@ -617,7 +621,6 @@ def test_upload_rejects_invalid_extension(api_context: APIRequestContext) -> Non
     data = response.json()
     assert "File must be a .json file" in data.get("detail", "")
 
-
 ###############################################################################
 def test_upload_rejects_invalid_json(api_context: APIRequestContext) -> None:
     """POST /api/tokenizers/upload should reject invalid tokenizer JSON."""
@@ -634,7 +637,6 @@ def test_upload_rejects_invalid_json(api_context: APIRequestContext) -> None:
     assert response.status == 400
     data = response.json()
     assert "Failed to load tokenizer" in data.get("detail", "")
-
 
 ###############################################################################
 def test_upload_accepts_valid_tokenizer_json(api_context: APIRequestContext) -> None:
@@ -663,7 +665,6 @@ def test_upload_accepts_valid_tokenizer_json(api_context: APIRequestContext) -> 
                 f"/api/tokenizers/delete?tokenizer_name={tokenizer_name}"
             )
             assert deleted.status == 200, deleted.text()
-
 
 ###############################################################################
 def test_custom_tokenizer_can_be_deleted_and_repeated_delete_is_not_found(
@@ -707,7 +708,6 @@ def test_custom_tokenizer_can_be_deleted_and_repeated_delete_is_not_found(
         f"/api/tokenizers/delete?tokenizer_name={tokenizer_name}"
     )
     assert repeated.status == 404
-
 
 ###############################################################################
 @pytest.mark.skipif(
@@ -940,7 +940,6 @@ def test_tokenizer_report_flow_supports_paged_vocabulary(
             ).status
             == 404
         )
-
 
 ###############################################################################
 @pytest.mark.skipif(
@@ -1203,7 +1202,6 @@ def test_custom_tokenizer_ui_lifecycle_and_responsive_states(
             assert deleted.status in (200, 404), deleted.text()
 
     page.set_viewport_size({"width": 1280, "height": 720})
-
 
 ###############################################################################
 @pytest.mark.skipif(

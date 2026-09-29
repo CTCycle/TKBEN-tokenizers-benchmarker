@@ -8,6 +8,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
 LAUNCHER = (REPOSITORY_ROOT / "start_on_windows.ps1").read_text(encoding="utf-8")
 
 
+###############################################################################
 def _section(function_name: str, next_function_name: str | None = None) -> str:
     start = LAUNCHER.index(f"function {function_name}")
     if next_function_name is None:
@@ -16,10 +17,12 @@ def _section(function_name: str, next_function_name: str | None = None) -> str:
     return LAUNCHER[start:end]
 
 
+###############################################################################
 def test_launcher_has_no_always_rebuild_switch() -> None:
     assert "ALWAYS_REBUILD" not in LAUNCHER
 
 
+###############################################################################
 def test_launcher_uses_repository_data_as_the_default_data_root() -> None:
     data_root = _section("Get-ApplicationDataRoot", "Get-ApplicationLogRoot")
 
@@ -27,10 +30,12 @@ def test_launcher_uses_repository_data_as_the_default_data_root() -> None:
     assert "Join-Path $AppDir 'data'" not in data_root
 
 
+###############################################################################
 def test_launcher_log_cleanup_respects_the_configured_log_root() -> None:
     assert "Get-ApplicationLogRoot -DataRoot (Get-ApplicationDataRoot)" in LAUNCHER
 
 
+###############################################################################
 def test_launcher_pins_and_checks_the_uv_runtime_version() -> None:
     install_runtimes = _section("Install-Runtimes", "Sync-BackendDependencies")
     readiness = _section("Test-BackendDependenciesReady", "Test-FrontendBuildReady")
@@ -43,6 +48,7 @@ def test_launcher_pins_and_checks_the_uv_runtime_version() -> None:
     assert "Escape($UvVersion)" in readiness
 
 
+###############################################################################
 def test_launch_guards_ports_before_starting_services() -> None:
     launch = _section("Launch-Application", "Install-Dependencies")
 
@@ -50,6 +56,7 @@ def test_launch_guards_ports_before_starting_services() -> None:
     assert launch.count("Confirm-ReleaseLaunchPorts") == 2
 
 
+###############################################################################
 def test_normal_launch_and_frontend_sync_do_not_kill_port_listeners() -> None:
     launch = _section("Launch-Application", "Install-Dependencies")
     frontend_sync = _section("Sync-Frontend", "Test-BackendDependenciesReady")
@@ -59,6 +66,7 @@ def test_normal_launch_and_frontend_sync_do_not_kill_port_listeners() -> None:
     assert "Stop-PortListeners" not in frontend_sync
 
 
+###############################################################################
 def test_port_release_uses_one_explicit_process_termination_without_tree_kill() -> None:
     release = _section("Confirm-ReleaseLaunchPorts", "Stop-ProcessTree")
 
@@ -70,6 +78,7 @@ def test_port_release_uses_one_explicit_process_termination_without_tree_kill() 
     assert "taskkill.exe" not in release
 
 
+###############################################################################
 def test_port_release_captures_termination_errors_and_rechecks_listeners() -> None:
     release = _section("Confirm-ReleaseLaunchPorts", "Stop-ProcessTree")
 
@@ -93,6 +102,7 @@ def test_port_release_captures_termination_errors_and_rechecks_listeners() -> No
     assert "No service was started." in release
 
 
+###############################################################################
 def test_launch_starts_services_only_after_both_port_checks_succeed() -> None:
     launch = _section("Launch-Application", "Install-Dependencies")
 
@@ -105,6 +115,7 @@ def test_launch_starts_services_only_after_both_port_checks_succeed() -> None:
     assert "taskkill.exe" not in launch
 
 
+###############################################################################
 def test_backend_repair_is_not_coupled_to_frontend_build() -> None:
     launch = _section("Launch-Application", "Install-Dependencies")
     backend_sync = _section("Sync-BackendDependencies", "Sync-Dependencies")
@@ -114,6 +125,7 @@ def test_backend_repair_is_not_coupled_to_frontend_build() -> None:
     assert "Stop-ApplicationProcesses" not in backend_sync
 
 
+###############################################################################
 def test_explicit_install_and_rebuild_still_build_frontend() -> None:
     install = _section("Install-Dependencies", "Rebuild-Frontend")
     rebuild = _section("Rebuild-Frontend", "Read-InstallationType")
@@ -122,6 +134,7 @@ def test_explicit_install_and_rebuild_still_build_frontend() -> None:
     assert "Sync-Frontend -BuildFrontend" in rebuild
 
 
+###############################################################################
 def test_normal_launch_build_is_gated_by_frontend_build_readiness() -> None:
     launch = _section("Launch-Application", "Install-Dependencies")
 
@@ -129,6 +142,7 @@ def test_normal_launch_build_is_gated_by_frontend_build_readiness() -> None:
     assert "Sync-Frontend -BuildFrontend -UseCachedFrontendDependencies" in launch
 
 
+###############################################################################
 def test_production_fingerprint_uses_only_confirmed_build_inputs() -> None:
     inputs = _section("Get-FrontendBuildInputFiles", "Get-FrontendSourceFingerprint")
 
@@ -145,6 +159,7 @@ def test_production_fingerprint_uses_only_confirmed_build_inputs() -> None:
     assert "Get-ChildItem -LiteralPath (Join-Path $ClientDir 'public')" in inputs
 
 
+###############################################################################
 def test_dependency_stamp_and_locked_backend_sync_are_present() -> None:
     backend_sync = _section("Sync-BackendDependencies", "Sync-Dependencies")
 
@@ -154,6 +169,7 @@ def test_dependency_stamp_and_locked_backend_sync_are_present() -> None:
     assert "installationProfile" in LAUNCHER
 
 
+###############################################################################
 def test_public_operations_initialize_environment_once() -> None:
     launch = _section("Launch-Application", "Install-Dependencies")
     sync = _section("Sync-Dependencies", "Sync-Frontend")
@@ -164,6 +180,7 @@ def test_public_operations_initialize_environment_once() -> None:
     assert "Import-Environment" not in frontend
 
 
+###############################################################################
 def test_tracked_actions_invoke_scriptblocks_without_method_stream_conversion() -> None:
     tracked = _section("Invoke-TrackedLauncherAction", "Ensure-Directory")
 
@@ -171,6 +188,7 @@ def test_tracked_actions_invoke_scriptblocks_without_method_stream_conversion() 
     assert "$Action.Invoke()" not in tracked
 
 
+###############################################################################
 def test_launcher_maintenance_menu_routes_are_all_dispatched() -> None:
     menu = _section("Get-LauncherMenuEntries", "Write-MenuItem")
     dispatch = _section("Show-Menu")
@@ -196,6 +214,7 @@ def test_launcher_maintenance_menu_routes_are_all_dispatched() -> None:
     assert dispatch_keys == menu_keys - {"Exit"}
 
 
+###############################################################################
 def test_launcher_install_and_destructive_routes_keep_explicit_guards() -> None:
     profiles = _section("Read-InstallationType", "Invoke-DatabaseInitialization")
     confirmation = _section("Confirm-DestructiveAction", "Remove-Logs")
@@ -212,6 +231,7 @@ def test_launcher_install_and_destructive_routes_keep_explicit_guards() -> None:
     assert "Confirm-DestructiveAction" in dispatch
 
 
+###############################################################################
 def test_update_route_fails_closed_on_develop_without_switching_branches() -> None:
     update = _section("Update-Application", "Check-ForUpdates")
 
@@ -225,6 +245,7 @@ def test_update_route_fails_closed_on_develop_without_switching_branches() -> No
     )
 
 
+###############################################################################
 def test_killall_recognizes_quoted_npm_preview_processes() -> None:
     process_scan = _section("Get-ApplicationProcessIds", "Stop-ApplicationProcesses")
     match = re.search(
@@ -244,6 +265,7 @@ def test_killall_recognizes_quoted_npm_preview_processes() -> None:
     )
 
 
+###############################################################################
 def test_killall_stops_only_outermost_matching_process_trees() -> None:
     process_scan = _section("Get-ApplicationProcessIds", "Stop-ApplicationProcesses")
 

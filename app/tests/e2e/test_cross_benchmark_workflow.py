@@ -19,6 +19,7 @@ SCREENSHOT_PATH = (
 )
 
 
+###############################################################################
 @pytest.mark.skipif(
     not RUN_BENCHMARKS,
     reason="Set E2E_RUN_BENCHMARKS=1 to enable local benchmark execution.",
