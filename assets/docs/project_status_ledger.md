@@ -1,5 +1,5 @@
 # Project Status Ledger
-Last updated: 2026-09-26
+Last updated: 2026-10-01
 
 This is the canonical source of truth for current implementation status,
 validation gates, unresolved limitations, and validation history. The
@@ -75,6 +75,7 @@ recorded here rather than in a copied execution log.
 | V-20260923 | Dataset metrics and quality; tokenizer vocabulary; Cross Benchmark wizard; benchmark campaign; report workflows; dashboard/PDF exports; cancellation | T2-02, T2-03, T2-05 through T2-07, T3-01, T3-03 through T3-05, T5-03, T5-04 | PASS for the six metric families, controlled quality/structure/compression data, 1,207-entry vocabulary paging, populated wizard/report workflows, report management and customization, PDF smoke, and 10,000-document progress/cancel/rerun behavior. Performance samples remain host-specific. |
 | V-20260924 | Dataset/Settings matrix; public dataset download; tokenizer lifecycle and responsive states; upload storage; parallelism closure | T2-01, T2-04, T2-05, T3-02, T4-02, T5-02, T5-03 | PASS for CSV/XLSX boundaries, public Wikitext import/restart cleanup, custom-tokenizer replacement/restart/report/delete, four-viewport Dataset/Settings/Tokenizers checks, and actual tokenizer worker overlap at parallelism 2. Controlled `SQLITE_FULL` cleanup/retry passed; physical filesystem exhaustion remained untested. |
 | V-20260925 | Open validation debt; PostgreSQL runtime handoff; validation-gate recheck; current-candidate/release closure | T3-05, T4-01, T4-03, T4-04, T5-06 | PASS for all eight supported benchmark PDF chart forms, the five-page 1,207-entry tokenizer PDF, public HF flow, isolated PostgreSQL runtime equivalence, the current local suite, and release v4.5.0. T4-03 gated HF access remains BLOCKED and the physical low-disk scenario remains PARTIAL/DEFERRED. |
+| V-20260928 to V-20260929 | Post-release data-root refactor; launcher bytecode-cache hardening | T0-02 (delta), T0-01 (recheck baseline) | The post-release `resources`-to-`data` data-root rename, bytecode-cache clearing fix, and launcher contract expansion (19 to 21 checks) are recorded here as code and documentation deltas after the v4.5.0 tag; the launcher contract and data-path assertions reflect the new layout at the current checkout. No fresh validation run beyond the tracked contract suite has been executed for this delta; the recorded release gate remains at `f8dee1d`. |
 
 ### Reconciled status transitions
 
@@ -118,7 +119,7 @@ recorded here rather than in a copied execution log.
 | --- | --- | --- | --- |
 | architecture.canonical-ownership | VALIDATED | Architecture boundary tests and current ownership docs agree; remaining canonicalization work is ISSUE-003. | 2026-09-20 |
 | runtime.startup.local-webapp | VALIDATED | Windows bootstrap and Linux diagnostic startup reached health, proxy, route, and restart-recovery checks. Populated dashboards and responsive coverage are separate gates. | 2026-09-22 |
-| runtime.windows-launcher | VALIDATED | Clean/warm bootstrap, stamps, build repair, conflicts, maintenance menu, cleanup, quoted-process handling, and localized denied termination were exercised. | 2026-09-22 |
+| runtime.windows-launcher | VALIDATED | Clean/warm bootstrap, stamps, build repair, conflicts, maintenance menu, cleanup, quoted-process handling, and localized denied termination were exercised. The 2026-09-28 post-release bytecode-cache clearing fix and the repository-`data` default-root rename changed launcher behavior after the recorded validation; the expanded 21/21 launcher contract suite now asserts the new layout. | 2026-09-22 |
 | configuration.runtime-settings | WORKING | All 16 settings, bounds, sparse persistence, restart, conflict, reset, and new-work effects passed; the component deliberately retains broader WORKING scope. | 2026-09-22 |
 | runtime.managed-job-lifecycle | VALIDATED | Job persistence, terminal failure on restart, cancellation conflicts, and retained completed data passed. Resumption/checkpointing is intentionally unsupported. | 2026-09-22 |
 | backend.api-contracts | VALIDATED | Route/unit/OpenAPI coverage and restart-addressable job behavior passed. Provider-dependent routes remain separately bounded. | 2026-09-25 |
@@ -158,7 +159,7 @@ The gate table records the latest known state of every stable validation ID.
 | Gate | Status | Latest durable outcome or remaining action |
 | --- | --- | --- |
 | T0-01 | PASS | Revision/quality baseline and release-target assumptions were accepted and rechecked in the current local campaign. |
-| T0-02 | PASS | At `e864197c`, clean/warm bootstrap, malformed/missing stamps, stale build, repairs, invalid ports, redirected conflicts, reacquisition race, and the real localized `Accesso negato` termination-denial branch passed; launcher contract suite 19/19. |
+| T0-02 | PASS | At `e864197c`, clean/warm bootstrap, malformed/missing stamps, stale build, repairs, invalid ports, redirected conflicts, reacquisition race, and the real localized `Accesso negato` termination-denial branch passed; the launcher contract suite then stood at 19/19. The post-release data-root refactor expanded the contract suite to 21/21 at the current checkout (`a84b9c1`), adding repository-`data` default-root and log-root assertions; the release-tagged evidence remains the 19/19 record. |
 | T0-03 | PASS | All 13 maintenance-menu routes, install profiles, expected update refusal, destructive decline/approval, cleanup, uninstall, and Kill All passed. |
 | T1-01 | PASS | Startup E2E 2/2 and shell recovery after persistence restart passed. |
 | T1-02 | PASS | At `41f265a`, all 16 settings, 38 invalid cases, 25 valid boundaries, decimal constraints, tokenizer relations, sparse persistence, restart, 409 conflict, reset, and downstream effects passed. |
@@ -201,14 +202,18 @@ The gate table records the latest known state of every stable validation ID.
 
 ## Release gate
 
-The current release commit is
+The current published release commit is
 `f8dee1da9084138bd52f3d08437269d3821ba5d6`. Local release checks and hosted
 CI run [36158666979](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36158666979)
-passed for that exact SHA. Remote `main` and `develop` were synchronized,
-annotated tag `v4.5.0` points to the release commit, and the [public
-source-only release](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases/tag/v4.5.0)
-was published. Release readiness is VALIDATED, with T4-03 and physical
-low-disk recovery remaining independently bounded as recorded above.
+passed for that exact SHA. Annotated tag `v4.5.0` points to the release commit,
+and the [public source-only release](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases/tag/v4.5.0)
+was published. `main` and `develop` were synchronized at that release; the
+branches have since advanced past the tag with the post-release data-root
+rename, bytecode-cache hardening, and formatting commits (currently
+`a84b9c1`). Release readiness for the tag is VALIDATED, with T4-03 and
+physical low-disk recovery remaining independently bounded as recorded above;
+the post-release delta is tracked as a recorded code/documentation delta and
+is not part of the tagged release claim.
 
 ## Resolved and historical findings
 

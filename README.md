@@ -1,5 +1,5 @@
 # TKBEN Tokenizer Benchmarker
-Last updated: 2026-09-28
+Last updated: 2026-10-01
 
 [![Release](https://img.shields.io/github/v/release/CTCycle/TKBEN-tokenizers-benchmarker?display_name=tag)](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.14-3776AB?logo=python&logoColor=white)
@@ -128,7 +128,7 @@ Long downloads, validation runs, and benchmarks are handled as background jobs. 
 Use the **Dataset** page to build a local, reusable text collection.
 
 - Filter the catalog by name, source, or document count.
-- Use **Add dataset** to choose a predefined source, enter a Hugging Face dataset name and optional configuration, or upload a local `.csv`, `.xls`, or `.xlsx` file.
+- Use **Add dataset** to choose a predefined source, enter a Hugging Face dataset name and optional configuration, or upload a local `.csv` or `.xlsx` file.
 - For local files, keep a clear column containing the document text and remove empty or non-text rows where possible. The application looks for common text fields when importing data.
 - Select a dataset row to see its document count and available actions.
 - In the validation wizard, choose the metric groups you need, then choose either a fraction of the dataset or a document count. Optional length limits and empty-document exclusion help focus the analysis.

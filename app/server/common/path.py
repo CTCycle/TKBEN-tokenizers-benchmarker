@@ -12,7 +12,6 @@ CLIENT_DIR = APP_DIR / "client"
 TESTS_DIR = APP_DIR / "tests"
 ASSETS_DIR = ROOT_DIR / "assets"
 FIGURES_DIR = ASSETS_DIR / "figures"
-QA_DIR = ROOT_DIR / "QA"
 SETTINGS_DIR = (ROOT_DIR / "settings").resolve()
 CACHE_PATH = (ROOT_DIR / "runtimes" / "cache").resolve()
 
@@ -47,7 +46,6 @@ __all__ = [
     "ENV_FILE_PATH",
     "FIGURES_DIR",
     "LOGS_PATH",
-    "QA_DIR",
     "DATA_PATH",
     "ROOT_DIR",
     "SERVER_DIR",
