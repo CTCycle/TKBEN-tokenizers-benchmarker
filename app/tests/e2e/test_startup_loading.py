@@ -37,9 +37,11 @@ def test_startup_screen_recovers_after_transient_backend_unavailability(
     expect(page.locator(".startup-token")).to_have_count(6)
 
     flow_box = page.locator(".startup-tokenizer-flow").bounding_box()
+    viewport = page.viewport_size
     assert flow_box is not None
+    assert viewport is not None
     assert flow_box["width"] <= 681
-    assert flow_box["width"] < page.viewport_size["width"]
+    assert flow_box["width"] < viewport["width"]
 
     expect(page.get_by_text("Dataset Usage")).to_be_visible(timeout=10_000)
     expect(page.locator(".startup-screen")).to_have_count(0)
