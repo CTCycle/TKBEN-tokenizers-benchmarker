@@ -1,5 +1,5 @@
 # Benchmark Contract
-Last updated: 2026-09-24
+Last updated: 2026-10-01
 
 ## Benchmark Request Notes
 Benchmark run request config includes tokenizer behavior flags and per-document controls:
@@ -69,10 +69,12 @@ sources and rejects incompatible rows explicitly. List queries project summary
 columns without loading the detail JSON.
 
 Tokenizer rows persist their source (`huggingface` or `custom`). A custom
-tokenizer also requires the canonical `tokenizer.json` artifact under its cache
-directory. Upload, restart, catalog, benchmark admission, and report loading
-all use this database-plus-artifact state; there is no process-local custom
-tokenizer registry.
+tokenizer also requires the canonical `tokenizer.json` artifact under
+`<TKBEN_DATA_DIR>/sources/tokenizers`, which is persistent application data and
+is not part of the disposable `runtimes/cache` hierarchy. Upload, restart,
+catalog, benchmark admission, and report loading all use this
+database-plus-artifact state; there is no process-local custom tokenizer
+registry.
 
 ## Fidelity Semantics
 - `fid.exact_round_trip_rate` stores decode/re-encode token ID stability, not direct text preservation
