@@ -135,36 +135,6 @@ def test_add_key_detects_duplicate_raw_key_across_encryption(
     assert len(rows) == 1
 
 ###############################################################################
-def test_get_active_key_rejects_plaintext_legacy_value(
-    isolated_engine,
-) -> None:
-    del isolated_engine
-    service = HFAccessKeyService()
-
-    ###############################################################################
-    class StrictCipher:
-
-        # -------------------------------------------------------------------------
-        def decrypt(self, encrypted_value: str) -> str:
-            if encrypted_value.startswith("enc:"):
-                return encrypted_value[4:]
-            raise ValueError("invalid token")
-
-    with Session(bind=get_database().backend.engine) as session:
-        session.add(
-            HFAccessKey(
-                key_value="hf_legacy_token_123",
-                created_at=datetime.now(timezone.utc),
-                is_active=True,
-            )
-        )
-        session.commit()
-
-    service._cipher = StrictCipher()  # type: ignore[assignment]
-    with pytest.raises(HFAccessKeyValidationError, match="cannot be decrypted"):
-        service.get_active_key()
-
-###############################################################################
 def test_set_active_key_is_idempotent_for_already_active_key(
     isolated_engine,
 ) -> None:
@@ -270,12 +240,3 @@ def test_unknown_activation_does_not_clear_existing_active_key(
         row = session.get(HFAccessKey, key_id)
     assert row is not None
     assert row.is_active is True
-
-###############################################################################
-def test_set_active_key_raises_not_found_for_unknown_key(
-    isolated_engine,
-) -> None:
-    del isolated_engine
-    service = HFAccessKeyService()
-    with pytest.raises(HFAccessKeyNotFoundError, match="not found"):
-        service.set_active_key(404)

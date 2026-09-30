@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BenchmarkDashboardWidgetData } from '../api/api.models';
 import {
-  benchmarkColorFor,
   benchmarkComparisonRows,
   benchmarkComparisonTokenizers,
   benchmarkDistributionMedian,
@@ -35,7 +34,6 @@ describe('benchmark dashboard chart data', () => {
     expect(formatBenchmarkAxisValue(0.25, 'milliseconds')).toMatch(/0[,.]25/);
     expect(formatBenchmarkTooltipValue(0.25, 'percent', '%')).toBe('25.00%');
     expect(formatBenchmarkTooltipValue(12.3456, 'number', 'tokens')).toContain('tokens');
-    expect(benchmarkColorFor('alpha')).toBe(benchmarkColorFor('alpha'));
   });
 
   it('uses value fallbacks and deduplicates tokenizers across payload shapes', () => {

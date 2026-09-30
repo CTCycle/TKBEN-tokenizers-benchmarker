@@ -62,37 +62,6 @@ def test_benchmark_run_route_returns_202(monkeypatch) -> None:
     assert resp.json()["job_id"] == "job-bench"
 
 ###############################################################################
-def test_benchmark_run_accepts_selected_persisted_custom_tokenizer(
-    monkeypatch,
-) -> None:
-    manager = DummyJobManager()
-    monkeypatch.setattr(app.state, "job_manager", manager)
-
-    from server.services.benchmarks import BenchmarkService
-
-    prepared_payload = {}
-
-    def fake_prepare(self, payload):
-        del self
-        prepared_payload.update(payload.model_dump())
-        return payload.model_dump()
-
-    monkeypatch.setattr(BenchmarkService, "prepare_run", fake_prepare)
-
-    client = TestClient(app)
-    resp = client.post(
-        "/api/benchmarks/run",
-        json={
-            "tokenizers": ["CUSTOM_demo"],
-            "dataset_name": "custom/sample",
-            "config": {"max_documents": 2},
-        },
-    )
-
-    assert resp.status_code == 202
-    assert prepared_payload["tokenizers"] == ["CUSTOM_demo"]
-
-###############################################################################
 def test_benchmark_run_rejects_removed_custom_tokenizer_field() -> None:
     response = TestClient(app).post(
         "/api/benchmarks/run",

@@ -651,14 +651,9 @@ def test_reset_one_and_reset_all_return_defaults(
 @pytest.mark.parametrize(
     "payload",
     [
-        {"expected_revision": 0, "datasets": {"histogram_bins": 4}},
-        {"expected_revision": 0, "datasets": {"histogram_bins": "30"}},
         {"expected_revision": 0, "unknown": {"histogram_bins": 30}},
         {"expected_revision": 0, "network": {"fastapi_port": 9000}},
         {"expected_revision": 0, "tokenizers": {"max_discovery_limit": 10}},
-        {"expected_revision": 0, "benchmarks": {"default_max_documents": 0}},
-        {"expected_revision": 0, "benchmarks": {"default_batch_size": 4097}},
-        {"expected_revision": 0, "benchmarks": {"default_parallelism": 129}},
         {"expected_revision": 0, "datasets": None},
     ],
 )

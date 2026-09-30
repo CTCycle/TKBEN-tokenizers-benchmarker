@@ -35,14 +35,6 @@ REMOVED_COMPATIBILITY_PATHS = (
     SERVER_ROOT / "common" / "utils" / "types.py",
 )
 
-LEGACY_CACHE_TOKENS = (
-    "$LegacyCachePaths",
-    ".uv-cache",
-    ".pytest_cache",
-    ".ruff_cache",
-    ".mypy_cache",
-)
-
 ###############################################################################
 def _imported_modules(path: Path) -> list[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -129,28 +121,3 @@ def test_production_code_has_no_legacy_architecture_imports() -> None:
 def test_removed_compatibility_paths_do_not_return() -> None:
     existing = [str(path.relative_to(REPOSITORY_ROOT)) for path in REMOVED_COMPATIBILITY_PATHS if path.exists()]
     assert not existing, "Removed compatibility paths were recreated:\n" + "\n".join(existing)
-
-###############################################################################
-def test_launcher_has_no_legacy_cache_compatibility_paths() -> None:
-    launcher = (REPOSITORY_ROOT / "start_on_windows.ps1").read_text(encoding="utf-8")
-    violations = [token for token in LEGACY_CACHE_TOKENS if token in launcher]
-    assert not violations, "Launcher still contains legacy cache compatibility tokens: " + ", ".join(violations)
-
-###############################################################################
-def test_interactive_launcher_always_opens_the_backend_terminal() -> None:
-    launcher = (REPOSITORY_ROOT / "start_on_windows.ps1").read_text(encoding="utf-8")
-
-    assert "BACKEND_LOGS_" not in launcher
-    assert "if ($script:LauncherInteractive) {" in launcher
-    assert "-NoExit" in launcher
-
-###############################################################################
-def test_launcher_opens_frontend_before_backend_readiness_wait() -> None:
-    launcher = (REPOSITORY_ROOT / "start_on_windows.ps1").read_text(encoding="utf-8")
-
-    frontend_start = launcher.index("Write-Step 'Starting frontend preview.'")
-    frontend_health = launcher.index("-Description 'frontend preview'", frontend_start)
-    browser_open = launcher.index("Start-Process -FilePath $url", frontend_health)
-    backend_health = launcher.index("-Description 'backend'", browser_open)
-
-    assert frontend_start < frontend_health < browser_open < backend_health

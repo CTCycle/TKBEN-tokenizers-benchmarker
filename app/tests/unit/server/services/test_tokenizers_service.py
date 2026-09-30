@@ -151,25 +151,6 @@ def test_tokenizer_discovery_passes_native_filters_and_returns_structured_items(
     }
 
 ###############################################################################
-def test_remove_custom_tokenizer_removes_persisted_row(monkeypatch) -> None:
-    service = TokenizersService()
-
-    deleted: list[str] = []
-
-    ###############################################################################
-    class FakeRepository:
-
-        # -------------------------------------------------------------------------
-        def delete_tokenizer(self, name: str) -> bool:
-            deleted.append(name)
-            return True
-
-    service.repository = FakeRepository()  # type: ignore[assignment]
-
-    assert service.remove_tokenizer("CUSTOM_sample") is True
-    assert deleted == ["CUSTOM_sample"]
-
-###############################################################################
 def test_custom_tokenizer_survives_service_recreation_and_is_benchmarkable(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

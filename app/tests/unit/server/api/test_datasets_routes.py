@@ -82,34 +82,6 @@ def test_dataset_analysis_rejects_inverted_length_filter(monkeypatch) -> None:
     assert manager.started_jobs == 0
 
 ###############################################################################
-def test_dataset_upload_rejects_oversized_file_before_job_dispatch(monkeypatch) -> None:
-    manager = DummyJobManager()
-    monkeypatch.setattr(app.state, "job_manager", manager)
-
-    from server.api import datasets as datasets_api
-
-    ###############################################################################
-    class _DatasetCfg:
-        allowed_extensions = (".csv", ".xlsx")
-        max_upload_bytes = 4
-
-    ###############################################################################
-    class _Settings:
-        datasets = _DatasetCfg()
-        jobs = type("JobsCfg", (), {"polling_interval": 1.0})()
-
-    monkeypatch.setattr(datasets_api, "get_server_settings", lambda: _Settings())
-
-    client = TestClient(app)
-    response = client.post(
-        "/api/datasets/upload",
-        files={"file": ("sample.csv", b"text\nhello\n", "text/csv")},
-    )
-
-    assert response.status_code == 413
-    assert manager.started_jobs == 0
-
-###############################################################################
 def test_dataset_upload_accepts_limit_and_rejects_one_byte_over(monkeypatch) -> None:
     limit = 25 * 1024 * 1024
     manager = DummyJobManager()

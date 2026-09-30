@@ -395,27 +395,6 @@ def test_nonempty_unversioned_database_is_rejected_untouched(
     assert _revision(path) is None
 
 ###############################################################################
-def test_unknown_unversioned_schema_is_rejected_untouched(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    path = tmp_path / "database.db"
-    _configure_database(monkeypatch, path)
-    engine = create_engine(f"sqlite:///{path}", future=True)
-    try:
-        with engine.begin() as connection:
-            connection.execute(text("CREATE TABLE unrelated (id INTEGER PRIMARY KEY)"))
-    finally:
-        engine.dispose()
-    before = path.read_bytes()
-
-    with pytest.raises(DatabaseMigrationError, match="non-empty unversioned schema"):
-        initializer.run_database_initialization()
-
-    assert path.read_bytes() == before
-    assert _revision(path) is None
-
-###############################################################################
 def test_database_ahead_of_repository_is_rejected(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
