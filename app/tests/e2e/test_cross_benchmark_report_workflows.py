@@ -98,7 +98,12 @@ def _create_report_in_wizard(
         timeout_seconds=300.0,
     )
     assert run_status.get("status") == "completed", run_status.get("error")
-    report_id = run_status.get("result", {}).get("report_id")
+    run_result = run_status.get("result", {})
+    assert run_result.get("status") == "success"
+    assert run_result.get("selected_metric_keys") == [metric_key]
+    assert run_result.get("documents_processed") == 2
+    assert run_result.get("config", {}).get("max_documents") == 2
+    report_id = run_result.get("report_id")
     assert report_id is not None
     registered_report_ids.add(int(report_id))
 

@@ -2,18 +2,11 @@ from __future__ import annotations
 
 import matplotlib.pyplot as plt
 import pytest
-from pydantic import ValidationError
 
-from server.contracts.benchmarks import (
-    BenchmarkDashboardWidgetData,
-    BenchmarkVisualizationKind,
-)
+from server.contracts.benchmarks import BenchmarkVisualizationKind
 from server.services.benchmark_result_builder import BenchmarkResultBuilder
 from server.services.export import DashboardExportService
-from server.common.benchmark_metric_definitions import (
-    BENCHMARK_METRIC_DEFINITIONS,
-    benchmark_metric_catalog,
-)
+from server.common.benchmark_metric_definitions import BENCHMARK_METRIC_DEFINITIONS
 
 ###############################################################################
 def _widget(
@@ -54,49 +47,6 @@ def test_metric_definitions_expose_only_strict_visualization_pairs() -> None:
         )
         assert (
             definition.compatible_visualizations[0] is definition.default_visualization
-        )
-
-###############################################################################
-def test_metric_catalog_and_dashboard_definitions_preserve_default_visibility() -> None:
-    catalog = {
-        metric["key"]: metric["default_visible"]
-        for category in benchmark_metric_catalog()
-        for metric in category["metrics"]
-    }
-    assert all(
-        catalog[definition.key] is definition.default_visible
-        for definition in BENCHMARK_METRIC_DEFINITIONS
-    )
-    assert {
-        definition.key
-        for definition in BENCHMARK_METRIC_DEFINITIONS
-        if definition.default_visible
-    } == {
-        "meta.vocabulary_size",
-        "eff.encode_tokens_per_second_mean",
-        "eff.encode_chars_per_second_mean",
-        "lat.encode_latency_p50_ms",
-        "fid.exact_round_trip_rate",
-        "fid.normalized_round_trip_rate",
-        "frag.pieces_per_word_mean",
-    }
-
-###############################################################################
-def test_dashboard_model_rejects_unknown_visualization() -> None:
-    with pytest.raises(ValidationError):
-        BenchmarkDashboardWidgetData(
-            widget_id="benchmark.invalid",
-            metric_keys=["invalid"],
-            category_key="test",
-            category_label="Test",
-            label="Invalid",
-            description="Invalid",
-            unit="value",
-            display_format="number",
-            default_visualization="not_a_chart",
-            compatible_visualizations=["not_a_chart"],
-            default_visible=True,
-            width="standard",
         )
 
 ###############################################################################

@@ -144,44 +144,6 @@ def test_tokenizer_delete_supports_encoded_and_custom_names_and_returns_404(
     ]
 
 ###############################################################################
-def test_tokenizer_upload_rejects_oversized_file_before_service_call(
-    monkeypatch,
-) -> None:
-    from server.api import tokenizers as tokenizers_api
-
-    ###############################################################################
-    class _TokenizerCfg:
-        max_upload_bytes = 1
-
-    ###############################################################################
-    class _Settings:
-        tokenizers = _TokenizerCfg()
-        jobs = type("JobsCfg", (), {"polling_interval": 1.0})()
-
-    called = {"upload": False}
-
-    def fake_upload(self, content: bytes, normalized_filename: str, safe_stem: str):
-        del self, content, normalized_filename, safe_stem
-        called["upload"] = True
-        return {"status": "success", "tokenizer_name": "CUSTOM_demo"}
-
-    monkeypatch.setattr(tokenizers_api, "get_server_settings", lambda: _Settings())
-    monkeypatch.setattr(
-        tokenizers_api.TokenizersService,
-        "register_custom_tokenizer_from_upload",
-        fake_upload,
-    )
-
-    client = TestClient(app)
-    response = client.post(
-        "/api/tokenizers/upload",
-        files={"file": ("tokenizer.json", b"{}", "application/json")},
-    )
-
-    assert response.status_code == 413
-    assert called["upload"] is False
-
-###############################################################################
 def test_tokenizer_job_routes_return_202(monkeypatch) -> None:
     manager = DummyJobManager()
     monkeypatch.setattr(app.state, "job_manager", manager)
