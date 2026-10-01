@@ -33,13 +33,17 @@ def test_startup_screen_recovers_after_transient_backend_unavailability(
         page.get_by_text("We are loading the service, please wait...")
     ).to_be_visible()
     expect(page.locator(".startup-tokenizer-machine")).to_be_visible()
+    expect(page.locator(".startup-lane")).to_be_visible()
     expect(page.locator(".startup-word")).to_have_count(6)
-    expect(page.locator(".startup-token")).to_have_count(6)
+    expect(page.locator(".startup-token")).to_have_count(12)
 
     flow_box = page.locator(".startup-tokenizer-flow").bounding_box()
     viewport = page.viewport_size
     assert flow_box is not None
     assert viewport is not None
+    # Desktop viewport (default 1280x720): the flow must render at its full
+    # intended width and never shrink below it or overflow the viewport.
+    assert flow_box["width"] == 680
     assert flow_box["width"] <= 681
     assert flow_box["width"] < viewport["width"]
 
