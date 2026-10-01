@@ -28,10 +28,21 @@ def test_startup_screen_recovers_after_transient_backend_unavailability(
 
     page.goto(f"{base_url}/dataset")
 
+    expect(page.get_by_role("heading", name="TKBEN")).to_be_visible()
     expect(
-        page.get_by_role("heading", name="Preparing tokenizer benchmarks")
+        page.get_by_text("We are loading the service, please wait...")
     ).to_be_visible()
+    expect(page.locator(".startup-tokenizer-machine")).to_be_visible()
+    expect(page.locator(".startup-word")).to_have_count(6)
     expect(page.locator(".startup-token")).to_have_count(6)
+
+    flow_box = page.locator(".startup-tokenizer-flow").bounding_box()
+    viewport = page.viewport_size
+    assert flow_box is not None
+    assert viewport is not None
+    assert flow_box["width"] <= 681
+    assert flow_box["width"] < viewport["width"]
+
     expect(page.get_by_text("Dataset Usage")).to_be_visible(timeout=10_000)
     expect(page.locator(".startup-screen")).to_have_count(0)
     assert calls["count"] >= 3
@@ -47,14 +58,12 @@ def test_startup_screen_supports_reduced_motion_and_narrow_viewport(
 
     page.goto(f"{base_url}/dataset")
 
-    expect(
-        page.get_by_role("heading", name="Preparing tokenizer benchmarks")
-    ).to_be_visible()
+    expect(page.get_by_role("heading", name="TKBEN")).to_be_visible()
     token_duration = page.locator(".startup-token").first.evaluate(
         "element => getComputedStyle(element).animationDuration"
     )
     assert float(token_duration.removesuffix("s")) <= 0.01
     assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
     expect(
-        page.get_by_text(re.compile(r"Backend startup is taking a little longer"))
+        page.get_by_text(re.compile(r"Still starting. This can take a little longer."))
     ).to_be_visible(timeout=17_000)

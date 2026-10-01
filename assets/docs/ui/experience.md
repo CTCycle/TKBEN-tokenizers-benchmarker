@@ -1,5 +1,5 @@
 # Experience
-Last updated: 2026-09-21
+Last updated: 2026-10-01
 
 ## Page Structure
 - `DatasetPage`
@@ -30,7 +30,7 @@ Catalog interactions:
 - Maintain workflow continuity:
   - start long operation -> show progress -> poll job -> render result
 - Startup readiness:
-  - show a branded tokenizer-to-benchmark visual while the backend initializes;
+  - show a compact left-to-right word stream passing through a schematic tokenizer and leaving as token pieces while the backend initializes;
   - keep transient connection failures quiet;
   - surface a slow-start message and a retryable failure state when the
     existing launcher readiness window is exceeded;

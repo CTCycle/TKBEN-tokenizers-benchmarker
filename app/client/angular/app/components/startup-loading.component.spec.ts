@@ -5,7 +5,7 @@ import { StartupLoadingComponent } from './startup-loading.component';
 describe('StartupLoadingComponent', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  it('renders the technical loading flow and exposes a retry action on failure', () => {
+  it('renders the compact tokenizer flow and exposes a retry action on failure', () => {
     const fixture = TestBed.createComponent(StartupLoadingComponent);
     let retryCount = 0;
     fixture.componentInstance.retry.subscribe(() => retryCount++);
@@ -14,9 +14,14 @@ describe('StartupLoadingComponent', () => {
     fixture.detectChanges();
 
     const element = fixture.nativeElement as HTMLElement;
-    expect(element.querySelector('h1')?.textContent).toContain('Preparing tokenizer benchmarks');
-    expect(element.querySelector('.startup-token-stage')).not.toBeNull();
-    expect(element.querySelector('.startup-chart')).not.toBeNull();
+    expect(element.querySelector('h1')?.textContent).toBe('TKBEN');
+    expect(element.querySelector('#startup-description')?.textContent).toContain(
+      'We are loading the service, please wait...',
+    );
+    expect(element.querySelector('.startup-tokenizer-machine')).not.toBeNull();
+    expect(element.querySelectorAll('.startup-word')).toHaveLength(6);
+    expect(element.querySelectorAll('.startup-token')).toHaveLength(6);
+    expect(element.querySelector('.startup-chart')).toBeNull();
     expect(element.querySelector('[role="alert"]')?.textContent).toContain('Backend startup failed.');
     expect(element.querySelector('.startup-screen--failed')).not.toBeNull();
 
