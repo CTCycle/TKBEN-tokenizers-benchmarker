@@ -30,7 +30,9 @@ Catalog interactions:
 - Maintain workflow continuity:
   - start long operation -> show progress -> poll job -> render result
 - Startup readiness:
-  - show a compact left-to-right word stream passing through a schematic tokenizer and leaving as token pieces while the backend initializes;
+  - show a single-lane pipeline where source words enter the left port of a
+    schematic tokenizer, are split into subword pieces, and leave the right
+    port as `##`-prefixed tokens while the backend initializes;
   - keep transient connection failures quiet;
   - surface a slow-start message and a retryable failure state when the
     existing launcher readiness window is exceeded;
