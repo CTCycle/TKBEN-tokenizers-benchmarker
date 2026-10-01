@@ -1,3 +1,6 @@
+# Copyright © 2023 Thomas Virdis
+# Licensed under the MIT License.
+
 from server.repositories.database.backend import (
     DatabaseBackend,
     TKBENDatabase,

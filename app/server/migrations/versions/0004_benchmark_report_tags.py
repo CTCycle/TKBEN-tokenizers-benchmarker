@@ -1,3 +1,6 @@
+# Copyright © 2023 Thomas Virdis
+# Licensed under the MIT License.
+
 """Add mutable tags to benchmark reports."""
 
 from __future__ import annotations

@@ -1,3 +1,6 @@
+# Copyright © 2023 Thomas Virdis
+# Licensed under the MIT License.
+
 """Current-schema browser coverage for the cross-benchmark dashboard."""
 
 from urllib.parse import parse_qs, urlparse

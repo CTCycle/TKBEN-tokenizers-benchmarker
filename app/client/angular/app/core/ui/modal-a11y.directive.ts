@@ -1,3 +1,6 @@
+// Copyright © 2023 Thomas Virdis
+// Licensed under the MIT License.
+
 import { DOCUMENT } from '@angular/common';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { Directive, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, inject } from '@angular/core';

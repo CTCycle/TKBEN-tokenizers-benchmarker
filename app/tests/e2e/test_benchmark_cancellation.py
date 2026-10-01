@@ -1,3 +1,6 @@
+# Copyright © 2023 Thomas Virdis
+# Licensed under the MIT License.
+
 """Opt-in live coverage for cancelling and immediately rerunning a benchmark."""
 
 import os

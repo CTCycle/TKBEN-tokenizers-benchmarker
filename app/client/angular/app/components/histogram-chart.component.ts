@@ -1,3 +1,6 @@
+// Copyright © 2023 Thomas Virdis
+// Licensed under the MIT License.
+
 import { Component, computed, input, signal } from '@angular/core';
 import type { HistogramData } from '../core/api/api.models';
 import { formatBenchmarkAxisValue } from '../core/utils/benchmark-dashboard-data';

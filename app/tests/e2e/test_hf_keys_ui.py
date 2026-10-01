@@ -1,3 +1,6 @@
+# Copyright © 2023 Thomas Virdis
+# Licensed under the MIT License.
+
 """Rendered coverage for Settings key management and SQLite protection."""
 
 from __future__ import annotations

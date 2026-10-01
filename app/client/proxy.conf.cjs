@@ -1,3 +1,6 @@
+// Copyright © 2023 Thomas Virdis
+// Licensed under the MIT License.
+
 const target = `http://${process.env.FASTAPI_HOST || '127.0.0.1'}:${process.env.FASTAPI_PORT || 5000}`;
 
 module.exports = {

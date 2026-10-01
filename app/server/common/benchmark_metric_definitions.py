@@ -1,3 +1,6 @@
+# Copyright © 2023 Thomas Virdis
+# Licensed under the MIT License.
+
 """Canonical, transport-neutral benchmark metric and dashboard definitions."""
 
 from __future__ import annotations
