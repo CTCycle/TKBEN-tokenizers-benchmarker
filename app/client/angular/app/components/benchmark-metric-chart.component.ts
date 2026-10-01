@@ -1,3 +1,6 @@
+// Copyright © 2023 Thomas Virdis
+// Licensed under the MIT License.
+
 import { AfterViewInit, Component, ElementRef, HostListener, OnDestroy, computed, inject, input, signal } from '@angular/core';
 import type { BenchmarkDashboardWidgetData, BenchmarkVisualizationKind } from '../core/api/api.models';
 import {

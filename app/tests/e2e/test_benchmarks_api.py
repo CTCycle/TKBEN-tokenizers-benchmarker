@@ -1,3 +1,6 @@
+# Copyright © 2023 Thomas Virdis
+# Licensed under the MIT License.
+
 """
 E2E tests for benchmark API endpoints.
 Covers /api/benchmarks/run validation and optional happy-path execution.

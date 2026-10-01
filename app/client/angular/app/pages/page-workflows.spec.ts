@@ -1,3 +1,6 @@
+// Copyright © 2023 Thomas Virdis
+// Licensed under the MIT License.
+
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { FormGroup } from '@angular/forms';

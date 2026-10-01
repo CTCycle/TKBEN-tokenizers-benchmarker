@@ -1,3 +1,6 @@
+# Copyright © 2023 Thomas Virdis
+# Licensed under the MIT License.
+
 FASTAPI_TITLE = "TKBEN_webapp Tokenizers Benchmark Backend"
 FASTAPI_DESCRIPTION = "FastAPI backend"
 FASTAPI_VERSION = "1.2.0"

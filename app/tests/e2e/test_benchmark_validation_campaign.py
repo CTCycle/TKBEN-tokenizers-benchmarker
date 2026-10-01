@@ -1,3 +1,6 @@
+# Copyright © 2023 Thomas Virdis
+# Licensed under the MIT License.
+
 """Opt-in live evidence for benchmark measurement and run configuration gates."""
 
 from __future__ import annotations

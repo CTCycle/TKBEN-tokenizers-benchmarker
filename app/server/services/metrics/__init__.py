@@ -1,3 +1,6 @@
+# Copyright © 2023 Thomas Virdis
+# Licensed under the MIT License.
+
 from server.common.metric_catalog import (
     DATASET_METRIC_CATALOG,
     default_selected_metric_keys,

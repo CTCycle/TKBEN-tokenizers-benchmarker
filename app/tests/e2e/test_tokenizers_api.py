@@ -1,3 +1,6 @@
+# Copyright © 2023 Thomas Virdis
+# Licensed under the MIT License.
+
 """
 E2E tests for tokenizer API endpoints.
 Covers /api/tokenizers/settings, /api/tokenizers/discover, /api/tokenizers/upload, and per-item deletion.

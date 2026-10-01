@@ -1,3 +1,6 @@
+# Copyright © 2023 Thomas Virdis
+# Licensed under the MIT License.
+
 """Persist managed job lifecycle state."""
 
 from __future__ import annotations

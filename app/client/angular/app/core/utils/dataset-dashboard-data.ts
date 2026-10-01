@@ -1,3 +1,6 @@
+// Copyright © 2023 Thomas Virdis
+// Licensed under the MIT License.
+
 import type { WordCloudTerm, WordFrequency } from '../api/api.models';
 
 export const toNumber = (value: unknown, fallback = 0): number => {

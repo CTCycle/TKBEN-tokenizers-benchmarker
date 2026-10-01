@@ -1,3 +1,6 @@
+// Copyright © 2023 Thomas Virdis
+// Licensed under the MIT License.
+
 // @ts-check
 import eslint from "@eslint/js";
 import { defineConfig } from "eslint/config";

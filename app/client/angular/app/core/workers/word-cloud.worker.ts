@@ -1,3 +1,6 @@
+// Copyright © 2023 Thomas Virdis
+// Licensed under the MIT License.
+
 interface WordCloudInput {
   terms: { word: string; count: number; weight: number }[];
   width: number;

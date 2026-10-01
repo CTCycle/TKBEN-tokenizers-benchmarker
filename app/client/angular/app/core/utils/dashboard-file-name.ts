@@ -1,3 +1,6 @@
+// Copyright © 2023 Thomas Virdis
+// Licensed under the MIT License.
+
 const unsafeFileCharacters = /[^A-Za-z0-9._ ()-]+/g;
 
 export function dashboardFileName(prefix: string, identifier: string, suffix = 'report'): string {

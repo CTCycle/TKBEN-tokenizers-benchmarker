@@ -1,3 +1,6 @@
+# Copyright © 2023 Thomas Virdis
+# Licensed under the MIT License.
+
 """Browser coverage for frontend-first startup and readiness polling."""
 
 import re

@@ -1,3 +1,6 @@
+// Copyright © 2023 Thomas Virdis
+// Licensed under the MIT License.
+
 export type SupportedTokenizerPipeline =
     | 'text-generation'
     | 'fill-mask'

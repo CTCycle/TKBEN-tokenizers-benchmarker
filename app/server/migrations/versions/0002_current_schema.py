@@ -1,3 +1,6 @@
+# Copyright © 2023 Thomas Virdis
+# Licensed under the MIT License.
+
 """Normalize the pre-Alembic schema to the current application contract."""
 
 from __future__ import annotations

@@ -1,3 +1,6 @@
+# Copyright © 2023 Thomas Virdis
+# Licensed under the MIT License.
+
 """Record the schema deployed before Alembic was introduced.
 
 This revision is intentionally independent of the live ORM models and remains

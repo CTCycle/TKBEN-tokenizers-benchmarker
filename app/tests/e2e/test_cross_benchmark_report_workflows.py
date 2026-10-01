@@ -1,3 +1,6 @@
+# Copyright © 2023 Thomas Virdis
+# Licensed under the MIT License.
+
 """Live local coverage for populated Cross Benchmark report workflows."""
 
 import os

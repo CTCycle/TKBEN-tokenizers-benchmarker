@@ -1,3 +1,6 @@
+# Copyright © 2023 Thomas Virdis
+# Licensed under the MIT License.
+
 """Make canonical report state and metric identities explicit."""
 
 from __future__ import annotations
