@@ -13,8 +13,8 @@ historical rows are rejected or purged rather than silently adapted. Managed
 job lifecycle metadata is durable, with interrupted work reconciled as failed
 after restart rather than automatically resumed.
 
-The latest published release is `v4.5.0` with backend package `3.5.0` and
-frontend package `2.5.0`. Configuration ownership is canonical: `settings/.env`
+The latest published release is `v4.5.1` with backend package `3.5.1` and
+frontend package `2.5.1`. Configuration ownership is canonical: `settings/.env`
 and the process environment own startup/infrastructure values, typed backend
 models own application defaults, and sparse user overrides live under
 `<TKBEN_DATA_DIR>/runtime-settings.json`. The environment bootstrap runs before

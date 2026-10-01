@@ -1,5 +1,5 @@
 # Release Procedure
-Last updated: 2026-09-26
+Last updated: 2026-10-01
 
 ## Release model
 
@@ -10,14 +10,33 @@ add packaging as part of a source release.
 The public release version and component versions use the existing repository
 convention:
 
-| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` | `v4.5.0` public |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` | `4.4.0` | `4.5.0` |
-| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` | `3.4.0` | `3.5.0` |
-| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` | `2.4.0` | `2.5.0` |
+| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` | `v4.5.0` | `v4.5.1` public |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` | `4.4.0` | `4.5.0` | `4.5.1` |
+| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` | `3.4.0` | `3.5.0` | `3.5.1` |
+| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` | `2.4.0` | `2.5.0` | `2.5.1` |
 
-The latest published release is `v4.5.0`. Its component versions are backend
-`3.5.0` and frontend `2.5.0`.
+The latest published release is `v4.5.1`. Its component versions are backend
+`3.5.1` and frontend `2.5.1`.
+
+## v4.5.1 release notes
+
+The current release delta is based on verified repository changes after
+`v4.5.0`:
+
+- redesign the startup tokenizer flow into a single-lane pipeline where source
+  words enter a schematic tokenizer and leave as `##`-prefixed subword tokens,
+  with updated loading component, style, unit, and browser coverage;
+- move the canonical data root to the top-level `data` directory and align the
+  launcher contract, upload contract, and documentation with the post-release
+  layout;
+- clear backend Python bytecode caches during launcher cleanup; and
+- trim low-value and duplicate tests from the suite.
+
+API version `1.2.0`, benchmark schema version `3`, and report version `5`
+remain unchanged. The current validation outcome, remaining limitations, and
+release traceability are recorded in the [project status
+ledger](../project_status_ledger.md#release-gate).
 
 ## v4.5.0 release notes
 
@@ -112,8 +131,8 @@ ledger](../project_status_ledger.md#resolved-and-historical-findings).
 
 After validation is release-ready, apply the coordinated minor bump to the
 public tag version, backend package, frontend package, README, and relevant
-documentation. For the current preparation, the public version is `v4.5.0`,
-the backend package is `3.5.0`, and the frontend package is `2.5.0`. Commit all
+documentation. For the current preparation, the public version is `v4.5.1`,
+the backend package is `3.5.1`, and the frontend package is `2.5.1`. Commit all
 release-preparation changes on `develop` before synchronizing branches.
 
 Synchronize `main` from the validated `develop` commit so the branches point to
