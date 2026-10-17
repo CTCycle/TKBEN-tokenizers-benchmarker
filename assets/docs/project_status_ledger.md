@@ -1,5 +1,5 @@
 # Project Status Ledger
-Last updated: 2026-10-01
+Last updated: 2026-10-17
 
 This is the canonical source of truth for current implementation status,
 validation gates, unresolved limitations, and validation history. The
@@ -49,6 +49,11 @@ Future coding and validation agents must:
   exercised Windows host, including the privilege-isolated denied process-
   termination branch. The runner's unrelated protected-cache ACL warnings
   remain environment limitations, not reproduced product defects.
+- v4.5.1 is published and verified. The recorded post-release `data`-root and
+  bytecode-cache delta plus the v4.5.1 startup-tokenizer-flow redesign and
+  test-trim now have a fresh local validation run at the synchronized tip
+  `e7f4f9b`, including legacy disposable state exclusion (`norecursedirs` in
+  `app/tests/pytest.ini`) for ACL-trapped cache directories under `app/tests`.
 - Public Hugging Face discovery, download, report persistence, rendered
   reload, and cleanup are VALIDATED. Authorized gated-repository access is
   still BLOCKED; no gated report was produced.
@@ -76,6 +81,7 @@ recorded here rather than in a copied execution log.
 | V-20260924 | Dataset/Settings matrix; public dataset download; tokenizer lifecycle and responsive states; upload storage; parallelism closure | T2-01, T2-04, T2-05, T3-02, T4-02, T5-02, T5-03 | PASS for CSV/XLSX boundaries, public Wikitext import/restart cleanup, custom-tokenizer replacement/restart/report/delete, four-viewport Dataset/Settings/Tokenizers checks, and actual tokenizer worker overlap at parallelism 2. Controlled `SQLITE_FULL` cleanup/retry passed; physical filesystem exhaustion remained untested. |
 | V-20260925 | Open validation debt; PostgreSQL runtime handoff; validation-gate recheck; current-candidate/release closure | T3-05, T4-01, T4-03, T4-04, T5-06 | PASS for all eight supported benchmark PDF chart forms, the five-page 1,207-entry tokenizer PDF, public HF flow, isolated PostgreSQL runtime equivalence, the current local suite, and release v4.5.0. T4-03 gated HF access remains BLOCKED and the physical low-disk scenario remains PARTIAL/DEFERRED. |
 | V-20260928 to V-20260929 | Post-release data-root refactor; launcher bytecode-cache hardening | T0-02 (delta), T0-01 (recheck baseline) | The post-release `resources`-to-`data` data-root rename, bytecode-cache clearing fix, and launcher contract expansion (19 to 21 checks) are recorded here as code and documentation deltas after the v4.5.0 tag; the launcher contract and data-path assertions reflect the new layout at the current checkout. No fresh validation run beyond the tracked contract suite has been executed for this delta; the recorded release gate remains at `f8dee1d`. |
+| V-20261017 | Current-baseline recheck; post-release delta closure; v4.5.1 release-gate verification | T0-01, T0-02 (delta), T5-06 (v4.5.1) | PASS at `e7f4f9b` on the exercised Windows host: launcher clean bootstrap (pinned Python 3.14.7/uv 0.12.17/Node 22.23.1, Development-profile venv with test extras), warm relaunch with setup skipped, and the documented port-occupied refusal branch; full local CI-equivalent suite passed (compileall, Ruff, BasedPyright with 0 errors, Alembic `0005` initialization at the `data` root, 518 backend tests passed with 13 intentionally skipped provider/credential/live-benchmark cases, OpenAPI smoke with 35 paths, frontend lint, 63/63 frontend unit tests, Angular production build at 2.5.1, and the changed single-lane startup-loading E2E slice). This run closed the previously unexecuted V-20260928 delta validation and provided the v4.5.1 release-gate evidence recorded under T5-06. Legacy ACL-trapped disposable pytest state under `app/tests` remains an environment limitation and is now excluded from collection by `norecursedirs` in `app/tests/pytest.ini`; the tagged `19/19` and `21/21` launcher contract-suite records remain the release-tagged evidence. |
 
 ### Reconciled status transitions
 
@@ -119,7 +125,7 @@ recorded here rather than in a copied execution log.
 | --- | --- | --- | --- |
 | architecture.canonical-ownership | VALIDATED | Architecture boundary tests and current ownership docs agree; remaining canonicalization work is ISSUE-003. | 2026-09-20 |
 | runtime.startup.local-webapp | VALIDATED | Windows bootstrap and Linux diagnostic startup reached health, proxy, route, and restart-recovery checks. Populated dashboards and responsive coverage are separate gates. | 2026-09-22 |
-| runtime.windows-launcher | VALIDATED | Clean/warm bootstrap, stamps, build repair, conflicts, maintenance menu, cleanup, quoted-process handling, and localized denied termination were exercised. The 2026-09-28 post-release bytecode-cache clearing fix and the repository-`data` default-root rename changed launcher behavior after the recorded validation; the expanded 21/21 launcher contract suite now asserts the new layout. | 2026-09-22 |
+| runtime.windows-launcher | VALIDATED | Clean/warm bootstrap, stamps, build repair, conflicts, maintenance menu, cleanup, quoted-process handling, and localized denied termination were exercised. The 2026-09-28 post-release bytecode-cache clearing fix and the repository-`data` default-root rename changed launcher behavior after the recorded validation; the expanded 21/21 launcher contract suite then asserted the new layout, and the 2026-10-17 baseline recheck re-ran clean bootstrap, warm relaunch, and the port-occupied refusal branch on this host. | 2026-10-17 |
 | configuration.runtime-settings | WORKING | All 16 settings, bounds, sparse persistence, restart, conflict, reset, and new-work effects passed; the component deliberately retains broader WORKING scope. | 2026-09-22 |
 | runtime.managed-job-lifecycle | VALIDATED | Job persistence, terminal failure on restart, cancellation conflicts, and retained completed data passed. Resumption/checkpointing is intentionally unsupported. | 2026-09-22 |
 | backend.api-contracts | VALIDATED | Route/unit/OpenAPI coverage and restart-addressable job behavior passed. Provider-dependent routes remain separately bounded. | 2026-09-25 |
@@ -131,18 +137,18 @@ recorded here rather than in a copied execution log.
 | benchmark.execution-and-reporting | VALIDATED | Admission, reports, bounded worker concurrency, progress/cancel, immediate rerun, metadata, reload, and deletion passed. Performance samples are host-specific. | 2026-09-24 |
 | benchmark.dashboard-and-pdf-export | VALIDATED | Dashboard data/customization and all eight supported benchmark PDF chart forms plus the five-page tokenizer PDF passed rendered review. | 2026-09-25 |
 | ui.route-shell-and-empty-states | VALIDATED | Dataset, Tokenizers, Cross Benchmark, Settings, loading/error/empty, and populated states passed the exercised route and responsive checks. | 2026-09-25 |
-| ui.startup-readiness | VALIDATED | Offline, slow, terminal-failure, retry, and recovered frontend-first states passed in the in-app browser. | 2026-09-21 |
+| ui.startup-readiness | VALIDATED | Offline, slow, terminal-failure, retry, and recovered frontend-first states passed in the in-app browser, and the 2026-10-17 baseline recheck passed the single-lane tokenizer startup-flow E2E including reduced-motion and narrow-viewport assertions. | 2026-10-17 |
 | ui.dataset-dashboard | VALIDATED | Metric families, persisted dashboard reload, malformed optional histogram fallback, and export action passed. | 2026-09-23 |
 | ui.settings-page | VALIDATED | Typed settings, conflicts, reset, key lifecycle, masked credential storage, keyboard navigation, and responsive states passed. | 2026-09-25 |
 | ui.cross-benchmark-workflow | VALIDATED | Wizard, report manager, tags, baseline/delta, clone/customize, tables, ordering, persistence, and responsive dialogs passed. | 2026-09-24 |
 | ui.tokenizer-report-and-vocabulary | VALIDATED | 1,207-entry report persistence, contiguous API paging, rendered pagination, restart report, and four-viewport route states passed. | 2026-09-24 |
-| deployment.source-only-local | VALIDATED | v4.5.0 source-only release, local suite, exact hosted CI, synchronized branches, tag, and public release passed. | 2026-09-25 |
-| deployment.windows-portable-bootstrap | VALIDATED | Pinned Python/Node/uv bootstrap, dependency repair, stamped build reuse, migration, and launch passed on the exercised Windows host. | 2026-09-22 |
+| deployment.source-only-local | VALIDATED | v4.5.1 source-only release with hosted CI at the release SHA and the synchronized tip, tag, public release, and the fresh local baseline suite passed. | 2026-10-17 |
+| deployment.windows-portable-bootstrap | VALIDATED | Pinned Python/Node/uv bootstrap, dependency repair, stamped build reuse, migration, and launch passed on the exercised Windows host. The 2026-10-17 recheck reinstalled the pinned runtimes from the download path and bootstrapped the Development-profile venv with full test extras. | 2026-10-17 |
 | deployment.cross-platform-manual | OUT_OF_SCOPE | Ubuntu manual execution was diagnostic only; macOS and hosted runtime support are not release targets. | 2026-09-22 |
 | deployment.containerized | NOT_IMPLEMENTED | No active container deployment configuration exists. | — |
 | deployment.binary-packaging | NOT_IMPLEMENTED | Releases are source-only; no installer or binary workflow exists. | — |
-| test-infrastructure.local-quality-gates | VALIDATED | Release revision passed compile, Ruff, BasedPyright with 0 errors, Alembic initialization, 517 backend tests, OpenAPI smoke, 63 frontend tests, lint, and build. | 2026-09-25 |
-| test-infrastructure.hosted-ci-and-release-evidence | VALIDATED | Hosted CI run 36158666979 passed both jobs for the release SHA; tag and public release point to that SHA. | 2026-09-25 |
+| test-infrastructure.local-quality-gates | VALIDATED | Current revision `e7f4f9b` passed compile, Ruff, BasedPyright with 0 errors, Alembic `0005` initialization at the `data` root, 518 backend tests with 13 intentionally skipped provider/credential/live-benchmark cases, OpenAPI smoke, 63 frontend unit tests, lint, and the production build. Legacy ACL-trapped disposable state under `app/tests` is excluded from pytest collection by `norecursedirs`. | 2026-10-17 |
+| test-infrastructure.hosted-ci-and-release-evidence | VALIDATED | Hosted CI run 36840557312 passed both jobs for the v4.5.1 release SHA `ec74b75`; runs 36861229079 (main) and 36861205874 (develop) passed for the synchronized tip `e7f4f9b`; the tag and public release point to the release SHA. | 2026-10-17 |
 | api.tokenizers.settings-compatibility | DEPRECATED | The legacy compatibility endpoint remains covered by contract/OpenAPI checks; new clients use `/api/settings`. | 2026-09-20 |
 
 Related implementation and test documentation is indexed in
@@ -158,8 +164,8 @@ The gate table records the latest known state of every stable validation ID.
 
 | Gate | Status | Latest durable outcome or remaining action |
 | --- | --- | --- |
-| T0-01 | PASS | Revision/quality baseline and release-target assumptions were accepted and rechecked in the current local campaign. |
-| T0-02 | PASS | At `e864197c`, clean/warm bootstrap, malformed/missing stamps, stale build, repairs, invalid ports, redirected conflicts, reacquisition race, and the real localized `Accesso negato` termination-denial branch passed; the launcher contract suite then stood at 19/19. The post-release data-root refactor expanded the contract suite to 21/21 at the current checkout (`a84b9c1`), adding repository-`data` default-root and log-root assertions; the release-tagged evidence remains the 19/19 record. |
+| T0-01 | PASS | The revision/quality baseline was accepted for the v4.5.0 release campaign and rechecked on 2026-10-17 at `e7f4f9b`: compileall, Ruff, BasedPyright with 0 errors, Alembic `0005` initialization, 518 backend tests with 13 intentional conditional skips, OpenAPI smoke, frontend lint, 63/63 unit tests, and the production build passed. |
+| T0-02 | PASS | At `e864197c`, clean/warm bootstrap, malformed/missing stamps, stale build, repairs, invalid ports, redirected conflicts, reacquisition race, and the real localized `Accesso negato` termination-denial branch passed; the launcher contract suite then stood at 19/19. The post-release data-root refactor expanded the contract suite to 21/21 at the current checkout (`a84b9c1`), adding repository-`data` default-root and log-root assertions; the release-tagged evidence remains the 19/19 record, and the 21/21 contract suite is disposable campaign output rather than tracked source. The 2026-10-17 delta recheck re-ran the launcher clean bootstrap and warm relaunch on the repository-`data` layout at `e7f4f9b` and exercised the documented port-occupied refusal branch. |
 | T0-03 | PASS | All 13 maintenance-menu routes, install profiles, expected update refusal, destructive decline/approval, cleanup, uninstall, and Kill All passed. |
 | T1-01 | PASS | Startup E2E 2/2 and shell recovery after persistence restart passed. |
 | T1-02 | PASS | At `41f265a`, all 16 settings, 38 invalid cases, 25 valid boundaries, decimal constraints, tokenizer relations, sparse persistence, restart, 409 conflict, reset, and downstream effects passed. |
@@ -187,7 +193,7 @@ The gate table records the latest known state of every stable validation ID.
 | T5-03 | PASS | Cross Benchmark, Tokenizers empty/loading/error/populated/report states, manager bounds, four viewport sizes, and keyboard/focus behavior passed. |
 | T5-04 | PASS | Official launcher streamed visible progress for 10,000 documents, cancellation produced no report, eight backend RSS samples were collected, and a two-document rerun rendered without browser/HTTP errors. Browser heap was not instrumented. |
 | T5-05 | OUT_OF_SCOPE | Release support is Windows x64 source-only. Ubuntu was diagnostic; macOS and hosted runtime support are not planned. |
-| T5-06 | PASS | Release commit `f8dee1da9084138bd52f3d08437269d3821ba5d6`, hosted CI [36158666979](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36158666979), synchronized `main`/`develop`, annotated tag `v4.5.0`, and public source-only release were verified. |
+| T5-06 | PASS | Release commit `f8dee1da9084138bd52f3d08437269d3821ba5d6`, hosted CI 36158666979, synchronized `main`/`develop`, annotated tag `v4.5.0`, and public source-only release were verified. The v4.5.1 release was verified on 2026-10-17: annotated tag `v4.5.1` points to `ec74b7567f967c1948d362c761fa9b12438d5a10`, hosted CI run 36840557312 passed both jobs for that SHA, the public source-only release published 2026-10-01 is marked Latest, and `main`/`develop` are synchronized at `e7f4f9b` (post-tag license-headers commit) where hosted CI runs 36861229079 (main) and 36861205874 (develop) and the fresh local baseline suite passed. |
 
 ## Open issues and validation debt
 
@@ -202,18 +208,28 @@ The gate table records the latest known state of every stable validation ID.
 
 ## Release gate
 
-The current published release commit is
-`f8dee1da9084138bd52f3d08437269d3821ba5d6`. Local release checks and hosted
-CI run [36158666979](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36158666979)
-passed for that exact SHA. Annotated tag `v4.5.0` points to the release commit,
-and the [public source-only release](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases/tag/v4.5.0)
-was published. `main` and `develop` were synchronized at that release; the
-branches have since advanced past the tag with the post-release data-root
-rename, bytecode-cache hardening, and formatting commits (currently
-`a84b9c1`). Release readiness for the tag is VALIDATED, with T4-03 and
-physical low-disk recovery remaining independently bounded as recorded above;
-the post-release delta is tracked as a recorded code/documentation delta and
-is not part of the tagged release claim.
+The current published release is `v4.5.1`, pointing to commit
+`ec74b7567f967c1948d362c761fa9b12438d5a10`. Hosted CI run
+[36840557312](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36840557312)
+passed both jobs for that SHA, and the annotated tag `v4.5.1` with the
+[public source-only release](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases/tag/v4.5.1)
+published on 2026-10-01 were verified. `main` and `develop` are synchronized
+at `e7f4f9b971eb477af241780f97c485e8c01ba5d0`, which adds only the
+repository-wide license headers after the tag; hosted CI runs
+[36861229079](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36861229079)
+(main) and
+[36861205874](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36861205874)
+(develop) passed for that tip, and the fresh local CI-equivalent suite at the
+tip passed on 2026-10-17 as recorded in the campaign index. Release readiness
+is VALIDATED, with T4-03 and physical low-disk recovery remaining
+independently bounded as recorded above.
+
+The previous gate record remains historical: the v4.5.0 release commit
+`f8dee1da9084138bd52f3d08437269d3821ba5d6` passed hosted CI run
+[36158666979](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36158666979),
+and the post-release data-root rename and bytecode-cache hardening delta that
+had been recorded as unvalidated code/documentation changes at `a84b9c1` was
+closed by the V-20261017 campaign.
 
 ## Resolved and historical findings
 
