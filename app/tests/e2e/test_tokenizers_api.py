@@ -75,7 +75,6 @@ def _build_wordlevel_tokenizer_json(
         payload = json.dumps(payload)
     return str(payload).encode("utf-8")
 
-
 ###############################################################################
 def _assert_tokenizer_artifact_matches_vocabulary(
     artifact_path: Path,
@@ -214,7 +213,6 @@ def active_hf_test_key(api_context: APIRequestContext) -> Generator[int, None, N
             assert after_cleanup.status == 200
             assert after_cleanup.json().get("keys", []) == []
 
-
 ###############################################################################
 def _run_tokenizer_job(
     api_context: APIRequestContext,
@@ -237,7 +235,6 @@ def _run_tokenizer_job(
     assert isinstance(result, dict), f"The {route} job returned no result."
     return result
 
-
 ###############################################################################
 def _download_hf_tokenizer(
     api_context: APIRequestContext,
@@ -255,7 +252,6 @@ def _download_hf_tokenizer(
     )
     return succeeded and result.get("failed_count", 0) == 0
 
-
 ###############################################################################
 def _delete_hf_tokenizer(
     api_context: APIRequestContext, tokenizer_id: str, *, may_be_absent: bool
@@ -268,7 +264,6 @@ def _delete_hf_tokenizer(
     assert response.status in allowed_statuses, (
         "Cleanup could not delete a validation-created provider tokenizer."
     )
-
 
 ###############################################################################
 def _try_download_hf_tokenizer(
@@ -295,7 +290,6 @@ def _try_download_hf_tokenizer(
     if succeeded and result.get("failed_count", 0) == 0:
         return True, "downloaded"
     return False, "provider_denied_or_download_failed"
-
 
 ###############################################################################
 def _generate_hf_tokenizer_report(
@@ -335,7 +329,6 @@ def _generate_hf_tokenizer_report(
     assert vocabulary_payload.get("total") == vocabulary_size
     assert vocabulary_payload.get("items")
     return report_id, vocabulary_size
-
 
 ###############################################################################
 def _assert_hf_report_renders(
@@ -413,7 +406,6 @@ def _assert_hf_report_renders(
     assert browser_errors == [], browser_errors
     assert browser_http_errors == [], browser_http_errors
 
-
 ###############################################################################
 @pytest.mark.skipif(
     not RUN_HF_PROVIDER_FLOW,
@@ -448,7 +440,6 @@ def test_hf_active_credential_authenticates_with_hub(
     print(
         "HF_PROVIDER_AUTH status=authenticated endpoint=whoami identity=withheld"
     )
-
 
 ###############################################################################
 @pytest.mark.skipif(
@@ -517,7 +508,6 @@ def test_hf_public_tokenizer_download_report_flow(
         f"vocabulary_size={vocabulary_size} rendered_after_reload=pass "
         "tokenizer_cleanup=pass"
     )
-
 
 ###############################################################################
 @pytest.mark.skipif(

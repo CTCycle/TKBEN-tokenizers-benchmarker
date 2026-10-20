@@ -45,7 +45,6 @@ CONFIG_FIELDS = {
     "per_document_sample_size",
 }
 
-
 ###############################################################################
 def _tokenizer_json() -> bytes:
     tokenizer = Tokenizer(
@@ -71,7 +70,6 @@ def _tokenizer_json() -> bytes:
         special_tokens=[("[CLS]", 2), ("[SEP]", 3)],
     )
     return tokenizer.to_str().encode("utf-8")
-
 
 ###############################################################################
 def _config(
@@ -104,20 +102,17 @@ def _config(
         "per_document_sample_size": per_document_sample_size,
     }
 
-
 ###############################################################################
 def _total_observed_tokens(report: dict[str, Any], tokenizer_name: str) -> int:
     observations = report.get("raw_observations", {}).get(tokenizer_name, [])
     assert observations and all("token_count" in row for row in observations)
     return sum(int(row["token_count"]) for row in observations)
 
-
 ###############################################################################
 def _assert_config_shape(report: dict[str, Any], expected: dict[str, Any]) -> None:
     actual = report.get("config", {})
     assert set(actual) == CONFIG_FIELDS
     assert actual == expected
-
 
 ###############################################################################
 @pytest.mark.skipif(

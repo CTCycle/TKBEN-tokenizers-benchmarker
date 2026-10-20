@@ -23,7 +23,6 @@ RUN_BENCHMARKS = os.getenv("E2E_RUN_BENCHMARKS", "").lower() in {
 REPO_ROOT = Path(__file__).resolve().parents[3]
 QA_DIR = REPO_ROOT / "assets" / "QA"
 
-
 ###############################################################################
 def _create_report_in_wizard(
     *,
@@ -126,7 +125,6 @@ def _create_report_in_wizard(
     ).to_be_visible(timeout=30_000)
     return report
 
-
 ###############################################################################
 def _seed_manager_reports(
     source_report: dict[str, Any], stem: str, count: int
@@ -157,7 +155,6 @@ def _seed_manager_reports(
         raise
     return created
 
-
 ###############################################################################
 def _assert_live_announcement_is_visually_hidden(page: Page) -> None:
     announcer = page.locator(".cdk-live-announcer-element")
@@ -167,7 +164,6 @@ def _assert_live_announcement_is_visually_hidden(page: Page) -> None:
     assert box["width"] <= 1 and box["height"] <= 1, (
         f"The accessibility announcement is rendered visibly: {box}"
     )
-
 
 ###############################################################################
 @pytest.mark.skipif(

@@ -22,13 +22,11 @@ from server.configurations.settings import (
 Number = int | float
 BYTES_PER_MIB = 1024 * 1024
 
-
 ###############################################################################
 @dataclass(frozen=True)
 class InvalidSettingCase:
     value: Number
     expected_error: str
-
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -239,7 +237,6 @@ _FIELD_BLUEPRINTS = (
     ),
 )
 
-
 ###############################################################################
 def _backend_bound(group: str, field: str, attribute: str) -> Number | None:
     field_info = SETTING_MODELS[group].model_fields[field]
@@ -249,11 +246,9 @@ def _backend_bound(group: str, field: str, attribute: str) -> Number | None:
             return value
     return None
 
-
 ###############################################################################
 def _number_text(value: Number) -> str:
     return f"{value:g}" if isinstance(value, float) else str(value)
-
 
 ###############################################################################
 def _below_bound(value: Number) -> Number:
@@ -261,13 +256,11 @@ def _below_bound(value: Number) -> Number:
         return value - 1
     return round(value - 0.01, 2)
 
-
 ###############################################################################
 def _above_bound(value: Number) -> Number:
     if isinstance(value, int):
         return value + 1
     return round(value + 0.01, 2)
-
 
 ###############################################################################
 def _alternate_setting_value(group: str, field: str, current: Number) -> Number:
@@ -280,7 +273,6 @@ def _alternate_setting_value(group: str, field: str, current: Number) -> Number:
     assert minimum is not None and candidate >= minimum
     assert maximum is None or candidate <= maximum
     return candidate
-
 
 ###############################################################################
 def _build_setting_specs() -> tuple[SettingFieldSpec, ...]:
@@ -387,24 +379,20 @@ assert set(ALL_RUNTIME_SETTING_KEYS) == {
     "jobs.polling_interval",
 }
 
-
 ###############################################################################
 def _input_text(value: Number) -> str:
     return _number_text(value)
-
 
 ###############################################################################
 def _fill_control(control: Locator, value: Number) -> None:
     control.fill(_input_text(value))
     control.press("Tab")
 
-
 ###############################################################################
 def _api_value(spec: SettingFieldSpec, value: Number) -> Number:
     if spec.api_multiplier == 1:
         return value
     return int(value * spec.api_multiplier)
-
 
 ###############################################################################
 def _set_tokenizer_values(
@@ -418,7 +406,6 @@ def _set_tokenizer_values(
     _fill_control(page.get_by_label("Default discovery limit"), default_limit)
     _fill_control(page.get_by_label("Maximum discovery limit"), maximum_limit)
     _fill_control(page.get_by_label("Discovery candidate cap"), candidate_cap)
-
 
 ###############################################################################
 def _set_tokenizer_boundary_context(
@@ -457,7 +444,6 @@ def _set_tokenizer_boundary_context(
             candidate_cap=17,
         )
 
-
 ###############################################################################
 def _set_tokenizer_invalid_context(
     page: Page,
@@ -482,7 +468,6 @@ def _set_tokenizer_invalid_context(
         maximum_limit=11,
         candidate_cap=17,
     )
-
 
 ###############################################################################
 def _assert_restored_runtime_settings(
