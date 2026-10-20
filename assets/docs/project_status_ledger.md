@@ -1,5 +1,5 @@
 # Project Status Ledger
-Last updated: 2026-10-17
+Last updated: 2026-10-20
 
 This is the canonical source of truth for current implementation status,
 validation gates, unresolved limitations, and validation history. The
@@ -49,11 +49,11 @@ Future coding and validation agents must:
   exercised Windows host, including the privilege-isolated denied process-
   termination branch. The runner's unrelated protected-cache ACL warnings
   remain environment limitations, not reproduced product defects.
-- v4.5.1 is published and verified. The recorded post-release `data`-root and
-  bytecode-cache delta plus the v4.5.1 startup-tokenizer-flow redesign and
-  test-trim now have a fresh local validation run at the synchronized tip
-  `e7f4f9b`, including legacy disposable state exclusion (`norecursedirs` in
-  `app/tests/pytest.ini`) for ACL-trapped cache directories under `app/tests`.
+- v4.5.1 is published and verified. The post-release data-root, bytecode-cache,
+  startup-tokenizer-flow, and test-trim delta was revalidated on 2026-10-17 at
+  `e7f4f9b`. The subsequent docs/pytest-collection tip `f49ac4b` passed the
+  local baseline suite on 2026-10-20 (518 passed, 13 opt-in skips) and hosted
+  CI on both `develop` and `main`; no new release was created.
 - Public Hugging Face discovery, download, report persistence, rendered
   reload, and cleanup are VALIDATED. Authorized gated-repository access is
   still BLOCKED; no gated report was produced.
@@ -61,9 +61,10 @@ Future coding and validation agents must:
   SQLite-equivalent UI behavior, restart recovery, and injected-failure
   rollback/retry are VALIDATED. This does not claim coverage of the
   pre-existing host PostgreSQL listener or every deployment topology.
-- Physical filesystem exhaustion remains PARTIAL and DEFERRED as optional
-  validation debt. Controlled `SQLITE_FULL` cleanup and retry passed, but the
-  host-authorized bounded-volume scenario could not be provisioned.
+- Physical filesystem exhaustion remains PARTIAL and DEFERRED as optional,
+  non-blocking validation debt. Controlled `SQLITE_FULL` cleanup and retry
+  passed; the host-authorized bounded-volume scenario was not provisioned and
+  is not required to claim the local source-only quality gate.
 - Containerized deployment and binary packaging are NOT_IMPLEMENTED. The
   supported release model is source-only Windows x64.
 
@@ -82,6 +83,7 @@ recorded here rather than in a copied execution log.
 | V-20260925 | Open validation debt; PostgreSQL runtime handoff; validation-gate recheck; current-candidate/release closure | T3-05, T4-01, T4-03, T4-04, T5-06 | PASS for all eight supported benchmark PDF chart forms, the five-page 1,207-entry tokenizer PDF, public HF flow, isolated PostgreSQL runtime equivalence, the current local suite, and release v4.5.0. T4-03 gated HF access remains BLOCKED and the physical low-disk scenario remains PARTIAL/DEFERRED. |
 | V-20260928 to V-20260929 | Post-release data-root refactor; launcher bytecode-cache hardening | T0-02 (delta), T0-01 (recheck baseline) | The post-release `resources`-to-`data` data-root rename, bytecode-cache clearing fix, and launcher contract expansion (19 to 21 checks) are recorded here as code and documentation deltas after the v4.5.0 tag; the launcher contract and data-path assertions reflect the new layout at the current checkout. No fresh validation run beyond the tracked contract suite has been executed for this delta; the recorded release gate remains at `f8dee1d`. |
 | V-20261017 | Current-baseline recheck; post-release delta closure; v4.5.1 release-gate verification | T0-01, T0-02 (delta), T5-06 (v4.5.1) | PASS at `e7f4f9b` on the exercised Windows host: launcher clean bootstrap (pinned Python 3.14.7/uv 0.12.17/Node 22.23.1, Development-profile venv with test extras), warm relaunch with setup skipped, and the documented port-occupied refusal branch; full local CI-equivalent suite passed (compileall, Ruff, BasedPyright with 0 errors, Alembic `0005` initialization at the `data` root, 518 backend tests passed with 13 intentionally skipped provider/credential/live-benchmark cases, OpenAPI smoke with 35 paths, frontend lint, 63/63 frontend unit tests, Angular production build at 2.5.1, and the changed single-lane startup-loading E2E slice). This run closed the previously unexecuted V-20260928 delta validation and provided the v4.5.1 release-gate evidence recorded under T5-06. Legacy ACL-trapped disposable pytest state under `app/tests` remains an environment limitation and is now excluded from collection by `norecursedirs` in `app/tests/pytest.ini`; the tagged `19/19` and `21/21` launcher contract-suite records remain the release-tagged evidence. |
+| V-20261020 | Current-tip baseline recheck; launcher warm path; README surface verification | T0-01, T0-02 (warm delta), T1-01 | PASS at `f49ac4b` on the exercised Windows host: compileall, Ruff, BasedPyright with 0 errors/2,018 warnings, Alembic `0005` at the `data` root, 474/474 unit tests, 43/43 live E2E tests with 13 opt-in provider/credential/live-benchmark skips, 1/1 performance test (518 passed total), OpenAPI smoke with 35 paths, frontend lint, 63/63 unit tests, and the production build at backend 3.5.1/frontend 2.5.1 passed. The launcher warm relaunch reached backend and preview readiness (health/proxy 200) and `-KillAll` stopped both process roots and freed ports 5000/8000; the automation harness terminated the foreground launcher wrapper after spawn, so service logs and direct readiness checks provide the evidence. README surface verification passed: the 512x512 logo renders directly below the title, all six shields.io badges and their target links returned HTTP 200, and GitHub GFM rendering contains one logo plus six badge images. T4-03 remains BLOCKED; physical disk exhaustion remains optional PARTIAL/DEFERRED. |
 
 ### Reconciled status transitions
 
@@ -125,7 +127,7 @@ recorded here rather than in a copied execution log.
 | --- | --- | --- | --- |
 | architecture.canonical-ownership | VALIDATED | Architecture boundary tests and current ownership docs agree; remaining canonicalization work is ISSUE-003. | 2026-09-20 |
 | runtime.startup.local-webapp | VALIDATED | Windows bootstrap and Linux diagnostic startup reached health, proxy, route, and restart-recovery checks. Populated dashboards and responsive coverage are separate gates. | 2026-09-22 |
-| runtime.windows-launcher | VALIDATED | Clean/warm bootstrap, stamps, build repair, conflicts, maintenance menu, cleanup, quoted-process handling, and localized denied termination were exercised. The 2026-09-28 post-release bytecode-cache clearing fix and the repository-`data` default-root rename changed launcher behavior after the recorded validation; the expanded 21/21 launcher contract suite then asserted the new layout, and the 2026-10-17 baseline recheck re-ran clean bootstrap, warm relaunch, and the port-occupied refusal branch on this host. | 2026-10-17 |
+| runtime.windows-launcher | VALIDATED | Clean/warm bootstrap, stamps, build repair, conflicts, maintenance menu, cleanup, quoted-process handling, and localized denied termination were exercised. The 2026-09-28 post-release bytecode-cache clearing fix and the repository-`data` default-root rename changed launcher behavior after the recorded validation; the expanded 21/21 launcher contract suite then asserted the new layout, and the 2026-10-17 baseline recheck re-ran clean bootstrap, warm relaunch, and the port-occupied refusal branch on this host. The 2026-10-20 warm relaunch at `f49ac4b` reached backend and preview readiness and was stopped cleanly with `-KillAll`; clean bootstrap was not repeated because the launcher and runtime pins were unchanged. | 2026-10-20 |
 | configuration.runtime-settings | WORKING | All 16 settings, bounds, sparse persistence, restart, conflict, reset, and new-work effects passed; the component deliberately retains broader WORKING scope. | 2026-09-22 |
 | runtime.managed-job-lifecycle | VALIDATED | Job persistence, terminal failure on restart, cancellation conflicts, and retained completed data passed. Resumption/checkpointing is intentionally unsupported. | 2026-09-22 |
 | backend.api-contracts | VALIDATED | Route/unit/OpenAPI coverage and restart-addressable job behavior passed. Provider-dependent routes remain separately bounded. | 2026-09-25 |
@@ -137,18 +139,18 @@ recorded here rather than in a copied execution log.
 | benchmark.execution-and-reporting | VALIDATED | Admission, reports, bounded worker concurrency, progress/cancel, immediate rerun, metadata, reload, and deletion passed. Performance samples are host-specific. | 2026-09-24 |
 | benchmark.dashboard-and-pdf-export | VALIDATED | Dashboard data/customization and all eight supported benchmark PDF chart forms plus the five-page tokenizer PDF passed rendered review. | 2026-09-25 |
 | ui.route-shell-and-empty-states | VALIDATED | Dataset, Tokenizers, Cross Benchmark, Settings, loading/error/empty, and populated states passed the exercised route and responsive checks. | 2026-09-25 |
-| ui.startup-readiness | VALIDATED | Offline, slow, terminal-failure, retry, and recovered frontend-first states passed in the in-app browser, and the 2026-10-17 baseline recheck passed the single-lane tokenizer startup-flow E2E including reduced-motion and narrow-viewport assertions. | 2026-10-17 |
+| ui.startup-readiness | VALIDATED | Offline, slow, terminal-failure, retry, and recovered frontend-first states passed in the in-app browser, and the 2026-10-17 baseline recheck passed the single-lane tokenizer startup-flow E2E including reduced-motion and narrow-viewport assertions. The 2026-10-20 full live E2E recheck passed the same 2/2 startup slice at `f49ac4b`. | 2026-10-20 |
 | ui.dataset-dashboard | VALIDATED | Metric families, persisted dashboard reload, malformed optional histogram fallback, and export action passed. | 2026-09-23 |
 | ui.settings-page | VALIDATED | Typed settings, conflicts, reset, key lifecycle, masked credential storage, keyboard navigation, and responsive states passed. | 2026-09-25 |
 | ui.cross-benchmark-workflow | VALIDATED | Wizard, report manager, tags, baseline/delta, clone/customize, tables, ordering, persistence, and responsive dialogs passed. | 2026-09-24 |
 | ui.tokenizer-report-and-vocabulary | VALIDATED | 1,207-entry report persistence, contiguous API paging, rendered pagination, restart report, and four-viewport route states passed. | 2026-09-24 |
-| deployment.source-only-local | VALIDATED | v4.5.1 source-only release with hosted CI at the release SHA and the synchronized tip, tag, public release, and the fresh local baseline suite passed. | 2026-10-17 |
-| deployment.windows-portable-bootstrap | VALIDATED | Pinned Python/Node/uv bootstrap, dependency repair, stamped build reuse, migration, and launch passed on the exercised Windows host. The 2026-10-17 recheck reinstalled the pinned runtimes from the download path and bootstrapped the Development-profile venv with full test extras. | 2026-10-17 |
+| deployment.source-only-local | VALIDATED | v4.5.1 source-only release with hosted CI at the release SHA and the synchronized tip, tag, public release, and the fresh local baseline suite passed. The later docs/pytest-collection tip `f49ac4b` also passed hosted CI and the 2026-10-20 local baseline; no new release was created. | 2026-10-20 |
+| deployment.windows-portable-bootstrap | VALIDATED | Pinned Python/Node/uv bootstrap, dependency repair, stamped build reuse, migration, and launch passed on the exercised Windows host. The 2026-10-17 recheck reinstalled the pinned runtimes from the download path and bootstrapped the Development-profile venv with full test extras. The 2026-10-20 warm relaunch reused those pinned runtimes and reached readiness at `f49ac4b`; the clean bootstrap record remains 2026-10-17. | 2026-10-20 |
 | deployment.cross-platform-manual | OUT_OF_SCOPE | Ubuntu manual execution was diagnostic only; macOS and hosted runtime support are not release targets. | 2026-09-22 |
 | deployment.containerized | NOT_IMPLEMENTED | No active container deployment configuration exists. | — |
 | deployment.binary-packaging | NOT_IMPLEMENTED | Releases are source-only; no installer or binary workflow exists. | — |
-| test-infrastructure.local-quality-gates | VALIDATED | Current revision `e7f4f9b` passed compile, Ruff, BasedPyright with 0 errors, Alembic `0005` initialization at the `data` root, 518 backend tests with 13 intentionally skipped provider/credential/live-benchmark cases, OpenAPI smoke, 63 frontend unit tests, lint, and the production build. Legacy ACL-trapped disposable state under `app/tests` is excluded from pytest collection by `norecursedirs`. | 2026-10-17 |
-| test-infrastructure.hosted-ci-and-release-evidence | VALIDATED | Hosted CI run 36840557312 passed both jobs for the v4.5.1 release SHA `ec74b75`; runs 36861229079 (main) and 36861205874 (develop) passed for the synchronized tip `e7f4f9b`; the tag and public release point to the release SHA. | 2026-10-17 |
+| test-infrastructure.local-quality-gates | VALIDATED | Current revision `f49ac4b` passed compileall, Ruff, BasedPyright with 0 errors (2,018 warnings), Alembic `0005` initialization at the `data` root, 518 backend tests with 13 intentionally skipped provider/credential/live-benchmark cases (474 unit + 43 live E2E + 1 performance), OpenAPI smoke with 35 paths, frontend lint, 63/63 unit tests, and the production build at backend 3.5.1/frontend 2.5.1. Legacy ACL-trapped disposable state under `app/tests` remains excluded from pytest collection by `norecursedirs`. | 2026-10-20 |
+| test-infrastructure.hosted-ci-and-release-evidence | VALIDATED | Hosted CI run 36840557312 passed both jobs for the v4.5.1 release SHA `ec74b75`; runs 36861229079 (main) and 36861205874 (develop) passed for the synchronized tip `e7f4f9b`; the tag and public release point to the release SHA. Runs 39245816231 (develop) and 39245823783 (main) passed for the later docs/pytest-collection tip `f49ac4b`; the published release remains v4.5.1. | 2026-10-20 |
 | api.tokenizers.settings-compatibility | DEPRECATED | The legacy compatibility endpoint remains covered by contract/OpenAPI checks; new clients use `/api/settings`. | 2026-09-20 |
 
 Related implementation and test documentation is indexed in
@@ -164,10 +166,10 @@ The gate table records the latest known state of every stable validation ID.
 
 | Gate | Status | Latest durable outcome or remaining action |
 | --- | --- | --- |
-| T0-01 | PASS | The revision/quality baseline was accepted for the v4.5.0 release campaign and rechecked on 2026-10-17 at `e7f4f9b`: compileall, Ruff, BasedPyright with 0 errors, Alembic `0005` initialization, 518 backend tests with 13 intentional conditional skips, OpenAPI smoke, frontend lint, 63/63 unit tests, and the production build passed. |
-| T0-02 | PASS | At `e864197c`, clean/warm bootstrap, malformed/missing stamps, stale build, repairs, invalid ports, redirected conflicts, reacquisition race, and the real localized `Accesso negato` termination-denial branch passed; the launcher contract suite then stood at 19/19. The post-release data-root refactor expanded the contract suite to 21/21 at the current checkout (`a84b9c1`), adding repository-`data` default-root and log-root assertions; the release-tagged evidence remains the 19/19 record, and the 21/21 contract suite is disposable campaign output rather than tracked source. The 2026-10-17 delta recheck re-ran the launcher clean bootstrap and warm relaunch on the repository-`data` layout at `e7f4f9b` and exercised the documented port-occupied refusal branch. |
+| T0-01 | PASS | The revision/quality baseline was accepted for the v4.5.0 release campaign and rechecked on 2026-10-20 at `f49ac4b`: compileall, Ruff, BasedPyright with 0 errors/2,018 warnings, Alembic `0005` initialization at the `data` root, 518 backend tests with 13 intentional conditional skips, OpenAPI smoke with 35 paths, frontend lint, 63/63 unit tests, and the production build at backend 3.5.1/frontend 2.5.1 passed. |
+| T0-02 | PASS | At `e864197c`, clean/warm bootstrap, malformed/missing stamps, stale build, repairs, invalid ports, redirected conflicts, reacquisition race, and the real localized `Accesso negato` termination-denial branch passed; the launcher contract suite then stood at 19/19. The post-release data-root refactor expanded the contract suite to 21/21 at the current checkout (`a84b9c1`), adding repository-`data` default-root and log-root assertions; the release-tagged evidence remains the 19/19 record, and the 21/21 contract suite is disposable campaign output rather than tracked source. The 2026-10-17 delta recheck re-ran the launcher clean bootstrap and warm relaunch on the repository-`data` layout at `e7f4f9b` and exercised the documented port-occupied refusal branch. The 2026-10-20 warm relaunch at `f49ac4b` reached backend and preview readiness, returned health/proxy 200, and was cleanly stopped with `-KillAll`, which freed ports 5000/8000; clean bootstrap was not repeated because the launcher and runtime pins were unchanged. |
 | T0-03 | PASS | All 13 maintenance-menu routes, install profiles, expected update refusal, destructive decline/approval, cleanup, uninstall, and Kill All passed. |
-| T1-01 | PASS | Startup E2E 2/2 and shell recovery after persistence restart passed. |
+| T1-01 | PASS | Startup E2E 2/2 and shell recovery after persistence restart passed; the 2026-10-20 full live E2E recheck passed the same 2/2 startup slice at `f49ac4b`. |
 | T1-02 | PASS | At `41f265a`, all 16 settings, 38 invalid cases, 25 valid boundaries, decimal constraints, tokenizer relations, sparse persistence, restart, 409 conflict, reset, and downstream effects passed. |
 | T1-03 | PASS | At `09805b7`, synthetic Settings Keys lifecycle, masking, duplicate/active-delete/reveal policies, single-active switching, ciphertext separation, and cleanup passed; live supplied-key coverage was SKIPPED because no test key was available. |
 | T1-04 | PASS | Focused migration/persistence/settings contracts and a runtime override surviving official-launcher restart passed; PostgreSQL is tracked separately under T4-04. |
@@ -186,43 +188,44 @@ The gate table records the latest known state of every stable validation ID.
 | T3-05 | PASS | Dataset/tokenizer/benchmark export smoke and the expanded all-eight-form benchmark review plus five-page 1,207-entry tokenizer PDF passed `pdfinfo`, rendering, and visual legibility checks. |
 | T4-01 | PASS | Supplied key authentication, public `bert-base-uncased` discovery/download/report/reload/cleanup passed; vocabulary size was 30,522. |
 | T4-02 | PASS | Anonymous public Wikitext import persisted 29,119 documents across restart and removed temporary source files. |
-| T4-03 | BLOCKED | Three discovered gated candidates all failed download; no access-term acceptance or gated report exists. The external authorization check is DEFERRED by the user and non-blocking. |
+| T4-03 | BLOCKED | Three discovered gated candidates all failed download; no access-term acceptance or gated report exists. The external authorization check is DEFERRED by the user and non-blocking. The 2026-10-20 environment had no supplied key or authorized gated repository, so no gated flow was attempted. |
 | T4-04 | PASS | Isolated PostgreSQL 18.6 reached Alembic 0005; concurrent initialization, migration 10/10, UI equivalence, restart recovery, injected rollback, and valid retry passed. |
 | T5-01 | PASS | Restart reconciled active work to addressable terminal failure while preserving completed upload job and its 25,000-document dataset. |
 | T5-02 | PASS | Dataset/Settings populated, no-match, empty Keys, four viewport sizes, keyboard navigation, Escape, and focus return passed without document-level horizontal overflow. |
 | T5-03 | PASS | Cross Benchmark, Tokenizers empty/loading/error/populated/report states, manager bounds, four viewport sizes, and keyboard/focus behavior passed. |
 | T5-04 | PASS | Official launcher streamed visible progress for 10,000 documents, cancellation produced no report, eight backend RSS samples were collected, and a two-document rerun rendered without browser/HTTP errors. Browser heap was not instrumented. |
 | T5-05 | OUT_OF_SCOPE | Release support is Windows x64 source-only. Ubuntu was diagnostic; macOS and hosted runtime support are not planned. |
-| T5-06 | PASS | Release commit `f8dee1da9084138bd52f3d08437269d3821ba5d6`, hosted CI 36158666979, synchronized `main`/`develop`, annotated tag `v4.5.0`, and public source-only release were verified. The v4.5.1 release was verified on 2026-10-17: annotated tag `v4.5.1` points to `ec74b7567f967c1948d362c761fa9b12438d5a10`, hosted CI run 36840557312 passed both jobs for that SHA, the public source-only release published 2026-10-01 is marked Latest, and `main`/`develop` are synchronized at `e7f4f9b` (post-tag license-headers commit) where hosted CI runs 36861229079 (main) and 36861205874 (develop) and the fresh local baseline suite passed. |
+| T5-06 | PASS | Release commit `f8dee1da9084138bd52f3d08437269d3821ba5d6`, hosted CI 36158666979, synchronized `main`/`develop`, annotated tag `v4.5.0`, and public source-only release were verified. The v4.5.1 release was verified on 2026-10-17: annotated tag `v4.5.1` points to `ec74b7567f967c1948d362c761fa9b12438d5a10`, hosted CI run 36840557312 passed both jobs for that SHA, the public source-only release published 2026-10-01 is marked Latest, and `main`/`develop` are synchronized at `e7f4f9b` (post-tag license-headers commit) where hosted CI runs 36861229079 (main) and 36861205874 (develop) and the fresh local baseline suite passed. The later docs/pytest-collection tip `f49ac4b` passed hosted CI runs 39245816231 (develop) and 39245823783 (main) and the 2026-10-20 local baseline; no new release was created. |
 
 ## Open issues and validation debt
 
 | ID or component | Status | Durable limitation and follow-up |
 | --- | --- | --- |
 | ISSUE-002: deployment.network-auth-boundary | OPEN / HIGH | Network-hosted deployment still requires an external authentication and authorization boundary before exposing key-management or destructive routes. This is outside the supported local/source-only release model. Validate the external boundary before any network deployment. See [deployment](runtime/deployment.md#constraints) and [configuration security controls](runtime/configuration.md#security-controls). |
-| ISSUE-003: architecture.canonical-ownership | OPEN / MEDIUM | Environment-derived paths, duplicate metric representations, export dictionaries, handwritten frontend contracts, catalog metadata, and toolchain declarations still have planned canonicalization follow-ups. No current regression was reproduced. See [canonical-source remediation](architecture/canonical_source_remediation.md#remaining-canonicalization-work). |
-| data.large-file-and-disk-exhaustion | PARTIAL | Controlled `SQLITE_FULL` cleanup and same-name retries passed for upload and dataset-backed import. Host authorization denied bounded-volume creation before a physical filesystem-full scenario could run; no VHD artifact remains. The optional recheck is DEFERRED until a safe host-authorized volume is available. |
-| integration.huggingface-discovery-and-download / T4-03 | PARTIAL | Public provider flow passed, but no authorized gated repository completed download/report generation. The gate is BLOCKED and the external recheck is DEFERRED; rerun only when an already-authorized gated repository is explicitly selected. |
+| ISSUE-003: architecture.canonical-ownership | OPEN / MEDIUM | Environment-derived paths, duplicate metric representations, export dictionaries, handwritten frontend contracts, catalog metadata, and toolchain declarations still have planned canonicalization follow-ups. No current regression was reproduced, and the architecture boundary test passed in the 2026-10-20 suite. See [canonical-source remediation](architecture/canonical_source_remediation.md#remaining-canonicalization-work). |
+| data.large-file-and-disk-exhaustion | PARTIAL | Controlled `SQLITE_FULL` cleanup and same-name retries passed for upload and dataset-backed import in the 2026-10-20 suite. Physical host exhaustion was not re-attempted; no `fsutil` file or bounded-volume test was run because this is optional, non-blocking validation debt for the local source-only quality gate. The gate remains PARTIAL/DEFERRED and is not claimed as PASS; rerun only if a safe host-authorized volume is available. |
+| integration.huggingface-discovery-and-download / T4-03 | PARTIAL | Public provider flow passed, but no authorized gated repository completed download/report generation. The gate is BLOCKED and the external recheck is DEFERRED; rerun only when an already-authorized gated repository is explicitly selected. No supplied key or gated repository was available on 2026-10-20. |
 | deployment.containerized | NOT_IMPLEMENTED | No container deployment is part of the current product scope. |
 | deployment.binary-packaging | NOT_IMPLEMENTED | The supported artifact is the source-only GitHub Release; do not infer installer or executable support. |
 
 ## Release gate
 
-The current published release is `v4.5.1`, pointing to commit
+The current published release remains `v4.5.1`, pointing to commit
 `ec74b7567f967c1948d362c761fa9b12438d5a10`. Hosted CI run
 [36840557312](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36840557312)
 passed both jobs for that SHA, and the annotated tag `v4.5.1` with the
 [public source-only release](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases/tag/v4.5.1)
 published on 2026-10-01 were verified. `main` and `develop` are synchronized
-at `e7f4f9b971eb477af241780f97c485e8c01ba5d0`, which adds only the
-repository-wide license headers after the tag; hosted CI runs
-[36861229079](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36861229079)
-(main) and
-[36861205874](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36861205874)
-(develop) passed for that tip, and the fresh local CI-equivalent suite at the
-tip passed on 2026-10-17 as recorded in the campaign index. Release readiness
-is VALIDATED, with T4-03 and physical low-disk recovery remaining
-independently bounded as recorded above.
+at `f49ac4bd02f7523933cb76c43528427cd3020c67`, which contains only post-tag
+license headers, documentation, and pytest-collection changes after the
+release SHA; hosted CI runs
+[39245816231](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/39245816231)
+(develop) and
+[39245823783](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/39245823783)
+(main) passed for that tip, and the fresh local baseline suite at the tip
+passed on 2026-10-20 as recorded in the campaign index. Release readiness
+remains VALIDATED at v4.5.1, with no new release created; T4-03 and physical
+low-disk recovery remain independently bounded as recorded above.
 
 The previous gate record remains historical: the v4.5.0 release commit
 `f8dee1da9084138bd52f3d08437269d3821ba5d6` passed hosted CI run
