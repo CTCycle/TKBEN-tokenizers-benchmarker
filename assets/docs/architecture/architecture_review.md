@@ -23,14 +23,13 @@ repository/database layer commits the result. Alembic owns the schema graph;
 revision `0003_canonical_state_cleanup` establishes direct metric keys,
 persisted tokenizer sources, and the relational benchmark report summary.
 
-Configuration has two deliberately separate ownership layers. `settings/.env`
-and the process environment supply startup, infrastructure, paths, security,
-and secrets and are loaded before configuration or database imports. Typed
-Pydantic runtime models own application defaults, while the optional
-`<TKBEN_DATA_DIR>/runtime-settings.json` stores sparse user overrides for the
-approved runtime fields. The backend validates the merged result and exposes
-one immutable effective settings snapshot to the application; the override
-file is never a source for environment configuration.
+Configuration has three deliberately separate ownership layers. `settings/.env`
+and the process environment supply bootstrap-only values. The independent
+`<TKBEN_DATA_DIR>/database-config.json` file supplies database connection
+settings before connection initialization. Typed Pydantic models own
+application defaults, while the selected database stores sparse user overrides
+for the approved runtime fields. The backend validates the merged result and
+exposes one immutable effective settings snapshot to the application.
 
 ## Architectural Strengths
 

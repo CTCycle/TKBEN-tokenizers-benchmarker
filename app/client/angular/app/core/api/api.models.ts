@@ -156,6 +156,46 @@ export interface RuntimeSettingsResetRequest {
     all?: boolean;
 }
 
+export type DatabaseBackend = 'sqlite' | 'postgresql';
+
+export interface DatabaseConfiguration {
+    backend: DatabaseBackend;
+    active: boolean;
+    connection_status: 'connected' | 'unavailable';
+    sqlite_path: string | null;
+    host: string | null;
+    port: number | null;
+    database_name: string | null;
+    username: string | null;
+    password_configured: boolean;
+    ssl: boolean;
+    ssl_ca: string | null;
+    connect_timeout: number;
+    insert_batch_size: number;
+    message: string | null;
+}
+
+export interface DatabaseConfigurationRequest {
+    backend: DatabaseBackend;
+    sqlite_path?: string;
+    host?: string;
+    port?: number;
+    database_name?: string;
+    username?: string;
+    password?: string;
+    clear_password?: boolean;
+    ssl?: boolean;
+    ssl_ca?: string;
+    connect_timeout: number;
+    insert_batch_size: number;
+}
+
+export interface DatabaseConnectionTestResponse {
+    backend: DatabaseBackend;
+    success: boolean;
+    message: string;
+}
+
 /**
  * Download request for tokenizer persistence
  */

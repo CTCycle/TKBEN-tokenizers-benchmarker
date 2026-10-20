@@ -53,7 +53,8 @@ Source-level structure, with generated and environment-specific folders omitted:
 │  │  │  └─ schemas/
 │  │  └─ migrations/
 │  │     ├─ versions/0004_benchmark_report_tags.py
-│  │     └─ versions/0005_managed_job_lifecycle.py
+│  │     ├─ versions/0005_managed_job_lifecycle.py
+│  │     └─ versions/0006_database_runtime_settings.py
 │  ├─ scripts/
 │  └─ tests/
 ├─ data/
@@ -78,14 +79,13 @@ Source-level structure, with generated and environment-specific folders omitted:
 - Windows launcher:
   - `start_on_windows.ps1` is the single user-facing root entry point for the combined launch and maintenance menu.
 
-Startup resolves one immutable settings snapshot. `settings/.env` is loaded
-before configuration and database imports and owns environment-specific values.
-Typed Pydantic models own application runtime defaults, and the optional
-`<TKBEN_DATA_DIR>/runtime-settings.json` stores only validated sparse user
-overrides. `GET/PATCH /api/settings` is the supported editing surface; runtime
-file corruption falls back to typed defaults with a warning and does not block
-startup. No startup, infrastructure, path, security, or secret value is part
-of the Settings API or page.
+Startup loads `settings/.env` bootstrap values and the database-only
+`<TKBEN_DATA_DIR>/database-config.json` before opening the selected database.
+Typed Pydantic models own application defaults; the active database stores
+validated sparse overrides in `application_runtime_settings`. The Settings
+page exposes application settings and a Database section. A database that is
+unavailable at startup leaves the app in a limited repair mode so the Database
+section remains reachable.
 
 ## Reporting Service Boundaries
 - `server.services.TokenizersService` owns Hugging Face discovery, catalog,

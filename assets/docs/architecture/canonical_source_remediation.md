@@ -5,13 +5,13 @@ Last updated: 2026-09-16
 TKBEN should expose one authoritative implementation and one authoritative source of truth for each responsibility. Runtime compatibility paths are retained only when a current external dependency requires them.
 
 ## Canonical ownership
-- `settings/.env` and the process environment own startup and infrastructure
-  values, including network, database, paths, launcher behavior, security, and
-  secrets.
-- Typed Pydantic runtime models own application defaults. The optional
-  `<TKBEN_DATA_DIR>/runtime-settings.json` stores only sparse user overrides for
-  the exact Settings API allowlist; it never stores defaults, environment
-  values, or secrets.
+- `settings/.env` and the process environment own bootstrap-only values,
+  including network, paths, launcher behavior, and security.
+- `<TKBEN_DATA_DIR>/database-config.json` is the database-independent source of
+  truth for database connection settings. Database passwords are encrypted.
+- Typed Pydantic runtime models own application defaults. The selected database
+  stores sparse user overrides for the exact Settings API allowlist; it never
+  stores bootstrap values or database credentials.
 - `server.configurations.get_server_settings()` owns the resolved immutable backend settings object.
 - `server.configurations` loads the environment before importing settings or
   database surfaces that resolve environment-derived values.

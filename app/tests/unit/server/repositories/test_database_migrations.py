@@ -166,7 +166,7 @@ def test_repeated_initialization_is_current_and_idempotent(
 
     assert _revision(path) == _head()
     assert path.stat().st_size == first_size
-    assert _head() == "0005_managed_job_lifecycle"
+    assert _head() == "0006_database_runtime_settings"
 
 ###############################################################################
 def test_existing_0004_database_upgrades_with_job_lifecycle_table(
@@ -202,8 +202,9 @@ def test_existing_0004_database_upgrades_with_job_lifecycle_table(
 
     engine = create_engine(f"sqlite:///{path}", future=True)
     try:
-        assert _revision(path) == "0005_managed_job_lifecycle"
+        assert _revision(path) == "0006_database_runtime_settings"
         assert "managed_job" in inspect(engine).get_table_names()
+        assert "application_runtime_settings" in inspect(engine).get_table_names()
         with engine.connect() as connection:
             assert (
                 connection.execute(

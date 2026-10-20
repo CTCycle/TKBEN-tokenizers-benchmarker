@@ -4,13 +4,11 @@
 from __future__ import annotations
 
 import json
-import os
-import tempfile
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from threading import RLock
-from typing import ClassVar, cast
+from typing import ClassVar, Protocol, cast
 
 from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, StrictInt, ValidationError, model_validator
 
@@ -25,11 +23,17 @@ from server.configurations.settings import (
 
 
 RUNTIME_SETTINGS_SCHEMA_VERSION = 1
-RUNTIME_SETTINGS_FILENAME = "runtime-settings.json"
+LEGACY_RUNTIME_SETTINGS_FILENAME = "runtime-settings.json"
 RUNTIME_SETTINGS_WARNING = (
     "Saved runtime settings could not be loaded; typed defaults are in use. "
-    "Save or reset settings to replace the file."
+    "Save or reset settings to replace the stored values."
 )
+
+
+class RuntimeSettingsPersistence(Protocol):
+    def load(self) -> dict[str, object] | None: ...
+
+    def save(self, payload: dict[str, object]) -> None: ...
 
 ###############################################################################
 class RuntimeSettingsError(RuntimeError):
@@ -164,24 +168,21 @@ class RuntimeSettingsStore:
     )
 
     # -------------------------------------------------------------------------
-    def __init__(self, defaults: ServerSettings, path: str | Path | None = None) -> None:
+    def __init__(
+        self,
+        defaults: ServerSettings,
+        persistence: RuntimeSettingsPersistence | None = None,
+        legacy_path: str | Path | None = None,
+    ) -> None:
         self._lock = RLock()
         self._defaults = defaults
-        self._path = (
-            Path(path)
-            if path is not None
-            else defaults.paths.data / RUNTIME_SETTINGS_FILENAME
-        ).expanduser().resolve()
+        self._persistence = persistence
+        self._legacy_path = Path(legacy_path).expanduser().resolve() if legacy_path else None
         self._effective = defaults
         self._overrides: dict[str, dict[str, object]] = {}
         self._revision = 0
         self._warning: str | None = None
-        self._load_from_disk()
-
-    # -------------------------------------------------------------------------
-    @property
-    def path(self) -> Path:
-        return self._path
+        self._load_from_persistence()
 
     # -------------------------------------------------------------------------
     @classmethod
@@ -200,7 +201,7 @@ class RuntimeSettingsStore:
             self._overrides = {}
             self._revision = 0
             self._warning = None
-            self._load_from_disk()
+            self._load_from_persistence()
             return self._state()
 
     # -------------------------------------------------------------------------
@@ -272,12 +273,24 @@ class RuntimeSettingsStore:
         )
 
     # -------------------------------------------------------------------------
-    def _load_from_disk(self) -> None:
-        if not self._path.is_file():
-            return
-
+    def _load_from_persistence(self) -> None:
         try:
-            payload = json.loads(self._path.read_text(encoding="utf-8"))
+            payload = (
+                self._persistence.load()
+                if self._persistence is not None
+                else None
+            )
+            migrated_legacy_file = False
+            if (
+                payload is None
+                and self._persistence is not None
+                and self._legacy_path is not None
+                and self._legacy_path.is_file()
+            ):
+                payload = json.loads(self._legacy_path.read_text(encoding="utf-8"))
+                migrated_legacy_file = True
+            if payload is None:
+                return
             document = _RuntimeOverrideDocument.model_validate(payload)
             if document.schema_version != RUNTIME_SETTINGS_SCHEMA_VERSION:
                 raise RuntimeSettingsValidationError(
@@ -291,6 +304,10 @@ class RuntimeSettingsStore:
             self._effective = self._build_effective(overrides)
             self._overrides = overrides
             self._revision = document.revision
+            if migrated_legacy_file:
+                self._persist(overrides, document.revision)
+                assert self._legacy_path is not None
+                self._legacy_path.unlink()
         except (OSError, TypeError, ValueError, ValidationError, RuntimeSettingsError):
             self._effective = self._defaults
             self._overrides = {}
@@ -309,7 +326,6 @@ class RuntimeSettingsStore:
         if (
             overrides == self._overrides
             and self._warning is None
-            and (overrides or not self._path.exists())
         ):
             return self._state()
 
@@ -399,57 +415,20 @@ class RuntimeSettingsStore:
         overrides: Mapping[str, Mapping[str, object]],
         revision: int,
     ) -> None:
-        if not overrides:
-            try:
-                if self._path.exists():
-                    self._path.unlink()
-            except OSError as exc:
-                raise RuntimeSettingsPersistenceError(
-                    "Unable to remove persisted runtime settings."
-                ) from exc
+        if self._persistence is None:
             return
-
-        temporary_path: str | None = None
-        descriptor: int | None = None
         try:
-            self._path.parent.mkdir(parents=True, exist_ok=True)
-            descriptor, temporary_path = tempfile.mkstemp(
-                prefix=f".{self._path.name}.",
-                suffix=".tmp",
-                dir=self._path.parent,
+            self._persistence.save(
+                {
+                    "schema_version": RUNTIME_SETTINGS_SCHEMA_VERSION,
+                    "revision": revision,
+                    "overrides": {group: dict(values) for group, values in overrides.items()},
+                }
             )
-            with os.fdopen(descriptor, "w", encoding="utf-8") as destination:
-                descriptor = None
-                json.dump(
-                    {
-                        "schema_version": RUNTIME_SETTINGS_SCHEMA_VERSION,
-                        "revision": revision,
-                        "overrides": overrides,
-                    },
-                    destination,
-                    indent=2,
-                    sort_keys=True,
-                )
-                destination.write("\n")
-                destination.flush()
-                os.fsync(destination.fileno())
-            os.replace(temporary_path, self._path)
-            temporary_path = None
-        except (OSError, TypeError, ValueError) as exc:
+        except Exception as exc:
             raise RuntimeSettingsPersistenceError(
                 "Unable to persist runtime settings."
             ) from exc
-        finally:
-            if descriptor is not None:
-                try:
-                    os.close(descriptor)
-                except OSError:
-                    pass
-            if temporary_path is not None:
-                try:
-                    os.unlink(temporary_path)
-                except OSError:
-                    pass
 
     # -------------------------------------------------------------------------
     def _copy_overrides(
@@ -495,7 +474,7 @@ class RuntimeSettingsStore:
 
 
 __all__ = [
-    "RUNTIME_SETTINGS_FILENAME",
+    "LEGACY_RUNTIME_SETTINGS_FILENAME",
     "RUNTIME_SETTINGS_SCHEMA_VERSION",
     "RuntimeSettingsConflictError",
     "RuntimeSettingsError",

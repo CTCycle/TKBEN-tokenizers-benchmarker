@@ -1,15 +1,15 @@
 # Persistence
-Last updated: 2026-09-28
+Last updated: 2026-10-20
 
 ## Storage selection
 
-Embedded SQLite is the default local store at `data/database.db`. Set
-`TKBEN_DATA_DIR` to override the data root with a repository-relative or
-absolute path; the embedded database then uses
-`<TKBEN_DATA_DIR>/database.db`. The PostgreSQL backend is selected with
-`DATABASE_EMBEDDED=false` and the explicit PostgreSQL fields in `settings/.env`;
-the engine is fixed to `postgresql+psycopg`. Database access is injected through
-the repository backend.
+The database connection is configured by Settings → Database and persisted
+outside the database in `<TKBEN_DATA_DIR>/database-config.json`. This file is
+the independent source of truth required to open the selected backend.
+`TKBEN_DATA_DIR` remains a bootstrap environment value; SQLite defaults to
+`<TKBEN_DATA_DIR>/database.db`. PostgreSQL uses the fixed
+`postgresql+psycopg` driver. Database access is injected through the shared
+repository backend, which can be replaced after requests drain.
 
 Alembic is the authoritative schema owner. Application startup and the
 database-initialization command run the same idempotent migration workflow:
@@ -19,11 +19,15 @@ empty database to the single repository head, and verify that head in the
 protected transaction.
 `Base.metadata.create_all()` is not used for production initialization.
 
-SQLite migrations use `BEGIN IMMEDIATE`, bounded by
-`DATABASE_CONNECT_TIMEOUT`, and run a foreign-key integrity check before
+SQLite migrations use `BEGIN IMMEDIATE`, bounded by the configured connection
+timeout, and run a foreign-key integrity check before
 commit. PostgreSQL uses an advisory transaction lock; database creation is
-serialized through a separate maintenance-database advisory lock. A failed
-migration rolls back and prevents FastAPI from becoming ready.
+serialized through a separate maintenance-database advisory lock.
+
+Migration failures never activate a partial schema. If the selected database
+cannot initialize at process startup, FastAPI starts in a limited repair mode:
+health and Database Settings remain available while other database-backed
+routes return HTTP 503. A successful runtime switch restores normal service.
 Databases ahead of the application, unknown revisions, multiple heads, and
 unrecognized or partial unversioned schemas fail without automatic downgrades
 or destructive changes.
@@ -35,13 +39,25 @@ purges incompatible reports and converts persisted metric and tokenizer state
 to the current contract, `0004_benchmark_report_tags` adds the relational
 report tag array without changing the immutable report payload, and
 `0005_managed_job_lifecycle` adds durable managed-job lifecycle records.
+Revision `0006_database_runtime_settings` adds the singleton row for sparse
+user-editable application settings.
+
+The active database owns all non-database application settings. Runtime
+switching first connects to and migrates the candidate, drains in-flight API
+requests, and refuses to switch while managed jobs are pending or running. It
+then replaces the shared backend and loads that database's settings; a failed
+activation retains the prior connection and configuration. Settings are never
+copied between databases. A process restart is required only for bootstrap
+configuration such as listener addresses, filesystem roots, or encryption
+key-material location.
 
 ## Canonical tables
 
 The schema contains `dataset`, `dataset_document`, `analysis_session`,
 `metric_value`, `histogram_artifact`, `managed_job`, `tokenizer`,
-`tokenizer_vocabulary`, `tokenizer_report`, `benchmark_report`, and
-`hf_access_keys`. The obsolete `dataset_validation_report` table is removed.
+`tokenizer_vocabulary`, `tokenizer_report`, `benchmark_report`,
+`application_runtime_settings`, and `hf_access_keys`. The obsolete
+`dataset_validation_report` table is removed.
 
 The canonical ownership and cardinalities are:
 
@@ -121,6 +137,8 @@ Persistence ownership follows the repository/service split:
 - `repositories/jobs.py` owns durable job lifecycle records and is represented
   by `JobRepository`; `JobManager` coordinates runner state and writes through
   that repository.
+- `repositories/runtime_settings.py` owns the singleton settings persistence row;
+  it stores only user-editable application settings in the selected database.
 - `services/benchmark_reports.py` owns benchmark report persistence
   orchestration through `BenchmarkReportService`.
 - The report service uses the benchmark repository/database boundary for
@@ -136,6 +154,19 @@ application-restart error and an internal `failure_reason`; the public job API
 keeps its existing response shape. Completed, failed, and cancelled results
 remain queryable until terminal-job retention prunes them. No runner is
 automatically restarted.
+
+## Runtime database switching
+
+The file-based database configuration is loaded before database initialization.
+At runtime, the Database Settings API checks the target connection and brings
+its schema to the current Alembic head before the shared database backend is
+replaced. Ordinary API requests drain first. Switching returns HTTP 409 while
+managed jobs are pending or running; otherwise repositories and the job manager
+are rebound to the target, and application settings are loaded from that target.
+The browser performs a full reload to clear feature-store caches. No records or
+settings are copied between databases. If activation fails, the previous
+connection and file configuration remain active. Network listener changes and
+other bootstrap-only environment settings still require a restart.
 
 ## Backend and transaction guarantees
 
@@ -164,11 +195,12 @@ partial rows and can be retried after storage capacity returns; it does not
 simulate exhaustion of the host filesystem. The current ledger records this as
 PARTIAL validation debt.
 
-PostgreSQL integration was subsequently validated against an isolated
-PostgreSQL 18.6 database: concurrent initialization, Alembic migration to
-`0005_managed_job_lifecycle`, SQLite-equivalent UI behavior, restart recovery,
-and injected-failure rollback/retry passed. The existing host listener was not
-contacted, so the evidence does not claim general deployment equivalence.
+PostgreSQL integration was subsequently validated against isolated PostgreSQL
+18.6 clusters: concurrent initialization, migration to `0005` and then `0006`,
+authenticated UI connection testing, runtime switching, independent settings,
+restart recovery, and injected-failure rollback/retry passed. The existing host
+listener was not contacted, so the evidence does not claim general deployment
+equivalence.
 See the [project status ledger](../project_status_ledger.md) for the current
 gate and historical migration-failure reconciliation.
 
@@ -188,13 +220,14 @@ Review every generated revision manually; the tracked
 `migrations/script.py.mako` file is the single revision-generation template,
 not application runtime configuration. Alembic uses the pyproject
 configuration and the application settings loader; no `alembic.ini` is
-maintained, so database credentials have one source of truth in `settings/.env`.
+maintained. Database credentials are read from the independent
+`database-config.json` file, not from `.env` or the active database.
 Use the application initializer (launcher option 4 or
 `app/scripts/initialize_database.py`) for an existing database. A non-empty
 unversioned database is intentionally a hard failure and must be restored from a
 versioned backup or recreated.
 
-The current repository head is `0005_managed_job_lifecycle`. Managed-job rows,
+The current repository head is `0006_database_runtime_settings`. Managed-job rows,
 ready dataset rows, tokenizer rows, reports, and canonical tokenizer artifacts
 are stored under the configured data root and are retained across
 application restarts unless explicitly deleted. Dataset files and tokenizer

@@ -10,6 +10,7 @@
         <button id="settings-tab-tokenizers" class="settings-tab" type="button" role="tab" aria-controls="settings-panel-tokenizers" [attr.aria-selected]="activeTab() === 'tokenizers'" [attr.tabindex]="activeTab() === 'tokenizers' ? 0 : -1" (click)="selectTab('tokenizers')" (keydown)="handleTabKeydown($event, 'tokenizers')">Tokenizers</button>
         <button id="settings-tab-benchmarks" class="settings-tab" type="button" role="tab" aria-controls="settings-panel-benchmarks" [attr.aria-selected]="activeTab() === 'benchmarks'" [attr.tabindex]="activeTab() === 'benchmarks' ? 0 : -1" (click)="selectTab('benchmarks')" (keydown)="handleTabKeydown($event, 'benchmarks')">Benchmarks</button>
         <button id="settings-tab-runtime" class="settings-tab" type="button" role="tab" aria-controls="settings-panel-runtime" [attr.aria-selected]="activeTab() === 'runtime'" [attr.tabindex]="activeTab() === 'runtime' ? 0 : -1" (click)="selectTab('runtime')" (keydown)="handleTabKeydown($event, 'runtime')">Runtime</button>
+        <button id="settings-tab-database" class="settings-tab" type="button" role="tab" aria-controls="settings-panel-database" [attr.aria-selected]="activeTab() === 'database'" [attr.tabindex]="activeTab() === 'database' ? 0 : -1" (click)="selectTab('database')" (keydown)="handleTabKeydown($event, 'database')">Database</button>
         <button id="settings-tab-keys" class="settings-tab" type="button" role="tab" aria-controls="settings-panel-keys" [attr.aria-selected]="activeTab() === 'keys'" [attr.tabindex]="activeTab() === 'keys' ? 0 : -1" (click)="selectTab('keys')" (keydown)="handleTabKeydown($event, 'keys')">Keys</button>
       </nav>
     </aside>
@@ -131,7 +132,7 @@
           </div>
         </section>
 
-        <footer class="settings-footer" [hidden]="activeTab() === 'keys'">
+        <footer class="settings-footer" [hidden]="activeTab() === 'keys' || activeTab() === 'database'">
           <button class="secondary-button" type="button" [disabled]="store.saving() || !store.overriddenKeys().length" (click)="resetAll()">Reset all</button>
           <button class="primary-button" type="submit" [disabled]="store.saving() || store.loading() || !form.dirty || form.invalid">{{ store.saving() ? 'Saving…' : 'Save changes' }}</button>
         </footer>
@@ -141,6 +142,7 @@
         <app-hf-access-key-manager />
       </section>
     }
+      <app-database-settings [hidden]="activeTab() !== 'database'" />
     </div>
   </div>
 </main>

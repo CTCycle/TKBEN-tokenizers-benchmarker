@@ -13,15 +13,16 @@ import {
 } from '@angular/forms';
 import { SettingsStore } from '../core/state/settings.store';
 import { HfAccessKeyManagerComponent } from '../components/hf-access-key-manager.component';
+import { DatabaseSettingsComponent } from '../components/database-settings.component';
 import type {
   RuntimeSettingKey,
   RuntimeSettingsPatchRequest,
   RuntimeSettingsValues,
 } from '../core/api/api.models';
 
-type SettingsTab = 'data' | 'tokenizers' | 'benchmarks' | 'runtime' | 'keys';
+type SettingsTab = 'data' | 'tokenizers' | 'benchmarks' | 'runtime' | 'database' | 'keys';
 
-const SETTINGS_TABS: readonly SettingsTab[] = ['data', 'tokenizers', 'benchmarks', 'runtime', 'keys'];
+const SETTINGS_TABS: readonly SettingsTab[] = ['data', 'tokenizers', 'benchmarks', 'runtime', 'database', 'keys'];
 
 const BYTES_PER_MIB = 1024 * 1024;
 
@@ -44,7 +45,7 @@ const tokenizerLimits: ValidatorFn = (control: AbstractControl): ValidationError
 
 @Component({
   selector: 'app-settings-page',
-  imports: [ReactiveFormsModule, HfAccessKeyManagerComponent],
+  imports: [ReactiveFormsModule, HfAccessKeyManagerComponent, DatabaseSettingsComponent],
   templateUrl: './settings-page.component.html',
 })
 export class SettingsPageComponent {

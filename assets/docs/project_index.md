@@ -1,11 +1,11 @@
 # Project Overview
-Last updated: 2026-09-26
+Last updated: 2026-10-20
 
 ## Purpose
 This file is the root index for `assets/docs`. Read it first to find the narrowest topic file for the task at hand.
 
 The current codebase uses schema-3/report-5 benchmark reports, Alembic revision
-`0005_managed_job_lifecycle`, typed frontend catalog controls, persisted
+`0006_database_runtime_settings`, typed frontend catalog controls, persisted
 tokenizer source/artifact state, and a `BenchmarkStore` that owns dashboard
 preferences and report-scoped baseline selections. Reports own relational
 summary fields and tags while JSON stores immutable detail fields; incompatible
@@ -15,11 +15,11 @@ after restart rather than automatically resumed.
 
 The latest published release is `v4.5.1` with backend package `3.5.1` and
 frontend package `2.5.1`. Configuration ownership is canonical: `settings/.env`
-and the process environment own startup/infrastructure values, typed backend
-models own application defaults, and sparse user overrides live under
-`<TKBEN_DATA_DIR>/runtime-settings.json`. The environment bootstrap runs before
-configuration or database imports; runtime overrides are optional and are not
-part of startup configuration.
+and the process environment own bootstrap-only values,
+`<TKBEN_DATA_DIR>/database-config.json` owns database connection settings, typed
+backend models own application defaults, and the active database owns sparse
+user overrides. The environment bootstrap and database configuration load
+before the database opens.
 
 ## How To Navigate
 1. Start with this file only.

@@ -1,0 +1,91 @@
+<!-- Copyright © 2026 Thomas Virdis -->
+<!-- Licensed under the MIT License. -->
+
+<section id="settings-panel-database" class="settings-section database-settings" role="tabpanel" aria-labelledby="settings-tab-database">
+  <header class="settings-section-header">
+    <p class="panel-label">Database</p>
+    <p class="panel-description">Choose where this application stores its records and settings. Each database remains independent.</p>
+  </header>
+
+  <div class="database-active-status" [class.database-active-status--offline]="configuration()?.connection_status === 'unavailable'" role="status">
+    <span class="database-status-indicator" aria-hidden="true"></span>
+    <span>Active database</span>
+    <strong>{{ loading() ? 'Checking…' : currentLabel() }}</strong>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-container settings-loading" role="status"><span class="spinner" aria-hidden="true"></span><p>Loading database settings…</p></div>
+  } @else {
+    <form class="database-form" [formGroup]="form" (ngSubmit)="switchDatabase()">
+      <div class="database-form-grid">
+        <div class="database-field database-field--wide">
+          <label class="settings-label" for="database-backend">Database backend</label>
+          <select id="database-backend" class="text-input" formControlName="backend" (change)="backendChanged()">
+            <option value="sqlite">SQLite</option>
+            <option value="postgresql">PostgreSQL</option>
+          </select>
+        </div>
+
+        @if (form.controls.backend.value === 'sqlite') {
+          <div class="database-field database-field--wide">
+            <label class="settings-label" for="database-sqlite-path">Database file path</label>
+            <input id="database-sqlite-path" class="text-input" type="text" formControlName="sqlitePath" autocomplete="off" aria-describedby="database-sqlite-help" />
+            <p id="database-sqlite-help" class="settings-help">Relative paths are resolved inside the application data directory.</p>
+          </div>
+        } @else {
+          <div class="database-field">
+            <label class="settings-label" for="database-host">Host</label>
+            <input id="database-host" class="text-input" type="text" formControlName="host" autocomplete="hostname" required />
+          </div>
+          <div class="database-field">
+            <label class="settings-label" for="database-port">Port</label>
+            <input id="database-port" class="text-input" type="number" min="1" max="65535" formControlName="port" required />
+          </div>
+          <div class="database-field">
+            <label class="settings-label" for="database-name">Database name</label>
+            <input id="database-name" class="text-input" type="text" formControlName="databaseName" autocomplete="off" required />
+          </div>
+          <div class="database-field">
+            <label class="settings-label" for="database-username">Username</label>
+            <input id="database-username" class="text-input" type="text" formControlName="username" autocomplete="username" required />
+          </div>
+          <div class="database-field database-field--wide">
+            <label class="settings-label" for="database-password">Password</label>
+            <input id="database-password" class="text-input" type="password" formControlName="password" [placeholder]="configuration()?.password_configured ? 'Saved password is set; leave blank to keep it' : 'Enter password if required'" autocomplete="new-password" />
+            @if (configuration()?.password_configured) {
+              <label class="database-checkbox"><input type="checkbox" formControlName="clearPassword" /> Clear saved password</label>
+            }
+          </div>
+          <div class="database-field database-field--wide">
+            <label class="database-checkbox"><input type="checkbox" formControlName="ssl" /> Require SSL</label>
+            @if (form.controls.ssl.value) {
+              <label class="settings-label" for="database-ssl-ca">SSL CA certificate path <span class="settings-help">(optional)</span></label>
+              <input id="database-ssl-ca" class="text-input" type="text" formControlName="sslCa" autocomplete="off" />
+            }
+          </div>
+        }
+
+        <div class="database-field">
+          <label class="settings-label" for="database-timeout">Connection timeout (seconds)</label>
+          <input id="database-timeout" class="text-input" type="number" min="1" step="1" formControlName="connectTimeout" />
+        </div>
+        <div class="database-field">
+          <label class="settings-label" for="database-batch-size">Insert batch size</label>
+          <input id="database-batch-size" class="text-input" type="number" min="1" step="1" formControlName="insertBatchSize" />
+        </div>
+      </div>
+
+      <p class="database-switch-note">Switching changes the active data store. Existing records and settings are not copied. Pending or running jobs must finish first.</p>
+      @if (error(); as message) { <p class="settings-inline-error" role="alert">{{ message }}</p> }
+      @if (notice(); as message) { <p class="database-result database-result--success" role="status">{{ message }}</p> }
+      @if (testResult(); as result) {
+        <p class="database-result" [class.database-result--success]="result.success" [class.database-result--failure]="!result.success" role="status">{{ result.message }}</p>
+      }
+
+      <footer class="database-actions">
+        <button class="secondary-button" type="button" [disabled]="testing() || switching() || form.invalid" (click)="testConnection()">{{ testing() ? 'Testing…' : 'Test connection' }}</button>
+        <button class="primary-button" type="submit" [disabled]="testing() || switching() || form.invalid">{{ switching() ? 'Switching…' : 'Switch database' }}</button>
+      </footer>
+    </form>
+  }
+</section>

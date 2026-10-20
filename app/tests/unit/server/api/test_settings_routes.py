@@ -5,13 +5,16 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import get_args
+from typing import cast, get_args
 
 import pytest
 from pydantic import BaseModel
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from server.app import app
+from server.api.datasets import router as datasets_router
+from server.api.settings import router as settings_router
+from server.api.tokenizers import router as tokenizers_router
 from server.configurations import startup
 from server.configurations.runtime import (
     RuntimeSettingsPersistenceError,
@@ -19,6 +22,34 @@ from server.configurations.runtime import (
 )
 from server.configurations.settings import ServerSettings
 from server.contracts.settings import RuntimeSettingsPatchRequest
+
+###############################################################################
+class _MemoryPersistence:
+    def __init__(self, document: dict[str, object] | None = None) -> None:
+        self.document = document
+
+    def load(self) -> dict[str, object] | None:
+        return json.loads(json.dumps(self.document)) if self.document is not None else None
+
+    def save(self, payload: dict[str, object]) -> None:
+        self.document = json.loads(json.dumps(payload))
+
+
+def _settings_client(
+    defaults: ServerSettings,
+    persistence: _MemoryPersistence,
+    monkeypatch: pytest.MonkeyPatch,
+) -> TestClient:
+    store = RuntimeSettingsStore(defaults, persistence)
+    monkeypatch.setattr(startup, "_runtime_settings_store", store)
+    monkeypatch.setattr(startup, "_default_settings", store.get_state().settings)
+    application = FastAPI()
+    application.include_router(datasets_router, prefix="/api")
+    application.include_router(tokenizers_router, prefix="/api")
+    application.include_router(settings_router, prefix="/api")
+    application.state.settings = store.get_state().settings
+    return TestClient(application)
+
 
 ###############################################################################
 def _runtime_setting_fields():
@@ -156,10 +187,7 @@ def _companion_override(group: str) -> tuple[str, str, object, object]:
 @pytest.fixture
 def settings_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     defaults = startup.get_server_settings()
-    store = RuntimeSettingsStore(defaults, tmp_path / "runtime-settings.json")
-    monkeypatch.setattr(startup, "_runtime_settings_store", store)
-    monkeypatch.setattr(startup, "_default_settings", defaults)
-    return TestClient(app)
+    return _settings_client(defaults, _MemoryPersistence(), monkeypatch)
 
 ###############################################################################
 def test_get_settings_returns_only_typed_runtime_fields(
@@ -253,7 +281,8 @@ def test_rejected_runtime_setting_update_preserves_persisted_snapshot(
     assert initial.status_code == 200, initial.text
     before = settings_client.get("/api/settings").json()
     store = startup.get_runtime_settings_store()
-    persisted_before = store.path.read_bytes()
+    persistence = cast(_MemoryPersistence, store._persistence)
+    persisted_before = json.dumps(persistence.document, sort_keys=True)
 
     payload = {
         "expected_revision": before["revision"],
@@ -264,7 +293,7 @@ def test_rejected_runtime_setting_update_preserves_persisted_snapshot(
 
     assert rejected.status_code == 422, f"{group}.{name} {case}: {rejected.text}"
     assert settings_client.get("/api/settings").json() == before
-    assert store.path.read_bytes() == persisted_before
+    assert json.dumps(persistence.document, sort_keys=True) == persisted_before
 
 ###############################################################################
 def test_invalid_tokenizer_relationships_do_not_partially_persist(
@@ -296,6 +325,7 @@ def test_invalid_tokenizer_relationships_do_not_partially_persist(
         },
     )
     store = startup.get_runtime_settings_store()
+    persistence = cast(_MemoryPersistence, store._persistence)
     histogram_default = (
         ServerSettings.model_fields["datasets"]
         .annotation.model_fields["histogram_bins"]
@@ -310,7 +340,7 @@ def test_invalid_tokenizer_relationships_do_not_partially_persist(
     )
     assert baseline.status_code == 200, baseline.text
     before = settings_client.get("/api/settings").json()
-    persisted_before = store.path.read_bytes()
+    persisted_before = json.dumps(persistence.document, sort_keys=True)
 
     for tokenizer_settings in cases:
         rejected = settings_client.patch(
@@ -323,7 +353,7 @@ def test_invalid_tokenizer_relationships_do_not_partially_persist(
         )
         assert rejected.status_code == 422, rejected.text
         assert settings_client.get("/api/settings").json() == before
-        assert store.path.read_bytes() == persisted_before
+        assert json.dumps(persistence.document, sort_keys=True) == persisted_before
 
 ###############################################################################
 def test_new_workflows_use_saved_runtime_settings(
@@ -701,17 +731,15 @@ def test_persistence_error_keeps_previous_authoritative_state(
     assert current["settings"]["datasets"]["histogram_bins"] == 20
 
 ###############################################################################
-def test_corrupt_file_warning_is_sanitized_and_cleared_by_save(
+def test_invalid_database_settings_warning_is_sanitized_and_cleared_by_save(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     defaults = startup.get_server_settings()
-    path = tmp_path / "runtime-settings.json"
-    path.write_text("{broken", encoding="utf-8")
-    store = RuntimeSettingsStore(defaults, path)
-    monkeypatch.setattr(startup, "_runtime_settings_store", store)
-    monkeypatch.setattr(startup, "_default_settings", defaults)
-    client = TestClient(app)
+    persistence = _MemoryPersistence(
+        {"schema_version": 2, "revision": 0, "overrides": {}}
+    )
+    client = _settings_client(defaults, persistence, monkeypatch)
 
     warning = client.get("/api/settings")
     assert warning.status_code == 200
@@ -724,9 +752,5 @@ def test_corrupt_file_warning_is_sanitized_and_cleared_by_save(
     )
     assert saved.status_code == 200
     assert saved.json()["warning"] is None
-    assert (
-        json.loads(path.read_text(encoding="utf-8"))["overrides"]["datasets"][
-            "histogram_bins"
-        ]
-        == 30
-    )
+    assert persistence.document is not None
+    assert persistence.document["overrides"]["datasets"]["histogram_bins"] == 30
