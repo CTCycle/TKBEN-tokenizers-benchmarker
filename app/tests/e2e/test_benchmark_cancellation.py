@@ -45,7 +45,6 @@ METRIC_KEYS = {
 }
 DOCUMENT_DISTRIBUTION_METRIC_KEY = "doc.tokens_count_distribution"
 
-
 ###############################################################################
 def _campaign_tokenizer_json() -> bytes:
     tokenizer = Tokenizer(
@@ -69,7 +68,6 @@ def _campaign_tokenizer_json() -> bytes:
         special_tokens=[("[CLS]", 2), ("[SEP]", 3)],
     )
     return tokenizer.to_str().encode("utf-8")
-
 
 ###############################################################################
 def _select_metric(
@@ -110,7 +108,6 @@ def _select_metric(
             checkbox.check()
     dialog.get_by_role("button", name="Next").click()
 
-
 ###############################################################################
 def _set_document_limit(dialog: Locator, value: int) -> None:
     slider = dialog.locator("#benchmark-documents")
@@ -128,7 +125,6 @@ def _set_document_limit(dialog: Locator, value: int) -> None:
         value,
     )
     expect(slider).to_have_value(str(value))
-
 
 ###############################################################################
 def _start_benchmark(
@@ -203,7 +199,6 @@ def _start_benchmark(
     assert job_id, "Missing benchmark job ID"
     return job_id, payload
 
-
 ###############################################################################
 def _wait_for_running_progress(
     api_context: APIRequestContext,
@@ -226,7 +221,6 @@ def _wait_for_running_progress(
     raise AssertionError(
         f"Job {job_id} did not remain active at {minimum_progress}% progress"
     )
-
 
 ###############################################################################
 @pytest.mark.skipif(

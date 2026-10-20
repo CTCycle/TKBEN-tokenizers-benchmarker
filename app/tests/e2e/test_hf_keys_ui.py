@@ -20,7 +20,6 @@ from server.configurations.settings import build_server_settings
 
 TEST_KEY_ENV = "TKBEN_TEST_HF_KEY"
 
-
 ###############################################################################
 def _read_keys(api_context: APIRequestContext) -> list[dict[str, Any]]:
     response = api_context.get("/api/keys")
@@ -31,7 +30,6 @@ def _read_keys(api_context: APIRequestContext) -> list[dict[str, Any]]:
     if not isinstance(keys, list):
         pytest.fail("GET /api/keys did not return a key list.")
     return keys
-
 
 ###############################################################################
 def _assert_public_list(
@@ -45,7 +43,6 @@ def _assert_public_list(
         pytest.fail("The key list response included a key_value field.")
     return keys
 
-
 ###############################################################################
 def _key_row(panel: Locator, keys: list[dict[str, Any]], key_id: int) -> Locator:
     try:
@@ -58,13 +55,11 @@ def _key_row(panel: Locator, keys: list[dict[str, Any]], key_id: int) -> Locator
     expect(rows).to_have_count(len(keys))
     return rows.nth(index)
 
-
 ###############################################################################
 def _expect_key_response(response: Any, method: str, path_suffix: str) -> bool:
     return response.request.method == method and urlparse(response.url).path.endswith(
         path_suffix
     )
-
 
 ###############################################################################
 def _add_key(page: Page, key_value: str) -> dict[str, Any]:
@@ -85,7 +80,6 @@ def _add_key(page: Page, key_value: str) -> dict[str, Any]:
         pytest.fail("The create response did not include a key ID.")
     return item
 
-
 ###############################################################################
 def _sqlite_paths() -> tuple[Path, Path, Path]:
     settings = build_server_settings()
@@ -98,7 +92,6 @@ def _sqlite_paths() -> tuple[Path, Path, Path]:
         settings.security.hf_keys_encryption_material_file,
         settings.paths.logs,
     )
-
 
 ###############################################################################
 def _assert_ciphertext(key_id: int, plaintext: str) -> None:
@@ -119,7 +112,6 @@ def _assert_ciphertext(key_id: int, plaintext: str) -> None:
     if stored_value == plaintext or plaintext in stored_value:
         pytest.fail("The database contains the plaintext key instead of ciphertext.")
 
-
 ###############################################################################
 def _assert_active_count(expected: int) -> None:
     database_path, _, _ = _sqlite_paths()
@@ -129,7 +121,6 @@ def _assert_active_count(expected: int) -> None:
         ).fetchone()
     if row is None or row[0] != expected:
         pytest.fail("The SQLite active-key count did not match the expected state.")
-
 
 ###############################################################################
 def _assert_database_key_state(
@@ -143,7 +134,6 @@ def _assert_database_key_state(
     if {row[0] for row in rows if row[1]} != expected_active_ids:
         pytest.fail("The SQLite active-key state did not return to its pre-test state.")
 
-
 ###############################################################################
 def _assert_plaintext_absent_from_logs(plaintext_values: tuple[str, ...]) -> None:
     _, _, log_directory = _sqlite_paths()
@@ -156,7 +146,6 @@ def _assert_plaintext_absent_from_logs(plaintext_values: tuple[str, ...]) -> Non
                     pytest.fail("A plaintext test key appeared in an application log.")
         except OSError:
             pytest.fail("An application log could not be checked for plaintext keys.")
-
 
 ###############################################################################
 def _cleanup_created_keys(
@@ -182,7 +171,6 @@ def _cleanup_created_keys(
         if response.status != 200:
             pytest.fail("Cleanup could not restore the original active key.")
 
-
 ###############################################################################
 def _settings_keys_panel(page: Page, base_url: str) -> Locator:
     page.goto(f"{base_url}/settings")
@@ -192,7 +180,6 @@ def _settings_keys_panel(page: Page, base_url: str) -> Locator:
     panel = page.get_by_role("tabpanel", name="Keys")
     expect(panel).to_be_visible()
     return panel
-
 
 ###############################################################################
 def test_settings_keys_rendered_lifecycle_and_sqlite_ciphertext(
@@ -412,7 +399,6 @@ def test_settings_keys_rendered_lifecycle_and_sqlite_ciphertext(
         } != original_active_ids:
             pytest.fail("Cleanup did not restore the original active-key state.")
         _assert_database_key_state(baseline_ids, original_active_ids)
-
 
 ###############################################################################
 @pytest.mark.skipif(

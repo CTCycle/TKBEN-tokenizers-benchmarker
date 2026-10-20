@@ -30,7 +30,6 @@ from server.configurations.settings import (
 )
 from server.contracts.settings import RuntimeSettingsPatchRequest
 
-
 ###############################################################################
 def _non_finite_runtime_float_cases():
     cases = []
@@ -367,7 +366,6 @@ def test_process_restart_and_reload_load_persisted_overrides(tmp_path: Path) -> 
     assert restored.settings.jobs == defaults.jobs
     assert restarted.get_state().revision == 1
     assert restored.warning is None
-
 
 ###############################################################################
 @pytest.mark.parametrize(

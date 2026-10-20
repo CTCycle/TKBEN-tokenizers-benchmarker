@@ -7,7 +7,6 @@ import re
 
 from playwright.sync_api import Page, expect
 
-
 ###############################################################################
 def _route_health(page: Page, failures: int | None) -> dict[str, int]:
     calls = {"count": 0}
@@ -21,7 +20,6 @@ def _route_health(page: Page, failures: int | None) -> dict[str, int]:
 
     page.route("**/api/health", handle_health)
     return calls
-
 
 ###############################################################################
 def test_startup_screen_recovers_after_transient_backend_unavailability(
@@ -53,7 +51,6 @@ def test_startup_screen_recovers_after_transient_backend_unavailability(
     expect(page.get_by_text("Dataset Usage")).to_be_visible(timeout=10_000)
     expect(page.locator(".startup-screen")).to_have_count(0)
     assert calls["count"] >= 3
-
 
 ###############################################################################
 def test_startup_screen_supports_reduced_motion_and_narrow_viewport(

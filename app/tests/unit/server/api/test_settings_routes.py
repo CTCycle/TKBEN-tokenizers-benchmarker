@@ -20,7 +20,6 @@ from server.configurations.runtime import (
 from server.configurations.settings import ServerSettings
 from server.contracts.settings import RuntimeSettingsPatchRequest
 
-
 ###############################################################################
 def _runtime_setting_fields():
     """Derive editable fields and constraints from the public request schema."""
@@ -42,7 +41,6 @@ def _runtime_setting_fields():
                 settings_model.model_fields[name],
             )
 
-
 ###############################################################################
 def _constraint(field, name: str):
     return next(
@@ -54,7 +52,6 @@ def _constraint(field, name: str):
         None,
     )
 
-
 ###############################################################################
 def _runtime_setting_spec(group: str, name: str):
     return next(
@@ -62,7 +59,6 @@ def _runtime_setting_spec(group: str, name: str):
         for spec in _runtime_setting_fields()
         if spec[0] == group and spec[1] == name
     )
-
 
 ###############################################################################
 def _alternate_schema_value(group: str, name: str):
@@ -77,7 +73,6 @@ def _alternate_schema_value(group: str, name: str):
     assert minimum is not None and candidate >= minimum
     assert maximum is None or candidate <= maximum
     return candidate
-
 
 ###############################################################################
 def _boundary_patch(group: str, name: str, value: object) -> dict[str, object]:
@@ -111,7 +106,6 @@ def _boundary_patch(group: str, name: str, value: object) -> dict[str, object]:
             )
     return {group: values}
 
-
 ###############################################################################
 def _invalid_setting_cases():
     cases = []
@@ -134,7 +128,6 @@ def _invalid_setting_cases():
             cases.append((group, name, default + 0.5, "fractional-integer"))
     return cases
 
-
 ###############################################################################
 def _numeric_boundary_cases():
     cases = []
@@ -146,7 +139,6 @@ def _numeric_boundary_cases():
             if value is not None:
                 cases.append((group, name, value, boundary_name))
     return cases
-
 
 ###############################################################################
 def _companion_override(group: str) -> tuple[str, str, object, object]:
@@ -207,7 +199,6 @@ def test_get_settings_returns_only_typed_runtime_fields(
     assert "fastapi_host" not in response.text
     assert "paths" not in response.text
 
-
 ###############################################################################
 def test_public_runtime_matrix_matches_typed_backend_schema() -> None:
     fields = list(_runtime_setting_fields())
@@ -218,7 +209,6 @@ def test_public_runtime_matrix_matches_typed_backend_schema() -> None:
     for _group, _name, request_field, settings_field in fields:
         assert _constraint(request_field, "ge") == _constraint(settings_field, "ge")
         assert _constraint(request_field, "le") == _constraint(settings_field, "le")
-
 
 ###############################################################################
 @pytest.mark.parametrize(
@@ -240,7 +230,6 @@ def test_patch_accepts_every_runtime_numeric_boundary(
 
     assert response.status_code == 200, f"{group}.{name} {boundary}: {response.text}"
     assert response.json()["settings"][group][name] == value
-
 
 ###############################################################################
 @pytest.mark.parametrize(("group", "name", "value", "case"), _invalid_setting_cases())
@@ -276,7 +265,6 @@ def test_rejected_runtime_setting_update_preserves_persisted_snapshot(
     assert rejected.status_code == 422, f"{group}.{name} {case}: {rejected.text}"
     assert settings_client.get("/api/settings").json() == before
     assert store.path.read_bytes() == persisted_before
-
 
 ###############################################################################
 def test_invalid_tokenizer_relationships_do_not_partially_persist(
@@ -336,7 +324,6 @@ def test_invalid_tokenizer_relationships_do_not_partially_persist(
         assert rejected.status_code == 422, rejected.text
         assert settings_client.get("/api/settings").json() == before
         assert store.path.read_bytes() == persisted_before
-
 
 ###############################################################################
 def test_new_workflows_use_saved_runtime_settings(
