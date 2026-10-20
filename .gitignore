@@ -8,6 +8,7 @@ data/sources/datasets/**
 data/sources/tokenizers/**
 data/logs/**
 data/runtime-settings.json
+database-config.json
 app/client/node_modules/
 app/client/dist/
 app/client/dist-ssr/

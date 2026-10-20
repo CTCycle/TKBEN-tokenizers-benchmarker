@@ -8,10 +8,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from server.api.benchmarks import router as benchmarks_router
 from server.api.datasets import router as datasets_router
+from server.api.database import router as database_router
 from server.api.exports import router as exports_router
 from server.api.jobs import router as jobs_router
 from server.api.keys import router as keys_router
@@ -22,12 +23,20 @@ from server.common.constants import (
     FASTAPI_TITLE,
     FASTAPI_VERSION,
 )
-from server.common.utils.logger import configure_logging
+from server.common.utils.logger import configure_logging, logger
 from server.configurations import get_server_settings
+from server.configurations.startup import (
+    activate_runtime_settings_store,
+    build_database_runtime_settings_store,
+)
 from server.contracts.health import HealthResponse
 from server.repositories.database.initializer import initialize_database
+from server.repositories.database.migrations import DatabaseMigrationError
 from server.repositories.jobs import JobRepository
+from server.repositories.runtime_settings import DatabaseRuntimeSettingsPersistence
+from server.repositories.database.backend import get_database
 from server.services.jobs import JobManager
+from server.services.database_switch import DatabaseSwitchGate
 from server.services.startup_validation import build_cors_origins, run_startup_validations
 
 ###############################################################################
@@ -53,6 +62,7 @@ def register_api_routers(application: FastAPI) -> None:
         jobs_router,
         keys_router,
         settings_router,
+        database_router,
         exports_router,
     ):
         application.include_router(router, prefix="/api")
@@ -67,7 +77,31 @@ async def app_lifespan(application: FastAPI) -> AsyncIterator[None]:
     settings = application.state.settings
 
     run_startup_validations(settings)
-    initialize_database(settings=settings, startup=True)
+    try:
+        initialize_database(settings=settings, startup=True)
+    except DatabaseMigrationError as exc:
+        logger.error("Database is unavailable at startup: %s", exc)
+        application.state.database_available = False
+        application.state.database_startup_error = (
+            "The configured database could not be initialized. Use Settings > Database "
+            "to test or change the connection."
+        )
+        application.state.job_repository = None
+        application.state.job_manager = JobManager(
+            terminal_retention_seconds=settings.jobs.terminal_retention_seconds
+        )
+        application.state.settings = settings
+        yield
+        return
+
+    runtime_store = build_database_runtime_settings_store(
+        settings,
+        DatabaseRuntimeSettingsPersistence(get_database()),
+    )
+    settings = activate_runtime_settings_store(runtime_store).settings
+    application.state.settings = settings
+    application.state.database_available = True
+    application.state.database_startup_error = None
 
     job_repository = JobRepository()
     job_manager = JobManager(
@@ -99,9 +133,34 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     application.state.settings = settings
+    application.state.database_available = True
+    application.state.database_startup_error = None
+    application.state.database_switch_gate = DatabaseSwitchGate()
     application.state.job_manager = JobManager(
         terminal_retention_seconds=settings.jobs.terminal_retention_seconds
     )
+
+    @application.middleware("http")
+    async def database_switch_request_gate(request, call_next):
+        gate = request.app.state.database_switch_gate
+        path = request.url.path.rstrip("/")
+        if (
+            not request.app.state.database_available
+            and not path.startswith("/api/database")
+            and path != "/api/health"
+        ):
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "detail": request.app.state.database_startup_error
+                    or "The database is unavailable."
+                },
+            )
+        if path == "/api/database/switch":
+            return await call_next(request)
+        async with gate.request():
+            return await call_next(request)
+
     register_api_routers(application)
     register_frontend_routes(application)
     return application

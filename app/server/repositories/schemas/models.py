@@ -390,3 +390,18 @@ class ManagedJob(Base):
         Index("ix_managed_job_status_created_at", "status", "created_at"),
         Index("ix_managed_job_completed_at", "completed_at"),
     )
+
+###############################################################################
+class RuntimeSettingsRecord(Base):
+    __tablename__ = "application_runtime_settings"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    schema_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    overrides: Mapped[dict[str, Any]] = mapped_column(
+        JSONObject(), nullable=False, default=dict, server_default="{}"
+    )
+    __table_args__ = (
+        CheckConstraint("id = 1", name="ck_runtime_settings_singleton"),
+        CheckConstraint("schema_version > 0", name="ck_runtime_settings_schema_version"),
+        CheckConstraint("revision >= 0", name="ck_runtime_settings_revision"),
+    )

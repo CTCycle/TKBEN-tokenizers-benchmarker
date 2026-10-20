@@ -31,6 +31,37 @@ from server.configurations.settings import (
 from server.contracts.settings import RuntimeSettingsPatchRequest
 
 ###############################################################################
+class _FilePersistenceForStoreUnitTests:
+    """Small test adapter; production persistence is the active SQL database."""
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self.fail_writes = False
+
+    def load(self) -> dict[str, object] | None:
+        if not self.path.exists():
+            return None
+        return json.loads(self.path.read_text(encoding="utf-8"))
+
+    def save(self, payload: dict[str, object]) -> None:
+        if self.fail_writes:
+            raise OSError("test persistence failure")
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+
+
+class _PersistedRuntimeSettingsStore(RuntimeSettingsStore):
+    def __init__(self, defaults: ServerSettings, path: Path) -> None:
+        self.persistence = _FilePersistenceForStoreUnitTests(path)
+        self.path = path
+        super().__init__(defaults, self.persistence)
+
+
+def _store(defaults: ServerSettings, path: Path) -> _PersistedRuntimeSettingsStore:
+    return _PersistedRuntimeSettingsStore(defaults, path)
+
+
+###############################################################################
 def _non_finite_runtime_float_cases():
     cases = []
     for group, group_field in RuntimeSettingsPatchRequest.model_fields.items():
@@ -96,7 +127,7 @@ def test_default_only_startup_and_missing_runtime_file(tmp_path: Path) -> None:
     defaults = _server_settings(tmp_path)
     path = tmp_path / "runtime-settings.json"
 
-    store = RuntimeSettingsStore(defaults, path)
+    store = _store(defaults, path)
     state = store.get_state()
 
     assert state.settings == defaults
@@ -110,7 +141,7 @@ def test_default_only_startup_and_missing_runtime_file(tmp_path: Path) -> None:
 def test_valid_partial_overrides_merge_and_persist_sparsely(tmp_path: Path) -> None:
     defaults = _server_settings(tmp_path)
     path = tmp_path / "runtime-settings.json"
-    store = RuntimeSettingsStore(defaults, path)
+    store = _store(defaults, path)
 
     first = store.apply_patch(
         {"datasets": {"histogram_bins": 30}},
@@ -153,7 +184,7 @@ def test_invalid_unknown_and_environment_fields_are_rejected(
     tmp_path: Path,
     patch: dict[str, dict[str, object]],
 ) -> None:
-    store = RuntimeSettingsStore(_server_settings(tmp_path), tmp_path / "runtime.json")
+    store = _store(_server_settings(tmp_path), tmp_path / "runtime.json")
 
     with pytest.raises(RuntimeSettingsValidationError):
         store.apply_patch(patch, expected_revision=0)
@@ -163,7 +194,7 @@ def test_invalid_unknown_and_environment_fields_are_rejected(
 
 ###############################################################################
 def test_tokenizer_cross_field_validation_remains_authoritative(tmp_path: Path) -> None:
-    store = RuntimeSettingsStore(_server_settings(tmp_path), tmp_path / "runtime.json")
+    store = _store(_server_settings(tmp_path), tmp_path / "runtime.json")
 
     with pytest.raises(RuntimeSettingsValidationError):
         store.apply_patch(
@@ -200,7 +231,7 @@ def test_invalid_schema_or_override_file_falls_back_with_warning(
     path.write_text(json.dumps(payload), encoding="utf-8")
     original = path.read_bytes()
 
-    store = RuntimeSettingsStore(_server_settings(tmp_path), path)
+    store = _store(_server_settings(tmp_path), path)
     state = store.get_state()
 
     assert state.settings.datasets.histogram_bins == 20
@@ -214,17 +245,17 @@ def test_malformed_runtime_json_is_preserved(tmp_path: Path) -> None:
     path = tmp_path / "runtime-settings.json"
     path.write_text("{not-json", encoding="utf-8")
 
-    store = RuntimeSettingsStore(_server_settings(tmp_path), path)
+    store = _store(_server_settings(tmp_path), path)
 
     assert store.get_state().warning is not None
     assert path.read_text(encoding="utf-8") == "{not-json"
 
 ###############################################################################
-def test_successful_save_replaces_corrupt_runtime_file(tmp_path: Path) -> None:
+def test_successful_save_replaces_corrupt_stored_document(tmp_path: Path) -> None:
     path = tmp_path / "runtime-settings.json"
     path.write_text("{not-json", encoding="utf-8")
 
-    store = RuntimeSettingsStore(_server_settings(tmp_path), path)
+    store = _store(_server_settings(tmp_path), path)
     state = store.apply_patch(
         {"datasets": {"histogram_bins": 20}},
         expected_revision=0,
@@ -233,12 +264,16 @@ def test_successful_save_replaces_corrupt_runtime_file(tmp_path: Path) -> None:
     assert state.warning is None
     assert state.revision == 1
     assert state.overridden_keys == ()
-    assert not path.exists()
+    assert json.loads(path.read_text(encoding="utf-8")) == {
+        "schema_version": 1,
+        "revision": 1,
+        "overrides": {},
+    }
 
 ###############################################################################
 def test_revision_conflict_does_not_write(tmp_path: Path) -> None:
     path = tmp_path / "runtime-settings.json"
-    store = RuntimeSettingsStore(_server_settings(tmp_path), path)
+    store = _store(_server_settings(tmp_path), path)
     store.apply_patch({"datasets": {"histogram_bins": 30}}, expected_revision=0)
     original = path.read_bytes()
 
@@ -255,7 +290,7 @@ def test_revision_conflict_does_not_write(tmp_path: Path) -> None:
 ###############################################################################
 def test_reset_one_value_and_equal_default_remove_the_override(tmp_path: Path) -> None:
     path = tmp_path / "runtime-settings.json"
-    store = RuntimeSettingsStore(_server_settings(tmp_path), path)
+    store = _store(_server_settings(tmp_path), path)
     store.apply_patch(
         {
             "datasets": {"histogram_bins": 30, "streaming_batch_size": 20_000},
@@ -283,46 +318,50 @@ def test_reset_one_value_and_equal_default_remove_the_override(tmp_path: Path) -
     assert reset_to_default.overridden_keys == ("jobs.polling_interval",)
 
 ###############################################################################
-def test_reset_all_deletes_empty_runtime_file(tmp_path: Path) -> None:
+def test_reset_all_persists_an_empty_database_document(tmp_path: Path) -> None:
     path = tmp_path / "runtime-settings.json"
-    store = RuntimeSettingsStore(_server_settings(tmp_path), path)
+    store = _store(_server_settings(tmp_path), path)
     store.apply_patch({"datasets": {"histogram_bins": 30}}, expected_revision=0)
 
     state = store.reset(expected_revision=1)
 
     assert state.settings.datasets.histogram_bins == 20
     assert state.overridden_keys == ()
-    assert not path.exists()
+    assert json.loads(path.read_text(encoding="utf-8")) == {
+        "schema_version": 1,
+        "revision": 2,
+        "overrides": {},
+    }
 
 ###############################################################################
-def test_reset_all_removes_a_valid_empty_runtime_file(tmp_path: Path) -> None:
+def test_reset_all_keeps_revision_of_an_unchanged_empty_document(tmp_path: Path) -> None:
     path = tmp_path / "runtime-settings.json"
     path.write_text(
         json.dumps({"schema_version": 1, "revision": 3, "overrides": {}}),
         encoding="utf-8",
     )
-    store = RuntimeSettingsStore(_server_settings(tmp_path), path)
+    store = _store(_server_settings(tmp_path), path)
 
     state = store.reset(expected_revision=3)
 
-    assert state.revision == 4
+    assert state.revision == 3
     assert state.overridden_keys == ()
-    assert not path.exists()
+    assert json.loads(path.read_text(encoding="utf-8")) == {
+        "schema_version": 1,
+        "revision": 3,
+        "overrides": {},
+    }
 
 ###############################################################################
-def test_atomic_write_and_persistence_failure_roll_back_state_and_disk(
+def test_persistence_failure_rolls_back_state_and_stored_document(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     path = tmp_path / "runtime-settings.json"
-    store = RuntimeSettingsStore(_server_settings(tmp_path), path)
+    store = _store(_server_settings(tmp_path), path)
     store.apply_patch({"datasets": {"histogram_bins": 30}}, expected_revision=0)
     original = path.read_bytes()
 
-    def fail_replace(_source: str, _destination: Path) -> None:
-        raise OSError("replace failed")
-
-    monkeypatch.setattr(runtime_module.os, "replace", fail_replace)
+    store.persistence.fail_writes = True
     with pytest.raises(RuntimeSettingsPersistenceError):
         store.apply_patch(
             {"datasets": {"histogram_bins": 31}},
@@ -332,13 +371,12 @@ def test_atomic_write_and_persistence_failure_roll_back_state_and_disk(
     assert path.read_bytes() == original
     assert store.get_state().settings.datasets.histogram_bins == 30
     assert store.get_state().revision == 1
-    assert not list(tmp_path.glob(".runtime-settings.json.*.tmp"))
 
 ###############################################################################
 def test_process_restart_and_reload_load_persisted_overrides(tmp_path: Path) -> None:
     path = tmp_path / "runtime-settings.json"
     defaults = _server_settings(tmp_path)
-    first = RuntimeSettingsStore(defaults, path)
+    first = _store(defaults, path)
     first.apply_patch(
         {"datasets": {"histogram_bins": defaults.datasets.histogram_bins + 1}},
         expected_revision=0,
@@ -349,7 +387,7 @@ def test_process_restart_and_reload_load_persisted_overrides(tmp_path: Path) -> 
         "datasets": {"histogram_bins": defaults.datasets.histogram_bins + 1}
     }
 
-    restarted = RuntimeSettingsStore(defaults, path)
+    restarted = _store(defaults, path)
     restored = restarted.get_state()
     assert (
         restored.settings.datasets.histogram_bins
@@ -380,7 +418,7 @@ def test_non_finite_float_update_preserves_persisted_snapshot(
 ) -> None:
     defaults = _server_settings(tmp_path)
     path = tmp_path / "runtime-settings.json"
-    store = RuntimeSettingsStore(defaults, path)
+    store = _store(defaults, path)
     store.apply_patch(
         {
             "benchmarks": {
@@ -404,7 +442,7 @@ def test_non_finite_float_update_preserves_persisted_snapshot(
 
 ###############################################################################
 def test_runtime_override_models_are_frozen(tmp_path: Path) -> None:
-    store = RuntimeSettingsStore(_server_settings(tmp_path), tmp_path / "runtime.json")
+    store = _store(_server_settings(tmp_path), tmp_path / "runtime.json")
     state = store.apply_patch(
         {"datasets": {"histogram_bins": 30}},
         expected_revision=0,
@@ -418,7 +456,7 @@ def test_benchmark_defaults_persist_sparsely_and_reset_independently(
     tmp_path: Path,
 ) -> None:
     path = tmp_path / "runtime-settings.json"
-    store = RuntimeSettingsStore(_server_settings(tmp_path), path)
+    store = _store(_server_settings(tmp_path), path)
 
     saved = store.apply_patch(
         {

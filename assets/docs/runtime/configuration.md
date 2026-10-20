@@ -1,14 +1,18 @@
 # Configuration
-Last updated: 2026-09-28
+Last updated: 2026-10-20
 
 ## Environment File
 Primary launcher runtime env file:
 - `settings/.env`
 - Created from the versioned `settings/.env.example` template when missing
-- Owns environment-specific runtime values, including ports, database mode and
-  connection fields, filesystem roots, logging, and boolean controls.
+- Owns bootstrap-only values, including listeners, filesystem roots, logging,
+  security controls, and process behavior. Database settings are not loaded
+  from this file.
 - The backend bootstrap loads this file before importing configuration and
   database modules that can resolve environment-derived paths or settings.
+- Any remaining legacy `DATABASE_*` entries are imported once into the
+  database configuration file, removed from `settings/.env`, and cleared from
+  the application process environment; these values are not loaded thereafter.
 
 ## Core Variables
 - `FASTAPI_HOST`
@@ -19,30 +23,20 @@ Primary launcher runtime env file:
 - `RELOAD`
 - `ALLOW_KEY_REVEAL`
 - `HF_KEYS_ENCRYPTION_MATERIAL_FILE`
-- `TKBEN_DATA_DIR` (persistent data root for the embedded database, downloaded datasets, tokenizer artifacts, and exports; defaults to `data`; set it to a repository-relative or absolute path to use a different root; it is separate from the disposable `runtimes/cache` root)
+- `TKBEN_DATA_DIR` (persistent application data root and default SQLite database directory; downloads, tokenizer artifacts, and exports also use it; defaults to `data`; set it to a repository-relative or absolute path to use a different root; it is separate from the disposable `runtimes/cache` root)
 - `TKBEN_LOG_DIR` (runtime logs)
-- `DATABASE_EMBEDDED`
-- `DATABASE_HOST`
-- `DATABASE_PORT`
-- `DATABASE_NAME`
-- `DATABASE_USERNAME`
-- `DATABASE_PASSWORD`
-- `DATABASE_SSL`
-- `DATABASE_SSL_CA`
-- `DATABASE_CONNECT_TIMEOUT`
-- `DATABASE_INSERT_BATCH_SIZE`
 
-These values are startup and infrastructure configuration. They are not
-returned by the Settings API, cannot be edited from the Settings page, and are
-resolved once for the running process.
+These values are startup and infrastructure configuration. Database
+connection settings are managed separately in
+`<TKBEN_DATA_DIR>/database-config.json` through Settings → Database.
 
 ## Application Runtime Settings
-Typed Pydantic models own the defaults for application behavior. The optional
-application-managed file `<TKBEN_DATA_DIR>/runtime-settings.json` stores only
-sparse user overrides. It is created under `data` by default, is
-ignored by Git, and is independent of whether TKBEN uses SQLite or PostgreSQL.
-The file contains a schema version, revision, and nested overrides; defaults
-are never duplicated in it.
+Typed Pydantic models own the defaults for application behavior. The active
+database stores sparse user overrides and their revision in its
+`application_runtime_settings` table. Each database has independent settings;
+switching reloads that database's values and does not copy data. The old
+`<TKBEN_DATA_DIR>/runtime-settings.json` file is imported once after schema
+initialization and removed only after the database commit succeeds.
 
 The Settings page and `/api/settings` endpoints expose exactly these 16 fields,
 grouped in the UI by workflow:
@@ -69,11 +63,12 @@ runtime Settings surface.
 ## Ownership and validation
 
 Do not move values between startup configuration and runtime settings to work
-around a validation error. `.env` is canonical for operational and
+around a validation error. `.env` is canonical for bootstrap and
 environment-specific values. Runtime requests are strict typed contracts with
 backend-authoritative validation, including tokenizer cross-field constraints,
-finite numeric values, and revision checks. Invalid startup input fails before
-the application exposes its health endpoint; invalid runtime input is rejected
+finite numeric values, and revision checks. Invalid bootstrap input fails
+before the application exposes its health endpoint; an unavailable selected
+database instead starts in repair mode. Invalid runtime input is rejected
 without changing the current snapshot.
 
 ## Configuration Differences
@@ -81,10 +76,12 @@ without changing the current snapshot.
 - Angular serves and proxies `/api` to the FastAPI host and port from the environment.
 - `RELOAD=true` enables Uvicorn reload behavior.
 
-### Persistence Toggle
-- Database mode and connection fields always come from `settings/.env` through the `DATABASE_*` variables. This is the same source used by Alembic and the database initializer; runtime settings cannot override it.
-- `DATABASE_EMBEDDED=true` uses SQLite (`<TKBEN_DATA_DIR>/database.db`; defaults to `data/database.db`).
-- `DATABASE_EMBEDDED=false` uses PostgreSQL with the explicit `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `DATABASE_SSL`, and `DATABASE_SSL_CA` fields. The engine is fixed to `postgresql+psycopg`.
+### Database Settings
+- Settings → Database supports SQLite and PostgreSQL. SQLite paths, PostgreSQL host/port/name/user/password/SSL, connection timeout, and insert batch size are persisted in `<TKBEN_DATA_DIR>/database-config.json`; PostgreSQL passwords are encrypted with a dedicated Fernet purpose key in the existing local key-material file.
+- A switch tests and initializes the target schema, drains active requests, refuses while managed jobs are pending/running, and restores the previous backend if activation fails.
+- Switching reloads the selected database's settings and records. It never copies data between databases. The browser reload clears cached feature state after switching.
+- If the selected database is unavailable at startup, the API remains available in a limited mode so the Database section can test or replace the connection; other database-backed routes return HTTP 503 until a database is activated.
+- Restart is still required after changing bootstrap settings such as listener ports, data/log paths, CORS origins, or the key-material-file path. Database switching and saved runtime settings apply in the current process when their validation and drain checks succeed.
 
 ### Job Lifecycle
 - `jobs.polling_interval` controls frontend polling guidance for async job status for newly created jobs. Existing jobs keep their captured interval.
@@ -103,8 +100,10 @@ Boolean launcher settings are validated as `true` or `false`; invalid values
 fail fast. The versioned template defaults are `FASTAPI_PORT=5000` and
 `UI_PORT=8000`, and the same values are used by the test harness.
 
-After changing `settings/.env`, restart the backend (or relaunch TKBEN) so the
-new process resolves a fresh startup snapshot. Changes saved from **Settings**
-are applied to subsequently started operations without a restart. Existing
-database rows, reports, and canonical tokenizer artifacts remain in the
-configured data root unless an explicit data-removal action is selected.
+After changing bootstrap values in `settings/.env`, restart the backend (or
+relaunch TKBEN) so the new process resolves a fresh startup snapshot. Changes
+saved from **Settings** apply to subsequently started operations without a
+restart. Database switches activate live when request-drain and job checks
+succeed. Existing database rows, reports, and canonical tokenizer artifacts
+remain in their selected database unless an explicit data-removal action is
+selected.

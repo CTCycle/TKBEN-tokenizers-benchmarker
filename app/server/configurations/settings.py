@@ -9,7 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from server.common.path import ROOT_DIR
+from server.common.path import ROOT_DIR, resolve_runtime_path
 
 ###############################################################################
 class _FrozenSettingsModel(BaseModel):
@@ -164,79 +164,33 @@ def _read_env_int(
     return value
 
 ###############################################################################
-def _resolve_runtime_path(configured_path: str | None, default_path: Path) -> Path:
-    configured = _normalize_optional_text(configured_path)
-    candidate = Path(configured).expanduser() if configured is not None else default_path
-    if not candidate.is_absolute():
-        candidate = ROOT_DIR / candidate
-    return candidate.resolve()
-
 ###############################################################################
 def _load_path_settings() -> PathSettings:
-    data = _resolve_runtime_path(os.getenv("TKBEN_DATA_DIR"), ROOT_DIR / "data")
+    data = resolve_runtime_path(os.getenv("TKBEN_DATA_DIR"), ROOT_DIR / "data")
     sources = data / "sources"
     return PathSettings(
         data=data,
         sources=sources,
         datasets=sources / "datasets",
         tokenizers=sources / "tokenizers",
-        logs=_resolve_runtime_path(os.getenv("TKBEN_LOG_DIR"), data / "logs"),
+        logs=resolve_runtime_path(os.getenv("TKBEN_LOG_DIR"), data / "logs"),
         templates=data / "templates",
     )
 
 ###############################################################################
 def _load_database_settings(paths: PathSettings) -> DatabaseSettings:
-    embedded_database = _read_env_bool("DATABASE_EMBEDDED", True)
-    connect_timeout = _read_env_int("DATABASE_CONNECT_TIMEOUT", 30, minimum=1)
-    insert_batch_size = _read_env_int("DATABASE_INSERT_BATCH_SIZE", 1000, minimum=1)
-    sqlite_path = paths.data / "database.db"
-
-    if embedded_database:
-        return DatabaseSettings(
-            embedded_database=True,
-            sqlite_path=sqlite_path,
-            host=None,
-            port=None,
-            database_name=None,
-            username=None,
-            password=None,
-            ssl=False,
-            ssl_ca=None,
-            connect_timeout=connect_timeout,
-            insert_batch_size=insert_batch_size,
-        )
-
-    host = _normalize_optional_text(os.getenv("DATABASE_HOST"))
-    username = _normalize_optional_text(os.getenv("DATABASE_USERNAME"))
-    password = _normalize_optional_text(os.getenv("DATABASE_PASSWORD"))
-    database_name = _normalize_optional_text(os.getenv("DATABASE_NAME"))
-    port = _read_env_int("DATABASE_PORT", 5432, minimum=1, maximum=65535)
-    ssl = _read_env_bool("DATABASE_SSL", False)
-    ssl_ca = _normalize_optional_text(os.getenv("DATABASE_SSL_CA"))
-
-    missing: list[str] = []
-    if not host:
-        missing.append("database.host")
-    if not database_name:
-        missing.append("database.database_name")
-    if not username:
-        missing.append("database.username")
-    if missing:
-        joined = ", ".join(missing)
-        raise RuntimeError(f"External database configuration requires: {joined}")
-
     return DatabaseSettings(
-        embedded_database=False,
-        sqlite_path=sqlite_path,
-        host=host,
-        port=port,
-        database_name=database_name,
-        username=username,
-        password=password,
-        ssl=ssl,
-        ssl_ca=ssl_ca,
-        connect_timeout=connect_timeout,
-        insert_batch_size=insert_batch_size,
+        embedded_database=True,
+        sqlite_path=paths.data / "database.db",
+        host=None,
+        port=None,
+        database_name=None,
+        username=None,
+        password=None,
+        ssl=False,
+        ssl_ca=None,
+        connect_timeout=30,
+        insert_batch_size=1000,
     )
 
 ###############################################################################
@@ -253,17 +207,19 @@ def _load_network_settings() -> NetworkSettings:
 def _load_security_settings(paths: PathSettings) -> SecuritySettings:
     return SecuritySettings(
         allow_key_reveal=_read_env_bool("ALLOW_KEY_REVEAL", False),
-        hf_keys_encryption_material_file=_resolve_runtime_path(
+        hf_keys_encryption_material_file=resolve_runtime_path(
             os.getenv("HF_KEYS_ENCRYPTION_MATERIAL_FILE"),
             paths.data / "hf-key-material.json",
         ),
     )
 
 ###############################################################################
-def build_server_settings() -> ServerSettings:
+def build_server_settings(
+    *, database_settings: DatabaseSettings | None = None
+) -> ServerSettings:
     paths = _load_path_settings()
     return ServerSettings(
-        database=_load_database_settings(paths),
+        database=database_settings or _load_database_settings(paths),
         paths=paths,
         network=_load_network_settings(),
         security=_load_security_settings(paths),

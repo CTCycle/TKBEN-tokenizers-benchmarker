@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -12,7 +13,11 @@ from pydantic import ValidationError
 from server.common.path import ROOT_DIR
 from server.common.utils.encryption import get_hf_key_cipher
 from server.configurations import environment as bootstrap
-from server.configurations.settings import JobsSettings, TokenizerSettings
+from server.configurations.settings import (
+    JobsSettings,
+    TokenizerSettings,
+    build_server_settings,
+)
 from server.configurations.startup import (
     get_server_settings,
     is_key_reveal_enabled,
@@ -21,7 +26,7 @@ from server.configurations.startup import (
 
 ###############################################################################
 @pytest.fixture(autouse=True)
-def reset_configuration_state() -> None:
+def reset_configuration_state() -> Iterator[None]:
     reset_settings_cache_for_tests()
     bootstrap.reset_environment_bootstrap_for_tests()
     yield
@@ -38,6 +43,8 @@ def _configure_environment(
     monkeypatch: pytest.MonkeyPatch,
     env_lines: list[str],
 ) -> None:
+    if not any(line.startswith("TKBEN_DATA_DIR=") for line in env_lines):
+        env_lines = [*env_lines, f"TKBEN_DATA_DIR={tmp_path / 'runtime-data'}"]
     env_path = tmp_path / ".env"
     _write_env(env_path, env_lines)
     monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
@@ -79,14 +86,18 @@ def test_environment_template_exposes_canonical_runtime_inputs() -> None:
     assert "TKBEN_DATA_DIR=data" in example
     assert "TKBEN_LOG_DIR=data/logs" in example
     assert "UI_HOST=127.0.0.1" in example
-    assert "DATABASE_EMBEDDED=true" in example
+    assert "DATABASE_" not in example
     assert "ALLOW_KEY_REVEAL=false" in example
 
 ###############################################################################
 def test_default_runtime_paths_use_repository_data(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _configure_environment(tmp_path, monkeypatch, ["DATABASE_EMBEDDED=true"])
+    env_path = tmp_path / ".env"
+    _write_env(env_path, [])
+    monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
+    reset_settings_cache_for_tests()
+    bootstrap.reset_environment_bootstrap_for_tests()
 
     settings = get_server_settings()
     default_root = (ROOT_DIR / "data").resolve()
@@ -200,6 +211,9 @@ def test_runtime_environment_resolves_into_one_settings_tree(
     assert settings.network.ui_port == 8100
     assert settings.security.allow_key_reveal is True
     assert settings.security.hf_keys_encryption_material_file == material_path.resolve()
+    saved = (data_root / "database-config.json").read_text(encoding="utf-8")
+    assert "secret" not in saved
+    assert "DATABASE_" not in (tmp_path / ".env").read_text(encoding="utf-8")
 
 ###############################################################################
 def test_relative_runtime_paths_are_repository_relative(
@@ -215,7 +229,8 @@ def test_relative_runtime_paths_are_repository_relative(
         ],
     )
 
-    settings = get_server_settings()
+    bootstrap.ensure_environment_loaded()
+    settings = build_server_settings()
 
     assert settings.paths.data == (ROOT_DIR / "custom/runtime-data").resolve()
     assert settings.paths.logs == (ROOT_DIR / "custom/runtime-logs").resolve()

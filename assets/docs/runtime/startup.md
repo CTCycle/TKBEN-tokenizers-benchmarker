@@ -22,9 +22,9 @@ What it does:
 - records the backend dependency fingerprint for `app/server/pyproject.toml` and `app/server/uv.lock` in `app/server/.venv/.tkben-dependencies.json`; the stamp includes the Python version and `Standard` or `Development` profile. A valid Development stamp satisfies the Standard runtime launch requirement. Normal launch validates the stamp and pinned Python/uv versions without probing imports; `uv sync --locked` is used only when backend repair is required.
 - synchronizes Python dependencies and reuses the frontend dependency tree on application launch when the backend stamp, frontend package stamp, and portable runtime versions are unchanged; it performs `npm ci` for stale or missing frontend dependencies without implying a production rebuild. The dependency maintenance option prompts for `Development` (including Ruff, BasedPyright, and pytest extras) or `Standard` (runtime dependencies only), then intentionally rebuilds the frontend and synchronizes the database to the latest Alembic head. Use menu option 3 to rebuild only the Angular frontend; it reuses valid frontend dependencies and runs `npm ci` when missing or stale without synchronizing Python dependencies. Application launch rebuilds only when `dist/tkben-angular/browser/index.html` is missing, the build stamp is missing or malformed, its fingerprint is stale, or the portable Node.js version differs. Production fingerprint inputs are `angular/**` excluding `*.spec.ts`, `public/**`, `angular.json`, `package.json`, `package-lock.json`, `tsconfig.json`, and `tsconfig.app.json`; `tsconfig.spec.json`, `proxy.conf.cjs`, `scripts/preview.mjs`, caches, logs, and documentation do not invalidate the production build.
 - validates `FASTAPI_PORT` and `UI_PORT` as distinct ports in the range 1 through 65535 before setup work and repeats the check immediately before starting services. When a configured port is occupied, it shows one row per unique PID with its process name when available and every occupied configured port, then requests one explicit confirmation. Only approved listener PIDs receive a single `Stop-Process -Force`; no process tree is inferred. A declined prompt, redirected `-Launch`, denied termination, or remaining listener aborts without starting services. A newly appearing listener is shown again for a new interactive decision and is never silently terminated. Use menu option 12 or `-KillAll` for the separate explicit TKBEN process-tree cleanup action.
-- keeps all disposable runtime, package-manager, pytest, and development-tool caches under the single canonical root `runtimes/cache`. Menu option 9 removes that root and legacy Python bytecode outside it; locked or admin-only files are reported and skipped so cleanup continues. Downloaded datasets and Hugging Face tokenizer artifacts remain persistent application data under `<TKBEN_DATA_DIR>/sources/...`; menu option 10 is the separate operation that permanently removes the embedded database, downloaded/uploaded sources, logs, and Hugging Face key material after confirmation while preserving application files, templates, and `.gitkeep` sentinels. If `DATABASE_EMBEDDED=false`, the external database is not modified. If the managed uv cache causes a sync failure, the launcher clears that cache on a best-effort basis and retries once. On Windows, maintenance and build commands invoke the portable `npm.cmd` from PowerShell (Windows dispatches `.cmd` through `cmd.exe`), while the preview process is launched through `cmd.exe` so repository paths containing spaces work reliably. Non-interactive Angular builds disable the progress renderer because the portable console renderer can terminate with a native access violation; the same production configuration is used. The launcher verifies the portable Node.js version and replaces an older runtime when required by the frontend dependency engines.
+- keeps all disposable runtime, package-manager, pytest, and development-tool caches under the single canonical root `runtimes/cache`. Menu option 9 removes that root and legacy Python bytecode outside it; locked or admin-only files are reported and skipped so cleanup continues. Downloaded datasets and Hugging Face tokenizer artifacts remain persistent application data under `<TKBEN_DATA_DIR>/sources/...`; menu option 10 removes the configured SQLite database and sidecars when SQLite is selected, skips an external PostgreSQL database, and removes downloaded/uploaded sources and logs after confirmation while preserving `database-config.json`, application files, templates, and `.gitkeep` sentinels. The key-material file is removed with SQLite user data and preserved when PostgreSQL is selected because the external database and its encrypted credentials remain in use. If the managed uv cache causes a sync failure, the launcher clears that cache on a best-effort basis and retries once. On Windows, maintenance and build commands invoke the portable `npm.cmd` from PowerShell (Windows dispatches `.cmd` through `cmd.exe`), while the preview process is launched through `cmd.exe` so repository paths containing spaces work reliably. Non-interactive Angular builds disable the progress renderer because the portable console renderer can terminate with a native access violation; the same production configuration is used. The launcher verifies the portable Node.js version and replaces an older runtime when required by the frontend dependency engines.
 - starts FastAPI and the Angular preview server, captures preview output under `<TKBEN_LOG_DIR>` (defaulting to `data/logs`), waits for preview readiness before opening the browser, and prints ports and process IDs; backend readiness continues under launcher and Angular supervision while browser auto-open remains best-effort
-- loads `settings/.env` before backend configuration and database modules are imported; startup/environment values are validated before readiness, while the optional application-managed runtime override file is loaded after typed defaults and falls back to those defaults with a warning if malformed
+- loads bootstrap values from `settings/.env`, then loads `database-config.json` before backend database initialization; the app stays available in limited mode if the selected database cannot initialize so Settings → Database can repair the connection
 - opens a dedicated terminal showing backend logs for interactive sessions; redirected `-Launch` runs capture backend stdout and stderr under `<TKBEN_LOG_DIR>` (defaulting to `data/logs`) so health-check failures include actionable diagnostics
 - keeps the maintenance menu usable when stdin/stdout are redirected by skipping cursor-only screen repaint operations while preserving normal interactive clearing and window-title behavior
 - supports the direct `-Launch` path for automation while retaining the same dependency, health-check, and process-start logic as menu option 1
@@ -53,6 +53,14 @@ Jobs previously marked `pending` or `running` become `failed` with an explicit
 application-restart error and remain available at their original job IDs.
 The launcher does not resume interrupted dataset analyses, downloads, or
 benchmarks.
+
+If database connection or migration initialization fails, the FastAPI process
+still starts in a limited repair mode. `/api/health` and `/api/database` remain
+available, Settings → Database can test or replace the connection, and other
+database-backed routes return HTTP 503 until a validated backend is activated.
+Database switching does not restart the process; changing bootstrap environment
+values such as listener ports, data/log paths, CORS origins, or the encryption
+key-material path still requires a backend restart.
 
 Temporary connection failures during backend initialization are expected and
 are kept out of the normal user-facing error state. The browser reports a
@@ -106,9 +114,9 @@ ports.
 
 - Every application startup checks the Alembic version and automatically
   applies pending revisions before FastAPI exposes application state.
-- SQLite creates `<TKBEN_DATA_DIR>/database.db` when missing and serializes
-  migration writers. PostgreSQL uses the `DATABASE_*` values in
-  `settings/.env`; a missing target is created only when the configured role
+- SQLite creates its configured path when missing and serializes migration
+  writers. PostgreSQL uses the connection stored in
+  `<TKBEN_DATA_DIR>/database-config.json`; a missing target is created only when the configured role
   has `CREATEDB` permission. PostgreSQL migrations are serialized with an
   advisory lock.
 - Launcher menu option 2 (dependency installation/update) and option 4
@@ -116,9 +124,10 @@ ports.
   operation is safe and preserves existing data.
 - An empty database upgrades through the Alembic graph to its single current
   head. A non-empty database without an Alembic version row is rejected; so are
-  unknown, partial, ahead-of-application, or multi-head states. Migration
-  errors return a nonzero command exit and prevent startup health checks from
-  succeeding.
+  unknown, partial, ahead-of-application, or multi-head states. The explicit
+  database-initialization command returns a nonzero exit on migration errors;
+  application startup remains available in repair mode when the selected
+  database cannot initialize.
 
 ## Test Mode
 ```bat

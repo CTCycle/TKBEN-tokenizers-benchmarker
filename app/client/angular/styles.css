@@ -5458,6 +5458,103 @@ select:focus-visible {
   outline-offset: -2px;
 }
 
+.database-active-status {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 16px 0 20px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-success-border);
+  border-radius: 8px;
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+  font-size: 13px;
+}
+
+.database-active-status--offline {
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+
+.database-active-status strong {
+  margin-left: auto;
+  font-weight: 700;
+}
+
+.database-status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.database-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 20px;
+  padding: 20px 0;
+}
+
+.database-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.database-field--wide {
+  grid-column: 1 / -1;
+}
+
+.database-field .text-input {
+  width: 100%;
+  min-width: 0;
+}
+
+.database-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text);
+  font-size: 13px;
+}
+
+.database-checkbox input {
+  accent-color: var(--color-accent);
+}
+
+.database-switch-note {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--color-surface-subtle);
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: var(--line-height-body);
+}
+
+.database-result {
+  margin: 14px 0 0;
+  font-size: 13px;
+}
+
+.database-result--success {
+  color: var(--color-success-text);
+}
+
+.database-result--failure {
+  color: var(--color-danger-text);
+}
+
+.database-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 18px;
+}
+
 .settings-section {
   display: flex;
   flex-direction: column;
@@ -5640,6 +5737,14 @@ select:focus-visible {
     overflow-x: auto;
     scrollbar-width: thin;
     padding-bottom: 1px;
+  }
+
+  .database-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .database-field--wide {
+    grid-column: auto;
   }
 
   .settings-tab {

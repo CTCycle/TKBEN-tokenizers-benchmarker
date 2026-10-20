@@ -6,15 +6,32 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
+import os
 from threading import Lock
 
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
 SETTINGS_DIR = (ROOT_DIR / "settings").resolve()
 ENV_FILE_PATH = SETTINGS_DIR / ".env"
 ENV_EXAMPLE_FILE_PATH = SETTINGS_DIR / ".env.example"
+_BOOTSTRAP_ENVIRONMENT_KEYS = frozenset(
+    {
+        "FASTAPI_HOST",
+        "FASTAPI_PORT",
+        "UI_HOST",
+        "UI_PORT",
+        "VITE_API_BASE_URL",
+        "TKBEN_DATA_DIR",
+        "TKBEN_LOG_DIR",
+        "RELOAD",
+        "KERAS_BACKEND",
+        "MPLBACKEND",
+        "ALLOW_KEY_REVEAL",
+        "HF_KEYS_ENCRYPTION_MATERIAL_FILE",
+    }
+)
 
 ###############################################################################
 @dataclass
@@ -36,7 +53,11 @@ def ensure_environment_loaded(*, force: bool = False) -> Path | None:
             return env_path
 
         _ensure_environment_file(env_path)
-        load_dotenv(dotenv_path=env_path, override=True)
+        if env_path.is_file():
+            for name, value in dotenv_values(env_path).items():
+                if value is None or name not in _BOOTSTRAP_ENVIRONMENT_KEYS:
+                    continue
+                os.environ[name] = value
 
         state.bootstrapped = True
         return env_path if env_path.is_file() else None

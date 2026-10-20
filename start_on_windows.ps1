@@ -1483,16 +1483,50 @@ function Remove-AllData {
     }
     Assert-SafeCleanupDirectory -Path $logRoot -Description 'the configured log directory'
 
+    $databaseConfigurationPath = Join-Path $dataRoot 'database-config.json'
+    $externalDatabase = $false
+    $sqliteDatabasePath = Join-Path $dataRoot 'database.db'
+    if (Test-Path -LiteralPath $databaseConfigurationPath -PathType Leaf) {
+        try {
+            $databaseConfiguration = Get-Content -LiteralPath $databaseConfigurationPath -Raw | ConvertFrom-Json
+        }
+        catch {
+            throw "Unable to read database configuration at $databaseConfigurationPath."
+        }
+        if ($databaseConfiguration.backend -eq 'sqlite') {
+            if ([string]::IsNullOrWhiteSpace([string]$databaseConfiguration.sqlite_path)) {
+                throw "SQLite path is missing from $databaseConfigurationPath."
+            }
+            $configuredSqlitePath = [Environment]::ExpandEnvironmentVariables([string]$databaseConfiguration.sqlite_path)
+            if ([IO.Path]::IsPathRooted($configuredSqlitePath)) {
+                $sqliteDatabasePath = [IO.Path]::GetFullPath($configuredSqlitePath)
+            } else {
+                $sqliteDatabasePath = [IO.Path]::GetFullPath((Join-Path $dataRoot $configuredSqlitePath))
+            }
+            Assert-SafeCleanupDirectory -Path (Split-Path -Parent $sqliteDatabasePath) -Description 'the configured SQLite database directory'
+        } elseif ($databaseConfiguration.backend -eq 'postgresql') {
+            $externalDatabase = $true
+        } else {
+            throw "Unsupported database backend in $databaseConfigurationPath."
+        }
+    }
+
     Write-Step "Removing user data from $dataRoot."
     $summaries = @()
-    foreach ($dataFile in @(
-        (Join-Path $dataRoot 'database.db'),
-        (Join-Path $dataRoot 'database.db-wal'),
-        (Join-Path $dataRoot 'database.db-shm'),
-        (Join-Path $dataRoot 'database.db-journal'),
-        (Join-Path $dataRoot 'runtime-settings.json'),
-        (Get-HuggingFaceMaterialPath -DataRoot $dataRoot)
-    ) | Select-Object -Unique) {
+    $databaseFiles = @()
+    if (-not $externalDatabase) {
+        $databaseFiles = @(
+            $sqliteDatabasePath,
+            "$sqliteDatabasePath-wal",
+            "$sqliteDatabasePath-shm",
+            "$sqliteDatabasePath-journal"
+        )
+    }
+    $dataFiles = @($databaseFiles) + @((Join-Path $dataRoot 'runtime-settings.json'))
+    if (-not $externalDatabase) {
+        $dataFiles += Get-HuggingFaceMaterialPath -DataRoot $dataRoot
+    }
+    foreach ($dataFile in ($dataFiles | Select-Object -Unique)) {
         if (Test-Path -LiteralPath $dataFile) {
             $summaries += @(Remove-PathBestEffort -Path $dataFile)
         }
@@ -1509,8 +1543,8 @@ function Remove-AllData {
     $removed = [int](($summaries | Measure-Object -Property RemovedCount -Sum).Sum)
     $skipped = [int](($summaries | Measure-Object -Property SkippedCount -Sum).Sum) +
         [int](($summaries | Measure-Object -Property EnumerationErrorCount -Sum).Sum)
-    if ((Get-EnvironmentSetting -Key 'DATABASE_EMBEDDED' -DefaultValue 'true') -ine 'true') {
-        Write-Host '[WARN] DATABASE_EMBEDDED is false; the external database was not modified.' -ForegroundColor Yellow
+    if ($externalDatabase) {
+        Write-Host '[WARN] PostgreSQL is configured; the external database and its encryption key material were not modified.' -ForegroundColor Yellow
     }
     if ($skipped -gt 0) {
         Write-Ok "Removed $removed user-data file(s); skipped $skipped locked or inaccessible path(s)."

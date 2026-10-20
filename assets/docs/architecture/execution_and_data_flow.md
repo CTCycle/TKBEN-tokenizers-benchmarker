@@ -48,18 +48,16 @@ The current import boundary is checked by
 
 ## Configuration and schema flow
 
-The bootstrap loads `.env` before importing configuration or database modules
-that can resolve environment-derived values. `create_app()` then resolves the
-process-level settings snapshot once and places it on application state.
-Lifespan startup, database initialization, repositories, and services consume
-that snapshot rather than independently reloading configuration. `.env` and the
-process environment own operational values. Typed Pydantic models own
-application defaults, while `RuntimeSettingsStore` merges sparse
-`<TKBEN_DATA_DIR>/runtime-settings.json` overrides and validates the complete
-effective runtime configuration. Settings API updates persist atomically before
-replacing the in-memory snapshot; services created afterward see the new values,
-while existing operations retain their captured snapshot. PostgreSQL uses the
-fixed `postgresql+psycopg` driver when external mode is selected.
+The bootstrap loads `.env` values, then resolves the independent
+`<TKBEN_DATA_DIR>/database-config.json` file before the database opens.
+`create_app()` places that immutable bootstrap snapshot on application state.
+Lifespan startup initializes the selected database and binds
+`RuntimeSettingsStore` to its `application_runtime_settings` row. Settings API
+updates commit before replacing the in-memory snapshot; later operations see
+the new values while existing operations retain their captured snapshot. The
+Database Settings API validates and initializes a target before replacing the
+shared backend; a request gate drains ordinary operations and managed jobs must
+be idle. PostgreSQL uses the fixed `postgresql+psycopg` driver.
 
 Alembic is the only schema authority. Empty databases upgrade through the
 tracked graph, while non-empty databases without an Alembic version row,

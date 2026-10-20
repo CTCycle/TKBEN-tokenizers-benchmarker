@@ -5,6 +5,9 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import type {
+  DatabaseConfiguration,
+  DatabaseConfigurationRequest,
+  DatabaseConnectionTestResponse,
   RuntimeSettingsPatchRequest,
   RuntimeSettingsResetRequest,
   RuntimeSettingsResponse,
@@ -24,5 +27,17 @@ export class SettingsApiService {
 
   reset(request: RuntimeSettingsResetRequest): Observable<RuntimeSettingsResponse> {
     return this.http.post<RuntimeSettingsResponse>('/api/settings/reset', request);
+  }
+
+  getDatabase(): Observable<DatabaseConfiguration> {
+    return this.http.get<DatabaseConfiguration>('/api/database');
+  }
+
+  testDatabase(request: DatabaseConfigurationRequest): Observable<DatabaseConnectionTestResponse> {
+    return this.http.post<DatabaseConnectionTestResponse>('/api/database/test', request);
+  }
+
+  switchDatabase(request: DatabaseConfigurationRequest): Observable<DatabaseConfiguration> {
+    return this.http.post<DatabaseConfiguration>('/api/database/switch', request);
   }
 }
