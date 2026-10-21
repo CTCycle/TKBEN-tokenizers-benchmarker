@@ -10,15 +10,15 @@ add packaging as part of a source release.
 The public release version and component versions use the existing repository
 convention:
 
-| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` | `v4.5.0` | `v4.5.1` | `v4.6.0` public | `v4.6.1` candidate |
+| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` | `v4.5.0` | `v4.5.1` | `v4.6.0` | `v4.6.1` public |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` | `4.4.0` | `4.5.0` | `4.5.1` | `4.6.0` | `4.6.1` |
 | Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` | `3.4.0` | `3.5.0` | `3.5.1` | `3.6.0` | `3.6.1` |
 | Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` | `2.4.0` | `2.5.0` | `2.5.1` | `2.6.0` | `2.6.1` |
 
-The latest published release is `v4.6.0` (backend `3.6.0`, frontend `2.6.0`).
+The latest published release is `v4.6.1` (backend `3.6.1`, frontend `2.6.1`).
 Its annotated tag points to validated `main` commit
-`2ecd12119b86864d617367bd6b0712bb9a1b2b92`; publication and validation evidence
+`d198f203525bb57603060db7283f7d01432269b3`; publication and validation evidence
 are recorded in the [project status ledger](../project_status_ledger.md#release-gate).
 
 ## v4.6.0 release notes
@@ -38,9 +38,9 @@ API version `1.2.0`, benchmark schema version `3`, and report version `5`
 remain unchanged. The public release status and final commit are recorded in
 the [project status ledger](../project_status_ledger.md#release-gate).
 
-## v4.6.1 patch release notes (candidate, unpublished)
+## v4.6.1 patch release notes
 
-The v4.6.1 candidate increments the public release, backend, and frontend
+The v4.6.1 release increments the public release, backend, and frontend
 patch versions to `4.6.1`, `3.6.1`, and `2.6.1`. The verified changes since
 v4.6.0 include:
 
@@ -58,9 +58,17 @@ v4.6.0 include:
 API version `1.2.0`, benchmark schema version `3`, and report version `5`
 remain unchanged.
 
-Local focused validation and the remaining release gates are recorded in the
-[project status ledger](../project_status_ledger.md). Hosted CI and publication
-are pending.
+Focused local regression tests passed (204 backend tests and 69 frontend
+tests); frontend lint/build, backend compileall, Ruff, BasedPyright, OpenAPI,
+dependency-lock verification, and isolated startup/browser smoke passed.
+Hosted CI run [39658313798](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/39658313798)
+passed frontend and backend jobs on release commit
+`d198f203525bb57603060db7283f7d01432269b3`. Annotated tag `v4.6.1` and the
+source-only GitHub Release were published from `main` on 2026-10-21; the tag
+peels to that commit. `main` and `develop` were synchronized before tagging
+and again after the publication record update. The release has no uploaded
+binary assets; GitHub provides the source archives. Remaining bounded
+validation debt is recorded in the [project status ledger](../project_status_ledger.md#open-issues-and-validation-debt).
 
 ## v4.5.1 release notes
 
