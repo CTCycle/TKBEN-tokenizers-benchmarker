@@ -375,6 +375,7 @@ function Invoke-HealthCheck {
         [string]$FailureLogPath
     )
     for ($attempt = 1; $attempt -le $Attempts; $attempt++) {
+        if ($script:LaunchStopRequested) { return }
         try {
             $response = Invoke-WebRequest -UseBasicParsing -Uri $Uri -TimeoutSec 2
             if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 400) { return }
@@ -413,7 +414,6 @@ function Import-Environment {
         FASTAPI_PORT = '5000'
         UI_HOST = '127.0.0.1'
         UI_PORT = '8000'
-        RELOAD = 'false'
     }
     foreach ($entry in $defaults.GetEnumerator()) {
         Set-Item -Path "Env:$($entry.Key)" -Value $entry.Value
@@ -807,25 +807,16 @@ function Test-FrontendBuildReady {
 }
 
 function Get-ConfiguredLaunchPorts {
-    $portValues = @(
-        [pscustomobject]@{ Name = 'FASTAPI_PORT'; Value = [string]$env:FASTAPI_PORT },
-        [pscustomobject]@{ Name = 'UI_PORT'; Value = [string]$env:UI_PORT }
-    )
-    $ports = foreach ($portValue in $portValues) {
-        if ([string]::IsNullOrWhiteSpace($portValue.Value) -or $portValue.Value -notmatch '^\d+$') {
-            throw "$($portValue.Name) must be an integer between 1 and 65535."
-        }
-        $port = 0
-        if (-not [int]::TryParse($portValue.Value, [Globalization.NumberStyles]::Integer, [Globalization.CultureInfo]::InvariantCulture, [ref]$port) -or
-            $port -lt 1 -or $port -gt 65535) {
-            throw "$($portValue.Name) must be an integer between 1 and 65535."
-        }
-        $port
+    $value = [string]$env:FASTAPI_PORT
+    if ([string]::IsNullOrWhiteSpace($value) -or $value -notmatch '^\d+$') {
+        throw 'FASTAPI_PORT must be an integer between 1 and 65535.'
     }
-    if ($ports[0] -eq $ports[1]) {
-        throw "FASTAPI_PORT and UI_PORT must be different configured ports; both are $($ports[0])."
+    $port = 0
+    if (-not [int]::TryParse($value, [Globalization.NumberStyles]::Integer, [Globalization.CultureInfo]::InvariantCulture, [ref]$port) -or
+        $port -lt 1 -or $port -gt 65535) {
+        throw 'FASTAPI_PORT must be an integer between 1 and 65535.'
     }
-    return [int[]]$ports
+    return [int[]]@($port)
 }
 
 function Get-PortListenerRecords {
@@ -885,7 +876,7 @@ function Get-PortConflictProcesses {
 function Write-PortConflictReport {
     param([Parameter(Mandatory)][object[]]$Conflicts)
 
-    Write-Host 'Configured launch ports are occupied:' -ForegroundColor Yellow
+    Write-Host 'The configured backend port is occupied:' -ForegroundColor Yellow
     foreach ($conflict in $Conflicts) {
         $ports = (@($conflict.Ports | Sort-Object -Unique) -join ', ')
         Write-Host "  PID $($conflict.ProcessId) ($($conflict.ProcessName)) -> port(s) $ports" -ForegroundColor Yellow
@@ -907,11 +898,11 @@ function Confirm-ReleaseLaunchPorts {
         $details = @($conflicts | ForEach-Object {
             "PID $($_.ProcessId) ($($_.ProcessName)) on port(s) $(@($_.Ports | Sort-Object -Unique) -join ', ')"
         }) -join '; '
-        throw "Cannot launch while configured ports are occupied: $details. No process was terminated."
+        throw "Cannot launch while the backend port is occupied: $details. No process was terminated."
     }
 
     Clear-LauncherProgress
-    $confirmation = ([string](Read-Host 'Terminate the listed listener processes once to release the configured ports? [y/N]')).Trim()
+    $confirmation = ([string](Read-Host 'Terminate the listed listener processes once to release the backend port? [y/N]')).Trim()
     if ($confirmation -notmatch '^(?i:y|yes)$') {
         Write-Host '[INFO] Launch cancelled. No listener processes were terminated.' -ForegroundColor DarkGray
         return $false
@@ -951,7 +942,7 @@ function Confirm-ReleaseLaunchPorts {
         if ($terminationErrors.Count -gt 0) {
             $details += " Termination errors: $($terminationErrors -join ' | ')."
         }
-        throw "Configured launch ports remain occupied: $details No service was started."
+        throw "The backend port remains occupied: $details No service was started."
     }
 
     if ($terminationErrors.Count -gt 0) {
@@ -964,16 +955,57 @@ function Stop-ProcessTree([int]$ProcessId) {
     if ($ProcessId -le 0 -or $ProcessId -eq $PID) { return $false }
     if (-not (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue)) { return $true }
 
-    & taskkill.exe /PID $ProcessId /T /F *> $null
-    if ($LASTEXITCODE -eq 0) { return $true }
-
     try {
-        Stop-Process -Id $ProcessId -Force -ErrorAction Stop
-        return $true
+        $processes = @(Get-CimInstance -ClassName Win32_Process -ErrorAction Stop)
     }
     catch {
-        return -not (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue)
+        Write-Host "[WARN] Could not inspect descendants of process ${ProcessId}: $($_.Exception.Message)" -ForegroundColor Yellow
+        return $false
     }
+
+    $childrenByParent = @{}
+    foreach ($process in $processes) {
+        $parentId = [int]$process.ParentProcessId
+        if (-not $childrenByParent.ContainsKey($parentId)) {
+            $childrenByParent[$parentId] = [Collections.Generic.List[int]]::new()
+        }
+        $childrenByParent[$parentId].Add([int]$process.ProcessId)
+    }
+
+    $treeProcessIds = [Collections.Generic.List[int]]::new()
+    $pendingProcessIds = [Collections.Generic.Stack[int]]::new()
+    $seenProcessIds = [Collections.Generic.HashSet[int]]::new()
+    $pendingProcessIds.Push($ProcessId)
+    while ($pendingProcessIds.Count -gt 0) {
+        $currentProcessId = $pendingProcessIds.Pop()
+        if (-not $seenProcessIds.Add($currentProcessId)) { continue }
+        $treeProcessIds.Add($currentProcessId)
+        if ($childrenByParent.ContainsKey($currentProcessId)) {
+            foreach ($childProcessId in $childrenByParent[$currentProcessId]) {
+                $pendingProcessIds.Push([int]$childProcessId)
+            }
+        }
+    }
+
+    # Stop descendants first, then the owned root. This avoids an unbounded
+    # taskkill wait while limiting termination to the captured process tree.
+    for ($index = $treeProcessIds.Count - 1; $index -ge 0; $index--) {
+        $targetProcessId = [int]$treeProcessIds[$index]
+        try {
+            $process = Get-Process -Id $targetProcessId -ErrorAction SilentlyContinue
+            if (-not $process) { continue }
+            $process.Kill()
+            if (-not $process.WaitForExit(5000)) { return $false }
+        }
+        catch {
+            if (Get-Process -Id $targetProcessId -ErrorAction SilentlyContinue) { return $false }
+        }
+    }
+
+    foreach ($targetProcessId in $treeProcessIds) {
+        if (Get-Process -Id $targetProcessId -ErrorAction SilentlyContinue) { return $false }
+    }
+    return $true
 }
 
 function Get-ApplicationProcessIds {
@@ -1002,8 +1034,7 @@ function Get-ApplicationProcessIds {
         }
 
         $isBackend = $commandLine -match '(?i)\buvicorn(?:\.exe)?\s+server\.app:app\b'
-        $isFrontend = $commandLine -match '(?i)(?:npm(?:\.cmd|-cli\.js)?"?\s+run\s+preview|vite(?:\.cmd|\.js)?"?\s+preview)'
-        if ($isBackend -or $isFrontend) { $processIds += $processId }
+        if ($isBackend) { $processIds += $processId }
     }
 
     $matchedProcessIds = @($processIds | Sort-Object -Unique)
@@ -1060,6 +1091,45 @@ function Stop-ApplicationProcesses {
 # =============================================================================
 # Application lifecycle and validation
 # =============================================================================
+function Get-BackendBaseUrl {
+    param([Parameter(Mandatory)][int]$Port)
+
+    $hostName = ([string]$env:FASTAPI_HOST).Trim()
+    if ($hostName -in @('', '*', '0.0.0.0')) {
+        $hostName = '127.0.0.1'
+    } elseif ($hostName -in @('::', '[::]')) {
+        $hostName = '[::1]'
+    } elseif ($hostName.Contains(':') -and -not ($hostName.StartsWith('[') -and $hostName.EndsWith(']'))) {
+        $hostName = "[$hostName]"
+    }
+    return "http://${hostName}:$Port"
+}
+
+function Write-BackendDiagnostics {
+    param(
+        [Parameter(Mandatory)][string]$LogDirectory,
+        [Parameter(Mandatory)][string[]]$RedirectedLogPaths,
+        [Parameter(Mandatory)][datetime]$StartedAt
+    )
+
+    foreach ($path in $RedirectedLogPaths) {
+        $tail = Get-LogTail -Path $path
+        if ($tail) {
+            Write-Host "[LOG] $path" -ForegroundColor DarkGray
+            Write-Host $tail
+        }
+    }
+    $applicationLog = Get-ChildItem -LiteralPath $LogDirectory -Filter 'TKBEN_*.log' -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.LastWriteTime -ge $StartedAt.AddSeconds(-2) } |
+        Sort-Object -Property LastWriteTime -Descending |
+        Select-Object -First 1
+    if ($applicationLog) {
+        Write-Host "[LOG] Application log: $($applicationLog.FullName)" -ForegroundColor DarkGray
+        $tail = Get-LogTail -Path $applicationLog.FullName
+        if ($tail) { Write-Host $tail }
+    }
+}
+
 function Launch-Application {
     Import-Environment
     $launchPorts = @(Get-ConfiguredLaunchPorts)
@@ -1093,77 +1163,125 @@ function Launch-Application {
     if (-not (Confirm-ReleaseLaunchPorts -Ports $launchPorts)) { return $false }
 
     $backendPort = [int]$launchPorts[0]
-    $uiPort = [int]$launchPorts[1]
-
     $backendAppPath = Join-Path $RepoRoot 'app'
     $backendArgs = "-m uvicorn server.app:app --app-dir `"$backendAppPath`" --host `"$($env:FASTAPI_HOST)`" --port $backendPort"
-    if ($env:RELOAD -ieq 'true') { $backendArgs += ' --reload' }
-
-    Write-Step 'Starting backend.'
     $backendLogDir = Get-ApplicationLogRoot -DataRoot (Get-ApplicationDataRoot)
     Ensure-Directory -Path $backendLogDir
+    $backendStartedAt = Get-Date
     $backendLogStem = Join-Path $backendLogDir ('TKBEN_backend_' + (Get-Date -Format 'yyyyMMdd_HHmmss_fff'))
     $backendStdoutLog = "$backendLogStem.out.log"
     $backendStderrLog = "$backendLogStem.err.log"
-    if ($script:LauncherInteractive) {
-        $escapedPython = $VenvPython.Replace("'", "''")
-        $escapedApp = $backendAppPath.Replace("'", "''")
-        $backendCommand = "& '$escapedPython' -m uvicorn server.app:app --app-dir '$escapedApp' --host $($env:FASTAPI_HOST) --port $backendPort"
-        if ($env:RELOAD -ieq 'true') { $backendCommand += ' --reload' }
-        $backendProcess = Start-Process -FilePath 'powershell.exe' `
-            -ArgumentList @('-NoProfile', '-NoExit', '-Command', $backendCommand) `
-            -WorkingDirectory $RepoRoot -WindowStyle Normal -PassThru
-    } else {
-        $backendProcess = Start-Process -FilePath $VenvPython `
-            -ArgumentList $backendArgs `
-            -WorkingDirectory $RepoRoot `
-            -WindowStyle Hidden `
-            -RedirectStandardOutput $backendStdoutLog `
-            -RedirectStandardError $backendStderrLog `
-            -PassThru
+    $backendBaseUrl = Get-BackendBaseUrl -Port $backendPort
+    $backendProcess = $null
+    $cancelHandler = [System.ConsoleCancelEventHandler] {
+        param($sender, $eventArgs)
+        $eventArgs.Cancel = $true
+        $script:LaunchStopRequested = $true
     }
+    $cancelHandlerRegistered = $false
+    $script:LaunchStopRequested = $false
 
-    $backendPid = if ($backendProcess) { $backendProcess.Id } else { $null }
-
-    Write-Step 'Starting frontend preview.'
-    $previewCommandLine = '"' + $NpmCmd + '" run preview -- --host ' + $env:UI_HOST + ' --port ' + $uiPort + ' --strictPort'
-    $frontendLogDir = $backendLogDir
-    Ensure-Directory -Path $frontendLogDir
-    $frontendLogStem = Join-Path $frontendLogDir ('TKBEN_frontend_' + (Get-Date -Format 'yyyyMMdd_HHmmss_fff'))
-    $frontendStdoutLog = "$frontendLogStem.out.log"
-    $frontendStderrLog = "$frontendLogStem.err.log"
-    $frontendProcess = Start-Process -FilePath 'cmd.exe' `
-        -ArgumentList @('/d', '/c', $previewCommandLine) `
-        -WorkingDirectory $ClientDir -WindowStyle Hidden `
-        -RedirectStandardOutput $frontendStdoutLog `
-        -RedirectStandardError $frontendStderrLog `
-        -PassThru
-    Invoke-HealthCheck `
-        -Uri "http://$($env:UI_HOST):$uiPort/" `
-        -Description 'frontend preview' `
-        -ProcessToMonitor $frontendProcess `
-        -FailureLogPath $frontendStderrLog `
-        -Attempts 60 `
-        -IntervalSeconds 1
-
-    $url = "http://$($env:UI_HOST):$uiPort"
-    Write-Ok 'Frontend is ready; opening the application while the backend initializes.'
-    Write-Host "Backend: http://$($env:FASTAPI_HOST):$backendPort (PID $backendPid)"
-    Write-Host "Frontend: $url (PID $($frontendProcess.Id))"
     try {
-        Start-Process -FilePath $url -ErrorAction Stop | Out-Null
-    } catch {
-        Write-Host "[WARN] Could not open the browser automatically. Open $url manually." -ForegroundColor Yellow
-    }
+        [Console]::add_CancelKeyPress($cancelHandler)
+        $cancelHandlerRegistered = $true
+        Write-Step 'Starting FastAPI (serves the production SPA and API on one port).'
+        if ($script:LauncherInteractive) {
+            $backendProcess = Start-Process -FilePath $VenvPython `
+                -ArgumentList $backendArgs `
+                -WorkingDirectory $RepoRoot `
+                -NoNewWindow `
+                -PassThru
+        } else {
+            $backendProcess = Start-Process -FilePath $VenvPython `
+                -ArgumentList $backendArgs `
+                -WorkingDirectory $RepoRoot `
+                -WindowStyle Hidden `
+                -RedirectStandardOutput $backendStdoutLog `
+                -RedirectStandardError $backendStderrLog `
+                -PassThru
+        }
+        if (-not $backendProcess) { throw 'FastAPI process could not be started.' }
 
-    Invoke-HealthCheck `
-        -Uri "http://$($env:FASTAPI_HOST):$backendPort/api/health" `
-        -Description 'backend' `
-        -ProcessToMonitor $backendProcess `
-        -FailureLogPath $backendStderrLog `
-        -Attempts 60 `
-        -IntervalSeconds 1
-    Write-Ok 'Application started successfully.'
+        Invoke-HealthCheck `
+            -Uri "$backendBaseUrl/api/health" `
+            -Description 'FastAPI API' `
+            -ProcessToMonitor $backendProcess `
+            -FailureLogPath $backendStderrLog `
+            -Attempts 60 `
+            -IntervalSeconds 1
+        if (-not $script:LaunchStopRequested) {
+            Invoke-HealthCheck `
+                -Uri "$backendBaseUrl/" `
+                -Description 'production frontend' `
+                -ProcessToMonitor $backendProcess `
+                -FailureLogPath $backendStderrLog `
+                -Attempts 60 `
+                -IntervalSeconds 1
+        }
+
+        if (-not $script:LaunchStopRequested) {
+            Write-Ok 'FastAPI API and production frontend are ready.'
+            Write-Host "Application: $backendBaseUrl (PID $($backendProcess.Id))"
+            try {
+                Start-Process -FilePath $backendBaseUrl -ErrorAction Stop | Out-Null
+            } catch {
+                Write-Host "[WARN] Could not open the browser automatically. Open $backendBaseUrl manually." -ForegroundColor Yellow
+            }
+            Write-Host 'Press Ctrl+C in this window to stop TKBEN.' -ForegroundColor DarkGray
+        }
+
+        while (-not $script:LaunchStopRequested) {
+            $backendProcess.Refresh()
+            if ($backendProcess.HasExited) {
+                throw "FastAPI exited with code $($backendProcess.ExitCode) after startup."
+            }
+            Start-Sleep -Milliseconds 400
+        }
+    } catch {
+        Write-Fatal "Application startup or supervision failed: $($_.Exception.Message)"
+        Write-BackendDiagnostics `
+            -LogDirectory $backendLogDir `
+            -RedirectedLogPaths @($backendStdoutLog, $backendStderrLog) `
+            -StartedAt $backendStartedAt
+        throw
+    } finally {
+        if ($cancelHandlerRegistered) {
+            [Console]::remove_CancelKeyPress($cancelHandler)
+        }
+        if ($backendProcess) {
+            try {
+                $backendProcess.Refresh()
+                if (-not $backendProcess.HasExited) {
+                    if ($script:LaunchStopRequested) {
+                        Write-Step 'Waiting up to 10 seconds for FastAPI to shut down gracefully.'
+                        if (-not $backendProcess.WaitForExit(10000)) {
+                            Write-Host '[WARN] FastAPI did not stop gracefully; stopping its owned process tree.' -ForegroundColor Yellow
+                            if (-not (Stop-ProcessTree -ProcessId $backendProcess.Id)) {
+                                throw "Could not stop FastAPI process tree rooted at PID $($backendProcess.Id)."
+                            }
+                            if (-not $backendProcess.WaitForExit(5000)) {
+                                throw "FastAPI process PID $($backendProcess.Id) remained after forced shutdown."
+                            }
+                        }
+                        Write-Ok 'TKBEN stopped.'
+                    } else {
+                        Write-Host '[WARN] Cleaning up the FastAPI process tree after launcher exit or failure.' -ForegroundColor Yellow
+                        if (-not (Stop-ProcessTree -ProcessId $backendProcess.Id)) {
+                            throw "Could not clean up FastAPI process tree rooted at PID $($backendProcess.Id)."
+                        }
+                        if (-not $backendProcess.WaitForExit(5000)) {
+                            throw "FastAPI process PID $($backendProcess.Id) remained after launcher cleanup."
+                        }
+                    }
+                } elseif ($script:LaunchStopRequested) {
+                    Write-Ok 'TKBEN stopped.'
+                }
+            } catch {
+                Write-Fatal "Application shutdown failed: $($_.Exception.Message)"
+                throw
+            }
+        }
+    }
     return $true
 }
 
@@ -1714,7 +1832,7 @@ function Get-LauncherMenuEntries {
         [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Clear cache'; Description = 'Remove disposable tooling caches'; Key = 'Cache'; Destructive = $true }
         [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Remove all data'; Description = 'Delete the database and user-created files'; Key = 'AllData'; Destructive = $true }
         [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Uninstall application'; Description = 'Remove local runtimes and dependencies'; Key = 'Uninstall'; Destructive = $true }
-        [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Kill all application processes'; Description = 'Stop TKBEN backend and frontend process trees'; Key = 'KillAll'; Destructive = $true }
+        [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Kill all application processes'; Description = 'Stop TKBEN backend process trees'; Key = 'KillAll'; Destructive = $true }
         [pscustomobject]@{ Section = 'EXIT'; Label = 'Exit'; Description = 'Close this launcher'; Key = 'Exit'; Destructive = $false }
     )
 }
@@ -1786,7 +1904,7 @@ function Show-Menu {
         try {
             Invoke-TrackedLauncherAction -Name $entry.Label -Action {
                 switch ($entry.Key) {
-                    'Launch' { if (Launch-Application) { exit 0 } }
+                    'Launch' { [void](Launch-Application) }
                     'Install' {
                         $installationType = Read-InstallationType
                         Install-Dependencies -InstallationType $installationType

@@ -470,7 +470,7 @@ finally {
     $terminationDenied = $launcherOutput -match $accessDeniedPattern
     Assert-Harness ($launcherExitCode -ne 0) "The protected-listener launch unexpectedly exited with code $launcherExitCode."
     Assert-Harness $terminationDenied 'Launcher output did not contain a genuine access-denied/permission-denied termination error.'
-    Assert-Harness ($launcherOutput -match '(?i)Configured launch ports remain occupied') 'Launcher output did not report the remaining occupied configured port.'
+    Assert-Harness ($launcherOutput -match '(?i)The backend port remains occupied') 'Launcher output did not report the remaining occupied backend port.'
     Assert-Harness ($launcherOutput -match "(?i)PID $($protectedRecord.ProcessId)") 'Launcher output did not report the blocked protected PID.'
     Assert-Harness ($launcherOutput -match "(?i)$protectedPort") 'Launcher output did not report the blocked configured port.'
     Assert-Harness ($launcherOutput -match '(?i)Termination errors:') 'Launcher output did not include recorded termination errors.'
@@ -487,8 +487,8 @@ finally {
         $isNew -and $isService
     })
     $servicesStarted = $newServiceProcesses.Count -gt 0 -or
-        $launcherOutput -match '(?i)Starting backend|Starting frontend preview'
-    Assert-Harness (-not $servicesStarted) 'FastAPI or Angular preview startup was observed despite the denied port release.'
+        $launcherOutput -match '(?i)Starting FastAPI'
+    Assert-Harness (-not $servicesStarted) 'FastAPI startup was observed despite the denied backend port release.'
 
     $resultStatus = 'PASS'
     Write-HarnessOk 'Real permission-denied launch validation passed.'

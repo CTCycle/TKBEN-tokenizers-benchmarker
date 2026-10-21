@@ -26,7 +26,6 @@ _BOOTSTRAP_ENVIRONMENT_KEYS = frozenset(
         "CORS_ORIGINS",
         "TKBEN_DATA_DIR",
         "TKBEN_LOG_DIR",
-        "RELOAD",
         "KERAS_BACKEND",
         "MPLBACKEND",
         "ALLOW_KEY_REVEAL",
