@@ -6,9 +6,11 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from server import app as app_module
+from server.repositories.database.migrations import DatabaseMigrationError
 from server.services import startup_validation
 
 ###############################################################################
@@ -38,6 +40,106 @@ def _settings(
         database=SimpleNamespace(embedded_database=True),
         jobs=SimpleNamespace(terminal_retention_seconds=3600.0),
     )
+
+
+###############################################################################
+def test_frontend_routes_serve_build_assets_and_keep_api_routes(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    frontend_root = tmp_path / "browser"
+    assets_root = frontend_root / "assets"
+    assets_root.mkdir(parents=True)
+    (frontend_root / "index.html").write_text(
+        "<!doctype html><html><body>built app</body></html>", encoding="utf-8"
+    )
+    (assets_root / "main.js").write_text("console.log('built');", encoding="utf-8")
+    monkeypatch.setattr(app_module, "FRONTEND_BUILD_DIR", frontend_root)
+
+    application = FastAPI()
+    app_module.register_api_routers(application)
+    app_module.register_frontend_routes(application)
+
+    with TestClient(application) as client:
+        root = client.get("/")
+        client_route = client.get("/settings")
+        asset = client.get("/assets/main.js")
+        docs = client.get("/docs")
+        health = client.get("/api/health")
+        unknown_api = client.get("/api/not-a-route")
+        missing_asset = client.get("/assets/missing.js")
+
+    assert root.status_code == 200
+    assert "built app" in root.text
+    assert client_route.status_code == 200
+    assert client_route.text == root.text
+    assert asset.status_code == 200
+    assert asset.text == "console.log('built');"
+    assert asset.headers["content-type"] in {
+        "application/javascript",
+        "text/javascript; charset=utf-8",
+    }
+    assert docs.status_code == 200
+    assert "Swagger UI" in docs.text
+    assert health.status_code == 200
+    assert health.json() == {"status": "ok"}
+    assert unknown_api.status_code == 404
+    assert missing_asset.status_code == 404
+
+
+###############################################################################
+def test_frontend_routes_keep_docs_redirect_when_build_is_missing(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(app_module, "FRONTEND_BUILD_DIR", tmp_path / "missing-build")
+    application = FastAPI()
+    app_module.register_frontend_routes(application)
+
+    with TestClient(application, follow_redirects=False) as client:
+        response = client.get("/")
+
+    assert response.status_code == 307
+    assert response.headers["location"] == "/docs"
+
+
+###############################################################################
+def test_frontend_remains_available_in_database_repair_mode(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    frontend_root = tmp_path / "browser"
+    frontend_root.mkdir()
+    (frontend_root / "index.html").write_text("built app", encoding="utf-8")
+    settings = _settings(
+        logs=tmp_path / "logs",
+        datasets=tmp_path / "datasets",
+        tokenizers=tmp_path / "tokenizers",
+        templates=tmp_path / "templates",
+    )
+    monkeypatch.setattr(app_module, "FRONTEND_BUILD_DIR", frontend_root)
+    monkeypatch.setattr(app_module, "get_server_settings", lambda: settings)
+    monkeypatch.setattr(app_module, "configure_logging", lambda path: None)
+    monkeypatch.setattr(app_module, "run_startup_validations", lambda received: None)
+
+    def fail_database_initialization(**kwargs) -> None:
+        raise DatabaseMigrationError("database unavailable")
+
+    monkeypatch.setattr(app_module, "initialize_database", fail_database_initialization)
+
+    with TestClient(app_module.create_app()) as client:
+        frontend = client.get("/settings")
+        health = client.get("/api/health")
+        database_route = client.get("/api/datasets/list")
+        unknown_api = client.get("/api/not-a-route")
+        missing_asset = client.get("/missing.js")
+
+    assert frontend.status_code == 200
+    assert frontend.text == "built app"
+    assert health.status_code == 200
+    assert database_route.status_code == 503
+    assert unknown_api.status_code == 404
+    assert missing_asset.status_code == 404
 
 ###############################################################################
 def test_build_cors_origins_normalizes_local_hosts(tmp_path: Path) -> None:

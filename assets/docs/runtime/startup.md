@@ -1,135 +1,146 @@
 # Startup
-Last updated: 2026-09-28
+Last updated: 2026-10-21
 
-## Local Webapp Mode
-Supported Windows release path:
+## Production Local Webapp
+
+The supported Windows release path uses the root launcher:
 
 ```powershell
 .\start_on_windows.ps1
 ```
 
-For redirected or automated validation, launch the application directly while
-still using the same launcher:
+Choose **Launch application**. For direct or automated startup, run:
 
 ```powershell
 .\start_on_windows.ps1 -Launch
 ```
 
-What it does:
-- opens the single combined launch-and-maintenance menu
-- installs pinned portable Python 3.14.7, Node.js 22.23.1, and uv 0.12.17 on first use; an existing uv runtime with another version is replaced
-- creates `settings/.env` from the versioned example when missing
-- records the backend dependency fingerprint for `app/server/pyproject.toml` and `app/server/uv.lock` in `app/server/.venv/.tkben-dependencies.json`; the stamp includes the Python version and `Standard` or `Development` profile. A valid Development stamp satisfies the Standard runtime launch requirement. Normal launch validates the stamp and pinned Python/uv versions without probing imports; `uv sync --locked` is used only when backend repair is required.
-- synchronizes Python dependencies and reuses the frontend dependency tree on application launch when the backend stamp, frontend package stamp, and portable runtime versions are unchanged; it performs `npm ci` for stale or missing frontend dependencies without implying a production rebuild. The dependency maintenance option prompts for `Development` (including Ruff, BasedPyright, and pytest extras) or `Standard` (runtime dependencies only), then intentionally rebuilds the frontend and synchronizes the database to the latest Alembic head. Use menu option 3 to rebuild only the Angular frontend; it reuses valid frontend dependencies and runs `npm ci` when missing or stale without synchronizing Python dependencies. Application launch rebuilds only when `dist/tkben-angular/browser/index.html` is missing, the build stamp is missing or malformed, its fingerprint is stale, or the portable Node.js version differs. Production fingerprint inputs are `angular/**` excluding `*.spec.ts`, `public/**`, `angular.json`, `package.json`, `package-lock.json`, `tsconfig.json`, and `tsconfig.app.json`; `tsconfig.spec.json`, `proxy.conf.cjs`, `scripts/preview.mjs`, caches, logs, and documentation do not invalidate the production build.
-- validates `FASTAPI_PORT` and `UI_PORT` as distinct ports in the range 1 through 65535 before setup work and repeats the check immediately before starting services. When a configured port is occupied, it shows one row per unique PID with its process name when available and every occupied configured port, then requests one explicit confirmation. Only approved listener PIDs receive a single `Stop-Process -Force`; no process tree is inferred. A declined prompt, redirected `-Launch`, denied termination, or remaining listener aborts without starting services. A newly appearing listener is shown again for a new interactive decision and is never silently terminated. Use menu option 12 or `-KillAll` for the separate explicit TKBEN process-tree cleanup action.
-- keeps all disposable runtime, package-manager, pytest, and development-tool caches under the single canonical root `runtimes/cache`. Menu option 9 removes that root and legacy Python bytecode outside it; locked or admin-only files are reported and skipped so cleanup continues. Downloaded datasets and Hugging Face tokenizer artifacts remain persistent application data under `<TKBEN_DATA_DIR>/sources/...`; menu option 10 removes the configured SQLite database and sidecars when SQLite is selected, skips an external PostgreSQL database, and removes downloaded/uploaded sources and logs after confirmation while preserving `database-config.json`, application files, templates, and `.gitkeep` sentinels. The key-material file is removed with SQLite user data and preserved when PostgreSQL is selected because the external database and its encrypted credentials remain in use. If the managed uv cache causes a sync failure, the launcher clears that cache on a best-effort basis and retries once. On Windows, maintenance and build commands invoke the portable `npm.cmd` from PowerShell (Windows dispatches `.cmd` through `cmd.exe`), while the preview process is launched through `cmd.exe` so repository paths containing spaces work reliably. Non-interactive Angular builds disable the progress renderer because the portable console renderer can terminate with a native access violation; the same production configuration is used. The launcher verifies the portable Node.js version and replaces an older runtime when required by the frontend dependency engines.
-- starts FastAPI and the Angular preview server, captures preview output under `<TKBEN_LOG_DIR>` (defaulting to `data/logs`), waits for preview readiness before opening the browser, and prints ports and process IDs; backend readiness continues under launcher and Angular supervision while browser auto-open remains best-effort
-- loads bootstrap values from `settings/.env`, then loads `database-config.json` before backend database initialization; the app stays available in limited mode if the selected database cannot initialize so Settings → Database can repair the connection
-- opens a dedicated terminal showing backend logs for interactive sessions; redirected `-Launch` runs capture backend stdout and stderr under `<TKBEN_LOG_DIR>` (defaulting to `data/logs`) so health-check failures include actionable diagnostics
-- keeps the maintenance menu usable when stdin/stdout are redirected by skipping cursor-only screen repaint operations while preserving normal interactive clearing and window-title behavior
-- supports the direct `-Launch` path for automation while retaining the same dependency, health-check, and process-start logic as menu option 1
+Both launch paths use one FastAPI process. It serves the production Angular
+build from `app/client/dist/tkben-angular/browser` and keeps API and frontend
+requests on `FASTAPI_HOST:FASTAPI_PORT`. Production does not start Angular's
+development or preview server. When a build is absent, `/` redirects to `/docs`
+until a build is available.
 
-## Startup lifecycle
+The launcher:
 
-The launcher keeps process supervision separate from the browser-facing
-readiness experience:
+- installs pinned portable Python 3.14.7, Node.js 22.23.1, and uv 0.12.17 on
+  first use and creates `settings/.env` from the versioned example when needed
+- reuses valid backend dependencies, frontend dependencies, and the stamped
+  production build; repairs or rebuilds only missing, stale, or malformed
+  inputs
+- checks `FASTAPI_PORT` before setup and again before starting FastAPI. An
+  occupied backend port is reported by listener PID and process name; an
+  interactive launch asks before terminating those exact listener processes.
+  A declined prompt, redirected `-Launch`, failed termination, or remaining
+  listener aborts without starting the app. `UI_PORT` is not checked during
+  production launch because no UI server uses it
+- starts FastAPI, waits for `/api/health` and `/`, then opens the backend URL
+  in the browser. A wildcard bind address maps to a loopback URL for local use
+- keeps the backend attached to the launcher console for visible logs. The app
+  also writes its normal `TKBEN_*.log` under `<TKBEN_LOG_DIR>` (default
+  `data/logs`); redirected launches save stdout and stderr there as well
+- remains open as the lifecycle owner after readiness. Press Ctrl+C in that
+  window to request FastAPI's normal shutdown. It waits up to 10 seconds, then
+  stops only the FastAPI process tree it started if necessary. Startup errors,
+  unexpected process exits, and cleanup failures include diagnostics. If the
+  launcher exits unexpectedly, its cleanup also targets only that owned
+  process tree
+- keeps the portable Node.js version compatible with the frontend dependency
+  engines and disables Angular's build progress renderer for non-interactive
+  builds, where the portable console renderer can fail
 
-1. The launcher validates the configured ports, asks before releasing approved
-   listener PIDs when necessary, prepares only the stale dependency layers, and
-   starts the backend process.
-2. The Angular preview starts immediately after the backend process is
-   spawned; the launcher waits only for the preview root to respond before
-   opening the browser.
-3. Angular initially renders the tokenizer-focused startup screen and polls
-   /api/health once per second through the preview proxy.
-4. The shell, router outlet, and settings initialization are revealed only
-   after the health response reports status ok.
-5. The launcher continues its existing backend supervision after the browser
-   opens. A backend process exit or 60-attempt timeout includes the redirected
-   backend log tail, while the browser shows a retryable startup error.
+`-Launch` stays in the foreground until Ctrl+C or FastAPI exits. The menu's
+**Launch application** option returns to the maintenance menu after the app is
+stopped. `-KillAll` and menu option 12 remain explicit cleanup actions for
+TKBEN backend process trees rooted in this repository; they do not stop
+unrelated Python or Node processes.
 
-FastAPI startup restores retained job history after the database migration.
-Jobs previously marked `pending` or `running` become `failed` with an explicit
-application-restart error and remain available at their original job IDs.
-The launcher does not resume interrupted dataset analyses, downloads, or
-benchmarks.
+FastAPI loads bootstrap values from `settings/.env` and then
+`database-config.json` before initializing the selected database. If the
+database cannot initialize, the backend still serves the SPA and exposes
+`/api/health` and `/api/database` so Settings → Database can repair the
+connection. Other API requests return HTTP 503 until the database is available.
+Database switching applies in the current process; listener, data/log path,
+CORS, and key-material changes require a restart.
 
-If database connection or migration initialization fails, the FastAPI process
-still starts in a limited repair mode. `/api/health` and `/api/database` remain
-available, Settings → Database can test or replace the connection, and other
-database-backed routes return HTTP 503 until a validated backend is activated.
-Database switching does not restart the process; changing bootstrap environment
-values such as listener ports, data/log paths, `CORS_ORIGINS` (or its derived
-default), or the encryption key-material path still requires a backend restart.
+Jobs marked `pending` or `running` when the backend restarts become `failed`
+with an application-restart error and remain available at their original job
+IDs. Interrupted dataset analyses, downloads, and benchmarks are not resumed.
 
-Temporary connection failures during backend initialization are expected and
-are kept out of the normal user-facing error state. The browser reports a
-slow-start notice after 15 seconds and a retryable failure after the same
-60-second readiness window used by the launcher. Refreshing during startup
-restarts the readiness gate without changing the requested route; refreshing
-after readiness loads the normal application directly.
+Every application start checks the Alembic schema and applies pending
+migrations before database-backed state is exposed. SQLite serializes migration
+writers; PostgreSQL uses an advisory lock. A failed database initialization
+keeps FastAPI available in repair mode. Menu options 2 and 4 use the same
+initializer.
 
-## Manual Local Mode
-Best-effort manual startup outside the supported Windows x64 release path:
+## Manual Development Workflow
 
-```bash
-cd app/server
+Development is a two-terminal workflow. The frontend development server is
+used here only; its `/api` proxy forwards to FastAPI. The proxy defaults to
+`127.0.0.1:5000` and reads `FASTAPI_HOST` and `FASTAPI_PORT` from the frontend
+process environment when set.
+
+Terminal 1, from the repository root:
+
+```powershell
+Set-Location app/server
 uv sync
-uv run python -m uvicorn server.app:app --app-dir .. --host 127.0.0.1 --port 5000
-cd ../client
-npm ci
-npm run build
-npm run preview -- --host 127.0.0.1 --port 8000 --strictPort
+uv run python -m uvicorn server.app:app --app-dir .. --reload --host 127.0.0.1 --port 5000
 ```
 
-The production preview serves `dist/tkben-angular/browser`; a fresh checkout
-must run `npm run build` after installing frontend dependencies and before
-starting the preview server.
+Terminal 2, from the repository root:
+
+```powershell
+Set-Location app/client
+npm ci
+npm run dev -- --host 127.0.0.1 --port 8000
+```
+
+Open `http://127.0.0.1:8000`. Stop each development process with Ctrl+C in its
+own terminal. Set `FASTAPI_HOST` and `FASTAPI_PORT` in Terminal 2 if the API
+uses a different address. `UI_HOST` and `UI_PORT` are development-server
+settings; they do not affect the production listener.
+
+The `npm run preview` helper remains available to the test harness. It is not
+used by the production launcher.
 
 ## Maintenance Menu
-Use `.\start_on_windows.ps1` for dependency installation, application updates, update checks, database initialization, tests, log removal, cache cleanup, user-data removal, process cleanup, and uninstall operations.
 
-Use menu option 12, **Kill all application processes**, to stop TKBEN's
-backend and frontend process trees. The equivalent direct command is:
+Use `.\start_on_windows.ps1` for dependency installation, application updates,
+update checks, database initialization, tests, log removal, cache cleanup,
+user-data removal, process cleanup, and uninstall operations.
+
+Use menu option 12, **Kill all application processes**, or run:
 
 ```powershell
 .\start_on_windows.ps1 -KillAll
 ```
 
-This explicit cleanup action is separate from launch port handling. Launch
-does not infer ownership from a port and does not terminate a process tree.
-
-The cleanup targets TKBEN launch commands rooted in this repository. It does
-not stop unrelated Python or Node.js processes, even when they use the same
-ports.
+This explicit cleanup action is separate from launch. Launch port checks never
+infer ownership from a port; they ask before releasing the exact listener PID
+on the configured backend port. Process cleanup matches TKBEN's backend
+command rooted in this checkout and does not stop unrelated services.
 
 ### Application updates
 
-- `Update` updates source only from a non-detached, clean checkout of `main` with `git pull --ff-only origin main`. It never switches branches or modifies local changes; rerun the dependency or frontend setup options when the pulled changes require local rebuilds.
-- `Check for Updates` reads the remote `origin/main` revision with `git ls-remote` and reports the status without fetching, pulling, or applying source changes.
-- `Remove All Data` requires an affirmative response at a `[y/N]` confirmation prompt and removes mutable local data while preserving tracked application files and templates. It does not drop an external PostgreSQL database.
-- Cache and data removal use deterministic deepest-first individual deletion. Preserved sentinels remain in place, while locked or inaccessible entries are reported and skipped so cleanup can continue.
-
-### Database initialization
-
-- Every application startup checks the Alembic version and automatically
-  applies pending revisions before FastAPI exposes application state.
-- SQLite creates its configured path when missing and serializes migration
-  writers. PostgreSQL uses the connection stored in
-  `<TKBEN_DATA_DIR>/database-config.json`; a missing target is created only when the configured role
-  has `CREATEDB` permission. PostgreSQL migrations are serialized with an
-  advisory lock.
-- Launcher menu option 2 (dependency installation/update) and option 4
-  (database initialization) invoke the same initializer. Repeating either
-  operation is safe and preserves existing data.
-- An empty database upgrades through the Alembic graph to its single current
-  head. A non-empty database without an Alembic version row is rejected; so are
-  unknown, partial, ahead-of-application, or multi-head states. The explicit
-  database-initialization command returns a nonzero exit on migration errors;
-  application startup remains available in repair mode when the selected
-  database cannot initialize.
+- `Update` updates source only from a non-detached, clean checkout of `main`
+  with `git pull --ff-only origin main`. It never switches branches or modifies
+  local changes; rerun dependency or frontend setup options when pulled changes
+  require local rebuilds.
+- `Check for Updates` reads the remote `origin/main` revision with `git
+  ls-remote` and reports the status without fetching, pulling, or applying
+  source changes.
+- `Remove All Data` requires an affirmative response at a `[y/N]` confirmation
+  prompt and removes mutable local data while preserving tracked application
+  files and templates. It does not drop an external PostgreSQL database.
 
 ## Test Mode
-```bat
+
+Run the repository's test workflows through:
+
+```powershell
 .\app\tests\run_tests.bat
 ```
+
+The runner may use `npm run preview` for frontend integration checks. This is
+separate from the production launch.

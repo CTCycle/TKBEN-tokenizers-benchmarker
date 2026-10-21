@@ -13,7 +13,9 @@ The current public release is `v4.5.1` with backend `3.5.1` and frontend
 `2.5.1`. It remains a source-only folder distribution launched with
 `start_on_windows.ps1` on Windows.
 
-Backend APIs are mounted under `/api/*`. Frontend calls `/api` and relies on the Angular proxy in dev and preview modes.
+Backend APIs are mounted under `/api/*`. Frontend code uses relative `/api`
+requests. Angular CLI proxies those requests during development; FastAPI serves
+the built SPA and API from the same origin in production.
 
 ## Repository Structure
 Source-level structure, with generated and environment-specific folders omitted:
@@ -135,19 +137,23 @@ flowchart LR
 
 ## Runtime Interaction Topology
 - Local webapp mode:
-  - Browser -> Angular preview (`UI_HOST:UI_PORT`) -> proxied `/api` -> FastAPI (`FASTAPI_HOST:FASTAPI_PORT`)
+  - Browser -> FastAPI (`FASTAPI_HOST:FASTAPI_PORT`) for the built SPA and
+    `/api` requests on one origin.
+- Manual development mode:
+  - Browser -> Angular CLI (`UI_HOST:UI_PORT`) -> proxied `/api` -> FastAPI
+    (`FASTAPI_HOST:FASTAPI_PORT`).
 - Startup readiness:
-  - The launcher starts the backend and Angular preview independently, opens
-    the browser after preview readiness, and retains backend process
-    supervision.
+  - The launcher starts one FastAPI process, waits for `/api/health` and the
+    SPA root to respond, opens the same-origin URL, and supervises the process
+    until stop or exit.
   - Angular renders a startup gate while polling /api/health. AppShell,
     routing content, and settings loading begin only after the backend reports
     status ok.
   - The launcher uses the canonical backend environment at `app/server/.venv`,
-  records backend lockfile readiness, installs the frontend tree with `npm ci`
-  only when its dependency stamp is stale, and builds the frontend only when
-  its deterministic production-input stamp is missing or stale. It validates
-  the configured ports before setup and immediately before starting both
-  services; occupied ports require explicit interactive approval for individual
-  listener PIDs. It then starts both services on the configured defaults (`5000`
-  and `8000`) and opens the configured UI URL.
+    records backend lockfile readiness, installs the frontend tree with
+    `npm ci` only when its dependency stamp is stale, and builds the frontend
+    only when its deterministic production-input stamp is missing or stale. It
+    checks the backend port before setup and immediately before startup;
+    `UI_PORT` is used by manual development only and does not block production
+    launch. Ctrl+C requests graceful FastAPI shutdown, with bounded cleanup
+    limited to the process tree the launcher started.

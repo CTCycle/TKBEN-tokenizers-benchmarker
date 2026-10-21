@@ -12,13 +12,14 @@ Primary launcher runtime env file:
   database modules that can resolve environment-derived paths or settings.
 
 ## Core Variables
-- `FASTAPI_HOST`
-- `FASTAPI_PORT`
-- `UI_HOST`
-- `UI_PORT`
+- `FASTAPI_HOST` and `FASTAPI_PORT` (production FastAPI listener and same-origin
+  SPA/API URL)
+- `UI_HOST` and `UI_PORT` (manual Angular development server only; production
+  launch does not bind or check a UI port)
 - `VITE_API_BASE_URL` (default `/api`)
-- `CORS_ORIGINS` (optional comma-separated HTTP(S) origins without paths or credentials; blank uses the origins derived from `UI_HOST` and `UI_PORT`)
-- `RELOAD`
+- `CORS_ORIGINS` (optional comma-separated HTTP(S) origins without paths or
+  credentials; blank uses origins derived from `UI_HOST` and `UI_PORT` for
+  direct cross-origin development or API access)
 - `ALLOW_KEY_REVEAL`
 - `HF_KEYS_ENCRYPTION_MATERIAL_FILE`
 - `TKBEN_DATA_DIR` (persistent application data root and default SQLite database directory; downloads, tokenizer artifacts, and exports also use it; defaults to `data`; set it to a repository-relative or absolute path to use a different root; it is separate from the disposable `runtimes/cache` root)
@@ -79,8 +80,14 @@ without changing the current snapshot.
 
 ## Configuration Differences
 ### Dev and Local Webapp
-- Angular serves and proxies `/api` to the FastAPI host and port from the environment.
-- `RELOAD=true` enables Uvicorn reload behavior.
+- In production, FastAPI serves the built Angular SPA and `/api` on
+  `FASTAPI_HOST:FASTAPI_PORT`; the browser uses that single origin.
+- In manual development, Angular CLI serves the frontend at `UI_HOST:UI_PORT`
+  and proxies `/api` to `FASTAPI_HOST:FASTAPI_PORT`. Its proxy defaults to
+  `127.0.0.1:5000` and reads the FastAPI values from the frontend process
+  environment.
+- Start development Uvicorn with `--reload`. The production launcher always
+  runs FastAPI without reload mode.
 
 ### Database Settings
 - Settings → Database supports SQLite and PostgreSQL. SQLite paths, PostgreSQL host/port/name/user/password/SSL, connection timeout, and insert batch size are persisted in `<TKBEN_DATA_DIR>/database-config.json`; PostgreSQL passwords are encrypted with a dedicated Fernet purpose key in the existing local key-material file.
@@ -104,7 +111,7 @@ without changing the current snapshot.
 
 Boolean launcher settings are validated as `true` or `false`; invalid values
 fail fast. The versioned template defaults are `FASTAPI_PORT=5000` and
-`UI_PORT=8000`, and the same values are used by the test harness.
+`UI_PORT=8000`. `UI_PORT` remains available for development and test workflows.
 
 After changing bootstrap values in `settings/.env`, restart the backend (or
 relaunch TKBEN) so the new process resolves a fresh startup snapshot. Changes
