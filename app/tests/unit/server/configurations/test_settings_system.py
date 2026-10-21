@@ -128,12 +128,12 @@ def test_settings_initialization_refreshes_after_explicit_bootstrap_reset(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     env_path = tmp_path / ".env"
-    _write_env(env_path, ["DATABASE_EMBEDDED=true", "FASTAPI_PORT=5101"])
+    _write_env(env_path, ["FASTAPI_PORT=5101"])
     monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
 
     first = get_server_settings()
 
-    _write_env(env_path, ["DATABASE_EMBEDDED=true", "FASTAPI_PORT=5102"])
+    _write_env(env_path, ["FASTAPI_PORT=5102"])
     reset_settings_cache_for_tests()
     bootstrap.reset_environment_bootstrap_for_tests()
 
@@ -150,7 +150,7 @@ def test_typed_defaults_resolve_without_structured_json(
     _configure_environment(
         tmp_path,
         monkeypatch,
-        ["DATABASE_EMBEDDED=true", f"TKBEN_DATA_DIR={data_root}"],
+        [f"TKBEN_DATA_DIR={data_root}"],
     )
 
     settings = get_server_settings()
@@ -168,7 +168,6 @@ def test_typed_defaults_resolve_without_structured_json(
     assert settings.datasets.download_retry_backoff_seconds == 2.0
     assert settings.benchmarks.streaming_batch_size == 1000
     assert settings.jobs.polling_interval == 1.0
-    assert not (data_root / "runtime-settings.json").exists()
 
 ###############################################################################
 def test_runtime_environment_resolves_into_one_settings_tree(
@@ -188,9 +187,6 @@ def test_runtime_environment_resolves_into_one_settings_tree(
             "UI_HOST=localhost",
             "UI_PORT=8100",
             "VITE_API_BASE_URL=/api",
-            "DATABASE_EMBEDDED=true",
-            "DATABASE_CONNECT_TIMEOUT=17",
-            "DATABASE_INSERT_BATCH_SIZE=321",
             "ALLOW_KEY_REVEAL=true",
             f"HF_KEYS_ENCRYPTION_MATERIAL_FILE={material_path}",
         ],
@@ -202,9 +198,8 @@ def test_runtime_environment_resolves_into_one_settings_tree(
     assert settings.paths.datasets == (data_root / "sources/datasets").resolve()
     assert settings.paths.tokenizers == (data_root / "sources/tokenizers").resolve()
     assert settings.paths.logs == log_root.resolve()
+    assert settings.database.embedded_database is True
     assert settings.database.sqlite_path == (data_root / "database.db").resolve()
-    assert settings.database.connect_timeout == 17
-    assert settings.database.insert_batch_size == 321
     assert settings.network.fastapi_host == "0.0.0.0"
     assert settings.network.fastapi_port == 5100
     assert settings.network.ui_host == "localhost"
@@ -225,7 +220,6 @@ def test_relative_runtime_paths_are_repository_relative(
         [
             "TKBEN_DATA_DIR=custom/runtime-data",
             "TKBEN_LOG_DIR=custom/runtime-logs",
-            "DATABASE_EMBEDDED=true",
         ],
     )
 
@@ -236,87 +230,24 @@ def test_relative_runtime_paths_are_repository_relative(
     assert settings.paths.logs == (ROOT_DIR / "custom/runtime-logs").resolve()
 
 ###############################################################################
-def test_external_database_settings_are_explicit(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _configure_environment(
-        tmp_path,
-        monkeypatch,
-        [
-            "DATABASE_EMBEDDED=false",
-            "DATABASE_HOST=remote-db",
-            "DATABASE_PORT=5544",
-            "DATABASE_NAME=remote_db",
-            "DATABASE_USERNAME=remote_user",
-            "DATABASE_PASSWORD=secret",
-            "DATABASE_SSL=true",
-        ],
-    )
-
-    settings = get_server_settings()
-
-    assert settings.database.embedded_database is False
-    assert settings.database.host == "remote-db"
-    assert settings.database.port == 5544
-    assert settings.database.database_name == "remote_db"
-    assert settings.database.username == "remote_user"
-    assert settings.database.ssl is True
-
-###############################################################################
-def test_external_database_requires_host_name_and_user(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _configure_environment(
-        tmp_path,
-        monkeypatch,
-        [
-            "DATABASE_EMBEDDED=false",
-            "DATABASE_HOST=",
-            "DATABASE_NAME=",
-            "DATABASE_USERNAME=",
-        ],
-    )
-
-    with pytest.raises(
-        RuntimeError,
-        match="database.host, database.database_name, database.username",
-    ):
-        get_server_settings()
-
-###############################################################################
-@pytest.mark.parametrize(
-    ("name", "value"),
-    [
-        ("DATABASE_EMBEDDED", "yes"),
-        ("DATABASE_SSL", "1"),
-        ("ALLOW_KEY_REVEAL", "on"),
-    ],
-)
 def test_boolean_aliases_are_rejected(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    name: str,
-    value: str,
 ) -> None:
-    lines = ["DATABASE_EMBEDDED=true", f"{name}={value}"]
-    if name == "DATABASE_SSL":
-        lines = [
-            "DATABASE_EMBEDDED=false",
-            "DATABASE_HOST=host",
-            "DATABASE_NAME=db",
-            "DATABASE_USERNAME=user",
-            f"{name}={value}",
-        ]
-    _configure_environment(tmp_path, monkeypatch, lines)
+    _configure_environment(
+        tmp_path,
+        monkeypatch,
+        ["ALLOW_KEY_REVEAL=on"],
+    )
 
-    with pytest.raises(RuntimeError, match=name):
+    with pytest.raises(RuntimeError, match="ALLOW_KEY_REVEAL"):
         get_server_settings()
 
 ###############################################################################
 def test_settings_models_are_immutable(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _configure_environment(tmp_path, monkeypatch, ["DATABASE_EMBEDDED=true"])
+    _configure_environment(tmp_path, monkeypatch, [])
     settings = get_server_settings()
 
     with pytest.raises(ValidationError):
@@ -340,7 +271,7 @@ def test_key_reveal_policy_uses_canonical_settings(
     _configure_environment(
         tmp_path,
         monkeypatch,
-        ["DATABASE_EMBEDDED=true", "ALLOW_KEY_REVEAL=true"],
+        ["ALLOW_KEY_REVEAL=true"],
     )
 
     assert is_key_reveal_enabled() is True
@@ -354,7 +285,6 @@ def test_hf_key_cipher_uses_configured_material_path(
         tmp_path,
         monkeypatch,
         [
-            "DATABASE_EMBEDDED=true",
             f"HF_KEYS_ENCRYPTION_MATERIAL_FILE={material_path}",
         ],
     )

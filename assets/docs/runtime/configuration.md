@@ -6,13 +6,10 @@ Primary launcher runtime env file:
 - `settings/.env`
 - Created from the versioned `settings/.env.example` template when missing
 - Owns bootstrap-only values, including listeners, filesystem roots, logging,
-  security controls, and process behavior. Database settings are not loaded
-  from this file.
+  security controls, and process behavior. Database settings are never loaded
+  from this file or the process environment.
 - The backend bootstrap loads this file before importing configuration and
   database modules that can resolve environment-derived paths or settings.
-- Any remaining legacy `DATABASE_*` entries are imported once into the
-  database configuration file, removed from `settings/.env`, and cleared from
-  the application process environment; these values are not loaded thereafter.
 
 ## Core Variables
 - `FASTAPI_HOST`
@@ -34,9 +31,8 @@ connection settings are managed separately in
 Typed Pydantic models own the defaults for application behavior. The active
 database stores sparse user overrides and their revision in its
 `application_runtime_settings` table. Each database has independent settings;
-switching reloads that database's values and does not copy data. The old
-`<TKBEN_DATA_DIR>/runtime-settings.json` file is imported once after schema
-initialization and removed only after the database commit succeeds.
+switching reloads that database's values and does not copy data. Runtime
+settings are never read from a file.
 
 Dashboard widget order, visibility, chart choices, and report-specific baseline
 selections use the same database row with an independent revision. These

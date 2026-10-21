@@ -42,21 +42,15 @@ class DatabaseRuntimeSettingsPersistence:
                     id=1,
                     schema_version=int(payload["schema_version"]),
                     revision=int(payload["revision"]),
-                    dashboard_revision=int(payload.get("dashboard_revision", 0)),
+                    dashboard_revision=int(payload["dashboard_revision"]),
                     overrides=dict(payload["overrides"]),
-                    dashboard_preferences=dict(
-                        payload.get("dashboard_preferences", {})
-                    ),
+                    dashboard_preferences=dict(payload["dashboard_preferences"]),
                 )
                 session.add(record)
             else:
                 record.schema_version = int(payload["schema_version"])
                 record.revision = int(payload["revision"])
-                record.dashboard_revision = int(
-                    payload.get("dashboard_revision", record.dashboard_revision)
-                )
+                record.dashboard_revision = int(payload["dashboard_revision"])
                 record.overrides = dict(payload["overrides"])
-                record.dashboard_preferences = dict(
-                    payload.get("dashboard_preferences", record.dashboard_preferences)
-                )
+                record.dashboard_preferences = dict(payload["dashboard_preferences"])
             session.commit()
