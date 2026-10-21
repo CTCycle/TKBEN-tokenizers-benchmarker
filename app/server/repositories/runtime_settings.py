@@ -11,12 +11,15 @@ from server.repositories.database.backend import TKBENDatabase, get_database
 from server.repositories.schemas.models import RuntimeSettingsRecord
 
 
+###############################################################################
 class DatabaseRuntimeSettingsPersistence:
     """Persist the active sparse settings document in one database row."""
 
+    # -------------------------------------------------------------------------
     def __init__(self, database: TKBENDatabase | None = None) -> None:
         self.database = database or get_database()
 
+    # -------------------------------------------------------------------------
     def load(self) -> dict[str, Any] | None:
         with Session(bind=self.database.backend.engine) as session:
             record = session.get(RuntimeSettingsRecord, 1)
@@ -30,6 +33,7 @@ class DatabaseRuntimeSettingsPersistence:
                 "dashboard_preferences": record.dashboard_preferences,
             }
 
+    # -------------------------------------------------------------------------
     def save(self, payload: dict[str, Any]) -> None:
         with Session(bind=self.database.backend.engine) as session:
             record = session.get(RuntimeSettingsRecord, 1)

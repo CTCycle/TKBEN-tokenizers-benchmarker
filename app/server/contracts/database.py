@@ -8,6 +8,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, model_validator
 
 
+###############################################################################
 class DatabaseConfigurationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -24,6 +25,7 @@ class DatabaseConfigurationRequest(BaseModel):
     connect_timeout: StrictInt = Field(default=30, ge=1)
     insert_batch_size: StrictInt = Field(default=1000, ge=1)
 
+    # -------------------------------------------------------------------------
     @model_validator(mode="after")
     def validate_selected_backend(self) -> "DatabaseConfigurationRequest":
         if self.backend == "sqlite":
@@ -61,6 +63,7 @@ class DatabaseConfigurationRequest(BaseModel):
         return self
 
 
+###############################################################################
 class DatabaseConfigurationResponse(BaseModel):
     backend: Literal["sqlite", "postgresql"]
     active: bool = True
@@ -78,6 +81,7 @@ class DatabaseConfigurationResponse(BaseModel):
     message: str | None = None
 
 
+###############################################################################
 class DatabaseConnectionTestResponse(BaseModel):
     backend: Literal["sqlite", "postgresql"]
     success: bool

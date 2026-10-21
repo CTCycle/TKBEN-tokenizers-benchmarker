@@ -17,6 +17,7 @@ from server.configurations.database_configuration import (
 from server.contracts.database import DatabaseConfigurationRequest
 
 
+###############################################################################
 def _store(tmp_path: Path, env_text: str = "") -> DatabaseConfigurationStore:
     env_path = tmp_path / "settings" / ".env"
     env_path.parent.mkdir(parents=True, exist_ok=True)
@@ -28,6 +29,7 @@ def _store(tmp_path: Path, env_text: str = "") -> DatabaseConfigurationStore:
     )
 
 
+###############################################################################
 def test_default_configuration_is_file_based_and_independent(tmp_path: Path) -> None:
     store = _store(tmp_path, "FASTAPI_PORT=5000\n")
 
@@ -43,6 +45,7 @@ def test_default_configuration_is_file_based_and_independent(tmp_path: Path) -> 
     assert "FASTAPI_PORT" not in store.path.read_text(encoding="utf-8")
 
 
+###############################################################################
 def test_legacy_postgresql_configuration_is_encrypted_and_removed_from_env(
     tmp_path: Path,
 ) -> None:
@@ -79,6 +82,7 @@ def test_legacy_postgresql_configuration_is_encrypted_and_removed_from_env(
     assert "FASTAPI_PORT=5000" in store._env_file.read_text(encoding="utf-8")
 
 
+###############################################################################
 def test_legacy_process_environment_is_migrated_once_and_removed(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -98,6 +102,7 @@ def test_legacy_process_environment_is_migrated_once_and_removed(
     assert all(name not in os.environ for name in tuple(os.environ) if name.startswith("DATABASE_"))
 
 
+###############################################################################
 def test_invalid_primary_file_fails_closed_without_env_fallback(tmp_path: Path) -> None:
     store = _store(tmp_path, "DATABASE_EMBEDDED=true\n")
     store.path.parent.mkdir(parents=True, exist_ok=True)
@@ -110,6 +115,7 @@ def test_invalid_primary_file_fails_closed_without_env_fallback(tmp_path: Path) 
     assert "DATABASE_EMBEDDED=true" in store._env_file.read_text(encoding="utf-8")
 
 
+###############################################################################
 def test_atomic_write_failure_preserves_last_valid_configuration(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -131,6 +137,7 @@ def test_atomic_write_failure_preserves_last_valid_configuration(
     assert not list(store.path.parent.glob(".database-config.json.*.tmp"))
 
 
+###############################################################################
 def test_candidate_does_not_reuse_password_for_a_different_target(tmp_path: Path) -> None:
     store = _store(tmp_path)
     initial = store.build_candidate(
@@ -162,6 +169,7 @@ def test_candidate_does_not_reuse_password_for_a_different_target(tmp_path: Path
     assert same_target.encrypted_password == initial.encrypted_password
 
 
+###############################################################################
 def test_sqlite_configuration_rejects_blank_paths_and_postgresql_fields() -> None:
     with pytest.raises(ValueError, match="SQLite database path is required"):
         DatabaseConfigurationRequest(backend="sqlite", sqlite_path="  ")

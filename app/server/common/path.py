@@ -23,6 +23,7 @@ def _resolve_data_path(configured_path: str | None) -> Path:
     return resolve_runtime_path(configured_path, ROOT_DIR / "data")
 
 
+###############################################################################
 def resolve_runtime_path(configured_path: str | None, default_path: Path) -> Path:
     normalized = configured_path.strip() if configured_path else ""
     candidate = Path(normalized).expanduser() if normalized else default_path

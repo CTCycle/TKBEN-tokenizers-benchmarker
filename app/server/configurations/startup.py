@@ -44,6 +44,7 @@ def _initialize_settings_locked() -> None:
     _default_settings = store.get_state().settings
 
 
+###############################################################################
 def get_database_configuration_store() -> DatabaseConfigurationStore:
     with _DEFAULT_SETTINGS_LOCK:
         if _database_configuration_store is None:
@@ -52,6 +53,7 @@ def get_database_configuration_store() -> DatabaseConfigurationStore:
         return _database_configuration_store
 
 
+###############################################################################
 def build_database_runtime_settings_store(
     settings: ServerSettings, persistence: RuntimeSettingsPersistence
 ) -> RuntimeSettingsStore:
@@ -62,6 +64,7 @@ def build_database_runtime_settings_store(
     )
 
 
+###############################################################################
 def activate_runtime_settings_store(store: RuntimeSettingsStore) -> RuntimeSettingsState:
     global _default_settings, _runtime_settings_store
     with _DEFAULT_SETTINGS_LOCK:

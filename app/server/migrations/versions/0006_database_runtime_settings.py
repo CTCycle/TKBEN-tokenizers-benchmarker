@@ -15,6 +15,7 @@ branch_labels = None
 depends_on = None
 
 
+###############################################################################
 def upgrade() -> None:
     op.create_table(
         "application_runtime_settings",
@@ -31,5 +32,6 @@ def upgrade() -> None:
     )
 
 
+###############################################################################
 def downgrade() -> None:
     op.drop_table("application_runtime_settings")

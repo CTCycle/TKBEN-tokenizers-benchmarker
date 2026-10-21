@@ -164,7 +164,6 @@ def _read_env_int(
     return value
 
 ###############################################################################
-###############################################################################
 def _load_path_settings() -> PathSettings:
     data = resolve_runtime_path(os.getenv("TKBEN_DATA_DIR"), ROOT_DIR / "data")
     sources = data / "sources"

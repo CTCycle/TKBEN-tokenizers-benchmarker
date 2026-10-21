@@ -8,15 +8,18 @@ from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
 
 
+###############################################################################
 class DatabaseSwitchGate:
     """Drain ordinary API calls while a validated database is activated."""
 
+    # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self._condition = asyncio.Condition()
         self._switch_lock = asyncio.Lock()
         self._active_requests = 0
         self._switching = False
 
+    # -------------------------------------------------------------------------
     @asynccontextmanager
     async def request(self) -> AsyncIterator[None]:
         async with self._condition:
@@ -30,6 +33,7 @@ class DatabaseSwitchGate:
                 if self._active_requests == 0:
                     self._condition.notify_all()
 
+    # -------------------------------------------------------------------------
     @asynccontextmanager
     async def switch(self) -> AsyncIterator[None]:
         async with self._switch_lock:

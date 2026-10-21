@@ -16,6 +16,7 @@ from server.repositories.schemas.models import RuntimeSettingsRecord
 from sqlalchemy.orm import Session
 
 
+###############################################################################
 def _database_settings(path: Path) -> DatabaseSettings:
     return DatabaseSettings(
         embedded_database=True,
@@ -32,6 +33,7 @@ def _database_settings(path: Path) -> DatabaseSettings:
     )
 
 
+###############################################################################
 def _initialized_store(path: Path, legacy_path: Path | None = None) -> RuntimeSettingsStore:
     database_settings = _database_settings(path)
     settings = build_server_settings(database_settings=database_settings)
@@ -44,6 +46,7 @@ def _initialized_store(path: Path, legacy_path: Path | None = None) -> RuntimeSe
     )
 
 
+###############################################################################
 def test_runtime_settings_survive_restart_in_their_own_database(tmp_path: Path) -> None:
     first_path = tmp_path / "first.db"
     second_path = tmp_path / "second.db"
@@ -76,6 +79,7 @@ def test_runtime_settings_survive_restart_in_their_own_database(tmp_path: Path) 
     assert not (tmp_path / "runtime-settings.json").exists()
 
 
+###############################################################################
 def test_legacy_runtime_file_is_removed_only_after_database_commit(
     tmp_path: Path,
 ) -> None:
@@ -110,6 +114,7 @@ def test_legacy_runtime_file_is_removed_only_after_database_commit(
         }
 
 
+###############################################################################
 def test_failed_legacy_migration_keeps_source_file(tmp_path: Path) -> None:
     legacy_path = tmp_path / "runtime-settings.json"
     legacy_path.write_text("{broken", encoding="utf-8")

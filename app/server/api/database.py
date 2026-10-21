@@ -31,6 +31,7 @@ from server.services.jobs import JobManager
 router = APIRouter(prefix="/database", tags=["database"])
 
 
+###############################################################################
 def _configuration_response(
     configuration: StoredDatabaseConfiguration,
     *,
@@ -55,12 +56,14 @@ def _configuration_response(
     )
 
 
+###############################################################################
 def _test_engine(database: TKBENDatabase) -> None:
     with database.backend.engine.connect() as connection:
         if connection.execute(text("SELECT 1")).scalar_one() != 1:
             raise RuntimeError("Database health query returned an unexpected value.")
 
 
+###############################################################################
 @router.get("", response_model=DatabaseConfigurationResponse)
 async def get_database_configuration() -> DatabaseConfigurationResponse:
     configuration_store = get_database_configuration_store()
@@ -76,6 +79,7 @@ async def get_database_configuration() -> DatabaseConfigurationResponse:
     return _configuration_response(configuration, connection_status="connected")
 
 
+###############################################################################
 @router.post("/test", response_model=DatabaseConnectionTestResponse)
 async def test_database_connection(
     payload: DatabaseConfigurationRequest,
@@ -104,6 +108,7 @@ async def test_database_connection(
     )
 
 
+###############################################################################
 @router.post("/switch", response_model=DatabaseConfigurationResponse)
 async def switch_database(
     request: Request,

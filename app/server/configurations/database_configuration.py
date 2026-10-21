@@ -22,6 +22,7 @@ DATABASE_PASSWORD_PURPOSE = "database_connection_password"
 _DATABASE_ENV_LINE = re.compile(r"^\s*(?:export\s+)?DATABASE_[A-Z0-9_]+\s*=")
 
 
+###############################################################################
 class StoredDatabaseConfiguration(BaseModel):
     """Validated, database-independent connection configuration."""
 
@@ -40,6 +41,7 @@ class StoredDatabaseConfiguration(BaseModel):
     connect_timeout: StrictInt = Field(default=30, ge=1)
     insert_batch_size: StrictInt = Field(default=1000, ge=1)
 
+    # -------------------------------------------------------------------------
     @model_validator(mode="after")
     def validate_backend_fields(self) -> "StoredDatabaseConfiguration":
         if self.schema_version != DATABASE_CONFIGURATION_SCHEMA_VERSION:
@@ -78,9 +80,11 @@ class StoredDatabaseConfiguration(BaseModel):
         return self
 
 
+###############################################################################
 class DatabaseConfigurationStore:
     """Own the single JSON source of truth for database connection settings."""
 
+    # -------------------------------------------------------------------------
     def __init__(self, data_directory: Path, material_file: Path, env_file: Path) -> None:
         self.path = data_directory / DATABASE_CONFIGURATION_FILENAME
         self._data_directory = data_directory
@@ -88,6 +92,7 @@ class DatabaseConfigurationStore:
         self._env_file = env_file
         self._active_configuration: StoredDatabaseConfiguration | None = None
 
+    # -------------------------------------------------------------------------
     def load(self) -> StoredDatabaseConfiguration:
         if self._active_configuration is not None:
             return self._active_configuration
@@ -110,6 +115,7 @@ class DatabaseConfigurationStore:
         self._strip_legacy_environment()
         return configuration
 
+    # -------------------------------------------------------------------------
     def to_database_settings(
         self, configuration: StoredDatabaseConfiguration
     ) -> DatabaseSettings:
@@ -155,6 +161,7 @@ class DatabaseConfigurationStore:
             insert_batch_size=configuration.insert_batch_size,
         )
 
+    # -------------------------------------------------------------------------
     def build_candidate(
         self,
         *,
@@ -211,6 +218,7 @@ class DatabaseConfigurationStore:
             insert_batch_size=insert_batch_size,
         )
 
+    # -------------------------------------------------------------------------
     def save(self, configuration: StoredDatabaseConfiguration) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         descriptor: int | None = None
@@ -247,6 +255,7 @@ class DatabaseConfigurationStore:
                 except OSError:
                     pass
 
+    # -------------------------------------------------------------------------
     def _read_legacy_environment(self) -> dict[str, str]:
         values = {
             key: value
@@ -263,6 +272,7 @@ class DatabaseConfigurationStore:
             )
         return values
 
+    # -------------------------------------------------------------------------
     def _from_legacy_environment(
         self, values: dict[str, str]
     ) -> StoredDatabaseConfiguration:
@@ -317,6 +327,7 @@ class DatabaseConfigurationStore:
             insert_batch_size=batch_size,
         )
 
+    # -------------------------------------------------------------------------
     def _strip_legacy_environment(self) -> None:
         if self._env_file.is_file():
             temporary_path: str | None = None
@@ -351,6 +362,7 @@ class DatabaseConfigurationStore:
                 os.environ.pop(name, None)
 
 
+###############################################################################
 def _legacy_bool(values: dict[str, str], key: str, default: bool) -> bool:
     value = values.get(key)
     if value is None or not value.strip():
@@ -361,6 +373,7 @@ def _legacy_bool(values: dict[str, str], key: str, default: bool) -> bool:
     return normalized == "true"
 
 
+###############################################################################
 def _legacy_int(
     values: dict[str, str],
     key: str,

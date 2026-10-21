@@ -35,15 +35,18 @@ from server.contracts.settings import RuntimeSettingsPatchRequest
 class _FilePersistenceForStoreUnitTests:
     """Small test adapter; production persistence is the active SQL database."""
 
+    # -------------------------------------------------------------------------
     def __init__(self, path: Path) -> None:
         self.path = path
         self.fail_writes = False
 
+    # -------------------------------------------------------------------------
     def load(self) -> dict[str, object] | None:
         if not self.path.exists():
             return None
         return json.loads(self.path.read_text(encoding="utf-8"))
 
+    # -------------------------------------------------------------------------
     def save(self, payload: dict[str, object]) -> None:
         if self.fail_writes:
             raise OSError("test persistence failure")
@@ -51,16 +54,19 @@ class _FilePersistenceForStoreUnitTests:
         self.path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
 
 
+###############################################################################
 class _PersistedRuntimeSettingsStore(RuntimeSettingsStore):
+
+    # -------------------------------------------------------------------------
     def __init__(self, defaults: ServerSettings, path: Path) -> None:
         self.persistence = _FilePersistenceForStoreUnitTests(path)
         self.path = path
         super().__init__(defaults, self.persistence)
 
 
+###############################################################################
 def _store(defaults: ServerSettings, path: Path) -> _PersistedRuntimeSettingsStore:
     return _PersistedRuntimeSettingsStore(defaults, path)
-
 
 ###############################################################################
 def _non_finite_runtime_float_cases():
