@@ -200,7 +200,7 @@ The gate table records the latest known state of every stable validation ID.
 | T5-03 | PASS | Cross Benchmark, Tokenizers empty/loading/error/populated/report states, manager bounds, four viewport sizes, and keyboard/focus behavior passed. |
 | T5-04 | PASS | Official launcher streamed visible progress for 10,000 documents, cancellation produced no report, eight backend RSS samples were collected, and a two-document rerun rendered without browser/HTTP errors. Browser heap was not instrumented. |
 | T5-05 | OUT_OF_SCOPE | Release support is Windows x64 source-only. Ubuntu was diagnostic; macOS and hosted runtime support are not planned. |
-| T5-06 | PARTIAL | Releases `v4.5.0` and `v4.5.1` were verified as described in historical evidence. The `v4.6.0` MINOR candidate is committed and pushed to `develop`; hosted CI run `39557902883` passed both jobs. Exact-main production rebuild and isolated live E2E passed 7/7; the earlier default-root attempt and its cleanup are recorded under V-20261021. Hosted CI on `main`, tag, and publication remain outstanding. `origin/main` was still at `d49b24758351d9b8b18e839fe5565c0bc73c2528` before the final branch sync. |
+| T5-06 | PARTIAL | Releases `v4.5.0` and `v4.5.1` were verified as described in historical evidence. The `v4.6.0` MINOR candidate source is committed and pushed to `develop`; development CI run `39557902883` passed both jobs. The aligned main candidate passed its production rebuild, isolated live smoke, and 7/7 focused E2E suite; main CI run `39581680030` passed both jobs. The ledger-only update is being synchronized to `main` and its main CI must pass before the annotated tag and source-only publication. |
 
 ## Open issues and validation debt
 
@@ -229,10 +229,7 @@ consolidation, license headers, test updates, and formatting. No dependency
 changes or API/report schema version changes were found.
 
 The proposed MINOR release is `v4.6.0` (backend `3.6.0`, frontend `2.6.0`).
-Candidate commit `0de5fa6f7c167975733e6b9cdda1871d2cfa0ca5` passed all local
-checks recorded under V-20261021, including real browser/database workflows and
-PostgreSQL migration `0007`. It is pushed to `origin/develop`; hosted CI run
-`39557902883` passed both jobs. Local main commit `fbe03383c858c68234a8dff921845cff1ad3a027` then passed a production rebuild, isolated SQLite startup and health/UI smoke, in-app visual Database-panel review, and the focused live E2E suite (7/7 in 53.86s). The initial non-isolated test attempt and its cleanup are documented under V-20261021. This ledger follow-up is on `develop`; `origin/main` remained at `d49b247` before synchronization. Fast-forward main after this update, run main hosted CI, then create the annotated tag and publish from main.
+Candidate source commit `0de5fa6f7c167975733e6b9cdda1871d2cfa0ca5` passed all local checks recorded under V-20261021, including real browser/database workflows and PostgreSQL migration `0007`. It is pushed to `origin/develop`; development CI run `39557902883` passed both jobs. Synchronized main commit `0a660567306b14a7fc0eae77b7c51a9ccbece6f5` passed the production rebuild, isolated SQLite startup and health/UI smoke, in-app Database-panel visual review, focused live E2E (7/7), and main CI run `39581680030`. The ledger-only follow-up on `develop` must be fast-forwarded to main and its main CI must pass before tagging. Then create annotated tag `v4.6.0` with main checked out and publish the source-only release.
 T4-03
 gated Hugging Face access and physical low-disk recovery remain independently
 bounded, non-blocking validation debt as described above.
