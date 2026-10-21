@@ -5,7 +5,8 @@ Last updated: 2026-10-21
 This file is the root index for `assets/docs`. Read it first to find the narrowest topic file for the task at hand.
 
 The current codebase uses schema-3/report-5 benchmark reports, the single
-Alembic baseline revision `0001_current_schema`, typed frontend catalog
+Alembic baseline revision `0001_current_schema` (with a schema-verified
+rebaseline path for the exact published v4.6.0 head), typed frontend catalog
 controls, persisted tokenizer source/artifact state, and a `BenchmarkStore`
 that owns dashboard preferences and report-scoped baseline selections. Reports
 own relational summary fields and tags while JSON stores immutable detail
@@ -14,8 +15,9 @@ adapted. Managed job lifecycle metadata is durable, with interrupted work
 reconciled as failed after restart rather than automatically resumed.
 
 The latest published release is `v4.6.0` with backend package `3.6.0` and
-frontend package `2.6.0`. Its source-only GitHub release was published from
-annotated tag `v4.6.0` on `main` commit
+frontend package `2.6.0`; the current patch candidate is `v4.6.1` with backend
+`3.6.1` and frontend `2.6.1`. The v4.6.0 source-only GitHub release was
+published from annotated tag `v4.6.0` on `main` commit
 `2ecd12119b86864d617367bd6b0712bb9a1b2b92`; `main` and `develop` are
 synchronized after the publication record update. Configuration ownership is
 canonical: `settings/.env` and the process environment own

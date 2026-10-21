@@ -3,8 +3,10 @@
 
 """Create the current TKBEN schema.
 
-This baseline is the only supported schema creation revision. Databases created
-before this baseline are not upgraded or adopted.
+This baseline is the only schema creation revision. The published v4.6.0 head
+`0007_dashboard_ui_preferences` is accepted only when a metadata comparison
+matches the current schema; other unknown or pre-baseline revisions are not
+upgraded or adopted.
 """
 
 from __future__ import annotations

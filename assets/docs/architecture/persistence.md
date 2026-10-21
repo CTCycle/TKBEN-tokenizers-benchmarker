@@ -36,9 +36,13 @@ A non-empty database without an Alembic version row is rejected. The single
 baseline revision `0001_current_schema` creates the complete current schema,
 including relational report tags, durable managed-job lifecycle records, and
 the singleton runtime-settings row with dashboard layout, chart, and baseline
-preferences. Databases created before this baseline are rejected as unknown
-revisions and must be recreated; no compatibility migration adopts or upgrades
-them.
+preferences. The exact schema head published with v4.6.0,
+`0007_dashboard_ui_preferences`, is the sole rebaseline exception: startup
+compares its database schema with current metadata before changing only its
+Alembic marker to `0001_current_schema`. A mismatch is rejected without
+changing the marker. Other unknown or pre-baseline revisions, multiple heads,
+and unversioned databases are rejected and must be recreated; no general
+compatibility migration adopts or upgrades them.
 
 The active database owns all non-database application settings, including
 report-dashboard layout, visibility, visualization, and baseline preferences.

@@ -27,7 +27,7 @@ TKBEN should expose one authoritative implementation and one authoritative sourc
 - Legacy `DATABASE_*` environment import and `.env` rewriting were removed. Database connection settings come only from `database-config.json`.
 - The legacy `<TKBEN_DATA_DIR>/runtime-settings.json` import was removed. Runtime settings and dashboard preferences come only from the active database.
 - The deprecated `GET /api/tokenizers/settings` compatibility endpoint was removed; `/api/settings` is the only settings contract.
-- The pre-baseline Alembic revisions were replaced by the single `0001_current_schema` baseline. Existing databases from older revisions are rejected and must be recreated.
+- The pre-baseline Alembic revisions were replaced by the single `0001_current_schema` baseline. The exact v4.6.0 published head `0007_dashboard_ui_preferences` is rebaselined only after current-schema metadata matches; other old or unknown revisions remain rejected and must be recreated.
 
 ## Bootstrap rule
 The environment profile must be loaded before configuration modules that can reach environment-derived paths or database settings are imported. `server.configurations` performs that bootstrap before importing its settings/startup surface.

@@ -11,9 +11,10 @@ from sqlalchemy import create_engine, inspect, text
 import pytest
 
 from server.configurations import DatabaseSettings
-from server.repositories.database import initializer
+from server.repositories.database import TKBENDatabase, initializer
 from server.repositories.database import migrations
 from server.repositories.database.migrations import DatabaseMigrationError
+from server.repositories.runtime_settings import DatabaseRuntimeSettingsPersistence
 
 ###############################################################################
 def _settings(path: Path) -> DatabaseSettings:
@@ -124,6 +125,79 @@ def test_database_ahead_of_repository_is_rejected(
         initializer.run_database_initialization()
 
     assert _revision(path) == "9999_future"
+
+###############################################################################
+def test_published_v460_schema_is_rebased_without_losing_settings(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "database.db"
+    settings = _configure_database(monkeypatch, path)
+    initializer.run_database_initialization()
+
+    database = TKBENDatabase(settings)
+    persistence = DatabaseRuntimeSettingsPersistence(database)
+    expected = {
+        "schema_version": 1,
+        "revision": 4,
+        "dashboard_revision": 5,
+        "overrides": {"datasets": {"histogram_bins": 31}},
+        "dashboard_preferences": {
+            "widgets": ["summary"],
+            "baseline_report_ids": {"summary": "report-1"},
+        },
+    }
+    persistence.save(expected)
+    try:
+        with database.backend.engine.begin() as connection:
+            connection.execute(
+                text("UPDATE alembic_version SET version_num=:revision"),
+                {"revision": "0007_dashboard_ui_preferences"},
+            )
+    finally:
+        database.backend.engine.dispose()
+
+    initializer.run_database_initialization()
+
+    database = TKBENDatabase(settings)
+    try:
+        with database.backend.engine.connect() as connection:
+            assert connection.execute(
+                text("SELECT version_num FROM alembic_version")
+            ).scalar_one() == "0001_current_schema"
+        assert DatabaseRuntimeSettingsPersistence(database).load() == expected
+    finally:
+        database.backend.engine.dispose()
+
+###############################################################################
+def test_published_revision_with_schema_drift_is_not_rebased(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "database.db"
+    _configure_database(monkeypatch, path)
+    initializer.run_database_initialization()
+
+    engine = create_engine(f"sqlite:///{path}", future=True)
+    try:
+        with engine.begin() as connection:
+            connection.execute(text("CREATE TABLE unexpected_schema (id INTEGER)"))
+            connection.execute(
+                text("UPDATE alembic_version SET version_num=:revision"),
+                {"revision": "0007_dashboard_ui_preferences"},
+            )
+    finally:
+        engine.dispose()
+
+    with pytest.raises(DatabaseMigrationError, match="does not match the current schema"):
+        initializer.run_database_initialization()
+
+    assert _revision(path) == "0007_dashboard_ui_preferences"
+    engine = create_engine(f"sqlite:///{path}", future=True)
+    try:
+        assert "unexpected_schema" in inspect(engine).get_table_names()
+    finally:
+        engine.dispose()
 
 ###############################################################################
 def test_concurrent_initializers_serialize_on_sqlite(

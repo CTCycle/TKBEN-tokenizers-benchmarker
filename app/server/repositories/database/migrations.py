@@ -7,6 +7,7 @@ import time
 from typing import Any
 
 from alembic import command, script
+from alembic.autogenerate import compare_metadata
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from sqlalchemy import Connection, Engine, inspect, text
@@ -14,10 +15,12 @@ from sqlalchemy import Connection, Engine, inspect, text
 from server.common.path import SERVER_DIR
 from server.common.utils.logger import logger
 from server.configurations import DatabaseSettings
+from server.repositories.schemas.models import Base
 
 ALEMBIC_CONFIG_PATH = SERVER_DIR / "pyproject.toml"
 ALEMBIC_VERSION_TABLE = "alembic_version"
 POSTGRES_LOCK_NAME = "tkben:alembic:migrations"
+RELEASED_SCHEMA_REVISION = "0007_dashboard_ui_preferences"
 
 ###############################################################################
 class DatabaseMigrationError(RuntimeError):
@@ -50,6 +53,30 @@ def _current_heads(connection: Connection) -> tuple[str, ...]:
     return tuple(migration_context.get_current_heads())
 
 ###############################################################################
+def _rebase_released_schema_revision(connection: Connection) -> tuple[str, ...]:
+    """Rebase the exact published v4.6.0 head after a schema comparison."""
+    context = MigrationContext.configure(
+        connection,
+        opts={"version_table": ALEMBIC_VERSION_TABLE},
+    )
+    differences = compare_metadata(context, Base.metadata)
+    if differences:
+        raise DatabaseMigrationError(
+            "Database stamped with the published v4.6.0 revision does not match "
+            "the current schema; refusing to rebaseline it."
+        )
+
+    connection.execute(
+        text(
+            "UPDATE alembic_version "
+            "SET version_num = :target "
+            "WHERE version_num = :released"
+        ),
+        {"target": "0001_current_schema", "released": RELEASED_SCHEMA_REVISION},
+    )
+    return _current_heads(connection)
+
+###############################################################################
 def _domain_tables(connection: Connection) -> set[str]:
     return set(inspect(connection).get_table_names()) - {ALEMBIC_VERSION_TABLE}
 
@@ -73,6 +100,12 @@ def _synchronize_schema(
 
     known_revisions = {revision.revision for revision in directory.walk_revisions()}
     unknown = set(current) - known_revisions
+    if current == (RELEASED_SCHEMA_REVISION,):
+        logger.info(
+            "Recognized the published v4.6.0 schema; verifying it before rebaselining."
+        )
+        current = _rebase_released_schema_revision(connection)
+        unknown = set(current) - known_revisions
     if unknown:
         raise DatabaseMigrationError(
             f"Database references unknown Alembic revisions: {sorted(unknown)!r}."
