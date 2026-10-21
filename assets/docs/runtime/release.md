@@ -10,19 +10,20 @@ add packaging as part of a source release.
 The public release version and component versions use the existing repository
 convention:
 
-| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` | `v4.5.0` | `v4.5.1` public | `v4.6.0` candidate |
+| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` | `v4.5.0` | `v4.5.1` | `v4.6.0` public |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` | `4.4.0` | `4.5.0` | `4.5.1` | `4.6.0` |
 | Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` | `3.4.0` | `3.5.0` | `3.5.1` | `3.6.0` |
 | Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` | `2.4.0` | `2.5.0` | `2.5.1` | `2.6.0` |
 
-The latest published release is `v4.5.1` (backend `3.5.1`, frontend `2.5.1`).
-The current release candidate is `v4.6.0` (backend `3.6.0`, frontend `2.6.0`);
-publication remains pending the release gate below.
+The latest published release is `v4.6.0` (backend `3.6.0`, frontend `2.6.0`).
+Its annotated tag points to validated `main` commit
+`2ecd12119b86864d617367bd6b0712bb9a1b2b92`; publication and validation evidence
+are recorded in the [project status ledger](../project_status_ledger.md#release-gate).
 
 ## v4.6.0 release notes
 
-The candidate delta is based on verified repository changes after `v4.5.1`:
+The v4.6.0 delta is based on verified repository changes after `v4.5.1`:
 
 - add a Database panel to configure, test, and switch SQLite or PostgreSQL
   connections, with encrypted PostgreSQL password storage and rollback when
