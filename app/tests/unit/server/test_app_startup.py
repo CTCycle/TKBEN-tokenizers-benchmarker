@@ -23,6 +23,7 @@ def _settings(
 ) -> SimpleNamespace:
     return SimpleNamespace(
         paths=SimpleNamespace(
+            data=templates.parent / "data",
             logs=logs,
             datasets=datasets,
             tokenizers=tokenizers,
@@ -96,6 +97,23 @@ def test_create_app_initializes_startup_state(
         app_module,
         "initialize_database",
         lambda **kwargs: calls.append(f"database:{kwargs['startup']}"),
+    )
+    monkeypatch.setattr(app_module, "get_database", lambda: object())
+    monkeypatch.setattr(
+        app_module,
+        "DatabaseRuntimeSettingsPersistence",
+        lambda database: object(),
+    )
+    runtime_store = object()
+    monkeypatch.setattr(
+        app_module,
+        "build_database_runtime_settings_store",
+        lambda received, persistence: runtime_store,
+    )
+    monkeypatch.setattr(
+        app_module,
+        "activate_runtime_settings_store",
+        lambda received: SimpleNamespace(settings=settings),
     )
     repository = object()
     monkeypatch.setattr(app_module, "JobRepository", lambda: repository)

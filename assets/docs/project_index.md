@@ -1,5 +1,5 @@
 # Project Overview
-Last updated: 2026-10-20
+Last updated: 2026-10-21
 
 ## Purpose
 This file is the root index for `assets/docs`. Read it first to find the narrowest topic file for the task at hand.
@@ -14,7 +14,8 @@ job lifecycle metadata is durable, with interrupted work reconciled as failed
 after restart rather than automatically resumed.
 
 The latest published release is `v4.5.1` with backend package `3.5.1` and
-frontend package `2.5.1`. Configuration ownership is canonical: `settings/.env`
+frontend package `2.5.1`; the validated `v4.6.0` candidate is pending hosted CI
+and publication. Configuration ownership is canonical: `settings/.env`
 and the process environment own bootstrap-only values,
 `<TKBEN_DATA_DIR>/database-config.json` owns database connection settings, typed
 backend models own application defaults, and the active database owns sparse
