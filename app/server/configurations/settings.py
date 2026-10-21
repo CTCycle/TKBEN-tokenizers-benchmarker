@@ -4,8 +4,11 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 from typing import Any
+from ipaddress import IPv6Address
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -45,6 +48,7 @@ class NetworkSettings(_FrozenSettingsModel):
     ui_host: str
     ui_port: int = Field(ge=1, le=65535)
     api_base_url: str
+    cors_origins: tuple[str, ...] | None = None
 
 ###############################################################################
 class SecuritySettings(_FrozenSettingsModel):
@@ -164,6 +168,85 @@ def _read_env_int(
     return value
 
 ###############################################################################
+def _read_env_origins(name: str) -> tuple[str, ...] | None:
+    raw_value = os.getenv(name)
+    if raw_value is None or raw_value.strip() == "":
+        return None
+
+    origins: list[str] = []
+    for raw_origin in raw_value.split(","):
+        origin = raw_origin.strip()
+        if not origin:
+            raise RuntimeError(
+                f"{name} must be a comma-separated list of HTTP(S) origins."
+            )
+        normalized_origin = _normalize_cors_origin(name, origin)
+        if normalized_origin not in origins:
+            origins.append(normalized_origin)
+    return tuple(origins)
+
+###############################################################################
+def _normalize_cors_origin(name: str, origin: str) -> str:
+    try:
+        parsed = urlsplit(origin)
+        port = parsed.port
+    except ValueError as exc:
+        raise RuntimeError(
+            f"{name} must contain valid HTTP(S) origins without paths or credentials."
+        ) from exc
+
+    scheme = parsed.scheme.lower()
+    hostname = parsed.hostname
+    if (
+        scheme not in {"http", "https"}
+        or not parsed.netloc
+        or hostname is None
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.path
+        or parsed.query
+        or parsed.fragment
+        or "?" in origin
+        or "#" in origin
+        or parsed.netloc.endswith(":")
+        or any(character.isspace() for character in origin)
+        or port == 0
+    ):
+        raise RuntimeError(
+            f"{name} must contain valid HTTP(S) origins without paths or credentials."
+        )
+
+    if ":" in hostname:
+        try:
+            normalized_host = f"[{IPv6Address(hostname).compressed}]"
+        except ValueError as exc:
+            raise RuntimeError(f"{name} contains an invalid IPv6 origin.") from exc
+    else:
+        try:
+            normalized_host = hostname.encode("idna").decode("ascii").lower()
+        except UnicodeError as exc:
+            raise RuntimeError(f"{name} contains an invalid hostname.") from exc
+        hostname_labels = normalized_host.removesuffix(".").split(".")
+        if (
+            not normalized_host
+            or any(
+                not label
+                or len(label) > 63
+                or re.fullmatch(r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?", label) is None
+                for label in hostname_labels
+            )
+        ):
+            raise RuntimeError(f"{name} contains an invalid hostname.")
+
+    port_suffix = ""
+    if port is not None and not (
+        (scheme == "http" and port == 80)
+        or (scheme == "https" and port == 443)
+    ):
+        port_suffix = f":{port}"
+    return f"{scheme}://{normalized_host}{port_suffix}"
+
+###############################################################################
 def _load_path_settings() -> PathSettings:
     data = resolve_runtime_path(os.getenv("TKBEN_DATA_DIR"), ROOT_DIR / "data")
     sources = data / "sources"
@@ -200,6 +283,7 @@ def _load_network_settings() -> NetworkSettings:
         ui_host=_read_env_text("UI_HOST", "127.0.0.1"),
         ui_port=_read_env_int("UI_PORT", 8000, minimum=1, maximum=65535),
         api_base_url=_read_env_text("VITE_API_BASE_URL", "/api"),
+        cors_origins=_read_env_origins("CORS_ORIGINS"),
     )
 
 ###############################################################################

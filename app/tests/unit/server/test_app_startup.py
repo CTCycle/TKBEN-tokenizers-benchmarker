@@ -20,6 +20,7 @@ def _settings(
     templates: Path,
     ui_host: str = "127.0.0.1",
     ui_port: int = 8000,
+    cors_origins: tuple[str, ...] | None = None,
 ) -> SimpleNamespace:
     return SimpleNamespace(
         paths=SimpleNamespace(
@@ -29,7 +30,11 @@ def _settings(
             tokenizers=tokenizers,
             templates=templates,
         ),
-        network=SimpleNamespace(ui_host=ui_host, ui_port=ui_port),
+        network=SimpleNamespace(
+            ui_host=ui_host,
+            ui_port=ui_port,
+            cors_origins=cors_origins,
+        ),
         database=SimpleNamespace(embedded_database=True),
         jobs=SimpleNamespace(terminal_retention_seconds=3600.0),
     )
@@ -48,6 +53,22 @@ def test_build_cors_origins_normalizes_local_hosts(tmp_path: Path) -> None:
     origins = startup_validation.build_cors_origins(settings)
 
     assert origins == ["http://127.0.0.1:8000", "http://localhost:8000"]
+
+###############################################################################
+def test_build_cors_origins_uses_explicit_environment_origins(tmp_path: Path) -> None:
+    settings = _settings(
+        logs=tmp_path / "logs",
+        datasets=tmp_path / "datasets",
+        tokenizers=tmp_path / "tokenizers",
+        templates=tmp_path / "templates",
+        ui_host="0.0.0.0",
+        ui_port=8000,
+        cors_origins=("https://bench.example", "http://localhost:3000"),
+    )
+
+    origins = startup_validation.build_cors_origins(settings)
+
+    assert origins == ["https://bench.example", "http://localhost:3000"]
 
 ###############################################################################
 def test_run_startup_validations_creates_runtime_directories(tmp_path: Path) -> None:
@@ -80,6 +101,7 @@ def test_create_app_initializes_startup_state(
         datasets=tmp_path / "datasets",
         tokenizers=tmp_path / "tokenizers",
         templates=tmp_path / "templates",
+        cors_origins=("https://bench.example",),
     )
 
     monkeypatch.setattr(app_module, "get_server_settings", lambda: settings)
@@ -135,8 +157,19 @@ def test_create_app_initializes_startup_state(
 
     with TestClient(application) as client:
         response = client.get("/")
+        cors_response = client.options(
+            "/api/health",
+            headers={
+                "Origin": "https://bench.example",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
 
     assert response.status_code in {200, 307}
+    assert cors_response.status_code == 200
+    assert cors_response.headers["access-control-allow-origin"] == (
+        "https://bench.example"
+    )
     assert application.state.settings is settings
     assert calls == [
         f"logging:{settings.paths.logs}",

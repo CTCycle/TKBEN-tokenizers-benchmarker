@@ -17,6 +17,7 @@ Primary launcher runtime env file:
 - `UI_HOST`
 - `UI_PORT`
 - `VITE_API_BASE_URL` (default `/api`)
+- `CORS_ORIGINS` (optional comma-separated HTTP(S) origins without paths or credentials; blank uses the origins derived from `UI_HOST` and `UI_PORT`)
 - `RELOAD`
 - `ALLOW_KEY_REVEAL`
 - `HF_KEYS_ENCRYPTION_MATERIAL_FILE`
@@ -26,6 +27,8 @@ Primary launcher runtime env file:
 These values are startup and infrastructure configuration. Database
 connection settings are managed separately in
 `<TKBEN_DATA_DIR>/database-config.json` through Settings → Database.
+An explicit `CORS_ORIGINS` list replaces the derived origins. Invalid entries
+fail bootstrap; restart the backend after changing this value.
 
 ## Application Runtime Settings
 Typed Pydantic models own the defaults for application behavior. The active
@@ -37,6 +40,8 @@ settings are never read from a file.
 Dashboard widget order, visibility, chart choices, and report-specific baseline
 selections use the same database row with an independent revision. These
 preferences save as the user changes them and follow the active database.
+UI-managed application settings exclude network bootstrap values such as API
+base paths, listener addresses and ports, and CORS origins.
 
 The Settings page and `/api/settings` endpoints expose exactly these 16 fields,
 grouped in the UI by workflow:
@@ -64,7 +69,8 @@ runtime Settings surface.
 
 Do not move values between startup configuration and runtime settings to work
 around a validation error. `.env` is canonical for bootstrap and
-environment-specific values. Runtime requests are strict typed contracts with
+environment-specific values. UI-managed application runtime settings are not
+read from `.env`. Runtime requests are strict typed contracts with
 backend-authoritative validation, including tokenizer cross-field constraints,
 finite numeric values, and revision checks. Invalid bootstrap input fails
 before the application exposes its health endpoint; an unavailable selected

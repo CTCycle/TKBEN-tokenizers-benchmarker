@@ -23,6 +23,7 @@ _BOOTSTRAP_ENVIRONMENT_KEYS = frozenset(
         "UI_HOST",
         "UI_PORT",
         "VITE_API_BASE_URL",
+        "CORS_ORIGINS",
         "TKBEN_DATA_DIR",
         "TKBEN_LOG_DIR",
         "RELOAD",

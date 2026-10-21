@@ -229,6 +229,7 @@ def test_get_settings_returns_only_typed_runtime_fields(
     assert payload["warning"] is None
     assert "DATABASE_PASSWORD" not in response.text
     assert "fastapi_host" not in response.text
+    assert "cors_origins" not in response.text
     assert "paths" not in response.text
 
 ###############################################################################
@@ -740,6 +741,7 @@ def test_reset_one_and_reset_all_return_defaults(
     [
         {"expected_revision": 0, "unknown": {"histogram_bins": 30}},
         {"expected_revision": 0, "network": {"fastapi_port": 9000}},
+        {"expected_revision": 0, "cors_origins": ["https://example.com"]},
         {"expected_revision": 0, "tokenizers": {"max_discovery_limit": 10}},
         {"expected_revision": 0, "datasets": None},
     ],
