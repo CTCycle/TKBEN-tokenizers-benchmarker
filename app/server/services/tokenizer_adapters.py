@@ -169,30 +169,7 @@ class UniversalTokenizerAdapter:
             raise ValueError(
                 "Tokenizer does not support requested padding or truncation."
             )
-
-        token_counts: list[int] = []
-        unknown_counts: list[int | None] = []
-        input_ids_by_doc: list[list[int]] = []
-        for text in as_list:
-            try:
-                ids = self._tokenizer.encode(
-                    text, add_special_tokens=add_special_tokens
-                )
-            except TypeError:
-                ids = self._tokenizer.encode(text)
-            ids_list = self._normalize_ids(ids)
-            input_ids_by_doc.append(ids_list)
-            token_counts.append(len(ids_list))
-            if unk_id is None:
-                unknown_counts.append(None)
-            else:
-                unknown_counts.append(sum(1 for value in ids_list if value == unk_id))
-
-        return EncodedBatch(
-            token_counts=token_counts,
-            unknown_counts=unknown_counts,
-            input_ids_by_doc=input_ids_by_doc,
-        )
+        raise ValueError("Tokenizer must be callable or support encode_batch.")
 
     # -------------------------------------------------------------------------
     def _raw_padding_options(self, original_padding: Any) -> dict[str, Any]:

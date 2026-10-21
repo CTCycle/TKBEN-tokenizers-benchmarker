@@ -9,9 +9,10 @@ All routers are included with `prefix="/api"` during backend startup.
 
 ## Application Runtime Settings
 - `GET /api/settings` — returns the effective values, typed defaults, current
-  revision, overridden keys, and any recoverable runtime-file warning for the
-  16 supported application settings. It never returns startup, infrastructure,
-  path, database, security, or secret configuration.
+  revision, overridden keys, and any sanitized warning about invalid persisted
+  database settings for the 16 supported application settings. It never
+  returns startup, infrastructure, path, database, security, or secret
+  configuration.
 - `PATCH /api/settings` — applies a typed partial update with
   `expected_revision`; successful writes are authoritative and apply to new
   operations. The Settings UI debounces continuous numeric input and saves

@@ -58,8 +58,17 @@ class DummyTokenizer:
         return str(text).split()
 
     # -------------------------------------------------------------------------
-    def encode(self, text: str) -> list[int]:
+    def _encode_one(self, text: str) -> list[int]:
         return [self._vocab.get(token, 0) for token in str(text).split()]
+
+    # -------------------------------------------------------------------------
+    def encode(self, text: str) -> list[int]:
+        return self._encode_one(text)
+
+    # -------------------------------------------------------------------------
+    def __call__(self, texts: list[str], **kwargs: Any) -> dict[str, list[list[int]]]:
+        del kwargs
+        return {"input_ids": [self._encode_one(text) for text in texts]}
 
     # -------------------------------------------------------------------------
     def decode(self, token_ids: Any) -> str:
