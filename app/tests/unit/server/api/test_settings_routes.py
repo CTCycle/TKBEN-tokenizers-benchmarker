@@ -833,14 +833,19 @@ def test_invalid_database_settings_warning_is_sanitized_and_cleared_by_save(
 ) -> None:
     defaults = startup.get_server_settings()
     persistence = _MemoryPersistence(
-        {"schema_version": 2, "revision": 0, "overrides": {}}
+        {
+            "schema_version": 2,
+            "revision": 0,
+            "overrides": {},
+            "dashboard_revision": 0,
+            "dashboard_preferences": {},
+        }
     )
     client = _settings_client(defaults, persistence, monkeypatch)
 
     warning = client.get("/api/settings")
     assert warning.status_code == 200
     assert warning.json()["warning"]
-    assert "runtime-settings.json" not in warning.json()["warning"]
 
     saved = client.patch(
         "/api/settings",

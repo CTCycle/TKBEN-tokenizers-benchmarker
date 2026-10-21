@@ -3,10 +3,8 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from pathlib import Path
 from threading import RLock
 from typing import ClassVar, Protocol, cast
 
@@ -24,7 +22,6 @@ from server.contracts.settings import DashboardUiPreferences
 
 
 RUNTIME_SETTINGS_SCHEMA_VERSION = 1
-LEGACY_RUNTIME_SETTINGS_FILENAME = "runtime-settings.json"
 RUNTIME_SETTINGS_WARNING = (
     "Saved runtime settings could not be loaded; typed defaults are in use. "
     "Change or reset settings to replace the stored values."
@@ -132,9 +129,9 @@ class _RuntimeOverrides(_StrictOverrideModel):
 class _RuntimeOverrideDocument(_StrictOverrideModel):
     schema_version: StrictInt
     revision: StrictInt = Field(ge=0)
-    dashboard_revision: object = 0
+    dashboard_revision: StrictInt = Field(ge=0)
     overrides: _RuntimeOverrides = Field(default_factory=_RuntimeOverrides)
-    dashboard_preferences: object = Field(default_factory=dict)
+    dashboard_preferences: DashboardUiPreferences
 
 ###############################################################################
 @dataclass(frozen=True, slots=True)
@@ -186,12 +183,10 @@ class RuntimeSettingsStore:
         self,
         defaults: ServerSettings,
         persistence: RuntimeSettingsPersistence | None = None,
-        legacy_path: str | Path | None = None,
     ) -> None:
         self._lock = RLock()
         self._defaults = defaults
         self._persistence = persistence
-        self._legacy_path = Path(legacy_path).expanduser().resolve() if legacy_path else None
         self._effective = defaults
         self._overrides: dict[str, dict[str, object]] = {}
         self._revision = 0
@@ -333,15 +328,6 @@ class RuntimeSettingsStore:
                 if self._persistence is not None
                 else None
             )
-            migrated_legacy_file = False
-            if (
-                payload is None
-                and self._persistence is not None
-                and self._legacy_path is not None
-                and self._legacy_path.is_file()
-            ):
-                payload = json.loads(self._legacy_path.read_text(encoding="utf-8"))
-                migrated_legacy_file = True
             if payload is None:
                 return
             document = _RuntimeOverrideDocument.model_validate(payload)
@@ -357,30 +343,8 @@ class RuntimeSettingsStore:
             self._effective = self._build_effective(overrides)
             self._overrides = overrides
             self._revision = document.revision
-            try:
-                if (
-                    isinstance(document.dashboard_revision, bool)
-                    or not isinstance(document.dashboard_revision, int)
-                    or document.dashboard_revision < 0
-                ):
-                    raise ValueError("Invalid dashboard preferences revision.")
-                self._dashboard_revision = document.dashboard_revision
-                self._dashboard_preferences = DashboardUiPreferences.model_validate(
-                    document.dashboard_preferences
-                )
-            except (TypeError, ValueError, ValidationError):
-                self._dashboard_revision = 0
-                self._dashboard_preferences = DashboardUiPreferences()
-                logger.warning("Invalid dashboard preferences; using defaults.")
-            if migrated_legacy_file:
-                self._persist(
-                    overrides,
-                    document.revision,
-                    dashboard_preferences=self._dashboard_preferences,
-                    dashboard_revision=self._dashboard_revision,
-                )
-                assert self._legacy_path is not None
-                self._legacy_path.unlink()
+            self._dashboard_revision = document.dashboard_revision
+            self._dashboard_preferences = document.dashboard_preferences
         except (OSError, TypeError, ValueError, ValidationError, RuntimeSettingsError):
             self._effective = self._defaults
             self._overrides = {}
@@ -562,7 +526,6 @@ class RuntimeSettingsStore:
 
 __all__ = [
     "DashboardUiPreferencesState",
-    "LEGACY_RUNTIME_SETTINGS_FILENAME",
     "RUNTIME_SETTINGS_SCHEMA_VERSION",
     "RuntimeSettingsConflictError",
     "RuntimeSettingsError",

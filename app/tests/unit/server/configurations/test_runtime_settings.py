@@ -132,7 +132,7 @@ def _server_settings(tmp_path: Path) -> ServerSettings:
 ###############################################################################
 def test_default_only_startup_and_missing_runtime_file(tmp_path: Path) -> None:
     defaults = _server_settings(tmp_path)
-    path = tmp_path / "runtime-settings.json"
+    path = tmp_path / "runtime.json"
 
     store = _store(defaults, path)
     state = store.get_state()
@@ -147,7 +147,7 @@ def test_default_only_startup_and_missing_runtime_file(tmp_path: Path) -> None:
 ###############################################################################
 def test_valid_partial_overrides_merge_and_persist_sparsely(tmp_path: Path) -> None:
     defaults = _server_settings(tmp_path)
-    path = tmp_path / "runtime-settings.json"
+    path = tmp_path / "runtime.json"
     store = _store(defaults, path)
 
     first = store.apply_patch(
@@ -188,7 +188,7 @@ def test_dashboard_preferences_have_an_independent_revision_and_survive_reload(
     tmp_path: Path,
 ) -> None:
     defaults = _server_settings(tmp_path)
-    path = tmp_path / "runtime-settings.json"
+    path = tmp_path / "runtime.json"
     store = _store(defaults, path)
     store.apply_patch({"datasets": {"histogram_bins": 30}}, expected_revision=0)
     preferences = DashboardUiPreferences(
@@ -252,12 +252,26 @@ def test_tokenizer_cross_field_validation_remains_authoritative(tmp_path: Path) 
 @pytest.mark.parametrize(
     "payload",
     [
-        {"schema_version": 2, "revision": 4, "overrides": {}},
-        {"schema_version": 1, "revision": 4, "overrides": {"network": {}}},
+        {
+            "schema_version": 2,
+            "revision": 4,
+            "overrides": {},
+            "dashboard_revision": 0,
+            "dashboard_preferences": {},
+        },
+        {
+            "schema_version": 1,
+            "revision": 4,
+            "overrides": {"network": {}},
+            "dashboard_revision": 0,
+            "dashboard_preferences": {},
+        },
         {
             "schema_version": 1,
             "revision": 4,
             "overrides": {"jobs": {"polling_interval": 0.1}},
+            "dashboard_revision": 0,
+            "dashboard_preferences": {},
         },
     ],
 )
@@ -265,7 +279,7 @@ def test_invalid_schema_or_override_file_falls_back_with_warning(
     tmp_path: Path,
     payload: dict[str, object],
 ) -> None:
-    path = tmp_path / "runtime-settings.json"
+    path = tmp_path / "runtime.json"
     path.write_text(json.dumps(payload), encoding="utf-8")
     original = path.read_bytes()
 
@@ -280,7 +294,7 @@ def test_invalid_schema_or_override_file_falls_back_with_warning(
 
 ###############################################################################
 def test_malformed_runtime_json_is_preserved(tmp_path: Path) -> None:
-    path = tmp_path / "runtime-settings.json"
+    path = tmp_path / "runtime.json"
     path.write_text("{not-json", encoding="utf-8")
 
     store = _store(_server_settings(tmp_path), path)
@@ -290,7 +304,7 @@ def test_malformed_runtime_json_is_preserved(tmp_path: Path) -> None:
 
 ###############################################################################
 def test_successful_save_replaces_corrupt_stored_document(tmp_path: Path) -> None:
-    path = tmp_path / "runtime-settings.json"
+    path = tmp_path / "runtime.json"
     path.write_text("{not-json", encoding="utf-8")
 
     store = _store(_server_settings(tmp_path), path)
@@ -317,7 +331,7 @@ def test_successful_save_replaces_corrupt_stored_document(tmp_path: Path) -> Non
 
 ###############################################################################
 def test_revision_conflict_does_not_write(tmp_path: Path) -> None:
-    path = tmp_path / "runtime-settings.json"
+    path = tmp_path / "runtime.json"
     store = _store(_server_settings(tmp_path), path)
     store.apply_patch({"datasets": {"histogram_bins": 30}}, expected_revision=0)
     original = path.read_bytes()
@@ -334,7 +348,7 @@ def test_revision_conflict_does_not_write(tmp_path: Path) -> None:
 
 ###############################################################################
 def test_reset_one_value_and_equal_default_remove_the_override(tmp_path: Path) -> None:
-    path = tmp_path / "runtime-settings.json"
+    path = tmp_path / "runtime.json"
     store = _store(_server_settings(tmp_path), path)
     store.apply_patch(
         {
@@ -364,7 +378,7 @@ def test_reset_one_value_and_equal_default_remove_the_override(tmp_path: Path) -
 
 ###############################################################################
 def test_reset_all_persists_an_empty_database_document(tmp_path: Path) -> None:
-    path = tmp_path / "runtime-settings.json"
+    path = tmp_path / "runtime.json"
     store = _store(_server_settings(tmp_path), path)
     store.apply_patch({"datasets": {"histogram_bins": 30}}, expected_revision=0)
 
@@ -387,28 +401,28 @@ def test_reset_all_persists_an_empty_database_document(tmp_path: Path) -> None:
 
 ###############################################################################
 def test_reset_all_keeps_revision_of_an_unchanged_empty_document(tmp_path: Path) -> None:
-    path = tmp_path / "runtime-settings.json"
-    path.write_text(
-        json.dumps({"schema_version": 1, "revision": 3, "overrides": {}}),
-        encoding="utf-8",
-    )
+    path = tmp_path / "runtime.json"
+    payload = {
+        "schema_version": 1,
+        "revision": 3,
+        "overrides": {},
+        "dashboard_revision": 0,
+        "dashboard_preferences": {},
+    }
+    path.write_text(json.dumps(payload), encoding="utf-8")
     store = _store(_server_settings(tmp_path), path)
 
     state = store.reset(expected_revision=3)
 
     assert state.revision == 3
     assert state.overridden_keys == ()
-    assert json.loads(path.read_text(encoding="utf-8")) == {
-        "schema_version": 1,
-        "revision": 3,
-        "overrides": {},
-    }
+    assert json.loads(path.read_text(encoding="utf-8")) == payload
 
 ###############################################################################
 def test_persistence_failure_rolls_back_state_and_stored_document(
     tmp_path: Path,
 ) -> None:
-    path = tmp_path / "runtime-settings.json"
+    path = tmp_path / "runtime.json"
     store = _store(_server_settings(tmp_path), path)
     store.apply_patch({"datasets": {"histogram_bins": 30}}, expected_revision=0)
     original = path.read_bytes()
@@ -426,7 +440,7 @@ def test_persistence_failure_rolls_back_state_and_stored_document(
 
 ###############################################################################
 def test_process_restart_and_reload_load_persisted_overrides(tmp_path: Path) -> None:
-    path = tmp_path / "runtime-settings.json"
+    path = tmp_path / "runtime.json"
     defaults = _server_settings(tmp_path)
     first = _store(defaults, path)
     first.apply_patch(
@@ -469,7 +483,7 @@ def test_non_finite_float_update_preserves_persisted_snapshot(
     value: float,
 ) -> None:
     defaults = _server_settings(tmp_path)
-    path = tmp_path / "runtime-settings.json"
+    path = tmp_path / "runtime.json"
     store = _store(defaults, path)
     store.apply_patch(
         {
@@ -507,7 +521,7 @@ def test_runtime_override_models_are_frozen(tmp_path: Path) -> None:
 def test_benchmark_defaults_persist_sparsely_and_reset_independently(
     tmp_path: Path,
 ) -> None:
-    path = tmp_path / "runtime-settings.json"
+    path = tmp_path / "runtime.json"
     store = _store(_server_settings(tmp_path), path)
 
     saved = store.apply_patch(

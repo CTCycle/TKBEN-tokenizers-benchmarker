@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 import pytest
@@ -18,20 +17,16 @@ from server.contracts.database import DatabaseConfigurationRequest
 
 
 ###############################################################################
-def _store(tmp_path: Path, env_text: str = "") -> DatabaseConfigurationStore:
-    env_path = tmp_path / "settings" / ".env"
-    env_path.parent.mkdir(parents=True, exist_ok=True)
-    env_path.write_text(env_text, encoding="utf-8")
+def _store(tmp_path: Path) -> DatabaseConfigurationStore:
     return DatabaseConfigurationStore(
         tmp_path / "data",
         tmp_path / "data" / "hf-key-material.json",
-        env_path,
     )
 
 
 ###############################################################################
 def test_default_configuration_is_file_based_and_independent(tmp_path: Path) -> None:
-    store = _store(tmp_path, "FASTAPI_PORT=5000\n")
+    store = _store(tmp_path)
 
     configuration = store.load()
 
@@ -46,65 +41,8 @@ def test_default_configuration_is_file_based_and_independent(tmp_path: Path) -> 
 
 
 ###############################################################################
-def test_legacy_postgresql_configuration_is_encrypted_and_removed_from_env(
-    tmp_path: Path,
-) -> None:
-    store = _store(
-        tmp_path,
-        "DATABASE_EMBEDDED=false\n"
-        "DATABASE_HOST=db.example.test\n"
-        "DATABASE_PORT=5544\n"
-        "DATABASE_NAME=benchmark\n"
-        "DATABASE_USERNAME=bench_user\n"
-        "DATABASE_PASSWORD=correct-horse\n"
-        "DATABASE_SSL=true\n"
-        "DATABASE_CONNECT_TIMEOUT=17\n"
-        "DATABASE_INSERT_BATCH_SIZE=321\n"
-        "FASTAPI_PORT=5000\n",
-    )
-
-    configuration = store.load()
-    settings = store.to_database_settings(configuration)
-
-    assert settings.embedded_database is False
-    assert settings.host == "db.example.test"
-    assert settings.port == 5544
-    assert settings.database_name == "benchmark"
-    assert settings.username == "bench_user"
-    assert settings.password == "correct-horse"
-    assert settings.ssl is True
-    assert settings.connect_timeout == 17
-    assert settings.insert_batch_size == 321
-    config_text = store.path.read_text(encoding="utf-8")
-    assert "correct-horse" not in config_text
-    assert configuration.encrypted_password
-    assert "DATABASE_" not in store._env_file.read_text(encoding="utf-8")
-    assert "FASTAPI_PORT=5000" in store._env_file.read_text(encoding="utf-8")
-
-
-###############################################################################
-def test_legacy_process_environment_is_migrated_once_and_removed(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_invalid_primary_file_fails_closed(tmp_path: Path) -> None:
     store = _store(tmp_path)
-    monkeypatch.setenv("DATABASE_EMBEDDED", "false")
-    monkeypatch.setenv("DATABASE_HOST", "db.example.test")
-    monkeypatch.setenv("DATABASE_NAME", "benchmark")
-    monkeypatch.setenv("DATABASE_USERNAME", "bench_user")
-
-    configuration = store.load()
-
-    assert configuration.backend == "postgresql"
-    assert configuration.host == "db.example.test"
-    assert configuration.database_name == "benchmark"
-    assert configuration.username == "bench_user"
-    assert all(name not in os.environ for name in tuple(os.environ) if name.startswith("DATABASE_"))
-
-
-###############################################################################
-def test_invalid_primary_file_fails_closed_without_env_fallback(tmp_path: Path) -> None:
-    store = _store(tmp_path, "DATABASE_EMBEDDED=true\n")
     store.path.parent.mkdir(parents=True, exist_ok=True)
     store.path.write_text("{broken", encoding="utf-8")
 
@@ -112,7 +50,6 @@ def test_invalid_primary_file_fails_closed_without_env_fallback(tmp_path: Path) 
         store.load()
 
     assert store.path.read_text(encoding="utf-8") == "{broken"
-    assert "DATABASE_EMBEDDED=true" in store._env_file.read_text(encoding="utf-8")
 
 
 ###############################################################################

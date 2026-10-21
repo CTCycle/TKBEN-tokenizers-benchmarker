@@ -1522,7 +1522,7 @@ function Remove-AllData {
             "$sqliteDatabasePath-journal"
         )
     }
-    $dataFiles = @($databaseFiles) + @((Join-Path $dataRoot 'runtime-settings.json'))
+    $dataFiles = @($databaseFiles)
     if (-not $externalDatabase) {
         $dataFiles += Get-HuggingFaceMaterialPath -DataRoot $dataRoot
     }
