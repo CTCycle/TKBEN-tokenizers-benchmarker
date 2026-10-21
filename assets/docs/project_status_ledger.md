@@ -1,5 +1,5 @@
 # Project Status Ledger
-Last updated: 2026-10-21
+Last updated: 2026-10-22
 
 This is the canonical source of truth for current implementation status,
 validation gates, unresolved limitations, and validation history. The
@@ -73,6 +73,28 @@ Future coding and validation agents must:
   is not required to claim the local source-only quality gate.
 - Containerized deployment and binary packaging are NOT_IMPLEMENTED. The
   supported release model is source-only Windows x64.
+
+## 2026-10-22 pre-release lifecycle review (pending validation)
+
+The post-v4.6.1 FastAPI SPA deployment delta was reviewed against the
+Windows launcher and the canonical test runner. This review identified a
+release-relevant safety risk: the test runner selected listener PIDs by port
+at cleanup time, potentially targeting unrelated processes after a race.
+Its live test path also reused an arbitrary existing `dist` directory
+without confirming that the output matched current sources. The corrective
+draft PR introduces test-owned PID/start-time/executable verification, a
+fresh locked frontend build for live tests, strict preview-port behavior,
+and stronger production build/readiness checks. Windows CI is being
+expanded to parse the PowerShell scripts and smoke the owned preview process
+lifecycle. These are code changes awaiting hosted CI and manual Windows
+console validation, not evidence that T0-02 has passed.
+
+Before release, run `start_on_windows.ps1 -Launch` in an ordinary Windows
+PowerShell console on both a clean and warm installation. Verify same-origin
+`/api/health`, `/`, `/settings`, and static asset delivery; Ctrl+C,
+graceful Uvicorn exit, exact process ownership and port release; occupied
+port refusal/confirmation; redirected launch; and managed-job restart
+reconciliation. Preserve a PARTIAL status if any path remains unverified.
 
 ## Consolidated validation history
 

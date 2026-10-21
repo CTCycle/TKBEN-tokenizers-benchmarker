@@ -1,5 +1,5 @@
 # Testing and Quality
-Last updated: 2026-09-28
+Last updated: 2026-10-22
 
 ## Tooling and Tests
 - Lint and format with Ruff, or the project-standard equivalent if it changes in the future.
@@ -20,7 +20,15 @@ initializes the embedded SQLite schema, and then runs the checks from that
 environment so CI matches the repository Pyright and runtime configuration.
 The Windows `app/tests/run_tests.bat` runner additionally supports live
 backend/frontend startup, the configured pytest target, and optional frontend
-test scripts.
+test scripts. In live mode it installs from the frontend lockfile and rebuilds
+the current Angular sources before exercising the UI. Its process helper
+records PID, executable path, and start time and refuses to terminate an
+unverified process. The test preview runs with a strict port.
+
+Hosted CI also includes a Windows PowerShell syntax check and focused
+test-owned preview startup/deep-link/cleanup smoke. These checks are not a
+substitute for interactive `start_on_windows.ps1 -Launch` verification of
+Ctrl+C and Uvicorn shutdown on a standard Windows console.
 
 Provider and external-database checks are conditional: run them only when a
 usable Hugging Face key or PostgreSQL target is configured, and record an
