@@ -27,11 +27,15 @@ from server.configurations.startup import (
 ###############################################################################
 @pytest.fixture(autouse=True)
 def reset_configuration_state() -> Iterator[None]:
+    previous_cors_origins = os.environ.pop("CORS_ORIGINS", None)
     reset_settings_cache_for_tests()
     bootstrap.reset_environment_bootstrap_for_tests()
     yield
     reset_settings_cache_for_tests()
     bootstrap.reset_environment_bootstrap_for_tests()
+    os.environ.pop("CORS_ORIGINS", None)
+    if previous_cors_origins is not None:
+        os.environ["CORS_ORIGINS"] = previous_cors_origins
 
 ###############################################################################
 def _write_env(path: Path, lines: list[str]) -> None:
@@ -86,6 +90,7 @@ def test_environment_template_exposes_canonical_runtime_inputs() -> None:
     assert "TKBEN_DATA_DIR=data" in example
     assert "TKBEN_LOG_DIR=data/logs" in example
     assert "UI_HOST=127.0.0.1" in example
+    assert "CORS_ORIGINS=\n" in example
     assert "DATABASE_" not in example
     assert "ALLOW_KEY_REVEAL=false" in example
 
@@ -105,6 +110,7 @@ def test_default_runtime_paths_use_repository_data(
     assert settings.paths.data == default_root
     assert settings.paths.logs == (default_root / "logs").resolve()
     assert settings.database.sqlite_path == (default_root / "database.db").resolve()
+    assert settings.network.cors_origins is None
     assert settings.security.hf_keys_encryption_material_file == (
         default_root / "hf-key-material.json"
     ).resolve()
@@ -187,6 +193,7 @@ def test_runtime_environment_resolves_into_one_settings_tree(
             "UI_HOST=localhost",
             "UI_PORT=8100",
             "VITE_API_BASE_URL=/api",
+            "CORS_ORIGINS= https://Example.com, http://localhost:8000,https://example.com ",
             "ALLOW_KEY_REVEAL=true",
             f"HF_KEYS_ENCRYPTION_MATERIAL_FILE={material_path}",
         ],
@@ -204,11 +211,54 @@ def test_runtime_environment_resolves_into_one_settings_tree(
     assert settings.network.fastapi_port == 5100
     assert settings.network.ui_host == "localhost"
     assert settings.network.ui_port == 8100
+    assert settings.network.cors_origins == (
+        "https://example.com",
+        "http://localhost:8000",
+    )
     assert settings.security.allow_key_reveal is True
     assert settings.security.hf_keys_encryption_material_file == material_path.resolve()
     saved = (data_root / "database-config.json").read_text(encoding="utf-8")
     assert "secret" not in saved
     assert "DATABASE_" not in (tmp_path / ".env").read_text(encoding="utf-8")
+
+###############################################################################
+def test_blank_cors_origins_leave_origins_derived_from_ui_settings(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _configure_environment(
+        tmp_path,
+        monkeypatch,
+        ["CORS_ORIGINS=", "UI_HOST=localhost", "UI_PORT=8100"],
+    )
+
+    settings = get_server_settings()
+
+    assert settings.network.cors_origins is None
+    assert settings.network.ui_host == "localhost"
+    assert settings.network.ui_port == 8100
+
+###############################################################################
+@pytest.mark.parametrize(
+    "value",
+    [
+        "*",
+        "ftp://example.com",
+        "https://example.com/api",
+        "http://user@example.com",
+        "http://example.com:70000",
+        "http://example.com,,https://other.example",
+    ],
+)
+def test_invalid_cors_origins_fail_during_settings_initialization(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    value: str,
+) -> None:
+    _configure_environment(tmp_path, monkeypatch, [f"CORS_ORIGINS={value}"])
+
+    with pytest.raises(RuntimeError, match="CORS_ORIGINS"):
+        get_server_settings()
 
 ###############################################################################
 def test_relative_runtime_paths_are_repository_relative(

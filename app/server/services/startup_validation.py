@@ -17,6 +17,9 @@ def ensure_runtime_directories(settings: ServerSettings) -> None:
 
 ###############################################################################
 def build_cors_origins(settings: ServerSettings) -> list[str]:
+    if settings.network.cors_origins is not None:
+        return list(settings.network.cors_origins)
+
     ui_host = _normalized_host(settings.network.ui_host)
     ui_port = settings.network.ui_port
 

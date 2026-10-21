@@ -59,8 +59,8 @@ still starts in a limited repair mode. `/api/health` and `/api/database` remain
 available, Settings → Database can test or replace the connection, and other
 database-backed routes return HTTP 503 until a validated backend is activated.
 Database switching does not restart the process; changing bootstrap environment
-values such as listener ports, data/log paths, CORS origins, or the encryption
-key-material path still requires a backend restart.
+values such as listener ports, data/log paths, `CORS_ORIGINS` (or its derived
+default), or the encryption key-material path still requires a backend restart.
 
 Temporary connection failures during backend initialization are expected and
 are kept out of the normal user-facing error state. The browser reports a
