@@ -32,8 +32,17 @@ class DummyTokenizer:
         return str(text).split()
 
     # -------------------------------------------------------------------------
-    def encode(self, text: str) -> list[int]:
+    def _encode_one(self, text: str) -> list[int]:
         return [self._vocab.get(token, 0) for token in str(text).split()]
+
+    # -------------------------------------------------------------------------
+    def encode(self, text: str) -> list[int]:
+        return self._encode_one(text)
+
+    # -------------------------------------------------------------------------
+    def __call__(self, texts: list[str], **kwargs: Any) -> dict[str, list[list[int]]]:
+        del kwargs
+        return {"input_ids": [self._encode_one(text) for text in texts]}
 
     # -------------------------------------------------------------------------
     def decode(self, token_ids: Any) -> str:
@@ -162,7 +171,7 @@ def test_run_benchmarks_isolates_tokenizer_failure(monkeypatch) -> None:
     class BrokenTokenizer(DummyTokenizer):
 
         # -------------------------------------------------------------------------
-        def encode(self, text: str) -> list[int]:
+        def _encode_one(self, text: str) -> list[int]:
             raise RuntimeError("broken tokenizer")
 
     service.get_dataset_document_count = lambda dataset_name: len(rows)  # type: ignore[method-assign]
@@ -274,8 +283,8 @@ def test_run_benchmarks_caps_workers_and_preserves_input_order(monkeypatch) -> N
     class DoubleTokenCountTokenizer(DummyTokenizer):
 
         # -------------------------------------------------------------------------
-        def encode(self, text: str) -> list[int]:
-            encoded = super().encode(text)
+        def _encode_one(self, text: str) -> list[int]:
+            encoded = super()._encode_one(text)
             return [token_id for token_id in encoded for _ in range(2)]
 
     service = _service_with_tokenizers(
@@ -556,10 +565,12 @@ def test_run_benchmarks_computes_real_fragmentation_buckets() -> None:
     class LengthSensitiveTokenizer(DummyTokenizer):
 
         # -------------------------------------------------------------------------
-        def encode(self, text: str) -> list[int]:
+        def _encode_one(self, text: str) -> list[int]:
             token = str(text)
             if " " in token:
-                return [value for part in token.split() for value in self.encode(part)]
+                return [
+                    value for part in token.split() for value in self._encode_one(part)
+                ]
             if len(token) <= 4:
                 return [1]
             if len(token) <= 8:
@@ -659,7 +670,7 @@ def test_run_benchmarks_all_failed_tokenizers_report_unavailable_metrics() -> No
     class BrokenTokenizer(DummyTokenizer):
 
         # -------------------------------------------------------------------------
-        def encode(self, text: str) -> list[int]:
+        def _encode_one(self, text: str) -> list[int]:
             raise RuntimeError("always broken")
 
     service.get_dataset_document_count = lambda dataset_name: len(rows)  # type: ignore[method-assign]

@@ -178,13 +178,12 @@ export class DatasetPageComponent {
   protected readonly wordFrequencies = computed(() => {
     const report = this.store.report();
     if (!report) return [];
-    if (report.most_common_words?.length) return parseWordFrequencyItems(report.most_common_words);
-    return parseWordFrequencyItems(this.aggregate()['words.most_common']);
+    return parseWordFrequencyItems(report.most_common_words ?? []);
   });
   protected readonly wordCloudTerms = computed(() => {
     const report = this.store.report();
     if (!report) return [];
-    const terms = report.word_cloud_terms?.length ? parseWordCloudTerms(report.word_cloud_terms) : parseWordCloudTerms(this.aggregate()['words.word_cloud']);
+    const terms = parseWordCloudTerms(report.word_cloud_terms ?? []);
     return terms.length ? terms : buildWordCloudFromWordFrequencies(this.wordFrequencies());
   });
   protected readonly documentCount = computed(() => hasMetricValue(this.aggregate()['corpus.document_count']) ? toNumber(this.aggregate()['corpus.document_count']) : this.store.report()?.document_count ?? 0);

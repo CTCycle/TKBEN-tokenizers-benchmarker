@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-import time
+import threading
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -568,11 +568,14 @@ def test_failed_tokenizer_download_cleans_partial_cache_and_returns_reason(
 
 ###############################################################################
 def test_tokenizer_download_timeout_returns_failure_without_blocking_job(
-    monkeypatch,
+    monkeypatch, tmp_path: Path
 ) -> None:
     service = TokenizersService()
     service.TOKENIZER_DOWNLOAD_TIMEOUT_SECONDS = 0.01
-    cache_dir = Path("timeout-cache")
+    cache_dir = tmp_path / "timeout-cache"
+    loader_started = threading.Event()
+    release_loader = threading.Event()
+    loader_finished = threading.Event()
 
     monkeypatch.setattr(service.key_service, "get_active_key", lambda: None)
     monkeypatch.setattr(service.repository, "tokenizer_exists", lambda _: False)
@@ -581,7 +584,9 @@ def test_tokenizer_download_timeout_returns_failure_without_blocking_job(
 
     def slow_load(*args, **kwargs):
         del args, kwargs
-        time.sleep(0.05)
+        loader_started.set()
+        release_loader.wait(timeout=1.0)
+        loader_finished.set()
         return object()
 
     monkeypatch.setattr(
@@ -589,10 +594,14 @@ def test_tokenizer_download_timeout_returns_failure_without_blocking_job(
         slow_load,
     )
 
-    started = time.monotonic()
-    result = service.download_and_persist(["slow/model"])
+    try:
+        result = service.download_and_persist(["slow/model"])
+        assert loader_started.wait(timeout=1.0)
+        assert not loader_finished.is_set()
+    finally:
+        release_loader.set()
+        assert loader_finished.wait(timeout=1.0)
 
-    assert time.monotonic() - started < 0.04
     assert result["failed"] == ["slow/model"]
     assert "TokenizerDownloadTimeoutError" in result["failed_details"][0]
 

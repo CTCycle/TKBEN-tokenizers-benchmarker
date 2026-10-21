@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import pytest
 from tokenizers import Tokenizer, models, pre_tokenizers, processors
 
 from server.services.tokenizer_adapters import UniversalTokenizerAdapter
@@ -17,20 +18,13 @@ class DummyTokenizer:
         return {"input_ids": [[1, 2], [0]]}
 
 ###############################################################################
-class RawEncoding:
-
-    # -------------------------------------------------------------------------
-    def __init__(self, ids: list[int]) -> None:
-        self.ids = ids
-
-###############################################################################
-class RawTokenizer:
+class EncodeOnlyTokenizer:
     unk_token_id = 0
 
     # -------------------------------------------------------------------------
-    def encode(self, text: str, *, add_special_tokens: bool = True) -> RawEncoding:
+    def encode(self, text: str, *, add_special_tokens: bool = True) -> list[int]:
         del add_special_tokens
-        return RawEncoding([1, 0] if text == "unknown" else [1, 2, 3])
+        return [1, 0] if text == "unknown" else [1, 2, 3]
 
 ###############################################################################
 class PaddingTokenizer:
@@ -134,18 +128,17 @@ def test_adapter_returns_normalized_structure() -> None:
     assert encoded.unknown_counts == [0, 1]
 
 ###############################################################################
-def test_adapter_accepts_raw_tokenizers_encoding_objects() -> None:
-    adapter = UniversalTokenizerAdapter("raw", RawTokenizer())
-    encoded = adapter.encode_batch(
-        ["known", "unknown"],
-        add_special_tokens=False,
-        padding=False,
-        truncation=False,
-        max_length=None,
-    )
-    assert encoded.input_ids_by_doc == [[1, 2, 3], [1, 0]]
-    assert encoded.token_counts == [3, 2]
-    assert encoded.unknown_counts == [0, 1]
+def test_adapter_rejects_encode_only_tokenizers() -> None:
+    adapter = UniversalTokenizerAdapter("encode-only", EncodeOnlyTokenizer())
+
+    with pytest.raises(ValueError, match="callable or support encode_batch"):
+        adapter.encode_batch(
+            ["known", "unknown"],
+            add_special_tokens=False,
+            padding=False,
+            truncation=False,
+            max_length=None,
+        )
 
 ###############################################################################
 def test_adapter_uses_eos_token_for_padding_when_pad_token_is_missing() -> None:
