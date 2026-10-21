@@ -25,16 +25,21 @@ from server.contracts.settings import RuntimeSettingsPatchRequest
 
 ###############################################################################
 class _MemoryPersistence:
+
+    # -------------------------------------------------------------------------
     def __init__(self, document: dict[str, object] | None = None) -> None:
         self.document = document
 
+    # -------------------------------------------------------------------------
     def load(self) -> dict[str, object] | None:
         return json.loads(json.dumps(self.document)) if self.document is not None else None
 
+    # -------------------------------------------------------------------------
     def save(self, payload: dict[str, object]) -> None:
         self.document = json.loads(json.dumps(payload))
 
 
+###############################################################################
 def _settings_client(
     defaults: ServerSettings,
     persistence: _MemoryPersistence,
@@ -49,7 +54,6 @@ def _settings_client(
     application.include_router(settings_router, prefix="/api")
     application.state.settings = store.get_state().settings
     return TestClient(application)
-
 
 ###############################################################################
 def _runtime_setting_fields():
@@ -270,7 +274,6 @@ def test_dashboard_preferences_are_database_scoped_and_revisioned(
         },
     )
     assert stale.status_code == 409
-
 
 ###############################################################################
 def test_dashboard_preferences_reject_invalid_visualizations(
@@ -793,7 +796,6 @@ def test_persistence_error_keeps_previous_authoritative_state(
     current = settings_client.get("/api/settings").json()
     assert current["revision"] == original.revision
     assert current["settings"]["datasets"]["histogram_bins"] == 20
-
 
 ###############################################################################
 def test_dashboard_persistence_error_keeps_previous_preferences(

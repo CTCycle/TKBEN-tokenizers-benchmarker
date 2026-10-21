@@ -121,6 +121,7 @@ DashboardVisualization = Literal[
 ]
 
 
+###############################################################################
 class DashboardUiPreferences(_SettingsContract):
     ordered_widget_ids: list[str] = Field(default_factory=list)
     hidden_widget_ids: list[str] = Field(default_factory=list)
@@ -129,6 +130,7 @@ class DashboardUiPreferences(_SettingsContract):
     )
     baseline_by_report_id: dict[str, str] = Field(default_factory=dict)
 
+    # -------------------------------------------------------------------------
     @field_validator("ordered_widget_ids", "hidden_widget_ids")
     @classmethod
     def unique_non_empty_ids(cls, value: list[str]) -> list[str]:
@@ -136,6 +138,7 @@ class DashboardUiPreferences(_SettingsContract):
             raise ValueError("Widget IDs must be non-empty and unique.")
         return value
 
+    # -------------------------------------------------------------------------
     @field_validator("baseline_by_report_id")
     @classmethod
     def valid_baseline_preferences(cls, value: dict[str, str]) -> dict[str, str]:
@@ -149,11 +152,13 @@ class DashboardUiPreferences(_SettingsContract):
         return value
 
 
+###############################################################################
 class DashboardUiPreferencesRequest(_SettingsContract):
     expected_revision: StrictInt = Field(ge=0)
     preferences: DashboardUiPreferences
 
 
+###############################################################################
 class DashboardUiPreferencesResponse(_SettingsContract):
     revision: int = Field(ge=0)
     preferences: DashboardUiPreferences

@@ -72,6 +72,7 @@ class TKBENDatabase:
     def db_path(self) -> str | None:
         return getattr(self.backend, "db_path", None)
 
+    # -------------------------------------------------------------------------
     def activate(self, candidate: "TKBENDatabase") -> tuple[DatabaseSettings, DatabaseBackend]:
         """Atomically point all shared repositories at a validated backend."""
         with self._lock:
@@ -80,6 +81,7 @@ class TKBENDatabase:
             self.backend = candidate.backend
             return previous
 
+    # -------------------------------------------------------------------------
     def restore(self, previous: tuple[DatabaseSettings, DatabaseBackend]) -> None:
         with self._lock:
             self.settings, self.backend = previous

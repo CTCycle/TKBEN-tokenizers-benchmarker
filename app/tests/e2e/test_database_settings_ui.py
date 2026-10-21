@@ -10,6 +10,7 @@ import pytest
 from playwright.sync_api import APIRequestContext, Page, expect
 
 
+###############################################################################
 def _restore_runtime_settings(
     api_context: APIRequestContext, original: dict[str, Any]
 ) -> None:
@@ -31,6 +32,7 @@ def _restore_runtime_settings(
     assert response.ok, response.text()
 
 
+###############################################################################
 def _switch_request(configuration: dict[str, Any]) -> dict[str, Any]:
     return {
         "backend": configuration["backend"],
@@ -47,6 +49,7 @@ def _switch_request(configuration: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+###############################################################################
 def _switch_back_if_needed(
     api_context: APIRequestContext,
     original_configuration: dict[str, Any],
@@ -69,6 +72,7 @@ def _switch_back_if_needed(
     assert response.ok, response.text()
 
 
+###############################################################################
 def test_database_tab_tests_switches_and_reloads_database_local_settings(
     page: Page,
     base_url: str,

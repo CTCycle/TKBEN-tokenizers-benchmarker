@@ -31,9 +31,13 @@ RUNTIME_SETTINGS_WARNING = (
 )
 
 
+###############################################################################
 class RuntimeSettingsPersistence(Protocol):
+
+    # -------------------------------------------------------------------------
     def load(self) -> dict[str, object] | None: ...
 
+    # -------------------------------------------------------------------------
     def save(self, payload: dict[str, object]) -> None: ...
 
 ###############################################################################
@@ -142,6 +146,7 @@ class RuntimeSettingsState:
     warning: str | None
 
 
+###############################################################################
 @dataclass(frozen=True, slots=True)
 class DashboardUiPreferencesState:
     preferences: DashboardUiPreferences
