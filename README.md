@@ -19,6 +19,7 @@ No single metric identifies the best tokenizer for every task. Results depend on
 - Search for tokenizer assets, download them, or upload a custom `tokenizer.json`; inspect vocabulary, token lengths, and special tokens.
 - Compare up to five prepared tokenizers on the same saved dataset using selected performance, vocabulary, and fidelity measures.
 - Save and reopen reports, customize dashboard views, inspect run diagnostics, and export completed reports as PDFs.
+- Configure, test, and switch SQLite or PostgreSQL connections from Settings → Database. Runtime settings and dashboard preferences save automatically to, and remain scoped to, the active database.
 
 ## Technology Stack
 
@@ -39,12 +40,13 @@ Choose **Launch application**. The first launch may download portable runtimes a
 
 ## Configuration
 
-The launcher creates `settings/.env` from `settings/.env.example` when the file is missing. Set `TKBEN_DATA_DIR` to choose a persistent data root other than the default `data` directory. Use the in-app **Settings** page for supported application options and **Settings → Keys** for Hugging Face access keys.
+The launcher creates `settings/.env` from `settings/.env.example` when the file is missing. Set `TKBEN_DATA_DIR` to choose a persistent data root other than the default `data` directory. Use **Settings → Database** to configure and test a SQLite or PostgreSQL connection, **Settings** for application options, and **Settings → Keys** for Hugging Face access keys.
 
 ## Documentation
 
 - [Runtime startup](assets/docs/runtime/startup.md)
 - [Runtime configuration](assets/docs/runtime/configuration.md)
+- [Release notes and procedure](assets/docs/runtime/release.md)
 
 ## License
 

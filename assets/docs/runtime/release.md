@@ -1,5 +1,5 @@
 # Release Procedure
-Last updated: 2026-10-01
+Last updated: 2026-10-21
 
 ## Release model
 
@@ -10,14 +10,32 @@ add packaging as part of a source release.
 The public release version and component versions use the existing repository
 convention:
 
-| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` | `v4.5.0` | `v4.5.1` public |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` | `4.4.0` | `4.5.0` | `4.5.1` |
-| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` | `3.4.0` | `3.5.0` | `3.5.1` |
-| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` | `2.4.0` | `2.5.0` | `2.5.1` |
+| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` | `v4.5.0` | `v4.5.1` public | `v4.6.0` candidate |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` | `4.4.0` | `4.5.0` | `4.5.1` | `4.6.0` |
+| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` | `3.4.0` | `3.5.0` | `3.5.1` | `3.6.0` |
+| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` | `2.4.0` | `2.5.0` | `2.5.1` | `2.6.0` |
 
-The latest published release is `v4.5.1`. Its component versions are backend
-`3.5.1` and frontend `2.5.1`.
+The latest published release is `v4.5.1` (backend `3.5.1`, frontend `2.5.1`).
+The current release candidate is `v4.6.0` (backend `3.6.0`, frontend `2.6.0`);
+publication remains pending the release gate below.
+
+## v4.6.0 release notes
+
+The candidate delta is based on verified repository changes after `v4.5.1`:
+
+- add a Database panel to configure, test, and switch SQLite or PostgreSQL
+  connections, with encrypted PostgreSQL password storage and rollback when
+  activation fails; legacy database environment values are imported once;
+- save application runtime settings and dashboard layout, visibility, chart,
+  and report-baseline preferences automatically to the active database, with
+  separate revisions and database-local values; and
+- add Alembic revisions `0006_database_runtime_settings` and
+  `0007_dashboard_ui_preferences` for those persisted settings.
+
+API version `1.2.0`, benchmark schema version `3`, and report version `5`
+remain unchanged. The public release status and final commit are recorded in
+the [project status ledger](../project_status_ledger.md#release-gate).
 
 ## v4.5.1 release notes
 
@@ -113,11 +131,10 @@ ledger](../project_status_ledger.md#resolved-and-historical-findings).
    compileall, Ruff, BasedPyright, unit tests, and OpenAPI smoke; frontend
    `npm run lint`, `npm run test:unit`, and `npm run build` from `app/client`.
 4. Launch with `start_on_windows.ps1 -Launch`, verify the backend health
-   endpoint and frontend production entry, then exercise Dataset, Tokenizers, and Cross
-   Benchmark routes. Prioritize flows changed since the previous release,
-   including current schema-3/report-5 persistence, catalog filtering, custom
-   tokenizer handling, vocabulary-shape metrics, histogram/CDF views, bounded
-   word-cloud layout, and dashboard visualization controls.
+   endpoint and frontend production entry, then exercise Dataset, Tokenizers,
+   Settings → Database, and Cross Benchmark routes. Prioritize the changed
+   database test/switch/rollback behavior, per-database runtime settings,
+   automatic dashboard preference persistence, and real report workflows.
 5. Run the focused live API/UI tests when the local services are available.
    Inspect browser console output and application logs; classify expected
    test-injected failures separately from release-blocking errors.
@@ -129,15 +146,15 @@ ledger](../project_status_ledger.md#resolved-and-historical-findings).
 
 ## Versioning and synchronization
 
-After validation is release-ready, apply the coordinated minor bump to the
+After validation is release-ready, apply the coordinated version bump to the
 public tag version, backend package, frontend package, README, and relevant
-documentation. For the current preparation, the public version is `v4.5.1`,
-the backend package is `3.5.1`, and the frontend package is `2.5.1`. Commit all
-release-preparation changes on `develop` before synchronizing branches.
+documentation. Commit the candidate and its evidence on `develop` before
+synchronizing branches.
 
 Synchronize `main` from the validated `develop` commit so the branches point to
 the same tree. Verify both branch tips and the clean worktree before creating
-an annotated tag named `vX.Y.0` from the synchronized `main` commit.
+an annotated tag named `vX.Y.0` with `main` checked out at the synchronized
+commit. Never create a release tag from `develop` or another branch.
 
 ## Publication
 

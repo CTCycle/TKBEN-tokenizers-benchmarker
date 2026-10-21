@@ -52,6 +52,7 @@ def test_canonical_tables_and_removed_validation_report(
         "benchmark_report",
         "hf_access_keys",
         "managed_job",
+        "application_runtime_settings",
     } == tables
 
 ###############################################################################
