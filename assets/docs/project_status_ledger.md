@@ -48,11 +48,13 @@ Future coding and validation agents must:
   exercised Windows host, including the privilege-isolated denied process-
   termination branch. The runner's unrelated protected-cache ACL warnings
   remain environment limitations, not reproduced product defects.
-- `v4.6.0` (backend `3.6.0`, frontend `2.6.0`) remains the latest published
-  release. The versioned `v4.6.1` candidate uses backend `3.6.1` and frontend
-  `2.6.1`; focused local regression checks, frontend lint/unit tests/build,
-  static quality checks, and isolated live startup/browser smoke pass. Hosted
-  CI, branch alignment, and publication are pending.
+- `v4.6.1` (backend `3.6.1`, frontend `2.6.1`) is the latest published
+  release. Focused local regression checks, frontend lint/unit tests/build,
+  backend compileall/Ruff/BasedPyright/OpenAPI, dependency-lock verification,
+  and isolated live startup/browser smoke passed. Hosted CI passed both jobs on
+  the release commit; the annotated tag and source-only GitHub Release are
+  published. `main` and `develop` are synchronized after the publication
+  record update.
 - Public Hugging Face discovery, download, report persistence, rendered
   reload, and cleanup are VALIDATED. Authorized gated-repository access is
   still BLOCKED; no gated report was produced.
@@ -174,7 +176,7 @@ The gate table records the latest known state of every stable validation ID.
 
 | Gate | Status | Latest durable outcome or remaining action |
 | --- | --- | --- |
-| T0-01 | PASS | The v4.5.1 and published v4.6.0 baselines are recorded above. The versioned v4.6.1 candidate uses backend/frontend packages `3.6.1`/`2.6.1`. Prior full local validation passed 486 backend unit tests, 43 live E2Es with 13 expected opt-in skips, 69/69 frontend tests, lint/build, compileall, Ruff, BasedPyright (0 errors), OpenAPI, and isolated SQLite/PostgreSQL checks; the post-version-bump focused pass adds 204 backend tests, live startup/browser smoke, and a fresh frontend build. Hosted CI and release actions remain pending. |
+| T0-01 | PASS | The v4.5.1, v4.6.0, and published v4.6.1 baselines are recorded above. The v4.6.1 post-bump focused pass passed 204 backend tests, 69 frontend tests, frontend lint/build, backend compileall/Ruff/BasedPyright/OpenAPI, lock verification, and live startup/browser smoke. Hosted CI run `39658313798` passed both jobs on release commit `d198f203525bb57603060db7283f7d01432269b3`; annotated tag `v4.6.1` and the source-only GitHub Release are published from `main`. Branches were aligned before tagging and synchronized after the publication record update. |
 | T0-02 | PASS | At `e864197c`, clean/warm bootstrap, malformed/missing stamps, stale build, repairs, invalid ports, redirected conflicts, reacquisition race, and the real localized `Accesso negato` termination-denial branch passed; the launcher contract suite then stood at 19/19. The post-release data-root refactor expanded the contract suite to 21/21 at the current checkout (`a84b9c1`), adding repository-`data` default-root and log-root assertions; the release-tagged evidence remains the 19/19 record, and the 21/21 contract suite is disposable campaign output rather than tracked source. The 2026-10-17 delta recheck re-ran the launcher clean bootstrap and warm relaunch on the repository-`data` layout at `e7f4f9b` and exercised the documented port-occupied refusal branch. The 2026-10-20 warm relaunch at `f49ac4b` reached backend and preview readiness, returned health/proxy 200, and was cleanly stopped with `-KillAll`, which freed ports 5000/8000; clean bootstrap was not repeated because the launcher and runtime pins were unchanged. The 2026-10-21 cleanup delta removed a configured SQLite database and its sidecars while preserving an inactive default DB, retained database config and `.gitkeep` files, preserved PostgreSQL database/key material while cleaning local files, and refused malformed configuration without deleting data; all fixtures were isolated under `assets/QA`. |
 | T0-03 | PASS | All 13 maintenance-menu routes, install profiles, expected update refusal, destructive decline/approval, cleanup, uninstall, and Kill All passed. |
 | T1-01 | PASS | Startup E2E 2/2 and shell recovery after persistence restart passed; the 2026-10-20 full live E2E recheck passed the same 2/2 startup slice at `f49ac4b`. |
@@ -203,7 +205,7 @@ The gate table records the latest known state of every stable validation ID.
 | T5-03 | PASS | Cross Benchmark, Tokenizers empty/loading/error/populated/report states, manager bounds, four viewport sizes, and keyboard/focus behavior passed. |
 | T5-04 | PASS | Official launcher streamed visible progress for 10,000 documents, cancellation produced no report, eight backend RSS samples were collected, and a two-document rerun rendered without browser/HTTP errors. Browser heap was not instrumented. |
 | T5-05 | OUT_OF_SCOPE | Release support is Windows x64 source-only. Ubuntu was diagnostic; macOS and hosted runtime support are not planned. |
-| T5-06 | PASS | Releases `v4.5.0`, `v4.5.1`, and `v4.6.0` were verified. The MINOR `v4.6.0` release (backend `3.6.0`, frontend `2.6.0`) was published from annotated tag `v4.6.0`, which peels to validated `main` commit `2ecd12119b86864d617367bd6b0712bb9a1b2b92`; GitHub release: https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases/tag/v4.6.0. Development CI run `39557902883` and final main CI run `39582304529` passed both jobs. Branches were aligned before tagging and synchronized again after the publication record update. Local main smoke, isolated database/browser behavior, focused E2E (7/7), and source-only release workflow passed. The versioned v4.6.1 candidate has passed local checks; hosted CI, branch synchronization, tag creation, and publication remain pending. The first v4.6.0 E2E run used the repository default data root because bootstrap `.env` overrode the shell setting; test cleanup assertions restored logical settings/config and removed synthetic rows/files, but no pre-run binary database snapshot exists to prove byte-for-byte restoration. T4-03 gated Hugging Face access and physical low-disk recovery remain non-blocking validation debt. |
+| T5-06 | PASS | Releases `v4.5.0`, `v4.5.1`, and `v4.6.0` were verified. The MINOR `v4.6.0` release (backend `3.6.0`, frontend `2.6.0`) was published from annotated tag `v4.6.0`, which peels to validated `main` commit `2ecd12119b86864d617367bd6b0712bb9a1b2b92`; GitHub release: https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases/tag/v4.6.0. Development CI run `39557902883` and final main CI run `39582304529` passed both jobs. Branches were aligned before tagging and synchronized again after the publication record update. Local main smoke, isolated database/browser behavior, focused E2E (7/7), and source-only release workflow passed. The PATCH v4.6.1 release (backend 3.6.1, frontend 2.6.1) was published from tag v4.6.1 on main commit d198f203525bb57603060db7283f7d01432269b3; hosted main CI run 39658313798 passed both jobs. Main and develop were aligned before tagging and synchronized after the publication record update. The first v4.6.0 E2E run used the repository default data root because bootstrap `.env` overrode the shell setting; test cleanup assertions restored logical settings/config and removed synthetic rows/files, but no pre-run binary database snapshot exists to prove byte-for-byte restoration. T4-03 gated Hugging Face access and physical low-disk recovery remain non-blocking validation debt. |
 
 ## Open issues and validation debt
 
@@ -235,6 +237,27 @@ The MINOR release `v4.6.0` (backend `3.6.0`, frontend `2.6.0`) was published as 
 T4-03
 gated Hugging Face access and physical low-disk recovery remain independently
 bounded, non-blocking validation debt as described above.
+
+The PATCH release `v4.6.1` (backend `3.6.1`, frontend `2.6.1`) was published
+as a source-only GitHub Release on 2026-10-21:
+[v4.6.1](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases/tag/v4.6.1).
+Annotated tag `v4.6.1` was created from `main`, pushed, and verified to peel
+to release commit `d198f203525bb57603060db7283f7d01432269b3`; remote `main`
+and `develop` both pointed to that commit before tagging. Focused local checks
+passed 204 backend tests and 69 frontend tests, frontend lint/build, backend
+compileall, Ruff, BasedPyright (0 errors; 2,093 warnings), OpenAPI smoke (38
+paths), lock verification, and isolated startup/browser smoke. Hosted main CI
+run [39658313798](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/39658313798)
+passed both frontend and backend jobs on the release commit. GitHub reports no
+uploaded binary assets; its source archives are available from the release
+page. The post-publication documentation update was synchronized to both
+branches. The first frontend test invocation failed before collection with a
+sandbox temporary-directory `EPERM`; rerunning with the project cache as
+`TEMP`/`TMP` passed. The live smoke restored `settings/.env` byte-for-byte,
+stopped its processes, freed ports 5000/8000, and removed its temporary output
+and reviewed disposable screenshots/logs. T4-03 gated Hugging Face access and
+physical low-disk recovery remain non-blocking validation debt as described
+above.
 
 The previous gate record remains historical: the v4.5.0 release commit
 `f8dee1da9084138bd52f3d08437269d3821ba5d6` passed hosted CI run
