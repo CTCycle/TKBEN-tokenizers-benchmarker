@@ -13,11 +13,12 @@ historical rows are rejected or purged rather than silently adapted. Managed
 job lifecycle metadata is durable, with interrupted work reconciled as failed
 after restart rather than automatically resumed.
 
-The latest published release is `v4.5.1` with backend package `3.5.1` and
-frontend package `2.5.1`; the validated `v4.6.0` candidate is pushed to
-`develop`, its hosted CI passed, and its local `main` smoke and hosted CI passed.
-The `v4.6.0` tag and source-only publication remain pending. Configuration
-ownership is canonical: `settings/.env` and the process environment own
+The latest published release is `v4.6.0` with backend package `3.6.0` and
+frontend package `2.6.0`. Its source-only GitHub release was published from
+annotated tag `v4.6.0` on `main` commit
+`2ecd12119b86864d617367bd6b0712bb9a1b2b92`; `main` and `develop` are
+synchronized after the publication record update. Configuration ownership is
+canonical: `settings/.env` and the process environment own
 bootstrap-only values,
 `<TKBEN_DATA_DIR>/database-config.json` owns database connection settings, typed
 backend models own application defaults, and the active database owns sparse
