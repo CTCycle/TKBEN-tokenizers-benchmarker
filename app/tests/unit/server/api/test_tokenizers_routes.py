@@ -247,9 +247,7 @@ def test_tokenizer_discovery_validates_combined_query_and_structured_response(
     assert captured["access"] == "public"
 
 ###############################################################################
-def test_tokenizer_discovery_uses_runtime_default_and_legacy_settings_view(
-    monkeypatch,
-) -> None:
+def test_tokenizer_discovery_uses_runtime_default(monkeypatch) -> None:
     from server.api import tokenizers as tokenizers_api
     from server.contracts.tokenizers import TokenizerDiscoveryResponse
     from server.services.tokenizers import TokenizersService
@@ -277,17 +275,9 @@ def test_tokenizer_discovery_uses_runtime_default_and_legacy_settings_view(
 
     client = TestClient(app)
     response = client.get("/api/tokenizers/discover")
-    legacy_response = client.get("/api/tokenizers/settings")
 
     assert response.status_code == 200
     assert captured["limit"] == 7
-    assert legacy_response.status_code == 200
-    assert legacy_response.json() == {
-        "default_discovery_limit": 7,
-        "max_discovery_limit": 9,
-        "max_discovery_candidates": 30,
-        "metadata_candidate_multiplier": 2,
-    }
 
 ###############################################################################
 def test_tokenizer_discovery_enforces_runtime_maximum(monkeypatch) -> None:

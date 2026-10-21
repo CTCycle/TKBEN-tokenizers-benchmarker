@@ -16,7 +16,6 @@ JSON_ROUTE_EXPECTATIONS = [
     ("/api/datasets/reports/latest", "get", 200, "DatasetAnalysisResponse"),
     ("/api/datasets/reports/{report_id}", "get", 200, "DatasetAnalysisResponse"),
     ("/api/datasets/delete", "delete", 200, "DatasetDeleteResponse"),
-    ("/api/tokenizers/settings", "get", 200, "TokenizerSettingsResponse"),
     ("/api/settings", "get", 200, "RuntimeSettingsResponse"),
     ("/api/settings", "patch", 200, "RuntimeSettingsResponse"),
     ("/api/settings/reset", "post", 200, "RuntimeSettingsResponse"),
@@ -76,7 +75,6 @@ def test_openapi_generation_and_response_models() -> None:
 
     assert "delete" in paths["/api/benchmarks/reports/{report_id}"]
     assert "204" in paths["/api/benchmarks/reports/{report_id}"]["delete"]["responses"]
-    assert paths["/api/tokenizers/settings"]["get"]["deprecated"] is True
     components = schema.get("components", {}).get("schemas", {})
     assert "RuntimeSettingsPatchRequest" in components
     assert "RuntimeSettingsResetRequest" in components
