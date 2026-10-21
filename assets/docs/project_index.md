@@ -4,14 +4,14 @@ Last updated: 2026-10-21
 ## Purpose
 This file is the root index for `assets/docs`. Read it first to find the narrowest topic file for the task at hand.
 
-The current codebase uses schema-3/report-5 benchmark reports, Alembic revision
-`0007_dashboard_ui_preferences`, typed frontend catalog controls, persisted
-tokenizer source/artifact state, and a `BenchmarkStore` that owns dashboard
-preferences and report-scoped baseline selections. Reports own relational
-summary fields and tags while JSON stores immutable detail fields; incompatible
-historical rows are rejected or purged rather than silently adapted. Managed
-job lifecycle metadata is durable, with interrupted work reconciled as failed
-after restart rather than automatically resumed.
+The current codebase uses schema-3/report-5 benchmark reports, the single
+Alembic baseline revision `0001_current_schema`, typed frontend catalog
+controls, persisted tokenizer source/artifact state, and a `BenchmarkStore`
+that owns dashboard preferences and report-scoped baseline selections. Reports
+own relational summary fields and tags while JSON stores immutable detail
+fields; incompatible historical rows are rejected rather than silently
+adapted. Managed job lifecycle metadata is durable, with interrupted work
+reconciled as failed after restart rather than automatically resumed.
 
 The latest published release is `v4.6.0` with backend package `3.6.0` and
 frontend package `2.6.0`. Its source-only GitHub release was published from

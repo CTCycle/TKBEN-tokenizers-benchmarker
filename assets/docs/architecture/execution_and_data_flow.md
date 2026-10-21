@@ -61,11 +61,10 @@ Database Settings API validates and initializes a target before replacing the
 shared backend; a request gate drains ordinary operations and managed jobs must
 be idle. PostgreSQL uses the fixed `postgresql+psycopg` driver.
 
-Alembic is the only schema authority. Empty databases upgrade through the
-tracked graph, while non-empty databases without an Alembic version row,
-unknown revisions, multiple heads, or ahead-of-application revisions fail
-explicitly. Revision `0003_canonical_state_cleanup` removes incompatible
-report rows and normalizes direct metric keys and persisted tokenizer sources.
+Alembic is the only schema authority. Empty databases are created from the
+single baseline revision, while non-empty databases without an Alembic version
+row, unknown revisions, multiple heads, or ahead-of-application revisions fail
+explicitly. Pre-baseline databases are not adopted or upgraded.
 
 The Windows launcher performs the same startup-oriented checks around the
 runtime: it repairs backend and frontend dependency layers independently, builds
