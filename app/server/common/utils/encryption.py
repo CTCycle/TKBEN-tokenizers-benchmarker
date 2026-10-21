@@ -114,34 +114,5 @@ def get_purpose_cipher(path: Path, purpose: str) -> SymmetricCipher:
     return SymmetricCipher(str(record["key_material"]))
 
 ###############################################################################
-def _ensure_material() -> str:
-    path = _material_path()
-    payload = _read_material_store(path)
-    existing = _get_active_material(payload, MATERIAL_PURPOSE)
-    if existing is not None:
-        return existing
-
-    now = datetime.now(UTC).replace(tzinfo=None).isoformat()
-    payload[MATERIAL_PURPOSE] = {
-        "active_version": 1,
-        "versions": {
-            "1": {
-                "key_material": Fernet.generate_key().decode("utf-8"),
-                "is_active": True,
-                "seeded_at": now,
-                "activated_at": now,
-            }
-        },
-    }
-    _write_material_store(path, payload)
-    purpose_store = payload[MATERIAL_PURPOSE]
-    assert isinstance(purpose_store, dict)
-    versions = purpose_store["versions"]
-    assert isinstance(versions, dict)
-    record = versions["1"]
-    assert isinstance(record, dict)
-    return str(record["key_material"])
-
-###############################################################################
 def get_hf_key_cipher() -> SymmetricCipher:
-    return SymmetricCipher(_ensure_material())
+    return get_purpose_cipher(_material_path(), MATERIAL_PURPOSE)

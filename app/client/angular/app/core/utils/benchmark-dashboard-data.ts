@@ -119,11 +119,6 @@ export interface BenchmarkComparisonRow {
   isBaseline: boolean;
 }
 
-type BenchmarkDashboardWidgets = BenchmarkDashboardData | readonly BenchmarkDashboardWidgetData[];
-
-const widgetsFromDashboard = (dashboard: BenchmarkDashboardWidgets): readonly BenchmarkDashboardWidgetData[] =>
-  Array.isArray(dashboard) ? dashboard : (dashboard as BenchmarkDashboardData).widgets;
-
 export const benchmarkPointValue = (
   widget: BenchmarkDashboardWidgetData,
   tokenizer: string,
@@ -140,11 +135,11 @@ export const benchmarkDistributionMedian = (
   return distribution && Number.isFinite(distribution.median) ? distribution.median : null;
 };
 
-export const benchmarkComparisonTokenizers = (dashboard: BenchmarkDashboardWidgets): string[] => [
+export const benchmarkComparisonTokenizers = (dashboard: BenchmarkDashboardData): string[] => [
   ...new Set(
-    widgetsFromDashboard(dashboard).flatMap((widget) => [
-      ...(widget.points ?? []).filter((item) => Number.isFinite(item.value)).map((item) => item.tokenizer),
-      ...(widget.distributions ?? []).filter((item) => Number.isFinite(item.median)).map((item) => item.tokenizer),
+    dashboard.widgets.flatMap((widget) => [
+      ...widget.points.filter((item) => Number.isFinite(item.value)).map((item) => item.tokenizer),
+      ...widget.distributions.filter((item) => Number.isFinite(item.median)).map((item) => item.tokenizer),
     ]),
   ),
 ];

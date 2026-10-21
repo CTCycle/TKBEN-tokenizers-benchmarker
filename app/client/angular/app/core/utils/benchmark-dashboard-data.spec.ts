@@ -66,7 +66,12 @@ describe('benchmark dashboard chart data', () => {
       histogram_bins: [{ tokenizer: 'histogram-only', bin_low: 0, bin_high: 1, count: 1, proportion: 1 }],
     };
 
-    expect(benchmarkComparisonTokenizers([widget])).toEqual(['alpha', 'beta']);
+    expect(benchmarkComparisonTokenizers({
+      widgets: [widget],
+      available_widget_ids: [],
+      available_metric_keys: [],
+      unavailable_selected_metric_keys: [],
+    })).toEqual(['alpha', 'beta']);
     expect(benchmarkPointValue(widget, 'alpha')).toBe(10);
     expect(benchmarkPointValue(widget, 'invalid-point')).toBeNull();
     expect(benchmarkDistributionMedian(widget, 'beta')).toBe(3);
