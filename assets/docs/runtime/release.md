@@ -10,11 +10,11 @@ add packaging as part of a source release.
 The public release version and component versions use the existing repository
 convention:
 
-| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` | `v4.5.0` | `v4.5.1` | `v4.6.0` public |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` | `4.4.0` | `4.5.0` | `4.5.1` | `4.6.0` |
-| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` | `3.4.0` | `3.5.0` | `3.5.1` | `3.6.0` |
-| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` | `2.4.0` | `2.5.0` | `2.5.1` | `2.6.0` |
+| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` | `v4.5.0` | `v4.5.1` | `v4.6.0` public | `v4.6.1` candidate |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` | `4.4.0` | `4.5.0` | `4.5.1` | `4.6.0` | `4.6.1` |
+| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` | `3.4.0` | `3.5.0` | `3.5.1` | `3.6.0` | `3.6.1` |
+| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` | `2.4.0` | `2.5.0` | `2.5.1` | `2.6.0` | `2.6.1` |
 
 The latest published release is `v4.6.0` (backend `3.6.0`, frontend `2.6.0`).
 Its annotated tag points to validated `main` commit
@@ -37,6 +37,30 @@ The v4.6.0 delta is based on verified repository changes after `v4.5.1`:
 API version `1.2.0`, benchmark schema version `3`, and report version `5`
 remain unchanged. The public release status and final commit are recorded in
 the [project status ledger](../project_status_ledger.md#release-gate).
+
+## v4.6.1 patch release notes (candidate, unpublished)
+
+The v4.6.1 candidate increments the public release, backend, and frontend
+patch versions to `4.6.1`, `3.6.1`, and `2.6.1`. The verified changes since
+v4.6.0 include:
+
+- allow `CORS_ORIGINS` to be configured through bootstrap environment settings,
+  with normalization and startup validation; it remains outside the 16-field
+  application Settings API bundle;
+- remove the deprecated `/api/tokenizers/settings` endpoint and obsolete
+  database/runtime-settings import paths; `/api/settings` is the settings
+  contract;
+- consolidate schema creation at `0001_current_schema`, while safely
+  rebaselining the exact published v4.6.0 head only when its schema matches
+  current metadata; and
+- remove unused tokenizer and report compatibility fallbacks.
+
+API version `1.2.0`, benchmark schema version `3`, and report version `5`
+remain unchanged.
+
+Local focused validation and the remaining release gates are recorded in the
+[project status ledger](../project_status_ledger.md). Hosted CI and publication
+are pending.
 
 ## v4.5.1 release notes
 
