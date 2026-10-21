@@ -20,7 +20,7 @@ orchestrates a run, `BenchmarkJobService` owns the managed execution lifecycle,
 `BenchmarkResultBuilder` constructs the report payload,
 `BenchmarkReportService` coordinates report persistence, and the benchmark
 repository/database layer commits the result. Alembic owns the schema graph;
-revision `0003_canonical_state_cleanup` establishes direct metric keys,
+the baseline revision `0001_current_schema` establishes direct metric keys,
 persisted tokenizer sources, and the relational benchmark report summary.
 
 Configuration has three deliberately separate ownership layers. `settings/.env`
@@ -90,8 +90,8 @@ No P0 runtime or data-integrity issue was found. The remediation deliberately
 does not introduce dependency injection frameworks, a queue or microservice
 split, a benchmark-report/tokenizer junction table, or a second frontend state
 abstraction. The persistence change is intentionally a clean break enforced by
-Alembic revision `0003_canonical_state_cleanup`; incompatible historical rows
-are not silently adapted. A larger mixin decomposition and a separate
+the single Alembic baseline revision; incompatible historical databases are not
+adopted or silently adapted. A larger mixin decomposition and a separate
 cross-benchmark orchestration object remain future refactors.
 
 ## Target State
@@ -189,16 +189,16 @@ Completed implementation work:
    workflow.
 9. Replaced hybrid configuration, metric, tokenizer, report, and dashboard
    preference paths with one canonical source for each state boundary.
-10. Added Alembic revision `0003_canonical_state_cleanup`, removed registry-only
-    custom tokenizer state, and made incompatible persisted rows fail
-    explicitly instead of mapping to empty responses.
+10. Established the canonical persistence schema, removed registry-only custom
+    tokenizer state, and made incompatible persisted rows fail explicitly
+    instead of mapping to empty responses.
 11. Moved application defaults into typed Pydantic runtime models, added the
     sparse runtime override store and `/api/settings` contracts, and added the
     Angular Settings page without exposing startup or secret configuration.
-12. Added `JobRepository` and Alembic revision
-    `0005_managed_job_lifecycle`; startup now restores job history and marks
-    previously pending/running work as failed with an application-restart
-    reason instead of losing its ID or attempting unsafe resumption.
+12. Added `JobRepository` and durable managed-job lifecycle schema; startup now
+    restores job history and marks previously pending/running work as failed
+    with an application-restart reason instead of losing its ID or attempting
+    unsafe resumption.
 
 ## Architecture Risks
 

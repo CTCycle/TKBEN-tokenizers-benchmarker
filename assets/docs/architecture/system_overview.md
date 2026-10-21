@@ -52,10 +52,7 @@ Source-level structure, with generated and environment-specific folders omitted:
 │  │  │  ├─ queries/
 │  │  │  └─ schemas/
 │  │  └─ migrations/
-│  │     ├─ versions/0004_benchmark_report_tags.py
-│  │     ├─ versions/0005_managed_job_lifecycle.py
-│  │     ├─ versions/0006_database_runtime_settings.py
-│  │     └─ versions/0007_dashboard_ui_preferences.py
+│  │     └─ versions/0001_current_schema.py
 │  ├─ scripts/
 │  └─ tests/
 ├─ data/

@@ -32,17 +32,13 @@ Databases ahead of the application, unknown revisions, multiple heads, and
 unrecognized or partial unversioned schemas fail without automatic downgrades
 or destructive changes.
 
-A non-empty database without an Alembic version row is rejected. Historical
-schemas remain represented by the tracked `0001_pre_alembic_schema` and
-`0002_current_schema` revisions; the `0003_canonical_state_cleanup` revision
-purges incompatible reports and converts persisted metric and tokenizer state
-to the current contract, `0004_benchmark_report_tags` adds the relational
-report tag array without changing the immutable report payload, and
-`0005_managed_job_lifecycle` adds durable managed-job lifecycle records.
-Revision `0006_database_runtime_settings` adds the singleton row for sparse
-user-editable application settings. Revision `0007_dashboard_ui_preferences`
-adds report-dashboard layout, chart, and baseline preferences to that row with
-an independent revision counter.
+A non-empty database without an Alembic version row is rejected. The single
+baseline revision `0001_current_schema` creates the complete current schema,
+including relational report tags, durable managed-job lifecycle records, and
+the singleton runtime-settings row with dashboard layout, chart, and baseline
+preferences. Databases created before this baseline are rejected as unknown
+revisions and must be recreated; no compatibility migration adopts or upgrades
+them.
 
 The active database owns all non-database application settings, including
 report-dashboard layout, visibility, visualization, and baseline preferences.
@@ -189,19 +185,18 @@ histogram array compatibility.
 
 ## Validation
 
-The SQLite persistence contract covers schema creation, foreign keys, lifecycle
-visibility, composite ownership, partial uniqueness, value-shape constraints,
-cascades, rollback, active-key uniqueness, keyset document streaming, and
-upgrade from `0004_benchmark_report_tags` with managed-job persistence. Restart
-reconciliation and result/error retention are covered by the managed-job
-service and API tests. Controlled SQLite `SQLITE_FULL` validation confirms that
+The SQLite persistence contract covers baseline schema creation, foreign keys,
+lifecycle visibility, composite ownership, partial uniqueness, value-shape
+constraints, cascades, rollback, active-key uniqueness, keyset document
+streaming, and idempotent reinitialization. Restart reconciliation and
+result/error retention are covered by the managed-job service and API tests. Controlled SQLite `SQLITE_FULL` validation confirms that
 failed custom-upload and Hugging Face dataset persistence imports clean up their
 partial rows and can be retried after storage capacity returns; it does not
 simulate exhaustion of the host filesystem. The current ledger records this as
 PARTIAL validation debt.
 
 PostgreSQL integration was subsequently validated against isolated PostgreSQL
-18.6 clusters: concurrent initialization, migration to `0005` and then `0006`,
+18.6 clusters: concurrent initialization, runtime settings persistence,
 authenticated UI connection testing, runtime switching, independent settings,
 restart recovery, and injected-failure rollback/retry passed. The existing host
 listener was not contacted, so the evidence does not claim general deployment
@@ -232,7 +227,7 @@ Use the application initializer (launcher option 4 or
 unversioned database is intentionally a hard failure and must be restored from a
 versioned backup or recreated.
 
-The current repository head is `0007_dashboard_ui_preferences`. Managed-job rows,
+The current repository head is `0001_current_schema`. Managed-job rows,
 ready dataset rows, tokenizer rows, reports, and canonical tokenizer artifacts
 are stored under the configured data root and are retained across
 application restarts unless explicitly deleted. Dataset files and tokenizer
