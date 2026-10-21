@@ -1,5 +1,5 @@
 # Canonical Source Remediation
-Last updated: 2026-09-16
+Last updated: 2026-10-21
 
 ## Objective
 TKBEN should expose one authoritative implementation and one authoritative source of truth for each responsibility. Runtime compatibility paths are retained only when a current external dependency requires them.
@@ -24,6 +24,10 @@ TKBEN should expose one authoritative implementation and one authoritative sourc
 - The raw `ConfigurationManager` payload API and its `get_block()` / `get_value()` accessors were removed. Backend code now loads the validated configuration directly.
 - The permissive boolean coercion helper was removed. Runtime booleans accept the documented `true` or `false` values and reject aliases.
 - Launcher cleanup no longer carries or recreates historical cache locations. Only the current managed cache roots remain.
+- Legacy `DATABASE_*` environment import and `.env` rewriting were removed. Database connection settings come only from `database-config.json`.
+- The legacy `<TKBEN_DATA_DIR>/runtime-settings.json` import was removed. Runtime settings and dashboard preferences come only from the active database.
+- The deprecated `GET /api/tokenizers/settings` compatibility endpoint was removed; `/api/settings` is the only settings contract.
+- The pre-baseline Alembic revisions were replaced by the single `0001_current_schema` baseline. Existing databases from older revisions are rejected and must be recreated.
 
 ## Bootstrap rule
 The environment profile must be loaded before configuration modules that can reach environment-derived paths or database settings are imported. `server.configurations` performs that bootstrap before importing its settings/startup surface.
