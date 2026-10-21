@@ -9,13 +9,7 @@ from pathlib import Path
 
 ###############################################################################
 ROOT_DIR = Path(__file__).resolve().parents[3]
-APP_DIR = ROOT_DIR / "app"
-SERVER_DIR = APP_DIR / "server"
-CLIENT_DIR = APP_DIR / "client"
-TESTS_DIR = APP_DIR / "tests"
-ASSETS_DIR = ROOT_DIR / "assets"
-FIGURES_DIR = ASSETS_DIR / "figures"
-SETTINGS_DIR = (ROOT_DIR / "settings").resolve()
+SERVER_DIR = ROOT_DIR / "app" / "server"
 CACHE_PATH = (ROOT_DIR / "runtimes" / "cache").resolve()
 
 ###############################################################################
@@ -36,27 +30,11 @@ DATA_PATH = _resolve_data_path(os.getenv("TKBEN_DATA_DIR"))
 SOURCES_PATH = DATA_PATH / "sources"
 DATASETS_PATH = SOURCES_PATH / "datasets"
 TOKENIZERS_PATH = SOURCES_PATH / "tokenizers"
-LOGS_PATH = resolve_runtime_path(os.getenv("TKBEN_LOG_DIR"), DATA_PATH / "logs")
-TEMPLATES_PATH = DATA_PATH / "templates"
-ENV_FILE_PATH = SETTINGS_DIR / ".env"
-ENV_EXAMPLE_FILE_PATH = SETTINGS_DIR / ".env.example"
 __all__ = [
-    "APP_DIR",
-    "ASSETS_DIR",
     "CACHE_PATH",
-    "CLIENT_DIR",
     "DATASETS_PATH",
-    "ENV_EXAMPLE_FILE_PATH",
-    "ENV_FILE_PATH",
-    "FIGURES_DIR",
-    "LOGS_PATH",
-    "DATA_PATH",
     "ROOT_DIR",
     "resolve_runtime_path",
     "SERVER_DIR",
-    "SETTINGS_DIR",
-    "SOURCES_PATH",
-    "TEMPLATES_PATH",
-    "TESTS_DIR",
     "TOKENIZERS_PATH",
 ]

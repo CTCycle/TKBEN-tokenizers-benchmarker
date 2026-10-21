@@ -4739,22 +4739,6 @@ select:focus-visible {
   justify-content: center;
 }
 
-.dataset-word-cloud-fallback {
-  display: flex;
-  flex-wrap: wrap;
-  align-content: center;
-  justify-content: center;
-  gap: 14px 18px;
-  height: 100%;
-  padding: 24px;
-}
-
-.dataset-word-cloud-fallback-term {
-  color: #e2e8f0;
-  font-weight: 600;
-  line-height: 1;
-}
-
 .dataset-word-cloud-term {
   position: absolute;
   color: #e2e8f0;

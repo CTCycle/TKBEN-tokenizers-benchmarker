@@ -19,7 +19,6 @@ export class WordCloudComponent implements AfterViewInit, OnDestroy {
   readonly terms = input<readonly WordCloudTerm[]>([]);
   @ViewChild('canvas') private canvas?: ElementRef<HTMLDivElement>;
   protected readonly layout = signal<readonly WordCloudLayoutTerm[]>([]);
-  protected readonly fallback = signal(false);
   private worker: Worker | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private fitFrame: number | null = null;
@@ -64,7 +63,6 @@ export class WordCloudComponent implements AfterViewInit, OnDestroy {
     const source = [...this.terms()].filter((item) => item.word && item.count > 0).slice(0, 140);
     if (!source.length) {
       this.layout.set([]);
-      this.fallback.set(false);
       return;
     }
     const element = this.canvas?.nativeElement;
@@ -85,7 +83,6 @@ export class WordCloudComponent implements AfterViewInit, OnDestroy {
     const height = Math.max(220, Math.round(measuredHeight));
     if (typeof Worker === 'undefined') {
       this.layout.set(this.fallbackLayout(source, width, height));
-      this.fallback.set(true);
       this.scheduleFitToCanvas();
       return;
     }
@@ -94,18 +91,15 @@ export class WordCloudComponent implements AfterViewInit, OnDestroy {
       this.worker = new Worker(new URL('../core/workers/word-cloud.worker.ts', import.meta.url), { type: 'module' });
       this.worker.onmessage = (event: MessageEvent<{ terms: WordCloudLayoutTerm[] }>) => {
         this.layout.set(event.data.terms);
-        this.fallback.set(false);
         this.scheduleFitToCanvas();
       };
       this.worker.onerror = () => {
         this.layout.set(this.fallbackLayout(source, width, height));
-        this.fallback.set(true);
         this.scheduleFitToCanvas();
       };
       this.worker.postMessage({ terms: source, width, height });
     } catch {
       this.layout.set(this.fallbackLayout(source, width, height));
-      this.fallback.set(true);
       this.scheduleFitToCanvas();
     }
   }
