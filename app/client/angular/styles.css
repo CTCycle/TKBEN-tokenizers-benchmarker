@@ -5666,6 +5666,12 @@ select:focus-visible {
   font-size: 13px;
 }
 
+.settings-save-status {
+  margin: 0 0 12px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
 .settings-inline-error {
   margin: 12px 0 0;
   color: var(--color-danger-text);

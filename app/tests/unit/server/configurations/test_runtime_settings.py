@@ -28,6 +28,7 @@ from server.configurations.settings import (
     ServerSettings,
     TokenizerSettings,
 )
+from server.contracts.settings import DashboardUiPreferences
 from server.contracts.settings import RuntimeSettingsPatchRequest
 
 ###############################################################################
@@ -160,6 +161,13 @@ def test_valid_partial_overrides_merge_and_persist_sparsely(tmp_path: Path) -> N
         "jobs.polling_interval",
     )
     assert json.loads(path.read_text(encoding="utf-8")) == {
+        "dashboard_preferences": {
+            "baseline_by_report_id": {},
+            "hidden_widget_ids": [],
+            "ordered_widget_ids": [],
+            "visualization_by_widget_id": {},
+        },
+        "dashboard_revision": 0,
         "overrides": {
             "datasets": {"histogram_bins": 30},
             "jobs": {"polling_interval": 2.0},
@@ -168,6 +176,30 @@ def test_valid_partial_overrides_merge_and_persist_sparsely(tmp_path: Path) -> N
         "schema_version": 1,
     }
     assert "network" not in path.read_text(encoding="utf-8")
+
+###############################################################################
+def test_dashboard_preferences_have_an_independent_revision_and_survive_reload(
+    tmp_path: Path,
+) -> None:
+    defaults = _server_settings(tmp_path)
+    path = tmp_path / "runtime-settings.json"
+    store = _store(defaults, path)
+    store.apply_patch({"datasets": {"histogram_bins": 30}}, expected_revision=0)
+    preferences = DashboardUiPreferences(
+        ordered_widget_ids=["speed", "size"],
+        hidden_widget_ids=["size"],
+        visualization_by_widget_id={"speed": "horizontal_bar"},
+        baseline_by_report_id={"42": "tokenizer-a"},
+    )
+
+    saved = store.set_dashboard_preferences(preferences, expected_revision=0)
+    restarted = _store(defaults, path)
+
+    assert saved.revision == 1
+    assert store.get_state().revision == 1
+    assert restarted.get_state().settings.datasets.histogram_bins == 30
+    assert restarted.get_dashboard_preferences_state().revision == 1
+    assert restarted.get_dashboard_preferences_state().preferences == preferences
 
 ###############################################################################
 @pytest.mark.parametrize(
@@ -265,6 +297,13 @@ def test_successful_save_replaces_corrupt_stored_document(tmp_path: Path) -> Non
     assert state.revision == 1
     assert state.overridden_keys == ()
     assert json.loads(path.read_text(encoding="utf-8")) == {
+        "dashboard_preferences": {
+            "baseline_by_report_id": {},
+            "hidden_widget_ids": [],
+            "ordered_widget_ids": [],
+            "visualization_by_widget_id": {},
+        },
+        "dashboard_revision": 0,
         "schema_version": 1,
         "revision": 1,
         "overrides": {},
@@ -328,6 +367,13 @@ def test_reset_all_persists_an_empty_database_document(tmp_path: Path) -> None:
     assert state.settings.datasets.histogram_bins == 20
     assert state.overridden_keys == ()
     assert json.loads(path.read_text(encoding="utf-8")) == {
+        "dashboard_preferences": {
+            "baseline_by_report_id": {},
+            "hidden_widget_ids": [],
+            "ordered_widget_ids": [],
+            "visualization_by_widget_id": {},
+        },
+        "dashboard_revision": 0,
         "schema_version": 1,
         "revision": 2,
         "overrides": {},

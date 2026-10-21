@@ -20,6 +20,8 @@ export class SettingsStore {
   private readonly api = inject(SettingsApiService);
   private readonly destroyRef = inject(DestroyRef);
   private loaded = false;
+  private writing = false;
+  private queuedPatch: RuntimeSettingsPatch | null = null;
 
   readonly settings = signal<RuntimeSettingsValues | null>(null);
   readonly defaults = signal<RuntimeSettingsValues | null>(null);
@@ -28,6 +30,7 @@ export class SettingsStore {
   readonly warning = signal<string | null>(null);
   readonly loading = signal(false);
   readonly saving = signal(false);
+  readonly saveStatus = signal<'idle' | 'saving' | 'saved' | 'error'>('idle');
   readonly error = signal<string | null>(null);
   readonly conflict = signal(false);
 
@@ -38,15 +41,33 @@ export class SettingsStore {
 
   reload(): void {
     if (this.loading() || this.saving()) return;
+    this.queuedPatch = null;
+    this.saveStatus.set('idle');
     this.loaded = false;
     this.fetch();
   }
 
+  notePendingEdit(): void {
+    if (this.conflict()) return;
+    this.saveStatus.set('idle');
+    this.error.set(null);
+  }
+
   save(patch: RuntimeSettingsPatch): void {
-    if (this.saving() || this.settings() === null) return;
+    if (this.settings() === null || this.conflict()) return;
+    this.queuedPatch = patch;
     this.saving.set(true);
+    this.saveStatus.set('saving');
     this.error.set(null);
     this.conflict.set(false);
+    this.flushQueuedPatch();
+  }
+
+  private flushQueuedPatch(): void {
+    if (this.writing || !this.queuedPatch) return;
+    const patch = this.queuedPatch;
+    this.queuedPatch = null;
+    this.writing = true;
     const request: RuntimeSettingsPatchRequest = {
       expected_revision: this.revision(),
       ...patch,
@@ -54,10 +75,18 @@ export class SettingsStore {
     this.api.patch(request).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (response) => {
         this.applyResponse(response);
-        this.saving.set(false);
+        this.writing = false;
+        if (this.queuedPatch) {
+          this.flushQueuedPatch();
+        } else {
+          this.saving.set(false);
+          this.saveStatus.set('saved');
+        }
       },
       error: (error: unknown) => {
+        this.writing = false;
         this.saving.set(false);
+        this.saveStatus.set('error');
         this.handleError(error, 'Failed to save settings.');
       },
     });
@@ -66,6 +95,7 @@ export class SettingsStore {
   reset(keys?: readonly RuntimeSettingKey[]): void {
     if (this.saving() || this.settings() === null) return;
     this.saving.set(true);
+    this.saveStatus.set('saving');
     this.error.set(null);
     this.conflict.set(false);
     const request: RuntimeSettingsResetRequest = {
@@ -76,9 +106,11 @@ export class SettingsStore {
       next: (response) => {
         this.applyResponse(response);
         this.saving.set(false);
+        this.saveStatus.set('saved');
       },
       error: (error: unknown) => {
         this.saving.set(false);
+        this.saveStatus.set('error');
         this.handleError(error, 'Failed to reset settings.');
       },
     });
@@ -96,6 +128,7 @@ export class SettingsStore {
       next: (response) => {
         this.applyResponse(response);
         this.loading.set(false);
+        this.saveStatus.set('idle');
       },
       error: (error: unknown) => {
         this.loading.set(false);

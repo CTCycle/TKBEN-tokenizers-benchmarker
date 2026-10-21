@@ -1,7 +1,9 @@
 // Copyright © 2023 Thomas Virdis
 // Licensed under the MIT License.
 
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, effect, inject, OnDestroy, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subject, of, switchMap, timer } from 'rxjs';
 import {
   AbstractControl,
   FormControl,
@@ -16,7 +18,6 @@ import { HfAccessKeyManagerComponent } from '../components/hf-access-key-manager
 import { DatabaseSettingsComponent } from '../components/database-settings.component';
 import type {
   RuntimeSettingKey,
-  RuntimeSettingsPatchRequest,
   RuntimeSettingsValues,
 } from '../core/api/api.models';
 
@@ -48,8 +49,10 @@ const tokenizerLimits: ValidatorFn = (control: AbstractControl): ValidationError
   imports: [ReactiveFormsModule, HfAccessKeyManagerComponent, DatabaseSettingsComponent],
   templateUrl: './settings-page.component.html',
 })
-export class SettingsPageComponent {
+export class SettingsPageComponent implements OnDestroy {
   protected readonly store = inject(SettingsStore);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly persistenceRequests = new Subject<boolean>();
   protected readonly activeTab = signal<SettingsTab>('data');
   private hydrateFromServer = true;
 
@@ -112,11 +115,25 @@ export class SettingsPageComponent {
     }
     effect(() => {
       const settings = this.store.settings();
-      if (!settings || (!this.hydrateFromServer && this.form.dirty)) return;
+      if (!settings) return;
+      if (!this.hydrateFromServer && this.form.dirty && !this.matchesSettings(settings)) return;
       this.hydrate(settings);
       this.hydrateFromServer = false;
     });
 
+    this.form.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      this.store.notePendingEdit();
+      this.persistenceRequests.next(false);
+    });
+    this.persistenceRequests.pipe(
+      switchMap((immediate) => immediate ? of(null) : timer(400)),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(() => this.persistCurrentSettings());
+
+  }
+
+  ngOnDestroy(): void {
+    if (this.form.dirty) this.persistCurrentSettings();
   }
 
   protected selectTab(tab: SettingsTab): void {
@@ -137,12 +154,8 @@ export class SettingsPageComponent {
     document.getElementById(`settings-tab-${nextTab}`)?.focus();
   }
 
-  protected saveChanges(): void {
-    if (this.form.invalid || !this.form.dirty || this.store.saving()) {
-      this.form.markAllAsTouched();
-      return;
-    }
-
+  protected persistCurrentSettings(): void {
+    if (this.form.invalid || this.store.loading() || !this.store.settings()) return;
     const value = this.form.getRawValue();
     const datasetMaxUploadBytes = this.mibToBytes(value.datasetMaxUploadMiB);
     const tokenizerMaxUploadBytes = this.mibToBytes(value.tokenizerMaxUploadMiB);
@@ -152,8 +165,7 @@ export class SettingsPageComponent {
       return;
     }
 
-    const patch: RuntimeSettingsPatchRequest = {
-      expected_revision: this.store.revision(),
+    this.store.save({
       datasets: {
         histogram_bins: this.requiredNumber(value.histogramBins),
         streaming_batch_size: this.requiredNumber(value.datasetStreamingBatchSize),
@@ -178,26 +190,40 @@ export class SettingsPageComponent {
       jobs: {
         polling_interval: this.requiredNumber(value.jobPollingInterval),
       },
-    };
-    this.hydrateFromServer = true;
-    this.store.save({
-      datasets: patch.datasets,
-      tokenizers: patch.tokenizers,
-      benchmarks: patch.benchmarks,
-      jobs: patch.jobs,
     });
   }
 
   protected resetSetting(key: RuntimeSettingKey): void {
-    if (!this.store.isOverridden(key) || this.store.saving()) return;
-    this.hydrateFromServer = true;
-    this.store.reset([key]);
+    const defaults = this.store.defaults();
+    if (!defaults || !this.store.isOverridden(key)) return;
+    switch (key) {
+      case 'tokenizers.default_discovery_limit': this.form.controls.defaultDiscoveryLimit.setValue(defaults.tokenizers.default_discovery_limit); break;
+      case 'tokenizers.max_discovery_limit': this.form.controls.maxDiscoveryLimit.setValue(defaults.tokenizers.max_discovery_limit); break;
+      case 'tokenizers.max_discovery_candidates': this.form.controls.maxDiscoveryCandidates.setValue(defaults.tokenizers.max_discovery_candidates); break;
+      case 'tokenizers.metadata_candidate_multiplier': this.form.controls.metadataCandidateMultiplier.setValue(defaults.tokenizers.metadata_candidate_multiplier); break;
+      case 'tokenizers.max_upload_bytes': this.form.controls.tokenizerMaxUploadMiB.setValue(this.bytesToMib(defaults.tokenizers.max_upload_bytes)); break;
+      case 'datasets.histogram_bins': this.form.controls.histogramBins.setValue(defaults.datasets.histogram_bins); break;
+      case 'datasets.streaming_batch_size': this.form.controls.datasetStreamingBatchSize.setValue(defaults.datasets.streaming_batch_size); break;
+      case 'datasets.max_upload_bytes': this.form.controls.datasetMaxUploadMiB.setValue(this.bytesToMib(defaults.datasets.max_upload_bytes)); break;
+      case 'datasets.download_timeout_seconds': this.form.controls.downloadTimeoutSeconds.setValue(defaults.datasets.download_timeout_seconds); break;
+      case 'datasets.download_retry_attempts': this.form.controls.downloadRetryAttempts.setValue(defaults.datasets.download_retry_attempts); break;
+      case 'datasets.download_retry_backoff_seconds': this.form.controls.downloadRetryBackoffSeconds.setValue(defaults.datasets.download_retry_backoff_seconds); break;
+      case 'benchmarks.default_max_documents': this.form.controls.benchmarkDefaultMaxDocuments.setValue(defaults.benchmarks.default_max_documents); break;
+      case 'benchmarks.default_batch_size': this.form.controls.benchmarkDefaultBatchSize.setValue(defaults.benchmarks.default_batch_size); break;
+      case 'benchmarks.default_parallelism': this.form.controls.benchmarkDefaultParallelism.setValue(defaults.benchmarks.default_parallelism); break;
+      case 'benchmarks.streaming_batch_size': this.form.controls.benchmarkStreamingBatchSize.setValue(defaults.benchmarks.streaming_batch_size); break;
+      case 'jobs.polling_interval': this.form.controls.jobPollingInterval.setValue(defaults.jobs.polling_interval); break;
+    }
+    this.form.markAsDirty();
+    this.persistenceRequests.next(true);
   }
 
   protected resetAll(): void {
-    if (!this.store.overriddenKeys().length || this.store.saving()) return;
-    this.hydrateFromServer = true;
-    this.store.reset();
+    const defaults = this.store.defaults();
+    if (!defaults || !this.store.overriddenKeys().length) return;
+    this.form.setValue(this.formValues(defaults));
+    this.form.markAsDirty();
+    this.persistenceRequests.next(true);
   }
 
   protected reloadAfterConflict(): void {
@@ -278,7 +304,14 @@ export class SettingsPageComponent {
   }
 
   private hydrate(settings: RuntimeSettingsValues): void {
-    this.form.reset({
+    this.form.reset(this.formValues(settings), { emitEvent: false });
+    this.form.markAsPristine();
+    this.form.markAsUntouched();
+    this.form.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private formValues(settings: RuntimeSettingsValues) {
+    return {
       histogramBins: settings.datasets.histogram_bins,
       datasetMaxUploadMiB: this.bytesToMib(settings.datasets.max_upload_bytes),
       downloadTimeoutSeconds: settings.datasets.download_timeout_seconds,
@@ -295,10 +328,14 @@ export class SettingsPageComponent {
       datasetStreamingBatchSize: settings.datasets.streaming_batch_size,
       benchmarkStreamingBatchSize: settings.benchmarks.streaming_batch_size,
       jobPollingInterval: settings.jobs.polling_interval,
-    }, { emitEvent: false });
-    this.form.markAsPristine();
-    this.form.markAsUntouched();
-    this.form.updateValueAndValidity({ emitEvent: false });
+    };
+  }
+
+  private matchesSettings(settings: RuntimeSettingsValues): boolean {
+    const expected = this.formValues(settings);
+    const current = this.form.getRawValue();
+    return (Object.keys(expected) as (keyof typeof expected)[])
+      .every((key) => current[key] === expected[key]);
   }
 
   private requiredNumber(value: number | null): number {

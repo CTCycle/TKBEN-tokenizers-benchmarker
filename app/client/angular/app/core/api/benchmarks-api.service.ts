@@ -6,6 +6,8 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import type {
   BenchmarkMetricCatalogResponse,
+  DashboardUiPreferencesResponse,
+  DashboardUiPreferencesUpdate,
   BenchmarkReportListResponse,
   BenchmarkReportTagsResponse,
   BenchmarkReportTagsUpdate,
@@ -33,6 +35,16 @@ export class BenchmarksApiService {
 
   metricsCatalog(): Observable<BenchmarkMetricCatalogResponse> {
     return this.http.get<BenchmarkMetricCatalogResponse>('/api/benchmarks/metrics/catalog');
+  }
+
+  dashboardPreferences(): Observable<DashboardUiPreferencesResponse> {
+    return this.http.get<DashboardUiPreferencesResponse>('/api/settings/dashboard');
+  }
+
+  saveDashboardPreferences(
+    request: DashboardUiPreferencesUpdate,
+  ): Observable<DashboardUiPreferencesResponse> {
+    return this.http.put<DashboardUiPreferencesResponse>('/api/settings/dashboard', request);
   }
 
   report(reportId: number): Observable<BenchmarkRunResponse> {

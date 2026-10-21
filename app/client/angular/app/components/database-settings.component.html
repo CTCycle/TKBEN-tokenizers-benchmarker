@@ -75,7 +75,7 @@
         </div>
       </div>
 
-      <p class="database-switch-note">Switching changes the active data store. Existing records and settings are not copied. Pending or running jobs must finish first.</p>
+      <p class="database-switch-note">Test the connection to enable switching. Switching changes the active data store; existing records and settings are not copied. Pending or running jobs must finish first.</p>
       @if (error(); as message) { <p class="settings-inline-error" role="alert">{{ message }}</p> }
       @if (notice(); as message) { <p class="database-result database-result--success" role="status">{{ message }}</p> }
       @if (testResult(); as result) {
@@ -84,7 +84,7 @@
 
       <footer class="database-actions">
         <button class="secondary-button" type="button" [disabled]="testing() || switching() || form.invalid" (click)="testConnection()">{{ testing() ? 'Testing…' : 'Test connection' }}</button>
-        <button class="primary-button" type="submit" [disabled]="testing() || switching() || form.invalid">{{ switching() ? 'Switching…' : 'Switch database' }}</button>
+        <button class="primary-button" type="submit" [disabled]="testing() || switching() || form.invalid || !hasSuccessfulTest()">{{ switching() ? 'Switching…' : 'Switch database' }}</button>
       </footer>
     </form>
   }

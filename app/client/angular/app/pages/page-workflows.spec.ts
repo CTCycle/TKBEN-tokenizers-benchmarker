@@ -377,8 +377,8 @@ describe('CrossBenchmarkPageComponent workflow', () => {
       runSelectedMetricKeys: { set: (value: readonly string[]) => void };
       openRun: () => void;
       runBenchmark: () => void;
-      customizeDraft: { set: (value: readonly string[]) => void };
-      applyCustomize: () => void;
+      openCustomize: () => void;
+      toggleCustomizeWidget: (widgetId: string, enabled: boolean) => void;
     };
 
     page.openRun();
@@ -404,8 +404,8 @@ describe('CrossBenchmarkPageComponent workflow', () => {
       }),
     }));
 
-    page.customizeDraft.set(['visible']);
-    page.applyCustomize();
+    page.openCustomize();
+    page.toggleCustomizeWidget('hidden', false);
     expect(store.setHiddenWidgetIds).toHaveBeenCalledWith(['hidden']);
   });
 

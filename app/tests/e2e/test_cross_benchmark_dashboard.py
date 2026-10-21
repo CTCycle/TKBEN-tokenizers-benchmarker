@@ -9,6 +9,42 @@ from playwright.sync_api import Page, expect
 
 ###############################################################################
 def _route_dashboard_api(page: Page) -> None:
+    dashboard_revision = 0
+    dashboard_preferences = {
+        "ordered_widget_ids": [],
+        "hidden_widget_ids": [],
+        "visualization_by_widget_id": {},
+        "baseline_by_report_id": {},
+    }
+
+    def route_dashboard_preferences(route) -> None:
+        nonlocal dashboard_revision, dashboard_preferences
+        request = route.request
+        if request.method == "GET":
+            route.fulfill(
+                json={
+                    "revision": dashboard_revision,
+                    "preferences": dashboard_preferences,
+                }
+            )
+            return
+        if request.method != "PUT":
+            route.fallback()
+            return
+        payload = request.post_data_json
+        if payload["expected_revision"] != dashboard_revision:
+            route.fulfill(status=409, json={"detail": "Dashboard preferences changed."})
+            return
+        dashboard_preferences = payload["preferences"]
+        dashboard_revision += 1
+        route.fulfill(
+            json={
+                "revision": dashboard_revision,
+                "preferences": dashboard_preferences,
+            }
+        )
+
+    page.route("**/api/settings/dashboard", route_dashboard_preferences)
     page.route(
         "**/api/tokenizers/list",
         lambda route: route.fulfill(json={"tokenizers": [], "count": 0}),
@@ -287,13 +323,6 @@ def test_cross_benchmark_dashboard_customization_and_accessible_data(
         "**/api/exports/dashboard/pdf",
         lambda route: route.fulfill(status=500, json={"detail": "Export unavailable"}),
     )
-    page.add_init_script(
-        "if (!window.sessionStorage.getItem('tkben-visualization-fixture-seeded')) {"
-        "window.localStorage.setItem('tkben:cross-benchmark-dashboard-layout:v3', "
-        "JSON.stringify({version: 3, ordered_widget_ids: [], hidden_widget_ids: [], "
-        "visualization_by_widget_id: {'vocabulary.size': 'heatmap'}}));"
-        "window.sessionStorage.setItem('tkben-visualization-fixture-seeded', '1');}"
-    )
 
     page.goto(f"{base_url}/cross-benchmark")
     expect(page.get_by_role("heading", name="Tokenization speed")).to_be_visible()
@@ -340,9 +369,14 @@ def test_cross_benchmark_dashboard_customization_and_accessible_data(
     )
     assert max(bar_widths) <= 45
 
-    page.get_by_role(
-        "button", name="Use Horizontal bar chart for Vocabulary size"
-    ).click()
+    with page.expect_response(
+        lambda response: response.request.method == "PUT"
+        and response.url.endswith("/api/settings/dashboard")
+    ) as visualization_save:
+        page.get_by_role(
+            "button", name="Use Horizontal bar chart for Vocabulary size"
+        ).click()
+    assert visualization_save.value.ok, visualization_save.value.text()
     expect(
         page.get_by_role("button", name="Use Horizontal bar chart for Vocabulary size")
     ).to_have_attribute("aria-pressed", "true")
@@ -537,17 +571,29 @@ def test_cross_benchmark_report_manager_search_pagination_and_inline_delete(
 
     customize = page.get_by_role("button", name="Customize benchmark dashboard")
     customize.click()
-    expect(
-        page.get_by_role("dialog", name="Customize benchmark dashboard")
-    ).to_be_visible()
-    page.get_by_role(
-        "checkbox", name="Vocabulary size — Vocabulary entries (tokens, bar)"
-    ).uncheck()
-    page.get_by_role("button", name="Apply").click()
+    customize_dialog = page.get_by_role(
+        "dialog", name="Customize benchmark dashboard"
+    )
+    expect(customize_dialog).to_be_visible()
+    with page.expect_response(
+        lambda response: response.request.method == "PUT"
+        and response.url.endswith("/api/settings/dashboard")
+    ) as visibility_save:
+        page.get_by_role(
+            "checkbox", name="Vocabulary size — Vocabulary entries (tokens, bar)"
+        ).uncheck()
+    assert visibility_save.value.ok, visibility_save.value.text()
+    customize_dialog.press("Escape")
+    expect(customize_dialog).to_have_count(0)
 
     restore = page.get_by_role("button", name="Restore default layout")
     expect(restore).to_be_enabled()
-    restore.click()
+    with page.expect_response(
+        lambda response: response.request.method == "PUT"
+        and response.url.endswith("/api/settings/dashboard")
+    ) as reset_save:
+        restore.click()
+    assert reset_save.value.ok, reset_save.value.text()
     expect(restore).to_be_disabled()
     expect(
         page.get_by_role("button", name="Use Vertical bar chart for Vocabulary size")

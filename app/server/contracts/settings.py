@@ -109,6 +109,56 @@ class RuntimeSettingsResponse(_SettingsContract):
     warning: str | None = None
 
 ###############################################################################
+DashboardVisualization = Literal[
+    "bar",
+    "horizontal_bar",
+    "interval_bar",
+    "dot_whisker",
+    "box_plot",
+    "histogram",
+    "grouped_bar",
+    "heatmap",
+]
+
+
+class DashboardUiPreferences(_SettingsContract):
+    ordered_widget_ids: list[str] = Field(default_factory=list)
+    hidden_widget_ids: list[str] = Field(default_factory=list)
+    visualization_by_widget_id: dict[str, DashboardVisualization] = Field(
+        default_factory=dict
+    )
+    baseline_by_report_id: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("ordered_widget_ids", "hidden_widget_ids")
+    @classmethod
+    def unique_non_empty_ids(cls, value: list[str]) -> list[str]:
+        if any(not item.strip() for item in value) or len(value) != len(set(value)):
+            raise ValueError("Widget IDs must be non-empty and unique.")
+        return value
+
+    @field_validator("baseline_by_report_id")
+    @classmethod
+    def valid_baseline_preferences(cls, value: dict[str, str]) -> dict[str, str]:
+        if any(
+            not report_id.isdecimal()
+            or int(report_id) <= 0
+            or not tokenizer.strip()
+            for report_id, tokenizer in value.items()
+        ):
+            raise ValueError("Baseline preferences require a report ID and tokenizer.")
+        return value
+
+
+class DashboardUiPreferencesRequest(_SettingsContract):
+    expected_revision: StrictInt = Field(ge=0)
+    preferences: DashboardUiPreferences
+
+
+class DashboardUiPreferencesResponse(_SettingsContract):
+    revision: int = Field(ge=0)
+    preferences: DashboardUiPreferences
+
+###############################################################################
 class RuntimeTokenizerSettingsPatch(_SettingsPatchContract):
     default_discovery_limit: StrictInt | None = Field(default=None, ge=1, le=250)
     max_discovery_limit: StrictInt | None = Field(default=None, ge=1, le=250)
@@ -178,6 +228,9 @@ class RuntimeSettingsResetRequest(_SettingsContract):
 
 
 __all__ = [
+    "DashboardUiPreferences",
+    "DashboardUiPreferencesRequest",
+    "DashboardUiPreferencesResponse",
     "RuntimeBenchmarkSettingsPatch",
     "RuntimeBenchmarkSettingsResponse",
     "RuntimeDatasetSettingsPatch",

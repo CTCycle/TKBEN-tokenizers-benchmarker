@@ -25,7 +25,9 @@ class DatabaseRuntimeSettingsPersistence:
             return {
                 "schema_version": record.schema_version,
                 "revision": record.revision,
+                "dashboard_revision": record.dashboard_revision,
                 "overrides": record.overrides,
+                "dashboard_preferences": record.dashboard_preferences,
             }
 
     def save(self, payload: dict[str, Any]) -> None:
@@ -36,11 +38,21 @@ class DatabaseRuntimeSettingsPersistence:
                     id=1,
                     schema_version=int(payload["schema_version"]),
                     revision=int(payload["revision"]),
+                    dashboard_revision=int(payload.get("dashboard_revision", 0)),
                     overrides=dict(payload["overrides"]),
+                    dashboard_preferences=dict(
+                        payload.get("dashboard_preferences", {})
+                    ),
                 )
                 session.add(record)
             else:
                 record.schema_version = int(payload["schema_version"])
                 record.revision = int(payload["revision"])
+                record.dashboard_revision = int(
+                    payload.get("dashboard_revision", record.dashboard_revision)
+                )
                 record.overrides = dict(payload["overrides"])
+                record.dashboard_preferences = dict(
+                    payload.get("dashboard_preferences", record.dashboard_preferences)
+                )
             session.commit()

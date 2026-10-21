@@ -94,24 +94,49 @@ def test_database_tab_tests_switches_and_reloads_database_local_settings(
         page.goto(f"{base_url}/settings")
         expect(page.locator(".settings-form")).to_be_visible()
         histogram = page.get_by_label("Histogram bins")
-        histogram.fill(str(distinct_value))
         with page.expect_response(
             lambda response: response.url.endswith("/api/settings")
             and response.request.method == "PATCH"
         ):
-            page.get_by_role("button", name="Save changes").click()
+            histogram.fill(str(distinct_value))
         expect(histogram).to_have_value(str(distinct_value))
 
         page.get_by_role("tab", name="Database").click()
         expect(page.locator("#settings-panel-database")).to_be_visible()
         expect(page.locator(".database-active-status")).to_contain_text("SQLite · Connected")
+        switch_button = page.get_by_role("button", name="Switch database")
+        expect(switch_button).to_be_disabled()
+
+        page.get_by_label("Database backend").select_option("postgresql")
+        page.get_by_label("Host").fill("127.0.0.1")
+        page.get_by_label("Port").fill("1")
+        page.get_by_label("Database name").fill("unavailable")
+        page.get_by_label("Username").fill("unavailable")
+        page.get_by_label("Connection timeout (seconds)").fill("1")
+        page.get_by_role("button", name="Test connection").click()
+        expect(page.locator(".database-result--failure")).to_contain_text(
+            "Unable to connect"
+        )
+        expect(switch_button).to_be_disabled()
+        unchanged_configuration = api_context.get("/api/database")
+        assert unchanged_configuration.ok, unchanged_configuration.text()
+        assert unchanged_configuration.json()["sqlite_path"] == original_configuration["sqlite_path"]
+
+        page.get_by_label("Database backend").select_option("sqlite")
         page.get_by_label("Database file path").fill(str(target_path))
+        page.get_by_label("Connection timeout (seconds)").fill(
+            str(original_configuration["connect_timeout"])
+        )
         page.get_by_role("button", name="Test connection").click()
         expect(page.locator(".database-result--success")).to_contain_text(
             "Connection successful."
         )
+        expect(switch_button).to_be_enabled()
+        unchanged_configuration = api_context.get("/api/database")
+        assert unchanged_configuration.ok, unchanged_configuration.text()
+        assert unchanged_configuration.json()["sqlite_path"] == original_configuration["sqlite_path"]
         with page.expect_navigation(wait_until="load"):
-            page.get_by_role("button", name="Switch database").click()
+            switch_button.click()
 
         switched_settings = api_context.get("/api/settings")
         assert switched_settings.ok, switched_settings.text()

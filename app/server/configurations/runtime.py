@@ -20,13 +20,14 @@ from server.configurations.settings import (
     ServerSettings,
     TokenizerSettings,
 )
+from server.contracts.settings import DashboardUiPreferences
 
 
 RUNTIME_SETTINGS_SCHEMA_VERSION = 1
 LEGACY_RUNTIME_SETTINGS_FILENAME = "runtime-settings.json"
 RUNTIME_SETTINGS_WARNING = (
     "Saved runtime settings could not be loaded; typed defaults are in use. "
-    "Save or reset settings to replace the stored values."
+    "Change or reset settings to replace the stored values."
 )
 
 
@@ -56,7 +57,7 @@ class RuntimeSettingsConflictError(RuntimeSettingsError):
         self.expected_revision = expected_revision
         self.actual_revision = actual_revision
         super().__init__(
-            "Runtime settings changed since this form was loaded. "
+            "Settings changed since this form was loaded. "
             "Reload the settings and try again."
         )
 
@@ -127,7 +128,9 @@ class _RuntimeOverrides(_StrictOverrideModel):
 class _RuntimeOverrideDocument(_StrictOverrideModel):
     schema_version: StrictInt
     revision: StrictInt = Field(ge=0)
+    dashboard_revision: object = 0
     overrides: _RuntimeOverrides = Field(default_factory=_RuntimeOverrides)
+    dashboard_preferences: object = Field(default_factory=dict)
 
 ###############################################################################
 @dataclass(frozen=True, slots=True)
@@ -137,6 +140,12 @@ class RuntimeSettingsState:
     revision: int
     overridden_keys: tuple[str, ...]
     warning: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class DashboardUiPreferencesState:
+    preferences: DashboardUiPreferences
+    revision: int
 
 ###############################################################################
 class RuntimeSettingsStore:
@@ -181,6 +190,8 @@ class RuntimeSettingsStore:
         self._effective = defaults
         self._overrides: dict[str, dict[str, object]] = {}
         self._revision = 0
+        self._dashboard_revision = 0
+        self._dashboard_preferences = DashboardUiPreferences()
         self._warning: str | None = None
         self._load_from_persistence()
 
@@ -195,11 +206,48 @@ class RuntimeSettingsStore:
             return self._state()
 
     # -------------------------------------------------------------------------
+    def get_dashboard_preferences_state(self) -> "DashboardUiPreferencesState":
+        with self._lock:
+            return DashboardUiPreferencesState(
+                preferences=self._dashboard_preferences.model_copy(deep=True),
+                revision=self._dashboard_revision,
+            )
+
+    # -------------------------------------------------------------------------
+    def set_dashboard_preferences(
+        self,
+        preferences: DashboardUiPreferences,
+        *,
+        expected_revision: int,
+    ) -> "DashboardUiPreferencesState":
+        with self._lock:
+            if expected_revision != self._dashboard_revision:
+                raise RuntimeSettingsConflictError(
+                    expected_revision, self._dashboard_revision
+                )
+            next_revision = self._dashboard_revision + 1
+            candidate = preferences.model_copy(deep=True)
+            self._persist(
+                self._overrides,
+                self._revision,
+                dashboard_preferences=candidate,
+                dashboard_revision=next_revision,
+            )
+            self._dashboard_preferences = candidate
+            self._dashboard_revision = next_revision
+            return DashboardUiPreferencesState(
+                preferences=candidate.model_copy(deep=True),
+                revision=next_revision,
+            )
+
+    # -------------------------------------------------------------------------
     def reload(self) -> RuntimeSettingsState:
         with self._lock:
             self._effective = self._defaults
             self._overrides = {}
             self._revision = 0
+            self._dashboard_revision = 0
+            self._dashboard_preferences = DashboardUiPreferences()
             self._warning = None
             self._load_from_persistence()
             return self._state()
@@ -304,14 +352,36 @@ class RuntimeSettingsStore:
             self._effective = self._build_effective(overrides)
             self._overrides = overrides
             self._revision = document.revision
+            try:
+                if (
+                    isinstance(document.dashboard_revision, bool)
+                    or not isinstance(document.dashboard_revision, int)
+                    or document.dashboard_revision < 0
+                ):
+                    raise ValueError("Invalid dashboard preferences revision.")
+                self._dashboard_revision = document.dashboard_revision
+                self._dashboard_preferences = DashboardUiPreferences.model_validate(
+                    document.dashboard_preferences
+                )
+            except (TypeError, ValueError, ValidationError):
+                self._dashboard_revision = 0
+                self._dashboard_preferences = DashboardUiPreferences()
+                logger.warning("Invalid dashboard preferences; using defaults.")
             if migrated_legacy_file:
-                self._persist(overrides, document.revision)
+                self._persist(
+                    overrides,
+                    document.revision,
+                    dashboard_preferences=self._dashboard_preferences,
+                    dashboard_revision=self._dashboard_revision,
+                )
                 assert self._legacy_path is not None
                 self._legacy_path.unlink()
         except (OSError, TypeError, ValueError, ValidationError, RuntimeSettingsError):
             self._effective = self._defaults
             self._overrides = {}
             self._revision = 0
+            self._dashboard_revision = 0
+            self._dashboard_preferences = DashboardUiPreferences()
             self._warning = RUNTIME_SETTINGS_WARNING
             logger.warning("Invalid runtime settings overrides; using typed defaults.")
 
@@ -414,6 +484,9 @@ class RuntimeSettingsStore:
         self,
         overrides: Mapping[str, Mapping[str, object]],
         revision: int,
+        *,
+        dashboard_preferences: DashboardUiPreferences | None = None,
+        dashboard_revision: int | None = None,
     ) -> None:
         if self._persistence is None:
             return
@@ -423,6 +496,15 @@ class RuntimeSettingsStore:
                     "schema_version": RUNTIME_SETTINGS_SCHEMA_VERSION,
                     "revision": revision,
                     "overrides": {group: dict(values) for group, values in overrides.items()},
+                    "dashboard_revision": (
+                        self._dashboard_revision
+                        if dashboard_revision is None
+                        else dashboard_revision
+                    ),
+                    "dashboard_preferences": (
+                        (dashboard_preferences or self._dashboard_preferences)
+                        .model_dump(mode="json")
+                    ),
                 }
             )
         except Exception as exc:
@@ -474,6 +556,7 @@ class RuntimeSettingsStore:
 
 
 __all__ = [
+    "DashboardUiPreferencesState",
     "LEGACY_RUNTIME_SETTINGS_FILENAME",
     "RUNTIME_SETTINGS_SCHEMA_VERSION",
     "RuntimeSettingsConflictError",

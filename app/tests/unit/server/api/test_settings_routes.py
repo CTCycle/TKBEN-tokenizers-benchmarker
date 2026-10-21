@@ -228,6 +228,70 @@ def test_get_settings_returns_only_typed_runtime_fields(
     assert "paths" not in response.text
 
 ###############################################################################
+def test_dashboard_preferences_are_database_scoped_and_revisioned(
+    settings_client: TestClient,
+) -> None:
+    original = settings_client.get("/api/settings/dashboard")
+    assert original.status_code == 200
+    assert original.json() == {
+        "revision": 0,
+        "preferences": {
+            "ordered_widget_ids": [],
+            "hidden_widget_ids": [],
+            "visualization_by_widget_id": {},
+            "baseline_by_report_id": {},
+        },
+    }
+
+    saved = settings_client.put(
+        "/api/settings/dashboard",
+        json={
+            "expected_revision": 0,
+            "preferences": {
+                "ordered_widget_ids": ["speed"],
+                "hidden_widget_ids": [],
+                "visualization_by_widget_id": {"speed": "horizontal_bar"},
+                "baseline_by_report_id": {"12": "alpha"},
+            },
+        },
+    )
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["revision"] == 1
+    assert saved.json()["preferences"]["visualization_by_widget_id"] == {
+        "speed": "horizontal_bar"
+    }
+    assert settings_client.get("/api/settings").json()["revision"] == 0
+
+    stale = settings_client.put(
+        "/api/settings/dashboard",
+        json={
+            "expected_revision": 0,
+            "preferences": saved.json()["preferences"],
+        },
+    )
+    assert stale.status_code == 409
+
+
+###############################################################################
+def test_dashboard_preferences_reject_invalid_visualizations(
+    settings_client: TestClient,
+) -> None:
+    response = settings_client.put(
+        "/api/settings/dashboard",
+        json={
+            "expected_revision": 0,
+            "preferences": {
+                "ordered_widget_ids": ["speed"],
+                "hidden_widget_ids": [],
+                "visualization_by_widget_id": {"speed": "unknown"},
+                "baseline_by_report_id": {},
+            },
+        },
+    )
+
+    assert response.status_code == 422
+
+###############################################################################
 def test_public_runtime_matrix_matches_typed_backend_schema() -> None:
     fields = list(_runtime_setting_fields())
     api_keys = {f"{group}.{name}" for group, name, _, _ in fields}
@@ -729,6 +793,36 @@ def test_persistence_error_keeps_previous_authoritative_state(
     current = settings_client.get("/api/settings").json()
     assert current["revision"] == original.revision
     assert current["settings"]["datasets"]["histogram_bins"] == 20
+
+
+###############################################################################
+def test_dashboard_persistence_error_keeps_previous_preferences(
+    settings_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = startup.get_runtime_settings_store()
+
+    def fail_persist(_overrides, _revision, **_kwargs) -> None:
+        raise RuntimeSettingsPersistenceError("persistence failure")
+
+    monkeypatch.setattr(store, "_persist", fail_persist)
+    response = settings_client.put(
+        "/api/settings/dashboard",
+        json={
+            "expected_revision": 0,
+            "preferences": {
+                "ordered_widget_ids": ["speed"],
+                "hidden_widget_ids": [],
+                "visualization_by_widget_id": {"speed": "bar"},
+                "baseline_by_report_id": {},
+            },
+        },
+    )
+
+    assert response.status_code == 500
+    current = settings_client.get("/api/settings/dashboard").json()
+    assert current["revision"] == 0
+    assert current["preferences"]["ordered_widget_ids"] == []
 
 ###############################################################################
 def test_invalid_database_settings_warning_is_sanitized_and_cleared_by_save(

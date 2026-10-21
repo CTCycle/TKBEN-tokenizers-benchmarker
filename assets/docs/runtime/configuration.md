@@ -1,5 +1,5 @@
 # Configuration
-Last updated: 2026-10-20
+Last updated: 2026-10-21
 
 ## Environment File
 Primary launcher runtime env file:
@@ -37,6 +37,10 @@ database stores sparse user overrides and their revision in its
 switching reloads that database's values and does not copy data. The old
 `<TKBEN_DATA_DIR>/runtime-settings.json` file is imported once after schema
 initialization and removed only after the database commit succeeds.
+
+Dashboard widget order, visibility, chart choices, and report-specific baseline
+selections use the same database row with an independent revision. These
+preferences save as the user changes them and follow the active database.
 
 The Settings page and `/api/settings` endpoints expose exactly these 16 fields,
 grouped in the UI by workflow:
@@ -78,7 +82,7 @@ without changing the current snapshot.
 
 ### Database Settings
 - Settings → Database supports SQLite and PostgreSQL. SQLite paths, PostgreSQL host/port/name/user/password/SSL, connection timeout, and insert batch size are persisted in `<TKBEN_DATA_DIR>/database-config.json`; PostgreSQL passwords are encrypted with a dedicated Fernet purpose key in the existing local key-material file.
-- A switch tests and initializes the target schema, drains active requests, refuses while managed jobs are pending/running, and restores the previous backend if activation fails.
+- The UI requires a successful connection test for the exact current configuration before the user can confirm a switch. The switch API revalidates and initializes the target schema, drains active requests, refuses while managed jobs are pending/running, and restores the previous backend and file configuration if activation fails.
 - Switching reloads the selected database's settings and records. It never copies data between databases. The browser reload clears cached feature state after switching.
 - If the selected database is unavailable at startup, the API remains available in a limited mode so the Database section can test or replace the connection; other database-backed routes return HTTP 503 until a database is activated.
 - Restart is still required after changing bootstrap settings such as listener ports, data/log paths, CORS origins, or the key-material-file path. Database switching and saved runtime settings apply in the current process when their validation and drain checks succeed.

@@ -8,7 +8,11 @@ import { BenchmarksApiService } from '../api/benchmarks-api.service';
 import { DatasetsApiService } from '../api/datasets-api.service';
 import { JobsApiService } from '../api/jobs-api.service';
 import { TokenizersApiService } from '../api/tokenizers-api.service';
-import type { BenchmarkRunResponse } from '../api/api.models';
+import type {
+  BenchmarkRunResponse,
+  DashboardUiPreferencesResponse,
+  DashboardUiPreferencesUpdate,
+} from '../api/api.models';
 import { BenchmarkStore } from './benchmark.store';
 
 const report = {
@@ -29,17 +33,28 @@ const report = {
 describe('BenchmarkStore', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    localStorage.clear();
   });
 
   afterEach(() => {
     TestBed.resetTestingModule();
     vi.useRealTimers();
-    localStorage.clear();
   });
 
   function createApi() {
     return {
+      dashboardPreferences: vi.fn().mockReturnValue(of({
+        revision: 0,
+        preferences: {
+          ordered_widget_ids: [],
+          hidden_widget_ids: [],
+          visualization_by_widget_id: {},
+          baseline_by_report_id: {},
+        },
+      })),
+      saveDashboardPreferences: vi.fn((request: DashboardUiPreferencesUpdate) => of({
+        revision: request.expected_revision + 1,
+        preferences: request.preferences,
+      })),
       reports: vi.fn().mockReturnValue(of({ reports: [{ report_id: 5 }], total: 1, offset: 0, limit: 25 })),
       metricsCatalog: vi.fn().mockReturnValue(of({ categories: [] })),
       report: vi.fn().mockReturnValue(of(report)),
@@ -141,27 +156,100 @@ describe('BenchmarkStore', () => {
     expect(store.report()).toBe(report);
   });
 
-  it('deduplicates hidden widgets and preserves visualization settings while reordering', () => {
-    const { store } = createStore();
+  it('persists dashboard layout, hidden IDs, and visualizations in one snapshot', () => {
+    const { api, store } = createStore();
     store.setVisualization('visible', 'bar');
 
     store.setHiddenWidgetIds(['hidden', 'hidden']);
     store.reorder(0, 1);
 
-    const saved = JSON.parse(localStorage.getItem('tkben:cross-benchmark-dashboard-layout:v3') ?? '{}');
     expect(store.hiddenWidgetIds()).toEqual(['hidden']);
-    expect(saved.ordered_widget_ids).toEqual(['hidden', 'visible']);
-    expect(saved.visualization_by_widget_id).toEqual({ visible: 'bar' });
+    expect(api.saveDashboardPreferences).toHaveBeenLastCalledWith({
+      expected_revision: 2,
+      preferences: {
+        ordered_widget_ids: ['hidden', 'visible'],
+        hidden_widget_ids: ['hidden'],
+        visualization_by_widget_id: { visible: 'bar' },
+        baseline_by_report_id: {},
+      },
+    });
   });
 
-  it('ignores the old array preference shape', () => {
-    localStorage.setItem(
-      'tkben:cross-benchmark-dashboard-layout:v3',
-      JSON.stringify(['legacy-only']),
-    );
-    const { store } = createStore();
+  it('serializes rapid dashboard edits and writes the newest snapshot', () => {
+    const api = createApi();
+    const firstWrite = new Subject<DashboardUiPreferencesResponse>();
+    api.saveDashboardPreferences.mockReturnValueOnce(firstWrite).mockReturnValueOnce(of({
+      revision: 2,
+      preferences: {
+        ordered_widget_ids: ['visible', 'hidden'],
+        hidden_widget_ids: ['hidden'],
+        visualization_by_widget_id: { visible: 'horizontal_bar' as const },
+        baseline_by_report_id: {},
+      },
+    }));
+    const { api: storeApi, store } = createStore(api);
 
-    expect(store.layout()).toEqual(['visible', 'hidden']);
+    store.setVisualization('visible', 'bar');
+    store.setHiddenWidgetIds(['hidden']);
+    store.setVisualization('visible', 'horizontal_bar');
+    expect(storeApi.saveDashboardPreferences).toHaveBeenCalledTimes(1);
+
+    firstWrite.next({
+      revision: 1,
+      preferences: {
+        ordered_widget_ids: ['visible', 'hidden'],
+        hidden_widget_ids: [],
+        visualization_by_widget_id: { visible: 'bar' },
+        baseline_by_report_id: {},
+      },
+    });
+
+    expect(storeApi.saveDashboardPreferences).toHaveBeenCalledTimes(2);
+    expect(storeApi.saveDashboardPreferences).toHaveBeenLastCalledWith({
+      expected_revision: 1,
+      preferences: {
+        ordered_widget_ids: ['visible', 'hidden'],
+        hidden_widget_ids: ['hidden'],
+        visualization_by_widget_id: { visible: 'horizontal_bar' },
+        baseline_by_report_id: {},
+      },
+    });
+    expect(store.preferencesSaving()).toBe(false);
+    expect(store.preferencesSaved()).toBe(true);
+  });
+
+  it('keeps the immediate dashboard change visible and reports a failed write', () => {
+    const api = createApi();
+    api.saveDashboardPreferences.mockReturnValue(throwError(() => ({
+      status: 503,
+      error: { detail: 'Database is read-only.' },
+    })));
+    const { store } = createStore(api);
+
+    store.setVisualization('visible', 'bar');
+
+    expect(store.visualizations()).toEqual({ visible: 'bar' });
+    expect(store.preferencesSaved()).toBe(false);
+    expect(store.preferencesSaving()).toBe(false);
+    expect(store.preferencesError()).toBe('Database is read-only.');
+  });
+
+  it('loads dashboard preferences from the settings API before the first report', () => {
+    const api = createApi();
+    api.dashboardPreferences.mockReturnValue(of({
+      revision: 3,
+      preferences: {
+        ordered_widget_ids: ['hidden', 'visible'],
+        hidden_widget_ids: ['visible'],
+        visualization_by_widget_id: { visible: 'horizontal_bar' },
+        baseline_by_report_id: {},
+      },
+    }));
+    const { store } = createStore(api);
+
+    expect(store.layout()).toEqual(['hidden', 'visible']);
+    expect(store.hiddenWidgetIds()).toEqual(['visible']);
+    expect(store.visualizations()).toEqual({ visible: 'horizontal_bar' });
   });
 
   it('reorders visible widgets without moving hidden panel slots', () => {
@@ -208,7 +296,9 @@ describe('BenchmarkStore', () => {
 
     store.setBaseline('alpha');
     expect(store.baselineTokenizer()).toBe('alpha');
-    expect(JSON.parse(localStorage.getItem('tkben:cross-benchmark-baselines:v1') ?? '{}')).toEqual({ '5': 'alpha' });
+    expect(api.saveDashboardPreferences).toHaveBeenLastCalledWith(expect.objectContaining({
+      preferences: expect.objectContaining({ baseline_by_report_id: { '5': 'alpha' } }),
+    }));
 
     store.selectReport(6);
     expect(store.baselineTokenizer()).toBeNull();
@@ -219,24 +309,39 @@ describe('BenchmarkStore', () => {
     expect(store.baselineTokenizer()).toBe('gamma');
   });
 
-  it('restores a valid report-specific baseline from browser storage', () => {
-    localStorage.setItem(
-      'tkben:cross-benchmark-baselines:v1',
-      JSON.stringify({ '5': 'alpha' }),
-    );
-
-    const { store } = createStore();
+  it('restores a valid report-specific baseline from the active database', () => {
+    const api = createApi();
+    api.dashboardPreferences.mockReturnValue(of({
+      revision: 2,
+      preferences: {
+        ordered_widget_ids: [],
+        hidden_widget_ids: [],
+        visualization_by_widget_id: {},
+        baseline_by_report_id: { '5': 'alpha' },
+      },
+    }));
+    const { store } = createStore(api);
 
     expect(store.baselineTokenizer()).toBe('alpha');
   });
 
-  it('ignores corrupted or invalid baseline preferences and clears only the active report', () => {
-    localStorage.setItem('tkben:cross-benchmark-baselines:v1', '{bad json');
-    const { store } = createStore();
+  it('clears an invalid report baseline from persisted preferences', () => {
+    const api = createApi();
+    api.dashboardPreferences.mockReturnValue(of({
+      revision: 2,
+      preferences: {
+        ordered_widget_ids: [],
+        hidden_widget_ids: [],
+        visualization_by_widget_id: {},
+        baseline_by_report_id: { '5': 'unavailable' },
+      },
+    }));
+    const { store } = createStore(api);
     expect(store.baselineTokenizer()).toBeNull();
-
-    store.setBaseline(null);
-    expect(JSON.parse(localStorage.getItem('tkben:cross-benchmark-baselines:v1') ?? '{}')).toEqual({});
+    expect(api.saveDashboardPreferences).toHaveBeenLastCalledWith(expect.objectContaining({
+      expected_revision: 2,
+      preferences: expect.objectContaining({ baseline_by_report_id: {} }),
+    }));
   });
 
   it('removes a deleted report baseline and updates tags without reloading the report', () => {
@@ -250,7 +355,9 @@ describe('BenchmarkStore', () => {
     expect(api.report).toHaveBeenCalledTimes(1);
 
     store.deleteReport(5);
-    expect(JSON.parse(localStorage.getItem('tkben:cross-benchmark-baselines:v1') ?? '{}')).toEqual({});
+    expect(api.saveDashboardPreferences).toHaveBeenLastCalledWith(expect.objectContaining({
+      preferences: expect.objectContaining({ baseline_by_report_id: {} }),
+    }));
   });
 
   it('leaves existing tags unchanged when the tag API fails', () => {

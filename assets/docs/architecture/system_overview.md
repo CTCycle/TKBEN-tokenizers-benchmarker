@@ -1,5 +1,5 @@
 # System Overview
-Last updated: 2026-09-28
+Last updated: 2026-10-21
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
@@ -54,7 +54,8 @@ Source-level structure, with generated and environment-specific folders omitted:
 │  │  └─ migrations/
 │  │     ├─ versions/0004_benchmark_report_tags.py
 │  │     ├─ versions/0005_managed_job_lifecycle.py
-│  │     └─ versions/0006_database_runtime_settings.py
+│  │     ├─ versions/0006_database_runtime_settings.py
+│  │     └─ versions/0007_dashboard_ui_preferences.py
 │  ├─ scripts/
 │  └─ tests/
 ├─ data/
@@ -82,8 +83,9 @@ Source-level structure, with generated and environment-specific folders omitted:
 Startup loads `settings/.env` bootstrap values and the database-only
 `<TKBEN_DATA_DIR>/database-config.json` before opening the selected database.
 Typed Pydantic models own application defaults; the active database stores
-validated sparse overrides in `application_runtime_settings`. The Settings
-page exposes application settings and a Database section. A database that is
+validated sparse overrides and dashboard UI preferences in
+`application_runtime_settings`. The Settings page exposes application settings
+and a Database section. A database that is
 unavailable at startup leaves the app in a limited repair mode so the Database
 section remains reachable.
 
