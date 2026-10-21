@@ -397,11 +397,18 @@ class RuntimeSettingsRecord(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     schema_version: Mapped[int] = mapped_column(Integer, nullable=False)
     revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    dashboard_revision: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     overrides: Mapped[dict[str, Any]] = mapped_column(
+        JSONObject(), nullable=False, default=dict, server_default="{}"
+    )
+    dashboard_preferences: Mapped[dict[str, Any]] = mapped_column(
         JSONObject(), nullable=False, default=dict, server_default="{}"
     )
     __table_args__ = (
         CheckConstraint("id = 1", name="ck_runtime_settings_singleton"),
         CheckConstraint("schema_version > 0", name="ck_runtime_settings_schema_version"),
         CheckConstraint("revision >= 0", name="ck_runtime_settings_revision"),
+        CheckConstraint("dashboard_revision >= 0", name="ck_dashboard_settings_revision"),
     )

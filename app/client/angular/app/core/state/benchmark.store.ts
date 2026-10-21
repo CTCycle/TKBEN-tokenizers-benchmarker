@@ -11,6 +11,8 @@ import { TokenizersApiService } from '../api/tokenizers-api.service';
 import { errorMessage } from '../api/error-utils';
 import type {
   BenchmarkMetricCatalogCategory,
+  BenchmarkVisualizationKind,
+  DashboardUiPreferences,
   BenchmarkReportListResponse,
   BenchmarkReportQuery,
   BenchmarkReportSort,
@@ -51,16 +53,19 @@ export class BenchmarkStore {
   readonly cancellationRequested = signal(false);
   readonly layout = signal<readonly string[]>([]);
   readonly hiddenWidgetIds = signal<readonly string[]>([]);
-  readonly visualizations = signal<Record<string, string>>({});
+  readonly visualizations = signal<Record<string, BenchmarkVisualizationKind>>({});
   readonly baselineTokenizer = signal<string | null>(null);
+  readonly preferencesSaving = signal(false);
+  readonly preferencesSaved = signal(false);
+  readonly preferencesError = signal<string | null>(null);
   readonly updatingReportTagsId = signal<number | null>(null);
-  private readonly layoutStorageKey = 'tkben:cross-benchmark-dashboard-layout:v3';
-  private readonly baselineStorageKey = 'tkben:cross-benchmark-baselines:v1';
   private baselinePreferences: Record<string, string> = {};
+  private dashboardPreferencesRevision = 0;
+  private dashboardPreferencesLoaded = false;
+  private dashboardPreferencesWriting = false;
+  private queuedDashboardPreferences: DashboardUiPreferences | null = null;
 
   constructor() {
-    this.restoreLayout();
-    this.restoreBaselinePreferences();
     this.loadWorkspaceMeta();
     this.reportRequests.pipe(
       debounceTime(250),
@@ -87,7 +92,26 @@ export class BenchmarkStore {
         this.selectReport(reports[0].report_id);
       }
     });
-    this.refresh();
+    this.loadDashboardPreferences();
+  }
+
+  private loadDashboardPreferences(): void {
+    this.api.dashboardPreferences().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (response) => {
+        this.dashboardPreferencesRevision = response.revision;
+        this.applyDashboardPreferences(response.preferences);
+        this.dashboardPreferencesLoaded = true;
+        this.refresh();
+      },
+      error: (error: unknown) => {
+        this.dashboardPreferencesLoaded = true;
+        this.preferencesError.set(errorMessage(
+          error,
+          'Failed to load dashboard preferences.',
+        ));
+        this.refresh();
+      },
+    });
   }
 
   loadWorkspaceMeta(): void {
@@ -229,7 +253,7 @@ export class BenchmarkStore {
     const [item] = next.splice(from, 1);
     if (item) next.splice(to, 0, item);
     this.layout.set(next);
-    this.persistLayout(next);
+    this.persistDashboardPreferences();
   }
 
   reorderVisible(from: number, to: number): void {
@@ -244,7 +268,7 @@ export class BenchmarkStore {
     visibleIds.splice(to, 0, item);
     visiblePositions.forEach((position, index) => next[position] = visibleIds[index]);
     this.layout.set(next);
-    this.persistLayout(next);
+    this.persistDashboardPreferences();
   }
 
   resetLayout(): void {
@@ -253,51 +277,14 @@ export class BenchmarkStore {
     this.layout.set(defaults);
     this.hiddenWidgetIds.set(widgets.filter((widget) => !widget.default_visible).map((widget) => widget.widget_id));
     this.visualizations.set({});
-    this.persistLayout(defaults);
+    this.persistDashboardPreferences();
   }
 
-  private restoreLayout(): void {
-    try {
-      const raw = localStorage.getItem(this.layoutStorageKey);
-      const parsed: unknown = raw ? JSON.parse(raw) : null;
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return;
-      const preferences = parsed as {
-        ordered_widget_ids?: unknown;
-        hidden_widget_ids?: unknown;
-        visualization_by_widget_id?: unknown;
-      };
-      if (Array.isArray(preferences.ordered_widget_ids) && preferences.ordered_widget_ids.every((item) => typeof item === 'string')) {
-        this.layout.set(preferences.ordered_widget_ids);
-      }
-      if (Array.isArray(preferences.hidden_widget_ids) && preferences.hidden_widget_ids.every((item) => typeof item === 'string')) {
-        this.hiddenWidgetIds.set(preferences.hidden_widget_ids);
-      }
-      if (preferences.visualization_by_widget_id && typeof preferences.visualization_by_widget_id === 'object' && !Array.isArray(preferences.visualization_by_widget_id)) {
-        const visualizations = Object.fromEntries(
-          Object.entries(preferences.visualization_by_widget_id).filter(([, value]) => typeof value === 'string'),
-        );
-        this.visualizations.set(visualizations);
-      }
-    } catch { /* corrupted storage is ignored */ }
-  }
-
-  private restoreBaselinePreferences(): void {
-    try {
-      const raw = localStorage.getItem(this.baselineStorageKey);
-      const parsed: unknown = raw ? JSON.parse(raw) : null;
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return;
-      this.baselinePreferences = Object.fromEntries(
-        Object.entries(parsed).filter(([reportId, tokenizer]) =>
-          /^\d+$/.test(reportId) && typeof tokenizer === 'string' && tokenizer.trim(),
-        ),
-      );
-    } catch { /* corrupted storage is ignored */ }
-  }
-
-  private persistBaselinePreferences(): void {
-    try {
-      localStorage.setItem(this.baselineStorageKey, JSON.stringify(this.baselinePreferences));
-    } catch { /* storage is optional */ }
+  private applyDashboardPreferences(preferences: DashboardUiPreferences): void {
+    this.layout.set([...preferences.ordered_widget_ids]);
+    this.hiddenWidgetIds.set([...preferences.hidden_widget_ids]);
+    this.visualizations.set({ ...preferences.visualization_by_widget_id });
+    this.baselinePreferences = { ...preferences.baseline_by_report_id };
   }
 
   private restoreBaselineForReport(report: BenchmarkRunResponse): void {
@@ -314,35 +301,73 @@ export class BenchmarkStore {
     this.baselineTokenizer.set(null);
     if (stored) {
       delete this.baselinePreferences[String(reportId)];
-      this.persistBaselinePreferences();
+      this.persistDashboardPreferences();
     }
   }
 
   private removeBaselinePreference(reportId: number): void {
     delete this.baselinePreferences[String(reportId)];
-    this.persistBaselinePreferences();
+    this.persistDashboardPreferences();
     if (this.selectedReportId() === reportId) this.baselineTokenizer.set(null);
   }
 
-  private persistLayout(order: readonly string[]): void {
-    try {
-      localStorage.setItem(this.layoutStorageKey, JSON.stringify({
-        version: 3,
-        ordered_widget_ids: order,
-        hidden_widget_ids: this.hiddenWidgetIds(),
-        visualization_by_widget_id: this.visualizations(),
-      }));
-    } catch { /* storage is optional */ }
+  private dashboardPreferencesSnapshot(): DashboardUiPreferences {
+    return {
+      ordered_widget_ids: [...this.layout()],
+      hidden_widget_ids: [...this.hiddenWidgetIds()],
+      visualization_by_widget_id: { ...this.visualizations() },
+      baseline_by_report_id: { ...this.baselinePreferences },
+    };
+  }
+
+  private persistDashboardPreferences(): void {
+    if (!this.dashboardPreferencesLoaded) return;
+    this.queuedDashboardPreferences = this.dashboardPreferencesSnapshot();
+    this.preferencesError.set(null);
+    this.preferencesSaved.set(false);
+    this.preferencesSaving.set(true);
+    this.flushDashboardPreferences();
+  }
+
+  private flushDashboardPreferences(): void {
+    if (this.dashboardPreferencesWriting || !this.queuedDashboardPreferences) return;
+    const preferences = this.queuedDashboardPreferences;
+    this.queuedDashboardPreferences = null;
+    this.dashboardPreferencesWriting = true;
+    this.api.saveDashboardPreferences({
+      expected_revision: this.dashboardPreferencesRevision,
+      preferences,
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (response) => {
+        this.dashboardPreferencesRevision = response.revision;
+        this.dashboardPreferencesWriting = false;
+        if (this.queuedDashboardPreferences) {
+          this.flushDashboardPreferences();
+        } else {
+          this.preferencesSaving.set(false);
+          this.preferencesSaved.set(true);
+        }
+      },
+      error: (error: unknown) => {
+        this.dashboardPreferencesWriting = false;
+        this.preferencesSaving.set(false);
+        this.preferencesSaved.set(false);
+        this.preferencesError.set(errorMessage(
+          error,
+          'Failed to save dashboard preferences.',
+        ));
+      },
+    });
   }
 
   setHiddenWidgetIds(hidden: readonly string[]): void {
     this.hiddenWidgetIds.set([...new Set(hidden)]);
-    this.persistLayout(this.layout());
+    this.persistDashboardPreferences();
   }
 
-  setVisualization(widgetId: string, visualization: string): void {
+  setVisualization(widgetId: string, visualization: BenchmarkVisualizationKind): void {
     this.visualizations.update((current) => ({ ...current, [widgetId]: visualization }));
-    this.persistLayout(this.layout());
+    this.persistDashboardPreferences();
   }
 
   setBaseline(tokenizer: string | null): void {
@@ -356,14 +381,14 @@ export class BenchmarkStore {
     if (!tokenizer) {
       this.baselineTokenizer.set(null);
       delete this.baselinePreferences[String(reportId)];
-      this.persistBaselinePreferences();
+      this.persistDashboardPreferences();
       return;
     }
 
     if (!benchmarkComparisonTokenizers(report.dashboard).includes(tokenizer)) return;
     this.baselineTokenizer.set(tokenizer);
     this.baselinePreferences[String(reportId)] = tokenizer;
-    this.persistBaselinePreferences();
+    this.persistDashboardPreferences();
   }
 
   clearBaseline(): void {

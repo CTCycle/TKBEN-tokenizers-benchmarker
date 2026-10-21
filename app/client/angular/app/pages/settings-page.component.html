@@ -27,11 +27,16 @@
           }
         </div>
       }
+      @if (store.saveStatus() === 'saving') {
+        <p class="settings-save-status" role="status">Saving settings…</p>
+      } @else if (store.saveStatus() === 'saved') {
+        <p class="settings-save-status" role="status">All changes saved.</p>
+      }
 
       @if (store.loading() && !store.settings()) {
         <div class="loading-container settings-loading" role="status"><span class="spinner" aria-hidden="true"></span><p>Loading settings…</p></div>
       } @else if (store.settings()) {
-        <form class="settings-form" [formGroup]="form" (ngSubmit)="saveChanges()">
+        <form class="settings-form" [formGroup]="form" (submit)="$event.preventDefault()">
         <section id="settings-panel-data" class="settings-section" role="tabpanel" aria-labelledby="settings-tab-data" [hidden]="activeTab() !== 'data'">
           <header class="settings-section-header"><p class="panel-label">Data</p><p class="panel-description">Controls for dataset uploads, downloads, and newly generated analysis.</p></header>
 
@@ -133,8 +138,7 @@
         </section>
 
         <footer class="settings-footer" [hidden]="activeTab() === 'keys' || activeTab() === 'database'">
-          <button class="secondary-button" type="button" [disabled]="store.saving() || !store.overriddenKeys().length" (click)="resetAll()">Reset all</button>
-          <button class="primary-button" type="submit" [disabled]="store.saving() || store.loading() || !form.dirty || form.invalid">{{ store.saving() ? 'Saving…' : 'Save changes' }}</button>
+          <button class="secondary-button" type="button" [disabled]="!store.overriddenKeys().length" (click)="resetAll()">Reset all</button>
         </footer>
       </form>
       <section id="settings-panel-keys" class="settings-section settings-key-section" role="tabpanel" aria-labelledby="settings-tab-keys" [hidden]="activeTab() !== 'keys'">

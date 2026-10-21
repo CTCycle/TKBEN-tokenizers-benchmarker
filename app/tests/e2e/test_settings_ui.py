@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from math import ceil
+from typing import Any
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
@@ -389,6 +390,21 @@ def _fill_control(control: Locator, value: Number) -> None:
     control.press("Tab")
 
 ###############################################################################
+def _fill_and_wait_for_autosave(
+    page: Page,
+    control: Locator,
+    value: Number,
+) -> dict[str, Any]:
+    with page.expect_response(
+        lambda response: (
+            response.request.method == "PATCH"
+            and response.url.endswith("/api/settings")
+        )
+    ) as saved_response:
+        _fill_control(control, value)
+    return saved_response.value.json()
+
+###############################################################################
 def _api_value(spec: SettingFieldSpec, value: Number) -> Number:
     if spec.api_multiplier == 1:
         return value
@@ -402,7 +418,7 @@ def _set_tokenizer_values(
     maximum_limit: Number,
     candidate_cap: Number,
 ) -> None:
-    page.get_by_role("tab", name="Tokenizers").click()
+    page.get_by_role("tab", name="Tokenizers", exact=True).click()
     _fill_control(page.get_by_label("Default discovery limit"), default_limit)
     _fill_control(page.get_by_label("Maximum discovery limit"), maximum_limit)
     _fill_control(page.get_by_label("Discovery candidate cap"), candidate_cap)
@@ -518,15 +534,14 @@ def test_settings_all_field_boundaries_and_persistence(
     original_response = api_context.get("/api/settings")
     assert original_response.ok, original_response.text()
     original = original_response.json()
-    save_button = None
 
     try:
         page.goto(f"{base_url}/settings")
         expect(page.locator(".settings-form")).to_be_visible()
-        save_button = page.get_by_role("button", name="Save changes")
+        expect(page.get_by_role("button", name="Save changes")).to_have_count(0)
 
         for spec in SETTINGS_FIELDS:
-            page.get_by_role("tab", name=spec.tab).click()
+            page.get_by_role("tab", name=spec.tab, exact=True).click()
             control = page.get_by_label(spec.label)
 
             for invalid_case in spec.invalid_cases:
@@ -538,7 +553,6 @@ def test_settings_all_field_boundaries_and_persistence(
                 error = page.locator(f"#settings-error-{spec.control_name}")
                 expect(error).to_be_visible()
                 expect(error).to_have_text(invalid_case.expected_error)
-                expect(save_button).to_be_disabled()
 
                 if spec.tab == "Tokenizers":
                     _set_tokenizer_values(
@@ -554,7 +568,6 @@ def test_settings_all_field_boundaries_and_persistence(
                     _fill_control(control, spec.restore_value)
                 expect(control).not_to_have_attribute("aria-invalid", "true")
                 expect(error).not_to_be_visible()
-                expect(save_button).to_be_enabled()
 
             for boundary_value in spec.valid_boundary_values:
                 if spec.tab == "Tokenizers":
@@ -565,12 +578,10 @@ def test_settings_all_field_boundaries_and_persistence(
                 else:
                     _fill_control(control, boundary_value)
                 expect(control).not_to_have_attribute("aria-invalid", "true")
-                expect(save_button).to_be_enabled()
 
             if spec.valid_fractional_value is not None:
                 _fill_control(control, spec.valid_fractional_value)
                 expect(control).not_to_have_attribute("aria-invalid", "true")
-                expect(save_button).to_be_enabled()
 
             if spec.tab == "Tokenizers":
                 _set_tokenizer_values(
@@ -605,7 +616,6 @@ def test_settings_all_field_boundaries_and_persistence(
         expect(page.locator(".settings-inline-error")).to_have_text(
             "Default discovery limit must not exceed the maximum, and the maximum must not exceed the candidate cap."
         )
-        expect(save_button).to_be_disabled()
 
         _set_tokenizer_values(
             page,
@@ -626,7 +636,6 @@ def test_settings_all_field_boundaries_and_persistence(
             "Must be at least Maximum discovery limit."
         )
         expect(page.locator(".settings-inline-error")).to_be_visible()
-        expect(save_button).to_be_disabled()
 
         _set_tokenizer_values(
             page,
@@ -653,7 +662,6 @@ def test_settings_all_field_boundaries_and_persistence(
             "Must be at least Maximum discovery limit."
         )
         expect(page.locator(".settings-inline-error")).to_be_visible()
-        expect(save_button).to_be_disabled()
 
         _set_tokenizer_values(
             page,
@@ -661,13 +669,6 @@ def test_settings_all_field_boundaries_and_persistence(
             maximum_limit=11,
             candidate_cap=17,
         )
-        expect(save_button).to_be_enabled()
-
-        for tab in ("Data", "Tokenizers", "Benchmarks", "Runtime"):
-            page.get_by_role("tab", name=tab).click()
-            for spec in SETTINGS_FIELDS:
-                if spec.tab == tab:
-                    _fill_control(page.get_by_label(spec.label), spec.persisted_value)
 
         expected_settings: dict[str, dict[str, Number]] = {}
         for spec in SETTINGS_FIELDS:
@@ -676,16 +677,18 @@ def test_settings_all_field_boundaries_and_persistence(
             expected_settings.setdefault(group, {})[field] = expected_value
             assert expected_value != original["defaults"][group][field]
 
-        with page.expect_response(
-            lambda response: (
-                response.request.method == "PATCH"
-                and response.url.endswith("/api/settings")
-                and response.ok
+        saved = None
+        for spec in SETTINGS_FIELDS:
+            page.get_by_role("tab", name=spec.tab, exact=True).click()
+            saved = _fill_and_wait_for_autosave(
+                page,
+                page.get_by_label(spec.label),
+                spec.persisted_value,
             )
-        ) as save_response:
-            save_button.click()
-        saved = save_response.value.json()
-        assert saved["revision"] == original["revision"] + 1
+            group, field = spec.api_key.split(".", maxsplit=1)
+            assert saved["settings"][group][field] == expected_settings[group][field]
+        assert saved is not None
+        assert saved["revision"] >= original["revision"]
         assert set(saved["overridden_keys"]) == set(ALL_RUNTIME_SETTING_KEYS)
         for group, fields in expected_settings.items():
             for field, expected_value in fields.items():
@@ -701,7 +704,7 @@ def test_settings_all_field_boundaries_and_persistence(
         page.reload()
         expect(page.locator(".settings-form")).to_be_visible()
         for tab in ("Data", "Tokenizers", "Benchmarks", "Runtime"):
-            page.get_by_role("tab", name=tab).click()
+            page.get_by_role("tab", name=tab, exact=True).click()
             for spec in SETTINGS_FIELDS:
                 if spec.tab == tab:
                     expect(page.get_by_label(spec.label)).to_have_value(
@@ -765,7 +768,7 @@ def test_settings_page_round_trip_and_runtime_effect(
         )
 
         for tab in ("Data", "Tokenizers", "Benchmarks", "Runtime"):
-            expect(page.get_by_role("tab", name=tab)).to_be_visible()
+            expect(page.get_by_role("tab", name=tab, exact=True)).to_be_visible()
 
         expected_labels_by_tab = {
             "Data": [
@@ -794,44 +797,57 @@ def test_settings_page_round_trip_and_runtime_effect(
             ],
         }
         for tab_name, labels in expected_labels_by_tab.items():
-            page.get_by_role("tab", name=tab_name).click()
+            page.get_by_role("tab", name=tab_name, exact=True).click()
             for label in labels:
                 expect(page.get_by_label(label)).to_be_visible()
 
-        page.get_by_role("tab", name="Data").click()
-        save_button = page.get_by_role("button", name="Save changes")
+        page.get_by_role("tab", name="Data", exact=True).click()
+        expect(page.get_by_role("button", name="Save changes")).to_have_count(0)
         histogram = page.get_by_label("Histogram bins")
         histogram.fill("4")
-        expect(save_button).to_be_disabled()
         expect(histogram).to_have_attribute("aria-invalid", "true")
         expect(page.get_by_text("Must be at least 5.")).to_be_visible()
-        histogram.fill(str(histogram_value))
+        saved_settings = _fill_and_wait_for_autosave(
+            page,
+            histogram,
+            histogram_value,
+        )["settings"]
 
-        page.get_by_role("tab", name="Tokenizers").click()
-        page.get_by_label("Default discovery limit").fill(str(target_default))
-        page.get_by_label("Maximum discovery limit").fill(str(target_max))
+        page.get_by_role("tab", name="Tokenizers", exact=True).click()
+        saved_settings = _fill_and_wait_for_autosave(
+            page,
+            page.get_by_label("Default discovery limit"),
+            target_default,
+        )["settings"]
+        saved_settings = _fill_and_wait_for_autosave(
+            page,
+            page.get_by_label("Maximum discovery limit"),
+            target_max,
+        )["settings"]
 
-        page.get_by_role("tab", name="Benchmarks").click()
-        page.get_by_label("Default document cap").fill(str(target_benchmark_documents))
-        page.get_by_label("Default tokenizer batch size").fill(
-            str(target_benchmark_batch)
-        )
-        page.get_by_label("Default parallelism").fill(str(target_benchmark_parallelism))
+        page.get_by_role("tab", name="Benchmarks", exact=True).click()
+        saved_settings = _fill_and_wait_for_autosave(
+            page,
+            page.get_by_label("Default document cap"),
+            target_benchmark_documents,
+        )["settings"]
+        saved_settings = _fill_and_wait_for_autosave(
+            page,
+            page.get_by_label("Default tokenizer batch size"),
+            target_benchmark_batch,
+        )["settings"]
+        saved_settings = _fill_and_wait_for_autosave(
+            page,
+            page.get_by_label("Default parallelism"),
+            target_benchmark_parallelism,
+        )["settings"]
 
-        page.get_by_role("tab", name="Runtime").click()
-        page.get_by_label("Job polling interval (seconds)").fill(
-            str(target_polling_interval)
-        )
-
-        with page.expect_response(
-            lambda response: (
-                response.request.method == "PATCH"
-                and response.url.endswith("/api/settings")
-                and response.ok
-            )
-        ) as save_response:
-            save_button.click()
-        saved_settings = save_response.value.json()["settings"]
+        page.get_by_role("tab", name="Runtime", exact=True).click()
+        saved_settings = _fill_and_wait_for_autosave(
+            page,
+            page.get_by_label("Job polling interval (seconds)"),
+            target_polling_interval,
+        )["settings"]
         assert saved_settings["datasets"]["histogram_bins"] == histogram_value
         assert (
             saved_settings["benchmarks"]["default_max_documents"]
@@ -954,8 +970,8 @@ def test_settings_page_round_trip_and_runtime_effect(
         histogram_row = page.locator(".settings-row").filter(has_text="Histogram bins")
         with page.expect_response(
             lambda response: (
-                response.request.method == "POST"
-                and response.url.endswith("/api/settings/reset")
+                response.request.method == "PATCH"
+                and response.url.endswith("/api/settings")
                 and response.ok
             )
         ):
@@ -965,7 +981,6 @@ def test_settings_page_round_trip_and_runtime_effect(
         )
 
         conflict_value = histogram_default + 1 if histogram_default < 100 else 99
-        page.get_by_label("Histogram bins").fill(str(conflict_value))
         current_response = api_context.get("/api/settings")
         assert current_response.ok, current_response.text()
         current = current_response.json()
@@ -987,7 +1002,7 @@ def test_settings_page_round_trip_and_runtime_effect(
                 and response.status == 409
             )
         ):
-            save_button.click()
+            _fill_control(page.get_by_label("Histogram bins"), conflict_value)
         expect(page.get_by_role("alert")).to_contain_text("Settings changed elsewhere")
         reload_button = page.get_by_role("button", name="Reload settings")
         reload_button.click()

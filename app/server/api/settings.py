@@ -11,6 +11,7 @@ from server.common.constants import API_ROUTE_SETTINGS_RESET, API_ROUTER_PREFIX_
 from server.configurations import (
     apply_runtime_settings_patch,
     get_runtime_settings_state,
+    get_runtime_settings_store,
     reset_runtime_settings,
 )
 from server.configurations.runtime import (
@@ -20,6 +21,8 @@ from server.configurations.runtime import (
 )
 from server.configurations.settings import ServerSettings
 from server.contracts.settings import (
+    DashboardUiPreferencesRequest,
+    DashboardUiPreferencesResponse,
     RuntimeBenchmarkSettingsResponse,
     RuntimeDatasetSettingsResponse,
     RuntimeJobSettingsResponse,
@@ -93,6 +96,48 @@ def _replace_application_snapshot(request: Request) -> None:
 )
 async def get_settings() -> RuntimeSettingsResponse:
     return _build_response()
+
+###############################################################################
+@router.get(
+    "/dashboard",
+    response_model=DashboardUiPreferencesResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_dashboard_preferences() -> DashboardUiPreferencesResponse:
+    state = get_runtime_settings_store().get_dashboard_preferences_state()
+    return DashboardUiPreferencesResponse(
+        revision=state.revision,
+        preferences=state.preferences,
+    )
+
+###############################################################################
+@router.put(
+    "/dashboard",
+    response_model=DashboardUiPreferencesResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def put_dashboard_preferences(
+    payload: DashboardUiPreferencesRequest,
+) -> DashboardUiPreferencesResponse:
+    try:
+        state = get_runtime_settings_store().set_dashboard_preferences(
+            payload.preferences,
+            expected_revision=payload.expected_revision,
+        )
+    except RuntimeSettingsConflictError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+    except RuntimeSettingsPersistenceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to persist dashboard preferences.",
+        ) from exc
+    return DashboardUiPreferencesResponse(
+        revision=state.revision,
+        preferences=state.preferences,
+    )
 
 ###############################################################################
 @router.patch(

@@ -8,6 +8,7 @@ from pathlib import Path
 
 from server.configurations.runtime import RuntimeSettingsStore
 from server.configurations.settings import DatabaseSettings, build_server_settings
+from server.contracts.settings import DashboardUiPreferences
 from server.repositories.database.initializer import initialize_database
 from server.repositories.database.backend import TKBENDatabase
 from server.repositories.runtime_settings import DatabaseRuntimeSettingsPersistence
@@ -53,14 +54,25 @@ def test_runtime_settings_survive_restart_in_their_own_database(tmp_path: Path) 
         {"datasets": {"histogram_bins": 31}},
         expected_revision=0,
     )
+    preferences = DashboardUiPreferences(
+        ordered_widget_ids=["speed"],
+        hidden_widget_ids=[],
+        visualization_by_widget_id={"speed": "bar"},
+        baseline_by_report_id={"7": "alpha"},
+    )
+    first.set_dashboard_preferences(preferences, expected_revision=0)
     restarted = _initialized_store(first_path)
     independent = _initialized_store(second_path)
 
     assert updated.revision == 1
     assert restarted.get_state().settings.datasets.histogram_bins == 31
     assert restarted.get_state().revision == 1
+    assert restarted.get_dashboard_preferences_state().preferences == preferences
+    assert restarted.get_dashboard_preferences_state().revision == 1
     assert independent.get_state().settings.datasets.histogram_bins == 20
     assert independent.get_state().revision == 0
+    assert independent.get_dashboard_preferences_state().preferences == DashboardUiPreferences()
+    assert independent.get_dashboard_preferences_state().revision == 0
     assert not (tmp_path / "runtime-settings.json").exists()
 
 
@@ -89,6 +101,13 @@ def test_legacy_runtime_file_is_removed_only_after_database_commit(
         assert record is not None
         assert record.revision == 4
         assert record.overrides == {"datasets": {"histogram_bins": 28}}
+        assert record.dashboard_revision == 0
+        assert record.dashboard_preferences == {
+            "ordered_widget_ids": [],
+            "hidden_widget_ids": [],
+            "visualization_by_widget_id": {},
+            "baseline_by_report_id": {},
+        }
 
 
 def test_failed_legacy_migration_keeps_source_file(tmp_path: Path) -> None:

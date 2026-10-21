@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 import { TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SettingsApiService } from '../api/settings-api.service';
 import type { RuntimeSettingsResponse } from '../api/api.models';
@@ -122,6 +122,57 @@ describe('SettingsStore', () => {
     });
     expect(store.revision()).toBe(3);
     expect(store.settings()?.jobs.polling_interval).toBe(4);
+    expect(store.saving()).toBe(false);
+    expect(store.saveStatus()).toBe('saved');
+  });
+
+  it('serializes rapid edits and sends the newest snapshot at the updated revision', () => {
+    const api = createApi();
+    const firstWrite = new Subject<RuntimeSettingsResponse>();
+    const secondResponse: RuntimeSettingsResponse = {
+      ...response,
+      revision: 4,
+      settings: { ...response.settings, jobs: { polling_interval: 3.5 } },
+    };
+    api.patch.mockReturnValueOnce(firstWrite).mockReturnValueOnce(of(secondResponse));
+    const { store } = createStore(api);
+    store.load();
+
+    store.save({ jobs: { polling_interval: 2.5 } });
+    store.save({ jobs: { polling_interval: 3.5 } });
+    expect(api.patch).toHaveBeenCalledTimes(1);
+
+    firstWrite.next({
+      ...response,
+      revision: 3,
+      settings: { ...response.settings, jobs: { polling_interval: 2.5 } },
+    });
+
+    expect(api.patch).toHaveBeenCalledTimes(2);
+    expect(api.patch).toHaveBeenLastCalledWith({
+      expected_revision: 3,
+      jobs: { polling_interval: 3.5 },
+    });
+    expect(store.settings()?.jobs.polling_interval).toBe(3.5);
+    expect(store.revision()).toBe(4);
+    expect(store.saving()).toBe(false);
+    expect(store.saveStatus()).toBe('saved');
+  });
+
+  it('keeps persisted state unchanged and reports a failed write', () => {
+    const api = createApi();
+    api.patch.mockReturnValue(throwError(() => ({
+      status: 503,
+      error: { detail: 'Database is read-only.' },
+    })));
+    const { store } = createStore(api);
+    store.load();
+
+    store.save({ jobs: { polling_interval: 3 } });
+
+    expect(store.settings()?.jobs.polling_interval).toBe(response.settings.jobs.polling_interval);
+    expect(store.saveStatus()).toBe('error');
+    expect(store.error()).toBe('Database is read-only.');
     expect(store.saving()).toBe(false);
   });
 

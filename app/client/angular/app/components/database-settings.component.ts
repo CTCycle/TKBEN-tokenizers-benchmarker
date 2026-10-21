@@ -27,6 +27,7 @@ export class DatabaseSettingsComponent implements OnInit {
   protected readonly error = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
   protected readonly testResult = signal<{ success: boolean; message: string } | null>(null);
+  private validatedCandidate: string | null = null;
 
   protected readonly form = new FormGroup({
     backend: new FormControl<DatabaseBackend>('sqlite', { nonNullable: true }),
@@ -44,6 +45,12 @@ export class DatabaseSettingsComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.form.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      this.validatedCandidate = null;
+      this.testResult.set(null);
+      this.error.set(null);
+      this.notice.set(null);
+    });
     this.api.getDatabase().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (configuration) => {
         this.configuration.set(configuration);
@@ -85,10 +92,13 @@ export class DatabaseSettingsComponent implements OnInit {
     }
     this.testing.set(true);
     this.testResult.set(null);
+    this.validatedCandidate = null;
     this.error.set(null);
-    this.api.testDatabase(this.toRequest()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    const request = this.toRequest();
+    this.api.testDatabase(request).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (result) => {
         this.testResult.set({ success: result.success, message: result.message });
+        this.validatedCandidate = result.success ? JSON.stringify(request) : null;
         this.testing.set(false);
       },
       error: (response: { error?: { detail?: string } }) => {
@@ -99,7 +109,7 @@ export class DatabaseSettingsComponent implements OnInit {
   }
 
   protected switchDatabase(): void {
-    if (this.form.invalid || this.testing() || this.switching()) {
+    if (this.form.invalid || this.testing() || this.switching() || !this.hasSuccessfulTest()) {
       this.form.markAllAsTouched();
       return;
     }
@@ -117,6 +127,15 @@ export class DatabaseSettingsComponent implements OnInit {
         this.switching.set(false);
       },
     });
+  }
+
+  protected hasSuccessfulTest(): boolean {
+    return Boolean(
+      this.testResult()?.success
+      && this.validatedCandidate
+      && !this.form.invalid
+      && this.validatedCandidate === JSON.stringify(this.toRequest()),
+    );
   }
 
   protected currentLabel(): string {

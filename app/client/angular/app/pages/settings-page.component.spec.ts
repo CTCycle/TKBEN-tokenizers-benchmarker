@@ -41,7 +41,10 @@ const current: RuntimeSettingsValues = {
   jobs: { polling_interval: 2 },
 };
 
-afterEach(() => TestBed.resetTestingModule());
+afterEach(() => {
+  TestBed.resetTestingModule();
+  vi.useRealTimers();
+});
 
 describe('SettingsPageComponent', () => {
   function createPage(overriddenKeys: string[] = ['datasets.histogram_bins']) {
@@ -58,6 +61,7 @@ describe('SettingsPageComponent', () => {
       save: vi.fn(),
       reset: vi.fn(),
       reload: vi.fn(),
+      notePendingEdit: vi.fn(),
       isOverridden: vi.fn((key: string) => overriddenKeys.includes(key)),
     };
     TestBed.configureTestingModule({ providers: [
@@ -68,7 +72,8 @@ describe('SettingsPageComponent', () => {
       form: FormGroup;
       selectTab: (tab: string) => void;
       handleTabKeydown: (event: KeyboardEvent, tab: string) => void;
-      saveChanges: () => void;
+      persistCurrentSettings: () => void;
+      ngOnDestroy: () => void;
       resetSetting: (key: string) => void;
       resetAll: () => void;
       reloadAfterConflict: () => void;
@@ -138,7 +143,7 @@ describe('SettingsPageComponent', () => {
     expect(page.fieldError('maxDiscoveryCandidates')).toBe('Must be at least Maximum discovery limit.');
   });
 
-  it('converts MiB to bytes and sends an explicit typed save patch', () => {
+  it('converts MiB to bytes and sends a typed autosave patch', () => {
     const { page, store } = createPage([]);
     page.form.patchValue({
       datasetMaxUploadMiB: 40,
@@ -149,7 +154,7 @@ describe('SettingsPageComponent', () => {
       benchmarkDefaultParallelism: 4,
     });
     page.form.markAsDirty();
-    page.saveChanges();
+    page.persistCurrentSettings();
 
     expect(store.save).toHaveBeenCalledWith(expect.objectContaining({
       datasets: expect.objectContaining({
@@ -165,14 +170,50 @@ describe('SettingsPageComponent', () => {
     }));
   });
 
-  it('resets overridden values and offers safe conflict reload', () => {
+  it('debounces rapid control changes and autosaves the latest valid value', () => {
+    vi.useFakeTimers();
+    const { page, store } = createPage();
+
+    page.form.controls['histogramBins'].setValue(31);
+    vi.advanceTimersByTime(250);
+    page.form.controls['histogramBins'].setValue(32);
+    vi.advanceTimersByTime(399);
+    expect(store.save).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1);
+    expect(store.save).toHaveBeenCalledTimes(1);
+    expect(store.save).toHaveBeenCalledWith(expect.objectContaining({
+      datasets: expect.objectContaining({ histogram_bins: 32 }),
+    }));
+  });
+
+  it('persists a valid pending edit when leaving the settings page', () => {
+    const { page, store } = createPage();
+
+    page.form.controls['histogramBins'].setValue(33);
+    page.form.markAsDirty();
+    page.ngOnDestroy();
+
+    expect(store.save).toHaveBeenCalledWith(expect.objectContaining({
+      datasets: expect.objectContaining({ histogram_bins: 33 }),
+    }));
+  });
+
+  it('resets overridden values through the autosave form and offers safe conflict reload', () => {
     const { page, store } = createPage();
 
     page.resetSetting('datasets.histogram_bins');
-    expect(store.reset).toHaveBeenCalledWith(['datasets.histogram_bins']);
+    expect(page.form.controls['histogramBins'].value).toBe(defaults.datasets.histogram_bins);
+    expect(store.reset).not.toHaveBeenCalled();
+    expect(store.save).toHaveBeenCalledTimes(1);
+    expect(store.save).toHaveBeenCalledTimes(1);
 
     page.resetAll();
-    expect(store.reset).toHaveBeenCalledWith();
+    expect(page.form.controls['histogramBins'].value).toBe(defaults.datasets.histogram_bins);
+    expect(page.form.controls['benchmarkDefaultMaxDocuments'].value)
+      .toBe(defaults.benchmarks.default_max_documents);
+    expect(store.save).toHaveBeenCalledTimes(2);
+    expect(store.save).toHaveBeenCalledTimes(2);
 
     store.conflict.set(true);
     page.reloadAfterConflict();

@@ -186,6 +186,9 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
     dataset_created = False
     browser_errors: list[str] = []
     browser_http_errors: list[tuple[int, str]] = []
+    original_dashboard_response = api_context.get("/api/settings/dashboard")
+    assert original_dashboard_response.ok, original_dashboard_response.text()
+    original_dashboard_state = original_dashboard_response.json()
 
     try:
         QA_DIR.mkdir(parents=True, exist_ok=True)
@@ -327,7 +330,12 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
             time.sleep(review_pause_seconds)
 
         baseline = page.get_by_label("Baseline")
-        baseline.select_option(tokenizer_names[0])
+        with page.expect_response(
+            lambda response: response.request.method == "PUT"
+            and response.url.endswith("/api/settings/dashboard")
+        ) as baseline_save:
+            baseline.select_option(tokenizer_names[0])
+        assert baseline_save.value.ok, baseline_save.value.text()
         comparison_labels = page.locator(".benchmark-comparison-strip__label")
         expect(comparison_labels).to_have_count(3)
         expect(comparison_labels.first).to_have_text(
@@ -347,12 +355,12 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
         assert candidate_delta.endswith("%"), candidate_delta
         float(candidate_delta.removesuffix("%").replace("+", ""))
         assert page.locator(".benchmark-comparison-strip").count() > 0
-        stored_baselines = page.evaluate(
-            "() => JSON.parse(localStorage.getItem('tkben:cross-benchmark-baselines:v1') || '{}')"
-        )
-        assert stored_baselines.get(str(two_tokenizer_id)) == tokenizer_names[0], (
-            f"Baseline preference was not persisted before reload: {stored_baselines}"
-        )
+        stored_preferences_response = api_context.get("/api/settings/dashboard")
+        assert stored_preferences_response.ok, stored_preferences_response.text()
+        stored_preferences = stored_preferences_response.json()["preferences"]
+        assert stored_preferences["baseline_by_report_id"].get(
+            str(two_tokenizer_id)
+        ) == tokenizer_names[0]
 
         with page.expect_response(
             lambda response: response.request.method == "GET"
@@ -369,12 +377,12 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
                 two_tokenizer_name, exact=True
             )
         ).to_be_visible()
-        restored_baselines = page.evaluate(
-            "() => JSON.parse(localStorage.getItem('tkben:cross-benchmark-baselines:v1') || '{}')"
-        )
-        assert restored_baselines.get(str(two_tokenizer_id)) == tokenizer_names[0], (
-            f"Baseline preference storage changed during reload: {restored_baselines}"
-        )
+        restored_preferences_response = api_context.get("/api/settings/dashboard")
+        assert restored_preferences_response.ok, restored_preferences_response.text()
+        restored_preferences = restored_preferences_response.json()["preferences"]
+        assert restored_preferences["baseline_by_report_id"].get(
+            str(two_tokenizer_id)
+        ) == tokenizer_names[0]
         reloaded_baseline_value = page.get_by_label("Baseline").input_value()
         reloaded_comparison_count = page.locator(
             ".benchmark-comparison-strip__label"
@@ -383,7 +391,7 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
             "Baseline preference did not hydrate into the rendered dashboard: "
             f"report={two_tokenizer_id}, value={reloaded_baseline_value!r}, "
             f"comparison_strips={reloaded_comparison_count}, "
-            f"preferences={restored_baselines}"
+            f"preferences={restored_preferences}"
         )
         expect(page.locator(".benchmark-comparison-strip__label").first).to_have_text(
             f"Baseline: {tokenizer_names[0]}"
@@ -536,9 +544,14 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
         )
         assert len(original_order) >= 2
         widgets.nth(0).focus()
-        widgets.nth(0).press("Space")
-        widgets.nth(0).press("ArrowDown")
-        widgets.nth(0).press("Space")
+        with page.expect_response(
+            lambda response: response.request.method == "PUT"
+            and response.url.endswith("/api/settings/dashboard")
+        ) as layout_save:
+            widgets.nth(0).press("Space")
+            widgets.nth(0).press("ArrowDown")
+            widgets.nth(0).press("Space")
+        assert layout_save.value.ok, layout_save.value.text()
         reordered = widgets.evaluate_all(
             "elements => elements.map(element => element.getAttribute('aria-label'))"
         )
@@ -556,7 +569,12 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
             "button", name="Use Horizontal bar chart for Vocabulary size"
         )
         expect(horizontal_bar).to_be_visible()
-        horizontal_bar.click()
+        with page.expect_response(
+            lambda response: response.request.method == "PUT"
+            and response.url.endswith("/api/settings/dashboard")
+        ) as visualization_save:
+            horizontal_bar.click()
+        assert visualization_save.value.ok, visualization_save.value.text()
         expect(horizontal_bar).to_have_attribute("aria-pressed", "true")
         page.reload()
         expect(
@@ -585,8 +603,12 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
         ).filter(has_text="Vocabulary size")
         expect(vocabulary_widget_row).to_have_count(1)
         vocabulary_widget = vocabulary_widget_row.get_by_role("checkbox")
-        vocabulary_widget.uncheck()
-        customize_dialog.get_by_role("button", name="Apply").click()
+        with page.expect_response(
+            lambda response: response.request.method == "PUT"
+            and response.url.endswith("/api/settings/dashboard")
+        ) as visibility_save:
+            vocabulary_widget.uncheck()
+        assert visibility_save.value.ok, visibility_save.value.text()
         expect(
             page.locator('article[aria-label="Vocabulary size widget"]')
         ).to_have_count(0)
@@ -594,7 +616,12 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
         expect(
             page.locator('article[aria-label="Vocabulary size widget"]')
         ).to_have_count(0)
-        page.get_by_role("button", name="Restore default layout").click()
+        with page.expect_response(
+            lambda response: response.request.method == "PUT"
+            and response.url.endswith("/api/settings/dashboard")
+        ) as reset_save:
+            page.get_by_role("button", name="Restore default layout").click()
+        assert reset_save.value.ok, reset_save.value.text()
         expect(
             page.get_by_role("button", name="Use Vertical bar chart for Vocabulary size")
         ).to_have_attribute("aria-pressed", "true")
@@ -636,6 +663,19 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
             )
             assert delete_report.status in {204, 404}, delete_report.text()
             assert api_context.get(f"/api/benchmarks/reports/{report_id}").status == 404
+
+        current_dashboard_response = api_context.get("/api/settings/dashboard")
+        assert current_dashboard_response.ok, current_dashboard_response.text()
+        current_dashboard_state = current_dashboard_response.json()
+        if current_dashboard_state["preferences"] != original_dashboard_state["preferences"]:
+            restored_dashboard_response = api_context.put(
+                "/api/settings/dashboard",
+                data={
+                    "expected_revision": current_dashboard_state["revision"],
+                    "preferences": original_dashboard_state["preferences"],
+                },
+            )
+            assert restored_dashboard_response.ok, restored_dashboard_response.text()
 
         for tokenizer_name in tokenizer_names:
             delete_tokenizer = api_context.delete(

@@ -550,6 +550,20 @@ export interface BenchmarkDashboardDistribution { tokenizer: string; min: number
 export interface BenchmarkDashboardBucketPoint { tokenizer: string; bucket: string; value: number; }
 export interface BenchmarkDashboardHistogramBin { tokenizer: string; bin_low: number; bin_high: number; count: number; proportion: number; }
 export type BenchmarkVisualizationKind = 'bar' | 'horizontal_bar' | 'interval_bar' | 'dot_whisker' | 'box_plot' | 'histogram' | 'grouped_bar' | 'heatmap';
+export interface DashboardUiPreferences {
+  ordered_widget_ids: string[];
+  hidden_widget_ids: string[];
+  visualization_by_widget_id: Record<string, BenchmarkVisualizationKind>;
+  baseline_by_report_id: Record<string, string>;
+}
+export interface DashboardUiPreferencesResponse {
+  revision: number;
+  preferences: DashboardUiPreferences;
+}
+export interface DashboardUiPreferencesUpdate {
+  expected_revision: number;
+  preferences: DashboardUiPreferences;
+}
 export interface BenchmarkDashboardWidgetData {
   widget_id: string; metric_keys: string[]; category_key: string; category_label: string;
   label: string; description: string; unit: string; display_format: string;

@@ -269,14 +269,18 @@ export class CrossBenchmarkPageComponent {
   protected toggleCustomizeWidget(widgetId: string, enabled: boolean): void {
     const next = new Set(this.customizeDraft());
     if (enabled) next.add(widgetId); else next.delete(widgetId);
+    if (next.size === 0) return;
     this.customizeDraft.set([...next]);
+    this.persistCustomizeDraft();
   }
 
   protected toggleCustomizeCategory(category: string, enabled: boolean): void {
     const ids = this.allOrderedWidgets().filter((widget) => widget.category_label === category).map((widget) => widget.widget_id);
     const next = new Set(this.customizeDraft());
     ids.forEach((id) => enabled ? next.add(id) : next.delete(id));
+    if (next.size === 0) return;
     this.customizeDraft.set([...next]);
+    this.persistCustomizeDraft();
   }
 
   protected customizeCategorySelected(category: string): boolean {
@@ -284,10 +288,9 @@ export class CrossBenchmarkPageComponent {
     return ids.length > 0 && ids.every((id) => this.customizeDraft().includes(id));
   }
 
-  protected applyCustomize(): void {
+  private persistCustomizeDraft(): void {
     const visible = new Set(this.customizeDraft());
     this.store.setHiddenWidgetIds(this.allOrderedWidgets().filter((widget) => !visible.has(widget.widget_id)).map((widget) => widget.widget_id));
-    this.customizeOpen.set(false);
   }
 
   protected runMetricCategorySelected(category: BenchmarkMetricCatalogCategory): boolean {
@@ -361,7 +364,7 @@ export class CrossBenchmarkPageComponent {
     }
   }
 
-  protected setVisualization(widgetId: string, value: string): void {
+  protected setVisualization(widgetId: string, value: BenchmarkVisualizationKind): void {
     this.store.setVisualization(widgetId, value);
   }
 

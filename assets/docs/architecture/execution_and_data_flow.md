@@ -1,5 +1,5 @@
 # Execution and Data Flow
-Last updated: 2026-09-22
+Last updated: 2026-10-21
 
 ## Layered Architecture
 
@@ -53,8 +53,10 @@ The bootstrap loads `.env` values, then resolves the independent
 `create_app()` places that immutable bootstrap snapshot on application state.
 Lifespan startup initializes the selected database and binds
 `RuntimeSettingsStore` to its `application_runtime_settings` row. Settings API
-updates commit before replacing the in-memory snapshot; later operations see
-the new values while existing operations retain their captured snapshot. The
+updates commit before replacing the in-memory snapshot; dashboard UI
+preferences use an independent row revision and commit before the client marks
+them saved. Later operations see the new values while existing operations
+retain their captured snapshot. The
 Database Settings API validates and initializes a target before replacing the
 shared backend; a request gate drains ordinary operations and managed jobs must
 be idle. PostgreSQL uses the fixed `postgresql+psycopg` driver.

@@ -1,5 +1,5 @@
 # Backend API
-Last updated: 2026-09-19
+Last updated: 2026-10-21
 
 ## API Prefix
 All routers are included with `prefix="/api"` during backend startup.
@@ -14,9 +14,15 @@ All routers are included with `prefix="/api"` during backend startup.
   path, database, security, or secret configuration.
 - `PATCH /api/settings` — applies a typed partial update with
   `expected_revision`; successful writes are authoritative and apply to new
-  operations.
+  operations. The Settings UI debounces continuous numeric input and saves
+  changes automatically.
 - `POST /api/settings/reset` — removes selected overrides or all overrides with
-  `expected_revision`. Removing the last override deletes the runtime file.
+  `expected_revision`.
+- `GET /api/settings/dashboard` — returns database-backed widget layout,
+  visibility, visualization, and report-specific baseline preferences with an
+  independent revision.
+- `PUT /api/settings/dashboard` — saves the complete dashboard preference
+  snapshot with `expected_revision`; dashboard controls persist immediately.
 
 ## Datasets
 - `GET /api/datasets/list` — returns `{datasets, count}`; optional `search` (trimmed, max 160 characters), `source=all|public|custom`, `document_count_operator=at_least|at_most`, and non-negative `document_count` filters. Filtering is applied server-side to the catalog.

@@ -1,5 +1,5 @@
 # Persistence
-Last updated: 2026-10-20
+Last updated: 2026-10-21
 
 ## Storage selection
 
@@ -40,10 +40,14 @@ to the current contract, `0004_benchmark_report_tags` adds the relational
 report tag array without changing the immutable report payload, and
 `0005_managed_job_lifecycle` adds durable managed-job lifecycle records.
 Revision `0006_database_runtime_settings` adds the singleton row for sparse
-user-editable application settings.
+user-editable application settings. Revision `0007_dashboard_ui_preferences`
+adds report-dashboard layout, chart, and baseline preferences to that row with
+an independent revision counter.
 
-The active database owns all non-database application settings. Runtime
-switching first connects to and migrates the candidate, drains in-flight API
+The active database owns all non-database application settings, including
+report-dashboard layout, visibility, visualization, and baseline preferences.
+Runtime setting values and dashboard preferences have separate revision
+counters in the singleton row. Runtime switching first connects to and migrates the candidate, drains in-flight API
 requests, and refuses to switch while managed jobs are pending or running. It
 then replaces the shared backend and loads that database's settings; a failed
 activation retains the prior connection and configuration. Settings are never
@@ -138,7 +142,8 @@ Persistence ownership follows the repository/service split:
   by `JobRepository`; `JobManager` coordinates runner state and writes through
   that repository.
 - `repositories/runtime_settings.py` owns the singleton settings persistence row;
-  it stores only user-editable application settings in the selected database.
+  it stores sparse runtime overrides and dashboard UI preferences in the
+  selected database.
 - `services/benchmark_reports.py` owns benchmark report persistence
   orchestration through `BenchmarkReportService`.
 - The report service uses the benchmark repository/database boundary for
@@ -227,7 +232,7 @@ Use the application initializer (launcher option 4 or
 unversioned database is intentionally a hard failure and must be restored from a
 versioned backup or recreated.
 
-The current repository head is `0006_database_runtime_settings`. Managed-job rows,
+The current repository head is `0007_dashboard_ui_preferences`. Managed-job rows,
 ready dataset rows, tokenizer rows, reports, and canonical tokenizer artifacts
 are stored under the configured data root and are retained across
 application restarts unless explicitly deleted. Dataset files and tokenizer
