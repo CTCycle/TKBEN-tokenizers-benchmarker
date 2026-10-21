@@ -3,7 +3,7 @@
 
 """
 E2E tests for tokenizer API endpoints.
-Covers /api/tokenizers/settings, /api/tokenizers/discover, /api/tokenizers/upload, and per-item deletion.
+Covers /api/tokenizers/discover, /api/tokenizers/upload, and per-item deletion.
 """
 
 from collections.abc import Generator
@@ -83,18 +83,6 @@ def _assert_tokenizer_artifact_matches_vocabulary(
     stored = json.loads(artifact_path.read_text(encoding="utf-8"))
     expected = json.loads(expected_payload)
     assert stored["model"]["vocab"] == expected["model"]["vocab"]
-
-###############################################################################
-def test_get_tokenizer_settings(api_context: APIRequestContext) -> None:
-    """GET /api/tokenizers/settings should return configured discovery limits."""
-    response = api_context.get("/api/tokenizers/settings")
-    assert response.ok
-    data = response.json()
-    assert "default_discovery_limit" in data
-    assert "max_discovery_limit" in data
-    assert "max_discovery_candidates" in data
-    assert "metadata_candidate_multiplier" in data
-    assert 1 <= data["default_discovery_limit"] <= data["max_discovery_limit"]
 
 ###############################################################################
 @pytest.mark.skipif(

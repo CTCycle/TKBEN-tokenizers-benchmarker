@@ -167,13 +167,6 @@ class TokenizerDownloadResponse(BaseModel):
     failed_count: int = Field(default=0)
 
 ###############################################################################
-class TokenizerSettingsResponse(BaseModel):
-    default_discovery_limit: int
-    max_discovery_limit: int
-    max_discovery_candidates: int
-    metadata_candidate_multiplier: int
-
-###############################################################################
 class TokenizerUploadResponse(BaseModel):
     """Response schema for custom tokenizer upload."""
 

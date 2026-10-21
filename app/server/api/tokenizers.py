@@ -30,7 +30,6 @@ from server.contracts.tokenizers import (
     TokenizerListResponse,
     TokenizerReportGenerateRequest,
     TokenizerReportResponse,
-    TokenizerSettingsResponse,
     TokenizerUploadResponse,
     TokenizerVocabularyPageResponse,
 )
@@ -44,7 +43,6 @@ from server.common.constants import (
     API_ROUTE_TOKENIZERS_REPORT_LATEST,
     API_ROUTE_TOKENIZERS_REPORT_VOCABULARY,
     API_ROUTE_TOKENIZERS_DISCOVER,
-    API_ROUTE_TOKENIZERS_SETTINGS,
     API_ROUTE_TOKENIZERS_UPLOAD,
     API_ROUTER_PREFIX_TOKENIZERS,
 )
@@ -70,21 +68,6 @@ from server.services.managed_jobs import (
 
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_TOKENIZERS, tags=["tokenizers"])
-
-###############################################################################
-@router.get(
-    API_ROUTE_TOKENIZERS_SETTINGS,
-    response_model=TokenizerSettingsResponse,
-    status_code=status.HTTP_200_OK,
-    deprecated=True,
-)
-async def get_tokenizer_settings() -> TokenizerSettingsResponse:
-    return TokenizerSettingsResponse(
-        default_discovery_limit=get_server_settings().tokenizers.default_discovery_limit,
-        max_discovery_limit=get_server_settings().tokenizers.max_discovery_limit,
-        max_discovery_candidates=get_server_settings().tokenizers.max_discovery_candidates,
-        metadata_candidate_multiplier=get_server_settings().tokenizers.metadata_candidate_multiplier,
-    )
 
 ###############################################################################
 def _build_tokenizer_discovery_query(
