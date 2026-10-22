@@ -100,7 +100,7 @@ export class BenchmarkMetricChartComponent implements AfterViewInit, OnDestroy {
   }
 
   protected pointViewBox(): string {
-    return `0 0 ${this.chartWidth()} 260`;
+    return `0 0 ${this.chartWidth()} 284`;
   }
 
   protected groupedViewBox(): string {
