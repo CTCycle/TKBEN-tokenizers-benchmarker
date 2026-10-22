@@ -1,5 +1,5 @@
 # Release Procedure
-Last updated: 2026-10-21
+Last updated: 2026-10-22
 
 ## Release model
 
@@ -10,19 +10,17 @@ add packaging as part of a source release.
 The public release version and component versions use the existing repository
 convention:
 
-| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` | `v4.5.0` | `v4.5.1` | `v4.6.0` | `v4.6.1` | `v4.7.0` public |
+| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` | `v4.5.0` | `v4.5.1` | `v4.6.0` | `v4.6.1` | `v4.7.0` | `v4.7.1` |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` | `4.4.0` | `4.5.0` | `4.5.1` | `4.6.0` | `4.6.1` | `4.7.0` |
-| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` | `3.4.0` | `3.5.0` | `3.5.1` | `3.6.0` | `3.6.1` | `3.7.0` |
-| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` | `2.4.0` | `2.5.0` | `2.5.1` | `2.6.0` | `2.6.1` | `2.7.0` |
+| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` | `4.4.0` | `4.5.0` | `4.5.1` | `4.6.0` | `4.6.1` | `4.7.0` | `4.7.1` |
+| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` | `3.4.0` | `3.5.0` | `3.5.1` | `3.6.0` | `3.6.1` | `3.7.0` | `3.7.1` |
+| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` | `2.4.0` | `2.5.0` | `2.5.1` | `2.6.0` | `2.6.1` | `2.7.0` | `2.7.1` |
 
-The latest published release is `v4.6.1` (backend `3.6.1`, frontend `2.6.1`);
+The latest published release is `v4.7.1` (backend `3.7.1`, frontend `2.7.1`);
+its publication record is in the [project status ledger](../project_status_ledger.md#release-gate).
 `v4.7.0` (backend `3.7.0`, frontend `2.7.0`) was published on 2026-10-22 from
 annotated tag `v4.7.0` on `main` commit `7dc3d7e372bcc60cb7a75b7d12c07a4d51d42840`
 (re-published with PR #8 merged; hosted CI passed both jobs; source-only, no binary assets).
-Its annotated tag points to validated `main` commit
-`d198f203525bb57603060db7283f7d01432269b3`; publication and validation evidence
-are recorded in the [project status ledger](../project_status_ledger.md#release-gate).
 
 ## v4.6.0 release notes
 
@@ -40,6 +38,24 @@ The v4.6.0 delta is based on verified repository changes after `v4.5.1`:
 API version `1.2.0`, benchmark schema version `3`, and report version `5`
 remain unchanged. The public release status and final commit are recorded in
 the [project status ledger](../project_status_ledger.md#release-gate).
+
+## v4.7.1 patch release notes
+
+The v4.7.1 release increments the public release, backend, and frontend patch
+versions to `4.7.1`, `3.7.1`, and `2.7.1`. The verified changes since v4.7.0
+include:
+
+- fix the cross-benchmark bar-chart x-axis labels, which were clipped by the
+  chart edge and overlapped the "Tokenizer" axis title when several
+  tokenizers were compared;
+- make the E2E suite remove the datasets and tokenizers it creates in the live
+  database; and
+- refresh the README screenshots (dataset dashboard, tokenizer report,
+  cross-benchmark comparison) with a populated, realistic workload.
+
+API version `1.2.0`, benchmark schema version `3`, and report version `5`
+remain unchanged. Validation evidence is recorded as `V-20261022` (v4.7.1
+patch smoke).
 
 ## v4.7.0 release notes
 
