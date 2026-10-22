@@ -10,14 +10,16 @@ add packaging as part of a source release.
 The public release version and component versions use the existing repository
 convention:
 
-| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` | `v4.5.0` | `v4.5.1` | `v4.6.0` | `v4.6.1` | `v4.7.0` candidate |
+| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` | `v4.5.0` | `v4.5.1` | `v4.6.0` | `v4.6.1` | `v4.7.0` public |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` | `4.4.0` | `4.5.0` | `4.5.1` | `4.6.0` | `4.6.1` | `4.7.0` |
 | Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` | `3.4.0` | `3.5.0` | `3.5.1` | `3.6.0` | `3.6.1` | `3.7.0` |
 | Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` | `2.4.0` | `2.5.0` | `2.5.1` | `2.6.0` | `2.6.1` | `2.7.0` |
 
 The latest published release is `v4.6.1` (backend `3.6.1`, frontend `2.6.1`);
-`v4.7.0` (backend `3.7.0`, frontend `2.7.0`) is the prepared candidate.
+`v4.7.0` (backend `3.7.0`, frontend `2.7.0`) was published on 2026-10-22 from
+annotated tag `v4.7.0` on `main` commit `f628688e325bcb7d903fbe49e830b0f32ddb9248`
+(hosted CI run `39750287164` passed both jobs; source-only, no binary assets).
 Its annotated tag points to validated `main` commit
 `d198f203525bb57603060db7283f7d01432269b3`; publication and validation evidence
 are recorded in the [project status ledger](../project_status_ledger.md#release-gate).
