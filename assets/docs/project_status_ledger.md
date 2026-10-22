@@ -292,6 +292,19 @@ and reviewed disposable screenshots/logs. T4-03 gated Hugging Face access and
 physical low-disk recovery remain non-blocking validation debt as described
 above.
 
+The PATCH release `v4.7.1` (backend `3.7.1`, frontend `2.7.1`) was published
+as a source-only GitHub Release on 2026-10-22:
+[v4.7.1](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases/tag/v4.7.1).
+Annotated tag `v4.7.1` was created from `main` and verified to peel to release
+commit `b8ae9fe5fdb11126387cc440903ef73f0a555b22`; `main` and `develop` pointed
+to that commit before tagging. Hosted CI run
+[39800902959](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/39800902959)
+passed the frontend, backend, and Windows launcher jobs on that commit. The
+release has no uploaded binary assets. Before publication, the merged
+`README-design`, `fix/tkben-spa-lifecycle-20261022`, and detached-WIP branches
+were verified to hold no unique commits and were removed, leaving only `main`
+and `develop`.
+
 The previous gate record remains historical: the v4.5.0 release commit
 `f8dee1da9084138bd52f3d08437269d3821ba5d6` passed hosted CI run
 [36158666979](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/runs/36158666979),
