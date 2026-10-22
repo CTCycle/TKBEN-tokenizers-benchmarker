@@ -6,6 +6,10 @@ Last updated: 2026-10-22
 - Type check expectations are Pylance-compatible typing.
 - Run `app/server/.venv/Scripts/python.exe -m basedpyright -p app/server/pyrightconfig.json` from the repository root; the configured gate requires zero errors and does not fail on warnings.
 - Tests use pytest.
+- Backend tests are grouped into seven unit suites and six live browser suites;
+  the one-off dataset streaming check lives with dataset behavior. Angular tests
+  are grouped into five spec files by state, pages, startup, dashboards, and API
+  contracts.
 - Minimum test impact coverage:
   - `tests/unit`
   - relevant `tests/e2e` when behavior crosses API and UI boundaries
@@ -19,11 +23,13 @@ The backend job creates `app/server/.venv` before installing the test extra,
 initializes the embedded SQLite schema, and then runs the checks from that
 environment so CI matches the repository Pyright and runtime configuration.
 The Windows `app/tests/run_tests.bat` runner additionally supports live
-backend/frontend startup, the configured pytest target, and optional frontend
-test scripts. In live mode it installs from the frontend lockfile and rebuilds
-the current Angular sources before exercising the UI. Its process helper
-records PID, executable path, and start time and refuses to terminate an
-unverified process. The test preview runs with a strict port.
+backend/frontend startup, the configured pytest target, and the frontend unit
+suite. In live mode it installs from the frontend lockfile and rebuilds the
+current Angular sources before exercising the UI. It refuses to reuse occupied
+test ports and gives each live run an isolated data and log directory below
+`runtimes/cache`. Its process helper records PID, executable path, and start
+time and refuses to terminate an unverified process. The test preview runs with
+a strict port.
 
 Hosted CI also includes a Windows PowerShell syntax check and focused
 test-owned preview startup/deep-link/cleanup smoke. These checks are not a
@@ -46,9 +52,9 @@ not a second source of truth.
 - `runtimes/cache` is the single disposable cache root. Pytest’s collection
   cache and deterministic basetemp are `runtimes/cache/pytest-state` and
   `runtimes/cache/pytest-basetemp-current`, including when pytest is invoked
-  directly. The pytest hook also routes bytecode, coverage, Matplotlib, and
-  Playwright state below this root.
-- Ruff, mypy, uv, pip, npm, Angular, and other development-tool caches resolve
+  directly. The pytest hook also routes bytecode, Matplotlib, and Playwright
+  state below this root.
+- Ruff, uv, pip, npm, Angular, and other development-tool caches resolve
   to named children of `runtimes/cache`; the launcher, batch runner, CI, and
   tool configuration use the same paths.
 - Downloaded datasets and Hugging Face tokenizer artifacts are persistent
@@ -66,7 +72,7 @@ not a second source of truth.
 
 ## Cross-language Quality Gates
 - Keep architecture layering intact: API -> contracts/services -> repository.
-- Treat `test_architecture_boundaries.py` as the executable ownership and
+- Treat `test_application_contracts.py` as the executable ownership and
   removed-symbol contract; schema changes must be represented by a tracked
   Alembic revision rather than runtime adoption logic.
 - Do not bypass contract validation models.

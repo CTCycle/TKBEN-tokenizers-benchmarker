@@ -44,7 +44,7 @@ dependencies rather than a second domain layer.
     consume state and rendering helpers rather than reconstructing API rules.
 
 The current import boundary is checked by
-`tests/unit/server/test_architecture_boundaries.py`.
+`tests/unit/test_application_contracts.py`.
 
 ## Configuration and schema flow
 
