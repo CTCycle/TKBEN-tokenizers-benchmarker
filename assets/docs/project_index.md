@@ -14,10 +14,10 @@ fields; incompatible historical rows are rejected rather than silently
 adapted. Managed job lifecycle metadata is durable, with interrupted work
 reconciled as failed after restart rather than automatically resumed.
 
-The latest published release is `v4.6.1` (`v4.7.0` is being prepared) with backend package `3.6.1` and
-frontend package `2.6.1`. Its source-only GitHub release was published from
-annotated tag `v4.6.1` on `main` commit
-`d198f203525bb57603060db7283f7d01432269b3`; `main` and `develop` are
+The latest published release is `v4.7.0` with backend package `3.7.0` and
+frontend package `2.7.0`. Its source-only GitHub release was published from
+annotated tag `v4.7.0` on `main` commit
+`f628688e325bcb7d903fbe49e830b0f32ddb9248`; `main` and `develop` are
 synchronized after the publication record update. Configuration ownership is
 canonical: `settings/.env` and the process environment own
 bootstrap-only values,
