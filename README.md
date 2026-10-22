@@ -1,13 +1,12 @@
-# TKBEN Tokenizer Benchmarker
+<p align="center"><img src="app/client/public/tkben-logo.png" alt="TKBEN logo" width="96"></p>
 
-<p align="center"><img src='app/client/public/tkben-logo.png' alt='TKBEN logo' width="112"></p>
+# TKBEN Tokenizer Benchmarker
 
 **A local workbench for inspecting text datasets, exploring tokenizers, and comparing tokenizer behavior.**
 
-Last updated: 2026-10-21
+[![GitHub stars](https://img.shields.io/github/stars/CTCycle/TKBEN-tokenizers-benchmarker?style=flat-square)](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/stargazers) [![Last commit](https://img.shields.io/github/last-commit/CTCycle/TKBEN-tokenizers-benchmarker?style=flat-square)](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/commits) [![Release](https://img.shields.io/github/v/release/CTCycle/TKBEN-tokenizers-benchmarker?display_name=tag&style=flat-square)](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases) [![License](https://img.shields.io/github/license/CTCycle/TKBEN-tokenizers-benchmarker?style=flat-square)](LICENSE)
 
-
-[![License](https://img.shields.io/github/license/CTCycle/TKBEN-tokenizers-benchmarker?style=flat-square)](LICENSE) [![Release](https://img.shields.io/github/v/release/CTCycle/TKBEN-tokenizers-benchmarker?display_name=tag&style=flat-square)](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases) [![CI](https://img.shields.io/github/actions/workflow/status/CTCycle/TKBEN-tokenizers-benchmarker/ci.yml?branch=develop&label=CI&style=flat-square)](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/workflows/ci.yml?query=branch%3Adevelop) [![Python](https://img.shields.io/badge/Python-3.14.7-3776AB?logo=python&logoColor=white&style=flat-square)](https://www.python.org/) [![Angular](https://img.shields.io/badge/Angular-22-DD0031?logo=angular&logoColor=white&style=flat-square)](https://angular.dev/) [![Platform](https://img.shields.io/badge/Platform-Windows-0078D4?logo=windows&logoColor=white&style=flat-square)](https://www.microsoft.com/windows)
+[![Python](https://img.shields.io/badge/Python-3.14.7-3776AB?logo=python&logoColor=white&style=flat-square)](https://www.python.org/) [![Angular](https://img.shields.io/badge/Angular-22-DD0031?logo=angular&logoColor=white&style=flat-square)](https://angular.dev/) [![Platform](https://img.shields.io/badge/Platform-Windows-0078D4?logo=windows&logoColor=white&style=flat-square)](https://www.microsoft.com/windows)
 
 ## Overview
 
@@ -21,14 +20,30 @@ No single metric identifies the best tokenizer for every task. Results depend on
 - Search for tokenizer assets, download them, or upload a custom `tokenizer.json`; inspect vocabulary, token lengths, and special tokens.
 - Compare up to five prepared tokenizers on the same saved dataset using selected performance, vocabulary, and fidelity measures.
 - Save and reopen reports, customize dashboard views, inspect run diagnostics, and export completed reports as PDFs.
-- Configure, test, and switch SQLite or PostgreSQL connections from Settings → Database. Runtime settings and dashboard preferences save automatically to, and remain scoped to, the active database.
+- Configure, test, and switch SQLite or PostgreSQL connections from Settings -> Database. Runtime settings and dashboard preferences save automatically to, and remain scoped to, the active database.
+
+## Screenshots
+
+<p align="center">
+  <kbd><img src="assets/figures/dataset.png" alt="Dataset statistics" width="420"></kbd>
+  <kbd><img src="assets/figures/tokenizers-overview.png" alt="Tokenizer overview" width="420"></kbd>
+</p>
+<p align="center"><sub>Dataset statistics (left) and tokenizer overview (right).</sub></p>
+
+<p align="center">
+  <kbd><img src="assets/figures/cross-benchmark.png" alt="Cross-benchmark comparison" width="420"></kbd>
+</p>
+<p align="center"><sub>Cross-benchmark comparison view.</sub></p>
 
 ## Technology Stack
 
-- Python 3.14.7, uv, and FastAPI backend.
-- Angular 22 client, built with Node.js 22.23.1.
-- SQLite by default, with optional PostgreSQL.
-- Optional Hugging Face access for dataset and tokenizer sources.
+| Layer | Technology | Version |
+|---|---|---|
+| Backend | Python, FastAPI, uv | 3.14.7 |
+| Frontend | Angular | 22 |
+| Frontend tooling | Node.js | 22.23.1 |
+| Database | SQLite (default), PostgreSQL (optional) | - |
+| Optional sources | Hugging Face datasets and tokenizers | - |
 
 ## Installation and Usage
 
@@ -64,13 +79,32 @@ For another backend address, set `FASTAPI_HOST` and `FASTAPI_PORT` in the fronte
 
 ## Configuration
 
-The launcher creates `settings/.env` from `settings/.env.example` when the file is missing. Set `TKBEN_DATA_DIR` to choose a persistent data root other than the default `data` directory. Use **Settings → Database** to configure and test a SQLite or PostgreSQL connection, **Settings** for application options, and **Settings → Keys** for Hugging Face access keys.
+The launcher creates `settings/.env` from `settings/.env.example` when the file is missing. Set `TKBEN_DATA_DIR` to choose a persistent data root other than the default `data` directory. Use **Settings -> Database** to configure and test a SQLite or PostgreSQL connection, **Settings** for application options, and **Settings -> Keys** for Hugging Face access keys.
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `TKBEN_DATA_DIR` | Persistent data root | `data` |
+| `FASTAPI_HOST` | Backend host for the frontend proxy | `127.0.0.1` |
+| `FASTAPI_PORT` | Backend port for the frontend proxy | `5000` |
+| `UI_HOST` | Development server host | `127.0.0.1` |
+| `UI_PORT` | Development server port | `8000` |
 
 ## Documentation
 
 - [Runtime startup](assets/docs/runtime/startup.md)
 - [Runtime configuration](assets/docs/runtime/configuration.md)
 - [Release notes and procedure](assets/docs/runtime/release.md)
+
+## Limitations
+
+- No single metric identifies the best tokenizer for every task. Results depend on the chosen dataset, measures, run settings, and machine.
+- Data, tokenizer assets, and reports are stored on the computer running the app.
+- Hugging Face sources require network access and, for gated assets, valid credentials.
+- PostgreSQL is available for advanced setups, but SQLite remains the default.
+
+## Contributing
+
+Contributions are welcome. Open an issue or pull request with a clear description of the change and its motivation. Keep changes focused and consistent with the existing code style.
 
 ## License
 
