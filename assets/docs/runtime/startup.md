@@ -1,5 +1,5 @@
 # Startup
-Last updated: 2026-10-21
+Last updated: 2026-10-22
 
 ## Production Local Webapp
 
@@ -143,4 +143,14 @@ Run the repository's test workflows through:
 ```
 
 The runner may use `npm run preview` for frontend integration checks. This is
-separate from the production launch.
+separate from the production launch. Its live mode now performs a locked
+frontend install and production build of the current checkout, starts only
+missing services, and records the exact spawned PIDs, executable paths, and
+creation times. Cleanup stops only those verified test-owned processes.
+The preview server uses strict port binding instead of selecting an
+unexpected fallback port.
+
+The release-specific Windows production launcher still requires a manual
+standard-console startup and Ctrl+C shutdown smoke test. The hosted Windows
+CI checks script parsing and owned preview lifecycle, but does not substitute
+for the interactive production launcher gate.

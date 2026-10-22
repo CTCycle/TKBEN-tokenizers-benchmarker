@@ -12,6 +12,7 @@ set "TESTS_DIR=%APP_DIR%\tests"
 set "SETTINGS_ENV=%PROJECT_ROOT%\settings\.env"
 set "VENV_PYTHON=%SERVER_DIR%\.venv\Scripts\python.exe"
 set "RUNTIME_NPM=%PROJECT_ROOT%\runtimes\nodejs\npm.cmd"
+set "PROCESS_MANAGER=%TESTS_DIR%\integration\windows\manage_test_process.ps1"
 
 set "FASTAPI_HOST=127.0.0.1"
 set "FASTAPI_PORT=5000"
@@ -108,6 +109,8 @@ set "PYTHONPYCACHEPREFIX=%CANONICAL_CACHE_DIR%\pycache"
 set "COVERAGE_FILE=%CANONICAL_CACHE_DIR%\coverage\.coverage"
 set "MPLCONFIGDIR=%CANONICAL_CACHE_DIR%\matplotlib"
 set "PLAYWRIGHT_BROWSERS_PATH=%CANONICAL_CACHE_DIR%\playwright"
+set "BACKEND_PROCESS_STATE=%CANONICAL_CACHE_DIR%\test-backend-%RANDOM%-%RANDOM%.json"
+set "FRONTEND_PROCESS_STATE=%CANONICAL_CACHE_DIR%\test-frontend-%RANDOM%-%RANDOM%.json"
 set "HAS_E2E=0"
 if exist "%TESTS_DIR%\e2e" set "HAS_E2E=1"
 if not exist "%QA_DIR%" mkdir "%QA_DIR%" >nul 2>&1
@@ -115,38 +118,44 @@ if not exist "%QA_DIR%" mkdir "%QA_DIR%" >nul 2>&1
 if /i "%STANDARD_TEST_SKIP_LIVE_SERVERS%"=="false" if "%HAS_E2E%"=="1" (
   set "LIVE_SERVER_PHASE=PASS"
 
-  curl -s --max-time 2 "%APP_TEST_BACKEND_URL%/docs" >nul 2>&1
+  curl -fsS --max-time 2 "%APP_TEST_BACKEND_URL%/api/health" >nul 2>&1
   if errorlevel 1 (
-    echo [INFO] Starting backend server...
-    start "" /B /D "%BACKEND_WORKDIR%" "%PYTHON_CMD%" -m uvicorn %UVICORN_APP% --host %FASTAPI_HOST% --port %FASTAPI_PORT% --log-level warning
+    echo [INFO] Starting backend server with PID ownership tracking...
+    powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%PROCESS_MANAGER%" -Action StartBackend -RepositoryRoot "%PROJECT_ROOT%" -StateFile "%BACKEND_PROCESS_STATE%" -BindAddress "%FASTAPI_HOST%" -Port %FASTAPI_PORT%
+    if errorlevel 1 (
+      set "LIVE_SERVER_PHASE=FAIL"
+      set "TEST_RESULT=1"
+      goto cleanup
+    )
     set "STARTED_BACKEND=1"
   )
 
   if /i "%STANDARD_TEST_SKIP_FRONTEND%"=="false" if exist "%CLIENT_DIR%\package.json" (
-    curl -s --max-time 2 "%APP_TEST_FRONTEND_URL%" >nul 2>&1
+    echo [INFO] Installing locked frontend dependencies for a reproducible live test...
+    call "%NPM_CMD%" --prefix "%CLIENT_DIR%" ci --no-audit --no-fund
     if errorlevel 1 (
-      if not exist "%CLIENT_DIR%\node_modules" (
-        echo [INFO] Installing frontend dependencies...
-        call "%NPM_CMD%" --prefix "%CLIENT_DIR%" ci
-        if errorlevel 1 (
-          set "LIVE_SERVER_PHASE=FAIL"
-          set "TEST_RESULT=1"
-          goto cleanup
-        )
-      )
+      set "LIVE_SERVER_PHASE=FAIL"
+      set "TEST_RESULT=1"
+      goto cleanup
+    )
+    echo [INFO] Building the current frontend sources before live tests...
+    set "CI=true"
+    call "%NPM_CMD%" --prefix "%CLIENT_DIR%" run build -- --progress=false
+    if errorlevel 1 (
+      set "LIVE_SERVER_PHASE=FAIL"
+      set "TEST_RESULT=1"
+      goto cleanup
+    )
 
-      if not exist "%CLIENT_DIR%\dist" (
-        echo [INFO] Building frontend...
-        call "%NPM_CMD%" --prefix "%CLIENT_DIR%" run build
-        if errorlevel 1 (
-          set "LIVE_SERVER_PHASE=FAIL"
-          set "TEST_RESULT=1"
-          goto cleanup
-        )
+    curl -fsS --max-time 2 "%APP_TEST_FRONTEND_URL%" >nul 2>&1
+    if errorlevel 1 (
+      echo [INFO] Starting frontend preview with PID ownership tracking...
+      powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%PROCESS_MANAGER%" -Action StartPreview -RepositoryRoot "%PROJECT_ROOT%" -StateFile "%FRONTEND_PROCESS_STATE%" -BindAddress "%UI_HOST%" -Port %UI_PORT%
+      if errorlevel 1 (
+        set "LIVE_SERVER_PHASE=FAIL"
+        set "TEST_RESULT=1"
+        goto cleanup
       )
-
-      echo [INFO] Starting frontend preview server...
-      start "" /B /D "%CLIENT_DIR%" "%ComSpec%" /d /c ""%NPM_CMD%" run preview -- --host %UI_HOST% --port %UI_PORT%"
       set "STARTED_FRONTEND=1"
     )
   )
@@ -160,7 +169,7 @@ if /i "%STANDARD_TEST_SKIP_LIVE_SERVERS%"=="false" if "%HAS_E2E%"=="1" (
     goto cleanup
   )
 
-  curl -s --max-time 2 "%APP_TEST_BACKEND_URL%/docs" >nul 2>&1
+  curl -fsS --max-time 2 "%APP_TEST_BACKEND_URL%/api/health" >nul 2>&1
   if errorlevel 1 (
     set /a ATTEMPTS+=1
     timeout /t 1 /nobreak >nul
@@ -168,7 +177,7 @@ if /i "%STANDARD_TEST_SKIP_LIVE_SERVERS%"=="false" if "%HAS_E2E%"=="1" (
   )
 
   if "%STARTED_FRONTEND%"=="1" (
-    curl -s --max-time 2 "%APP_TEST_FRONTEND_URL%" >nul 2>&1
+    curl -fsS --max-time 2 "%APP_TEST_FRONTEND_URL%" >nul 2>&1
     if errorlevel 1 (
       set /a ATTEMPTS+=1
       timeout /t 1 /nobreak >nul
@@ -254,11 +263,19 @@ echo ============================================================
 echo.
 
 :cleanup
-if "%STARTED_BACKEND%"=="1" (
-  for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R "LISTENING" ^| findstr /R ":%FASTAPI_PORT% "') do taskkill /PID %%P /T /F >nul 2>&1
-)
 if "%STARTED_FRONTEND%"=="1" (
-  for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R "LISTENING" ^| findstr /R ":%UI_PORT% "') do taskkill /PID %%P /T /F >nul 2>&1
+  powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%PROCESS_MANAGER%" -Action Stop -StateFile "%FRONTEND_PROCESS_STATE%"
+  if errorlevel 1 (
+    echo [ERROR] Could not safely stop the test-owned frontend process.
+    set "TEST_RESULT=1"
+  )
+)
+if "%STARTED_BACKEND%"=="1" (
+  powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%PROCESS_MANAGER%" -Action Stop -StateFile "%BACKEND_PROCESS_STATE%"
+  if errorlevel 1 (
+    echo [ERROR] Could not safely stop the test-owned backend process.
+    set "TEST_RESULT=1"
+  )
 )
 
 exit /b %TEST_RESULT%

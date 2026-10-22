@@ -371,14 +371,19 @@ function Invoke-HealthCheck {
         [ValidateRange(1, 3600)][int]$Attempts = 60,
         [ValidateRange(1, 60)][int]$IntervalSeconds = 1,
         [string]$Description = 'service',
+        [switch]$RequireHtml,
         [System.Diagnostics.Process]$ProcessToMonitor,
         [string]$FailureLogPath
     )
     for ($attempt = 1; $attempt -le $Attempts; $attempt++) {
         if ($script:LaunchStopRequested) { return }
         try {
-            $response = Invoke-WebRequest -UseBasicParsing -Uri $Uri -TimeoutSec 2
-            if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 400) { return }
+            $response = Invoke-WebRequest -UseBasicParsing -Uri $Uri -TimeoutSec 2 -MaximumRedirection 0
+            if ($response.StatusCode -eq 200) {
+                if (-not $RequireHtml -or ([string]$response.Headers['Content-Type']) -like 'text/html*') {
+                    return
+                }
+            }
         } catch {
             if ($attempt -eq $Attempts) { break }
         }
@@ -601,9 +606,11 @@ function Test-FrontendDependenciesReady {
 
     try {
         $stamp = Get-Content -LiteralPath $stampPath -Raw | ConvertFrom-Json
+        $detectedNodeVersion = (& $NodeExe --version).Trim()
         return (
+            $detectedNodeVersion -eq "v$NodeVersion" -and
             $stamp.packageFingerprint -eq (Get-FrontendDependencyFingerprint) -and
-            $stamp.nodeVersion -eq (& $NodeExe --version).Trim() -and
+            $stamp.nodeVersion -eq $detectedNodeVersion -and
             (Test-Path -LiteralPath (Join-Path $nodeModulesDir '.bin\ng.cmd'))
         )
     } catch {
@@ -795,11 +802,32 @@ function Test-FrontendBuildReady {
 
     try {
         $stamp = Get-Content -LiteralPath $FrontendBuildStampPath -Raw | ConvertFrom-Json
-        return (
-            $stamp.stampVersion -eq 1 -and
-            $stamp.sourceFingerprint -eq (Get-FrontendSourceFingerprint) -and
-            $stamp.nodeVersion -eq (& $NodeExe --version).Trim()
-        )
+        $detectedNodeVersion = (& $NodeExe --version).Trim()
+        if ($stamp.stampVersion -ne 1 -or
+            $stamp.sourceFingerprint -ne (Get-FrontendSourceFingerprint) -or
+            $detectedNodeVersion -ne "v$NodeVersion" -or
+            $stamp.nodeVersion -ne $detectedNodeVersion) {
+            return $false
+        }
+
+        # A valid stamp is insufficient if an emitted bundle was deleted or
+        # corrupted after the build. Check the local assets referenced by index.
+        $indexMarkup = Get-Content -LiteralPath $frontendEntry -Raw
+        $scriptReferences = [regex]::Matches($indexMarkup, '(?i)<script\b[^>]*\bsrc\s*=\s*["'']([^"'']+)["'']')
+        if ($scriptReferences.Count -eq 0) { return $false }
+
+        $frontendRoot = Split-Path -Parent $frontendEntry
+        $assetReferences = [regex]::Matches($indexMarkup, '(?i)\b(?:src|href)\s*=\s*["'']([^"'']+)["'']')
+        foreach ($assetMatch in $assetReferences) {
+            $reference = $assetMatch.Groups[1].Value
+            if ($reference -match '^(?i:https?:|data:|//|#)') { continue }
+            $relativePath = ($reference -split '[?#]', 2)[0].TrimStart('/')
+            if ([string]::IsNullOrWhiteSpace($relativePath)) { continue }
+            if (-not (Test-Path -LiteralPath (Join-Path $frontendRoot $relativePath) -PathType Leaf)) {
+                return $false
+            }
+        }
+        return $true
     }
     catch {
         return $false
@@ -1160,6 +1188,9 @@ function Launch-Application {
         Write-Ok 'Application environments and frontend output are ready; skipped setup.'
     }
 
+    if (-not (Test-FrontendBuildReady)) {
+        throw 'The Angular production build is incomplete after setup. Check the emitted index and assets.'
+    }
     if (-not (Confirm-ReleaseLaunchPorts -Ports $launchPorts)) { return $false }
 
     $backendPort = [int]$launchPorts[0]
@@ -1213,6 +1244,7 @@ function Launch-Application {
             Invoke-HealthCheck `
                 -Uri "$backendBaseUrl/" `
                 -Description 'production frontend' `
+                -RequireHtml `
                 -ProcessToMonitor $backendProcess `
                 -FailureLogPath $backendStderrLog `
                 -Attempts 60 `
@@ -1220,6 +1252,15 @@ function Launch-Application {
         }
 
         if (-not $script:LaunchStopRequested) {
+            $backendProcess.Refresh()
+            if ($backendProcess.HasExited) {
+                throw "FastAPI exited with code $($backendProcess.ExitCode) before startup completed."
+            }
+            $ownedListeners = @(Get-PortListenerRecords -Ports $launchPorts)
+            if ($ownedListeners.Count -eq 0 -or
+                @($ownedListeners | Where-Object { [int]$_.ProcessId -ne $backendProcess.Id }).Count -gt 0) {
+                throw "The backend port is not exclusively owned by the started FastAPI PID $($backendProcess.Id)."
+            }
             Write-Ok 'FastAPI API and production frontend are ready.'
             Write-Host "Application: $backendBaseUrl (PID $($backendProcess.Id))"
             try {
