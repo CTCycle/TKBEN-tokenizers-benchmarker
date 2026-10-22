@@ -96,3 +96,79 @@ jobs:
       - name: Build frontend
         working-directory: app/client
         run: npm run build
+
+  windows-launcher-contract:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pinned Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.23.1"
+
+      - name: Install and build Angular client
+        working-directory: app/client
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build -- --progress=false
+
+      - name: Parse Windows PowerShell launcher and process helper
+        shell: powershell
+        run: |
+          foreach ($path in @('start_on_windows.ps1', 'app/tests/integration/windows/manage_test_process.ps1')) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Join-Path (Get-Location) $path), [ref]$tokens, [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error "$path : $_" }
+              throw "PowerShell parsing failed for $path."
+            }
+          }
+
+      - name: Smoke test owned Windows preview startup and cleanup
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $repo = (Get-Location).Path
+          $portableNode = Join-Path $repo 'runtimes/nodejs/node.exe'
+          New-Item -ItemType Directory -Path (Split-Path $portableNode -Parent) -Force | Out-Null
+          Copy-Item -LiteralPath (Get-Command node.exe).Source -Destination $portableNode
+          $state = Join-Path $repo 'runtimes/cache/ci-preview.json'
+          $manager = Join-Path $repo 'app/tests/integration/windows/manage_test_process.ps1'
+          $port = 63871
+          try {
+            & $manager -Action StartPreview -RepositoryRoot $repo -StateFile $state -BindAddress '127.0.0.1' -Port $port
+            $ready = $false
+            for ($attempt = 0; $attempt -lt 30; $attempt++) {
+              try {
+                $root = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/" -TimeoutSec 2
+                $deepLink = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/settings" -TimeoutSec 2
+                if ($root.StatusCode -eq 200 -and $deepLink.StatusCode -eq 200 -and
+                    $root.Content -match '<app-root' -and $deepLink.Content -match '<app-root') {
+                  $ready = $true
+                  break
+                }
+              } catch { }
+              Start-Sleep -Seconds 1
+            }
+            if (-not $ready) { throw 'Angular preview was not ready at root and SPA deep link.' }
+          }
+          finally {
+            if (Test-Path -LiteralPath $state) {
+              & $manager -Action Stop -StateFile $state
+            }
+          }
+          try {
+            $connection = [Net.Sockets.TcpClient]::new()
+            $connection.Connect('127.0.0.1', $port)
+            throw 'The test-owned preview port remained occupied after cleanup.'
+          } catch [Net.Sockets.SocketException] {
+            # Expected: the owned preview listener was stopped.
+          } finally {
+            if ($connection) { $connection.Dispose() }
+          }
