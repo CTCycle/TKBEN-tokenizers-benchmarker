@@ -102,11 +102,14 @@ def register_frontend_routes(application: FastAPI) -> None:
             raise HTTPException(status_code=404, detail="Not Found")
         return FileResponse(index_path)
 
-    application.add_api_route("/", serve_index, methods=["GET", "HEAD"])
+    application.add_api_route(
+        "/", serve_index, methods=["GET", "HEAD"], include_in_schema=False
+    )
     application.add_api_route(
         "/{path:path}",
         serve_frontend_path,
         methods=["GET", "HEAD"],
+        include_in_schema=False,
     )
 
 ###############################################################################

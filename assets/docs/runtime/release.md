@@ -10,13 +10,14 @@ add packaging as part of a source release.
 The public release version and component versions use the existing repository
 convention:
 
-| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` | `v4.5.0` | `v4.5.1` | `v4.6.0` | `v4.6.1` public |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` | `4.4.0` | `4.5.0` | `4.5.1` | `4.6.0` | `4.6.1` |
-| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` | `3.4.0` | `3.5.0` | `3.5.1` | `3.6.0` | `3.6.1` |
-| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` | `2.4.0` | `2.5.0` | `2.5.1` | `2.6.0` | `2.6.1` |
+| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` | `v4.5.0` | `v4.5.1` | `v4.6.0` | `v4.6.1` | `v4.7.0` candidate |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` | `4.4.0` | `4.5.0` | `4.5.1` | `4.6.0` | `4.6.1` | `4.7.0` |
+| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` | `3.4.0` | `3.5.0` | `3.5.1` | `3.6.0` | `3.6.1` | `3.7.0` |
+| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` | `2.4.0` | `2.5.0` | `2.5.1` | `2.6.0` | `2.6.1` | `2.7.0` |
 
-The latest published release is `v4.6.1` (backend `3.6.1`, frontend `2.6.1`).
+The latest published release is `v4.6.1` (backend `3.6.1`, frontend `2.6.1`);
+`v4.7.0` (backend `3.7.0`, frontend `2.7.0`) is the prepared candidate.
 Its annotated tag points to validated `main` commit
 `d198f203525bb57603060db7283f7d01432269b3`; publication and validation evidence
 are recorded in the [project status ledger](../project_status_ledger.md#release-gate).
@@ -37,6 +38,23 @@ The v4.6.0 delta is based on verified repository changes after `v4.5.1`:
 API version `1.2.0`, benchmark schema version `3`, and report version `5`
 remain unchanged. The public release status and final commit are recorded in
 the [project status ledger](../project_status_ledger.md#release-gate).
+
+## v4.7.0 release notes
+
+The v4.7.0 delta is based on verified repository changes after `v4.6.1`:
+
+- serve the production Angular build from FastAPI at `/` with SPA fallback
+  (unknown `/api` paths and missing assets return 404), and keep these
+  frontend routes out of the OpenAPI schema;
+- update the Windows launcher to use the single-origin FastAPI SPA flow and
+  drop the obsolete UI-port configuration; and
+- revamp the README overview, features, and design.
+
+API version `1.2.0`, benchmark schema version `3`, and report version `5`
+remain unchanged. The Windows lifecycle hardening in draft PR #8 is not part
+of this release; its open standard-console Ctrl+C verification remains
+validation debt in the [project status ledger](../project_status_ledger.md#open-issues-and-validation-debt).
+Validation evidence is recorded as `V-20261022` (release smoke).
 
 ## v4.6.1 patch release notes
 

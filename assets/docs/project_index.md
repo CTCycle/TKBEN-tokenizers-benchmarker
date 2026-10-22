@@ -14,7 +14,7 @@ fields; incompatible historical rows are rejected rather than silently
 adapted. Managed job lifecycle metadata is durable, with interrupted work
 reconciled as failed after restart rather than automatically resumed.
 
-The latest published release is `v4.6.1` with backend package `3.6.1` and
+The latest published release is `v4.6.1` (`v4.7.0` is being prepared) with backend package `3.6.1` and
 frontend package `2.6.1`. Its source-only GitHub release was published from
 annotated tag `v4.6.1` on `main` commit
 `d198f203525bb57603060db7283f7d01432269b3`; `main` and `develop` are
