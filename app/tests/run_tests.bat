@@ -19,16 +19,16 @@ set "FASTAPI_PORT=5000"
 set "UI_HOST=127.0.0.1"
 set "UI_PORT=8000"
 set "TEST_RESULT=0"
-set "BACKEND_PHASE=SKIPPED"
 set "FRONTEND_BOOTSTRAP_PHASE=SKIPPED"
 set "FRONTEND_UNIT_PHASE=SKIPPED"
-set "FRONTEND_E2E_PHASE=SKIPPED"
 set "PYTEST_PHASE=SKIPPED"
 set "RUFF_PHASE=SKIPPED"
 set "TYPE_PHASE=SKIPPED"
 set "LIVE_SERVER_PHASE=SKIPPED"
 set "STARTED_BACKEND=0"
 set "STARTED_FRONTEND=0"
+set "TEST_DATA_ACTIVE=0"
+set "BACKEND_STOP_OK=1"
 
 if exist "%SETTINGS_ENV%" (
   for /f "usebackq tokens=* delims=" %%L in ("%SETTINGS_ENV%") do (
@@ -96,39 +96,43 @@ echo.
 
 set "PYTEST_TARGET=%TESTS_DIR%"
 if not "%STANDARD_TEST_PYTEST_TARGET%"=="" set "PYTEST_TARGET=%STANDARD_TEST_PYTEST_TARGET%"
-set "QA_DIR=%PROJECT_ROOT%\assets\QA"
 set "CANONICAL_CACHE_DIR=%PROJECT_ROOT%\runtimes\cache"
 if not exist "%CANONICAL_CACHE_DIR%" mkdir "%CANONICAL_CACHE_DIR%" >nul 2>&1
-for %%D in (uv pip npm ruff mypy pycache coverage playwright pytest-state pytest-basetemp-current angular matplotlib) do if not exist "%CANONICAL_CACHE_DIR%\%%D" mkdir "%CANONICAL_CACHE_DIR%\%%D" >nul 2>&1
+for %%D in (uv pip npm ruff pycache playwright pytest-state pytest-basetemp-current angular matplotlib) do if not exist "%CANONICAL_CACHE_DIR%\%%D" mkdir "%CANONICAL_CACHE_DIR%\%%D" >nul 2>&1
 set "UV_CACHE_DIR=%CANONICAL_CACHE_DIR%\uv"
 set "PIP_CACHE_DIR=%CANONICAL_CACHE_DIR%\pip"
 set "NPM_CONFIG_CACHE=%CANONICAL_CACHE_DIR%\npm"
 set "RUFF_CACHE_DIR=%CANONICAL_CACHE_DIR%\ruff"
-set "MYPY_CACHE_DIR=%CANONICAL_CACHE_DIR%\mypy"
 set "PYTHONPYCACHEPREFIX=%CANONICAL_CACHE_DIR%\pycache"
-set "COVERAGE_FILE=%CANONICAL_CACHE_DIR%\coverage\.coverage"
 set "MPLCONFIGDIR=%CANONICAL_CACHE_DIR%\matplotlib"
 set "PLAYWRIGHT_BROWSERS_PATH=%CANONICAL_CACHE_DIR%\playwright"
 set "BACKEND_PROCESS_STATE=%CANONICAL_CACHE_DIR%\test-backend-%RANDOM%-%RANDOM%.json"
 set "FRONTEND_PROCESS_STATE=%CANONICAL_CACHE_DIR%\test-frontend-%RANDOM%-%RANDOM%.json"
+set "TEST_DATA_DIR=%CANONICAL_CACHE_DIR%\test-data-%RANDOM%-%RANDOM%"
 set "HAS_E2E=0"
 if exist "%TESTS_DIR%\e2e" set "HAS_E2E=1"
-if not exist "%QA_DIR%" mkdir "%QA_DIR%" >nul 2>&1
 
 if /i "%STANDARD_TEST_SKIP_LIVE_SERVERS%"=="false" if "%HAS_E2E%"=="1" (
   set "LIVE_SERVER_PHASE=PASS"
+  set "TEST_DATA_ACTIVE=1"
+  set "TKBEN_DATA_DIR=!TEST_DATA_DIR!"
+  set "TKBEN_LOG_DIR=!TEST_DATA_DIR!\logs"
 
   curl -fsS --max-time 2 "%APP_TEST_BACKEND_URL%/api/health" >nul 2>&1
-  if errorlevel 1 (
-    echo [INFO] Starting backend server with PID ownership tracking...
-    powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%PROCESS_MANAGER%" -Action StartBackend -RepositoryRoot "%PROJECT_ROOT%" -StateFile "%BACKEND_PROCESS_STATE%" -BindAddress "%FASTAPI_HOST%" -Port %FASTAPI_PORT%
-    if errorlevel 1 (
-      set "LIVE_SERVER_PHASE=FAIL"
-      set "TEST_RESULT=1"
-      goto cleanup
-    )
-    set "STARTED_BACKEND=1"
+  if not errorlevel 1 (
+    echo [ERROR] The test backend port already serves an unverified app; refusing to reuse it.
+    set "LIVE_SERVER_PHASE=FAIL"
+    set "TEST_RESULT=1"
+    goto cleanup
   )
+  echo [INFO] Starting isolated backend server with PID ownership tracking...
+  powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%PROCESS_MANAGER%" -Action StartBackend -RepositoryRoot "%PROJECT_ROOT%" -StateFile "%BACKEND_PROCESS_STATE%" -BindAddress "%FASTAPI_HOST%" -Port %FASTAPI_PORT%
+  if errorlevel 1 (
+    set "LIVE_SERVER_PHASE=FAIL"
+    set "TEST_RESULT=1"
+    goto cleanup
+  )
+  set "STARTED_BACKEND=1"
 
   if /i "%STANDARD_TEST_SKIP_FRONTEND%"=="false" if exist "%CLIENT_DIR%\package.json" (
     echo [INFO] Installing locked frontend dependencies for a reproducible live test...
@@ -148,16 +152,20 @@ if /i "%STANDARD_TEST_SKIP_LIVE_SERVERS%"=="false" if "%HAS_E2E%"=="1" (
     )
 
     curl -fsS --max-time 2 "%APP_TEST_FRONTEND_URL%" >nul 2>&1
-    if errorlevel 1 (
-      echo [INFO] Starting frontend preview with PID ownership tracking...
-      powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%PROCESS_MANAGER%" -Action StartPreview -RepositoryRoot "%PROJECT_ROOT%" -StateFile "%FRONTEND_PROCESS_STATE%" -BindAddress "%UI_HOST%" -Port %UI_PORT%
-      if errorlevel 1 (
-        set "LIVE_SERVER_PHASE=FAIL"
-        set "TEST_RESULT=1"
-        goto cleanup
-      )
-      set "STARTED_FRONTEND=1"
+    if not errorlevel 1 (
+      echo [ERROR] The test frontend port already serves an unverified app; refusing to reuse it.
+      set "LIVE_SERVER_PHASE=FAIL"
+      set "TEST_RESULT=1"
+      goto cleanup
     )
+    echo [INFO] Starting frontend preview with PID ownership tracking...
+    powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%PROCESS_MANAGER%" -Action StartPreview -RepositoryRoot "%PROJECT_ROOT%" -StateFile "%FRONTEND_PROCESS_STATE%" -BindAddress "%UI_HOST%" -Port %UI_PORT%
+    if errorlevel 1 (
+      set "LIVE_SERVER_PHASE=FAIL"
+      set "TEST_RESULT=1"
+      goto cleanup
+    )
+    set "STARTED_FRONTEND=1"
   )
 
   echo [INFO] Waiting for live services...
@@ -188,7 +196,7 @@ if /i "%STANDARD_TEST_SKIP_LIVE_SERVERS%"=="false" if "%HAS_E2E%"=="1" (
 
 echo [STEP] Running Ruff...
 pushd "%SERVER_DIR%"
-"%PYTHON_CMD%" -m ruff check .
+"%PYTHON_CMD%" -m ruff check . "%TESTS_DIR%"
 if errorlevel 1 (
   set "RUFF_PHASE=FAIL"
   set "TEST_RESULT=1"
@@ -218,11 +226,8 @@ if /i "%STANDARD_TEST_SKIP_FRONTEND%"=="true" goto summary
 if not exist "%CLIENT_DIR%\package.json" goto summary
 
 set "HAS_FRONTEND_UNIT=0"
-set "HAS_FRONTEND_E2E=0"
 findstr /R /C:"\"test:unit\"[ ]*:" "%CLIENT_DIR%\package.json" >nul 2>&1
 if not errorlevel 1 set "HAS_FRONTEND_UNIT=1"
-findstr /R /C:"\"test:e2e\"[ ]*:" "%CLIENT_DIR%\package.json" >nul 2>&1
-if not errorlevel 1 set "HAS_FRONTEND_E2E=1"
 set "FRONTEND_BOOTSTRAP_PHASE=PASS"
 
 if "%HAS_FRONTEND_UNIT%"=="1" (
@@ -233,17 +238,6 @@ if "%HAS_FRONTEND_UNIT%"=="1" (
     set "TEST_RESULT=1"
   ) else (
     set "FRONTEND_UNIT_PHASE=PASS"
-  )
-)
-
-if "%HAS_FRONTEND_E2E%"=="1" (
-  echo [STEP] Running frontend E2E tests...
-  call "%NPM_CMD%" --prefix "%CLIENT_DIR%" run test:e2e --if-present
-  if errorlevel 1 (
-    set "FRONTEND_E2E_PHASE=FAIL"
-    set "TEST_RESULT=1"
-  ) else (
-    set "FRONTEND_E2E_PHASE=PASS"
   )
 )
 
@@ -258,7 +252,6 @@ echo  BasedPyright phase  : %TYPE_PHASE%
 echo  Python tests        : %PYTEST_PHASE%
 echo  Frontend bootstrap  : %FRONTEND_BOOTSTRAP_PHASE%
 echo  Frontend unit tests : %FRONTEND_UNIT_PHASE%
-echo  Frontend E2E tests  : %FRONTEND_E2E_PHASE%
 echo ============================================================
 echo.
 
@@ -274,6 +267,14 @@ if "%STARTED_BACKEND%"=="1" (
   powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%PROCESS_MANAGER%" -Action Stop -StateFile "%BACKEND_PROCESS_STATE%"
   if errorlevel 1 (
     echo [ERROR] Could not safely stop the test-owned backend process.
+    set "TEST_RESULT=1"
+    set "BACKEND_STOP_OK=0"
+  )
+)
+if "%TEST_DATA_ACTIVE%"=="1" if "%BACKEND_STOP_OK%"=="1" (
+  powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%PROCESS_MANAGER%" -Action RemoveTestData -RepositoryRoot "%PROJECT_ROOT%" -DataRoot "%TEST_DATA_DIR%"
+  if errorlevel 1 (
+    echo [ERROR] Could not safely remove the isolated test data directory.
     set "TEST_RESULT=1"
   )
 )

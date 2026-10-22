@@ -26,9 +26,7 @@ jobs:
       UV_CACHE_DIR: ${{ github.workspace }}/runtimes/cache/uv
       PIP_CACHE_DIR: ${{ github.workspace }}/runtimes/cache/pip
       RUFF_CACHE_DIR: ${{ github.workspace }}/runtimes/cache/ruff
-      MYPY_CACHE_DIR: ${{ github.workspace }}/runtimes/cache/mypy
       PYTHONPYCACHEPREFIX: ${{ github.workspace }}/runtimes/cache/pycache
-      COVERAGE_FILE: ${{ github.workspace }}/runtimes/cache/coverage/.coverage
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/runtimes/cache/playwright
       MPLCONFIGDIR: ${{ github.workspace }}/runtimes/cache/matplotlib
     steps:

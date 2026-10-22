@@ -37,6 +37,7 @@ _BOOTSTRAP_ENVIRONMENT_KEYS = frozenset(
 @dataclass
 class EnvironmentBootstrapState:
     lock: Lock = field(default_factory=Lock)
+    loaded_values: dict[str, str] = field(default_factory=dict)
     bootstrapped: bool = False
 
 ###############################################################################
@@ -57,7 +58,16 @@ def ensure_environment_loaded(*, force: bool = False) -> Path | None:
             for name, value in dotenv_values(env_path).items():
                 if value is None or name not in _BOOTSTRAP_ENVIRONMENT_KEYS:
                     continue
-                os.environ[name] = value
+                current_value = os.environ.get(name)
+                previously_loaded = state.loaded_values.get(name)
+                if previously_loaded is not None and current_value == previously_loaded:
+                    os.environ[name] = value
+                    state.loaded_values[name] = value
+                elif current_value is None:
+                    os.environ[name] = value
+                    state.loaded_values[name] = value
+                else:
+                    state.loaded_values.pop(name, None)
 
         state.bootstrapped = True
         return env_path if env_path.is_file() else None

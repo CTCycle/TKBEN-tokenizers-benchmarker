@@ -1,5 +1,5 @@
 # Configuration
-Last updated: 2026-10-21
+Last updated: 2026-10-22
 
 ## Environment File
 Primary launcher runtime env file:
@@ -10,6 +10,8 @@ Primary launcher runtime env file:
   from this file or the process environment.
 - The backend bootstrap loads this file before importing configuration and
   database modules that can resolve environment-derived paths or settings.
+- Existing process environment values take precedence; this file supplies
+  bootstrap values that the process has not set.
 
 ## Core Variables
 - `FASTAPI_HOST` and `FASTAPI_PORT` (production FastAPI listener and same-origin

@@ -1,0 +1,146 @@
+// Copyright © 2023 Thomas Virdis
+// Licensed under the MIT License.
+
+import { HttpClient } from '@angular/common/http';
+import { TestBed } from '@angular/core/testing';
+import { of, throwError } from 'rxjs';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { StartupReadinessService } from './core/services/startup-readiness.service';
+import { StartupLoadingComponent } from './components/startup-loading.component';
+
+
+describe('StartupReadinessService', () => {
+  afterEach(() => {
+    TestBed.resetTestingModule();
+    vi.useRealTimers();
+  });
+
+  it('reveals the application after the health endpoint reports ok', () => {
+    vi.useFakeTimers();
+    const http = { get: vi.fn().mockReturnValue(of({ status: 'ok' })) };
+    TestBed.configureTestingModule({
+      providers: [
+        StartupReadinessService,
+        { provide: HttpClient, useValue: http },
+      ],
+    });
+
+    const service = TestBed.inject(StartupReadinessService);
+    service.start();
+    vi.advanceTimersByTime(0);
+
+    expect(service.status()).toBe('ready');
+    expect(http.get).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(5_000);
+    expect(http.get).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps polling quietly and reports a slow startup before failing', () => {
+    vi.useFakeTimers();
+    const http = {
+      get: vi.fn().mockReturnValue(throwError(() => new Error('backend unavailable'))),
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        StartupReadinessService,
+        { provide: HttpClient, useValue: http },
+      ],
+    });
+
+    const service = TestBed.inject(StartupReadinessService);
+    service.start();
+    vi.advanceTimersByTime(15_000);
+
+    expect(service.status()).toBe('slow');
+    expect(service.errorMessage()).toBeNull();
+
+    vi.advanceTimersByTime(45_000);
+
+    expect(service.status()).toBe('failed');
+    expect(service.errorMessage()).toContain('expected startup window');
+    const attemptsAfterFailure = http.get.mock.calls.length;
+    vi.advanceTimersByTime(5_000);
+    expect(http.get).toHaveBeenCalledTimes(attemptsAfterFailure);
+  });
+
+  it('does not create duplicate polling and retry starts a fresh attempt', () => {
+    vi.useFakeTimers();
+    const http = {
+      get: vi.fn()
+        .mockReturnValueOnce(throwError(() => new Error('backend unavailable')))
+        .mockReturnValue(of({ status: 'ok' })),
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        StartupReadinessService,
+        { provide: HttpClient, useValue: http },
+      ],
+    });
+
+    const service = TestBed.inject(StartupReadinessService);
+    service.start();
+    service.start();
+    vi.advanceTimersByTime(0);
+    expect(http.get).toHaveBeenCalledTimes(1);
+    expect(service.status()).toBe('checking');
+
+    service.retry();
+    vi.advanceTimersByTime(0);
+
+    expect(http.get).toHaveBeenCalledTimes(2);
+    expect(service.status()).toBe('ready');
+  });
+
+  it('cleans up the poller when the injection context is destroyed', () => {
+    vi.useFakeTimers();
+    const http = { get: vi.fn().mockReturnValue(throwError(() => new Error('offline'))) };
+    TestBed.configureTestingModule({
+      providers: [
+        StartupReadinessService,
+        { provide: HttpClient, useValue: http },
+      ],
+    });
+
+    const service = TestBed.inject(StartupReadinessService);
+    service.start();
+    vi.advanceTimersByTime(0);
+    const attemptsBeforeDestroy = http.get.mock.calls.length;
+
+    TestBed.resetTestingModule();
+    vi.advanceTimersByTime(5_000);
+
+    expect(service.status()).toBe('checking');
+    expect(http.get).toHaveBeenCalledTimes(attemptsBeforeDestroy);
+  });
+});
+
+describe('StartupLoadingComponent', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('renders the compact tokenizer flow and exposes a retry action on failure', () => {
+    const fixture = TestBed.createComponent(StartupLoadingComponent);
+    let retryCount = 0;
+    fixture.componentInstance.retry.subscribe(() => retryCount++);
+    fixture.componentRef.setInput('status', 'failed');
+    fixture.componentRef.setInput('errorMessage', 'Backend startup failed.');
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('h1')?.textContent).toBe('TKBEN');
+    expect(element.querySelector('#startup-description')?.textContent).toContain(
+      'We are loading the service, please wait...',
+    );
+    expect(element.querySelector('.startup-tokenizer-machine')).not.toBeNull();
+    expect(element.querySelector('.startup-lane')).not.toBeNull();
+    expect(element.querySelectorAll('.startup-word')).toHaveLength(6);
+    expect(element.querySelectorAll('.startup-token')).toHaveLength(12);
+    expect(element.textContent).toContain('##ization');
+    expect(element.querySelector('.startup-chart')).toBeNull();
+    expect(element.querySelector('[role="alert"]')?.textContent).toContain('Backend startup failed.');
+    expect(element.querySelector('.startup-screen--failed')).not.toBeNull();
+
+    element.querySelector<HTMLButtonElement>('button')?.click();
+    expect(retryCount).toBe(1);
+  });
+});

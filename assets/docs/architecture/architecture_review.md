@@ -222,4 +222,4 @@ Completed implementation work:
 The current validation status and historical remediation outcomes are recorded
 in the [project status ledger](../project_status_ledger.md). The executable
 import and removed-symbol contract is
-`tests/unit/server/test_architecture_boundaries.py`.
+`tests/unit/test_application_contracts.py`.

@@ -25,7 +25,6 @@ def pytest_configure(config: pytest.Config) -> None:
     config.option.basetemp = str(CACHE_PATH / "pytest-basetemp-current")
     sys.pycache_prefix = str(CACHE_PATH / "pycache")
     os.environ["PYTHONPYCACHEPREFIX"] = str(CACHE_PATH / "pycache")
-    os.environ["COVERAGE_FILE"] = str(CACHE_PATH / "coverage" / ".coverage")
     os.environ["MPLCONFIGDIR"] = str(CACHE_PATH / "matplotlib")
     os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(CACHE_PATH / "playwright")
 

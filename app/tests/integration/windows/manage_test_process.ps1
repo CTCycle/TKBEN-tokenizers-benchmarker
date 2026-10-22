@@ -11,17 +11,47 @@ unrelated listener cannot be terminated during cleanup.
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)]
-    [ValidateSet('StartBackend', 'StartPreview', 'Stop')]
+    [ValidateSet('StartBackend', 'StartPreview', 'Stop', 'RemoveTestData')]
     [string]$Action,
-    [Parameter(Mandatory)][string]$StateFile,
+    [string]$StateFile,
     [string]$RepositoryRoot,
+    [string]$DataRoot,
     [string]$BindAddress = '127.0.0.1',
     [ValidateRange(1, 65535)][int]$Port = 5000
 )
 
 $ErrorActionPreference = 'Stop'
 
+if ($Action -eq 'RemoveTestData') {
+    if ([string]::IsNullOrWhiteSpace($RepositoryRoot) -or
+        [string]::IsNullOrWhiteSpace($DataRoot)) {
+        throw 'RepositoryRoot and DataRoot are required for test data cleanup.'
+    }
+    $root = [IO.Path]::GetFullPath($RepositoryRoot)
+    $cacheRoot = [IO.Path]::GetFullPath((Join-Path $root 'runtimes\cache'))
+    $cachePrefix = $cacheRoot.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
+    $target = [IO.Path]::GetFullPath($DataRoot)
+    $leaf = Split-Path -Leaf $target
+    if (-not $target.StartsWith($cachePrefix, [StringComparison]::OrdinalIgnoreCase) -or
+        -not $leaf.StartsWith('test-data-', [StringComparison]::OrdinalIgnoreCase) -or
+        $leaf.Length -le 'test-data-'.Length) {
+        throw "Refusing to remove a path outside the isolated test data area: $target"
+    }
+    if (Test-Path -LiteralPath $target) {
+        $entry = Get-Item -LiteralPath $target -Force
+        if (-not $entry.PSIsContainer -or
+            ($entry.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+            throw "Refusing to remove a non-directory or reparse test data path: $target"
+        }
+        Remove-Item -LiteralPath $target -Recurse -Force -ErrorAction Stop
+    }
+    exit 0
+}
+
 if ($Action -eq 'Stop') {
+    if ([string]::IsNullOrWhiteSpace($StateFile)) {
+        throw 'StateFile is required to stop a test-owned process.'
+    }
     if (-not (Test-Path -LiteralPath $StateFile -PathType Leaf)) {
         throw "Cannot verify the test-owned process: state file missing at $StateFile."
     }
@@ -60,6 +90,9 @@ if ($Action -eq 'Stop') {
 if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
     throw 'RepositoryRoot is required for process startup.'
 }
+if ([string]::IsNullOrWhiteSpace($StateFile)) {
+    throw 'StateFile is required for process startup.'
+}
 if (Test-Path -LiteralPath $StateFile) {
     throw "Refusing to overwrite an existing test process state file: $StateFile."
 }
@@ -78,6 +111,17 @@ else {
 }
 if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
     throw "The test runtime executable does not exist: $executable"
+}
+
+try {
+    $address = [Net.IPAddress]::Parse($BindAddress)
+    $probe = [Net.Sockets.TcpListener]::new($address, $Port)
+    $probe.Start()
+    $probe.Stop()
+}
+catch {
+    if ($probe) { $probe.Stop() }
+    throw "The test port $BindAddress`:$Port is occupied or unavailable. Refusing to reuse it. $($_.Exception.Message)"
 }
 
 $startedProcess = Start-Process -FilePath $executable -ArgumentList $arguments `
