@@ -18,8 +18,8 @@ convention:
 
 The latest published release is `v4.6.1` (backend `3.6.1`, frontend `2.6.1`);
 `v4.7.0` (backend `3.7.0`, frontend `2.7.0`) was published on 2026-10-22 from
-annotated tag `v4.7.0` on `main` commit `f628688e325bcb7d903fbe49e830b0f32ddb9248`
-(hosted CI run `39750287164` passed both jobs; source-only, no binary assets).
+annotated tag `v4.7.0` on `main` commit `7dc3d7e372bcc60cb7a75b7d12c07a4d51d42840`
+(re-published with PR #8 merged; hosted CI passed both jobs; source-only, no binary assets).
 Its annotated tag points to validated `main` commit
 `d198f203525bb57603060db7283f7d01432269b3`; publication and validation evidence
 are recorded in the [project status ledger](../project_status_ledger.md#release-gate).
@@ -50,12 +50,13 @@ The v4.7.0 delta is based on verified repository changes after `v4.6.1`:
   frontend routes out of the OpenAPI schema;
 - update the Windows launcher to use the single-origin FastAPI SPA flow and
   drop the obsolete UI-port configuration; and
-- revamp the README overview, features, and design.
+- revamp the README overview, features, and design; and
+- harden Windows launcher lifecycle and test-process ownership (PR #8), with a
+  Windows lifecycle CI job.
 
 API version `1.2.0`, benchmark schema version `3`, and report version `5`
-remain unchanged. The Windows lifecycle hardening in draft PR #8 is not part
-of this release; its open standard-console Ctrl+C verification remains
-validation debt in the [project status ledger](../project_status_ledger.md#open-issues-and-validation-debt).
+remain unchanged. Standard interactive-console Ctrl+C verification of the
+launcher remains validation debt in the [project status ledger](../project_status_ledger.md#open-issues-and-validation-debt).
 Validation evidence is recorded as `V-20261022` (release smoke).
 
 ## v4.6.1 patch release notes

@@ -17,7 +17,7 @@ reconciled as failed after restart rather than automatically resumed.
 The latest published release is `v4.7.0` with backend package `3.7.0` and
 frontend package `2.7.0`. Its source-only GitHub release was published from
 annotated tag `v4.7.0` on `main` commit
-`f628688e325bcb7d903fbe49e830b0f32ddb9248`; `main` and `develop` are
+`7dc3d7e372bcc60cb7a75b7d12c07a4d51d42840`; `main` and `develop` are
 synchronized after the publication record update. Configuration ownership is
 canonical: `settings/.env` and the process environment own
 bootstrap-only values,
