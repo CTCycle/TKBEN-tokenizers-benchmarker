@@ -10,17 +10,17 @@
 
 ## Overview
 
-TKBEN helps you examine text data and compare how tokenizers process the same material. The local web application stores datasets, tokenizer assets, and reports on the computer running the app. SQLite is the default database; PostgreSQL is available for advanced setups. Hugging Face sources are optional.
-
-No single metric identifies the best tokenizer for every task. Results depend on the chosen dataset, measures, run settings, and machine.
+TKBEN is a local web workbench for inspecting text datasets, exploring tokenizer assets, and comparing how multiple tokenizers process the same saved data. It keeps datasets, tokenizer assets, benchmark reports, and dashboard preferences on the computer running the application, with SQLite as the default database and PostgreSQL available for advanced setups. Tokenizers and datasets can come from local files or optional Hugging Face sources, and each tokenizer can be inspected for vocabulary, token lengths, and special tokens. Benchmarks compare prepared tokenizers on selected performance, vocabulary, and fidelity measures, while saved reports, diagnostics, and PDF export support later review. No single metric identifies the best tokenizer for every task; results depend on the chosen dataset, measures, run settings, and machine.
 
 ## Key Features
 
 - Add predefined or Hugging Face datasets, or upload local CSV and XLSX files, then review dataset and lexical statistics.
 - Search for tokenizer assets, download them, or upload a custom `tokenizer.json`; inspect vocabulary, token lengths, and special tokens.
 - Compare up to five prepared tokenizers on the same saved dataset using selected performance, vocabulary, and fidelity measures.
+- Review cross-benchmark reports, compare tokenizer metrics against a report-scoped baseline, clone eligible configurations, and edit report tags.
 - Save and reopen reports, customize dashboard views, inspect run diagnostics, and export completed reports as PDFs.
-- Configure, test, and switch SQLite or PostgreSQL connections from Settings -> Database. Runtime settings and dashboard preferences save automatically to, and remain scoped to, the active database.
+- Search, filter, and manage dataset and tokenizer catalogs by source and numeric thresholds.
+- Configure, test, and switch SQLite or PostgreSQL connections from Settings -> Database; runtime settings and dashboard preferences save automatically to, and remain scoped to, the active database.
 
 ## Screenshots
 
