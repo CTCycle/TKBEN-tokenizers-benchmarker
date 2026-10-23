@@ -2435,6 +2435,10 @@ app-root {
   gap: var(--space-3);
 }
 
+.tokenizer-playground-body[hidden] {
+  display: none;
+}
+
 .tokenizer-playground-inputs {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(260px, 0.8fr);

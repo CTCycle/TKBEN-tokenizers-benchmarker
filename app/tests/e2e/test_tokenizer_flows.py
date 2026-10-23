@@ -83,6 +83,26 @@ def _build_wordlevel_tokenizer_json(
     return str(payload).encode("utf-8")
 
 ###############################################################################
+def _build_playground_tokenizer_json() -> bytes:
+    from tokenizers import Tokenizer
+    from tokenizers.models import WordLevel
+    from tokenizers.pre_tokenizers import Whitespace
+    from tokenizers.processors import TemplateProcessing
+
+    tokenizer = Tokenizer(
+        WordLevel(
+            vocab={"[UNK]": 0, "Hello": 1, "world": 2, "[CLS]": 3, "[SEP]": 4},
+            unk_token="[UNK]",
+        )
+    )
+    tokenizer.pre_tokenizer = Whitespace()
+    tokenizer.post_processor = TemplateProcessing(
+        single="[CLS] $A [SEP]",
+        special_tokens=[("[CLS]", 3), ("[SEP]", 4)],
+    )
+    return tokenizer.to_str().encode("utf-8")
+
+###############################################################################
 def _assert_tokenizer_artifact_matches_vocabulary(
     artifact_path: Path,
     expected_payload: bytes,
@@ -667,6 +687,216 @@ def test_custom_tokenizer_can_be_deleted_and_repeated_delete_is_not_found(
         f"/api/tokenizers/delete?tokenizer_name={tokenizer_name}"
     )
     assert repeated.status == 404
+
+###############################################################################
+def test_tokenizer_playground_full_browser_flow(
+    api_context: APIRequestContext,
+    page: Page,
+    base_url: str,
+) -> None:
+    """Exercise preview input, selection limits, results, errors, and layout."""
+    suffix = uuid4().hex[:10]
+    tokenizer_names: list[str] = []
+    payload = _build_playground_tokenizer_json()
+    for index in range(4):
+        stem = f"qa_playground_{suffix}_{index}"
+        upload = api_context.post(
+            "/api/tokenizers/upload",
+            multipart={
+                "file": {
+                    "name": f"{stem}.json",
+                    "mimeType": "application/json",
+                    "buffer": payload,
+                }
+            },
+        )
+        assert upload.status == 200, upload.text()
+        result = upload.json()
+        assert result.get("is_compatible") is True
+        tokenizer_names.append(str(result["tokenizer_name"]))
+
+    browser_errors: list[str] = []
+    browser_http_errors: list[tuple[int, str]] = []
+    page.on("pageerror", lambda error: browser_errors.append(str(error)))
+    page.on(
+        "response",
+        lambda response: (
+            browser_http_errors.append((response.status, response.url))
+            if response.status >= 400
+            else None
+        ),
+    )
+    try:
+        page.set_viewport_size({"width": 1440, "height": 900})
+        page.goto(f"{base_url}/tokenizers", wait_until="domcontentloaded")
+        playground = page.locator(".tokenizer-playground")
+        toggle = playground.locator(".tokenizer-playground-toggle")
+        expect(toggle).to_have_attribute("aria-expanded", "false")
+        toggle.click()
+        expect(toggle).to_have_attribute("aria-expanded", "true")
+
+        textarea = playground.locator(".tokenizer-playground-textarea")
+        expect(textarea).to_be_visible()
+        expect(textarea).to_have_attribute("maxlength", "2000")
+        textarea.fill("x" * 2001)
+        expect(textarea).to_have_value("x" * 2000)
+
+        tokenizer_options = playground.locator(".tokenizer-playground-tokenizers")
+        expect(tokenizer_options.locator("input[type=checkbox]")).to_have_count(5)
+        tokenize_button = playground.get_by_role("button", name="Tokenize", exact=True)
+        expect(tokenize_button).to_be_disabled()
+        for tokenizer_name in tokenizer_names[:3]:
+            option = tokenizer_options.get_by_label(tokenizer_name, exact=True)
+            expect(option).to_be_visible(timeout=30_000)
+            option.check()
+        expect(tokenizer_options.get_by_text("Tokenizers (3 / 3)")).to_be_visible()
+        expect(
+            tokenizer_options.get_by_label(tokenizer_names[3], exact=True)
+        ).to_be_disabled()
+
+        textarea.fill("Hello world")
+        expect(tokenize_button).to_be_enabled()
+        special_tokens = tokenizer_options.get_by_label(
+            "Include special tokens", exact=True
+        )
+        expect(special_tokens).to_be_checked()
+        special_tokens.uncheck()
+        with page.expect_response(
+            lambda response: (
+                response.request.method == "POST"
+                and response.url.endswith("/api/tokenizers/preview")
+            )
+        ) as plain_preview_info:
+            tokenize_button.click()
+        plain_preview = plain_preview_info.value
+        assert plain_preview.status == 200, plain_preview.text()
+        plain_request = json.loads(plain_preview.request.post_data or "{}")
+        assert plain_request.get("text") == "Hello world"
+        assert plain_request.get("tokenizers") == tokenizer_names[:3]
+        assert plain_request.get("add_special_tokens") is False
+        plain_results = plain_preview.json().get("results", [])
+        assert [item.get("status") for item in plain_results] == [
+            "success",
+            "success",
+            "success",
+        ]
+        assert [item.get("unknown_count") for item in plain_results] == [None] * 3
+        expect(playground.locator(".tokenizer-playground-card")).to_have_count(3)
+        for index, tokenizer_name in enumerate(tokenizer_names[:3]):
+            card = playground.locator(".tokenizer-playground-card").nth(index)
+            expect(card.locator(".tokenizer-playground-card-title")).to_have_text(
+                tokenizer_name
+            )
+            expect(card.get_by_role("listitem")).to_have_count(2)
+            expect(
+                card.locator(".tokenizer-playground-token-text").nth(0)
+            ).to_have_text("Hello")
+            expect(
+                card.locator(".tokenizer-playground-token-text").nth(1)
+            ).to_have_text("world")
+            assert card.locator(".tokenizer-playground-token-id").all_text_contents() == [
+                "1",
+                "2",
+            ]
+            expect(card.locator(".panel-description").first).to_contain_text(
+                "2 tokens · unknown count unavailable"
+            )
+
+        special_tokens.check()
+        with page.expect_response(
+            lambda response: (
+                response.request.method == "POST"
+                and response.url.endswith("/api/tokenizers/preview")
+            )
+        ) as special_preview_info:
+            tokenize_button.click()
+        special_preview = special_preview_info.value
+        assert special_preview.status == 200, special_preview.text()
+        special_request = json.loads(special_preview.request.post_data or "{}")
+        assert special_request.get("add_special_tokens") is True
+        special_results = special_preview.json().get("results", [])
+        assert [item.get("token_count") for item in special_results] == [4, 4, 4]
+        for index, tokenizer_name in enumerate(tokenizer_names[:3]):
+            card = playground.locator(".tokenizer-playground-card").nth(index)
+            expect(card.locator(".tokenizer-playground-card-title")).to_have_text(
+                tokenizer_name
+            )
+            expect(card.get_by_role("listitem")).to_have_count(4)
+            expect(
+                card.locator(".tokenizer-playground-token-text").nth(0)
+            ).to_have_text("[CLS]")
+            expect(
+                card.locator(".tokenizer-playground-token-text").nth(3)
+            ).to_have_text("[SEP]")
+            assert card.locator(".tokenizer-playground-token-id").all_text_contents() == [
+                "3",
+                "1",
+                "2",
+                "4",
+            ]
+
+        deleted_name = tokenizer_names[2]
+        deleted = api_context.delete(
+            "/api/tokenizers/delete", params={"tokenizer_name": deleted_name}
+        )
+        assert deleted.status == 200, deleted.text()
+        with page.expect_response(
+            lambda response: (
+                response.request.method == "POST"
+                and response.url.endswith("/api/tokenizers/preview")
+            )
+        ) as partial_preview_info:
+            tokenize_button.click()
+        partial_preview = partial_preview_info.value
+        assert partial_preview.status == 200, partial_preview.text()
+        partial_results = partial_preview.json().get("results", [])
+        assert [item.get("status") for item in partial_results] == [
+            "success",
+            "success",
+            "error",
+        ]
+        cards = playground.locator(".tokenizer-playground-card")
+        expect(cards).to_have_count(3)
+        expect(cards.nth(2).locator(".tokenizer-playground-card-title")).to_have_text(
+            deleted_name
+        )
+        expect(cards.nth(2).get_by_role("alert")).to_be_visible()
+
+        toggle.click()
+        expect(toggle).to_have_attribute("aria-expanded", "false")
+        expect(playground.locator(".tokenizer-playground-body")).to_be_hidden()
+        toggle.click()
+        expect(toggle).to_have_attribute("aria-expanded", "true")
+        expect(cards.nth(2).get_by_role("alert")).to_be_visible()
+
+        listed = api_context.get("/api/tokenizers/list")
+        assert listed.ok, listed.text()
+        remaining = {
+            item["tokenizer_name"]: item
+            for item in listed.json().get("tokenizers", [])
+            if item.get("tokenizer_name") in tokenizer_names
+        }
+        assert set(remaining) == set(tokenizer_names) - {deleted_name}
+        assert all(item.get("has_report") is False for item in remaining.values())
+
+        for width, height in ((1440, 900), (375, 812)):
+            page.set_viewport_size({"width": width, "height": height})
+            dimensions = page.evaluate(
+                "() => ({viewport: window.innerWidth, document: document.documentElement.scrollWidth})"
+            )
+            assert dimensions["document"] <= dimensions["viewport"] + 1, (
+                f"Tokenizer Playground overflows at {width}x{height}: {dimensions}"
+            )
+            expect(playground).to_be_visible()
+            expect(tokenize_button).to_be_visible()
+        assert browser_errors == [], browser_errors
+        assert browser_http_errors == [], browser_http_errors
+    finally:
+        for tokenizer_name in tokenizer_names:
+            cleanup = api_context.delete(
+                "/api/tokenizers/delete", params={"tokenizer_name": tokenizer_name}
+            )
+            assert cleanup.status in (200, 404), cleanup.text()
 
 ###############################################################################
 @pytest.mark.skipif(
