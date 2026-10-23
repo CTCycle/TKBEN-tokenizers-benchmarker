@@ -11,6 +11,8 @@ import type {
   TokenizerDiscoveryQuery,
   TokenizerDownloadRequest,
   TokenizerListItem,
+  TokenizerPreviewRequest,
+  TokenizerPreviewResult,
   TokenizerReportResponse,
   TokenizerVocabularyPageResponse,
 } from '../api/api.models';
@@ -40,7 +42,11 @@ export class TokenizersStore {
   readonly discoveryError = signal<string | null>(null);
   readonly selectedDiscoveryIds = signal<readonly string[]>([]);
   readonly downloadWarning = signal<string | null>(null);
+  readonly previewResults = signal<readonly TokenizerPreviewResult[]>([]);
+  readonly previewLoading = signal(false);
+  readonly previewError = signal<string | null>(null);
   private discoverySequence = 0;
+  private previewSequence = 0;
   private reportLoadSequence = 0;
 
   constructor() {
@@ -105,6 +111,16 @@ export class TokenizersStore {
         this.discoveryError.set(errorMessage(error, 'Failed to discover Hugging Face tokenizers.'));
         this.discoveryLoading.set(false);
       },
+    });
+  }
+
+  preview(request: TokenizerPreviewRequest): void {
+    const sequence = ++this.previewSequence;
+    this.previewLoading.set(true);
+    this.previewError.set(null);
+    this.api.preview(request).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (response) => { if (sequence !== this.previewSequence) return; this.previewResults.set(response.results ?? []); this.previewLoading.set(false); },
+      error: (error: unknown) => { if (sequence !== this.previewSequence) return; this.previewError.set(errorMessage(error, 'Failed to tokenize preview text.')); this.previewLoading.set(false); },
     });
   }
 

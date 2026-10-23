@@ -1,5 +1,5 @@
 # Backend API
-Last updated: 2026-10-21
+Last updated: 2026-10-23
 
 ## API Prefix
 All routers are included with `prefix="/api"` during backend startup.
@@ -48,6 +48,7 @@ through the manual Hugging Face dataset-ID workflow.
 - `GET /api/tokenizers/reports/latest`
 - `GET /api/tokenizers/reports/{report_id}`
 - `GET /api/tokenizers/reports/{report_id}/vocabulary`
+- `POST /api/tokenizers/preview` — transient playground encoding. Body `{text, tokenizers, add_special_tokens=true}`: `text` 1–2000 characters and not blank, 1–3 tokenizer identifiers (normalized and de-duplicated). Only locally persisted artifacts are loaded through the benchmark loader and encoded once through `UniversalTokenizerAdapter` without padding or truncation. Returns `{status, results}` in request order; each result has `tokenizer_name`, `status=success|error`, `tokens[{token_id, token}]`, `token_count`, nullable `unknown_count` (null when the tokenizer has no unknown token ID), and `error`. Missing, unloadable, or failing tokenizers produce per-item error results instead of failing the request. Nothing is persisted.
 - `POST /api/tokenizers/upload` — creates or updates the database tokenizer
   source and canonical custom artifact
 - `DELETE /api/tokenizers/delete?tokenizer_name={name}` — removes either a

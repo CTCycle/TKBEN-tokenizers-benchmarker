@@ -1937,6 +1937,39 @@ def test_tokenizer_discovery_rejects_invalid_query(monkeypatch) -> None:
     assert called["value"] is False
 
 ###############################################################################
+def test_tokenizer_preview_enforces_input_limits(monkeypatch) -> None:
+    from server.contracts.tokenizers import TokenizerPreviewResult
+    from server.services.tokenizer_preview import TokenizerPreviewService
+
+    def fake_preview(self, request):
+        del self
+        return [
+            TokenizerPreviewResult(
+                tokenizer_name=name, status="success", token_count=0
+            )
+            for name in request.tokenizers
+        ]
+
+    monkeypatch.setattr(TokenizerPreviewService, "preview", fake_preview)
+    client = TestClient(app)
+    invalid_payloads = [
+        {"text": "", "tokenizers": ["gpt2"]},
+        {"text": "   ", "tokenizers": ["gpt2"]},
+        {"text": "x" * 2001, "tokenizers": ["gpt2"]},
+        {"text": "hello", "tokenizers": []},
+        {"text": "hello", "tokenizers": ["a", "b", "c", "d"]},
+    ]
+    for payload in invalid_payloads:
+        assert client.post("/api/tokenizers/preview", json=payload).status_code == 422
+
+    response = client.post(
+        "/api/tokenizers/preview",
+        json={"text": "hello", "tokenizers": ["gpt2", "gpt2"]},
+    )
+    assert response.status_code == 200
+    assert [item["tokenizer_name"] for item in response.json()["results"]] == ["gpt2"]
+
+###############################################################################
 def test_tokenizer_list_passes_catalog_filters_to_service(monkeypatch) -> None:
     from server.services.tokenizers import TokenizersService
 

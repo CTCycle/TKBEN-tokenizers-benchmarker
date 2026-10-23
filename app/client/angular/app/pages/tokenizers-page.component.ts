@@ -20,6 +20,9 @@ import type {
 
 type TokenizerManagerTab = 'discover' | 'add-by-name' | 'upload-json';
 
+const PLAYGROUND_MAX_TOKENIZERS = 3;
+const PLAYGROUND_MAX_TEXT_LENGTH = 2000;
+
 @Component({
   selector: 'app-tokenizers-page',
   imports: [ReactiveFormsModule, HistogramChartComponent, ModalA11yDirective],
@@ -37,6 +40,17 @@ export class TokenizersPageComponent {
   protected readonly discoveryAdvancedOpen = signal(false);
   protected readonly downloadProgressVisible = computed(() => this.store.busyAction() === 'download');
   protected readonly exportError = signal<string | null>(null);
+  protected readonly playgroundMaxTokenizers = PLAYGROUND_MAX_TOKENIZERS;
+  protected readonly playgroundMaxTextLength = PLAYGROUND_MAX_TEXT_LENGTH;
+  protected readonly playgroundOpen = signal(false);
+  protected readonly playgroundText = signal('');
+  protected readonly playgroundAddSpecialTokens = signal(true);
+  private readonly playgroundSelection = signal<readonly string[]>([]);
+  protected readonly playgroundSelectedTokenizers = computed(() => {
+    const available = new Set(this.store.tokenizers().map((tokenizer) => tokenizer.tokenizer_name));
+    return this.playgroundSelection().filter((name) => available.has(name));
+  });
+  protected readonly canRunPlayground = computed(() => this.playgroundText().trim().length > 0 && this.playgroundSelectedTokenizers().length > 0 && !this.store.previewLoading());
   protected readonly filters = new FormGroup({
     search: new FormControl('', { nonNullable: true }),
     source: new FormControl('', { nonNullable: true }),
@@ -189,6 +203,21 @@ export class TokenizersPageComponent {
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (result) => { const url = URL.createObjectURL(result.blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = result.fileName; anchor.click(); URL.revokeObjectURL(url); },
       error: (error: unknown) => { void errorMessageAsync(error, 'Failed to export dashboard.').then((message) => this.exportError.set(message)); },
+    });
+  }
+  protected togglePlayground(): void { this.playgroundOpen.update((open) => !open); }
+  protected isPlaygroundTokenizerSelected(name: string): boolean { return this.playgroundSelectedTokenizers().includes(name); }
+  protected togglePlaygroundTokenizer(name: string, enabled: boolean): void {
+    const selected = this.playgroundSelectedTokenizers().filter((item) => item !== name);
+    if (enabled && selected.length < PLAYGROUND_MAX_TOKENIZERS) selected.push(name);
+    this.playgroundSelection.set(selected);
+  }
+  protected runPlayground(): void {
+    if (!this.canRunPlayground()) return;
+    this.store.preview({
+      text: this.playgroundText(),
+      tokenizers: [...this.playgroundSelectedTokenizers()],
+      add_special_tokens: this.playgroundAddSpecialTokens(),
     });
   }
   protected removeTokenizer(name: string): void { if (window.confirm(`Remove ${name} from the database?`)) this.store.remove(name); }

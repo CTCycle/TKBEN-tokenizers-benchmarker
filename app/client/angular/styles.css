@@ -2425,6 +2425,121 @@ app-root {
   min-width: 0;
 }
 
+.tokenizer-playground-toggle {
+  margin-top: 0;
+}
+
+.tokenizer-playground-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.tokenizer-playground-inputs {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(260px, 0.8fr);
+  gap: var(--card-gap);
+}
+
+.tokenizer-playground-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.tokenizer-playground-textarea {
+  min-height: 8em;
+}
+
+.tokenizer-playground-tokenizers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.tokenizer-playground-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 12em;
+  overflow-y: auto;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel-alt);
+}
+
+.tokenizer-playground-options .checkbox span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tokenizer-playground-submit {
+  align-self: flex-start;
+}
+
+.tokenizer-playground-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--card-gap);
+}
+
+.tokenizer-report-card.tokenizer-playground-card {
+  min-height: 0;
+  height: auto;
+}
+
+.tokenizer-playground-card-title {
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-text);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tokenizer-playground-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  max-height: 22em;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.tokenizer-playground-token {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-subtle);
+}
+
+.tokenizer-playground-token-text {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: var(--color-text);
+  font-family: monospace;
+  font-size: var(--font-size-md);
+  white-space: pre-wrap;
+}
+
+.tokenizer-playground-token-id {
+  color: var(--color-muted);
+  font-size: var(--font-size-xs);
+}
+
 .tokenizer-report-left {
   gap: 16px;
 }
@@ -4949,6 +5064,10 @@ select:focus-visible {
   }
 
   .tokenizer-report-split {
+    grid-template-columns: 1fr;
+  }
+
+  .tokenizer-playground-inputs {
     grid-template-columns: 1fr;
   }
 

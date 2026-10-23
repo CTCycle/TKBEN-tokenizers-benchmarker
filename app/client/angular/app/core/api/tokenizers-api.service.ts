@@ -12,6 +12,8 @@ import type {
   TokenizerDiscoveryQuery,
   TokenizerDiscoveryResponse,
   TokenizerListResponse,
+  TokenizerPreviewRequest,
+  TokenizerPreviewResponse,
   TokenizerReportResponse,
   TokenizerUploadResponse,
   TokenizerValidationGenerateRequest,
@@ -66,6 +68,10 @@ export class TokenizersApiService {
     const body = new FormData();
     body.append('file', file);
     return this.http.post<TokenizerUploadResponse>('/api/tokenizers/upload', body);
+  }
+
+  preview(request: TokenizerPreviewRequest): Observable<TokenizerPreviewResponse> {
+    return this.http.post<TokenizerPreviewResponse>('/api/tokenizers/preview', request);
   }
 
   delete(tokenizerName: string): Observable<void> {

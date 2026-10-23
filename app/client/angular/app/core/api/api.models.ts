@@ -747,6 +747,31 @@ export interface TokenizerVocabularyPageResponse {
     items: TokenizerVocabularyItem[];
 }
 
+export interface TokenizerPreviewRequest {
+    text: string;
+    tokenizers: string[];
+    add_special_tokens: boolean;
+}
+
+export interface TokenizerPreviewToken {
+    token_id: number;
+    token: string;
+}
+
+export interface TokenizerPreviewResult {
+    tokenizer_name: string;
+    status: 'success' | 'error';
+    tokens: TokenizerPreviewToken[];
+    token_count: number | null;
+    unknown_count: number | null;
+    error: string | null;
+}
+
+export interface TokenizerPreviewResponse {
+    status: 'success';
+    results: TokenizerPreviewResult[];
+}
+
 /**
  * Response from the benchmark run endpoint
  */

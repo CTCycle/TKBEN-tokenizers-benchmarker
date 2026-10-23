@@ -79,6 +79,49 @@
         }
       </aside>
     </div>
+
+    <section class="panel dashboard-panel dashboard-plain tokenizer-playground" aria-labelledby="tokenizer-playground-title">
+      <header class="panel-header">
+        <div><p id="tokenizer-playground-title" class="panel-label">Tokenizer Playground</p><p class="panel-description">Paste text and compare how up to {{ playgroundMaxTokenizers }} local tokenizers split it.</p></div>
+        <button class="tokenizer-discovery-advanced-toggle tokenizer-playground-toggle" type="button" [attr.aria-expanded]="playgroundOpen()" aria-controls="tokenizer-playground-body" (click)="togglePlayground()"><span class="tokenizer-discovery-advanced-toggle-icon" aria-hidden="true">^</span><span>{{ playgroundOpen() ? 'Hide' : 'Show' }}</span></button>
+      </header>
+      <div id="tokenizer-playground-body" class="tokenizer-playground-body" [hidden]="!playgroundOpen()">
+        <div class="tokenizer-playground-inputs">
+          <label class="tokenizer-playground-text"><span class="field-label">Text</span><textarea class="tokenizer-manual-input tokenizer-playground-textarea" [attr.maxlength]="playgroundMaxTextLength" [value]="playgroundText()" (input)="playgroundText.set($any($event.target).value)" placeholder="e.g. The mitochondria produce cellular energy."></textarea><span class="panel-description">{{ playgroundText().length.toLocaleString() }} / {{ playgroundMaxTextLength.toLocaleString() }} characters</span></label>
+          <fieldset class="tokenizer-playground-tokenizers">
+            <legend class="field-label">Tokenizers ({{ playgroundSelectedTokenizers().length }} / {{ playgroundMaxTokenizers }})</legend>
+            <div class="tokenizer-playground-options">
+              @for (tokenizer of store.tokenizers(); track tokenizer.tokenizer_name) {
+                <label class="checkbox"><input type="checkbox" [checked]="isPlaygroundTokenizerSelected(tokenizer.tokenizer_name)" [disabled]="!isPlaygroundTokenizerSelected(tokenizer.tokenizer_name) && playgroundSelectedTokenizers().length >= playgroundMaxTokenizers" (change)="togglePlaygroundTokenizer(tokenizer.tokenizer_name, $any($event.target).checked)" /><span [title]="tokenizer.tokenizer_name">{{ tokenizer.tokenizer_name }}</span></label>
+              } @empty { <p class="tokenizer-empty-label">No local tokenizers match the current filters.</p> }
+            </div>
+            <label class="checkbox"><input type="checkbox" [checked]="playgroundAddSpecialTokens()" (change)="playgroundAddSpecialTokens.set($any($event.target).checked)" /><span>Include special tokens</span></label>
+            <button class="primary-button tokenizer-playground-submit" type="button" [disabled]="!canRunPlayground()" (click)="runPlayground()">{{ store.previewLoading() ? 'Tokenizing…' : 'Tokenize' }}</button>
+          </fieldset>
+        </div>
+        @if (store.previewError()) { <p class="error-banner" role="alert">{{ store.previewError() }}</p> }
+        @if (store.previewResults().length > 0) {
+          <p class="panel-description">Single-pass preview, not a benchmark measurement.</p>
+          <div class="tokenizer-playground-results" aria-live="polite">
+            @for (result of store.previewResults(); track result.tokenizer_name) {
+              <article class="tokenizer-report-card tokenizer-playground-card">
+                <p class="tokenizer-playground-card-title" [title]="result.tokenizer_name">{{ result.tokenizer_name }}</p>
+                @if (result.status === 'success') {
+                  <p class="panel-description">{{ formatNumber(result.token_count, 0) }} tokens · {{ result.unknown_count === null ? 'unknown count unavailable' : formatNumber(result.unknown_count, 0) + ' unknown' }}</p>
+                  <ol class="tokenizer-playground-tokens" [attr.aria-label]="'Tokens for ' + result.tokenizer_name">
+                    @for (token of result.tokens; track $index) {
+                      <li class="tokenizer-playground-token" [title]="'ID ' + token.token_id"><span class="tokenizer-playground-token-text">{{ token.token }}</span><span class="tokenizer-playground-token-id">{{ token.token_id }}</span></li>
+                    }
+                  </ol>
+                } @else {
+                  <p class="error-banner" role="alert">{{ result.error }}</p>
+                }
+              </article>
+            }
+          </div>
+        }
+      </div>
+    </section>
   </div>
 </main>
 

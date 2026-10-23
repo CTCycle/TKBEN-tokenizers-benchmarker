@@ -227,6 +227,35 @@ describe('TokenizersPageComponent workflow', () => {
     });
   });
 
+  it('caps playground tokenizer selection and sends preview requests', () => {
+    const store = {
+      tokenizers: signal(['alpha', 'beta', 'gamma', 'delta'].map((tokenizer_name) => ({ tokenizer_name, source: 'huggingface', has_report: false, vocabulary_size: null }))),
+      previewLoading: signal(false),
+      preview: vi.fn(),
+      refresh: vi.fn(),
+    };
+    TestBed.configureTestingModule({ providers: [
+      { provide: TokenizersStore, useValue: store },
+      { provide: ExportApiService, useValue: {} },
+    ] });
+    const page = TestBed.runInInjectionContext(() => new TokenizersPageComponent()) as unknown as {
+      playgroundText: { set: (value: string) => void };
+      playgroundSelectedTokenizers: () => readonly string[];
+      togglePlaygroundTokenizer: (name: string, enabled: boolean) => void;
+      runPlayground: () => void;
+    };
+
+    for (const name of ['alpha', 'beta', 'gamma', 'delta']) page.togglePlaygroundTokenizer(name, true);
+    expect(page.playgroundSelectedTokenizers()).toEqual(['alpha', 'beta', 'gamma']);
+    page.togglePlaygroundTokenizer('beta', false);
+    page.runPlayground();
+    expect(store.preview).not.toHaveBeenCalled();
+
+    page.playgroundText.set('alpha beta');
+    page.runPlayground();
+    expect(store.preview).toHaveBeenCalledWith({ text: 'alpha beta', tokenizers: ['alpha', 'gamma'], add_special_tokens: true });
+  });
+
   it('opens on Discover, preserves tab form state, and supports keyboard tab navigation', () => {
     const store = {
       report: signal(null),
