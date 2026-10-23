@@ -446,6 +446,7 @@ JSON_ROUTE_EXPECTATIONS = [
         "TokenizerVocabularyPageResponse",
     ),
     ("/api/tokenizers/upload", "post", 200, "TokenizerUploadResponse"),
+    ("/api/tokenizers/preview", "post", 200, "TokenizerPreviewResponse"),
     ("/api/tokenizers/delete", "delete", 200, "TokenizerDeleteResponse"),
     ("/api/benchmarks/run", "post", 202, "JobStartResponse"),
     ("/api/benchmarks/reports", "get", 200, "BenchmarkReportListResponse"),

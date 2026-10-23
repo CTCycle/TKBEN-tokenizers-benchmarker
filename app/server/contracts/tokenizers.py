@@ -230,6 +230,49 @@ class TokenizerVocabularyPageResponse(BaseModel):
     items: list[TokenizerVocabularyItem] = Field(default_factory=list)
 
 ###############################################################################
+class TokenizerPreviewRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=2000)
+    tokenizers: list[str] = Field(..., min_length=1, max_length=3)
+    add_special_tokens: bool = True
+
+    # -------------------------------------------------------------------------
+    @field_validator("text")
+    @classmethod
+    def validate_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Preview text must not be blank.")
+        return value
+
+    # -------------------------------------------------------------------------
+    @field_validator("tokenizers")
+    @classmethod
+    def validate_tokenizers(cls, value: list[str]) -> list[str]:
+        normalized = [
+            normalize_identifier(tokenizer, "Tokenizer identifier", max_length=160)
+            for tokenizer in value
+        ]
+        return list(dict.fromkeys(normalized))
+
+###############################################################################
+class TokenizerPreviewToken(BaseModel):
+    token_id: int
+    token: str
+
+###############################################################################
+class TokenizerPreviewResult(BaseModel):
+    tokenizer_name: str
+    status: Literal["success", "error"]
+    tokens: list[TokenizerPreviewToken] = Field(default_factory=list)
+    token_count: int | None = Field(default=None, ge=0)
+    unknown_count: int | None = Field(default=None, ge=0)
+    error: str | None = None
+
+###############################################################################
+class TokenizerPreviewResponse(BaseModel):
+    status: Literal["success"] = "success"
+    results: list[TokenizerPreviewResult] = Field(default_factory=list)
+
+###############################################################################
 class TokenizerDeleteResponse(BaseModel):
     status: str = Field(default="success")
     tokenizer_name: str

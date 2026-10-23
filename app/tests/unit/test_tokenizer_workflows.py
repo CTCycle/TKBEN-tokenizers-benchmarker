@@ -1483,3 +1483,83 @@ def test_adapter_uses_explicit_tokenizer_settings() -> None:
     assert tokenizer.last_kwargs["padding"] is False
     assert tokenizer.last_kwargs["truncation"] is False
     assert tokenizer.last_kwargs["max_length"] == 128
+
+###############################################################################
+def test_tokenizer_preview_returns_tokens_per_tokenizer_and_isolates_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from server.contracts.tokenizers import TokenizerPreviewRequest
+    from server.services.tokenizer_preview import TokenizerPreviewService
+
+    raw = Tokenizer__tokenizer_adapter_contract(
+        models.WordLevel({"[UNK]": 0, "alpha": 1, "beta": 2}, unk_token="[UNK]")
+    )
+    raw.pre_tokenizer = pre_tokenizers.Whitespace()
+
+    ###########################################################################
+    class FakeHFTokenizer:
+        unk_token_id = 0
+        vocab = {"[UNK]": 0, "alpha": 1, "beta": 2}
+
+        # ---------------------------------------------------------------------
+        def __call__(self, texts: list[str], **_kwargs: Any) -> dict[str, Any]:
+            return {
+                "input_ids": [
+                    [self.vocab.get(word, 0) for word in text.split()]
+                    for text in texts
+                ]
+            }
+
+        # ---------------------------------------------------------------------
+        def convert_ids_to_tokens(self, ids: list[int]) -> list[str]:
+            reverse = {value: key for key, value in self.vocab.items()}
+            return [reverse[token_id] for token_id in ids]
+
+    ###########################################################################
+    class BrokenTokenizer:
+
+        # ---------------------------------------------------------------------
+        def __call__(self, *_args: Any, **_kwargs: Any) -> dict[str, Any]:
+            raise RuntimeError("encode failed")
+
+    service = TokenizerPreviewService()
+    monkeypatch.setattr(
+        service.benchmark_service,
+        "get_missing_persisted_tokenizers",
+        lambda names: [name for name in names if name == "missing"],
+    )
+    monkeypatch.setattr(
+        service.benchmark_service,
+        "load_tokenizers",
+        lambda names: {
+            name: tokenizer
+            for name, tokenizer in {
+                "raw": raw,
+                "hf": FakeHFTokenizer(),
+                "broken": BrokenTokenizer(),
+            }.items()
+            if name in names
+        },
+    )
+
+    first = service.preview(
+        TokenizerPreviewRequest(text="alpha gamma beta", tokenizers=["raw", "hf", "raw"])
+    )
+    second = service.preview(
+        TokenizerPreviewRequest(text="alpha", tokenizers=["missing", "broken"])
+    )
+
+    assert [result.tokenizer_name for result in first] == ["raw", "hf"]
+    assert [(token.token_id, token.token) for token in first[0].tokens] == [
+        (1, "alpha"),
+        (0, "[UNK]"),
+        (2, "beta"),
+    ]
+    assert (first[0].token_count, first[0].unknown_count) == (3, None)
+    assert [token.token for token in first[1].tokens] == ["alpha", "[UNK]", "beta"]
+    assert (first[1].token_count, first[1].unknown_count) == (3, 1)
+    assert [(result.status, result.tokens) for result in second] == [
+        ("error", []),
+        ("error", []),
+    ]
+    assert second[0].error == "Tokenizer is not persisted locally."

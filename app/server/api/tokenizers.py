@@ -28,6 +28,8 @@ from server.contracts.tokenizers import (
     TokenizerDiscoverySort,
     TokenizerListItem,
     TokenizerListResponse,
+    TokenizerPreviewRequest,
+    TokenizerPreviewResponse,
     TokenizerReportGenerateRequest,
     TokenizerReportResponse,
     TokenizerUploadResponse,
@@ -38,6 +40,7 @@ from server.common.constants import (
     API_ROUTE_TOKENIZERS_DELETE,
     API_ROUTE_TOKENIZERS_DOWNLOAD,
     API_ROUTE_TOKENIZERS_LIST,
+    API_ROUTE_TOKENIZERS_PREVIEW,
     API_ROUTE_TOKENIZERS_REPORT_BY_ID,
     API_ROUTE_TOKENIZERS_REPORT_GENERATE,
     API_ROUTE_TOKENIZERS_REPORT_LATEST,
@@ -60,6 +63,7 @@ from server.services.keys import (
     HFAccessKeyValidationError,
 )
 from server.services.tokenizer_jobs import TokenizerJobService
+from server.services.tokenizer_preview import TokenizerPreviewService
 from server.services.tokenizer_reporting import TokenizerReportingService
 from server.services.tokenizers import TokenizersService
 from server.services.managed_jobs import (
@@ -174,6 +178,24 @@ async def list_tokenizers(
         tokenizers=[TokenizerListItem.model_validate(item) for item in tokenizers],
         count=len(tokenizers),
     )
+
+###############################################################################
+@router.post(
+    API_ROUTE_TOKENIZERS_PREVIEW,
+    response_model=TokenizerPreviewResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def preview_tokenizers(
+    payload: TokenizerPreviewRequest,
+) -> TokenizerPreviewResponse:
+    try:
+        results = await asyncio.to_thread(TokenizerPreviewService().preview, payload)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    return TokenizerPreviewResponse(results=results)
 
 ###############################################################################
 @router.post(

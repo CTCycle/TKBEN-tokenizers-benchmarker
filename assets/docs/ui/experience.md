@@ -1,11 +1,17 @@
 # Experience
-Last updated: 2026-10-01
+Last updated: 2026-10-23
 
 ## Page Structure
 - `DatasetPage`
   - Dataset selection and upload, validation workflow, persisted analytics dashboard.
 - `TokenizerExaminationPage`
   - Tokenizer selection and reporting plus vocabulary panel.
+  - Collapsible Tokenizer Playground below the dashboard: paste up to 2000
+    characters, pick up to 3 tokenizers from the filtered local catalog, and
+    compare token chips (token text with ID), token counts, and unknown counts
+    per tokenizer. Results are transient, labelled as a single-pass preview
+    rather than a benchmark measurement, and per-tokenizer failures render as
+    inline error cards.
 - `CrossBenchmarkPage`
   - Run and open benchmark reports, compare tokenizer metrics against a
     report-scoped baseline, clone eligible configurations, and edit report tags.

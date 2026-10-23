@@ -1,5 +1,5 @@
 # Project Status Ledger
-Last updated: 2026-10-22
+Last updated: 2026-10-23
 
 This is the canonical source of truth for current implementation status,
 validation gates, unresolved limitations, and validation history. The
@@ -73,6 +73,22 @@ Future coding and validation agents must:
   is not required to claim the local source-only quality gate.
 - Containerized deployment and binary packaging are NOT_IMPLEMENTED. The
   supported release model is source-only Windows x64.
+
+## 2026-10-23 tokenizer playground (WORKING)
+
+`POST /api/tokenizers/preview` and the collapsible Tokenizer Playground on
+the Tokenizers page add a transient, non-persisted single-pass tokenization
+preview over up to 3 local tokenizers. Focused unit tests in
+`app/tests/unit/test_tokenizer_workflows.py`, `test_api_contracts.py`,
+`test_application_contracts.py`, and `workflow-pages.spec.ts` pass, as do
+Ruff, BasedPyright (0 errors), Angular lint, and the Angular unit suite. A
+dev-server browser check with two uploaded custom tokenizers (BPE and
+WordLevel) confirmed the token chips, the counts, the per-tokenizer error
+card, and layouts at desktop and 375px without horizontal overflow; the
+test tokenizers were removed afterwards. A Hugging Face tokenizer was not
+exercised live. Known limitation: raw `tokenizer.json` tokenizers report
+`unknown_count` as unavailable because `UniversalTokenizerAdapter` reads
+only `unk_token_id`. This matches the existing benchmark semantics.
 
 ## 2026-10-22 pre-release lifecycle review (pending validation)
 
