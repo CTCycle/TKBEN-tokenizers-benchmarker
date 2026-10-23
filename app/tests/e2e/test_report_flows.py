@@ -620,6 +620,84 @@ def test_cross_benchmark_report_manager_search_pagination_and_inline_delete(
     page.get_by_role("button", name="Export dashboard report as PDF").click()
     expect(page.get_by_role("alert")).to_contain_text("Export unavailable")
 
+
+def test_cross_benchmark_dashboard_pointer_drag_reorders_and_persists(
+    page: Page, base_url: str
+) -> None:
+    _route_dashboard_api(page)
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.goto(f"{base_url}/cross-benchmark")
+
+    widget_list = page.locator('section[aria-label="Benchmark metric widgets"]')
+    widgets = widget_list.locator("article[role='listitem']")
+    expect(widgets).to_have_count(4)
+    original_order = widgets.evaluate_all(
+        "elements => elements.map(element => element.getAttribute('aria-label'))"
+    )
+    desktop_positions = widgets.evaluate_all(
+        "elements => elements.slice(0, 2).map(element => { const rect = element.getBoundingClientRect(); return { x: rect.x, y: rect.y }; })"
+    )
+    assert desktop_positions[0]["x"] != desktop_positions[1]["x"]
+
+    with page.expect_response(
+        lambda response: response.request.method == "PUT"
+        and response.url.endswith("/api/settings/dashboard")
+    ) as layout_save:
+        widgets.nth(0).drag_to(widgets.nth(1))
+    assert layout_save.value.ok, layout_save.value.text()
+
+    reordered = widgets.evaluate_all(
+        "elements => elements.map(element => element.getAttribute('aria-label'))"
+    )
+    assert reordered != original_order
+
+    page.reload()
+    widgets = page.locator(
+        'section[aria-label="Benchmark metric widgets"] article[role="listitem"]'
+    )
+    expect(widgets).to_have_count(len(reordered))
+    assert widgets.evaluate_all(
+        "elements => elements.map(element => element.getAttribute('aria-label'))"
+    ) == reordered
+
+    page.set_viewport_size({"width": 390, "height": 1200})
+    page.reload()
+    widgets = page.locator(
+        'section[aria-label="Benchmark metric widgets"] article[role="listitem"]'
+    )
+    expect(widgets).to_have_count(len(reordered))
+    mobile_order = widgets.evaluate_all(
+        "elements => elements.map(element => element.getAttribute('aria-label'))"
+    )
+    mobile_positions = widgets.evaluate_all(
+        "elements => elements.slice(0, 2).map(element => { const rect = element.getBoundingClientRect(); return { x: rect.x, y: rect.y }; })"
+    )
+    assert abs(mobile_positions[0]["x"] - mobile_positions[1]["x"]) <= 1
+    assert mobile_positions[0]["y"] != mobile_positions[1]["y"]
+    assert page.evaluate(
+        "document.documentElement.scrollWidth <= window.innerWidth"
+    )
+    with page.expect_response(
+        lambda response: response.request.method == "PUT"
+        and response.url.endswith("/api/settings/dashboard")
+    ) as mobile_layout_save:
+        widgets.nth(0).drag_to(widgets.nth(1))
+    assert mobile_layout_save.value.ok, mobile_layout_save.value.text()
+    mobile_reordered = widgets.evaluate_all(
+        "elements => elements.map(element => element.getAttribute('aria-label'))"
+    )
+    assert mobile_reordered != mobile_order
+
+    page.reload()
+    widgets = page.locator(
+        'section[aria-label="Benchmark metric widgets"] article[role="listitem"]'
+    )
+    expect(widgets).to_have_count(len(mobile_reordered))
+    assert widgets.evaluate_all(
+        "elements => elements.map(element => element.getAttribute('aria-label'))"
+    ) == mobile_reordered
+
+
 ###############################################################################
 # Live local coverage for populated Cross Benchmark report workflows.
 
