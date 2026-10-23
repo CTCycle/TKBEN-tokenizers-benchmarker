@@ -74,21 +74,24 @@ Future coding and validation agents must:
 - Containerized deployment and binary packaging are NOT_IMPLEMENTED. The
   supported release model is source-only Windows x64.
 
-## 2026-10-23 tokenizer playground (WORKING)
+## 2026-10-23 tokenizer playground (VALIDATED)
 
 `POST /api/tokenizers/preview` and the collapsible Tokenizer Playground on
 the Tokenizers page add a transient, non-persisted single-pass tokenization
-preview over up to 3 local tokenizers. Focused unit tests in
-`app/tests/unit/test_tokenizer_workflows.py`, `test_api_contracts.py`,
-`test_application_contracts.py`, and `workflow-pages.spec.ts` pass, as do
-Ruff, BasedPyright (0 errors), Angular lint, and the Angular unit suite. A
-dev-server browser check with two uploaded custom tokenizers (BPE and
-WordLevel) confirmed the token chips, the counts, the per-tokenizer error
-card, and layouts at desktop and 375px without horizontal overflow; the
-test tokenizers were removed afterwards. A Hugging Face tokenizer was not
-exercised live. Known limitation: raw `tokenizer.json` tokenizers report
-`unknown_count` as unavailable because `UniversalTokenizerAdapter` reads
-only `unk_token_id`. This matches the existing benchmark semantics.
+preview over up to 3 local tokenizers. The focused Chromium E2E in
+`app/tests/e2e/test_tokenizer_flows.py` passed against isolated SQLite. It
+exercised the 2,000-character limit, the three-tokenizer selection cap,
+special tokens on and off, token text and IDs, per-tokenizer failure
+rendering, collapse/reopen, and 1440px/375px layouts without horizontal
+overflow. Preview left tokenizer report flags unchanged. The standard test
+runner also passed the production build, Ruff, BasedPyright (0 errors; 2,111
+warnings), and 70/70 Angular unit tests. The E2E exposed and fixed a CSS rule
+that kept the playground visible despite its `hidden` attribute. Raw
+`tokenizer.json` artifacts still report `unknown_count` as unavailable
+because `UniversalTokenizerAdapter` reads only `unk_token_id`; this matches
+the existing benchmark semantics. Hugging Face downloads and gated access
+were not part of this local-tokenizer preview run and remain tracked by their
+separate gates.
 
 ## 2026-10-22 pre-release lifecycle review (pending validation)
 
@@ -144,6 +147,8 @@ recorded here rather than in a copied execution log.
 | V-20261022 | v4.7.1 patch release smoke and screenshot refresh | T0-01, T0-02 (delta), T5-06 | PASS on `develop` after the version bump. Delta since v4.7.0 is the E2E cleanup fixture plus the chart-label fix below. Ruff clean, 489/489 backend unit tests (run with `PYTHONPATH=app`), frontend lint, 69/69 unit tests, and the production build passed. `start_on_windows.ps1 -Launch` (PowerShell 5.1) reached `/api/health` 200 and served `/`, `/settings`, `/api/datasets/list` and `/api/tokenizers/list` with 200. Live workload: a 2,521-paragraph technical-docs CSV upload, full dataset analysis, three tokenizer reports, and a 3-tokenizer benchmark (custom BPE 8k/32k and WordPiece 16k trained locally with `tokenizers`) all completed. Defect found and fixed: the cross-benchmark bar chart rotated its x-axis tokenizer labels past the SVG bottom edge, so they were clipped and overlapped the axis title; the viewBox height and axis title offset were adjusted and verified visually. The README screenshots were retaken at 1600 px width from that workload and visually inspected. The seeded data was deleted afterwards and the launcher stopped (port 5000 free). Standard-console Ctrl+C, the interactive occupied-port prompt, and Hugging Face-gated checks are unchanged validation debt. |
 | V-20261022 | Test suite consolidation | T0-01 (validation tooling delta), T5-06 (candidate recheck) | PASS on the current working tree: consolidated 45 Python unit modules plus 1 performance module into 7 unit suites, 13 browser E2E modules into 6 suites, and 14 Angular specs into 5 suites; preserved all 615 test cases and the manual Windows launcher scenario. The default Windows runner passed 533 Python tests with 13 opt-in skips (546 collected), 69/69 Angular tests, Ruff, BasedPyright (0 errors; 2,102 warnings), frontend lint, and the production build. Python completed in 126.21s and Angular tests in 2.80s; a separately measured E2E-only run passed 43 with 13 opt-in skips in 93.18s. The suite used an isolated test-data root, cleanup completed, and ports 5000/8000 were free. Pre-change E2E execution time was not measured, so no E2E speedup comparison is claimed.
 
+| V-20261023 | Tokenizer Playground live browser validation | T2-08, T5-07 | PASS on the exercised Windows host with isolated SQLite: the focused Chromium E2E passed 1/1, covering four custom WordLevel tokenizers, the 2,000-character boundary, selection cap, exact text/ID chips, special-token toggle, per-item error state, collapse/reopen, responsive layout at 1440px and 375px, and no report creation. The production build, Ruff, BasedPyright (0 errors; 2,111 warnings), and 70/70 Angular unit tests passed. Fixed the playground collapse CSS issue found by the browser run; E2E cleanup removed its test tokenizers and the runner freed ports 5000/8000. Raw tokenizer JSON `unknown_count` remains unavailable by the existing adapter contract; external Hugging Face download/access was not tested. |
+
 ### Reconciled status transitions
 
 - The initial Tier 1 `PARTIAL` results for runtime settings, key management,
@@ -195,6 +200,7 @@ recorded here rather than in a copied execution log.
 | persistence.postgresql-runtime | VALIDATED | Isolated PostgreSQL 18.6 concurrency and baseline schema initialization, authenticated UI connection testing, runtime switching, database-local settings, restart, rollback, and retry passed. A matching current schema stamped with the published v4.6.0 revision rebaselined after schema comparison; dashboard preference columns and JSON roundtrip passed on port 55432. The actual tagged v4.6.0 migration chain was separately replayed and rebaselined on isolated SQLite. The existing host listener was untouched. | 2026-10-21 |
 | data.dataset-import-and-analysis | VALIDATED | CSV/XLSX import, `.xls` rejection, size boundary, analysis metrics, reload, and public Wikitext import passed. Physical host exhaustion is separate debt. | 2026-09-24 |
 | data.custom-tokenizer-storage | VALIDATED | Canonical artifact replacement, catalog identity, restart persistence, report/vocabulary rendering, and deletion passed. | 2026-09-24 |
+| data.tokenizer-playground-preview | VALIDATED | The transient preview accepted three local tokenizers, applied or omitted special tokens, returned ordered token text/IDs and per-tokenizer failures, and created no reports. Raw `tokenizer.json` unknown counts remain unavailable. | 2026-10-23 |
 | integration.huggingface-discovery-and-download | PARTIAL | Public `bert-base-uncased` flow passed with vocabulary 30,522; three gated candidates failed download, so no gated report exists. | 2026-09-25 |
 | benchmark.execution-and-reporting | VALIDATED | Admission, reports, bounded worker concurrency, progress/cancel, immediate rerun, metadata, reload, and deletion passed. Performance samples are host-specific. | 2026-09-24 |
 | benchmark.dashboard-and-pdf-export | VALIDATED | Dashboard data/customization and all eight supported benchmark PDF chart forms plus the five-page tokenizer PDF passed rendered review. Dashboard layout, visibility, visualization, and baseline preferences now autosave to the active database; dashboard browser tests cover immediate save and reload. | 2026-10-21 |
@@ -204,6 +210,7 @@ recorded here rather than in a copied execution log.
 | ui.settings-page | VALIDATED | Typed settings, all 16 runtime fields, debounced autosave, conflict reload, persistence across reload and backend restart, reset, key lifecycle, masked credential storage, keyboard navigation, and responsive states passed. The Database tab passed test-before-switch, failed-target no-change, SQLite switching, settings isolation, and restored connection configuration. | 2026-10-21 |
 | ui.cross-benchmark-workflow | VALIDATED | Wizard, report manager, tags, baseline/delta, clone/customize, tables, ordering, database-backed immediate preference persistence, reload, and responsive dialogs passed. | 2026-10-21 |
 | ui.tokenizer-report-and-vocabulary | VALIDATED | 1,207-entry report persistence, contiguous API paging, rendered pagination, restart report, and four-viewport route states passed. | 2026-09-24 |
+| ui.tokenizer-playground | VALIDATED | Full Chromium browser flow covered text and selection limits, the special-token control, token text/ID chips, inline per-item errors, collapse/reopen, and 1440px/375px layouts without horizontal overflow. | 2026-10-23 |
 | deployment.source-only-local | VALIDATED | Published v4.6.0 source-only release with hosted CI at the release SHA and release tag/publication traceability passed. The versioned v4.6.1 candidate passed the local checks recorded below; hosted CI, main/develop synchronization, tagging, and publication remain pending. | 2026-10-21 |
 | deployment.windows-portable-bootstrap | VALIDATED | Pinned Python/Node/uv bootstrap, dependency repair, stamped build reuse, and migration remain validated historically. The current static-SPA launcher readiness limitation is tracked under `runtime.windows-launcher`; it does not change the bootstrap evidence. | 2026-10-20 |
 | deployment.cross-platform-manual | OUT_OF_SCOPE | Ubuntu manual execution was diagnostic only; macOS and hosted runtime support are not release targets. | 2026-09-22 |
@@ -241,6 +248,7 @@ The gate table records the latest known state of every stable validation ID.
 | T2-05 | PASS | The 1,207-entry tokenizer report reopened; API pages 500/500/207 were contiguous; first/middle/final UI paging and four viewport rendering passed. |
 | T2-06 | PASS | At `f736f938`, the populated Cross Benchmark wizard created a local report, verified persistence/reload, and cleaned its dataset/tokenizer/report; combined E2E 9/9. |
 | T2-07 | PASS | At `cc91fec1`, API progress reached at least 20%, cancellation became terminal with no report, and an immediate two-document rerun completed and rendered. Browser sampling showed 5% at one capture; the API and terminal evidence remain the gate basis. |
+| T2-08 | PASS | Live browser/API preview round trips with three isolated custom WordLevel tokenizers returned two tokens without special tokens and four with `[CLS]`/`[SEP]`; rendered token IDs matched. Deleting one selected artifact produced an inline error result while the other two succeeded. Preview did not create reports. `unknown_count=null` for raw JSON artifacts remains expected. |
 | T3-01 | PASS | Three comparable 1,000-document runs recorded throughput, latency percentiles from 80 observations per run, phase timing, RSS, and memory delta. Samples describe this host and are not a general performance guarantee. |
 | T3-02 | PASS | At `b087db60`, requested/effective parallelism 1/1 and 2/2, two-worker overlap, persisted configuration, ordering, observations, per-document samples, and report reload passed. |
 | T3-03 | PASS | Report search, 25/1 pagination, tags, confirmation, and physical deletion passed against populated current-schema reports. |
@@ -256,6 +264,8 @@ The gate table records the latest known state of every stable validation ID.
 | T5-04 | PASS | Official launcher streamed visible progress for 10,000 documents, cancellation produced no report, eight backend RSS samples were collected, and a two-document rerun rendered without browser/HTTP errors. Browser heap was not instrumented. |
 | T5-05 | OUT_OF_SCOPE | Release support is Windows x64 source-only. Ubuntu was diagnostic; macOS and hosted runtime support are not planned. |
 | T5-06 | PASS | Releases `v4.5.0`, `v4.5.1`, and `v4.6.0` were verified. The MINOR `v4.6.0` release (backend `3.6.0`, frontend `2.6.0`) was published from annotated tag `v4.6.0`, which peels to validated `main` commit `2ecd12119b86864d617367bd6b0712bb9a1b2b92`; GitHub release: https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases/tag/v4.6.0. Development CI run `39557902883` and final main CI run `39582304529` passed both jobs. Branches were aligned before tagging and synchronized again after the publication record update. Local main smoke, isolated database/browser behavior, focused E2E (7/7), and source-only release workflow passed. The PATCH v4.6.1 release (backend 3.6.1, frontend 2.6.1) was published from tag v4.6.1 on main commit d198f203525bb57603060db7283f7d01432269b3; hosted main CI run 39658313798 passed both jobs. Main and develop were aligned before tagging and synchronized after the publication record update. The first v4.6.0 E2E run used the repository default data root because bootstrap `.env` overrode the shell setting; test cleanup assertions restored logical settings/config and removed synthetic rows/files, but no pre-run binary database snapshot exists to prove byte-for-byte restoration. T4-03 gated Hugging Face access and physical low-disk recovery remain non-blocking validation debt. |
+
+| T5-07 | PASS | The new full browser flow passed on Chromium: 2,000-character input capping, max-three selection, request flags for special tokens on/off, rendered token text and IDs, per-item error card, collapse/reopen, and 1440px/375px responsive checks without document overflow. No page errors, HTTP errors, or report creation occurred; the fix for the hidden-body CSS issue is included. |
 
 ## Open issues and validation debt
 
