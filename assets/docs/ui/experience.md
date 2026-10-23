@@ -11,7 +11,9 @@ Last updated: 2026-10-23
     count, length inputs show the real range as placeholders, and a filter
     combination that matches nothing blocks Next and Run Validation.
 - `TokenizerExaminationPage`
-  - Tokenizer selection and reporting plus vocabulary panel.
+  - Tokenizer selection and reporting plus vocabulary panel. The selected
+    tokenizer preview reflects vocabulary size from a report as soon as the
+    first report finishes loading or generating.
   - Collapsible Tokenizer Playground below the dashboard: paste up to 2000
     characters, pick up to 3 tokenizers from the filtered local catalog, and
     compare token chips (token text with ID), token counts, and unknown counts
@@ -21,6 +23,9 @@ Last updated: 2026-10-23
 - `CrossBenchmarkPage`
   - Run and open benchmark reports, compare tokenizer metrics against a
     report-scoped baseline, clone eligible configurations, and edit report tags.
+    The run and clone wizard keeps the header, step navigation, and actions
+    visible while step content scrolls, resetting the scroll position between
+    steps. Step labels are visually separated and wrap on narrow screens.
 - `SettingsPage`
   - Configure supported runtime defaults through a left-side section
     navigation and background-level form sections.
@@ -41,6 +46,8 @@ Catalog interactions:
 ## User Experience Standards
 - Maintain workflow continuity:
   - start long operation -> show progress -> poll job -> render result
+  - display progress percentages with at most two decimal places so floating
+    point precision does not leak into status text
 - Startup readiness:
   - show a single-lane pipeline where source words enter the left port of a
     schematic tokenizer, are split into subword pieces, and leave the right

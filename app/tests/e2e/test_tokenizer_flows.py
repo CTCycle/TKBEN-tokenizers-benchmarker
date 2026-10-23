@@ -977,6 +977,14 @@ def test_tokenizer_report_flow_supports_paged_vocabulary(
         report_payload = job_status.get("result", {})
         report_id = int(report_payload["report_id"])
         assert report_payload.get("vocabulary_size") == 1207
+        tokenizer_row = (
+            page.get_by_role("table", name="Selected tokenizers")
+            .get_by_role("row")
+            .filter(has_text=tokenizer_name)
+        )
+        expect(
+            tokenizer_row.locator(".tokenizer-preview-vocabulary")
+        ).to_have_text("1207", timeout=30_000)
 
         latest_response = api_context.get(latest_url)
         assert latest_response.ok, latest_response.text()

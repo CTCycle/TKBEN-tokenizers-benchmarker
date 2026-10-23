@@ -227,6 +227,9 @@ export class TokenizersStore {
 
   private setReport(report: TokenizerReportResponse): void {
     this.report.set(report);
+    this.tokenizers.update((tokenizers) => tokenizers.map((tokenizer) => tokenizer.tokenizer_name === report.tokenizer_name
+      ? { ...tokenizer, has_report: true, vocabulary_size: report.vocabulary_size }
+      : tokenizer));
     this.loadVocabulary();
   }
 

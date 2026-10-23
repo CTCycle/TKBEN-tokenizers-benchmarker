@@ -1,6 +1,7 @@
 // Copyright © 2023 Thomas Virdis
 // Licensed under the MIT License.
 
+import { DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -25,7 +26,7 @@ const PLAYGROUND_MAX_TEXT_LENGTH = 2000;
 
 @Component({
   selector: 'app-tokenizers-page',
-  imports: [ReactiveFormsModule, HistogramChartComponent, ModalA11yDirective],
+  imports: [ReactiveFormsModule, DecimalPipe, HistogramChartComponent, ModalA11yDirective],
   templateUrl: './tokenizers-page.component.html',
 })
 export class TokenizersPageComponent {

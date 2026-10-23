@@ -3,7 +3,7 @@
 
 import { CdkDrag, CdkDragDrop, CdkDropList } from '@angular/cdk/drag-drop';
 import { DecimalPipe } from '@angular/common';
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { BenchmarkStore } from '../core/state/benchmark.store';
@@ -33,6 +33,8 @@ import { ModalA11yDirective } from '../core/ui/modal-a11y.directive';
   templateUrl: './cross-benchmark-page.component.html',
 })
 export class CrossBenchmarkPageComponent {
+  @ViewChild('benchmarkWizardBody') private benchmarkWizardBody?: ElementRef<HTMLElement>;
+
   protected readonly store = inject(BenchmarkStore);
   private readonly settingsStore = inject(SettingsStore);
   private readonly exportApi = inject(ExportApiService);
@@ -252,9 +254,21 @@ export class CrossBenchmarkPageComponent {
   protected nextStep(): void {
     if (this.runStep() === 1 && this.runSelectedMetricKeys().length === 0) return;
     if (this.runStep() === 2 && (this.runSelectedTokenizers().length === 0 || !this.runForm.controls.dataset.value.trim())) return;
-    if (this.runStep() < 3) this.runStep.update((step) => (step + 1) as 1 | 2 | 3);
+    if (this.runStep() < 3) {
+      this.resetWizardScroll();
+      this.runStep.update((step) => (step + 1) as 1 | 2 | 3);
+    }
   }
-  protected previousStep(): void { if (this.runStep() > 1) this.runStep.update((step) => (step - 1) as 1 | 2 | 3); }
+  protected previousStep(): void {
+    if (this.runStep() > 1) {
+      this.resetWizardScroll();
+      this.runStep.update((step) => (step - 1) as 1 | 2 | 3);
+    }
+  }
+
+  private resetWizardScroll(): void {
+    if (this.benchmarkWizardBody) this.benchmarkWizardBody.nativeElement.scrollTop = 0;
+  }
 
   protected cancelBenchmark(): void {
     if (this.store.busy()) this.store.cancel(); else this.runOpen.set(false);

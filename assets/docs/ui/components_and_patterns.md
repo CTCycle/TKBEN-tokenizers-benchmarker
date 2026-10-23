@@ -1,5 +1,5 @@
 # Components and Patterns
-Last updated: 2026-09-18
+Last updated: 2026-10-23
 
 ## Navigation
 - Top tab navigation for:
@@ -46,6 +46,10 @@ Last updated: 2026-09-18
   - explicit close action
   - keyboard-focus-compatible controls
   - shared `ModalCloseButton` and `useBodyScrollLock` behavior where the modal owns viewport interaction
+- The Cross Benchmark run and clone wizard keeps its header, step navigation,
+  and actions in view while the active step content scrolls. Its step labels
+  are visually separated, highlight the active step, and wrap when needed.
+  Moving between steps returns the content area to the top.
 
 ## Feedback States
 - Loading:
