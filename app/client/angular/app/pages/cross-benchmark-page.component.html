@@ -43,7 +43,7 @@
     } @else {
       <main class="cross-benchmark-workspace-main">
         <div class="cross-benchmark-kpi-grid">
-          <section class="benchmark-dashboard-grid" aria-label="Benchmark metric widgets" cdkDropList (cdkDropListDropped)="dropWidget($event)">
+          <section class="benchmark-dashboard-grid" aria-label="Benchmark metric widgets" cdkDropList cdkDropListOrientation="mixed" (cdkDropListDropped)="dropWidget($event)">
       @for (widget of orderedWidgets(); track widget.widget_id; let index = $index) {
           <article class="benchmark-dashboard-widget" [class.benchmark-dashboard-widget--wide]="widget.width === 'wide'" cdkDrag tabindex="0" role="listitem" [attr.aria-label]="widget.label + ' widget'" [attr.aria-grabbed]="keyboardGrabbed() === widget.widget_id" (keydown)="onWidgetKeydown($event, index)">
           <header>
