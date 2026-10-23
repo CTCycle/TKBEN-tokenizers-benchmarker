@@ -17,6 +17,8 @@ from server.contracts.dataset import (
     DatasetMetricCatalogCategory,
     DatasetMetricCatalogResponse,
     DatasetPreview,
+    DatasetValidationPreviewRequest,
+    DatasetValidationPreviewResponse,
 )
 from server.contracts.jobs import JobStartResponse
 from server.configurations import get_server_settings
@@ -33,6 +35,7 @@ from server.common.constants import (
     API_ROUTE_DATASETS_REPORT_BY_ID,
     API_ROUTE_DATASETS_REPORT_LATEST,
     API_ROUTE_DATASETS_UPLOAD,
+    API_ROUTE_DATASETS_VALIDATION_PREVIEW,
     API_ROUTER_PREFIX_DATASETS,
 )
 from server.api.helpers import (
@@ -205,6 +208,32 @@ async def analyze_dataset(
             message="Dataset validation job started.",
         ),
     )
+
+###############################################################################
+@router.post(
+    API_ROUTE_DATASETS_VALIDATION_PREVIEW,
+    response_model=DatasetValidationPreviewResponse,
+)
+async def preview_dataset_validation(
+    payload: DatasetValidationPreviewRequest,
+) -> DatasetValidationPreviewResponse:
+    service = DatasetService()
+    dataset_exists = await asyncio.to_thread(
+        service.is_dataset_in_database,
+        payload.dataset_name,
+    )
+    if not dataset_exists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Dataset '{payload.dataset_name}' not found. Please load it first.",
+        )
+    preview = await asyncio.to_thread(
+        service.preview_validation,
+        payload.dataset_name,
+        payload.sampling,
+        payload.filters,
+    )
+    return DatasetValidationPreviewResponse.model_validate(preview)
 
 ###############################################################################
 @router.get(

@@ -400,6 +400,19 @@ def test_dataset_analysis_rejects_inverted_length_filter(monkeypatch) -> None:
     assert manager.started_jobs == 0
 
 ###############################################################################
+def test_dataset_validation_preview_rejects_inverted_length_filter() -> None:
+    response = TestClient(app).post(
+        "/api/datasets/validation/preview",
+        json={
+            "dataset_name": "custom/sample",
+            "filters": {"min_length": 100, "max_length": 1},
+        },
+    )
+
+    assert response.status_code == 422
+    assert "Minimum document length must not exceed maximum document length." in response.text
+
+###############################################################################
 def test_dataset_upload_accepts_limit_and_rejects_one_byte_over(monkeypatch) -> None:
     limit = 25 * 1024 * 1024
     manager = DummyJobManager__datasets_routes()

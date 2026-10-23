@@ -1264,6 +1264,50 @@ def test_streaming_preserves_empty_and_unicode_rows(monkeypatch) -> None:
     assert [text for _, text in rows] == ["", " ", "emoji 😀", "CJK 漢字"]
 
 ###############################################################################
+def test_validation_preview_reports_filtered_and_sampled_counts(monkeypatch) -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    Base.metadata.create_all(engine, checkfirst=True)
+    database = get_database()
+    monkeypatch.setattr(database.backend, "engine", engine)
+
+    with Session(bind=engine) as session:
+        now = datetime.now(timezone.utc)
+        dataset = Dataset(
+            name="custom/preview",
+            status="ready",
+            created_at=now,
+            updated_at=now,
+            ready_at=now,
+        )
+        session.add(dataset)
+        session.flush()
+        session.add_all(
+            DatasetDocument(dataset_id=dataset.id, ordinal=index, text=text)
+            for index, text in enumerate(["", " ", "abcde", "abcdefghij"])
+        )
+        session.commit()
+
+    service = DatasetService()
+    unfiltered = service.preview_validation("custom/preview")
+    assert unfiltered["total_documents"] == 4
+    assert unfiltered["empty_documents"] == 2
+    assert (unfiltered["min_length"], unfiltered["max_length"]) == (0, 10)
+    assert unfiltered["matching_documents"] == 4
+    assert sum(bin_["count"] for bin_ in unfiltered["length_histogram"]) == 4
+
+    non_empty = service.preview_validation(
+        "custom/preview", sampling={"fraction": 0.5}, filters={"exclude_empty": True}
+    )
+    assert non_empty["matching_documents"] == 2
+    assert non_empty["sampled_documents"] == 1
+
+    long_only = service.preview_validation(
+        "custom/preview", sampling={"count": 1000}, filters={"min_length": 6}
+    )
+    assert long_only["matching_documents"] == 1
+    assert long_only["sampled_documents"] == 1
+
+###############################################################################
 
 
 ###############################################################################

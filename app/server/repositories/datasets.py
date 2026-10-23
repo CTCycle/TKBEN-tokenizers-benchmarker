@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from typing import Any, cast
 
 import pandas as pd
-from sqlalchemy import and_, delete, func, select, update
+from sqlalchemy import and_, case, delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -252,6 +252,94 @@ class DatasetRepository:
                 yield texts
 
     # -------------------------------------------------------------------------
+    @staticmethod
+    def _row_filter_conditions(
+        dataset_name: str,
+        min_length: int | None,
+        max_length: int | None,
+        exclude_empty: bool,
+    ) -> list[Any]:
+        conditions: list[Any] = [Dataset.name == dataset_name]
+        if isinstance(min_length, int):
+            conditions.append(func.length(DatasetDocument.text) >= int(min_length))
+        if isinstance(max_length, int):
+            conditions.append(func.length(DatasetDocument.text) <= int(max_length))
+        if exclude_empty:
+            conditions.append(func.length(func.trim(DatasetDocument.text)) > 0)
+        return conditions
+
+    # -------------------------------------------------------------------------
+    def preview_dataset_filters(
+        self,
+        dataset_name: str,
+        min_length: int | None = None,
+        max_length: int | None = None,
+        exclude_empty: bool = False,
+        bin_count: int = 20,
+    ) -> dict[str, Any]:
+        text_length = func.length(DatasetDocument.text)
+        is_empty = func.coalesce(func.length(func.trim(DatasetDocument.text)), 0) == 0
+        base_filter = and_(Dataset.name == dataset_name, Dataset.status == "ready")
+        matching_filter = and_(
+            *self._row_filter_conditions(
+                dataset_name, min_length, max_length, exclude_empty
+            ),
+            Dataset.status == "ready",
+        )
+        stats_stmt = (
+            select(
+                func.count(DatasetDocument.id),
+                func.coalesce(func.sum(case((is_empty, 1), else_=0)), 0),
+                func.coalesce(func.min(text_length), 0),
+                func.coalesce(func.max(text_length), 0),
+                func.coalesce(func.avg(text_length), 0.0),
+                func.coalesce(func.sum(case((matching_filter, 1), else_=0)), 0),
+            )
+            .select_from(DatasetDocument)
+            .join(Dataset, Dataset.id == DatasetDocument.dataset_id)
+            .where(base_filter)
+        )
+        with self._session() as session:
+            total, empty, shortest, longest, mean, matching = session.execute(
+                stats_stmt
+            ).one()
+
+        histogram: list[dict[str, int]] = []
+        if int(total) > 0 and bin_count > 0:
+            shortest, longest = int(shortest), int(longest)
+            span = longest - shortest + 1
+            bins = max(1, min(int(bin_count), span))
+            width = math.ceil(span / bins)
+            bucket = ((text_length - shortest) // width).label("bucket")
+            histogram_stmt = (
+                select(bucket, func.count(DatasetDocument.id))
+                .join(Dataset, Dataset.id == DatasetDocument.dataset_id)
+                .where(base_filter, DatasetDocument.text.is_not(None))
+                .group_by(bucket)
+                .order_by(bucket)
+            )
+            with self._session() as session:
+                counts = {int(b): int(c) for b, c in session.execute(histogram_stmt)}
+            histogram = [
+                {
+                    "start": shortest + index * width,
+                    "end": min(longest, shortest + (index + 1) * width - 1),
+                    "count": counts.get(index, 0),
+                }
+                for index in range(math.ceil(span / width))
+            ]
+
+        return {
+            "total_documents": int(total),
+            "empty_documents": int(empty),
+            "min_length": int(shortest),
+            "max_length": int(longest),
+            "mean_length": float(mean),
+            "length_histogram": histogram,
+            "matching_documents": int(matching),
+        }
+
+    # -------------------------------------------------------------------------
     def iterate_dataset_rows(
         self,
         dataset_name: str,
@@ -261,13 +349,9 @@ class DatasetRepository:
         exclude_empty: bool = False,
     ) -> Iterator[list[dict[str, Any]]]:
         last_seen_id = 0
-        conditions = [Dataset.name == dataset_name]
-        if isinstance(min_length, int):
-            conditions.append(func.length(DatasetDocument.text) >= int(min_length))
-        if isinstance(max_length, int):
-            conditions.append(func.length(DatasetDocument.text) <= int(max_length))
-        if exclude_empty:
-            conditions.append(func.length(func.trim(DatasetDocument.text)) > 0)
+        conditions = self._row_filter_conditions(
+            dataset_name, min_length, max_length, exclude_empty
+        )
         while True:
             stmt = (
                 select(DatasetDocument.id, DatasetDocument.text)

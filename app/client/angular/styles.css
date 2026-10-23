@@ -5025,6 +5025,47 @@ select:focus-visible {
   gap: 10px;
 }
 
+.validation-preview {
+  display: flex;
+  flex-direction: column;
+  grid-column: 1 / -1;
+  gap: 12px;
+  min-width: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.validation-preview[aria-busy='true'] {
+  opacity: 0.7;
+}
+
+.validation-preview-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.validation-preview-stats dt {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+}
+
+.validation-preview-stats dd {
+  margin: 2px 0 0;
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.validation-preview-result {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.validation-preview-result strong {
+  color: var(--color-text);
+}
+
 .validation-number-input {
   width: 104px;
   max-width: 100%;

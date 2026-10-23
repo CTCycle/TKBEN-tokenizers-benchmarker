@@ -74,6 +74,19 @@ Future coding and validation agents must:
 - Containerized deployment and binary packaging are NOT_IMPLEMENTED. The
   supported release model is source-only Windows x64.
 
+## 2026-10-23 validation wizard preview (WORKING)
+
+`POST /api/datasets/validation/preview` powers a live preview in the Sampling &
+Filters step of the dataset validation wizard (counts, length histogram,
+matching and expected sampled documents, zero-match guard). The analysis job
+now sizes its progress estimate from the filtered document count instead of
+the unfiltered total. Evidence: focused backend unit tests (preview counts and
+sampling parity), the Angular workflow spec, Ruff, ESLint, a development build,
+and a manual Chromium check against an isolated database covering populated
+and zero-match states at desktop width. Not yet run: the full test runner, a
+narrow-screen layout check, and an end-to-end validation run through the
+wizard.
+
 ## 2026-10-23 tokenizer playground (VALIDATED)
 
 `POST /api/tokenizers/preview` and the collapsible Tokenizer Playground on

@@ -4,6 +4,12 @@ Last updated: 2026-10-23
 ## Page Structure
 - `DatasetPage`
   - Dataset selection and upload, validation workflow, persisted analytics dashboard.
+  - The validation wizard's Sampling & Filters step runs a debounced
+    server-side preview of the selected dataset: document, empty, and length
+    statistics, a length histogram, and a live "N of M documents match; K will
+    be analyzed" line. The count slider is capped at the matching document
+    count, length inputs show the real range as placeholders, and a filter
+    combination that matches nothing blocks Next and Run Validation.
 - `TokenizerExaminationPage`
   - Tokenizer selection and reporting plus vocabulary panel.
   - Collapsible Tokenizer Playground below the dashboard: paste up to 2000

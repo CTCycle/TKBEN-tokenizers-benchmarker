@@ -31,6 +31,7 @@ All routers are included with `prefix="/api"` during backend startup.
 - `POST /api/datasets/download`
 - `POST /api/datasets/upload`
 - `POST /api/datasets/analyze`
+- `POST /api/datasets/validation/preview` — synchronous read-only preflight for the validation wizard. Accepts `dataset_name`, `sampling`, and `filters` (same shapes and min/max length check as `analyze`) and returns `total_documents`, `empty_documents`, `min_length`, `max_length`, `mean_length`, a 20-bin `length_histogram`, `matching_documents` (documents passing the filters), and `sampled_documents` (the expected analyzed count, computed with the same helpers as the analysis job; fraction sampling is hash-gated, so it is an estimate). Unknown datasets return 404.
 - `GET /api/datasets/reports/latest`
 - `GET /api/datasets/reports/{report_id}`
 - `DELETE /api/datasets/delete`

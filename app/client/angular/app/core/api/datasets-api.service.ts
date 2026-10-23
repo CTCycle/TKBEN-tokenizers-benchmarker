@@ -12,6 +12,8 @@ import type {
   DatasetDownloadResponse,
   DatasetListResponse,
   DatasetMetricCatalogResponse,
+  DatasetValidationPreviewRequest,
+  DatasetValidationPreviewResponse,
   JobStartResponse,
   JobStatusResponse,
 } from './api.models';
@@ -54,6 +56,10 @@ export class DatasetsApiService {
   analyze(request: DatasetAnalysisRequest, onUpdate?: (status: JobStatusResponse) => void): Observable<DatasetAnalysisResponse> {
     const start$ = this.http.post<JobStartResponse>('/api/datasets/analyze', request);
     return this.jobs.startAndPoll<DatasetAnalysisResponse>(start$, { timeoutMs: 10 * 60 * 1000, onUpdate });
+  }
+
+  validationPreview(request: DatasetValidationPreviewRequest): Observable<DatasetValidationPreviewResponse> {
+    return this.http.post<DatasetValidationPreviewResponse>('/api/datasets/validation/preview', request);
   }
 
   metricsCatalog(): Observable<DatasetMetricCatalogResponse> {

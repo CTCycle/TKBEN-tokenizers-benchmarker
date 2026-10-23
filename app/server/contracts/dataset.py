@@ -132,19 +132,71 @@ class DatasetAnalysisRequest(BaseModel):
     @field_validator("filters")
     @classmethod
     def validate_filter_range(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
-        if value is None:
-            return None
-        min_length = value.get("min_length")
-        max_length = value.get("max_length")
-        if (
-            isinstance(min_length, int)
-            and not isinstance(min_length, bool)
-            and isinstance(max_length, int)
-            and not isinstance(max_length, bool)
-            and min_length > max_length
-        ):
-            raise ValueError("Minimum document length must not exceed maximum document length.")
-        return value
+        return _validate_filter_range(value)
+
+###############################################################################
+def _validate_filter_range(value: dict[str, Any] | None) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    min_length = value.get("min_length")
+    max_length = value.get("max_length")
+    if (
+        isinstance(min_length, int)
+        and not isinstance(min_length, bool)
+        and isinstance(max_length, int)
+        and not isinstance(max_length, bool)
+        and min_length > max_length
+    ):
+        raise ValueError("Minimum document length must not exceed maximum document length.")
+    return value
+
+###############################################################################
+class DatasetValidationPreviewRequest(BaseModel):
+    """Request schema for the validation wizard sampling and filter preview."""
+
+    dataset_name: str = Field(..., description="Name of dataset to preview")
+    sampling: dict[str, Any] | None = Field(
+        default=None,
+        description="Sampling configuration (fraction and/or count).",
+    )
+    filters: dict[str, Any] | None = Field(
+        default=None,
+        description="Filter configuration (min_length, max_length, exclude_empty).",
+    )
+
+    # -------------------------------------------------------------------------
+    @field_validator("dataset_name")
+    @classmethod
+    def validate_dataset_name(cls, value: str) -> str:
+        return normalize_identifier(value, "Dataset name", max_length=200)
+
+    # -------------------------------------------------------------------------
+    @field_validator("filters")
+    @classmethod
+    def validate_filter_range(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
+        return _validate_filter_range(value)
+
+###############################################################################
+class DatasetValidationPreviewBin(BaseModel):
+    start: int = Field(..., description="Inclusive lower document length of the bin")
+    end: int = Field(..., description="Inclusive upper document length of the bin")
+    count: int = Field(..., description="Documents inside the bin")
+
+###############################################################################
+class DatasetValidationPreviewResponse(BaseModel):
+    dataset_name: str = Field(..., description="Previewed dataset name")
+    total_documents: int = Field(..., description="All stored documents")
+    empty_documents: int = Field(..., description="Documents that are blank")
+    min_length: int = Field(default=0, description="Shortest document length")
+    max_length: int = Field(default=0, description="Longest document length")
+    mean_length: float = Field(default=0.0, description="Mean document length")
+    length_histogram: list[DatasetValidationPreviewBin] = Field(
+        default_factory=list, description="Document length distribution"
+    )
+    matching_documents: int = Field(..., description="Documents passing the filters")
+    sampled_documents: int = Field(
+        ..., description="Documents the validation run is expected to analyze"
+    )
 
 ###############################################################################
 class WordFrequency(BaseModel):

@@ -4,8 +4,10 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
-import { debounceTime } from 'rxjs';
+import { Subject, catchError, debounceTime, filter, from, map, switchMap, tap } from 'rxjs';
 import { DatasetStore } from '../core/state/dataset.store';
+import { DatasetsApiService } from '../core/api/datasets-api.service';
+import type { DatasetValidationPreviewResponse, HistogramData } from '../core/api/api.models';
 import { HistogramChartComponent } from '../components/histogram-chart.component';
 import { ExportApiService } from '../core/api/export-api.service';
 import { errorMessageAsync } from '../core/api/error-utils';
@@ -65,7 +67,13 @@ type DatasetManagerTab = 'predefined' | 'add-by-name' | 'custom';
 export class DatasetPageComponent {
   protected readonly store = inject(DatasetStore);
   private readonly exportApi = inject(ExportApiService);
+  private readonly datasetsApi = inject(DatasetsApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly previewTrigger = new Subject<void>();
+  private lastPreviewKey: string | null = null;
+  protected readonly preview = signal<DatasetValidationPreviewResponse | null>(null);
+  protected readonly previewLoading = signal(false);
+  protected readonly previewError = signal<string | null>(null);
   protected readonly addDatasetOpen = signal(false);
   protected readonly validationOpen = signal(false);
   protected readonly validationDataset = signal<string | null>(null);
@@ -224,6 +232,22 @@ export class DatasetPageComponent {
   protected readonly topKConcentration = computed(() => toNumber(this.aggregate()['words.topk_concentration']));
   protected readonly rareTailMass = computed(() => toNumber(this.aggregate()['words.rare_tail_mass']));
   protected readonly allMetricKeys = computed(() => this.store.metricCategories().flatMap((category) => category.metrics.map((metric) => metric.key)));
+  protected readonly previewBlocked = computed(() => !this.previewLoading() && this.preview()?.matching_documents === 0);
+  protected readonly previewMaxCount = computed(() => Math.min(100000, Math.max(1, this.preview()?.matching_documents ?? 100000)));
+  protected readonly previewHistogram = computed<HistogramData | null>(() => {
+    const preview = this.preview();
+    if (!preview?.length_histogram.length) return null;
+    const bins = preview.length_histogram;
+    return {
+      bins: bins.map((bin) => bin.start === bin.end ? `${bin.start}` : `${bin.start}-${bin.end}`),
+      counts: bins.map((bin) => bin.count),
+      bin_edges: [...bins.map((bin) => bin.start), bins[bins.length - 1].end + 1],
+      min_length: preview.min_length,
+      max_length: preview.max_length,
+      mean_length: preview.mean_length,
+      median_length: 0,
+    };
+  });
 
   protected readonly donutColors = ['#f59e0b', '#fb7185', '#38bdf8', '#34d399', '#a78bfa', '#f97316', '#64748b'];
   protected readonly zipfAxisFractions = [0, 0.25, 0.5, 0.75, 1] as const;
@@ -264,6 +288,51 @@ export class DatasetPageComponent {
 
   constructor() {
     this.filters.valueChanges.pipe(debounceTime(10), takeUntilDestroyed(this.destroyRef)).subscribe(() => this.refresh());
+    this.validationForm.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.previewTrigger.next());
+    this.previewTrigger.pipe(
+      debounceTime(250),
+      filter(() => this.validationOpen() && this.validationStep() === 1 && this.validationForm.valid),
+      map(() => ({ dataset_name: this.validationDataset() ?? '', sampling: this.buildSampling(), filters: this.buildFilters() })),
+      filter((request) => !!request.dataset_name && JSON.stringify(request) !== this.lastPreviewKey),
+      tap((request) => {
+        this.lastPreviewKey = JSON.stringify(request);
+        this.previewLoading.set(true);
+        this.previewError.set(null);
+      }),
+      switchMap((request) => this.datasetsApi.validationPreview(request).pipe(
+        map((data) => ({ data, error: null as string | null })),
+        catchError((error: unknown) => from(errorMessageAsync(error, 'Failed to preview the validation scope.')).pipe(map((message) => ({ data: null, error: message })))),
+      )),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(({ data, error }) => {
+      this.previewLoading.set(false);
+      if (data) this.preview.set(data);
+      if (error) this.lastPreviewKey = null;
+      this.previewError.set(error);
+    });
+  }
+
+  protected approximateSample(): boolean {
+    const value = this.validationForm.getRawValue();
+    return value.samplingMode === 'fraction' && value.samplingFraction < 1;
+  }
+
+  protected retryPreview(): void {
+    this.lastPreviewKey = null;
+    this.previewTrigger.next();
+  }
+
+  private buildSampling(): Record<string, number> {
+    const value = this.validationForm.getRawValue();
+    return value.samplingMode === 'fraction'
+      ? { fraction: Math.min(1, Math.max(0.01, value.samplingFraction)) }
+      : { count: Math.min(100000, Math.max(1, Math.floor(value.samplingCount))) };
+  }
+
+  private buildFilters(): { min_length: number | null; max_length: number | null; exclude_empty: boolean } {
+    const value = this.validationForm.getRawValue();
+    const normalize = (length: number | null): number | null => length === null || !Number.isFinite(length) ? null : Math.max(0, Math.floor(length));
+    return { min_length: normalize(value.minLength), max_length: normalize(value.maxLength), exclude_empty: value.excludeEmpty };
   }
 
   protected refresh(): void {
@@ -311,7 +380,15 @@ export class DatasetPageComponent {
     this.validationStep.set(0);
     this.selectedMetricKeys.set([...this.allMetricKeys()]);
     this.validationForm.reset({ sessionName: '', samplingMode: 'fraction', samplingFraction: 1, samplingCount: 1000, minLength: null, maxLength: null, excludeEmpty: true });
+    this.resetPreview();
     this.validationOpen.set(true);
+  }
+
+  private resetPreview(): void {
+    this.lastPreviewKey = null;
+    this.preview.set(null);
+    this.previewLoading.set(false);
+    this.previewError.set(null);
   }
 
   protected toggleMetric(metricKey: string, enabled: boolean): void {
@@ -334,35 +411,32 @@ export class DatasetPageComponent {
 
   protected nextValidationStep(): void {
     if (this.validationStep() === 0 && this.store.metricCategories().length > 0 && this.selectedMetricKeys().length === 0) return;
-    if (this.validationStep() === 1 && this.validationForm.invalid) {
+    if (this.validationStep() === 1 && (this.validationForm.invalid || this.previewBlocked())) {
       this.validationForm.markAllAsTouched();
       return;
     }
     if (this.validationStep() < 2) this.validationStep.update((step) => (step + 1) as 0 | 1 | 2);
+    if (this.validationStep() === 1) this.previewTrigger.next();
   }
 
   protected previousValidationStep(): void {
     if (this.validationStep() > 0) this.validationStep.update((step) => (step - 1) as 0 | 1 | 2);
+    if (this.validationStep() === 1) this.previewTrigger.next();
   }
 
   protected runValidation(): void {
     const datasetName = this.validationDataset();
-    if (!datasetName || this.validationForm.hasError('minLengthExceedsMaxLength')) {
+    if (!datasetName || this.validationForm.hasError('minLengthExceedsMaxLength') || this.previewBlocked()) {
       this.validationForm.markAllAsTouched();
       return;
     }
-    const value = this.validationForm.getRawValue();
-    const sessionName = value.sessionName.trim();
-    const minLength = value.minLength === null || !Number.isFinite(value.minLength) ? null : Math.max(0, Math.floor(value.minLength));
-    const maxLength = value.maxLength === null || !Number.isFinite(value.maxLength) ? null : Math.max(0, Math.floor(value.maxLength));
+    const sessionName = this.validationForm.getRawValue().sessionName.trim();
     this.store.analyze({
       dataset_name: datasetName,
       session_name: sessionName || null,
       selected_metric_keys: this.selectedMetricKeys().length ? [...this.selectedMetricKeys()] : null,
-      sampling: value.samplingMode === 'fraction'
-        ? { fraction: Math.min(1, Math.max(0.01, value.samplingFraction)) }
-        : { count: Math.min(100000, Math.max(1, Math.floor(value.samplingCount))) },
-      filters: { min_length: minLength, max_length: maxLength, exclude_empty: value.excludeEmpty },
+      sampling: this.buildSampling(),
+      filters: this.buildFilters(),
       metric_parameters: {},
     });
     this.validationOpen.set(false);
@@ -429,5 +503,6 @@ export class DatasetPageComponent {
   protected closeValidation(): void {
     this.validationOpen.set(false);
     this.validationStep.set(0);
+    this.resetPreview();
   }
 }
