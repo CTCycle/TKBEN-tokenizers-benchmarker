@@ -347,6 +347,26 @@ export interface DatasetAnalysisRequest {
     metric_parameters?: Record<string, unknown> | null;
 }
 
+export type DatasetValidationPreviewRequest = Pick<DatasetAnalysisRequest, 'dataset_name' | 'sampling' | 'filters'>;
+
+export interface DatasetValidationPreviewBin {
+    start: number;
+    end: number;
+    count: number;
+}
+
+export interface DatasetValidationPreviewResponse {
+    dataset_name: string;
+    total_documents: number;
+    empty_documents: number;
+    min_length: number;
+    max_length: number;
+    mean_length: number;
+    length_histogram: DatasetValidationPreviewBin[];
+    matching_documents: number;
+    sampled_documents: number;
+}
+
 /**
  * Word frequency item
  */

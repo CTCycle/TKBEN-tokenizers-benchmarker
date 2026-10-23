@@ -4,8 +4,10 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { FormGroup } from '@angular/forms';
+import { of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ExportApiService } from '../core/api/export-api.service';
+import { DatasetsApiService } from '../core/api/datasets-api.service';
 import { DatasetStore } from '../core/state/dataset.store';
 import { TokenizersStore } from '../core/state/tokenizers.store';
 import { SettingsStore } from '../core/state/settings.store';
@@ -50,6 +52,7 @@ describe('DatasetPageComponent workflow', () => {
     TestBed.configureTestingModule({ providers: [
       { provide: DatasetStore, useValue: store },
       { provide: ExportApiService, useValue: {} },
+      { provide: DatasetsApiService, useValue: { validationPreview: vi.fn() } },
     ] });
     const page = TestBed.runInInjectionContext(() => new DatasetPageComponent()) as unknown as {
       openValidation: (datasetName: string) => void;
@@ -93,6 +96,7 @@ describe('DatasetPageComponent workflow', () => {
     TestBed.configureTestingModule({ providers: [
       { provide: DatasetStore, useValue: store },
       { provide: ExportApiService, useValue: {} },
+      { provide: DatasetsApiService, useValue: { validationPreview: vi.fn() } },
     ] });
     const page = TestBed.runInInjectionContext(() => new DatasetPageComponent()) as unknown as {
       openValidation: (datasetName: string) => void;
@@ -113,6 +117,59 @@ describe('DatasetPageComponent workflow', () => {
     expect(store.analyze).not.toHaveBeenCalled();
   });
 
+  it('previews the validation scope with the run payload and blocks empty matches', () => {
+    vi.useFakeTimers();
+    const validationPreview = vi.fn().mockReturnValue(of({
+      dataset_name: 'custom/demo',
+      total_documents: 10,
+      empty_documents: 2,
+      min_length: 0,
+      max_length: 40,
+      mean_length: 12.5,
+      length_histogram: [{ start: 0, end: 40, count: 10 }],
+      matching_documents: 0,
+      sampled_documents: 0,
+    }));
+    const store = {
+      report: signal(null),
+      metricCategories: signal(metricCategories),
+      analyze: vi.fn(),
+      refresh: vi.fn(),
+    };
+    TestBed.configureTestingModule({ providers: [
+      { provide: DatasetStore, useValue: store },
+      { provide: ExportApiService, useValue: {} },
+      { provide: DatasetsApiService, useValue: { validationPreview } },
+    ] });
+    const page = TestBed.runInInjectionContext(() => new DatasetPageComponent()) as unknown as {
+      openValidation: (datasetName: string) => void;
+      validationForm: FormGroup;
+      validationStep: () => number;
+      nextValidationStep: () => void;
+      runValidation: () => void;
+    };
+
+    try {
+      page.openValidation('custom/demo');
+      page.nextValidationStep();
+      page.validationForm.patchValue({ samplingMode: 'count', samplingCount: 50, minLength: 100 });
+      vi.advanceTimersByTime(300);
+      expect(validationPreview).toHaveBeenCalledTimes(1);
+      expect(validationPreview).toHaveBeenCalledWith({
+        dataset_name: 'custom/demo',
+        sampling: { count: 50 },
+        filters: { min_length: 100, max_length: null, exclude_empty: true },
+      });
+
+      page.nextValidationStep();
+      page.runValidation();
+      expect(page.validationStep()).toBe(1);
+      expect(store.analyze).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('restores the grouped preset catalogue and keeps manual/upload actions available', () => {
     const store = {
       report: signal(null),
@@ -128,6 +185,7 @@ describe('DatasetPageComponent workflow', () => {
     TestBed.configureTestingModule({ providers: [
       { provide: DatasetStore, useValue: store },
       { provide: ExportApiService, useValue: {} },
+      { provide: DatasetsApiService, useValue: { validationPreview: vi.fn() } },
     ] });
     const page = TestBed.runInInjectionContext(() => new DatasetPageComponent()) as unknown as {
       presets: readonly { group: string; datasets: readonly { id: string; configuration?: string }[] }[];

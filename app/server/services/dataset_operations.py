@@ -500,6 +500,76 @@ class DatasetServiceOperationsMixin:
         return columns[0] if columns else None
 
     # -------------------------------------------------------------------------
+    @staticmethod
+    def resolve_length_filters(
+        filter_config: dict[str, Any],
+    ) -> tuple[int | None, int | None, bool]:
+        min_length = filter_config.get("min_length")
+        max_length = filter_config.get("max_length")
+        return (
+            min_length if isinstance(min_length, int) else None,
+            max_length if isinstance(max_length, int) else None,
+            bool(filter_config.get("exclude_empty", False)),
+        )
+
+    # -------------------------------------------------------------------------
+    @staticmethod
+    def normalize_sampling(
+        sampling_config: dict[str, Any],
+    ) -> tuple[float | None, int | None]:
+        sample_fraction = sampling_config.get("fraction")
+        sample_count = sampling_config.get("count")
+        fraction = (
+            float(sample_fraction)
+            if isinstance(sample_fraction, (int, float))
+            and 0 < float(sample_fraction) < 1
+            else None
+        )
+        count = (
+            int(sample_count)
+            if isinstance(sample_count, (int, float)) and int(sample_count) > 0
+            else None
+        )
+        return fraction, count
+
+    # -------------------------------------------------------------------------
+    @staticmethod
+    def expected_sample_size(
+        matching_total: int, fraction: float | None, count: int | None
+    ) -> int:
+        expected = matching_total
+        if count is not None:
+            expected = min(expected, count)
+        if fraction is not None and expected > 0:
+            expected = max(1, int(math.ceil(expected * fraction)))
+        return expected
+
+    # -------------------------------------------------------------------------
+    def preview_validation(
+        self,
+        dataset_name: str,
+        sampling: dict[str, Any] | None = None,
+        filters: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        min_length, max_length, exclude_empty = self.resolve_length_filters(
+            filters if isinstance(filters, dict) else {}
+        )
+        fraction, count = self.normalize_sampling(
+            sampling if isinstance(sampling, dict) else {}
+        )
+        preview = self.dataset_repository.preview_dataset_filters(
+            dataset_name,
+            min_length=min_length,
+            max_length=max_length,
+            exclude_empty=exclude_empty,
+        )
+        preview["dataset_name"] = dataset_name
+        preview["sampled_documents"] = self.expected_sample_size(
+            preview["matching_documents"], fraction, count
+        )
+        return preview
+
+    # -------------------------------------------------------------------------
     def validate_dataset(
         self,
         dataset_name: str,
@@ -561,41 +631,33 @@ class DatasetServiceOperationsMixin:
             report_version=self.REPORT_VERSION,
         )
 
-        min_length = filter_config.get("min_length")
-        max_length = filter_config.get("max_length")
-        exclude_empty = bool(filter_config.get("exclude_empty", False))
-        sample_fraction = sampling_config.get("fraction")
-        sample_count = sampling_config.get("count")
-        normalized_fraction = (
-            float(sample_fraction)
-            if isinstance(sample_fraction, (int, float))
-            and 0 < float(sample_fraction) < 1
-            else None
+        min_length, max_length, exclude_empty = self.resolve_length_filters(
+            filter_config
         )
-        normalized_count = (
-            int(sample_count)
-            if isinstance(sample_count, (int, float)) and int(sample_count) > 0
-            else None
+        normalized_fraction, normalized_count = self.normalize_sampling(
+            sampling_config
         )
 
         engine = DatasetMetricsEngine(parameters=parameters)
         per_doc_buffer: list[dict[str, Any]] = []
-        aggregate_total = self.dataset_repository.count_dataset_documents(dataset_name)
-        expected_total = aggregate_total
-        if normalized_count is not None:
-            expected_total = min(expected_total, normalized_count)
-        if normalized_fraction is not None:
-            expected_total = max(
-                1, int(math.ceil(expected_total * normalized_fraction))
-            )
+        matching_total = self.dataset_repository.preview_dataset_filters(
+            dataset_name,
+            min_length=min_length,
+            max_length=max_length,
+            exclude_empty=exclude_empty,
+            bin_count=0,
+        )["matching_documents"]
+        expected_total = self.expected_sample_size(
+            matching_total, normalized_fraction, normalized_count
+        )
 
         analyzed = 0
         persisted = 0
         for batch in self.dataset_repository.iterate_dataset_rows(
             dataset_name=dataset_name,
             batch_size=self.streaming_batch_size,
-            min_length=min_length if isinstance(min_length, int) else None,
-            max_length=max_length if isinstance(max_length, int) else None,
+            min_length=min_length,
+            max_length=max_length,
             exclude_empty=exclude_empty,
         ):
             if self.stop_requested(should_stop):
