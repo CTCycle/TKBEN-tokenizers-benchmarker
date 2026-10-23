@@ -100,7 +100,7 @@ and zero-match states at desktop width. Not yet run: the full test runner, a
 narrow-screen layout check, and an end-to-end validation run through the
 wizard.
 
-## 2026-10-23 tokenizer playground (VALIDATED)
+## 2026-10-23 tokenizer playground (PARTIAL)
 
 `POST /api/tokenizers/preview` and the collapsible Tokenizer Playground on
 the Tokenizers page add a transient, non-persisted single-pass tokenization
@@ -112,7 +112,15 @@ rendering, collapse/reopen, and 1440px/375px layouts without horizontal
 overflow. Preview left tokenizer report flags unchanged. The standard test
 runner also passed the production build, Ruff, BasedPyright (0 errors; 2,111
 warnings), and 70/70 Angular unit tests. The E2E exposed and fixed a CSS rule
-that kept the playground visible despite its `hidden` attribute. Raw
+that kept the playground visible despite its `hidden` attribute. After that
+run, the selector gained an optional in-widget search, bounded CDK virtual
+scrolling, selected-tokenizer chips, and instructions that clarify choices
+carry across previews on the current page. The production build succeeded.
+An in-app Chromium review using isolated SQLite and 103 placeholder local
+catalog entries confirmed that the rows render, search narrows to 1 of 103,
+and a selected tokenizer stays visible after filtering and selecting another.
+The selector's narrow-viewport review has not been repeated after these UI
+changes, so the current playground UI status remains partial. Raw
 `tokenizer.json` artifacts still report `unknown_count` as unavailable
 because `UniversalTokenizerAdapter` reads only `unk_token_id`; this matches
 the existing benchmark semantics. Hugging Face downloads and gated access
@@ -236,7 +244,7 @@ recorded here rather than in a copied execution log.
 | ui.settings-page | VALIDATED | Typed settings, all 16 runtime fields, debounced autosave, conflict reload, persistence across reload and backend restart, reset, key lifecycle, masked credential storage, keyboard navigation, and responsive states passed. The Database tab passed test-before-switch, failed-target no-change, SQLite switching, settings isolation, and restored connection configuration. | 2026-10-21 |
 | ui.cross-benchmark-workflow | PARTIAL | Wizard, report manager, tags, baseline/delta, clone/customize, tables, ordering, database-backed immediate preference persistence, reload, and responsive dialogs passed historically. The 2026-10-23 isolated Chromium E2E and in-app browser review covered Metrics and Inputs scrolling, visible actions, and scroll reset between steps; narrow-width modal behavior remains unreviewed. | 2026-10-23 |
 | ui.tokenizer-report-and-vocabulary | PARTIAL | 1,207-entry report persistence, contiguous API paging, rendered pagination, restart report, and four-viewport route states passed historically. The 2026-10-23 first-report E2E generated a 1,207-entry tokenizer report and verified the catalog preview updated from unknown to 1,207. | 2026-10-23 |
-| ui.tokenizer-playground | VALIDATED | Full Chromium browser flow covered text and selection limits, the special-token control, token text/ID chips, inline per-item errors, collapse/reopen, and 1440px/375px layouts without horizontal overflow. | 2026-10-23 |
+| ui.tokenizer-playground | PARTIAL | The earlier full Chromium flow passed text and selection limits, special tokens, token chips, per-item errors, collapse/reopen, and 1440px/375px layouts. The updated selector was visually reviewed with 103 isolated placeholder catalog entries: virtualized rows rendered, search returned 1 of 103, and selections stayed visible across filtering. Narrow viewports remain unverified after these UI changes. | 2026-10-23 |
 | deployment.source-only-local | VALIDATED | Published v4.6.0 source-only release with hosted CI at the release SHA and release tag/publication traceability passed. The versioned v4.6.1 candidate passed the local checks recorded below; hosted CI, main/develop synchronization, tagging, and publication remain pending. | 2026-10-21 |
 | deployment.windows-portable-bootstrap | VALIDATED | Pinned Python/Node/uv bootstrap, dependency repair, stamped build reuse, and migration remain validated historically. The current static-SPA launcher readiness limitation is tracked under `runtime.windows-launcher`; it does not change the bootstrap evidence. | 2026-10-20 |
 | deployment.cross-platform-manual | OUT_OF_SCOPE | Ubuntu manual execution was diagnostic only; macOS and hosted runtime support are not release targets. | 2026-09-22 |

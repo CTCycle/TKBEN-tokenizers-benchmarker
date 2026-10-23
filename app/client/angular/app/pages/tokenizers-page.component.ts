@@ -3,6 +3,7 @@
 
 import { DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { CdkFixedSizeVirtualScroll, CdkVirtualForOf, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { debounceTime } from 'rxjs';
@@ -26,7 +27,7 @@ const PLAYGROUND_MAX_TEXT_LENGTH = 2000;
 
 @Component({
   selector: 'app-tokenizers-page',
-  imports: [ReactiveFormsModule, DecimalPipe, HistogramChartComponent, ModalA11yDirective],
+  imports: [ReactiveFormsModule, DecimalPipe, CdkFixedSizeVirtualScroll, CdkVirtualForOf, CdkVirtualScrollViewport, HistogramChartComponent, ModalA11yDirective],
   templateUrl: './tokenizers-page.component.html',
 })
 export class TokenizersPageComponent {
@@ -46,6 +47,12 @@ export class TokenizersPageComponent {
   protected readonly playgroundOpen = signal(false);
   protected readonly playgroundText = signal('');
   protected readonly playgroundAddSpecialTokens = signal(true);
+  protected readonly playgroundTokenizerQuery = signal('');
+  protected readonly filteredPlaygroundTokenizers = computed(() => {
+    const query = this.playgroundTokenizerQuery().trim().toLowerCase();
+    return this.store.tokenizers().filter((tokenizer) => tokenizer.tokenizer_name.toLowerCase().includes(query));
+  });
+  protected readonly playgroundOptionsHeight = computed(() => Math.min(130, Math.max(80, this.filteredPlaygroundTokenizers().length * 32 + 2)));
   private readonly playgroundSelection = signal<readonly string[]>([]);
   protected readonly playgroundSelectedTokenizers = computed(() => {
     const available = new Set(this.store.tokenizers().map((tokenizer) => tokenizer.tokenizer_name));
@@ -220,6 +227,12 @@ export class TokenizersPageComponent {
       tokenizers: [...this.playgroundSelectedTokenizers()],
       add_special_tokens: this.playgroundAddSpecialTokens(),
     });
+  }
+  protected isSpecialToken(token: string): boolean { return /^(<[^<>\s]+>|\[[A-Z_]+\])$/.test(token.trim()); }
+  protected tokenCountDelta(count: number | null, baseline: number | null): string | null {
+    if (count === null || baseline === null || count === baseline) return null;
+    const delta = count - baseline;
+    return `${delta > 0 ? '+' : '−'}${Math.abs(delta)} vs first`;
   }
   protected removeTokenizer(name: string): void { if (window.confirm(`Remove ${name} from the database?`)) this.store.remove(name); }
   protected uploadFile(event: Event): void {
