@@ -1,6 +1,7 @@
 // Copyright © 2023 Thomas Virdis
 // Licensed under the MIT License.
 
+import { DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
@@ -61,7 +62,7 @@ type DatasetManagerTab = 'predefined' | 'add-by-name' | 'custom';
 
 @Component({
   selector: 'app-dataset-page',
-  imports: [ReactiveFormsModule, HistogramChartComponent, WordCloudComponent, ModalA11yDirective],
+  imports: [ReactiveFormsModule, DecimalPipe, HistogramChartComponent, WordCloudComponent, ModalA11yDirective],
   templateUrl: './dataset-page.component.html',
 })
 export class DatasetPageComponent {

@@ -1559,14 +1559,44 @@ class TestCrossBenchmarkPage:
         base_url: str,
     ) -> None:
         """Wizard should open, navigate to step 2, and enforce required step-2 selections."""
+        page.set_viewport_size({"width": 1280, "height": 600})
         page.goto(f"{base_url}/cross-benchmark")
         page.get_by_role("button", name="Run benchmark").click()
+        dialog = page.get_by_role("dialog", name="Run benchmark")
         expect(page.get_by_text("1. Metrics")).to_be_visible()
         expect(page.get_by_text("2. Inputs")).to_be_visible()
         expect(page.get_by_text("3. Summary")).to_be_visible()
+        expect(dialog.locator(".benchmark-wizard-steps span.active")).to_have_text(
+            "1. Metrics"
+        )
+        wizard_body = dialog.locator(".benchmark-wizard-body")
+        metrics_scroller = wizard_body.locator(".validation-tree-container")
+        assert metrics_scroller.evaluate(
+            "element => element.scrollHeight > element.clientHeight"
+        )
+        footer = dialog.locator(".modal-actions")
+        footer_before = footer.bounding_box()
+        assert footer_before is not None
+        assert metrics_scroller.evaluate(
+            "element => { element.scrollTop = element.scrollHeight; return element.scrollTop > 0; }"
+        )
+        footer_after = footer.bounding_box()
+        assert footer_after is not None
+        assert footer_after["y"] == pytest.approx(footer_before["y"], abs=2)
         page.get_by_role("button", name="Next").click()
         expect(page.get_by_role("button", name="Back")).to_be_enabled()
         expect(page.get_by_role("button", name="Next")).to_be_disabled()
+        expect(dialog.locator(".benchmark-wizard-steps span.active")).to_have_text(
+            "2. Inputs"
+        )
+        assert wizard_body.evaluate(
+            "element => element.scrollHeight > element.clientHeight"
+        )
+        assert wizard_body.evaluate(
+            "element => { element.scrollTop = element.scrollHeight; return element.scrollTop > 0; }"
+        )
+        page.get_by_role("button", name="Back").click()
+        assert wizard_body.evaluate("element => element.scrollTop") == 0
 
     # -------------------------------------------------------------------------
     @pytest.mark.parametrize("viewport", [(1440, 900), (1024, 900), (390, 844)])

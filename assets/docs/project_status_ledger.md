@@ -74,6 +74,19 @@ Future coding and validation agents must:
 - Containerized deployment and binary packaging are NOT_IMPLEMENTED. The
   supported release model is source-only Windows x64.
 
+## 2026-10-23 Cross Benchmark wizard and tokenizer preview (WORKING)
+
+The Cross Benchmark run/clone wizard now scrolls its active step content while
+keeping the header, step navigation, and actions visible; changing steps resets
+the content scroll position. When a tokenizer report is loaded or generated,
+the Tokenizers preview also takes its vocabulary size from that report. The
+focused isolated Chromium E2E scenarios passed for wizard navigation/scrolling
+and first-report generation with a 1,207-entry vocabulary preview. The in-app
+browser review confirmed the Metrics and Inputs content scrolls, the actions
+stay visible, and step changes return content to the top. The production build,
+Ruff, BasedPyright (zero errors, 2,149 warnings), and all 71 Angular unit tests
+passed. No benchmark was started; narrow-width modal layout remains unreviewed.
+
 ## 2026-10-23 validation wizard preview (WORKING)
 
 `POST /api/datasets/validation/preview` powers a live preview in the Sampling &
@@ -221,8 +234,8 @@ recorded here rather than in a copied execution log.
 | ui.startup-readiness | VALIDATED | Offline, slow, terminal-failure, retry, and recovered frontend-first states passed in the in-app browser, and the 2026-10-17 baseline recheck passed the single-lane tokenizer startup-flow E2E including reduced-motion and narrow-viewport assertions. The 2026-10-20 full live E2E recheck passed the same 2/2 startup slice at `f49ac4b`. | 2026-10-20 |
 | ui.dataset-dashboard | VALIDATED | Metric families, persisted dashboard reload, malformed optional histogram fallback, and export action passed. | 2026-09-23 |
 | ui.settings-page | VALIDATED | Typed settings, all 16 runtime fields, debounced autosave, conflict reload, persistence across reload and backend restart, reset, key lifecycle, masked credential storage, keyboard navigation, and responsive states passed. The Database tab passed test-before-switch, failed-target no-change, SQLite switching, settings isolation, and restored connection configuration. | 2026-10-21 |
-| ui.cross-benchmark-workflow | VALIDATED | Wizard, report manager, tags, baseline/delta, clone/customize, tables, ordering, database-backed immediate preference persistence, reload, and responsive dialogs passed. | 2026-10-21 |
-| ui.tokenizer-report-and-vocabulary | VALIDATED | 1,207-entry report persistence, contiguous API paging, rendered pagination, restart report, and four-viewport route states passed. | 2026-09-24 |
+| ui.cross-benchmark-workflow | PARTIAL | Wizard, report manager, tags, baseline/delta, clone/customize, tables, ordering, database-backed immediate preference persistence, reload, and responsive dialogs passed historically. The 2026-10-23 isolated Chromium E2E and in-app browser review covered Metrics and Inputs scrolling, visible actions, and scroll reset between steps; narrow-width modal behavior remains unreviewed. | 2026-10-23 |
+| ui.tokenizer-report-and-vocabulary | PARTIAL | 1,207-entry report persistence, contiguous API paging, rendered pagination, restart report, and four-viewport route states passed historically. The 2026-10-23 first-report E2E generated a 1,207-entry tokenizer report and verified the catalog preview updated from unknown to 1,207. | 2026-10-23 |
 | ui.tokenizer-playground | VALIDATED | Full Chromium browser flow covered text and selection limits, the special-token control, token text/ID chips, inline per-item errors, collapse/reopen, and 1440px/375px layouts without horizontal overflow. | 2026-10-23 |
 | deployment.source-only-local | VALIDATED | Published v4.6.0 source-only release with hosted CI at the release SHA and release tag/publication traceability passed. The versioned v4.6.1 candidate passed the local checks recorded below; hosted CI, main/develop synchronization, tagging, and publication remain pending. | 2026-10-21 |
 | deployment.windows-portable-bootstrap | VALIDATED | Pinned Python/Node/uv bootstrap, dependency repair, stamped build reuse, and migration remain validated historically. The current static-SPA launcher readiness limitation is tracked under `runtime.windows-launcher`; it does not change the bootstrap evidence. | 2026-10-20 |

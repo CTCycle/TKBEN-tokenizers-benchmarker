@@ -11,7 +11,7 @@
     </div></section>
   </div></section>
 
-  @if (store.busyAction()?.startsWith('analyze:')) { <div class="loading-container" role="status"><span class="spinner" aria-hidden="true"></span><p>Running validation pipeline{{ store.jobProgress() !== null ? ' (' + store.jobProgress() + '%)' : '…' }}</p><span>Streaming documents and persisting metrics.</span></div> }
+  @if (store.busyAction()?.startsWith('analyze:')) { <div class="loading-container" role="status"><span class="spinner" aria-hidden="true"></span><p>Running validation pipeline{{ store.jobProgress() !== null ? ' (' + (store.jobProgress() | number: '1.0-2') + '%)' : '…' }}</p><span>Streaming documents and persisting metrics.</span></div> }
   @if (banner()) { <p class="error-banner" role="alert">{{ banner() }}</p> } @if (store.error()) { <p class="error-banner" role="alert">{{ store.error() }}</p> }
 
   <section class="panel dashboard-panel dashboard-plain dataset-dashboard" aria-label="Dataset Dashboard"><header class="panel-header"><div><p class="panel-label">Dataset Dashboard</p><p class="panel-description">{{ dashboardDescription() }}</p></div><div class="dashboard-export-header-actions"><div class="dashboard-export-control"><button class="icon-button subtle dashboard-export-trigger" type="button" aria-label="Export dashboard report as PDF" title="Export dashboard report as PDF" [disabled]="!store.report()" (click)="exportDashboard()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v10" stroke-width="2" stroke-linecap="round" /><path d="M8 9l4 4 4-4" stroke-width="2" stroke-linecap="round" /><path d="M5 16.5V20h14v-3.5" stroke-width="2" stroke-linecap="round" /></svg></button></div></div></header>
@@ -99,7 +99,7 @@
     </div>
 
     @if (store.busyAction() === 'download' || store.busyAction() === 'upload') {
-      <div class="dataset-modal-progress" role="status" aria-live="polite">{{ store.busyAction() === 'upload' ? 'Uploading dataset' : 'Downloading dataset' }}{{ store.jobProgress() !== null ? ' (' + store.jobProgress() + '%)' : '…' }}</div>
+      <div class="dataset-modal-progress" role="status" aria-live="polite">{{ store.busyAction() === 'upload' ? 'Uploading dataset' : 'Downloading dataset' }}{{ store.jobProgress() !== null ? ' (' + (store.jobProgress() | number: '1.0-2') + '%)' : '…' }}</div>
     }
   </section>
 }
