@@ -1566,7 +1566,7 @@ class TestCrossBenchmarkPage:
         expect(page.get_by_text("1. Metrics")).to_be_visible()
         expect(page.get_by_text("2. Inputs")).to_be_visible()
         expect(page.get_by_text("3. Summary")).to_be_visible()
-        expect(dialog.locator(".benchmark-wizard-steps span.active")).to_have_text(
+        expect(dialog.locator(".wizard-step-indicator span.active")).to_have_text(
             "1. Metrics"
         )
         wizard_body = dialog.locator(".benchmark-wizard-body")
@@ -1586,7 +1586,7 @@ class TestCrossBenchmarkPage:
         page.get_by_role("button", name="Next").click()
         expect(page.get_by_role("button", name="Back")).to_be_enabled()
         expect(page.get_by_role("button", name="Next")).to_be_disabled()
-        expect(dialog.locator(".benchmark-wizard-steps span.active")).to_have_text(
+        expect(dialog.locator(".wizard-step-indicator span.active")).to_have_text(
             "2. Inputs"
         )
         assert wizard_body.evaluate(

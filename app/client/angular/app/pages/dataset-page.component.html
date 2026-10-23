@@ -107,7 +107,7 @@
   <button class="modal-overlay" type="button" aria-label="Close validation wizard" (click)="closeValidation()"></button>
   <section class="modal-card validation-wizard-modal" role="dialog" aria-modal="true" aria-labelledby="validation-title" [appModalA11y]="true" (modalEscape)="closeValidation()">
     <header class="validation-wizard-header"><div><p id="validation-title" class="panel-label">Run Validation Pipeline</p><p class="panel-description">Configure metrics and sampling for dataset analysis.</p></div><button class="icon-button subtle" type="button" aria-label="Close validation wizard" (click)="closeValidation()">×</button></header>
-    <div class="modal-wizard-steps"><span [class.active]="validationStep() === 0" [class.completed]="validationStep() > 0">1. Metric Selection</span><span [class.active]="validationStep() === 1" [class.completed]="validationStep() > 1">2. Sampling &amp; Filters</span><span [class.active]="validationStep() === 2">3. Confirmation</span></div>
+    <div class="wizard-step-indicator"><span [class.active]="validationStep() === 0" [class.completed]="validationStep() > 0">1. Metric Selection</span><span [class.active]="validationStep() === 1" [class.completed]="validationStep() > 1">2. Sampling &amp; Filters</span><span [class.active]="validationStep() === 2">3. Confirmation</span></div>
     <div class="validation-wizard-body">
       @if (validationStep() === 0) {
         @if (store.loadingMetricCatalog()) { <div class="chart-placeholder"><p>Loading metrics catalog...</p></div> }

@@ -85,7 +85,9 @@ and first-report generation with a 1,207-entry vocabulary preview. The in-app
 browser review confirmed the Metrics and Inputs content scrolls, the actions
 stay visible, and step changes return content to the top. The production build,
 Ruff, BasedPyright (zero errors, 2,149 warnings), and all 71 Angular unit tests
-passed. No benchmark was started; narrow-width modal layout remains unreviewed.
+passed. No benchmark was started. The shared step strip was visually checked
+at desktop and 390×844; all three labels remained visible. Broader narrow-width
+dialog content review remains outstanding.
 
 ## 2026-10-23 validation wizard preview (WORKING)
 
@@ -96,9 +98,10 @@ now sizes its progress estimate from the filtered document count instead of
 the unfiltered total. Evidence: focused backend unit tests (preview counts and
 sampling parity), the Angular workflow spec, Ruff, ESLint, a development build,
 and a manual Chromium check against an isolated database covering populated
-and zero-match states at desktop width. Not yet run: the full test runner, a
-narrow-screen layout check, and an end-to-end validation run through the
-wizard.
+and zero-match states at desktop width. This task's desktop and 390×844 review
+confirmed the three step labels and navigation through Confirmation without
+submitting a validation job. Not yet run: the full test runner and an end-to-end
+validation run through the wizard.
 
 ## 2026-10-23 tokenizer playground (PARTIAL)
 
@@ -242,7 +245,7 @@ recorded here rather than in a copied execution log.
 | ui.startup-readiness | VALIDATED | Offline, slow, terminal-failure, retry, and recovered frontend-first states passed in the in-app browser, and the 2026-10-17 baseline recheck passed the single-lane tokenizer startup-flow E2E including reduced-motion and narrow-viewport assertions. The 2026-10-20 full live E2E recheck passed the same 2/2 startup slice at `f49ac4b`. | 2026-10-20 |
 | ui.dataset-dashboard | VALIDATED | Metric families, persisted dashboard reload, malformed optional histogram fallback, and export action passed. | 2026-09-23 |
 | ui.settings-page | VALIDATED | Typed settings, all 16 runtime fields, debounced autosave, conflict reload, persistence across reload and backend restart, reset, key lifecycle, masked credential storage, keyboard navigation, and responsive states passed. The Database tab passed test-before-switch, failed-target no-change, SQLite switching, settings isolation, and restored connection configuration. | 2026-10-21 |
-| ui.cross-benchmark-workflow | PARTIAL | Wizard, report manager, tags, baseline/delta, clone/customize, tables, ordering, database-backed immediate preference persistence, reload, and responsive dialogs passed historically. The 2026-10-23 isolated Chromium E2E and in-app browser review covered Metrics and Inputs scrolling, visible actions, and scroll reset between steps. A focused Chromium E2E verifies mixed-orientation pointer reorder in the multi-column 1440×900 and one-column 390×1200 layouts, no horizontal overflow, successful preference writes, and reload persistence; the existing keyboard reorder E2E passed, along with frontend lint/build and 71 Angular unit tests. The in-app preview had no reports, so populated plot-card visual review remains outstanding; narrow-width modal behavior also remains unreviewed. | 2026-10-23 |
+| ui.cross-benchmark-workflow | PARTIAL | Wizard, report manager, tags, baseline/delta, clone/customize, tables, ordering, database-backed immediate preference persistence, reload, and responsive dialogs passed historically. The 2026-10-23 isolated Chromium E2E and in-app browser review covered Metrics and Inputs scrolling, visible actions, and scroll reset between steps. A focused Chromium E2E verifies mixed-orientation pointer reorder in the multi-column 1440×900 and one-column 390×1200 layouts, no horizontal overflow, successful preference writes, and reload persistence; the existing keyboard reorder E2E passed, along with frontend lint/build and 71 Angular unit tests. This task's 390×844 run-wizard review confirms all three connected step labels remain visible; populated plot-card review and broader narrow-width modal content review remain outstanding. | 2026-10-23 |
 | ui.tokenizer-report-and-vocabulary | PARTIAL | 1,207-entry report persistence, contiguous API paging, rendered pagination, restart report, and four-viewport route states passed historically. The 2026-10-23 first-report E2E generated a 1,207-entry tokenizer report and verified the catalog preview updated from unknown to 1,207. | 2026-10-23 |
 | ui.tokenizer-playground | PARTIAL | The earlier full Chromium flow passed text and selection limits, special tokens, token chips, per-item errors, collapse/reopen, and 1440px/375px layouts. The updated selector was visually reviewed with 103 isolated placeholder catalog entries: virtualized rows rendered, search returned 1 of 103, and selections stayed visible across filtering. Narrow viewports remain unverified after these UI changes. | 2026-10-23 |
 | deployment.source-only-local | VALIDATED | Published v4.6.0 source-only release with hosted CI at the release SHA and release tag/publication traceability passed. The versioned v4.6.1 candidate passed the local checks recorded below; hosted CI, main/develop synchronization, tagging, and publication remain pending. | 2026-10-21 |
