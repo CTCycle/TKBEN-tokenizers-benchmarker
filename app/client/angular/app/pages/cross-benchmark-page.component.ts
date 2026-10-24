@@ -58,7 +58,7 @@ export class CrossBenchmarkPageComponent {
   protected readonly runForm = new FormGroup({
     dataset: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     tokenizers: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    runName: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(120)] }),
+    runName: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(120)] }),
     maxDocuments: new FormControl(1000, { nonNullable: true, validators: [Validators.min(0), Validators.max(100000)] }),
     warmupTrials: new FormControl(2, { nonNullable: true, validators: [Validators.min(0), Validators.max(100)] }),
     timedTrials: new FormControl(8, { nonNullable: true, validators: [Validators.min(1), Validators.max(200)] }),
@@ -211,7 +211,7 @@ export class CrossBenchmarkPageComponent {
   protected runBenchmark(): void {
     const value = this.runForm.getRawValue();
     const tokenizers = [...this.runSelectedTokenizers()];
-    if (this.runForm.controls.runName.invalid || this.runForm.controls.maxLength.invalid || !value.dataset.trim() || tokenizers.length === 0 || !value.runName.trim() || this.runSelectedMetricKeys().length === 0) return;
+    if (this.runForm.invalid || !value.dataset.trim() || tokenizers.length === 0 || !value.runName.trim() || this.runSelectedMetricKeys().length === 0) return;
     this.store.run({ tokenizers, dataset_name: value.dataset.trim(), run_name: value.runName.trim(), selected_metric_keys: [...this.runSelectedMetricKeys()], config: { max_documents: value.maxDocuments, warmup_trials: value.warmupTrials, timed_trials: value.timedTrials, batch_size: value.batchSize, seed: value.seed, parallelism: value.parallelism, add_special_tokens: value.addSpecialTokens, padding: value.padding, truncation: value.truncation, max_length: value.maxLength, store_per_document_stats: value.storePerDocumentStats, per_document_sample_size: value.perDocumentSampleSize } });
     this.runOpen.set(false);
   }

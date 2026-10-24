@@ -1,5 +1,5 @@
 # Project Status Ledger
-Last updated: 2026-10-23
+Last updated: 2026-10-24
 
 This is the canonical source of truth for current implementation status,
 validation gates, unresolved limitations, and validation history. The
@@ -74,23 +74,37 @@ Future coding and validation agents must:
 - Containerized deployment and binary packaging are NOT_IMPLEMENTED. The
   supported release model is source-only Windows x64.
 
-## 2026-10-23 Cross Benchmark wizard and tokenizer preview (PARTIAL)
+## 2026-10-23 Cross Benchmark wizard and tokenizer preview (VALIDATED 2026-10-24)
 
 The Cross Benchmark run/clone wizard now scrolls its active step content while
 keeping the header, step navigation, and actions visible; changing steps resets
 the content scroll position. When a tokenizer report is loaded or generated,
 the Tokenizers preview also takes its vocabulary size from that report. The
 focused isolated Chromium E2E scenarios passed for wizard navigation/scrolling
-and first-report generation with a 1,207-entry vocabulary preview. This audit
-also completed a benchmark with two warmups and eight timed iterations, saved a
-baseline, and verified dashboard drag ordering through a successful settings
-write and reload. The populated plot cards rendered at desktop width and the
-shared step strip remained visible at 390×844. The pointer-reorder E2E passed
-in the final full runner after its settings load and stepped pointer movement
-were synchronized; two earlier aggregate runs had timed out at the desktop
-drag response, while the live browser drag also passed. Broader narrow-width
-dialog content review remains outstanding, so the broader Cross Benchmark UI
-gate stays PARTIAL.
+and first-report generation with a 1,207-entry vocabulary preview. The
+2026-10-23 audit also completed a benchmark with two warmups and eight timed
+iterations, saved a baseline, and verified dashboard drag ordering through a
+successful settings write and reload. The populated plot cards rendered at
+desktop width and the shared step strip remained visible at 390×844. The
+pointer-reorder E2E passed in the final full runner after its settings load and
+stepped pointer movement were synchronized; two earlier aggregate runs had
+timed out at the desktop drag response, while the live browser drag also
+passed.
+
+The 2026-10-24 follow-up visually reviewed ordinary and cloned wizard states at
+390 px and 375 px (the latter measured 376 CSS px), with no document-level
+horizontal overflow. Summary content scrolled inside the dialog, Back reset
+Inputs to the top, and actions stayed visible. Warmup `-1` and timed trials `0`
+disabled Start benchmark. The form guard now requires a run name and blocks
+submission whenever any control is invalid; the Angular production build passed.
+An isolated empty data root showed “No datasets available” and kept Next
+disabled. The report manager passed search, no-match/clear, open/close, and
+focus-return checks at 390 px; the two-report data set did not expose pagination.
+Dashboard visualization, baseline, visibility, and ordering preferences saved
+through successful UI requests and survived navigation, reload, and backend
+restart. The captured baseline preferences were restored and visually checked.
+No benchmark was submitted in this follow-up. The broader Cross Benchmark UI
+gate is VALIDATED; see the durable closure entry `V-20261024` below.
 
 ## 2026-10-23 validation wizard preview (VALIDATED)
 
@@ -193,6 +207,8 @@ recorded here rather than in a copied execution log.
 | V-20261023 | Tokenizer Playground live browser validation | T2-08, T5-07 | PASS on the exercised Windows host with isolated SQLite: the focused Chromium E2E passed 1/1, covering four custom WordLevel tokenizers, the 2,000-character boundary, selection cap, exact text/ID chips, special-token toggle, per-item error state, collapse/reopen, responsive layout at 1440px and 375px, and no report creation. The production build, Ruff, BasedPyright (0 errors; 2,111 warnings), and 70/70 Angular unit tests passed. Fixed the playground collapse CSS issue found by the browser run; E2E cleanup removed its test tokenizers and the runner freed ports 5000/8000. Raw tokenizer JSON `unknown_count` remains unavailable by the existing adapter contract; external Hugging Face download/access was not tested. |
 | V-20261023 | Comprehensive end-to-end validation audit | T0-02 (delta), T2-02, T2-08, T5-07, local quality gate | PARTIAL overall on the current `develop` working tree. Two full runs initially timed out waiting for the desktop pointer-reorder `PUT /api/settings/dashboard`; the exact isolated rerun passed. The E2E now waits for dashboard preferences to load on navigation/reload and uses a 10-step pointer movement; the focused runner passed and the next full runner passed with 539 Python tests, 13 skipped, and no failures. The production build, Ruff, BasedPyright (0 errors; 2,149 warnings), and 71/71 Angular tests passed. In the live app against isolated SQLite, a four-row CSV completed the validation wizard with 80/0/80 max-length preview, zero-match recovery, 77 metrics, and a persisted three-document report; dataset/report/tokenizer state survived reload and backend restart. Tokenizer flows covered malformed and valid JSON, search match/no-match/clear, selection retention, special-token on/off, and 390×844 layout without overflow. Cross Benchmark completed two warmups/eight timed iterations, rendered 34 metrics, persisted a baseline, and saved/reloaded dashboard order. A normal visible Windows console ran `start_on_windows.ps1 -Launch`, returned `/api/health` 200, handled a generated Win32 console Ctrl+C event with launcher exit code 0, stopped the exact owned backend, and freed the port; `.env` was restored to its original SHA-256. Remaining: interactive occupied-port confirmation, redirected launch, current hosted CI, live Hugging Face credentials/gated access, isolated PostgreSQL recheck, and physical disk exhaustion were not exercised in this audit. `npm ci` reported 15 dependency audit findings (4 moderate, 9 high, 2 critical); advisories were not triaged. Temporary fixtures and isolated database were removed. |
 
+| V-20261024 | Cross Benchmark Phase 2 closure | T5-03, T3-04 (delta), local UI form guard/build | PASS on the current working tree. The ordinary and cloned Cross Benchmark wizards were reviewed at 390 px and 375 px, and the ordinary wizard at the five planned viewport sizes; dialogs had no document-level horizontal overflow, internal scrolling and step reset worked, and actions stayed visible. Warmup `-1` and timed trials `0` disabled Start benchmark; the required-name/full-form guard fix passed the Angular production build. The empty-dataset state kept Next disabled in an isolated disposable root. Report-manager search/open/close/focus checks passed at 390 px; pagination was unavailable with two reports. Dashboard visualization, baseline, visibility, and order saves returned HTTP 200 and persisted through navigation, reload, and backend restart; the captured preferences were restored exactly. No benchmark was submitted and Phase 3 was not started. Details: `assets/QA/remaining-validation-2026-10-24/phase2-evidence.md`. |
+
 ### Reconciled status transitions
 
 - The initial Tier 1 `PARTIAL` results for runtime settings, key management,
@@ -252,7 +268,7 @@ recorded here rather than in a copied execution log.
 | ui.startup-readiness | VALIDATED | Offline, slow, terminal-failure, retry, and recovered frontend-first states passed in the in-app browser, and the 2026-10-17 baseline recheck passed the single-lane tokenizer startup-flow E2E including reduced-motion and narrow-viewport assertions. The 2026-10-20 full live E2E recheck passed the same 2/2 startup slice at `f49ac4b`. | 2026-10-20 |
 | ui.dataset-dashboard | VALIDATED | Metric families, persisted dashboard reload, malformed optional histogram fallback, and export action passed. | 2026-09-23 |
 | ui.settings-page | VALIDATED | Typed settings, all 16 runtime fields, debounced autosave, conflict reload, persistence across reload and backend restart, reset, key lifecycle, masked credential storage, keyboard navigation, and responsive states passed. The Database tab passed test-before-switch, failed-target no-change, SQLite switching, settings isolation, and restored connection configuration. | 2026-10-21 |
-| ui.cross-benchmark-workflow | PARTIAL | Wizard, report manager, tags, baseline/delta, clone/customize, tables, ordering, database-backed preference persistence, and reload passed historically. This audit completed a benchmark with two warmups/eight timed iterations and 34 metrics, saved a baseline, and visually reviewed populated plot cards. A real pointer drag changed the widget order, returned HTTP 200 from the preference API, and persisted after reload. The pointer E2E passed in the final full runner after explicit preference-load waits and stepped pointer movement; two earlier aggregate runs timed out at the desktop drag response. Broader narrow-width modal content review remains outstanding. | 2026-10-23 |
+| ui.cross-benchmark-workflow | VALIDATED | Wizard, report manager, tags, baseline/delta, clone/customize, tables, ordering, database-backed preference persistence, and reload passed historically. A real pointer drag changed widget order and persisted after reload. The 2026-10-24 follow-up completed ordinary and cloned wizard review at 390 px and 375 px, report-manager search/open/close/focus checks at 390 px, invalid-trial form-guard checks, and dashboard preference save/navigation/reload/backend-restart persistence. The form guard fix passed the Angular production build; baseline dashboard preferences were restored. | 2026-10-24 |
 | ui.tokenizer-report-and-vocabulary | PARTIAL | 1,207-entry report persistence, contiguous API paging, rendered pagination, restart report, and four-viewport route states passed historically. The 2026-10-23 first-report E2E generated a 1,207-entry tokenizer report and verified the catalog preview updated from unknown to 1,207. | 2026-10-23 |
 | ui.tokenizer-playground | VALIDATED | The focused Chromium E2E and live isolated-SQLite workflow passed text/selection boundaries, search match/no-match/clear, selection retention across filtering, special tokens on/off, token text/IDs, per-item error rendering, collapse/reopen, and 1440px/390px/375px layouts without document overflow. Invalid JSON showed an inline error; a valid local WordLevel tokenizer created a report. No browser errors occurred after valid upload. Raw tokenizer JSON `unknown_count` remains unavailable by the existing adapter contract. | 2026-10-23 |
 | deployment.source-only-local | VALIDATED | Published v4.7.1 source-only release with hosted CI run `39800902959` passing frontend, backend, and Windows launcher jobs at the release SHA; tag and publication traceability are recorded below. The 2026-10-23 working-tree audit is separate from that release evidence, and hosted CI for the current tree was not run. | 2026-10-23 |
@@ -296,7 +312,7 @@ The gate table records the latest known state of every stable validation ID.
 | T3-01 | PASS | Three comparable 1,000-document runs recorded throughput, latency percentiles from 80 observations per run, phase timing, RSS, and memory delta. Samples describe this host and are not a general performance guarantee. |
 | T3-02 | PASS | At `b087db60`, requested/effective parallelism 1/1 and 2/2, two-worker overlap, persisted configuration, ordering, observations, per-document samples, and report reload passed. |
 | T3-03 | PASS | Report search, 25/1 pagination, tags, confirmation, and physical deletion passed against populated current-schema reports. |
-| T3-04 | PASS | Baseline/delta views, data tables, reload, clone configuration, visualization overrides, order, and customization persistence passed. |
+| T3-04 | PASS | Baseline/delta views, data tables, reload, clone configuration, visualization overrides, order, and customization persistence passed. The 2026-10-24 UI save changes also persisted through navigation, reload, and backend restart; original dashboard preferences were restored afterward. |
 | T3-05 | PASS | Dataset/tokenizer/benchmark export smoke and the expanded all-eight-form benchmark review plus five-page 1,207-entry tokenizer PDF passed `pdfinfo`, rendering, and visual legibility checks. |
 | T4-01 | PASS | Supplied key authentication, public `bert-base-uncased` discovery/download/report/reload/cleanup passed; vocabulary size was 30,522. |
 | T4-02 | PASS | Anonymous public Wikitext import persisted 29,119 documents across restart and removed temporary source files. |
@@ -304,10 +320,10 @@ The gate table records the latest known state of every stable validation ID.
 | T4-04 | PASS | Isolated PostgreSQL 18.6 baseline initialization, prior concurrency, authenticated UI connection testing, live switching, settings isolation, restart recovery, injected rollback, and retry evidence passed. A matching schema stamped `0007_dashboard_ui_preferences` rebaselined to `0001_current_schema` after metadata comparison; runtime and dashboard preference JSON round-tripped on port 55432. The exact tagged v4.6.0 migration chain was also replayed and rebaselined on isolated SQLite. The host PostgreSQL listener was not used. |
 | T5-01 | PASS | Restart reconciled active work to addressable terminal failure while preserving completed upload job and its 25,000-document dataset. |
 | T5-02 | PASS | Dataset/Settings populated, no-match, empty Keys, four viewport sizes, keyboard navigation, Escape, and focus return passed without document-level horizontal overflow. |
-| T5-03 | PASS | Cross Benchmark, Tokenizers empty/loading/error/populated/report states, manager bounds, four viewport sizes, and keyboard/focus behavior passed. |
+| T5-03 | PASS | Cross Benchmark ordinary and cloned wizard states passed at narrow widths, including internal scroll, fixed actions, step reset, empty-dataset Next guard, and invalid-trial Start guard. Report-manager search/open/close/focus checks passed at 390 px; pagination beyond the first page was unavailable with two reports. Existing Tokenizers empty/loading/error/populated/report states, manager bounds, and viewport/keyboard/focus coverage remain passing. |
 | T5-04 | PASS | Official launcher streamed visible progress for 10,000 documents, cancellation produced no report, eight backend RSS samples were collected, and a two-document rerun rendered without browser/HTTP errors. Browser heap was not instrumented. |
 | T5-05 | OUT_OF_SCOPE | Release support is Windows x64 source-only. Ubuntu was diagnostic; macOS and hosted runtime support are not planned. |
-| T5-06 | PASS | Releases `v4.5.0`, `v4.5.1`, `v4.6.0`, `v4.6.1`, and `v4.7.1` were verified. v4.7.1 (backend 3.7.1, frontend 2.7.1) was published from annotated tag `v4.7.1` at main commit `b8ae9fe5fdb11126387cc440903ef73f0a555b22`; hosted CI run `39800902959` passed frontend, backend, and Windows launcher jobs. Release URL and prior release evidence remain recorded above. Current working-tree validation is distinct and remains PARTIAL under V-20261023; T4-03 gated Hugging Face access and physical low-disk recovery remain validation debt. |
+| T5-06 | PASS | Releases `v4.5.0`, `v4.5.1`, `v4.6.0`, `v4.6.1`, and `v4.7.1` were verified. v4.7.1 (backend 3.7.1, frontend 2.7.1) was published from annotated tag `v4.7.1` at main commit `b8ae9fe5fdb11126387cc440903ef73f0a555b22`; hosted CI run `39800902959` passed frontend, backend, and Windows launcher jobs. Release URL and prior release evidence remain recorded above. The 2026-10-24 Phase 2 follow-up is PASS under V-20261024; T4-03 gated Hugging Face access and physical low-disk recovery remain validation debt. |
 
 | T5-07 | PASS | The full browser flow passed on Chromium: 2,000-character input capping, max-three selection, request flags for special tokens on/off, rendered token text and IDs, per-item error card, collapse/reopen, and 1440px/375px responsive checks without document overflow. The 2026-10-23 audit additionally verified search match/no-match/clear, selected-chip retention, malformed/valid local tokenizer upload, and a 390×844 viewport without document overflow. No browser errors occurred after valid upload; external Hugging Face access is tracked separately. |
 
