@@ -6,7 +6,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, catchError, debounceTime, forkJoin, of, switchMap } from 'rxjs';
 import { BenchmarksApiService } from '../api/benchmarks-api.service';
 import { DatasetsApiService } from '../api/datasets-api.service';
-import { JobsApiService } from '../api/jobs-api.service';
 import { TokenizersApiService } from '../api/tokenizers-api.service';
 import { errorMessage } from '../api/error-utils';
 import type {
@@ -27,7 +26,6 @@ export class BenchmarkStore {
   private readonly api = inject(BenchmarksApiService);
   private readonly datasetsApi = inject(DatasetsApiService);
   private readonly tokenizersApi = inject(TokenizersApiService);
-  private readonly jobsApi = inject(JobsApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly reportRequests = new Subject<BenchmarkReportQuery>();
   private reportLoadSequence = 0;
@@ -48,9 +46,6 @@ export class BenchmarkStore {
   readonly availableDatasets = signal<readonly string[]>([]);
   readonly loadingWorkspace = signal(true);
   readonly busy = signal(false);
-  readonly progress = signal<number | null>(null);
-  readonly activeJobId = signal<string | null>(null);
-  readonly cancellationRequested = signal(false);
   readonly layout = signal<readonly string[]>([]);
   readonly hiddenWidgetIds = signal<readonly string[]>([]);
   readonly visualizations = signal<Record<string, BenchmarkVisualizationKind>>({});
@@ -216,35 +211,16 @@ export class BenchmarkStore {
 
   run(request: BenchmarkRunRequest): void {
     this.error.set(null);
-    this.cancellationRequested.set(false);
     this.busy.set(true);
-    this.progress.set(0);
-    this.api.run(request, (status) => this.progress.set(status.progress), (job) => this.activeJobId.set(job.job_id)).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.api.run(request).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (report) => {
         this.report.set(report);
         if (report.report_id !== null) this.selectedReportId.set(report.report_id);
         this.restoreBaselineForReport(report);
         this.busy.set(false);
-        this.activeJobId.set(null);
-        this.cancellationRequested.set(false);
-        this.progress.set(100);
         this.refresh();
       },
-      error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to run benchmarks.')); this.busy.set(false); this.activeJobId.set(null); this.cancellationRequested.set(false); this.progress.set(null); },
-    });
-  }
-
-  cancel(): void {
-    const jobId = this.activeJobId();
-    if (!jobId || this.cancellationRequested()) return;
-    this.cancellationRequested.set(true);
-    this.error.set(null);
-    this.jobsApi.cancel(jobId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      error: (error: unknown) => {
-        if (this.activeJobId() !== jobId) return;
-        this.cancellationRequested.set(false);
-        this.error.set(errorMessage(error, 'Failed to cancel benchmark.'));
-      },
+      error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to run benchmarks.')); this.busy.set(false); },
     });
   }
 

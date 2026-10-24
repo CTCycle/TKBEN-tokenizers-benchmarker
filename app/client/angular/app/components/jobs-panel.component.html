@@ -1,0 +1,63 @@
+<!-- Copyright © 2023 Thomas Virdis -->
+<!-- Licensed under the MIT License. -->
+
+<button
+  type="button"
+  class="icon-button subtle app-header-jobs-button"
+  [class.accent]="open()"
+  aria-label="Toggle jobs panel"
+  aria-haspopup="dialog"
+  title="Jobs"
+  [attr.aria-expanded]="open()"
+  (click)="toggle()"
+>
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M4 7h16M4 12h10M4 17h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+    <path d="M17 15l2 2 3-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+  @if (jobsStore.activeCount() > 0) {
+    <span class="jobs-badge" aria-hidden="true">{{ jobsStore.activeCount() }}</span>
+  }
+</button>
+
+@if (open()) {
+  <button class="jobs-panel-backdrop" type="button" aria-label="Close jobs panel" tabindex="-1" (click)="close()"></button>
+  <section class="jobs-panel" role="dialog" aria-label="Jobs">
+    <header class="jobs-panel-header">
+      <h2 class="panel-label">Jobs</h2>
+      @if (jobsStore.hasFinished()) {
+        <button class="secondary-button" type="button" (click)="jobsStore.clearFinished()">Clear finished</button>
+      }
+    </header>
+
+    @for (job of jobsStore.jobs(); track job.id) {
+      <article class="jobs-item" [class.jobs-item--failed]="job.state === 'failed'">
+        <div class="jobs-item-row">
+          <span class="jobs-item-label">{{ job.label }}</span>
+          <span class="jobs-item-state">{{ stateLabel(job) }}</span>
+        </div>
+        <div
+          class="jobs-progress-track"
+          role="progressbar"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          [attr.aria-valuenow]="job.progress"
+          [attr.aria-label]="job.label + ' progress'"
+        >
+          <div class="jobs-progress-fill" [class.jobs-progress-fill--failed]="job.state === 'failed' || job.state === 'cancelled'" [style.width.%]="job.progress"></div>
+        </div>
+        <div class="jobs-item-row">
+          <span class="jobs-item-percent">{{ job.progress | number: '1.0-0' }}%</span>
+          @if (job.state === 'running') {
+            <button class="secondary-button" type="button" [disabled]="job.cancelRequested" (click)="cancel(job)">Cancel</button>
+          }
+        </div>
+        @if (job.error) {
+          <p class="jobs-item-error">{{ job.error }}</p>
+        }
+      </article>
+    } @empty {
+      <p class="dataset-empty-label">No jobs yet.</p>
+    }
+  </section>
+}

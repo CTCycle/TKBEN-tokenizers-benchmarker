@@ -349,7 +349,6 @@ describe('TokenizersPageComponent workflow', () => {
       discoveryAdvancedOpen: () => boolean;
       toggleDiscoveryAdvanced: () => void;
       downloadSelectedDiscoveryTokenizers: () => void;
-      downloadProgressVisible: () => boolean;
     };
 
     expect(page.activeTokenizerTab()).toBe('discover');
@@ -373,9 +372,6 @@ describe('TokenizersPageComponent workflow', () => {
     page.selectTokenizerTab('discover');
     page.downloadSelectedDiscoveryTokenizers();
     expect(store.download).toHaveBeenCalledWith({ tokenizers: ['alpha/model'] });
-    expect(page.downloadProgressVisible()).toBe(false);
-    store.busyAction.set('download');
-    expect(page.downloadProgressVisible()).toBe(true);
   });
 
   it('hydrates discovery defaults and constraints from SettingsStore', () => {

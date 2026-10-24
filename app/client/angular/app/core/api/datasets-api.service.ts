@@ -15,7 +15,6 @@ import type {
   DatasetValidationPreviewRequest,
   DatasetValidationPreviewResponse,
   JobStartResponse,
-  JobStatusResponse,
 } from './api.models';
 import { JobsApiService } from './jobs-api.service';
 import { isNotFoundError } from './error-utils';
@@ -41,21 +40,21 @@ export class DatasetsApiService {
     return this.http.get<DatasetListResponse>('/api/datasets/list', { params });
   }
 
-  download(request: DatasetDownloadRequest, onUpdate?: (status: JobStatusResponse) => void): Observable<DatasetDownloadResponse> {
+  download(request: DatasetDownloadRequest): Observable<DatasetDownloadResponse> {
     const start$ = this.http.post<JobStartResponse>('/api/datasets/download', request);
-    return this.jobs.startAndPoll<DatasetDownloadResponse>(start$, { timeoutMs: 10 * 60 * 1000, onUpdate });
+    return this.jobs.startAndPoll<DatasetDownloadResponse>(start$, { timeoutMs: 10 * 60 * 1000 });
   }
 
-  upload(file: File, onUpdate?: (status: JobStatusResponse) => void): Observable<CustomDatasetUploadResponse> {
+  upload(file: File): Observable<CustomDatasetUploadResponse> {
     const body = new FormData();
     body.append('file', file);
     const start$ = this.http.post<JobStartResponse>('/api/datasets/upload', body);
-    return this.jobs.startAndPoll<CustomDatasetUploadResponse>(start$, { timeoutMs: 10 * 60 * 1000, onUpdate });
+    return this.jobs.startAndPoll<CustomDatasetUploadResponse>(start$, { timeoutMs: 10 * 60 * 1000 });
   }
 
-  analyze(request: DatasetAnalysisRequest, onUpdate?: (status: JobStatusResponse) => void): Observable<DatasetAnalysisResponse> {
+  analyze(request: DatasetAnalysisRequest): Observable<DatasetAnalysisResponse> {
     const start$ = this.http.post<JobStartResponse>('/api/datasets/analyze', request);
-    return this.jobs.startAndPoll<DatasetAnalysisResponse>(start$, { timeoutMs: 10 * 60 * 1000, onUpdate });
+    return this.jobs.startAndPoll<DatasetAnalysisResponse>(start$, { timeoutMs: 10 * 60 * 1000 });
   }
 
   validationPreview(request: DatasetValidationPreviewRequest): Observable<DatasetValidationPreviewResponse> {

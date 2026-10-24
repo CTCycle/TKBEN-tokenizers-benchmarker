@@ -1,5 +1,5 @@
 # Components and Patterns
-Last updated: 2026-10-23
+Last updated: 2026-10-24
 
 ## Navigation
 - Top tab navigation for:
@@ -12,6 +12,12 @@ Last updated: 2026-10-23
   only application-level icon action. Settings is an application-level route,
   not a primary workflow tab, and owns provider credentials under its Keys
   section.
+- The header also exposes a Jobs icon button beside Settings. It opens
+  `JobsPanelComponent`, a popover listing every tracked job (dataset
+  download/upload/benchmark, tokenizer download/report, cross benchmark) with a
+  progress bar, state, error text, and Cancel for running jobs. `JobsStore`
+  is fed by `JobsApiService.poll` and is the only place job progress is shown;
+  pages and domain stores keep no progress signals or inline progress UI.
 
 ## Buttons
 - Primary action:

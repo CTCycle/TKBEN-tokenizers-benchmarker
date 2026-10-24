@@ -28,7 +28,6 @@ export class DatasetStore {
   readonly metricCategories = signal<readonly DatasetMetricCatalogCategory[]>([]);
   readonly loadingMetricCatalog = signal(false);
   readonly report = signal<DatasetAnalysisResponse | null>(null);
-  readonly jobProgress = signal<number | null>(null);
   readonly busyAction = signal<string | null>(null);
 
   constructor() {
@@ -120,29 +119,26 @@ export class DatasetStore {
   analyze(request: DatasetAnalysisRequest): void {
     const sequence = ++this.reportLoadSequence;
     this.busyAction.set(`analyze:${request.dataset_name}`);
-    this.jobProgress.set(0);
     this.error.set(null);
-    this.api.analyze(request, (status) => this.jobProgress.set(status.progress)).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (report) => { if (sequence !== this.reportLoadSequence) return; this.setReport(report); this.busyAction.set(null); this.jobProgress.set(100); },
-      error: (error: unknown) => { if (sequence !== this.reportLoadSequence) return; this.error.set(errorMessage(error, 'Failed to analyze dataset.')); this.busyAction.set(null); this.jobProgress.set(null); },
+    this.api.analyze(request).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (report) => { if (sequence !== this.reportLoadSequence) return; this.setReport(report); this.busyAction.set(null); },
+      error: (error: unknown) => { if (sequence !== this.reportLoadSequence) return; this.error.set(errorMessage(error, 'Failed to analyze dataset.')); this.busyAction.set(null); },
     });
   }
 
   download(request: DatasetDownloadRequest): void {
     this.busyAction.set('download');
-    this.jobProgress.set(0);
-    this.api.download(request, (status) => this.jobProgress.set(status.progress)).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (response) => { this.refreshAfterMutation(); this.selectedDataset.set(response.dataset_name); this.busyAction.set(null); this.jobProgress.set(100); },
-      error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to download dataset.')); this.busyAction.set(null); this.jobProgress.set(null); },
+    this.api.download(request).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (response) => { this.refreshAfterMutation(); this.selectedDataset.set(response.dataset_name); this.busyAction.set(null); },
+      error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to download dataset.')); this.busyAction.set(null); },
     });
   }
 
   upload(file: File): void {
     this.busyAction.set('upload');
-    this.jobProgress.set(0);
-    this.api.upload(file, (status) => this.jobProgress.set(status.progress)).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (response) => { this.refreshAfterMutation(); this.selectedDataset.set(response.dataset_name); this.busyAction.set(null); this.jobProgress.set(100); },
-      error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to upload dataset.')); this.busyAction.set(null); this.jobProgress.set(null); },
+    this.api.upload(file).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (response) => { this.refreshAfterMutation(); this.selectedDataset.set(response.dataset_name); this.busyAction.set(null); },
+      error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to upload dataset.')); this.busyAction.set(null); },
     });
   }
 

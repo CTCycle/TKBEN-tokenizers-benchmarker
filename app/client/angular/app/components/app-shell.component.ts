@@ -4,6 +4,7 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { SettingsStore } from '../core/state/settings.store';
+import { JobsPanelComponent } from './jobs-panel.component';
 
 interface NavItem {
   readonly path: string;
@@ -13,7 +14,7 @@ interface NavItem {
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, JobsPanelComponent],
   templateUrl: './app-shell.component.html',
 })
 export class AppShellComponent {

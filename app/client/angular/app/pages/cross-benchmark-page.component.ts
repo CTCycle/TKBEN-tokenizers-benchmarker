@@ -270,10 +270,6 @@ export class CrossBenchmarkPageComponent {
     if (this.benchmarkWizardBody) this.benchmarkWizardBody.nativeElement.scrollTop = 0;
   }
 
-  protected cancelBenchmark(): void {
-    if (this.store.busy()) this.store.cancel(); else this.runOpen.set(false);
-  }
-
   protected openCustomize(): void {
     this.customizeDraft.set(this.orderedWidgets().map((widget) => widget.widget_id));
     this.restoreDisabled.set(false);

@@ -36,7 +36,6 @@ export class TokenizersStore {
   readonly report = signal<TokenizerReportResponse | null>(null);
   readonly vocabulary = signal<TokenizerVocabularyPageResponse | null>(null);
   readonly busyAction = signal<string | null>(null);
-  readonly jobProgress = signal<number | null>(null);
   readonly discoveryResults = signal<readonly TokenizerDiscoveryItem[]>([]);
   readonly discoveryLoading = signal(false);
   readonly discoveryError = signal<string | null>(null);
@@ -136,10 +135,9 @@ export class TokenizersStore {
     const sequence = ++this.reportLoadSequence;
     this.select(tokenizerName);
     this.busyAction.set(`report:${tokenizerName}`);
-    this.jobProgress.set(0);
-    this.api.generateReport({ tokenizer_name: tokenizerName }, (status) => this.jobProgress.set(status.progress)).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (report) => { if (sequence !== this.reportLoadSequence) return; this.setReport(report); this.busyAction.set(null); this.jobProgress.set(100); },
-      error: (error: unknown) => { if (sequence !== this.reportLoadSequence) return; this.error.set(errorMessage(error, 'Failed to generate tokenizer report.')); this.busyAction.set(null); this.jobProgress.set(null); },
+    this.api.generateReport({ tokenizer_name: tokenizerName }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (report) => { if (sequence !== this.reportLoadSequence) return; this.setReport(report); this.busyAction.set(null); },
+      error: (error: unknown) => { if (sequence !== this.reportLoadSequence) return; this.error.set(errorMessage(error, 'Failed to generate tokenizer report.')); this.busyAction.set(null); },
     });
   }
 
@@ -147,16 +145,15 @@ export class TokenizersStore {
     const sequence = ++this.reportLoadSequence;
     this.select(tokenizerName);
     this.busyAction.set(`report:${tokenizerName}`);
-    this.jobProgress.set(0);
     this.error.set(null);
     this.api.latestReport(tokenizerName).pipe(
       switchMap((report) => report
         ? of(report)
-        : this.api.generateReport({ tokenizer_name: tokenizerName }, (status) => this.jobProgress.set(status.progress))),
+        : this.api.generateReport({ tokenizer_name: tokenizerName })),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
-      next: (report) => { if (sequence !== this.reportLoadSequence) return; this.setReport(report); this.busyAction.set(null); this.jobProgress.set(100); },
-      error: (error: unknown) => { if (sequence !== this.reportLoadSequence) return; this.error.set(errorMessage(error, 'Failed to open tokenizer report.')); this.busyAction.set(null); this.jobProgress.set(null); },
+      next: (report) => { if (sequence !== this.reportLoadSequence) return; this.setReport(report); this.busyAction.set(null); },
+      error: (error: unknown) => { if (sequence !== this.reportLoadSequence) return; this.error.set(errorMessage(error, 'Failed to open tokenizer report.')); this.busyAction.set(null); },
     });
   }
 
@@ -189,16 +186,14 @@ export class TokenizersStore {
 
   download(request: TokenizerDownloadRequest): void {
     this.busyAction.set('download');
-    this.jobProgress.set(0);
     this.downloadWarning.set(null);
-    this.api.download(request, (status) => this.jobProgress.set(status.progress)).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.api.download(request).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (response) => {
         this.refreshAfterMutation();
         this.busyAction.set(null);
-        this.jobProgress.set(100);
         if (response.failed?.length) this.downloadWarning.set(`Some tokenizers could not be downloaded: ${response.failed.join(', ')}`);
       },
-      error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to download tokenizers.')); this.busyAction.set(null); this.jobProgress.set(null); },
+      error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to download tokenizers.')); this.busyAction.set(null); },
     });
   }
 

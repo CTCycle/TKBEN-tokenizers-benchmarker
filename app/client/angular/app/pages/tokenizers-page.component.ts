@@ -1,7 +1,6 @@
 // Copyright © 2023 Thomas Virdis
 // Licensed under the MIT License.
 
-import { DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { CdkFixedSizeVirtualScroll, CdkVirtualForOf, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -27,7 +26,7 @@ const PLAYGROUND_MAX_TEXT_LENGTH = 2000;
 
 @Component({
   selector: 'app-tokenizers-page',
-  imports: [ReactiveFormsModule, DecimalPipe, CdkFixedSizeVirtualScroll, CdkVirtualForOf, CdkVirtualScrollViewport, HistogramChartComponent, ModalA11yDirective],
+  imports: [ReactiveFormsModule, CdkFixedSizeVirtualScroll, CdkVirtualForOf, CdkVirtualScrollViewport, HistogramChartComponent, ModalA11yDirective],
   templateUrl: './tokenizers-page.component.html',
 })
 export class TokenizersPageComponent {
@@ -40,7 +39,6 @@ export class TokenizersPageComponent {
   protected readonly manualTokenizerInput = signal('');
   protected readonly manualTokenizerIds = computed(() => this.manualTokenizerInput().split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean));
   protected readonly discoveryAdvancedOpen = signal(false);
-  protected readonly downloadProgressVisible = computed(() => this.store.busyAction() === 'download');
   protected readonly exportError = signal<string | null>(null);
   protected readonly playgroundMaxTokenizers = PLAYGROUND_MAX_TOKENIZERS;
   protected readonly playgroundMaxTextLength = PLAYGROUND_MAX_TEXT_LENGTH;

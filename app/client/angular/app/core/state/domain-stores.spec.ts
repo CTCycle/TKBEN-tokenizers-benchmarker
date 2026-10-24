@@ -6,7 +6,6 @@ import { of, Subject, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BenchmarksApiService } from '../api/benchmarks-api.service';
 import { DatasetsApiService } from '../api/datasets-api.service';
-import { JobsApiService } from '../api/jobs-api.service';
 import { TokenizersApiService } from '../api/tokenizers-api.service';
 import type { BenchmarkRunResponse, DashboardUiPreferencesResponse, DashboardUiPreferencesUpdate, DatasetAnalysisResponse, RuntimeSettingsResponse, TokenizerReportResponse } from '../api/api.models';
 import { BenchmarkStore } from './benchmark.store';
@@ -61,31 +60,21 @@ describe('BenchmarkStore', () => {
       report: vi.fn().mockReturnValue(of(report)),
       deleteReport: vi.fn().mockReturnValue(of(undefined)),
       updateReportTags: vi.fn((reportId: number, tags: readonly string[]) => of({ report_id: reportId, tags: [...tags] })),
-      run: vi.fn((
-        _request: unknown,
-        onUpdate: (status: { progress: number }) => void,
-        onJobStart: (job: { job_id: string }) => void,
-      ) => {
-        onJobStart({ job_id: 'job-5' });
-        onUpdate({ progress: 60 });
-        return of(report);
-      }),
+      run: vi.fn().mockReturnValue(of(report)),
     };
   }
 
   function createStore(api = createApi()) {
     const datasetsApi = { list: vi.fn().mockReturnValue(of({ datasets: [{ dataset_name: 'custom/demo' }] })) };
     const tokenizersApi = { list: vi.fn().mockReturnValue(of({ tokenizers: [{ tokenizer_name: 'CUSTOM_demo' }] })) };
-    const jobsApi = { cancel: vi.fn().mockReturnValue(of({})) };
     TestBed.configureTestingModule({ providers: [
       { provide: BenchmarksApiService, useValue: api },
       { provide: DatasetsApiService, useValue: datasetsApi },
       { provide: TokenizersApiService, useValue: tokenizersApi },
-      { provide: JobsApiService, useValue: jobsApi },
     ] });
     const store = TestBed.inject(BenchmarkStore);
     vi.advanceTimersByTime(250);
-    return { api, datasetsApi, tokenizersApi, jobsApi, store };
+    return { api, datasetsApi, tokenizersApi, store };
   }
 
   it('loads workspace metadata and initializes layout from the first report', () => {
@@ -99,62 +88,20 @@ describe('BenchmarkStore', () => {
     expect(store.reportsLoading()).toBe(false);
   });
 
-  it('propagates job progress and refreshes after success', () => {
-    const { api, jobsApi, store } = createStore();
+  it('refreshes after a successful run and surfaces failures', () => {
+    const { api, store } = createStore();
 
     store.run({ dataset_name: 'custom/demo' } as never);
     vi.advanceTimersByTime(250);
 
     expect(store.report()).toBe(report);
-    expect(store.progress()).toBe(100);
-    expect(store.activeJobId()).toBeNull();
     expect(store.busy()).toBe(false);
     expect(api.reports).toHaveBeenCalledTimes(2);
 
     api.run.mockImplementation(() => throwError(() => new Error('benchmark failed')));
     store.run({ dataset_name: 'custom/demo' } as never);
     expect(store.error()).toBe('benchmark failed');
-    expect(store.progress()).toBeNull();
-
-    store.cancel();
-    expect(jobsApi.cancel).not.toHaveBeenCalled();
-  });
-
-  it('requests cancellation once and allows an immediate rerun after cancellation', () => {
-    const api = createApi();
-    const { jobsApi, store } = createStore(api);
-    const pendingRun = new Subject<BenchmarkRunResponse>();
-    api.run.mockImplementation((_request, _onUpdate, onJobStart) => {
-      onJobStart({ job_id: 'job-cancelled' });
-      return pendingRun;
-    });
-
-    store.run({ dataset_name: 'custom/demo' } as never);
-    expect(store.busy()).toBe(true);
-    expect(store.activeJobId()).toBe('job-cancelled');
-
-    store.cancel();
-    store.cancel();
-    expect(jobsApi.cancel).toHaveBeenCalledTimes(1);
-    expect(jobsApi.cancel).toHaveBeenCalledWith('job-cancelled');
-    expect(store.cancellationRequested()).toBe(true);
-
-    pendingRun.error(new Error('Job was cancelled.'));
     expect(store.busy()).toBe(false);
-    expect(store.activeJobId()).toBeNull();
-    expect(store.cancellationRequested()).toBe(false);
-    expect(store.error()).toBe('Job was cancelled.');
-
-    api.run.mockImplementation((_request, _onUpdate, onJobStart) => {
-      onJobStart({ job_id: 'job-rerun' });
-      return of(report);
-    });
-    store.run({ dataset_name: 'custom/demo' } as never);
-
-    expect(store.busy()).toBe(false);
-    expect(store.activeJobId()).toBeNull();
-    expect(store.error()).toBeNull();
-    expect(store.report()).toBe(report);
   });
 
   it('persists dashboard layout, hidden IDs, and visualizations in one snapshot', () => {
@@ -397,13 +344,7 @@ describe('DatasetStore', () => {
       list: vi.fn().mockReturnValue(of({ datasets: [{ dataset_name: 'custom/demo' }], count: 1 })),
       metricsCatalog: vi.fn().mockReturnValue(of({ categories: [] })),
       latestReport: vi.fn().mockReturnValue(of(null)),
-      analyze: vi.fn((
-        _request: unknown,
-        onUpdate: (status: { progress: number }) => void,
-      ) => {
-        onUpdate({ progress: 45 });
-        return of(report__dataset_store);
-      }),
+      analyze: vi.fn().mockReturnValue(of(report__dataset_store)),
       download: vi.fn(),
       upload: vi.fn(),
       delete: vi.fn(),
@@ -446,14 +387,13 @@ describe('DatasetStore', () => {
     expect(store.busyAction()).toBeNull();
   });
 
-  it('publishes analysis progress in memory and resets failures', () => {
+  it('stores the analysis report in memory and resets failures', () => {
     const { api, store } = createStore();
 
     store.analyze({ dataset_name: 'custom/demo' } as never);
 
     expect(api.analyze).toHaveBeenCalled();
     expect(store.report()).toBe(report__dataset_store);
-    expect(store.jobProgress()).toBe(100);
     expect(store.busyAction()).toBeNull();
     expect(localStorage.length).toBe(0);
 
@@ -461,7 +401,6 @@ describe('DatasetStore', () => {
     store.analyze({ dataset_name: 'custom/demo' } as never);
 
     expect(store.error()).toBe('analysis failed');
-    expect(store.jobProgress()).toBeNull();
     expect(store.busyAction()).toBeNull();
   });
 
@@ -746,29 +685,18 @@ describe('TokenizersStore', () => {
 
     store.openReport('CUSTOM_demo');
 
-    expect(api.generateReport).toHaveBeenCalledWith(
-      { tokenizer_name: 'CUSTOM_demo' },
-      expect.any(Function),
-    );
+    expect(api.generateReport).toHaveBeenCalledWith({ tokenizer_name: 'CUSTOM_demo' });
     expect(store.report()).toBe(report__tokenizers_store);
     expect(store.vocabulary()).toEqual({ report_id: 12, offset: 0, limit: 2, total: 1, items: [] });
-    expect(store.jobProgress()).toBe(100);
   });
 
-  it('surfaces partial download failures without losing completed progress', () => {
+  it('surfaces partial download failures', () => {
     const { api, store } = createStore();
-    api.download.mockImplementation((
-      _request: unknown,
-      onUpdate: (status: { progress: number }) => void,
-    ) => {
-      onUpdate({ progress: 65 });
-      return of({ failed: ['broken/model'] });
-    });
+    api.download.mockReturnValue(of({ failed: ['broken/model'] }));
 
     store.download({ tokenizers: ['good/model', 'broken/model'] });
 
     expect(store.downloadWarning()).toBe('Some tokenizers could not be downloaded: broken/model');
-    expect(store.jobProgress()).toBe(100);
     expect(store.busyAction()).toBeNull();
   });
 

@@ -6,7 +6,6 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, of, throwError } from 'rxjs';
 import type {
   JobStartResponse,
-  JobStatusResponse,
   TokenizerDownloadRequest,
   TokenizerDownloadResponse,
   TokenizerDiscoveryQuery,
@@ -59,9 +58,9 @@ export class TokenizersApiService {
     return this.http.get<TokenizerDiscoveryResponse>('/api/tokenizers/discover', { params });
   }
 
-  download(request: TokenizerDownloadRequest, onUpdate?: (status: JobStatusResponse) => void): Observable<TokenizerDownloadResponse> {
+  download(request: TokenizerDownloadRequest): Observable<TokenizerDownloadResponse> {
     const start$ = this.http.post<JobStartResponse>('/api/tokenizers/download', request);
-    return this.jobs.startAndPoll<TokenizerDownloadResponse>(start$, { onUpdate });
+    return this.jobs.startAndPoll<TokenizerDownloadResponse>(start$);
   }
 
   upload(file: File): Observable<TokenizerUploadResponse> {
@@ -78,9 +77,9 @@ export class TokenizersApiService {
     return this.http.delete<void>(`/api/tokenizers/delete?tokenizer_name=${encodeURIComponent(tokenizerName)}`);
   }
 
-  generateReport(request: TokenizerValidationGenerateRequest, onUpdate?: (status: JobStatusResponse) => void): Observable<TokenizerReportResponse> {
+  generateReport(request: TokenizerValidationGenerateRequest): Observable<TokenizerReportResponse> {
     const start$ = this.http.post<JobStartResponse>('/api/tokenizers/reports/generate', request);
-    return this.jobs.startAndPoll<TokenizerReportResponse>(start$, { onUpdate });
+    return this.jobs.startAndPoll<TokenizerReportResponse>(start$);
   }
 
   latestReport(tokenizerName: string): Observable<TokenizerReportResponse | null> {

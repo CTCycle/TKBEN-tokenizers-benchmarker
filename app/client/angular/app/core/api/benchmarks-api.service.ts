@@ -3,7 +3,7 @@
 
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, tap } from 'rxjs';
+import { Observable } from 'rxjs';
 import type {
   BenchmarkMetricCatalogResponse,
   DashboardUiPreferencesResponse,
@@ -15,7 +15,6 @@ import type {
   BenchmarkRunRequest,
   BenchmarkRunResponse,
   JobStartResponse,
-  JobStatusResponse,
 } from './api.models';
 import { JobsApiService } from './jobs-api.service';
 
@@ -60,8 +59,8 @@ export class BenchmarksApiService {
     return this.http.patch<BenchmarkReportTagsResponse>(`/api/benchmarks/reports/${reportId}/tags`, payload);
   }
 
-  run(request: BenchmarkRunRequest, onUpdate?: (status: JobStatusResponse) => void, onJobStart?: (job: JobStartResponse) => void): Observable<BenchmarkRunResponse> {
+  run(request: BenchmarkRunRequest): Observable<BenchmarkRunResponse> {
     const start$ = this.http.post<JobStartResponse>('/api/benchmarks/run', request);
-    return this.jobs.startAndPoll<BenchmarkRunResponse>(start$.pipe(tap((job) => onJobStart?.(job))), { timeoutMs: 30 * 60 * 1000, onUpdate });
+    return this.jobs.startAndPoll<BenchmarkRunResponse>(start$, { timeoutMs: 30 * 60 * 1000 });
   }
 }
