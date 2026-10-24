@@ -538,10 +538,55 @@ class TestDatasetPage:
                     "checkbox", name="Exclude empty documents", exact=True
                 )
             ).to_be_checked()
+
+            preview = page.locator(".validation-preview")
+            expect(preview.locator(".validation-preview-stats")).to_be_visible()
+            with page.expect_response(
+                lambda response: response.request.method == "POST"
+                and urlparse(response.url).path == "/api/datasets/validation/preview"
+            ) as filtered_preview_info:
+                page.get_by_label("Max Length", exact=True).fill("80")
+            filtered_preview = filtered_preview_info.value
+            assert filtered_preview.ok, filtered_preview.text()
+            filtered_counts = filtered_preview.json()
+            assert filtered_counts.get("total_documents") == len(documents)
+            assert filtered_counts.get("matching_documents") == 3
+            assert filtered_counts.get("sampled_documents") == 3
+            expect(preview.locator(".validation-preview-result")).to_contain_text(
+                "3 of 4 documents match"
+            )
+
+            with page.expect_response(
+                lambda response: response.request.method == "POST"
+                and urlparse(response.url).path == "/api/datasets/validation/preview"
+            ) as empty_preview_info:
+                page.get_by_label("Max Length", exact=True).fill("0")
+            empty_preview = empty_preview_info.value
+            assert empty_preview.ok, empty_preview.text()
+            assert empty_preview.json().get("matching_documents") == 0
+            assert empty_preview.json().get("sampled_documents") == 0
+            expect(preview.get_by_role("alert")).to_contain_text(
+                "No documents match these filters"
+            )
+            expect(page.get_by_role("button", name="Next", exact=True)).to_be_disabled()
+
+            with page.expect_response(
+                lambda response: response.request.method == "POST"
+                and urlparse(response.url).path == "/api/datasets/validation/preview"
+            ) as recovered_preview_info:
+                page.get_by_label("Max Length", exact=True).fill("80")
+            recovered_preview = recovered_preview_info.value
+            assert recovered_preview.ok, recovered_preview.text()
+            assert recovered_preview.json().get("matching_documents") == 3
+            expect(page.get_by_role("button", name="Next", exact=True)).to_be_enabled()
+
             page.get_by_role("button", name="Next", exact=True).click()
             expect(
                 page.locator(".validation-summary")
             ).to_contain_text(f"Selected metrics: {len(metric_keys)}")
+            expect(page.locator(".validation-summary")).to_contain_text(
+                "Expected analyzed documents: 3 of 4"
+            )
 
             with page.expect_request(
                 lambda request: request.method == "POST"
@@ -554,7 +599,7 @@ class TestDatasetPage:
             assert request_payload.get("sampling") == {"fraction": 1}
             assert request_payload.get("filters") == {
                 "min_length": None,
-                "max_length": None,
+                "max_length": 80,
                 "exclude_empty": True,
             }
 
@@ -574,6 +619,7 @@ class TestDatasetPage:
             assert report.get("report_id")
             assert set(report.get("selected_metric_keys", [])) == metric_keys
             aggregate = report.get("aggregate_statistics", {})
+            assert aggregate.get("corpus.document_count") == 3
             family_signals = {
                 "corpus_scale": ["corpus.document_count", "doc.length_mean"],
                 "lexical_diversity": ["words.shannon_entropy", "words.zipf_slope"],

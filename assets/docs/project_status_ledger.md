@@ -43,23 +43,23 @@ Future coding and validation agents must:
 - The previously validated local startup baseline, primary API contract,
   SQLite/Alembic persistence, dataset analysis, custom-tokenizer lifecycle,
   benchmark reports, exercised UI routes, and local/hosted quality gates
-  retain the evidence recorded below. The 2026-10-21 FastAPI static-SPA
-  serving delta is PARTIAL until the production launcher passes its live
-  startup and stop path on a standard Windows console.
+  retain the evidence recorded below. The 2026-10-23 audit exercised the
+  validation wizard, tokenizer preview, benchmark report, dashboard ordering,
+  isolated SQLite persistence, and production launcher on the current tree.
+  The pointer-reorder E2E timed out in two full runs before its initial
+  preference load and pointer movement were synchronized; the focused test and
+  final full runner passed after that test-only correction.
 - Windows portable bootstrap and previously validated launcher behavior are
   VALIDATED on the exercised Windows host, including the privilege-isolated
-  denied process-termination branch. The current launcher lifecycle delta is
-  PARTIAL: direct Uvicorn startup works, but the launcher smoke in this host's
-  nested PowerShell environment stalled during Windows asyncio event-loop
-  initialization. The runner's unrelated protected-cache ACL warnings remain
-  environment limitations, not reproduced product defects.
-- `v4.6.1` (backend `3.6.1`, frontend `2.6.1`) is the latest published
-  release. Focused local regression checks, frontend lint/unit tests/build,
-  backend compileall/Ruff/BasedPyright/OpenAPI, dependency-lock verification,
-  and isolated live startup/browser smoke passed. Hosted CI passed both jobs on
-  the release commit; the annotated tag and source-only GitHub Release are
-  published. `main` and `develop` are synchronized after the publication
-  record update.
+  denied process-termination branch. The current `-Launch` startup and console
+  Ctrl+C lifecycle returned launcher exit code 0, stopped its owned backend,
+  and freed its port; interactive occupied-port confirmation and redirected
+  launch were not re-exercised, so the complete launcher gate remains PARTIAL.
+- `v4.7.1` (backend `3.7.1`, frontend `2.7.1`) is the latest published
+  release. Hosted CI run `39800902959` passed the frontend, backend, and
+  Windows launcher jobs on the release commit; `main` and `develop` were
+  synchronized after publication. This release evidence does not cover the
+  current unpushed working tree.
 - Public Hugging Face discovery, download, report persistence, rendered
   reload, and cleanup are VALIDATED. Authorized gated-repository access is
   still BLOCKED; no gated report was produced.
@@ -74,36 +74,39 @@ Future coding and validation agents must:
 - Containerized deployment and binary packaging are NOT_IMPLEMENTED. The
   supported release model is source-only Windows x64.
 
-## 2026-10-23 Cross Benchmark wizard and tokenizer preview (WORKING)
+## 2026-10-23 Cross Benchmark wizard and tokenizer preview (PARTIAL)
 
 The Cross Benchmark run/clone wizard now scrolls its active step content while
 keeping the header, step navigation, and actions visible; changing steps resets
 the content scroll position. When a tokenizer report is loaded or generated,
 the Tokenizers preview also takes its vocabulary size from that report. The
 focused isolated Chromium E2E scenarios passed for wizard navigation/scrolling
-and first-report generation with a 1,207-entry vocabulary preview. The in-app
-browser review confirmed the Metrics and Inputs content scrolls, the actions
-stay visible, and step changes return content to the top. The production build,
-Ruff, BasedPyright (zero errors, 2,149 warnings), and all 71 Angular unit tests
-passed. No benchmark was started. The shared step strip was visually checked
-at desktop and 390×844; all three labels remained visible. Broader narrow-width
-dialog content review remains outstanding.
+and first-report generation with a 1,207-entry vocabulary preview. This audit
+also completed a benchmark with two warmups and eight timed iterations, saved a
+baseline, and verified dashboard drag ordering through a successful settings
+write and reload. The populated plot cards rendered at desktop width and the
+shared step strip remained visible at 390×844. The pointer-reorder E2E passed
+in the final full runner after its settings load and stepped pointer movement
+were synchronized; two earlier aggregate runs had timed out at the desktop
+drag response, while the live browser drag also passed. Broader narrow-width
+dialog content review remains outstanding, so the broader Cross Benchmark UI
+gate stays PARTIAL.
 
-## 2026-10-23 validation wizard preview (WORKING)
+## 2026-10-23 validation wizard preview (VALIDATED)
 
 `POST /api/datasets/validation/preview` powers a live preview in the Sampling &
 Filters step of the dataset validation wizard (counts, length histogram,
 matching and expected sampled documents, zero-match guard). The analysis job
 now sizes its progress estimate from the filtered document count instead of
-the unfiltered total. Evidence: focused backend unit tests (preview counts and
-sampling parity), the Angular workflow spec, Ruff, ESLint, a development build,
-and a manual Chromium check against an isolated database covering populated
-and zero-match states at desktop width. This task's desktop and 390×844 review
-confirmed the three step labels and navigation through Confirmation without
-submitting a validation job. Not yet run: the full test runner and an end-to-end
-validation run through the wizard.
+the unfiltered total. This audit used a four-row CSV in isolated SQLite: a max
+length of 80 previewed 3 of 4 rows; a max length of 0 showed the no-match alert
+and disabled Next; restoring 80 enabled navigation and the confirmation step
+reported 3 of 4 expected documents. The wizard completed 77 metrics and
+persisted a report with three analyzed documents. The focused E2E passed in the
+standard runner, and the selected report remained available after reload and
+backend restart.
 
-## 2026-10-23 tokenizer playground (PARTIAL)
+## 2026-10-23 tokenizer playground (VALIDATED)
 
 `POST /api/tokenizers/preview` and the collapsible Tokenizer Playground on
 the Tokenizers page add a transient, non-persisted single-pass tokenization
@@ -122,8 +125,11 @@ carry across previews on the current page. The production build succeeded.
 An in-app Chromium review using isolated SQLite and 103 placeholder local
 catalog entries confirmed that the rows render, search narrows to 1 of 103,
 and a selected tokenizer stays visible after filtering and selecting another.
-The selector's narrow-viewport review has not been repeated after these UI
-changes, so the current playground UI status remains partial. Raw
+The 2026-10-23 audit then exercised search match/no-match/clear, selected-chip
+retention, malformed and valid local tokenizer JSON, special tokens on/off,
+and the 390×844 viewport without document overflow. No browser errors occurred
+after the valid upload, and the updated focused E2E passed in the standard
+runner. Raw
 `tokenizer.json` artifacts still report `unknown_count` as unavailable
 because `UniversalTokenizerAdapter` reads only `unk_token_id`; this matches
 the existing benchmark semantics. Hugging Face downloads and gated access
@@ -185,6 +191,7 @@ recorded here rather than in a copied execution log.
 | V-20261022 | Test suite consolidation | T0-01 (validation tooling delta), T5-06 (candidate recheck) | PASS on the current working tree: consolidated 45 Python unit modules plus 1 performance module into 7 unit suites, 13 browser E2E modules into 6 suites, and 14 Angular specs into 5 suites; preserved all 615 test cases and the manual Windows launcher scenario. The default Windows runner passed 533 Python tests with 13 opt-in skips (546 collected), 69/69 Angular tests, Ruff, BasedPyright (0 errors; 2,102 warnings), frontend lint, and the production build. Python completed in 126.21s and Angular tests in 2.80s; a separately measured E2E-only run passed 43 with 13 opt-in skips in 93.18s. The suite used an isolated test-data root, cleanup completed, and ports 5000/8000 were free. Pre-change E2E execution time was not measured, so no E2E speedup comparison is claimed.
 
 | V-20261023 | Tokenizer Playground live browser validation | T2-08, T5-07 | PASS on the exercised Windows host with isolated SQLite: the focused Chromium E2E passed 1/1, covering four custom WordLevel tokenizers, the 2,000-character boundary, selection cap, exact text/ID chips, special-token toggle, per-item error state, collapse/reopen, responsive layout at 1440px and 375px, and no report creation. The production build, Ruff, BasedPyright (0 errors; 2,111 warnings), and 70/70 Angular unit tests passed. Fixed the playground collapse CSS issue found by the browser run; E2E cleanup removed its test tokenizers and the runner freed ports 5000/8000. Raw tokenizer JSON `unknown_count` remains unavailable by the existing adapter contract; external Hugging Face download/access was not tested. |
+| V-20261023 | Comprehensive end-to-end validation audit | T0-02 (delta), T2-02, T2-08, T5-07, local quality gate | PARTIAL overall on the current `develop` working tree. Two full runs initially timed out waiting for the desktop pointer-reorder `PUT /api/settings/dashboard`; the exact isolated rerun passed. The E2E now waits for dashboard preferences to load on navigation/reload and uses a 10-step pointer movement; the focused runner passed and the next full runner passed with 539 Python tests, 13 skipped, and no failures. The production build, Ruff, BasedPyright (0 errors; 2,149 warnings), and 71/71 Angular tests passed. In the live app against isolated SQLite, a four-row CSV completed the validation wizard with 80/0/80 max-length preview, zero-match recovery, 77 metrics, and a persisted three-document report; dataset/report/tokenizer state survived reload and backend restart. Tokenizer flows covered malformed and valid JSON, search match/no-match/clear, selection retention, special-token on/off, and 390×844 layout without overflow. Cross Benchmark completed two warmups/eight timed iterations, rendered 34 metrics, persisted a baseline, and saved/reloaded dashboard order. A normal visible Windows console ran `start_on_windows.ps1 -Launch`, returned `/api/health` 200, handled a generated Win32 console Ctrl+C event with launcher exit code 0, stopped the exact owned backend, and freed the port; `.env` was restored to its original SHA-256. Remaining: interactive occupied-port confirmation, redirected launch, current hosted CI, live Hugging Face credentials/gated access, isolated PostgreSQL recheck, and physical disk exhaustion were not exercised in this audit. `npm ci` reported 15 dependency audit findings (4 moderate, 9 high, 2 critical); advisories were not triaged. Temporary fixtures and isolated database were removed. |
 
 ### Reconciled status transitions
 
@@ -228,7 +235,7 @@ recorded here rather than in a copied execution log.
 | --- | --- | --- | --- |
 | architecture.canonical-ownership | VALIDATED | Architecture boundary tests and current ownership docs agree; remaining canonicalization work is ISSUE-003. | 2026-09-20 |
 | runtime.startup.local-webapp | PARTIAL | The previous Windows bootstrap and Linux diagnostic startup reached health, proxy, route, and restart-recovery checks. This delta's direct Uvicorn SPA/API smoke passed, but the production launcher did not reach readiness in the nested PowerShell host; standard Windows-console startup and Ctrl+C remain to be checked. Populated dashboards and responsive coverage are separate gates. | 2026-10-21 |
-| runtime.windows-launcher | PARTIAL | Historical clean/warm bootstrap, stamps, build repair, conflicts, maintenance menu, cleanup, quoted-process handling, and localized denied termination remain validated as recorded. The 2026-10-21 launcher delta now serves the SPA from FastAPI and uses bounded process-tree cleanup; the direct backend/browser smoke and synthetic tree-stop check passed, but `-Launch` stalled before readiness in this host's nested PowerShell environment. Re-run startup, readiness, and Ctrl+C from a standard Windows console before restoring VALIDATED. | 2026-10-21 |
+| runtime.windows-launcher | PARTIAL | Historical clean/warm bootstrap, stamps, build repair, port conflict refusal, maintenance menu, cleanup, quoted-process handling, and localized denied termination remain validated as recorded. In the 2026-10-23 audit, `start_on_windows.ps1 -Launch` reached `/api/health` 200 in a normal visible Windows console; a generated Win32 console Ctrl+C event returned launcher exit code 0, stopped the exact owned backend, and freed its port. The launcher now follows the repository's established PowerShell supervision pattern, catching `PipelineStoppedException` and cleaning up in `finally`; `.env` matched its original SHA-256 after the test. Keep PARTIAL because interactive occupied-port confirmation and redirected launch were not re-exercised in this audit. | 2026-10-23 |
 | configuration.runtime-settings | WORKING | All 16 application settings, bounds, sparse persistence, restart, conflict, reset, and new-work effects passed. Sparse overrides persist in the active database; all UI controls autosave with debouncing and serialize edits, surface write failures, and flush a valid pending edit on navigation. Browser coverage exercised all 16 controls and an actual backend restart. Network bootstrap values, including API base path, listener addresses/ports, and CORS origins, remain `.env`-owned and excluded from the Settings API. `CORS_ORIGINS` overrides the UI-derived default and is validated at startup. SQLite/PostgreSQL independence and reload after switching passed. The component deliberately retains broader WORKING scope. | 2026-10-21 |
 | configuration.database-connection | VALIDATED | SQLite and PostgreSQL controls, schema validation, atomic file persistence, encrypted PostgreSQL password handling, environment-free startup, connection testing, runtime activation, and rollback/recovery were exercised. | 2026-10-20 |
 | runtime.managed-job-lifecycle | VALIDATED | Job persistence, terminal failure on restart, cancellation conflicts, and retained completed data passed. Resumption/checkpointing is intentionally unsupported. | 2026-09-22 |
@@ -245,18 +252,18 @@ recorded here rather than in a copied execution log.
 | ui.startup-readiness | VALIDATED | Offline, slow, terminal-failure, retry, and recovered frontend-first states passed in the in-app browser, and the 2026-10-17 baseline recheck passed the single-lane tokenizer startup-flow E2E including reduced-motion and narrow-viewport assertions. The 2026-10-20 full live E2E recheck passed the same 2/2 startup slice at `f49ac4b`. | 2026-10-20 |
 | ui.dataset-dashboard | VALIDATED | Metric families, persisted dashboard reload, malformed optional histogram fallback, and export action passed. | 2026-09-23 |
 | ui.settings-page | VALIDATED | Typed settings, all 16 runtime fields, debounced autosave, conflict reload, persistence across reload and backend restart, reset, key lifecycle, masked credential storage, keyboard navigation, and responsive states passed. The Database tab passed test-before-switch, failed-target no-change, SQLite switching, settings isolation, and restored connection configuration. | 2026-10-21 |
-| ui.cross-benchmark-workflow | PARTIAL | Wizard, report manager, tags, baseline/delta, clone/customize, tables, ordering, database-backed immediate preference persistence, reload, and responsive dialogs passed historically. The 2026-10-23 isolated Chromium E2E and in-app browser review covered Metrics and Inputs scrolling, visible actions, and scroll reset between steps. A focused Chromium E2E verifies mixed-orientation pointer reorder in the multi-column 1440×900 and one-column 390×1200 layouts, no horizontal overflow, successful preference writes, and reload persistence; the existing keyboard reorder E2E passed, along with frontend lint/build and 71 Angular unit tests. This task's 390×844 run-wizard review confirms all three connected step labels remain visible; populated plot-card review and broader narrow-width modal content review remain outstanding. | 2026-10-23 |
+| ui.cross-benchmark-workflow | PARTIAL | Wizard, report manager, tags, baseline/delta, clone/customize, tables, ordering, database-backed preference persistence, and reload passed historically. This audit completed a benchmark with two warmups/eight timed iterations and 34 metrics, saved a baseline, and visually reviewed populated plot cards. A real pointer drag changed the widget order, returned HTTP 200 from the preference API, and persisted after reload. The pointer E2E passed in the final full runner after explicit preference-load waits and stepped pointer movement; two earlier aggregate runs timed out at the desktop drag response. Broader narrow-width modal content review remains outstanding. | 2026-10-23 |
 | ui.tokenizer-report-and-vocabulary | PARTIAL | 1,207-entry report persistence, contiguous API paging, rendered pagination, restart report, and four-viewport route states passed historically. The 2026-10-23 first-report E2E generated a 1,207-entry tokenizer report and verified the catalog preview updated from unknown to 1,207. | 2026-10-23 |
-| ui.tokenizer-playground | PARTIAL | The earlier full Chromium flow passed text and selection limits, special tokens, token chips, per-item errors, collapse/reopen, and 1440px/375px layouts. The updated selector was visually reviewed with 103 isolated placeholder catalog entries: virtualized rows rendered, search returned 1 of 103, and selections stayed visible across filtering. Narrow viewports remain unverified after these UI changes. | 2026-10-23 |
-| deployment.source-only-local | VALIDATED | Published v4.6.0 source-only release with hosted CI at the release SHA and release tag/publication traceability passed. The versioned v4.6.1 candidate passed the local checks recorded below; hosted CI, main/develop synchronization, tagging, and publication remain pending. | 2026-10-21 |
+| ui.tokenizer-playground | VALIDATED | The focused Chromium E2E and live isolated-SQLite workflow passed text/selection boundaries, search match/no-match/clear, selection retention across filtering, special tokens on/off, token text/IDs, per-item error rendering, collapse/reopen, and 1440px/390px/375px layouts without document overflow. Invalid JSON showed an inline error; a valid local WordLevel tokenizer created a report. No browser errors occurred after valid upload. Raw tokenizer JSON `unknown_count` remains unavailable by the existing adapter contract. | 2026-10-23 |
+| deployment.source-only-local | VALIDATED | Published v4.7.1 source-only release with hosted CI run `39800902959` passing frontend, backend, and Windows launcher jobs at the release SHA; tag and publication traceability are recorded below. The 2026-10-23 working-tree audit is separate from that release evidence, and hosted CI for the current tree was not run. | 2026-10-23 |
 | deployment.windows-portable-bootstrap | VALIDATED | Pinned Python/Node/uv bootstrap, dependency repair, stamped build reuse, and migration remain validated historically. The current static-SPA launcher readiness limitation is tracked under `runtime.windows-launcher`; it does not change the bootstrap evidence. | 2026-10-20 |
 | deployment.cross-platform-manual | OUT_OF_SCOPE | Ubuntu manual execution was diagnostic only; macOS and hosted runtime support are not release targets. | 2026-09-22 |
 | deployment.containerized | NOT_IMPLEMENTED | No active container deployment configuration exists. | — |
 | deployment.binary-packaging | NOT_IMPLEMENTED | Releases are source-only; no installer or binary workflow exists. | — |
-| test-infrastructure.local-quality-gates | VALIDATED | The 2026-10-20 baseline at `f49ac4b` is recorded above. The 2026-10-21 final local pass completed 486 backend unit tests, 43 live browser E2Es with 13 expected opt-in skips, 69/69 Angular unit tests, frontend lint/build, compileall, Ruff, BasedPyright with 0 errors, OpenAPI smoke, and fresh SQLite plus isolated PostgreSQL 18.6 checks. The first combined runner attempt exposed one test-root setup mismatch; the correctly split unit and E2E runs passed. Hosted CI remains pending for the patch candidate. Legacy ACL-trapped disposable state under `app/tests` remains excluded from pytest collection by `norecursedirs`. | 2026-10-21 |
+| test-infrastructure.local-quality-gates | VALIDATED | The 2026-10-23 final standard runner passed the production build, Ruff, BasedPyright (0 errors; 2,149 warnings), 539 Python tests with 13 opt-in/provider/credential skips, and 71/71 Angular tests. The pointer-reorder E2E timed out in two preceding full runs; explicit preference-load waits and 10-step pointer movement made both the focused test and final full suite pass. The audit used isolated SQLite; PostgreSQL was not re-exercised. `npm ci` printed 15 dependency audit findings (4 moderate, 9 high, 2 critical); detailed advisories were not triaged. Hosted CI for the current working tree was not run. | 2026-10-23 |
 | test-infrastructure.database-settings-delta | PASS | The tagged v4.6.0 Alembic chain was replayed into isolated SQLite; current startup rebaselined `0007_dashboard_ui_preferences` to `0001_current_schema` and retained runtime settings and dashboard preferences. PostgreSQL 18.6 separately passed the schema-matching marker rebase. Current SQLite/PostgreSQL baseline, test-before-switch, switching, rollback/no-change, and per-database isolation checks passed. The full live browser E2E run passed 43 tests with 13 expected opt-in skips. | 2026-10-21 |
 | test-infrastructure.automatic-settings-persistence | PASS | Runtime settings and dashboard preferences save to the active database with independent revisions. The candidate passed reload/restart, serialized edits, visible failed-write handling, stale-revision recovery, all 16 runtime controls, dashboard reload, and a real synthetic report workflow. Full relevant browser E2E set passed 7/7. | 2026-10-21 |
-| test-infrastructure.hosted-ci-and-release-evidence | VALIDATED | Hosted CI run 36840557312 passed both jobs for the v4.5.1 release SHA `ec74b75`; runs 36861229079 (main) and 36861205874 (develop) passed for synchronized tip `e7f4f9b`; runs 39245816231 (develop) and 39245823783 (main) passed for docs/pytest-collection tip `f49ac4b`. For published v4.6.0, development CI run `39557902883` and final main CI run `39582304529` passed both jobs at the release SHA. The versioned v4.6.1 candidate has local validation only; hosted CI and publication remain pending. | 2026-10-21 |
+| test-infrastructure.hosted-ci-and-release-evidence | VALIDATED | Historical hosted runs remain recorded above. The latest published v4.7.1 release CI run `39800902959` passed frontend, backend, and Windows launcher jobs on commit `b8ae9fe5fdb11126387cc440903ef73f0a555b22`. Hosted CI was not run for the current 2026-10-23 working tree. | 2026-10-23 |
 Related implementation and test documentation is indexed in
 [project_index.md](project_index.md). The most relevant topic documents are
 [persistence](architecture/persistence.md), [startup](runtime/startup.md),
@@ -270,8 +277,8 @@ The gate table records the latest known state of every stable validation ID.
 
 | Gate | Status | Latest durable outcome or remaining action |
 | --- | --- | --- |
-| T0-01 | PASS | The v4.5.1, v4.6.0, and published v4.6.1 baselines are recorded above. The v4.6.1 post-bump focused pass passed 204 backend tests, 69 frontend tests, frontend lint/build, backend compileall/Ruff/BasedPyright/OpenAPI, lock verification, and live startup/browser smoke. Hosted CI run `39658313798` passed both jobs on release commit `d198f203525bb57603060db7283f7d01432269b3`; annotated tag `v4.6.1` and the source-only GitHub Release are published from `main`. Branches were aligned before tagging and synchronized after the publication record update. |
-| T0-02 | PARTIAL | Historical launcher/bootstrap and maintenance evidence remains as recorded. The current SPA-serving delta passed seven FastAPI routing tests, direct same-origin browser/API smoke, and a synthetic process-tree cleanup check that preserved an unrelated listener. `start_on_windows.ps1 -Launch` did not reach `/api/health` in the nested PowerShell host; faulthandler showed the child blocked in Windows Proactor `socket._fallback_socketpair()` before server startup. Confirm launcher readiness and Ctrl+C on a standard Windows console before restoring PASS. |
+| T0-01 | PASS | Published v4.7.1 is the latest release. Hosted CI run `39800902959` passed frontend, backend, and Windows launcher jobs on release commit `b8ae9fe5fdb11126387cc440903ef73f0a555b22`; current working-tree local results are tracked separately under V-20261023. |
+| T0-02 | PARTIAL | Historical bootstrap, conflict refusal, maintenance, and process-ownership evidence remains as recorded. In the 2026-10-23 normal visible Windows console run, `start_on_windows.ps1 -Launch` reached `/api/health` 200; a generated Ctrl+C console event returned launcher exit code 0, stopped the exact backend PID, and freed the port, with `.env` restored byte-identically by SHA-256. Interactive occupied-port confirmation and redirected launch were not re-exercised, so keep this gate PARTIAL. |
 | T0-03 | PASS | All 13 maintenance-menu routes, install profiles, expected update refusal, destructive decline/approval, cleanup, uninstall, and Kill All passed. |
 | T1-01 | PASS | Startup E2E 2/2 and shell recovery after persistence restart passed; the 2026-10-20 full live E2E recheck passed the same 2/2 startup slice at `f49ac4b`. |
 | T1-02 | PASS | Existing boundary, conflict, reset, and downstream-effect coverage remains current. Browser coverage exercised all 16 controls, debounced autosave, serialized edits, failed-write visibility, stale-revision recovery, reload, and persistence through backend restart. `CORS_ORIGINS` remains environment-owned and outside the 16-field Settings API bundle; explicit allowed and denied origins were checked. |
@@ -279,7 +286,7 @@ The gate table records the latest known state of every stable validation ID.
 | T1-04 | PASS | Focused migration/persistence/settings contracts and runtime override restart coverage passed. The candidate confirmed SQLite/PostgreSQL settings isolation, dashboard preference autosave, database-backed settings, configuration-free startup, and persistence after restart. A database created by the published v4.6.0 migration chain was schema-compared and safely rebaselined on SQLite; drift was refused. |
 | T1-05 | PASS | At `993e52e8`, populated Dataset/Tokenizer filter matrices, exact numeric boundaries, combined/no-match/reset, completion-order races, and stale discovery result/error handling passed. |
 | T2-01 | PASS | CSV/XLSX upload and persistence, UI catalogue visibility, `.xls` rejection, 25 MiB/25 MiB+1 boundary, and ready-state import passed. Physical disk exhaustion remains separate debt. |
-| T2-02 | PASS | At `0993e900`, all six dataset metric families were selected, analyzed, persisted, rendered, and restored; metric unit tests 78/78 and API E2E 1/1 passed. |
+| T2-02 | PASS | At `0993e900`, all six dataset metric families were selected, analyzed, persisted, rendered, and restored; metric unit tests 78/78 and API E2E 1/1 passed. The 2026-10-23 browser audit also exercised filtered preview 3/4, zero-match alert/Next disablement, recovery to 3/4, 77-metric completion, persistence of the three-document report, and reload/restart recovery. |
 | T2-03 | PASS | At `de1aaee6`, a controlled duplicate/URL/email/HTML/line-break/empty-document dataset produced the expected quality, structure, and compression metrics and reloaded correctly. |
 | T2-04 | PASS | Same-name custom-tokenizer replacement, one catalog row, canonical seven-token artifact, launcher restart, report/vocabulary rendering, and deletion passed. |
 | T2-05 | PASS | The 1,207-entry tokenizer report reopened; API pages 500/500/207 were contiguous; first/middle/final UI paging and four viewport rendering passed. |
@@ -300,9 +307,9 @@ The gate table records the latest known state of every stable validation ID.
 | T5-03 | PASS | Cross Benchmark, Tokenizers empty/loading/error/populated/report states, manager bounds, four viewport sizes, and keyboard/focus behavior passed. |
 | T5-04 | PASS | Official launcher streamed visible progress for 10,000 documents, cancellation produced no report, eight backend RSS samples were collected, and a two-document rerun rendered without browser/HTTP errors. Browser heap was not instrumented. |
 | T5-05 | OUT_OF_SCOPE | Release support is Windows x64 source-only. Ubuntu was diagnostic; macOS and hosted runtime support are not planned. |
-| T5-06 | PASS | Releases `v4.5.0`, `v4.5.1`, and `v4.6.0` were verified. The MINOR `v4.6.0` release (backend `3.6.0`, frontend `2.6.0`) was published from annotated tag `v4.6.0`, which peels to validated `main` commit `2ecd12119b86864d617367bd6b0712bb9a1b2b92`; GitHub release: https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases/tag/v4.6.0. Development CI run `39557902883` and final main CI run `39582304529` passed both jobs. Branches were aligned before tagging and synchronized again after the publication record update. Local main smoke, isolated database/browser behavior, focused E2E (7/7), and source-only release workflow passed. The PATCH v4.6.1 release (backend 3.6.1, frontend 2.6.1) was published from tag v4.6.1 on main commit d198f203525bb57603060db7283f7d01432269b3; hosted main CI run 39658313798 passed both jobs. Main and develop were aligned before tagging and synchronized after the publication record update. The first v4.6.0 E2E run used the repository default data root because bootstrap `.env` overrode the shell setting; test cleanup assertions restored logical settings/config and removed synthetic rows/files, but no pre-run binary database snapshot exists to prove byte-for-byte restoration. T4-03 gated Hugging Face access and physical low-disk recovery remain non-blocking validation debt. |
+| T5-06 | PASS | Releases `v4.5.0`, `v4.5.1`, `v4.6.0`, `v4.6.1`, and `v4.7.1` were verified. v4.7.1 (backend 3.7.1, frontend 2.7.1) was published from annotated tag `v4.7.1` at main commit `b8ae9fe5fdb11126387cc440903ef73f0a555b22`; hosted CI run `39800902959` passed frontend, backend, and Windows launcher jobs. Release URL and prior release evidence remain recorded above. Current working-tree validation is distinct and remains PARTIAL under V-20261023; T4-03 gated Hugging Face access and physical low-disk recovery remain validation debt. |
 
-| T5-07 | PASS | The new full browser flow passed on Chromium: 2,000-character input capping, max-three selection, request flags for special tokens on/off, rendered token text and IDs, per-item error card, collapse/reopen, and 1440px/375px responsive checks without document overflow. No page errors, HTTP errors, or report creation occurred; the fix for the hidden-body CSS issue is included. |
+| T5-07 | PASS | The full browser flow passed on Chromium: 2,000-character input capping, max-three selection, request flags for special tokens on/off, rendered token text and IDs, per-item error card, collapse/reopen, and 1440px/375px responsive checks without document overflow. The 2026-10-23 audit additionally verified search match/no-match/clear, selected-chip retention, malformed/valid local tokenizer upload, and a 390×844 viewport without document overflow. No browser errors occurred after valid upload; external Hugging Face access is tracked separately. |
 
 ## Open issues and validation debt
 

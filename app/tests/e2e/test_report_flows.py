@@ -626,7 +626,13 @@ def test_cross_benchmark_dashboard_pointer_drag_reorders_and_persists(
 ) -> None:
     _route_dashboard_api(page)
     page.set_viewport_size({"width": 1440, "height": 900})
-    page.goto(f"{base_url}/cross-benchmark")
+    with page.expect_response(
+        lambda response: response.request.method == "GET"
+        and response.url.endswith("/api/settings/dashboard")
+    ) as initial_preferences:
+        page.goto(f"{base_url}/cross-benchmark")
+    assert initial_preferences.value.ok, initial_preferences.value.text()
+    page.wait_for_load_state("networkidle")
 
     widget_list = page.locator('section[aria-label="Benchmark metric widgets"]')
     widgets = widget_list.locator("article[role='listitem']")
@@ -643,7 +649,7 @@ def test_cross_benchmark_dashboard_pointer_drag_reorders_and_persists(
         lambda response: response.request.method == "PUT"
         and response.url.endswith("/api/settings/dashboard")
     ) as layout_save:
-        widgets.nth(0).drag_to(widgets.nth(1))
+        widgets.nth(0).drag_to(widgets.nth(1), steps=10)
     assert layout_save.value.ok, layout_save.value.text()
 
     reordered = widgets.evaluate_all(
@@ -651,7 +657,13 @@ def test_cross_benchmark_dashboard_pointer_drag_reorders_and_persists(
     )
     assert reordered != original_order
 
-    page.reload()
+    with page.expect_response(
+        lambda response: response.request.method == "GET"
+        and response.url.endswith("/api/settings/dashboard")
+    ) as reloaded_preferences:
+        page.reload()
+    assert reloaded_preferences.value.ok, reloaded_preferences.value.text()
+    page.wait_for_load_state("networkidle")
     widgets = page.locator(
         'section[aria-label="Benchmark metric widgets"] article[role="listitem"]'
     )
@@ -661,7 +673,13 @@ def test_cross_benchmark_dashboard_pointer_drag_reorders_and_persists(
     ) == reordered
 
     page.set_viewport_size({"width": 390, "height": 1200})
-    page.reload()
+    with page.expect_response(
+        lambda response: response.request.method == "GET"
+        and response.url.endswith("/api/settings/dashboard")
+    ) as mobile_preferences:
+        page.reload()
+    assert mobile_preferences.value.ok, mobile_preferences.value.text()
+    page.wait_for_load_state("networkidle")
     widgets = page.locator(
         'section[aria-label="Benchmark metric widgets"] article[role="listitem"]'
     )
@@ -681,14 +699,22 @@ def test_cross_benchmark_dashboard_pointer_drag_reorders_and_persists(
         lambda response: response.request.method == "PUT"
         and response.url.endswith("/api/settings/dashboard")
     ) as mobile_layout_save:
-        widgets.nth(0).drag_to(widgets.nth(1))
+        widgets.nth(0).drag_to(widgets.nth(1), steps=10)
     assert mobile_layout_save.value.ok, mobile_layout_save.value.text()
     mobile_reordered = widgets.evaluate_all(
         "elements => elements.map(element => element.getAttribute('aria-label'))"
     )
     assert mobile_reordered != mobile_order
 
-    page.reload()
+    with page.expect_response(
+        lambda response: response.request.method == "GET"
+        and response.url.endswith("/api/settings/dashboard")
+    ) as persisted_mobile_preferences:
+        page.reload()
+    assert persisted_mobile_preferences.value.ok, (
+        persisted_mobile_preferences.value.text()
+    )
+    page.wait_for_load_state("networkidle")
     widgets = page.locator(
         'section[aria-label="Benchmark metric widgets"] article[role="listitem"]'
     )
