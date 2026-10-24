@@ -743,6 +743,24 @@ def test_tokenizer_playground_full_browser_flow(
 
         tokenizer_options = playground.locator(".tokenizer-playground-tokenizers")
         expect(tokenizer_options.locator("input[type=checkbox]")).to_have_count(5)
+        search = tokenizer_options.get_by_role(
+            "searchbox", name="Filter visible tokenizers", exact=True
+        )
+        matches = tokenizer_options.locator(".tokenizer-playground-match-count")
+        expect(matches).to_have_text("4 of 4")
+        search.fill(tokenizer_names[1])
+        expect(matches).to_have_text("1 of 4")
+        expect(
+            tokenizer_options.get_by_label(tokenizer_names[1], exact=True)
+        ).to_be_visible()
+        search.fill("no matching tokenizer")
+        expect(matches).to_have_text("0 of 4")
+        expect(
+            tokenizer_options.get_by_text("No tokenizers match this search.")
+        ).to_be_visible()
+        search.fill("")
+        expect(matches).to_have_text("4 of 4")
+
         tokenize_button = playground.get_by_role("button", name="Tokenize", exact=True)
         expect(tokenize_button).to_be_disabled()
         for tokenizer_name in tokenizer_names[:3]:
@@ -753,6 +771,18 @@ def test_tokenizer_playground_full_browser_flow(
         expect(
             tokenizer_options.get_by_label(tokenizer_names[3], exact=True)
         ).to_be_disabled()
+        search.fill(tokenizer_names[3])
+        selected_group = tokenizer_options.get_by_role(
+            "group", name="Selected tokenizers", exact=True
+        )
+        expect(selected_group.get_by_role("button")).to_have_count(3)
+        for tokenizer_name in tokenizer_names[:3]:
+            expect(
+                selected_group.get_by_role(
+                    "button", name=f"Remove {tokenizer_name}", exact=True
+                )
+            ).to_be_visible()
+        search.fill("")
 
         textarea.fill("Hello world")
         expect(tokenize_button).to_be_enabled()
@@ -798,8 +828,14 @@ def test_tokenizer_playground_full_browser_flow(
                 "1",
                 "2",
             ]
-            expect(card.locator(".panel-description").first).to_contain_text(
-                "2 tokens · unknown count unavailable"
+            expect(card.locator(".tokenizer-playground-metric-value")).to_have_text(
+                "2"
+            )
+            expect(card.locator(".tokenizer-playground-metric-unit")).to_have_text(
+                "tokens"
+            )
+            expect(card.locator(".tokenizer-playground-meta")).to_have_text(
+                "Unknown count unavailable"
             )
 
         special_tokens.check()
@@ -879,7 +915,7 @@ def test_tokenizer_playground_full_browser_flow(
         assert set(remaining) == set(tokenizer_names) - {deleted_name}
         assert all(item.get("has_report") is False for item in remaining.values())
 
-        for width, height in ((1440, 900), (375, 812)):
+        for width, height in ((1440, 900), (390, 844), (375, 812)):
             page.set_viewport_size({"width": width, "height": height})
             dimensions = page.evaluate(
                 "() => ({viewport: window.innerWidth, document: document.documentElement.scrollWidth})"

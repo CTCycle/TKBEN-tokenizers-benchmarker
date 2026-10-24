@@ -1204,17 +1204,9 @@ function Launch-Application {
     $backendStderrLog = "$backendLogStem.err.log"
     $backendBaseUrl = Get-BackendBaseUrl -Port $backendPort
     $backendProcess = $null
-    $cancelHandler = [System.ConsoleCancelEventHandler] {
-        param($sender, $eventArgs)
-        $eventArgs.Cancel = $true
-        $script:LaunchStopRequested = $true
-    }
-    $cancelHandlerRegistered = $false
     $script:LaunchStopRequested = $false
 
     try {
-        [Console]::add_CancelKeyPress($cancelHandler)
-        $cancelHandlerRegistered = $true
         Write-Step 'Starting FastAPI (serves the production SPA and API on one port).'
         if ($script:LauncherInteractive) {
             $backendProcess = Start-Process -FilePath $VenvPython `
@@ -1278,6 +1270,9 @@ function Launch-Application {
             }
             Start-Sleep -Milliseconds 400
         }
+    } catch [System.Management.Automation.PipelineStoppedException] {
+        $script:LaunchStopRequested = $true
+        Write-Step 'Ctrl+C received. Waiting for FastAPI lifespan shutdown.'
     } catch {
         Write-Fatal "Application startup or supervision failed: $($_.Exception.Message)"
         Write-BackendDiagnostics `
@@ -1286,9 +1281,6 @@ function Launch-Application {
             -StartedAt $backendStartedAt
         throw
     } finally {
-        if ($cancelHandlerRegistered) {
-            [Console]::remove_CancelKeyPress($cancelHandler)
-        }
         if ($backendProcess) {
             try {
                 $backendProcess.Refresh()
