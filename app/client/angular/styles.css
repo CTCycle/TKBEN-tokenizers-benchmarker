@@ -3237,7 +3237,25 @@ app-root {
 .benchmark-report-manager {
   width: min(780px, 94vw);
   max-height: min(88vh, 820px);
+  gap: 10px;
+  padding: 16px 18px;
   overflow: hidden;
+}
+
+.benchmark-report-manager .dataset-modal-header,
+.benchmark-wizard-modal .dataset-modal-header,
+.benchmark-dashboard-modal .dataset-modal-header {
+  padding-bottom: 0;
+}
+
+.benchmark-report-manager .text-input,
+.benchmark-report-manager .secondary-button,
+.benchmark-report-manager .primary-button,
+.benchmark-report-manager .danger-button {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+  letter-spacing: 0;
 }
 
 .benchmark-report-toolbar {
@@ -3259,16 +3277,17 @@ app-root {
   flex-direction: column;
   gap: 6px;
   overflow-y: auto;
-  margin-top: 12px;
+  margin-top: 0;
   padding: 2px;
 }
 
 .benchmark-report-row {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-  padding: 10px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 6px 10px;
   border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
   background: var(--color-panel-alt);
@@ -3277,11 +3296,12 @@ app-root {
 .benchmark-report-row-select {
   display: grid;
   min-width: 0;
-  gap: 4px;
+  gap: 1px;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--color-text);
+  font-size: 13px;
   text-align: left;
   cursor: pointer;
 }
@@ -3299,50 +3319,63 @@ app-root {
 
 .benchmark-report-row-meta {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
+  gap: 2px 10px;
   min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
   color: var(--color-muted);
   font-size: 11px;
 }
 
 .benchmark-report-row-meta span {
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .benchmark-report-row-tags {
-  grid-column: 1 / -1;
-  padding-top: 2px;
+  justify-content: flex-end;
+  max-width: 260px;
 }
 
-.benchmark-report-tags-edit {
-  min-height: 26px;
-  padding: 3px 8px;
+.benchmark-report-row .benchmark-report-tag {
+  min-height: 18px;
+  padding: 0 7px;
+  font-size: 10px;
+}
+
+.benchmark-report-row .benchmark-report-tags-edit {
+  min-height: 24px;
+  padding: 0 8px;
   font-size: 11px;
 }
 
 .benchmark-report-tags-editor {
-  display: grid;
+  display: flex;
   grid-column: 1 / -1;
+  align-items: center;
   gap: 8px;
-  padding-top: 8px;
+  padding-top: 6px;
   border-top: 1px solid var(--color-border-subtle);
 }
 
 .benchmark-report-tags-editor .field-label {
-  display: grid;
-  gap: 3px;
+  flex: 0 0 auto;
 }
 
-.benchmark-report-tags-editor > div:last-child {
+.benchmark-report-tags-editor .text-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.benchmark-report-tags-editor-actions {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
+  flex: 0 0 auto;
+  gap: 6px;
 }
 
 .benchmark-report-delete {
-  align-self: start;
+  width: 28px;
+  height: 28px;
 }
 
 .benchmark-report-delete-confirm {
@@ -3351,7 +3384,7 @@ app-root {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding-top: 8px;
+  padding-top: 6px;
   border-top: 1px solid var(--color-border-subtle);
   color: var(--color-warning-text);
   font-size: 12px;
@@ -4040,7 +4073,42 @@ app-root {
 .benchmark-wizard-modal {
   width: min(900px, 96vw);
   max-height: min(calc(100vh - 72px), 760px);
+  gap: 10px;
+  padding: 16px 20px;
   overflow: hidden;
+}
+
+.benchmark-wizard-form .modal-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.benchmark-wizard-form .modal-actions > :first-child {
+  margin-right: auto;
+}
+
+.benchmark-wizard-form .modal-actions button {
+  min-height: 32px;
+  padding: 0 14px;
+  font-size: 12px;
+}
+
+.benchmark-wizard-tree-children small,
+.metric-selection-row small {
+  margin-left: 4px;
+  color: var(--color-muted);
+}
+
+.benchmark-dashboard-modal .metric-selection-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
 }
 
 .benchmark-wizard-form {
@@ -4091,11 +4159,11 @@ app-root {
 }
 
 .benchmark-wizard-tree-children {
-  margin-top: 8px;
+  margin-top: 6px;
   padding-left: 14px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .benchmark-wizard-inputs {
@@ -6344,9 +6412,15 @@ app-benchmark-metric-chart { display: block; width: 100%; height: 100%; min-widt
   }
 }
 
+.benchmark-dashboard-modal {
+  padding: 16px 20px;
+}
+
 .benchmark-dashboard-modal fieldset {
   position: relative;
-  padding-top: 12px;
+  gap: 4px;
+  margin: 10px 0;
+  padding: 8px 12px;
 }
 
 .benchmark-dashboard-modal fieldset legend {
@@ -6362,8 +6436,8 @@ app-benchmark-metric-chart { display: block; width: 100%; height: 100%; min-widt
 }
 
 .benchmark-dashboard-section-action {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   padding: 0;
 }
 
