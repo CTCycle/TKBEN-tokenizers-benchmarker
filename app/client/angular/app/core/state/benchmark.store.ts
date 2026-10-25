@@ -45,7 +45,6 @@ export class BenchmarkStore {
   readonly availableTokenizers = signal<readonly string[]>([]);
   readonly availableDatasets = signal<readonly string[]>([]);
   readonly loadingWorkspace = signal(true);
-  readonly busy = signal(false);
   readonly layout = signal<readonly string[]>([]);
   readonly hiddenWidgetIds = signal<readonly string[]>([]);
   readonly visualizations = signal<Record<string, BenchmarkVisualizationKind>>({});
@@ -211,16 +210,15 @@ export class BenchmarkStore {
 
   run(request: BenchmarkRunRequest): void {
     this.error.set(null);
-    this.busy.set(true);
     this.api.run(request).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (report) => {
+        ++this.reportLoadSequence;
         this.report.set(report);
         if (report.report_id !== null) this.selectedReportId.set(report.report_id);
         this.restoreBaselineForReport(report);
-        this.busy.set(false);
         this.refresh();
       },
-      error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to run benchmarks.')); this.busy.set(false); },
+      error: (error: unknown) => this.error.set(errorMessage(error, 'Failed to run benchmarks.')),
     });
   }
 

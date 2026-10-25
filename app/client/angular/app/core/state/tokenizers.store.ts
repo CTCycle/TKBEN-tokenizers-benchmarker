@@ -3,7 +3,7 @@
 
 import { DestroyRef, Injectable, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subject, catchError, debounce, distinctUntilChanged, map, of, switchMap, timer } from 'rxjs';
+import { Observable, Subject, catchError, debounce, distinctUntilChanged, map, of, switchMap, timer } from 'rxjs';
 import { TokenizersApiService, type TokenizerCatalogFilters } from '../api/tokenizers-api.service';
 import { errorMessage, isNotFoundError } from '../api/error-utils';
 import type {
@@ -36,6 +36,7 @@ export class TokenizersStore {
   readonly report = signal<TokenizerReportResponse | null>(null);
   readonly vocabulary = signal<TokenizerVocabularyPageResponse | null>(null);
   readonly busyAction = signal<string | null>(null);
+  readonly reportingTokenizers = signal<readonly string[]>([]);
   readonly discoveryResults = signal<readonly TokenizerDiscoveryItem[]>([]);
   readonly discoveryLoading = signal(false);
   readonly discoveryError = signal<string | null>(null);
@@ -132,29 +133,42 @@ export class TokenizersStore {
   }
 
   generateReport(tokenizerName: string): void {
-    const sequence = ++this.reportLoadSequence;
     this.select(tokenizerName);
-    this.busyAction.set(`report:${tokenizerName}`);
-    this.api.generateReport({ tokenizer_name: tokenizerName }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (report) => { if (sequence !== this.reportLoadSequence) return; this.setReport(report); this.busyAction.set(null); },
-      error: (error: unknown) => { if (sequence !== this.reportLoadSequence) return; this.error.set(errorMessage(error, 'Failed to generate tokenizer report.')); this.busyAction.set(null); },
+    this.trackReportJob(
+      tokenizerName,
+      this.api.generateReport({ tokenizer_name: tokenizerName }),
+      'Failed to generate tokenizer report.',
+    );
+  }
+
+  private trackReportJob(tokenizerName: string, report$: Observable<TokenizerReportResponse>, failure: string): void {
+    ++this.reportLoadSequence;
+    this.error.set(null);
+    this.reportingTokenizers.update((names) => [...names, tokenizerName]);
+    report$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (report) => { this.releaseReport(tokenizerName); ++this.reportLoadSequence; this.setReport(report); },
+      error: (error: unknown) => { this.releaseReport(tokenizerName); this.error.set(errorMessage(error, failure)); },
+    });
+  }
+
+  private releaseReport(tokenizerName: string): void {
+    this.reportingTokenizers.update((names) => {
+      const index = names.indexOf(tokenizerName);
+      return index < 0 ? names : names.filter((_, position) => position !== index);
     });
   }
 
   openReport(tokenizerName: string): void {
-    const sequence = ++this.reportLoadSequence;
     this.select(tokenizerName);
-    this.busyAction.set(`report:${tokenizerName}`);
-    this.error.set(null);
-    this.api.latestReport(tokenizerName).pipe(
-      switchMap((report) => report
-        ? of(report)
-        : this.api.generateReport({ tokenizer_name: tokenizerName })),
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe({
-      next: (report) => { if (sequence !== this.reportLoadSequence) return; this.setReport(report); this.busyAction.set(null); },
-      error: (error: unknown) => { if (sequence !== this.reportLoadSequence) return; this.error.set(errorMessage(error, 'Failed to open tokenizer report.')); this.busyAction.set(null); },
-    });
+    this.trackReportJob(
+      tokenizerName,
+      this.api.latestReport(tokenizerName).pipe(
+        switchMap((report) => report
+          ? of(report)
+          : this.api.generateReport({ tokenizer_name: tokenizerName })),
+      ),
+      'Failed to open tokenizer report.',
+    );
   }
 
   loadLatest(tokenizerName: string): void {
@@ -198,7 +212,7 @@ export class TokenizersStore {
   }
 
   remove(tokenizerName: string): void {
-    if (this.busyAction() !== null) return;
+    if (this.busyAction() !== null || this.reportingTokenizers().includes(tokenizerName)) return;
     ++this.reportLoadSequence;
     this.busyAction.set(`remove:${tokenizerName}`);
     this.error.set(null);

@@ -29,6 +29,7 @@ export class DatasetStore {
   readonly loadingMetricCatalog = signal(false);
   readonly report = signal<DatasetAnalysisResponse | null>(null);
   readonly busyAction = signal<string | null>(null);
+  readonly analyzingDatasets = signal<readonly string[]>([]);
 
   constructor() {
     this.refreshRequests.pipe(
@@ -117,12 +118,20 @@ export class DatasetStore {
   }
 
   analyze(request: DatasetAnalysisRequest): void {
-    const sequence = ++this.reportLoadSequence;
-    this.busyAction.set(`analyze:${request.dataset_name}`);
+    const datasetName = request.dataset_name;
+    ++this.reportLoadSequence;
+    this.analyzingDatasets.update((names) => [...names, datasetName]);
     this.error.set(null);
     this.api.analyze(request).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (report) => { if (sequence !== this.reportLoadSequence) return; this.setReport(report); this.busyAction.set(null); },
-      error: (error: unknown) => { if (sequence !== this.reportLoadSequence) return; this.error.set(errorMessage(error, 'Failed to analyze dataset.')); this.busyAction.set(null); },
+      next: (report) => { this.releaseAnalysis(datasetName); ++this.reportLoadSequence; this.setReport(report); },
+      error: (error: unknown) => { this.releaseAnalysis(datasetName); this.error.set(errorMessage(error, 'Failed to analyze dataset.')); },
+    });
+  }
+
+  private releaseAnalysis(datasetName: string): void {
+    this.analyzingDatasets.update((names) => {
+      const index = names.indexOf(datasetName);
+      return index < 0 ? names : names.filter((_, position) => position !== index);
     });
   }
 
@@ -143,7 +152,7 @@ export class DatasetStore {
   }
 
   remove(datasetName: string): void {
-    if (this.busyAction() !== null) return;
+    if (this.busyAction() !== null || this.analyzingDatasets().includes(datasetName)) return;
     ++this.reportLoadSequence;
     this.busyAction.set(`remove:${datasetName}`);
     this.error.set(null);

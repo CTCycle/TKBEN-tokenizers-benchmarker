@@ -95,13 +95,28 @@ describe('BenchmarkStore', () => {
     vi.advanceTimersByTime(250);
 
     expect(store.report()).toBe(report);
-    expect(store.busy()).toBe(false);
     expect(api.reports).toHaveBeenCalledTimes(2);
 
     api.run.mockImplementation(() => throwError(() => new Error('benchmark failed')));
     store.run({ dataset_name: 'custom/demo' } as never);
     expect(store.error()).toBe('benchmark failed');
-    expect(store.busy()).toBe(false);
+  });
+
+  it('shows the report of the run that completes last, regardless of start order', () => {
+    const { api, store } = createStore();
+    const first = new Subject<typeof report>();
+    const second = new Subject<typeof report>();
+    const firstReport = { ...report, report_id: 11 };
+    const secondReport = { ...report, report_id: 12 };
+    api.run.mockReturnValueOnce(first).mockReturnValueOnce(second);
+
+    store.run({ dataset_name: 'a' } as never);
+    store.run({ dataset_name: 'b' } as never);
+    second.next(secondReport);
+    first.next(firstReport);
+
+    expect(store.report()).toBe(firstReport);
+    expect(store.selectedReportId()).toBe(11);
   });
 
   it('persists dashboard layout, hidden IDs, and visualizations in one snapshot', () => {
@@ -404,6 +419,27 @@ describe('DatasetStore', () => {
     expect(store.busyAction()).toBeNull();
   });
 
+  it('runs analyses concurrently and shows the one that completes last', () => {
+    const { api, store } = createStore();
+    const first = new Subject<typeof report__dataset_store>();
+    const second = new Subject<typeof report__dataset_store>();
+    const firstReport = { ...report__dataset_store, dataset_name: 'custom/a' };
+    const secondReport = { ...report__dataset_store, dataset_name: 'custom/b' };
+    api.analyze.mockReturnValueOnce(first).mockReturnValueOnce(second);
+
+    store.analyze({ dataset_name: 'custom/a' } as never);
+    store.analyze({ dataset_name: 'custom/b' } as never);
+    expect(store.analyzingDatasets()).toEqual(['custom/a', 'custom/b']);
+
+    second.next(secondReport);
+    expect(store.report()).toBe(secondReport);
+    expect(store.analyzingDatasets()).toEqual(['custom/a']);
+
+    first.next(firstReport);
+    expect(store.report()).toBe(firstReport);
+    expect(store.analyzingDatasets()).toEqual([]);
+  });
+
   it('removes a dataset immediately, clears its report, and ignores duplicate deletes', () => {
     const api = createApi();
     let authoritative = [{ dataset_name: 'custom/demo' }, { dataset_name: 'custom/other' }];
@@ -688,6 +724,25 @@ describe('TokenizersStore', () => {
     expect(api.generateReport).toHaveBeenCalledWith({ tokenizer_name: 'CUSTOM_demo' });
     expect(store.report()).toBe(report__tokenizers_store);
     expect(store.vocabulary()).toEqual({ report_id: 12, offset: 0, limit: 2, total: 1, items: [] });
+  });
+
+  it('generates reports concurrently and shows the one that completes last', () => {
+    const { api, store } = createStore();
+    const first = new Subject<typeof report__tokenizers_store>();
+    const second = new Subject<typeof report__tokenizers_store>();
+    const firstReport = { ...report__tokenizers_store, tokenizer_name: 'a' };
+    const secondReport = { ...report__tokenizers_store, tokenizer_name: 'b' };
+    api.generateReport.mockReturnValueOnce(first).mockReturnValueOnce(second);
+
+    store.generateReport('a');
+    store.generateReport('b');
+    expect(store.reportingTokenizers()).toEqual(['a', 'b']);
+
+    second.next(secondReport);
+    first.next(firstReport);
+
+    expect(store.report()).toBe(firstReport);
+    expect(store.reportingTokenizers()).toEqual([]);
   });
 
   it('surfaces partial download failures', () => {

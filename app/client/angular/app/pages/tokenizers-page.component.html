@@ -32,7 +32,7 @@
                       <span class="tokenizer-preview-vocabulary">{{ tokenizer.vocabulary_size ?? '—' }}</span>
                       <div class="tokenizer-preview-actions">
                         <button class="icon-button subtle" type="button" [attr.aria-label]="'Generate or open tokenizer report for ' + tokenizer.tokenizer_name" title="Generate report if missing, otherwise open latest report" [disabled]="store.busyAction() !== null" (click)="openReport(tokenizer.tokenizer_name)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v4H5z" /><path d="M5 12h14v8H5z" /></svg></button>
-                        <button class="icon-button danger" type="button" [attr.aria-label]="'Remove ' + tokenizer.tokenizer_name" title="Remove tokenizer" [disabled]="store.busyAction() !== null" (click)="removeTokenizer(tokenizer.tokenizer_name)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14" stroke-width="2" stroke-linecap="round" /><path d="M9 7V5h6v2" stroke-width="2" stroke-linecap="round" /><rect x="7" y="7" width="10" height="12" rx="2" /></svg></button>
+                        <button class="icon-button danger" type="button" [attr.aria-label]="'Remove ' + tokenizer.tokenizer_name" title="Remove tokenizer" [disabled]="store.busyAction() !== null || store.reportingTokenizers().includes(tokenizer.tokenizer_name)" (click)="removeTokenizer(tokenizer.tokenizer_name)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14" stroke-width="2" stroke-linecap="round" /><path d="M9 7V5h6v2" stroke-width="2" stroke-linecap="round" /><rect x="7" y="7" width="10" height="12" rx="2" /></svg></button>
                       </div>
                     </div>
                   }
