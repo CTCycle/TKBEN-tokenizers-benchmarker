@@ -1,5 +1,5 @@
 # Startup
-Last updated: 2026-10-22
+Last updated: 2026-10-25
 
 ## Production Local Webapp
 
@@ -25,9 +25,10 @@ The launcher:
 
 - installs pinned portable Python 3.14.7, Node.js 22.23.1, and uv 0.12.17 on
   first use and creates `settings/.env` from the versioned example when needed
-- reuses valid backend dependencies, frontend dependencies, and the stamped
-  production build; repairs or rebuilds only missing, stale, or malformed
-  inputs
+- during production launch, reuses valid backend dependencies, frontend
+  dependencies, and the stamped production build; repairs or rebuilds only
+  missing, stale, or malformed inputs. The **Install dependencies** maintenance
+  action and explicit **Rebuild frontend** action still build when selected
 - checks `FASTAPI_PORT` before setup and again before starting FastAPI. An
   occupied backend port is reported by listener PID and process name; an
   interactive launch asks before terminating those exact listener processes.
