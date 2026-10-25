@@ -28,11 +28,13 @@ import pytest
 Number = int | float
 BYTES_PER_MIB = 1024 * 1024
 
+
 ###############################################################################
 @dataclass(frozen=True)
 class InvalidSettingCase:
     value: Number
     expected_error: str
+
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -254,6 +256,7 @@ _FIELD_BLUEPRINTS = (
     ),
 )
 
+
 ###############################################################################
 def _backend_bound(group: str, field: str, attribute: str) -> Number | None:
     field_info = SETTING_MODELS[group].model_fields[field]
@@ -263,9 +266,11 @@ def _backend_bound(group: str, field: str, attribute: str) -> Number | None:
             return value
     return None
 
+
 ###############################################################################
 def _number_text(value: Number) -> str:
     return f"{value:g}" if isinstance(value, float) else str(value)
+
 
 ###############################################################################
 def _below_bound(value: Number) -> Number:
@@ -273,11 +278,13 @@ def _below_bound(value: Number) -> Number:
         return value - 1
     return round(value - 0.01, 2)
 
+
 ###############################################################################
 def _above_bound(value: Number) -> Number:
     if isinstance(value, int):
         return value + 1
     return round(value + 0.01, 2)
+
 
 ###############################################################################
 def _alternate_setting_value(group: str, field: str, current: Number) -> Number:
@@ -290,6 +297,7 @@ def _alternate_setting_value(group: str, field: str, current: Number) -> Number:
     assert minimum is not None and candidate >= minimum
     assert maximum is None or candidate <= maximum
     return candidate
+
 
 ###############################################################################
 def _build_setting_specs() -> tuple[SettingFieldSpec, ...]:
@@ -397,14 +405,17 @@ assert set(ALL_RUNTIME_SETTING_KEYS) == {
     "jobs.max_stored_jobs",
 }
 
+
 ###############################################################################
 def _input_text(value: Number) -> str:
     return _number_text(value)
+
 
 ###############################################################################
 def _fill_control(control: Locator, value: Number) -> None:
     control.fill(_input_text(value))
     control.press("Tab")
+
 
 ###############################################################################
 def _fill_and_wait_for_autosave(
@@ -421,11 +432,13 @@ def _fill_and_wait_for_autosave(
         _fill_control(control, value)
     return saved_response.value.json()
 
+
 ###############################################################################
 def _api_value(spec: SettingFieldSpec, value: Number) -> Number:
     if spec.api_multiplier == 1:
         return value
     return int(value * spec.api_multiplier)
+
 
 ###############################################################################
 def _set_tokenizer_values(
@@ -439,6 +452,7 @@ def _set_tokenizer_values(
     _fill_control(page.get_by_label("Default discovery limit"), default_limit)
     _fill_control(page.get_by_label("Maximum discovery limit"), maximum_limit)
     _fill_control(page.get_by_label("Discovery candidate cap"), candidate_cap)
+
 
 ###############################################################################
 def _set_tokenizer_boundary_context(
@@ -477,6 +491,7 @@ def _set_tokenizer_boundary_context(
             candidate_cap=17,
         )
 
+
 ###############################################################################
 def _set_tokenizer_invalid_context(
     page: Page,
@@ -502,6 +517,7 @@ def _set_tokenizer_invalid_context(
         candidate_cap=17,
     )
 
+
 ###############################################################################
 def _assert_restored_runtime_settings(
     api_context: APIRequestContext,
@@ -512,6 +528,7 @@ def _assert_restored_runtime_settings(
     restored = response.json()
     assert restored["settings"] == original["settings"]
     assert restored["overridden_keys"] == original.get("overridden_keys", [])
+
 
 ###############################################################################
 def _restore_runtime_settings(
@@ -540,6 +557,7 @@ def _restore_runtime_settings(
 
     restore_response = api_context.patch("/api/settings", data=patch)
     assert restore_response.ok, restore_response.text()
+
 
 ###############################################################################
 def test_settings_all_field_boundaries_and_persistence(
@@ -730,6 +748,7 @@ def test_settings_all_field_boundaries_and_persistence(
     finally:
         _restore_runtime_settings(api_context, original)
         _assert_restored_runtime_settings(api_context, original)
+
 
 ###############################################################################
 def test_settings_page_round_trip_and_runtime_effect(
@@ -1045,6 +1064,7 @@ def test_settings_page_round_trip_and_runtime_effect(
             finally:
                 _restore_runtime_settings(api_context, original)
 
+
 ###############################################################################
 
 # Copyright © 2026 Thomas Virdis
@@ -1131,7 +1151,9 @@ def test_database_tab_tests_switches_and_reloads_database_local_settings(
     original_settings = original_settings_response.json()
 
     target_path = tmp_path / "settings-switch-target.db"
-    configured_settings_value = original_settings["settings"]["datasets"]["histogram_bins"]
+    configured_settings_value = original_settings["settings"]["datasets"][
+        "histogram_bins"
+    ]
     distinct_value = 30 if configured_settings_value != 30 else 31
 
     try:
@@ -1139,15 +1161,19 @@ def test_database_tab_tests_switches_and_reloads_database_local_settings(
         expect(page.locator(".settings-form")).to_be_visible()
         histogram = page.get_by_label("Histogram bins")
         with page.expect_response(
-            lambda response: response.url.endswith("/api/settings")
-            and response.request.method == "PATCH"
+            lambda response: (
+                response.url.endswith("/api/settings")
+                and response.request.method == "PATCH"
+            )
         ):
             histogram.fill(str(distinct_value))
         expect(histogram).to_have_value(str(distinct_value))
 
         page.get_by_role("tab", name="Database").click()
         expect(page.locator("#settings-panel-database")).to_be_visible()
-        expect(page.locator(".database-active-status")).to_contain_text("SQLite · Connected")
+        expect(page.locator(".database-active-status")).to_contain_text(
+            "SQLite · Connected"
+        )
         switch_button = page.get_by_role("button", name="Switch database")
         expect(switch_button).to_be_disabled()
 
@@ -1164,7 +1190,10 @@ def test_database_tab_tests_switches_and_reloads_database_local_settings(
         expect(switch_button).to_be_disabled()
         unchanged_configuration = api_context.get("/api/database")
         assert unchanged_configuration.ok, unchanged_configuration.text()
-        assert unchanged_configuration.json()["sqlite_path"] == original_configuration["sqlite_path"]
+        assert (
+            unchanged_configuration.json()["sqlite_path"]
+            == original_configuration["sqlite_path"]
+        )
 
         page.get_by_label("Database backend").select_option("sqlite")
         page.get_by_label("Database file path").fill(str(target_path))
@@ -1178,7 +1207,10 @@ def test_database_tab_tests_switches_and_reloads_database_local_settings(
         expect(switch_button).to_be_enabled()
         unchanged_configuration = api_context.get("/api/database")
         assert unchanged_configuration.ok, unchanged_configuration.text()
-        assert unchanged_configuration.json()["sqlite_path"] == original_configuration["sqlite_path"]
+        assert (
+            unchanged_configuration.json()["sqlite_path"]
+            == original_configuration["sqlite_path"]
+        )
         with page.expect_navigation(wait_until="load"):
             switch_button.click()
 
@@ -1187,9 +1219,13 @@ def test_database_tab_tests_switches_and_reloads_database_local_settings(
         assert switched_settings.json()["settings"]["datasets"]["histogram_bins"] == 20
 
         page.get_by_role("tab", name="Database").click()
-        expect(page.locator(".database-active-status")).to_contain_text("SQLite · Connected")
+        expect(page.locator(".database-active-status")).to_contain_text(
+            "SQLite · Connected"
+        )
         assert page.get_by_label("Database file path").input_value() == str(target_path)
-        page.get_by_label("Database file path").fill(original_configuration["sqlite_path"])
+        page.get_by_label("Database file path").fill(
+            original_configuration["sqlite_path"]
+        )
         page.get_by_role("button", name="Test connection").click()
         expect(page.locator(".database-result--success")).to_contain_text(
             "Connection successful."
@@ -1204,7 +1240,9 @@ def test_database_tab_tests_switches_and_reloads_database_local_settings(
             == distinct_value
         )
         active_configuration = api_context.get("/api/database").json()
-        assert active_configuration["sqlite_path"] == original_configuration["sqlite_path"]
+        assert (
+            active_configuration["sqlite_path"] == original_configuration["sqlite_path"]
+        )
         page.get_by_role("tab", name="Database").click()
         expect(page.locator(".database-active-status")).to_contain_text(
             "SQLite · Connected"

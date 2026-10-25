@@ -27,9 +27,11 @@ from server.services.benchmarks import BenchmarkTools
 from server.services.keys import HFAccessKeyService
 from server.services.tokenizer_storage import TokenizerStorageMixin
 
+
 ###############################################################################
 class TokenizerDownloadTimeoutError(TimeoutError):
     """Raised when a tokenizer provider load exceeds the job timeout."""
+
 
 ###############################################################################
 class TokenizersService(TokenizerStorageMixin):

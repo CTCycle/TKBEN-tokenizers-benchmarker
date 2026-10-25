@@ -42,11 +42,15 @@ from sqlalchemy.exc import IntegrityError
 from server.repositories.schemas.models import MetricValue
 from server.repositories.queries.data import DataRepositoryQueries
 from server.configurations.runtime import RuntimeSettingsStore
-from server.configurations.settings import DatabaseSettings as DatabaseSettings__runtime_settings_persistence
+from server.configurations.settings import (
+    DatabaseSettings as DatabaseSettings__runtime_settings_persistence,
+)
 from server.configurations.settings import build_server_settings
 from server.contracts.settings import DashboardUiPreferences
 from server.repositories.database.initializer import initialize_database
-from server.repositories.database.backend import TKBENDatabase as TKBENDatabase__runtime_settings_persistence
+from server.repositories.database.backend import (
+    TKBENDatabase as TKBENDatabase__runtime_settings_persistence,
+)
 import os
 from collections.abc import Iterator
 import json
@@ -62,7 +66,9 @@ from server.configurations.runtime import RuntimeSettingsConflictError
 from server.configurations.runtime import RuntimeSettingsPersistenceError
 from server.configurations.runtime import RuntimeSettingsValidationError
 from server.configurations.settings import BenchmarkSettings
-from server.configurations.settings import DatabaseSettings as DatabaseSettings__runtime_settings
+from server.configurations.settings import (
+    DatabaseSettings as DatabaseSettings__runtime_settings,
+)
 from server.configurations.settings import DatasetSettings
 from server.configurations.settings import JobsSettings
 from server.configurations.settings import NetworkSettings
@@ -84,8 +90,6 @@ from server.configurations.startup import get_server_settings
 from server.configurations.startup import is_key_reveal_enabled
 from server.configurations.startup import reset_settings_cache_for_tests
 
-###############################################################################
-
 
 ###############################################################################
 class FakeQueries:
@@ -93,6 +97,7 @@ class FakeQueries:
     # -------------------------------------------------------------------------
     def __init__(self, engine: sqlalchemy.Engine) -> None:
         self.engine = engine
+
 
 ###############################################################################
 def test_dataset_repository_ensure_dataset_id_is_idempotent() -> None:
@@ -107,6 +112,7 @@ def test_dataset_repository_ensure_dataset_id_is_idempotent() -> None:
     with Session(bind=engine) as session:
         count = session.execute(select(sqlalchemy.func.count(Dataset.id))).scalar_one()
     assert int(count) == 1
+
 
 ###############################################################################
 def test_tokenizer_repository_insert_if_missing_is_idempotent(
@@ -126,6 +132,7 @@ def test_tokenizer_repository_insert_if_missing_is_idempotent(
     assert len(rows) == 1
     assert rows[0].name == "bert-base-uncased"
     assert rows[0].source == "huggingface"
+
 
 ###############################################################################
 def test_dataset_delete_cascades_documents_sessions_and_benchmark_reports() -> None:
@@ -183,6 +190,7 @@ def test_dataset_delete_cascades_documents_sessions_and_benchmark_reports() -> N
         assert session.execute(select(AnalysisSession)).scalars().all() == []
         assert session.execute(select(BenchmarkReport)).scalars().all() == []
 
+
 ###############################################################################
 def test_tokenizer_delete_cascades_reports_and_vocabulary(
     monkeypatch: pytest.MonkeyPatch,
@@ -224,6 +232,7 @@ def test_tokenizer_delete_cascades_reports_and_vocabulary(
         assert session.execute(select(TokenizerReport)).scalars().all() == []
         assert session.execute(select(TokenizerVocabulary)).scalars().all() == []
 
+
 ###############################################################################
 def test_benchmark_repository_requires_existing_tokenizer_ids(
     monkeypatch: pytest.MonkeyPatch,
@@ -256,6 +265,7 @@ def test_benchmark_repository_requires_existing_tokenizer_ids(
             select(sqlalchemy.func.count(Tokenizer.id))
         ).scalar_one()
     assert int(count) == 2
+
 
 ###############################################################################
 def test_session_report_preserves_native_json_metrics_when_numeric_is_nan(
@@ -324,6 +334,7 @@ def test_session_report_preserves_native_json_metrics_when_numeric_is_nan(
     ]
     assert report["word_cloud_terms"] == [{"word": "hello", "count": 9, "weight": 100}]
 
+
 ###############################################################################
 def test_session_report_rejects_json_encoded_storage(
     monkeypatch: pytest.MonkeyPatch,
@@ -349,8 +360,6 @@ def test_session_report_rejects_json_encoded_storage(
             }
         )
 
-###############################################################################
-
 
 ###############################################################################
 def _sqlite_settings(database_path: Path) -> DatabaseSettings:
@@ -368,6 +377,7 @@ def _sqlite_settings(database_path: Path) -> DatabaseSettings:
         insert_batch_size=100,
     )
 
+
 ###############################################################################
 def _postgres_settings(*, host: str | None = "127.0.0.1") -> DatabaseSettings:
     return DatabaseSettings(
@@ -383,6 +393,7 @@ def _postgres_settings(*, host: str | None = "127.0.0.1") -> DatabaseSettings:
         connect_timeout=1,
         insert_batch_size=100,
     )
+
 
 ###############################################################################
 def test_missing_sqlite_database_is_created_from_alembic_history(
@@ -418,6 +429,7 @@ def test_missing_sqlite_database_is_created_from_alembic_history(
     finally:
         engine.dispose()
 
+
 ###############################################################################
 def test_unknown_existing_sqlite_database_is_rejected_without_changes(
     tmp_path: Path,
@@ -438,6 +450,7 @@ def test_unknown_existing_sqlite_database_is_rejected_without_changes(
 
     assert hashlib.sha256(database_path.read_bytes()).digest() == before
 
+
 ###############################################################################
 def test_sqlite_backend_does_not_validate_existing_database(tmp_path: Path) -> None:
     database_path = tmp_path / "database.db"
@@ -452,6 +465,7 @@ def test_sqlite_backend_does_not_validate_existing_database(tmp_path: Path) -> N
     backend.engine.dispose()
 
     assert hashlib.sha256(database_path.read_bytes()).digest() == before
+
 
 ###############################################################################
 def test_postgres_startup_runs_the_same_migration_workflow(
@@ -477,6 +491,7 @@ def test_postgres_startup_runs_the_same_migration_workflow(
         lambda received: calls.append(f"ensure:{received.database_name}"),
     )
 
+
     ###############################################################################
     class FakeEngine:
 
@@ -501,11 +516,13 @@ def test_postgres_startup_runs_the_same_migration_workflow(
 
     assert calls == ["ensure:tkben_test", "migrate:tkben_test:True", "dispose"]
 
+
 ###############################################################################
 def test_postgres_connection_check_executes_select_one(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     statements: list[str] = []
+
 
     ###############################################################################
     class FakeConnection:
@@ -521,6 +538,7 @@ def test_postgres_connection_check_executes_select_one(
         # -------------------------------------------------------------------------
         def execute(self, statement):
             statements.append(str(statement))
+
 
     ###############################################################################
     class FakeEngine:
@@ -543,6 +561,7 @@ def test_postgres_connection_check_executes_select_one(
 
     assert statements == ["SELECT 1"]
 
+
 ###############################################################################
 def test_postgres_initialization_failure_is_returned_as_process_failure(
     monkeypatch: pytest.MonkeyPatch,
@@ -556,8 +575,6 @@ def test_postgres_initialization_failure_is_returned_as_process_failure(
 
     with pytest.raises(DatabaseMigrationError):
         initializer.initialize_database()
-
-###############################################################################
 
 
 ###############################################################################
@@ -576,6 +593,7 @@ def _settings(path: Path) -> DatabaseSettings:
         insert_batch_size=1000,
     )
 
+
 ###############################################################################
 def _configure_database(
     monkeypatch: pytest.MonkeyPatch,
@@ -589,11 +607,13 @@ def _configure_database(
     )
     return settings
 
+
 ###############################################################################
 def _head() -> str:
     return migrations._migration_directory(
         migrations.build_alembic_config()
     ).get_heads()[0]
+
 
 ###############################################################################
 def _revision(path: Path) -> str | None:
@@ -608,6 +628,7 @@ def _revision(path: Path) -> str | None:
             ).scalar_one_or_none()
     finally:
         engine.dispose()
+
 
 ###############################################################################
 def test_repeated_initialization_is_current_and_idempotent(
@@ -624,6 +645,7 @@ def test_repeated_initialization_is_current_and_idempotent(
     assert _revision(path) == _head()
     assert path.stat().st_size == first_size
     assert _head() == "0002_managed_job_created_at_index"
+
 
 ###############################################################################
 def test_nonempty_unversioned_database_is_rejected_untouched(
@@ -648,6 +670,7 @@ def test_nonempty_unversioned_database_is_rejected_untouched(
     assert path.read_bytes() == before
     assert _revision(path) is None
 
+
 ###############################################################################
 def test_database_ahead_of_repository_is_rejected(
     tmp_path: Path,
@@ -669,6 +692,7 @@ def test_database_ahead_of_repository_is_rejected(
         initializer.run_database_initialization()
 
     assert _revision(path) == "9999_future"
+
 
 ###############################################################################
 def test_published_v460_schema_is_rebased_without_losing_settings(
@@ -707,12 +731,16 @@ def test_published_v460_schema_is_rebased_without_losing_settings(
     database = TKBENDatabase(settings)
     try:
         with database.backend.engine.connect() as connection:
-            assert connection.execute(
-                text("SELECT version_num FROM alembic_version")
-            ).scalar_one() == "0002_managed_job_created_at_index"
+            assert (
+                connection.execute(
+                    text("SELECT version_num FROM alembic_version")
+                ).scalar_one()
+                == "0002_managed_job_created_at_index"
+            )
         assert DatabaseRuntimeSettingsPersistence(database).load() == expected
     finally:
         database.backend.engine.dispose()
+
 
 ###############################################################################
 def test_published_revision_with_schema_drift_is_not_rebased(
@@ -734,7 +762,9 @@ def test_published_revision_with_schema_drift_is_not_rebased(
     finally:
         engine.dispose()
 
-    with pytest.raises(DatabaseMigrationError, match="does not match the current schema"):
+    with pytest.raises(
+        DatabaseMigrationError, match="does not match the current schema"
+    ):
         initializer.run_database_initialization()
 
     assert _revision(path) == "0007_dashboard_ui_preferences"
@@ -743,6 +773,7 @@ def test_published_revision_with_schema_drift_is_not_rebased(
         assert "unexpected_schema" in inspect(engine).get_table_names()
     finally:
         engine.dispose()
+
 
 ###############################################################################
 def test_concurrent_initializers_serialize_on_sqlite(
@@ -761,8 +792,6 @@ def test_concurrent_initializers_serialize_on_sqlite(
 
     assert _revision(path) == _head()
 
-###############################################################################
-
 
 ###############################################################################
 @pytest.fixture()
@@ -776,6 +805,7 @@ def sqlite_session():
     Base.metadata.create_all(engine)
     with Session(engine) as session:
         yield session
+
 
 ###############################################################################
 def test_canonical_tables_and_removed_validation_report(
@@ -797,6 +827,7 @@ def test_canonical_tables_and_removed_validation_report(
         "managed_job",
         "application_runtime_settings",
     } == tables
+
 
 ###############################################################################
 def test_metric_values_require_one_value_and_dataset_safe_document(
@@ -846,6 +877,7 @@ def test_metric_values_require_one_value_and_dataset_safe_document(
         )
         sqlite_session.flush()
     sqlite_session.rollback()
+
 
 ###############################################################################
 def test_dataset_catalog_filters_ready_rows_by_source_search_and_count(
@@ -904,6 +936,7 @@ def test_dataset_catalog_filters_ready_rows_by_source_search_and_count(
         source="public",
     ) == [{"dataset_name": "public/corpus", "document_count": 12}]
 
+
 ###############################################################################
 def test_dataset_report_by_id_excludes_incomplete_sessions(
     sqlite_session: Session,
@@ -949,6 +982,7 @@ def test_dataset_report_by_id_excludes_incomplete_sessions(
     completed_report = repository.load_analysis_report_by_session_id(completed.id)
     assert completed_report is not None
     assert completed_report["report_id"] == completed.id
+
 
 ###############################################################################
 
@@ -1012,8 +1046,12 @@ def test_runtime_settings_survive_restart_in_their_own_database(tmp_path: Path) 
     assert restarted.get_dashboard_preferences_state().revision == 1
     assert independent.get_state().settings.datasets.histogram_bins == 20
     assert independent.get_state().revision == 0
-    assert independent.get_dashboard_preferences_state().preferences == DashboardUiPreferences()
+    assert (
+        independent.get_dashboard_preferences_state().preferences
+        == DashboardUiPreferences()
+    )
     assert independent.get_dashboard_preferences_state().revision == 0
+
 
 ###############################################################################
 
@@ -1028,6 +1066,7 @@ _RUNTIME_ENV_NAMES = (
     "ALLOW_KEY_REVEAL",
 )
 _BASE_ENVIRONMENT = {name: os.environ.get(name) for name in _RUNTIME_ENV_NAMES}
+
 
 ###############################################################################
 @pytest.fixture(autouse=True)
@@ -1044,6 +1083,7 @@ def restore_runtime_environment() -> Iterator[None]:
             os.environ.pop(name, None)
         else:
             os.environ[name] = original
+
 
 ###############################################################################
 
@@ -1065,9 +1105,10 @@ def test_default_configuration_is_file_based_and_independent(tmp_path: Path) -> 
 
     assert store.path.name == DATABASE_CONFIGURATION_FILENAME
     assert configuration.backend == "sqlite"
-    assert store.to_database_settings(configuration).sqlite_path == (
-        tmp_path / "data" / "database.db"
-    ).resolve()
+    assert (
+        store.to_database_settings(configuration).sqlite_path
+        == (tmp_path / "data" / "database.db").resolve()
+    )
     payload = json.loads(store.path.read_text(encoding="utf-8"))
     assert payload["backend"] == "sqlite"
     assert "FASTAPI_PORT" not in store.path.read_text(encoding="utf-8")
@@ -1098,7 +1139,9 @@ def test_atomic_write_failure_preserves_last_valid_configuration(
     def fail_replace(_source: str, _destination: Path) -> None:
         raise OSError("simulated replace failure")
 
-    monkeypatch.setattr("server.configurations.database_configuration.os.replace", fail_replace)
+    monkeypatch.setattr(
+        "server.configurations.database_configuration.os.replace", fail_replace
+    )
     with pytest.raises(RuntimeError, match="Unable to persist database configuration"):
         store.save(candidate)
 
@@ -1108,7 +1151,9 @@ def test_atomic_write_failure_preserves_last_valid_configuration(
 
 
 ###############################################################################
-def test_candidate_does_not_reuse_password_for_a_different_target(tmp_path: Path) -> None:
+def test_candidate_does_not_reuse_password_for_a_different_target(
+    tmp_path: Path,
+) -> None:
     store = _store(tmp_path)
     initial = store.build_candidate(
         backend="postgresql",
@@ -1159,8 +1204,6 @@ def test_sqlite_configuration_rejects_blank_paths_and_postgresql_fields() -> Non
             ssl=True,
         )
 
-###############################################################################
-
 
 ###############################################################################
 class _FilePersistenceForStoreUnitTests:
@@ -1182,7 +1225,9 @@ class _FilePersistenceForStoreUnitTests:
         if self.fail_writes:
             raise OSError("test persistence failure")
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        self.path.write_text(
+            json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
+        )
 
 
 ###############################################################################
@@ -1196,8 +1241,11 @@ class _PersistedRuntimeSettingsStore(RuntimeSettingsStore):
 
 
 ###############################################################################
-def _store__runtime_settings(defaults: ServerSettings, path: Path) -> _PersistedRuntimeSettingsStore:
+def _store__runtime_settings(
+    defaults: ServerSettings, path: Path
+) -> _PersistedRuntimeSettingsStore:
     return _PersistedRuntimeSettingsStore(defaults, path)
+
 
 ###############################################################################
 def _non_finite_runtime_float_cases():
@@ -1217,6 +1265,7 @@ def _non_finite_runtime_float_cases():
                 for value in (float("nan"), float("inf"), -float("inf")):
                     cases.append((group, name, value))
     return cases
+
 
 ###############################################################################
 def _server_settings(tmp_path: Path) -> ServerSettings:
@@ -1260,6 +1309,7 @@ def _server_settings(tmp_path: Path) -> ServerSettings:
         jobs=JobsSettings(),
     )
 
+
 ###############################################################################
 def test_default_only_startup_and_missing_runtime_file(tmp_path: Path) -> None:
     defaults = _server_settings(tmp_path)
@@ -1274,6 +1324,7 @@ def test_default_only_startup_and_missing_runtime_file(tmp_path: Path) -> None:
     assert state.overridden_keys == ()
     assert state.warning is None
     assert not path.exists()
+
 
 ###############################################################################
 def test_valid_partial_overrides_merge_and_persist_sparsely(tmp_path: Path) -> None:
@@ -1315,6 +1366,7 @@ def test_valid_partial_overrides_merge_and_persist_sparsely(tmp_path: Path) -> N
     }
     assert "network" not in path.read_text(encoding="utf-8")
 
+
 ###############################################################################
 def test_dashboard_preferences_have_an_independent_revision_and_survive_reload(
     tmp_path: Path,
@@ -1339,6 +1391,7 @@ def test_dashboard_preferences_have_an_independent_revision_and_survive_reload(
     assert restarted.get_dashboard_preferences_state().revision == 1
     assert restarted.get_dashboard_preferences_state().preferences == preferences
 
+
 ###############################################################################
 @pytest.mark.parametrize(
     "patch",
@@ -1354,7 +1407,9 @@ def test_invalid_unknown_and_environment_fields_are_rejected(
     tmp_path: Path,
     patch: dict[str, dict[str, object]],
 ) -> None:
-    store = _store__runtime_settings(_server_settings(tmp_path), tmp_path / "runtime.json")
+    store = _store__runtime_settings(
+        _server_settings(tmp_path), tmp_path / "runtime.json"
+    )
 
     with pytest.raises(RuntimeSettingsValidationError):
         store.apply_patch(patch, expected_revision=0)
@@ -1362,9 +1417,12 @@ def test_invalid_unknown_and_environment_fields_are_rejected(
     assert store.get_state().revision == 0
     assert not store.path.exists()
 
+
 ###############################################################################
 def test_tokenizer_cross_field_validation_remains_authoritative(tmp_path: Path) -> None:
-    store = _store__runtime_settings(_server_settings(tmp_path), tmp_path / "runtime.json")
+    store = _store__runtime_settings(
+        _server_settings(tmp_path), tmp_path / "runtime.json"
+    )
 
     with pytest.raises(RuntimeSettingsValidationError):
         store.apply_patch(
@@ -1379,6 +1437,7 @@ def test_tokenizer_cross_field_validation_remains_authoritative(tmp_path: Path) 
         )
 
     assert store.get_state().settings.tokenizers.max_discovery_limit == 250
+
 
 ###############################################################################
 @pytest.mark.parametrize(
@@ -1424,6 +1483,7 @@ def test_invalid_schema_or_override_file_falls_back_with_warning(
     assert state.warning == runtime_module.RUNTIME_SETTINGS_WARNING
     assert path.read_bytes() == original
 
+
 ###############################################################################
 def test_malformed_runtime_json_is_preserved(tmp_path: Path) -> None:
     path = tmp_path / "runtime.json"
@@ -1433,6 +1493,7 @@ def test_malformed_runtime_json_is_preserved(tmp_path: Path) -> None:
 
     assert store.get_state().warning is not None
     assert path.read_text(encoding="utf-8") == "{not-json"
+
 
 ###############################################################################
 def test_successful_save_replaces_corrupt_stored_document(tmp_path: Path) -> None:
@@ -1462,6 +1523,7 @@ def test_successful_save_replaces_corrupt_stored_document(tmp_path: Path) -> Non
         "overrides": {},
     }
 
+
 ###############################################################################
 def test_revision_conflict_does_not_write(tmp_path: Path) -> None:
     path = tmp_path / "runtime.json"
@@ -1478,6 +1540,7 @@ def test_revision_conflict_does_not_write(tmp_path: Path) -> None:
     assert error.value.actual_revision == 1
     assert path.read_bytes() == original
     assert store.get_state().settings.datasets.histogram_bins == 30
+
 
 ###############################################################################
 def test_reset_one_value_and_equal_default_remove_the_override(tmp_path: Path) -> None:
@@ -1509,6 +1572,7 @@ def test_reset_one_value_and_equal_default_remove_the_override(tmp_path: Path) -
     assert reset_to_default.settings.datasets.streaming_batch_size == 10_000
     assert reset_to_default.overridden_keys == ("jobs.polling_interval",)
 
+
 ###############################################################################
 def test_reset_all_persists_an_empty_database_document(tmp_path: Path) -> None:
     path = tmp_path / "runtime.json"
@@ -1533,8 +1597,11 @@ def test_reset_all_persists_an_empty_database_document(tmp_path: Path) -> None:
         "overrides": {},
     }
 
+
 ###############################################################################
-def test_reset_all_keeps_revision_of_an_unchanged_empty_document(tmp_path: Path) -> None:
+def test_reset_all_keeps_revision_of_an_unchanged_empty_document(
+    tmp_path: Path,
+) -> None:
     path = tmp_path / "runtime.json"
     payload = {
         "schema_version": 1,
@@ -1551,6 +1618,7 @@ def test_reset_all_keeps_revision_of_an_unchanged_empty_document(tmp_path: Path)
     assert state.revision == 3
     assert state.overridden_keys == ()
     assert json.loads(path.read_text(encoding="utf-8")) == payload
+
 
 ###############################################################################
 def test_persistence_failure_rolls_back_state_and_stored_document(
@@ -1571,6 +1639,7 @@ def test_persistence_failure_rolls_back_state_and_stored_document(
     assert path.read_bytes() == original
     assert store.get_state().settings.datasets.histogram_bins == 30
     assert store.get_state().revision == 1
+
 
 ###############################################################################
 def test_process_restart_and_reload_load_persisted_overrides(tmp_path: Path) -> None:
@@ -1604,6 +1673,7 @@ def test_process_restart_and_reload_load_persisted_overrides(tmp_path: Path) -> 
     assert restored.settings.jobs == defaults.jobs
     assert restarted.get_state().revision == 1
     assert restored.warning is None
+
 
 ###############################################################################
 @pytest.mark.parametrize(
@@ -1640,9 +1710,12 @@ def test_non_finite_float_update_preserves_persisted_snapshot(
     assert store.get_state() == before
     assert path.read_bytes() == persisted_before
 
+
 ###############################################################################
 def test_runtime_override_models_are_frozen(tmp_path: Path) -> None:
-    store = _store__runtime_settings(_server_settings(tmp_path), tmp_path / "runtime.json")
+    store = _store__runtime_settings(
+        _server_settings(tmp_path), tmp_path / "runtime.json"
+    )
     state = store.apply_patch(
         {"datasets": {"histogram_bins": 30}},
         expected_revision=0,
@@ -1650,6 +1723,7 @@ def test_runtime_override_models_are_frozen(tmp_path: Path) -> None:
 
     with pytest.raises(ValidationError):
         state.settings.datasets.histogram_bins = 20
+
 
 ###############################################################################
 def test_benchmark_defaults_persist_sparsely_and_reset_independently(
@@ -1693,8 +1767,6 @@ def test_benchmark_defaults_persist_sparsely_and_reset_independently(
     assert reset.settings.benchmarks.default_max_documents == 2500
     assert reset.settings.benchmarks.default_parallelism == 4
 
-###############################################################################
-
 
 ###############################################################################
 @pytest.fixture(autouse=True)
@@ -1709,9 +1781,11 @@ def reset_configuration_state() -> Iterator[None]:
     if previous_cors_origins is not None:
         os.environ["CORS_ORIGINS"] = previous_cors_origins
 
+
 ###############################################################################
 def _write_env(path: Path, lines: list[str]) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
 
 ###############################################################################
 def _configure_paths(
@@ -1727,6 +1801,7 @@ def _configure_paths(
     config_path.write_text(json.dumps(payload), encoding="utf-8")
     monkeypatch.setenv("TKBEN_PATHS_CONFIG", str(config_path))
 
+
 ###############################################################################
 def _configure_environment(
     tmp_path: Path,
@@ -1736,12 +1811,15 @@ def _configure_environment(
     data_dir: str | Path | None = None,
     log_dir: str | Path | None = None,
 ) -> None:
-    _configure_paths(tmp_path, monkeypatch, data_dir or tmp_path / "runtime-data", log_dir)
+    _configure_paths(
+        tmp_path, monkeypatch, data_dir or tmp_path / "runtime-data", log_dir
+    )
     env_path = tmp_path / ".env"
     _write_env(env_path, env_lines)
     monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
     reset_settings_cache_for_tests()
     bootstrap.reset_environment_bootstrap_for_tests()
+
 
 ###############################################################################
 def test_bootstrap_preserves_existing_process_values(
@@ -1761,6 +1839,7 @@ def test_bootstrap_preserves_existing_process_values(
     assert os.getenv("FASTAPI_HOST") == "from_process"
     assert os.getenv("UI_HOST") == "from-process-ui"
 
+
 ###############################################################################
 def test_missing_environment_is_created_from_example(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -1775,6 +1854,7 @@ def test_missing_environment_is_created_from_example(
     assert bootstrap.ensure_environment_loaded() == env_path
     assert env_path.read_bytes() == template_bytes
     assert os.getenv("FASTAPI_HOST") == "from_template"
+
 
 ###############################################################################
 def test_environment_template_exposes_canonical_runtime_inputs() -> None:
@@ -1792,6 +1872,7 @@ def test_environment_template_exposes_canonical_runtime_inputs() -> None:
     assert "CORS_ORIGINS=\n" in example
     assert "DATABASE_" not in example
     assert "ALLOW_KEY_REVEAL=false" in example
+
 
 ###############################################################################
 def test_default_runtime_paths_use_repository_data(
@@ -1811,9 +1892,11 @@ def test_default_runtime_paths_use_repository_data(
     assert settings.paths.logs == (default_root / "logs").resolve()
     assert settings.database.sqlite_path == (default_root / "database.db").resolve()
     assert settings.network.cors_origins is None
-    assert settings.security.hf_keys_encryption_material_file == (
-        default_root / "hf-key-material.json"
-    ).resolve()
+    assert (
+        settings.security.hf_keys_encryption_material_file
+        == (default_root / "hf-key-material.json").resolve()
+    )
+
 
 ###############################################################################
 def test_bootstrap_is_idempotent_without_force(
@@ -1828,6 +1911,7 @@ def test_bootstrap_is_idempotent_without_force(
     bootstrap.ensure_environment_loaded()
 
     assert os.getenv("FASTAPI_HOST") == "first"
+
 
 ###############################################################################
 def test_settings_initialization_refreshes_after_explicit_bootstrap_reset(
@@ -1847,6 +1931,7 @@ def test_settings_initialization_refreshes_after_explicit_bootstrap_reset(
 
     assert first.network.fastapi_port == 5101
     assert refreshed.network.fastapi_port == 5102
+
 
 ###############################################################################
 def test_typed_defaults_resolve_without_structured_json(
@@ -1870,6 +1955,7 @@ def test_typed_defaults_resolve_without_structured_json(
     assert settings.datasets.download_retry_backoff_seconds == 2.0
     assert settings.benchmarks.streaming_batch_size == 1000
     assert settings.jobs.polling_interval == 1.0
+
 
 ###############################################################################
 def test_runtime_environment_resolves_into_one_settings_tree(
@@ -1910,12 +1996,14 @@ def test_runtime_environment_resolves_into_one_settings_tree(
         "http://localhost:8000",
     )
     assert settings.security.allow_key_reveal is True
-    assert settings.security.hf_keys_encryption_material_file == (
-        data_root / "hf-key-material.json"
-    ).resolve()
+    assert (
+        settings.security.hf_keys_encryption_material_file
+        == (data_root / "hf-key-material.json").resolve()
+    )
     saved = (data_root / "database-config.json").read_text(encoding="utf-8")
     assert "secret" not in saved
     assert "DATABASE_" not in (tmp_path / ".env").read_text(encoding="utf-8")
+
 
 ###############################################################################
 def test_blank_cors_origins_leave_origins_derived_from_ui_settings(
@@ -1933,6 +2021,7 @@ def test_blank_cors_origins_leave_origins_derived_from_ui_settings(
     assert settings.network.cors_origins is None
     assert settings.network.ui_host == "localhost"
     assert settings.network.ui_port == 8100
+
 
 ###############################################################################
 @pytest.mark.parametrize(
@@ -1956,6 +2045,7 @@ def test_invalid_cors_origins_fail_during_settings_initialization(
     with pytest.raises(RuntimeError, match="CORS_ORIGINS"):
         get_server_settings()
 
+
 ###############################################################################
 def test_relative_runtime_paths_are_repository_relative(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -1974,6 +2064,7 @@ def test_relative_runtime_paths_are_repository_relative(
     assert settings.paths.data == (ROOT_DIR / "custom/runtime-data").resolve()
     assert settings.paths.logs == (ROOT_DIR / "custom/runtime-logs").resolve()
 
+
 ###############################################################################
 def test_boolean_aliases_are_rejected(
     tmp_path: Path,
@@ -1988,6 +2079,7 @@ def test_boolean_aliases_are_rejected(
     with pytest.raises(RuntimeError, match="ALLOW_KEY_REVEAL"):
         get_server_settings()
 
+
 ###############################################################################
 def test_settings_models_are_immutable(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -1997,6 +2089,7 @@ def test_settings_models_are_immutable(
 
     with pytest.raises(ValidationError):
         settings.datasets.histogram_bins = 99
+
 
 ###############################################################################
 def test_runtime_setting_models_keep_cross_field_and_polling_validation() -> None:
@@ -2009,6 +2102,7 @@ def test_runtime_setting_models_keep_cross_field_and_polling_validation() -> Non
     with pytest.raises(ValidationError):
         JobsSettings(polling_interval=0.1)
 
+
 ###############################################################################
 def test_key_reveal_policy_uses_canonical_settings(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -2020,6 +2114,7 @@ def test_key_reveal_policy_uses_canonical_settings(
     )
 
     assert is_key_reveal_enabled() is True
+
 
 ###############################################################################
 def test_hf_key_cipher_requires_explicit_initialization(

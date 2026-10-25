@@ -14,6 +14,7 @@ from server.common.path import DATA_PATH
 MATERIAL_PURPOSE = "hugging_face_access_keys"
 DATABASE_PURPOSE = "database_connection_password"
 
+
 ###############################################################################
 class SymmetricCipher:
 
@@ -37,13 +38,16 @@ class SymmetricCipher:
         except InvalidToken as exc:
             raise ValueError("Unable to decrypt stored Hugging Face key.") from exc
 
+
 ###############################################################################
 class KeyMaterialNotInitializedError(RuntimeError):
     pass
 
+
 ###############################################################################
 def _material_path() -> Path:
     return DATA_PATH / "hf-key-material.json"
+
 
 ###############################################################################
 def _read_material_store(path: Path) -> dict[str, object]:
@@ -57,6 +61,7 @@ def _read_material_store(path: Path) -> dict[str, object]:
         raise RuntimeError("Hugging Face key material file must contain an object.")
     return payload
 
+
 ###############################################################################
 def _write_material_store(path: Path, payload: dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -65,6 +70,7 @@ def _write_material_store(path: Path, payload: dict[str, object]) -> None:
         json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     temporary.replace(path)
+
 
 ###############################################################################
 def _get_active_material(payload: dict[str, object], purpose: str) -> str | None:
@@ -81,6 +87,7 @@ def _get_active_material(payload: dict[str, object], purpose: str) -> str | None
     key_material = record.get("key_material")
     return str(key_material) if isinstance(key_material, str) and key_material else None
 
+
 ###############################################################################
 def get_purpose_cipher(path: Path, purpose: str) -> SymmetricCipher:
     """Return the active encryption key scoped to a purpose in the shared key store."""
@@ -92,6 +99,7 @@ def get_purpose_cipher(path: Path, purpose: str) -> SymmetricCipher:
         )
     return SymmetricCipher(existing)
 
+
 ###############################################################################
 def is_key_material_initialized(path: Path | None = None) -> bool:
     payload = _read_material_store(path or _material_path())
@@ -99,6 +107,7 @@ def is_key_material_initialized(path: Path | None = None) -> bool:
         _get_active_material(payload, purpose) is not None
         for purpose in (MATERIAL_PURPOSE, DATABASE_PURPOSE)
     )
+
 
 ###############################################################################
 def initialize_key_material(path: Path | None = None) -> None:
@@ -127,6 +136,7 @@ def initialize_key_material(path: Path | None = None) -> None:
             },
         }
     _write_material_store(target, payload)
+
 
 ###############################################################################
 def get_hf_key_cipher() -> SymmetricCipher:

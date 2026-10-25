@@ -39,7 +39,10 @@ from server.repositories.runtime_settings import DatabaseRuntimeSettingsPersiste
 from server.repositories.database.backend import get_database
 from server.services.jobs import JobManager
 from server.services.database_switch import DatabaseSwitchGate
-from server.services.startup_validation import build_cors_origins, run_startup_validations
+from server.services.startup_validation import (
+    build_cors_origins,
+    run_startup_validations,
+)
 
 ###############################################################################
 FRONTEND_BUILD_DIR = (
@@ -51,12 +54,15 @@ FRONTEND_BUILD_DIR = (
 )
 
 
+###############################################################################
 def redirect_to_docs() -> RedirectResponse:
     return RedirectResponse(url="/docs")
+
 
 ###############################################################################
 def backend_healthcheck() -> HealthResponse:
     return HealthResponse(status="ok")
+
 
 ###############################################################################
 def register_api_routers(application: FastAPI) -> None:
@@ -77,6 +83,7 @@ def register_api_routers(application: FastAPI) -> None:
         exports_router,
     ):
         application.include_router(router, prefix="/api")
+
 
 ###############################################################################
 def register_frontend_routes(application: FastAPI) -> None:
@@ -111,6 +118,7 @@ def register_frontend_routes(application: FastAPI) -> None:
         methods=["GET", "HEAD"],
         include_in_schema=False,
     )
+
 
 ###############################################################################
 @asynccontextmanager
@@ -154,6 +162,7 @@ async def app_lifespan(application: FastAPI) -> AsyncIterator[None]:
     application.state.job_manager = job_manager
 
     yield
+
 
 ###############################################################################
 def create_app() -> FastAPI:

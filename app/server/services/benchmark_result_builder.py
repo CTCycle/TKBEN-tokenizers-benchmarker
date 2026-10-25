@@ -28,6 +28,7 @@ from server.contracts.benchmarks import (
 )
 from server.common.benchmark_metric_definitions import BENCHMARK_METRIC_DEFINITIONS
 
+
 ###############################################################################
 class BenchmarkResultBuilder:
 

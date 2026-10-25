@@ -21,8 +21,6 @@ from server.services.export import DashboardExportService
 from server.common.benchmark_metric_definitions import BENCHMARK_METRIC_DEFINITIONS
 from server.services.dashboard_export_helpers import DashboardExportFormatting
 
-###############################################################################
-
 
 ###############################################################################
 def _build_payload(dataset_name: str) -> dict:
@@ -118,6 +116,7 @@ def _build_payload(dataset_name: str) -> dict:
         "raw_observations": {},
     }
 
+
 ###############################################################################
 def test_benchmark_report_service_round_trip(monkeypatch) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
@@ -172,6 +171,7 @@ def test_benchmark_report_service_round_trip(monkeypatch) -> None:
     with pytest.raises(ValueError, match="tokenizer count disagrees"):
         report_service.save_benchmark_report(inconsistent)
 
+
 ###############################################################################
 def test_benchmark_report_service_updates_and_reloads_tags(monkeypatch) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
@@ -216,6 +216,7 @@ def test_benchmark_report_service_updates_and_reloads_tags(monkeypatch) -> None:
         assert "tags" not in stored_row.payload
 
     assert service.update_benchmark_report_tags(999, ["missing"]) is None
+
 
 ###############################################################################
 def test_benchmark_report_service_search_sort_pagination_and_delete(
@@ -280,6 +281,7 @@ def test_benchmark_report_service_search_sort_pagination_and_delete(
     assert remaining.total == 2
     assert [item.report_id for item in remaining.reports] == [newer_id, older_id]
 
+
 ###############################################################################
 def test_benchmark_report_service_rejects_v4_payload() -> None:
     report_service = BenchmarkReportService()
@@ -299,6 +301,7 @@ def test_benchmark_report_service_rejects_v4_payload() -> None:
                 },
             }
         )
+
 
 ###############################################################################
 def test_benchmark_report_service_rejects_json_encoded_storage() -> None:
@@ -332,8 +335,6 @@ def test_benchmark_report_service_rejects_json_encoded_storage() -> None:
             }
         )
 
-###############################################################################
-
 
 ###############################################################################
 def _widget(
@@ -357,6 +358,7 @@ def _widget(
         "buckets": buckets or [],
     }
 
+
 ###############################################################################
 def test_metric_definitions_expose_only_strict_visualization_pairs() -> None:
     allowed = {item.value for item in BenchmarkVisualizationKind}
@@ -375,6 +377,7 @@ def test_metric_definitions_expose_only_strict_visualization_pairs() -> None:
         assert (
             definition.compatible_visualizations[0] is definition.default_visualization
         )
+
 
 ###############################################################################
 def test_builder_emits_payload_shape_compatible_visualization_choices() -> None:
@@ -413,6 +416,7 @@ def test_builder_emits_payload_shape_compatible_visualization_choices() -> None:
         BenchmarkVisualizationKind.GROUPED_BAR,
         BenchmarkVisualizationKind.HEATMAP,
     ]
+
 
 ###############################################################################
 def test_builder_preserves_definition_width_for_dense_visualizations() -> None:
@@ -456,6 +460,7 @@ def test_builder_preserves_definition_width_for_dense_visualizations() -> None:
         == "wide"
     )
 
+
 ###############################################################################
 def test_histogram_bins_use_shared_capped_edges_and_constant_padding() -> None:
     builder = BenchmarkResultBuilder(None)
@@ -471,6 +476,7 @@ def test_histogram_bins_use_shared_capped_edges_and_constant_padding() -> None:
     assert constant[0].bin_low < 3.0 < constant[0].bin_high
     assert constant[0].count == 3
     assert constant[0].proportion == 1.0
+
 
 ###############################################################################
 def test_pdf_renderer_covers_all_canonical_visualizations() -> None:
@@ -547,6 +553,7 @@ def test_pdf_renderer_covers_all_canonical_visualizations() -> None:
         finally:
             plt.close(figure)
 
+
 ###############################################################################
 def test_pdf_benchmark_chart_labels_shorten_long_tokenizer_names() -> None:
     service = DashboardExportService()
@@ -570,9 +577,7 @@ def test_pdf_benchmark_chart_labels_shorten_long_tokenizer_names() -> None:
             )
 
             labels = (
-                axis.get_xticklabels()
-                if label_axis == "x"
-                else axis.get_yticklabels()
+                axis.get_xticklabels() if label_axis == "x" else axis.get_yticklabels()
             )
             assert [label.get_text() for label in labels] == [expected_label]
             if visualization == "horizontal_bar":
@@ -583,6 +588,7 @@ def test_pdf_benchmark_chart_labels_shorten_long_tokenizer_names() -> None:
                 assert axis.get_ylabel() == "value"
         finally:
             plt.close(figure)
+
 
 ###############################################################################
 def test_pdf_export_rejects_unknown_and_incompatible_overrides() -> None:
@@ -617,8 +623,6 @@ def test_pdf_export_rejects_unknown_and_incompatible_overrides() -> None:
                 "visualization_by_widget_id": {"benchmark.bar": "heatmap"},
             },
         )
-
-###############################################################################
 
 
 ###############################################################################
@@ -680,6 +684,7 @@ def build_dataset_payload() -> dict:
         }
     }
 
+
 ###############################################################################
 def build_tokenizer_payload() -> dict:
     return {
@@ -710,6 +715,7 @@ def build_tokenizer_payload() -> dict:
             {"token_id": 5, "token": "the", "length": 3},
         ],
     }
+
 
 ###############################################################################
 def build_benchmark_payload() -> dict:
@@ -783,6 +789,7 @@ def build_benchmark_payload() -> dict:
         },
     }
 
+
 ###############################################################################
 def test_export_dataset_dashboard_pdf_generates_pdf_bytes() -> None:
     service = DashboardExportService()
@@ -796,6 +803,7 @@ def test_export_dataset_dashboard_pdf_generates_pdf_bytes() -> None:
     assert result.file_name == "dataset-layout-export.pdf"
     assert result.page_count >= 2
     assert result.pdf_bytes.startswith(b"%PDF")
+
 
 ###############################################################################
 def test_export_tokenizer_dashboard_pdf_generates_pdf_bytes() -> None:
@@ -811,6 +819,7 @@ def test_export_tokenizer_dashboard_pdf_generates_pdf_bytes() -> None:
     assert result.page_count >= 1
     assert result.pdf_bytes.startswith(b"%PDF")
 
+
 ###############################################################################
 def test_export_benchmark_dashboard_pdf_generates_pdf_bytes() -> None:
     service = DashboardExportService()
@@ -825,6 +834,7 @@ def test_export_benchmark_dashboard_pdf_generates_pdf_bytes() -> None:
     assert result.page_count == 2
     assert result.pdf_bytes.startswith(b"%PDF")
 
+
 ###############################################################################
 def test_benchmark_pdf_normalizes_visible_widgets_in_requested_order() -> None:
     service = DashboardExportService()
@@ -838,6 +848,7 @@ def test_benchmark_pdf_normalizes_visible_widgets_in_requested_order() -> None:
         "benchmark.vocabulary",
     ]
 
+
 ###############################################################################
 def test_export_dashboard_pdf_rejects_unsupported_dashboard_type() -> None:
     service = DashboardExportService()
@@ -848,6 +859,7 @@ def test_export_dashboard_pdf_rejects_unsupported_dashboard_type() -> None:
             file_name="x",
             dashboard_payload={},
         )
+
 
 ###############################################################################
 def test_dashboard_export_formatting_accepts_only_current_metric_shapes() -> None:

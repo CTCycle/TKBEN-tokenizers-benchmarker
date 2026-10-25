@@ -17,12 +17,14 @@ from server.repositories.schemas.models import (
     TokenizerVocabulary,
 )
 
+
 ###############################################################################
 def _parse_timestamp(value: object) -> pd.Timestamp | None:
     if value is None:
         return None
     parsed = pd.to_datetime(cast(Any, value), utc=True, errors="coerce")
     return parsed if isinstance(parsed, pd.Timestamp) and not pd.isna(parsed) else None
+
 
 ###############################################################################
 class TokenizerReportRepository:
@@ -154,7 +156,9 @@ class TokenizerReportRepository:
             "single_character_token_percentage",
         ):
             if metric_key in histogram:
-                histogram_payload[metric_key] = float(histogram.get(metric_key, 0.0) or 0.0)
+                histogram_payload[metric_key] = float(
+                    histogram.get(metric_key, 0.0) or 0.0
+                )
         huggingface_url = metadata_payload.pop("huggingface_url", None)
         if not isinstance(huggingface_url, str) or not huggingface_url.strip():
             huggingface_url = None

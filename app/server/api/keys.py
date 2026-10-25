@@ -43,11 +43,13 @@ from server.services.keys import (
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_KEYS, tags=["keys"])
 
+
 ###############################################################################
 @router.get(API_ROUTE_KEYS_ENCRYPTION, response_model=KeyEncryptionStatusResponse)
 async def get_encryption_status() -> KeyEncryptionStatusResponse:
     initialized = await asyncio.to_thread(is_key_material_initialized)
     return KeyEncryptionStatusResponse(initialized=initialized)
+
 
 ###############################################################################
 @router.post(
@@ -63,6 +65,7 @@ async def initialize_encryption() -> KeyEncryptionStatusResponse:
             status_code=status.HTTP_409_CONFLICT, detail=str(exc)
         ) from exc
     return KeyEncryptionStatusResponse(initialized=True)
+
 
 ###############################################################################
 @router.post(
@@ -88,6 +91,7 @@ async def create_key(request: HFAccessKeyCreateRequest) -> HFAccessKeyListItem:
         ) from exc
     return created_key
 
+
 ###############################################################################
 @router.get(
     API_ROUTE_KEYS_LIST,
@@ -98,6 +102,7 @@ async def list_keys() -> HFAccessKeyListResponse:
     service = HFAccessKeyService()
     keys = await asyncio.to_thread(service.list_keys)
     return HFAccessKeyListResponse(keys=keys)
+
 
 ###############################################################################
 @router.delete(
@@ -123,6 +128,7 @@ async def delete_key(
         ) from exc
     return HFAccessKeyDeleteResponse()
 
+
 ###############################################################################
 @router.post(
     API_ROUTE_KEYS_ACTIVATE,
@@ -139,6 +145,7 @@ async def activate_key(key_id: int) -> HFAccessKeyActivateResponse:
         ) from exc
     return HFAccessKeyActivateResponse()
 
+
 ###############################################################################
 @router.post(
     API_ROUTE_KEYS_DEACTIVATE,
@@ -154,6 +161,7 @@ async def deactivate_key(key_id: int) -> HFAccessKeyActivateResponse:
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
         ) from exc
     return HFAccessKeyActivateResponse(message="Active key cleared.")
+
 
 ###############################################################################
 @router.post(

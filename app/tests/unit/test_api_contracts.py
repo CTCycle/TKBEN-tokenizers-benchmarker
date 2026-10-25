@@ -25,8 +25,6 @@ from server.configurations.runtime import RuntimeSettingsStore
 from server.configurations.settings import ServerSettings
 from server.contracts.settings import RuntimeSettingsPatchRequest
 
-###############################################################################
-
 
 ###############################################################################
 class DummyJobManager:
@@ -49,6 +47,7 @@ class DummyJobManager:
     def get_job_status(self, job_id: str):
         del job_id
         return {"job_type": self.last_job_type, "status": "pending"}
+
 
 ###############################################################################
 def test_benchmark_run_route_returns_202(monkeypatch) -> None:
@@ -84,6 +83,7 @@ def test_benchmark_run_route_returns_202(monkeypatch) -> None:
     assert resp.status_code == 202
     assert resp.json()["job_id"] == "job-bench"
 
+
 ###############################################################################
 def test_benchmark_run_rejects_removed_custom_tokenizer_field() -> None:
     response = TestClient(app).post(
@@ -97,6 +97,7 @@ def test_benchmark_run_rejects_removed_custom_tokenizer_field() -> None:
 
     assert response.status_code == 422
     assert "custom_tokenizer_name" in response.text
+
 
 ###############################################################################
 def test_benchmark_list_and_by_id(monkeypatch) -> None:
@@ -193,6 +194,7 @@ def test_benchmark_list_and_by_id(monkeypatch) -> None:
     assert by_id.status_code == 200
     assert by_id.json()["report_id"] == 1
 
+
 ###############################################################################
 def test_benchmark_report_delete_route_returns_204_or_404(monkeypatch) -> None:
     from server.services.benchmark_reports import BenchmarkReportService
@@ -206,6 +208,7 @@ def test_benchmark_report_delete_route_returns_204_or_404(monkeypatch) -> None:
     assert client.delete("/api/benchmarks/reports/4").status_code == 204
     missing = client.delete("/api/benchmarks/reports/9")
     assert missing.status_code == 404
+
 
 ###############################################################################
 def test_benchmark_report_tags_route_normalizes_and_returns_tags(monkeypatch) -> None:
@@ -234,8 +237,11 @@ def test_benchmark_report_tags_route_normalizes_and_returns_tags(monkeypatch) ->
     assert captured == {"report_id": 7, "tags": ["Production", "cpu"]}
     assert response.json() == {"report_id": 7, "tags": ["Production", "cpu"]}
 
+
 ###############################################################################
-def test_benchmark_report_tags_route_returns_404_for_missing_report(monkeypatch) -> None:
+def test_benchmark_report_tags_route_returns_404_for_missing_report(
+    monkeypatch,
+) -> None:
     from server.services.benchmark_reports import BenchmarkReportService
 
     monkeypatch.setattr(
@@ -247,6 +253,7 @@ def test_benchmark_report_tags_route_returns_404_for_missing_report(monkeypatch)
         "/api/benchmarks/reports/404/tags", json={"tags": []}
     )
     assert response.status_code == 404
+
 
 ###############################################################################
 @pytest.mark.parametrize(
@@ -262,6 +269,7 @@ def test_benchmark_report_tags_route_rejects_invalid_tags(tags) -> None:
         "/api/benchmarks/reports/7/tags", json={"tags": tags}
     )
     assert response.status_code == 422
+
 
 ###############################################################################
 def test_benchmark_by_id_accepts_cancelled_contract(monkeypatch) -> None:
@@ -319,8 +327,6 @@ def test_benchmark_by_id_accepts_cancelled_contract(monkeypatch) -> None:
     assert payload["status"] == "cancelled"
     assert payload["report_id"] == 9
 
-###############################################################################
-
 
 ###############################################################################
 class DummyJobManager__datasets_routes:
@@ -345,6 +351,7 @@ class DummyJobManager__datasets_routes:
     def get_job_status(self, job_id: str):
         del job_id
         return {"job_type": self.last_job_type, "status": "pending"}
+
 
 ###############################################################################
 def test_dataset_job_start_routes_return_202(monkeypatch) -> None:
@@ -382,6 +389,7 @@ def test_dataset_job_start_routes_return_202(monkeypatch) -> None:
     assert analyze_resp.status_code == 202
     assert analyze_resp.json()["job_id"] == "job-123"
 
+
 ###############################################################################
 def test_dataset_analysis_rejects_inverted_length_filter(monkeypatch) -> None:
     manager = DummyJobManager__datasets_routes()
@@ -396,8 +404,12 @@ def test_dataset_analysis_rejects_inverted_length_filter(monkeypatch) -> None:
     )
 
     assert response.status_code == 422
-    assert "Minimum document length must not exceed maximum document length." in response.text
+    assert (
+        "Minimum document length must not exceed maximum document length."
+        in response.text
+    )
     assert manager.started_jobs == 0
+
 
 ###############################################################################
 def test_dataset_validation_preview_rejects_inverted_length_filter() -> None:
@@ -410,7 +422,11 @@ def test_dataset_validation_preview_rejects_inverted_length_filter() -> None:
     )
 
     assert response.status_code == 422
-    assert "Minimum document length must not exceed maximum document length." in response.text
+    assert (
+        "Minimum document length must not exceed maximum document length."
+        in response.text
+    )
+
 
 ###############################################################################
 def test_dataset_upload_accepts_limit_and_rejects_one_byte_over(monkeypatch) -> None:
@@ -429,10 +445,12 @@ def test_dataset_upload_accepts_limit_and_rejects_one_byte_over(monkeypatch) -> 
 
     from server.api import datasets as datasets_api
 
+
     ###############################################################################
     class _DatasetCfg:
         allowed_extensions = (".csv", ".xlsx")
         max_upload_bytes = limit
+
 
     ###############################################################################
     class _Settings:
@@ -458,6 +476,7 @@ def test_dataset_upload_accepts_limit_and_rejects_one_byte_over(monkeypatch) -> 
 
     assert rejected.status_code == 413
     assert manager.started_jobs == 1
+
 
 ###############################################################################
 def test_dataset_list_passes_catalog_filters_to_service(monkeypatch) -> None:
@@ -488,6 +507,7 @@ def test_dataset_list_passes_catalog_filters_to_service(monkeypatch) -> None:
         "document_count_operator": "at_most",
         "document_count": 5,
     }
+
 
 ###############################################################################
 def test_dataset_delete_normalizes_identifier_and_returns_not_found_for_repeat(
@@ -530,8 +550,6 @@ def test_dataset_delete_normalizes_identifier_and_returns_not_found_for_repeat(
     assert repeated.status_code == 404
     assert repeated.json()["detail"] == "Dataset 'custom/foo' not found."
 
-###############################################################################
-
 
 ###############################################################################
 def _export_payload() -> dict[str, object]:
@@ -542,9 +560,11 @@ def _export_payload() -> dict[str, object]:
         "dashboard_payload": {"report_id": 1},
     }
 
+
 ###############################################################################
 def test_export_route_returns_pdf_headers_and_bytes(monkeypatch) -> None:
     from server.api import exports as exports_api
+
 
     ###############################################################################
     class FakeExportService:
@@ -570,11 +590,13 @@ def test_export_route_returns_pdf_headers_and_bytes(monkeypatch) -> None:
     assert response.headers["x-export-page-count"] == "2"
     assert response.content == b"%PDF-test"
 
+
 ###############################################################################
 def test_export_route_maps_expected_and_unexpected_service_failures(
     monkeypatch,
 ) -> None:
     from server.api import exports as exports_api
+
 
     ###############################################################################
     class ValueErrorService:
@@ -588,6 +610,7 @@ def test_export_route_maps_expected_and_unexpected_service_failures(
     invalid = TestClient(app).post("/api/exports/dashboard/pdf", json=_export_payload())
     assert invalid.status_code == 400
     assert invalid.json()["detail"] == "unsupported visualization"
+
 
     ###############################################################################
     class FailingService:
@@ -603,8 +626,6 @@ def test_export_route_maps_expected_and_unexpected_service_failures(
     assert failed.json()["detail"] == "Failed to export dashboard as PDF."
     assert "private rendering" not in failed.text
 
-###############################################################################
-
 
 ###############################################################################
 def _job_status(job_id: str, status: str) -> dict[str, object]:
@@ -617,8 +638,10 @@ def _job_status(job_id: str, status: str) -> dict[str, object]:
         "error": None,
     }
 
+
 ###############################################################################
 def test_job_routes_distinguish_missing_terminal_and_running_jobs(monkeypatch) -> None:
+
 
     ###############################################################################
     class FakeJobManager:
@@ -649,10 +672,12 @@ def test_job_routes_distinguish_missing_terminal_and_running_jobs(monkeypatch) -
     assert running.status_code == 200
     assert running.json()["status"] == "stopping"
 
+
 ###############################################################################
 def test_reconciled_job_remains_addressable_and_rejects_cancellation(
     monkeypatch,
 ) -> None:
+
 
     ###############################################################################
     class MemoryJobRepository:
@@ -705,8 +730,6 @@ def test_reconciled_job_remains_addressable_and_rejects_cancellation(
     assert cancellation.status_code == 409
     assert "already failed" in cancellation.json()["detail"]
 
-###############################################################################
-
 
 ###############################################################################
 def _key_item(key_id: int = 1) -> dict[str, object]:
@@ -717,6 +740,7 @@ def _key_item(key_id: int = 1) -> dict[str, object]:
         "masked_preview": "********",
     }
 
+
 ###############################################################################
 def test_key_routes_keep_raw_values_out_of_list_and_map_lifecycle_calls(
     monkeypatch,
@@ -724,6 +748,7 @@ def test_key_routes_keep_raw_values_out_of_list_and_map_lifecycle_calls(
     from server.api import keys as keys_api
 
     calls: list[tuple[str, object]] = []
+
 
     ###############################################################################
     class FakeKeyService:
@@ -772,6 +797,7 @@ def test_key_routes_keep_raw_values_out_of_list_and_map_lifecycle_calls(
         ("delete", (1, True)),
     ]
 
+
 ###############################################################################
 def test_key_reveal_is_blocked_when_server_policy_disables_reveal(monkeypatch) -> None:
     from server.api import keys as keys_api
@@ -783,8 +809,6 @@ def test_key_reveal_is_blocked_when_server_policy_disables_reveal(monkeypatch) -
     assert response.status_code == 403
     assert response.json()["detail"] == "Key reveal is disabled by server policy."
 
-###############################################################################
-
 
 ###############################################################################
 class _MemoryPersistence:
@@ -795,7 +819,9 @@ class _MemoryPersistence:
 
     # -------------------------------------------------------------------------
     def load(self) -> dict[str, object] | None:
-        return json.loads(json.dumps(self.document)) if self.document is not None else None
+        return (
+            json.loads(json.dumps(self.document)) if self.document is not None else None
+        )
 
     # -------------------------------------------------------------------------
     def save(self, payload: dict[str, object]) -> None:
@@ -818,6 +844,7 @@ def _settings_client(
     application.state.settings = store.get_state().settings
     return TestClient(application)
 
+
 ###############################################################################
 def _runtime_setting_fields():
     """Derive editable fields and constraints from the public request schema."""
@@ -839,6 +866,7 @@ def _runtime_setting_fields():
                 settings_model.model_fields[name],
             )
 
+
 ###############################################################################
 def _constraint(field, name: str):
     return next(
@@ -850,6 +878,7 @@ def _constraint(field, name: str):
         None,
     )
 
+
 ###############################################################################
 def _runtime_setting_spec(group: str, name: str):
     return next(
@@ -857,6 +886,7 @@ def _runtime_setting_spec(group: str, name: str):
         for spec in _runtime_setting_fields()
         if spec[0] == group and spec[1] == name
     )
+
 
 ###############################################################################
 def _alternate_schema_value(group: str, name: str):
@@ -871,6 +901,7 @@ def _alternate_schema_value(group: str, name: str):
     assert minimum is not None and candidate >= minimum
     assert maximum is None or candidate <= maximum
     return candidate
+
 
 ###############################################################################
 def _boundary_patch(group: str, name: str, value: object) -> dict[str, object]:
@@ -904,6 +935,7 @@ def _boundary_patch(group: str, name: str, value: object) -> dict[str, object]:
             )
     return {group: values}
 
+
 ###############################################################################
 def _invalid_setting_cases():
     cases = []
@@ -926,6 +958,7 @@ def _invalid_setting_cases():
             cases.append((group, name, default + 0.5, "fractional-integer"))
     return cases
 
+
 ###############################################################################
 def _numeric_boundary_cases():
     cases = []
@@ -937,6 +970,7 @@ def _numeric_boundary_cases():
             if value is not None:
                 cases.append((group, name, value, boundary_name))
     return cases
+
 
 ###############################################################################
 def _companion_override(group: str) -> tuple[str, str, object, object]:
@@ -950,11 +984,13 @@ def _companion_override(group: str) -> tuple[str, str, object, object]:
     original = field.default
     return companion_group, companion_name, original + 1, original + 2
 
+
 ###############################################################################
 @pytest.fixture
 def settings_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     defaults = startup.get_server_settings()
     return _settings_client(defaults, _MemoryPersistence(), monkeypatch)
+
 
 ###############################################################################
 def test_get_settings_returns_only_typed_runtime_fields(
@@ -994,6 +1030,7 @@ def test_get_settings_returns_only_typed_runtime_fields(
     assert "fastapi_host" not in response.text
     assert "cors_origins" not in response.text
     assert "paths" not in response.text
+
 
 ###############################################################################
 def test_dashboard_preferences_are_database_scoped_and_revisioned(
@@ -1042,6 +1079,7 @@ def test_dashboard_preferences_are_database_scoped_and_revisioned(
     )
     assert stale.status_code == 409
 
+
 ###############################################################################
 def test_dashboard_preferences_reject_invalid_tokenizer_colors(
     settings_client: TestClient,
@@ -1055,6 +1093,7 @@ def test_dashboard_preferences_reject_invalid_tokenizer_colors(
     )
 
     assert response.status_code == 422
+
 
 ###############################################################################
 def test_dashboard_preferences_reject_invalid_visualizations(
@@ -1075,6 +1114,7 @@ def test_dashboard_preferences_reject_invalid_visualizations(
 
     assert response.status_code == 422
 
+
 ###############################################################################
 def test_public_runtime_matrix_matches_typed_backend_schema() -> None:
     fields = list(_runtime_setting_fields())
@@ -1085,6 +1125,7 @@ def test_public_runtime_matrix_matches_typed_backend_schema() -> None:
     for _group, _name, request_field, settings_field in fields:
         assert _constraint(request_field, "ge") == _constraint(settings_field, "ge")
         assert _constraint(request_field, "le") == _constraint(settings_field, "le")
+
 
 ###############################################################################
 @pytest.mark.parametrize(
@@ -1106,6 +1147,7 @@ def test_patch_accepts_every_runtime_numeric_boundary(
 
     assert response.status_code == 200, f"{group}.{name} {boundary}: {response.text}"
     assert response.json()["settings"][group][name] == value
+
 
 ###############################################################################
 @pytest.mark.parametrize(("group", "name", "value", "case"), _invalid_setting_cases())
@@ -1142,6 +1184,7 @@ def test_rejected_runtime_setting_update_preserves_persisted_snapshot(
     assert rejected.status_code == 422, f"{group}.{name} {case}: {rejected.text}"
     assert settings_client.get("/api/settings").json() == before
     assert json.dumps(persistence.document, sort_keys=True) == persisted_before
+
 
 ###############################################################################
 def test_invalid_tokenizer_relationships_do_not_partially_persist(
@@ -1202,6 +1245,7 @@ def test_invalid_tokenizer_relationships_do_not_partially_persist(
         assert rejected.status_code == 422, rejected.text
         assert settings_client.get("/api/settings").json() == before
         assert json.dumps(persistence.document, sort_keys=True) == persisted_before
+
 
 ###############################################################################
 def test_new_workflows_use_saved_runtime_settings(
@@ -1308,6 +1352,7 @@ def test_new_workflows_use_saved_runtime_settings(
 
     joined_timeouts: list[float | None] = []
 
+
     ###############################################################################
     class CapturingThread(threading.Thread):
 
@@ -1344,6 +1389,7 @@ def test_new_workflows_use_saved_runtime_settings(
     assert joined_timeouts == [target_timeout]
 
     captured_candidate_limits: list[int] = []
+
 
     ###############################################################################
     class FakeHfApi:
@@ -1413,6 +1459,7 @@ def test_new_workflows_use_saved_runtime_settings(
     ]
     assert observed_benchmark_batches == [target_benchmark_batch]
 
+
     ###############################################################################
     class NewJobManager:
 
@@ -1442,6 +1489,7 @@ def test_new_workflows_use_saved_runtime_settings(
     )
     assert job.poll_interval == target_poll_interval
 
+
 ###############################################################################
 def test_managed_jobs_allow_concurrent_starts_unless_conflict_detail_is_set() -> None:
     from server.services.managed_jobs import (
@@ -1450,20 +1498,22 @@ def test_managed_jobs_allow_concurrent_starts_unless_conflict_detail_is_set() ->
         ManagedJobSpec,
     )
 
+
+    ###############################################################################
     class RunningJobManager:
         started = 0
 
-        # ---------------------------------------------------------------------
+        # -------------------------------------------------------------------------
         def is_job_running(self, _job_type: str | None = None) -> bool:
             return True
 
-        # ---------------------------------------------------------------------
+        # -------------------------------------------------------------------------
         def start_job(self, job_type, runner, args=(), kwargs=None):
             del job_type, runner, args, kwargs
             self.started += 1
             return f"job-{self.started}"
 
-        # ---------------------------------------------------------------------
+        # -------------------------------------------------------------------------
         def get_job_status(self, _job_id: str):
             return {"job_type": "tokenizer_report", "status": "running"}
 
@@ -1491,6 +1541,7 @@ def test_managed_jobs_allow_concurrent_starts_unless_conflict_detail_is_set() ->
                 conflict_detail="already running",
             ),
         )
+
 
 ###############################################################################
 def test_patch_updates_multiple_fields_and_keeps_partial_overrides(
@@ -1531,6 +1582,7 @@ def test_patch_updates_multiple_fields_and_keeps_partial_overrides(
     assert follow_up.json()["settings"]["datasets"]["download_retry_attempts"] == 5
     assert follow_up.json()["settings"]["benchmarks"]["default_max_documents"] == 2500
 
+
 ###############################################################################
 def test_reset_one_and_reset_all_return_defaults(
     settings_client: TestClient,
@@ -1564,6 +1616,7 @@ def test_reset_one_and_reset_all_return_defaults(
         reset_all.json()["settings"]["datasets"]["max_upload_bytes"] == 25 * 1024 * 1024
     )
 
+
 ###############################################################################
 @pytest.mark.parametrize(
     "payload",
@@ -1583,6 +1636,7 @@ def test_invalid_unknown_environment_and_incompatible_fields_fail(
 
     assert response.status_code == 422
     assert settings_client.get("/api/settings").json()["revision"] == 0
+
 
 ###############################################################################
 def test_stale_revision_returns_conflict_without_overwriting(
@@ -1606,6 +1660,7 @@ def test_stale_revision_returns_conflict_without_overwriting(
         == 2.0
     )
 
+
 ###############################################################################
 def test_persistence_error_keeps_previous_authoritative_state(
     settings_client: TestClient,
@@ -1627,6 +1682,7 @@ def test_persistence_error_keeps_previous_authoritative_state(
     current = settings_client.get("/api/settings").json()
     assert current["revision"] == original.revision
     assert current["settings"]["datasets"]["histogram_bins"] == 20
+
 
 ###############################################################################
 def test_dashboard_persistence_error_keeps_previous_preferences(
@@ -1656,6 +1712,7 @@ def test_dashboard_persistence_error_keeps_previous_preferences(
     current = settings_client.get("/api/settings/dashboard").json()
     assert current["revision"] == 0
     assert current["preferences"]["ordered_widget_ids"] == []
+
 
 ###############################################################################
 def test_invalid_database_settings_warning_is_sanitized_and_cleared_by_save(
@@ -1687,8 +1744,6 @@ def test_invalid_database_settings_warning_is_sanitized_and_cleared_by_save(
     assert persistence.document is not None
     assert persistence.document["overrides"]["datasets"]["histogram_bins"] == 30
 
-###############################################################################
-
 
 ###############################################################################
 class DummyJobManager__tokenizers_routes:
@@ -1712,6 +1767,7 @@ class DummyJobManager__tokenizers_routes:
         del job_id
         return {"job_type": self.last_job_type, "status": "pending"}
 
+
 ###############################################################################
 def test_tokenizer_upload_validation(monkeypatch) -> None:
     client = TestClient(app)
@@ -1730,9 +1786,11 @@ def test_tokenizer_upload_validation(monkeypatch) -> None:
 
     from server.api import tokenizers as tokenizers_api
 
+
     ###############################################################################
     class _TokenizerCfg:
         max_upload_bytes = 1
+
 
     ###############################################################################
     class _Settings:
@@ -1782,6 +1840,7 @@ def test_tokenizer_upload_validation(monkeypatch) -> None:
     assert ok_upload.status_code == 200
     assert ok_upload.json()["is_compatible"] is True
 
+
 ###############################################################################
 def test_tokenizer_delete_supports_encoded_and_custom_names_and_returns_404(
     monkeypatch,
@@ -1829,6 +1888,7 @@ def test_tokenizer_delete_supports_encoded_and_custom_names_and_returns_404(
         "CUSTOM_sample",
     ]
 
+
 ###############################################################################
 def test_tokenizer_job_routes_return_202(monkeypatch) -> None:
     manager = DummyJobManager__tokenizers_routes()
@@ -1860,6 +1920,7 @@ def test_tokenizer_job_routes_return_202(monkeypatch) -> None:
     assert report_resp.status_code == 202
     assert report_resp.json()["job_id"] == "job-xyz"
 
+
 ###############################################################################
 def test_tokenizer_discovery_returns_sanitized_500_on_upstream_failure(
     monkeypatch,
@@ -1879,6 +1940,7 @@ def test_tokenizer_discovery_returns_sanitized_500_on_upstream_failure(
         response.json()["detail"] == "Failed to discover tokenizers from HuggingFace."
     )
     assert "private upstream" not in response.text
+
 
 ###############################################################################
 def test_tokenizer_discovery_validates_combined_query_and_structured_response(
@@ -1929,11 +1991,13 @@ def test_tokenizer_discovery_validates_combined_query_and_structured_response(
     assert captured["exclude_tags"] == ["audio"]
     assert captured["access"] == "public"
 
+
 ###############################################################################
 def test_tokenizer_discovery_uses_runtime_default(monkeypatch) -> None:
     from server.api import tokenizers as tokenizers_api
     from server.contracts.tokenizers import TokenizerDiscoveryResponse
     from server.services.tokenizers import TokenizersService
+
 
     ###############################################################################
     class _TokenizerCfg:
@@ -1941,6 +2005,7 @@ def test_tokenizer_discovery_uses_runtime_default(monkeypatch) -> None:
         max_discovery_limit = 9
         max_discovery_candidates = 30
         metadata_candidate_multiplier = 2
+
 
     ###############################################################################
     class _Settings:
@@ -1962,14 +2027,17 @@ def test_tokenizer_discovery_uses_runtime_default(monkeypatch) -> None:
     assert response.status_code == 200
     assert captured["limit"] == 7
 
+
 ###############################################################################
 def test_tokenizer_discovery_enforces_runtime_maximum(monkeypatch) -> None:
     from server.api import tokenizers as tokenizers_api
+
 
     ###############################################################################
     class _TokenizerCfg:
         default_discovery_limit = 7
         max_discovery_limit = 9
+
 
     ###############################################################################
     class _Settings:
@@ -1981,6 +2049,7 @@ def test_tokenizer_discovery_enforces_runtime_maximum(monkeypatch) -> None:
 
     assert response.status_code == 422
     assert "configured maximum (9)" in response.json()["detail"]
+
 
 ###############################################################################
 def test_tokenizer_discovery_rejects_invalid_query(monkeypatch) -> None:
@@ -2014,6 +2083,7 @@ def test_tokenizer_discovery_rejects_invalid_query(monkeypatch) -> None:
     )
     assert called["value"] is False
 
+
 ###############################################################################
 def test_tokenizer_preview_enforces_input_limits(monkeypatch) -> None:
     from server.contracts.tokenizers import TokenizerPreviewResult
@@ -2022,9 +2092,7 @@ def test_tokenizer_preview_enforces_input_limits(monkeypatch) -> None:
     def fake_preview(self, request):
         del self
         return [
-            TokenizerPreviewResult(
-                tokenizer_name=name, status="success", token_count=0
-            )
+            TokenizerPreviewResult(tokenizer_name=name, status="success", token_count=0)
             for name in request.tokenizers
         ]
 
@@ -2046,6 +2114,7 @@ def test_tokenizer_preview_enforces_input_limits(monkeypatch) -> None:
     )
     assert response.status_code == 200
     assert [item["tokenizer_name"] for item in response.json()["results"]] == ["gpt2"]
+
 
 ###############################################################################
 def test_tokenizer_list_passes_catalog_filters_to_service(monkeypatch) -> None:
@@ -2091,6 +2160,7 @@ def test_tokenizer_list_passes_catalog_filters_to_service(monkeypatch) -> None:
         "vocabulary_size": 5,
     }
 
+
 ###############################################################################
 def test_key_encryption_must_be_initialized_before_adding_keys(
     tmp_path: Path, monkeypatch
@@ -2107,10 +2177,9 @@ def test_key_encryption_must_be_initialized_before_adding_keys(
     assert client.get("/api/keys/encryption").json() == {"initialized": True}
     assert client.post("/api/keys/encryption/initialize").status_code == 409
 
+
 ###############################################################################
-def test_path_settings_persist_and_flag_restart(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_path_settings_persist_and_flag_restart(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("TKBEN_PATHS_CONFIG", str(tmp_path / "paths-config.json"))
     client = TestClient(app)
     new_data = tmp_path / "new-data"

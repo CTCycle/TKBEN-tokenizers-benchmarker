@@ -15,6 +15,7 @@ from server.repositories.schemas.models import ManagedJob
 
 TERMINAL_STATUSES = ("completed", "failed", "cancelled")
 
+
 ###############################################################################
 class JobRepository:
 
@@ -98,7 +99,9 @@ class JobRepository:
         """Delete the oldest finished jobs once the table exceeds `max_jobs`."""
         with self.write_lock:
             with self._session() as session:
-                excess = (session.scalar(select(func.count(ManagedJob.job_id))) or 0) - max_jobs
+                excess = (
+                    session.scalar(select(func.count(ManagedJob.job_id))) or 0
+                ) - max_jobs
                 if excess <= 0:
                     return
                 oldest = (

@@ -7,12 +7,14 @@ from dataclasses import dataclass
 from collections.abc import Mapping, Sequence
 from typing import Any, Protocol, cast
 
+
 ###############################################################################
 @dataclass(frozen=True)
 class EncodedBatch:
     token_counts: list[int]
     unknown_counts: list[int | None]
     input_ids_by_doc: list[list[int]]
+
 
 ###############################################################################
 class TokenizerAdapter(Protocol):
@@ -28,6 +30,7 @@ class TokenizerAdapter(Protocol):
         truncation: bool,
         max_length: int | None,
     ) -> EncodedBatch: ...
+
 
 ###############################################################################
 class UniversalTokenizerAdapter:
@@ -138,9 +141,7 @@ class UniversalTokenizerAdapter:
                         )
                     no_truncation()
 
-                encodings = encode_batch(
-                    as_list, add_special_tokens=add_special_tokens
-                )
+                encodings = encode_batch(as_list, add_special_tokens=add_special_tokens)
                 if not isinstance(encodings, Sequence):
                     raise ValueError("Tokenizer returned an invalid encoding batch.")
                 normalized_ids = [self._normalize_ids(item) for item in encodings]

@@ -24,9 +24,11 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from server.repositories.schemas.types import JSONArray, JSONObject, UTCDateTime
 
+
 ###############################################################################
 class Base(DeclarativeBase):
     pass
+
 
 ###############################################################################
 class Dataset(Base):
@@ -71,6 +73,7 @@ class Dataset(Base):
         lazy="raise",
     )
 
+
 ###############################################################################
 class DatasetDocument(Base):
     __tablename__ = "dataset_document"
@@ -93,6 +96,7 @@ class DatasetDocument(Base):
         lazy="raise",
         overlaps="metric_values,session",
     )
+
 
 ###############################################################################
 class AnalysisSession(Base):
@@ -148,6 +152,7 @@ class AnalysisSession(Base):
         passive_deletes=True,
         lazy="raise",
     )
+
 
 ###############################################################################
 class MetricValue(Base):
@@ -208,6 +213,7 @@ class MetricValue(Base):
         back_populates="metric_values", lazy="raise", overlaps="metric_values,session"
     )
 
+
 ###############################################################################
 class HistogramArtifact(Base):
     __tablename__ = "histogram_artifact"
@@ -238,6 +244,7 @@ class HistogramArtifact(Base):
         back_populates="histograms", lazy="raise"
     )
 
+
 ###############################################################################
 class Tokenizer(Base):
     __tablename__ = "tokenizer"
@@ -266,6 +273,7 @@ class Tokenizer(Base):
         lazy="raise",
     )
 
+
 ###############################################################################
 class TokenizerVocabulary(Base):
     __tablename__ = "tokenizer_vocabulary"
@@ -283,6 +291,7 @@ class TokenizerVocabulary(Base):
     tokenizer: Mapped[Tokenizer] = relationship(
         back_populates="vocabularies", lazy="raise"
     )
+
 
 ###############################################################################
 class TokenizerReport(Base):
@@ -304,6 +313,7 @@ class TokenizerReport(Base):
         CheckConstraint("report_version > 0", name="ck_tokenizer_report_version"),
     )
     tokenizer: Mapped[Tokenizer] = relationship(back_populates="reports", lazy="raise")
+
 
 ###############################################################################
 class BenchmarkReport(Base):
@@ -342,6 +352,7 @@ class BenchmarkReport(Base):
         back_populates="benchmark_reports", lazy="raise"
     )
 
+
 ###############################################################################
 class HFAccessKey(Base):
     __tablename__ = "hf_access_keys"
@@ -361,6 +372,7 @@ class HFAccessKey(Base):
         ),
         Index("ix_hf_access_keys_active_id", "is_active", "id"),
     )
+
 
 ###############################################################################
 class ManagedJob(Base):
@@ -392,6 +404,7 @@ class ManagedJob(Base):
         Index("ix_managed_job_created_at", "created_at"),
     )
 
+
 ###############################################################################
 class RuntimeSettingsRecord(Base):
     __tablename__ = "application_runtime_settings"
@@ -409,7 +422,11 @@ class RuntimeSettingsRecord(Base):
     )
     __table_args__ = (
         CheckConstraint("id = 1", name="ck_runtime_settings_singleton"),
-        CheckConstraint("schema_version > 0", name="ck_runtime_settings_schema_version"),
+        CheckConstraint(
+            "schema_version > 0", name="ck_runtime_settings_schema_version"
+        ),
         CheckConstraint("revision >= 0", name="ck_runtime_settings_revision"),
-        CheckConstraint("dashboard_revision >= 0", name="ck_dashboard_settings_revision"),
+        CheckConstraint(
+            "dashboard_revision >= 0", name="ck_dashboard_settings_revision"
+        ),
     )

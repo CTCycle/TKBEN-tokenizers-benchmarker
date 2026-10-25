@@ -68,6 +68,7 @@ STOPWORDS: dict[str, set[str]] = {
     "it": {"di", "e", "il", "la", "che", "a", "per", "in", "un", "del", "le", "si"},
 }
 
+
 ###############################################################################
 @dataclass
 class RunningMoments:
@@ -129,6 +130,7 @@ class RunningMoments:
         )
         return (m4 / (var * var)) - 3.0
 
+
 ###############################################################################
 class RollingMattr:
 
@@ -158,6 +160,7 @@ class RollingMattr:
         if self.total_windows == 0:
             return 0.0
         return self.sum_ttr / float(self.total_windows)
+
 
 ###############################################################################
 class DatasetMetricsEngine:

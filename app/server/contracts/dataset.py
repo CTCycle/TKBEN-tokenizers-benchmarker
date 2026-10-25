@@ -16,6 +16,7 @@ from server.common.utils.security import (
 WORD_TOKEN_DESCRIPTION = "Word token"
 FREQUENCY_COUNT_DESCRIPTION = "Frequency count"
 
+
 ###############################################################################
 class HistogramData(BaseModel):
     bins: list[str] = Field(
@@ -29,6 +30,7 @@ class HistogramData(BaseModel):
     max_length: int = Field(default=0, description="Maximum document length")
     mean_length: float = Field(default=0.0, description="Mean document length")
     median_length: float = Field(default=0.0, description="Median document length")
+
 
 ###############################################################################
 class DatasetDownloadConfigs(BaseModel):
@@ -46,6 +48,7 @@ class DatasetDownloadConfigs(BaseModel):
             max_length=120,
         )
 
+
 ###############################################################################
 class DatasetDownloadRequest(BaseModel):
     corpus: str = Field(..., description="HuggingFace dataset corpus identifier")
@@ -59,6 +62,7 @@ class DatasetDownloadRequest(BaseModel):
     @classmethod
     def validate_corpus(cls, value: str) -> str:
         return normalize_identifier(value, "Dataset id", max_length=160)
+
 
 ###############################################################################
 class DatasetAnalysisRequest(BaseModel):
@@ -131,8 +135,11 @@ class DatasetAnalysisRequest(BaseModel):
     # -------------------------------------------------------------------------
     @field_validator("filters")
     @classmethod
-    def validate_filter_range(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
+    def validate_filter_range(
+        cls, value: dict[str, Any] | None
+    ) -> dict[str, Any] | None:
         return _validate_filter_range(value)
+
 
 ###############################################################################
 def _validate_filter_range(value: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -147,8 +154,11 @@ def _validate_filter_range(value: dict[str, Any] | None) -> dict[str, Any] | Non
         and not isinstance(max_length, bool)
         and min_length > max_length
     ):
-        raise ValueError("Minimum document length must not exceed maximum document length.")
+        raise ValueError(
+            "Minimum document length must not exceed maximum document length."
+        )
     return value
+
 
 ###############################################################################
 class DatasetValidationPreviewRequest(BaseModel):
@@ -173,14 +183,18 @@ class DatasetValidationPreviewRequest(BaseModel):
     # -------------------------------------------------------------------------
     @field_validator("filters")
     @classmethod
-    def validate_filter_range(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
+    def validate_filter_range(
+        cls, value: dict[str, Any] | None
+    ) -> dict[str, Any] | None:
         return _validate_filter_range(value)
+
 
 ###############################################################################
 class DatasetValidationPreviewBin(BaseModel):
     start: int = Field(..., description="Inclusive lower document length of the bin")
     end: int = Field(..., description="Inclusive upper document length of the bin")
     count: int = Field(..., description="Documents inside the bin")
+
 
 ###############################################################################
 class DatasetValidationPreviewResponse(BaseModel):
@@ -198,10 +212,12 @@ class DatasetValidationPreviewResponse(BaseModel):
         ..., description="Documents the validation run is expected to analyze"
     )
 
+
 ###############################################################################
 class WordFrequency(BaseModel):
     word: str = Field(..., description=WORD_TOKEN_DESCRIPTION)
     count: int = Field(..., description=FREQUENCY_COUNT_DESCRIPTION)
+
 
 ###############################################################################
 class WordLengthItem(BaseModel):
@@ -209,11 +225,13 @@ class WordLengthItem(BaseModel):
     length: int = Field(..., description="Character length of word")
     count: int = Field(..., description=FREQUENCY_COUNT_DESCRIPTION)
 
+
 ###############################################################################
 class WordCloudTerm(BaseModel):
     word: str = Field(..., description=WORD_TOKEN_DESCRIPTION)
     count: int = Field(..., description=FREQUENCY_COUNT_DESCRIPTION)
     weight: int = Field(..., description="Relative display weight (1-100)")
+
 
 ###############################################################################
 class PerDocumentStats(BaseModel):
@@ -222,6 +240,7 @@ class PerDocumentStats(BaseModel):
     word_counts: list[int] = Field(default_factory=list)
     avg_word_lengths: list[float] = Field(default_factory=list)
     std_word_lengths: list[float] = Field(default_factory=list)
+
 
 ###############################################################################
 class DatasetAnalysisResponse(BaseModel):
@@ -283,6 +302,7 @@ class DatasetAnalysisResponse(BaseModel):
         description="Compact per-document statistics arrays ordered by document_id",
     )
 
+
 ###############################################################################
 class DatasetMetricCatalogMetric(BaseModel):
     key: str = Field(..., description="Stable metric key")
@@ -294,20 +314,24 @@ class DatasetMetricCatalogMetric(BaseModel):
     )
     core: bool = Field(default=False, description="High-signal core metric")
 
+
 ###############################################################################
 class DatasetMetricCatalogCategory(BaseModel):
     category_key: str = Field(..., description="Category key")
     category_label: str = Field(..., description="Category label")
     metrics: list[DatasetMetricCatalogMetric] = Field(default_factory=list)
 
+
 ###############################################################################
 class DatasetMetricCatalogResponse(BaseModel):
     categories: list[DatasetMetricCatalogCategory] = Field(default_factory=list)
+
 
 ###############################################################################
 class DatasetPreview(BaseModel):
     dataset_name: str = Field(..., description="Dataset identifier")
     document_count: int = Field(..., description="Number of documents")
+
 
 ###############################################################################
 class DatasetListResponse(BaseModel):
@@ -317,6 +341,7 @@ class DatasetListResponse(BaseModel):
         default_factory=list, description="List of dataset names in the database"
     )
     count: int = Field(default=0, ge=0)
+
 
 ###############################################################################
 class DatasetDeleteResponse(BaseModel):

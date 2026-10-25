@@ -13,6 +13,7 @@ ROOT_DIR = Path(__file__).resolve().parents[3]
 SERVER_DIR = ROOT_DIR / "app" / "server"
 CACHE_PATH = (ROOT_DIR / "runtimes" / "cache").resolve()
 
+
 ###############################################################################
 def _resolve_data_path(configured_path: str | None) -> Path:
     return resolve_runtime_path(configured_path, ROOT_DIR / "data")

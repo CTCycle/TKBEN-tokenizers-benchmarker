@@ -13,6 +13,7 @@ from server.configurations import DatabaseSettings, ServerSettings, get_server_s
 from server.repositories.database.postgres import PostgresRepository
 from server.repositories.database.sqlite import SQLiteRepository
 
+
 ###############################################################################
 class DatabaseBackend(Protocol):
     engine: Any
@@ -35,13 +36,16 @@ class DatabaseBackend(Protocol):
         conflict_columns: list[str],
     ) -> None: ...
 
+
 ###############################################################################
 def build_sqlite_backend(settings: DatabaseSettings) -> DatabaseBackend:
     return SQLiteRepository(settings)
 
+
 ###############################################################################
 def build_postgres_backend(settings: DatabaseSettings) -> DatabaseBackend:
     return PostgresRepository(settings)
+
 
 ###############################################################################
 class TKBENDatabase:
@@ -73,7 +77,9 @@ class TKBENDatabase:
         return getattr(self.backend, "db_path", None)
 
     # -------------------------------------------------------------------------
-    def activate(self, candidate: "TKBENDatabase") -> tuple[DatabaseSettings, DatabaseBackend]:
+    def activate(
+        self, candidate: "TKBENDatabase"
+    ) -> tuple[DatabaseSettings, DatabaseBackend]:
         """Atomically point all shared repositories at a validated backend."""
         with self._lock:
             previous = (self.settings, self.backend)
@@ -85,6 +91,7 @@ class TKBENDatabase:
     def restore(self, previous: tuple[DatabaseSettings, DatabaseBackend]) -> None:
         with self._lock:
             self.settings, self.backend = previous
+
 
 ###############################################################################
 @cache

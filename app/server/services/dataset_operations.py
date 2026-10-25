@@ -22,6 +22,7 @@ from server.repositories.datasets import DatasetRepository
 from server.common.metric_catalog import default_selected_metric_keys
 from server.services.metrics.engine import DatasetMetricsEngine
 
+
 ###############################################################################
 class DatasetServiceOperationsMixin:
     """Dataset operation slice with an explicit concrete-host contract."""
@@ -451,8 +452,7 @@ class DatasetServiceOperationsMixin:
                         last_logged = saved_count
                     if progress_callback:
                         progress_value = (
-                            15.0
-                            + (saved_count / max(stats.document_count, 1)) * 85.0
+                            15.0 + (saved_count / max(stats.document_count, 1)) * 85.0
                         )
                         progress_callback(progress_value)
                     batch.clear()
@@ -634,9 +634,7 @@ class DatasetServiceOperationsMixin:
         min_length, max_length, exclude_empty = self.resolve_length_filters(
             filter_config
         )
-        normalized_fraction, normalized_count = self.normalize_sampling(
-            sampling_config
-        )
+        normalized_fraction, normalized_count = self.normalize_sampling(sampling_config)
 
         engine = DatasetMetricsEngine(parameters=parameters)
         per_doc_buffer: list[dict[str, Any]] = []

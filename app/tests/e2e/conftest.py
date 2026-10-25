@@ -4,6 +4,7 @@
 import pytest
 from playwright.sync_api import APIRequestContext
 
+
 ###############################################################################
 def _custom_dataset_names(api_context: APIRequestContext) -> set[str]:
     response = api_context.get("/api/datasets/list")
@@ -16,6 +17,7 @@ def _custom_dataset_names(api_context: APIRequestContext) -> set[str]:
         and str(item.get("dataset_name", "")).startswith("custom/")
     }
 
+
 ###############################################################################
 def _custom_tokenizer_names(api_context: APIRequestContext) -> set[str]:
     response = api_context.get("/api/tokenizers/list")
@@ -26,6 +28,7 @@ def _custom_tokenizer_names(api_context: APIRequestContext) -> set[str]:
         for item in response.json().get("tokenizers", [])
         if isinstance(item, dict) and item.get("source") == "custom"
     }
+
 
 ###############################################################################
 @pytest.fixture(scope="session", autouse=True)

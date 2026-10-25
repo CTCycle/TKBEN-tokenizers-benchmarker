@@ -49,6 +49,7 @@ from server.contracts.settings import (
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_SETTINGS, tags=["settings"])
 
+
 ###############################################################################
 def _build_response() -> RuntimeSettingsResponse:
     state = get_runtime_settings_state()
@@ -59,6 +60,7 @@ def _build_response() -> RuntimeSettingsResponse:
         overridden_keys=cast(list[RuntimeSettingKey], list(state.overridden_keys)),
         warning=state.warning,
     )
+
 
 ###############################################################################
 def _runtime_values(settings: ServerSettings) -> RuntimeSettingsValues:
@@ -90,6 +92,7 @@ def _runtime_values(settings: ServerSettings) -> RuntimeSettingsValues:
         ),
     )
 
+
 ###############################################################################
 def _raise_settings_error(exc: RuntimeSettingsValidationError) -> None:
     raise HTTPException(
@@ -97,9 +100,11 @@ def _raise_settings_error(exc: RuntimeSettingsValidationError) -> None:
         detail=str(exc),
     ) from exc
 
+
 ###############################################################################
 def _replace_application_snapshot(request: Request) -> None:
     request.app.state.settings = get_runtime_settings_state().settings
+
 
 ###############################################################################
 def _build_path_response(request: Request) -> PathSettingsResponse:
@@ -119,6 +124,7 @@ def _build_path_response(request: Request) -> PathSettingsResponse:
         restart_required=restart_required,
     )
 
+
 ###############################################################################
 @router.get(
     API_ROUTE_SETTINGS_PATHS,
@@ -127,6 +133,7 @@ def _build_path_response(request: Request) -> PathSettingsResponse:
 )
 async def get_path_settings(request: Request) -> PathSettingsResponse:
     return _build_path_response(request)
+
 
 ###############################################################################
 @router.put(
@@ -164,6 +171,7 @@ async def put_path_settings(
         ) from exc
     return _build_path_response(request)
 
+
 ###############################################################################
 @router.get(
     "",
@@ -172,6 +180,7 @@ async def put_path_settings(
 )
 async def get_settings() -> RuntimeSettingsResponse:
     return _build_response()
+
 
 ###############################################################################
 @router.get(
@@ -185,6 +194,7 @@ async def get_dashboard_preferences() -> DashboardUiPreferencesResponse:
         revision=state.revision,
         preferences=state.preferences,
     )
+
 
 ###############################################################################
 @router.put(
@@ -214,6 +224,7 @@ async def put_dashboard_preferences(
         revision=state.revision,
         preferences=state.preferences,
     )
+
 
 ###############################################################################
 @router.patch(
@@ -251,6 +262,7 @@ async def patch_settings(
     response = _build_response()
     _replace_application_snapshot(request)
     return response
+
 
 ###############################################################################
 @router.post(

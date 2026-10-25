@@ -12,6 +12,7 @@ from server.contracts.tokenizers import (
 from server.services.benchmarks import BenchmarkService
 from server.services.tokenizer_adapters import UniversalTokenizerAdapter
 
+
 ###############################################################################
 class TokenizerPreviewService:
     """Encode a short text with persisted tokenizers without storing results."""

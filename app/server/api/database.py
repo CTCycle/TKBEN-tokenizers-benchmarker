@@ -24,6 +24,7 @@ from server.services.database_switch import (
 
 router = APIRouter(prefix="/database", tags=["database"])
 
+
 ###############################################################################
 def _configuration_response(
     configuration: StoredDatabaseConfiguration,
@@ -48,6 +49,7 @@ def _configuration_response(
         message=message,
     )
 
+
 ###############################################################################
 @router.get("", response_model=DatabaseConfigurationResponse)
 async def get_database_configuration() -> DatabaseConfigurationResponse:
@@ -59,6 +61,7 @@ async def get_database_configuration() -> DatabaseConfigurationResponse:
             message="The active database is unavailable. Check the connection settings.",
         )
     return _configuration_response(configuration, connection_status="connected")
+
 
 ###############################################################################
 @router.post("/test", response_model=DatabaseConnectionTestResponse)
@@ -76,6 +79,7 @@ async def test_database_connection(
             "credentials, and SSL options."
         ),
     )
+
 
 ###############################################################################
 @router.post("/switch", response_model=DatabaseConfigurationResponse)

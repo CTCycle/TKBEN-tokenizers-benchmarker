@@ -236,6 +236,7 @@ EXPECTED_DATASET_METRICS: dict[str, Any] = {
     "words.zipf_slope": -0.7195898875112114,
 }
 
+
 ###############################################################################
 def _assert_metric_value(
     actual: Any, expected: Any, metric_key: str, path: str = ""
@@ -296,6 +297,7 @@ def _assert_metric_value(
 
     assert actual == expected, f"{location} mismatch: expected {expected}, got {actual}"
 
+
 ###############################################################################
 def _dataset_metric_keys() -> list[str]:
     return [
@@ -304,6 +306,7 @@ def _dataset_metric_keys() -> list[str]:
         for metric in category.get("metrics", [])
         if isinstance(metric, dict) and isinstance(metric.get("key"), str)
     ]
+
 
 ###############################################################################
 def _extract_metric_value_map() -> dict[str, Any]:
@@ -352,10 +355,12 @@ def _extract_metric_value_map() -> dict[str, Any]:
             extracted[key] = aggregate_values[key]
     return extracted
 
+
 ###############################################################################
 @pytest.fixture(scope="module")
 def actual_dataset_metrics() -> dict[str, Any]:
     return _extract_metric_value_map()
+
 
 ###############################################################################
 def test_dataset_metric_expected_fixture_matches_catalog() -> None:
@@ -371,6 +376,7 @@ def test_dataset_metric_expected_fixture_matches_catalog() -> None:
         f"Extra={sorted(expected_keys - catalog_keys)}"
     )
 
+
 ###############################################################################
 @pytest.mark.parametrize("metric_key", sorted(EXPECTED_DATASET_METRICS.keys()))
 def test_dataset_analysis_metric_correctness(
@@ -384,19 +390,19 @@ def test_dataset_analysis_metric_correctness(
     actual = actual_dataset_metrics[metric_key]
     _assert_metric_value(actual, expected, metric_key=metric_key)
 
-###############################################################################
-
 
 ###############################################################################
 def test_dataset_download_request_requires_configs() -> None:
     with pytest.raises(ValidationError):
         DatasetDownloadRequest(corpus="wikitext")
 
+
 ###############################################################################
 def test_dataset_download_request_allows_missing_configuration() -> None:
     request = DatasetDownloadRequest(corpus="c4", configs={})
     assert request.corpus == "c4"
     assert request.configs.configuration is None
+
 
 ###############################################################################
 def test_dataset_download_request_accepts_configuration() -> None:
@@ -405,6 +411,7 @@ def test_dataset_download_request_accepts_configuration() -> None:
         configs={"configuration": "wikitext-2-v1"},
     )
     assert request.configs.configuration == "wikitext-2-v1"
+
 
 ###############################################################################
 def test_upload_existing_dataset_is_non_destructive(
@@ -443,6 +450,7 @@ def test_upload_existing_dataset_is_non_destructive(
     assert result == expected_payload
     assert delete_calls == []
 
+
 ###############################################################################
 def test_get_hf_access_token_for_download_falls_back_to_none_on_invalid_key(
     monkeypatch: pytest.MonkeyPatch,
@@ -454,6 +462,7 @@ def test_get_hf_access_token_for_download_falls_back_to_none_on_invalid_key(
 
     monkeypatch.setattr(service.key_service, "get_active_key", raise_invalid_key)
     assert service.get_hf_access_token_for_download() is None
+
 
 ###############################################################################
 def test_preselected_dataset_aliases_cover_all_ui_presets() -> None:
@@ -485,6 +494,7 @@ def test_preselected_dataset_aliases_cover_all_ui_presets() -> None:
     }
     assert expected_presets.issubset(set(HF_DATASET_ALIASES.keys()))
 
+
 ###############################################################################
 def test_c4_preset_uses_bounded_streaming_training_sample() -> None:
     target = DatasetService().resolve_dataset_download(corpus="c4", config=None)
@@ -495,12 +505,14 @@ def test_c4_preset_uses_bounded_streaming_training_sample() -> None:
     assert target.streaming is True
     assert target.max_documents == 10000
 
+
 ###############################################################################
 def test_the_pile_preset_is_disabled_with_clear_error() -> None:
     service = DatasetService()
     with pytest.raises(ValueError) as exc_info:
         service.resolve_dataset_download(corpus="the_pile", config=None)
     assert "disabled" in str(exc_info.value)
+
 
 ###############################################################################
 def configure_download_success_mocks(
@@ -529,6 +541,7 @@ def configure_download_success_mocks(
         ),
     )
     monkeypatch.setattr(service, "maybe_cleanup_downloaded_source", lambda *args: None)
+
 
 ###############################################################################
 def test_download_and_persist_keeps_wikitext_working(
@@ -562,6 +575,7 @@ def test_download_and_persist_keeps_wikitext_working(
     assert captured["corpus"] == "wikitext"
     assert captured["config"] == "wikitext-2-v1"
     assert result["dataset_name"] == "wikitext/wikitext-2-v1"
+
 
 ###############################################################################
 def test_download_and_persist_maps_c4_friendly_name(
@@ -598,6 +612,7 @@ def test_download_and_persist_maps_c4_friendly_name(
     assert captured["kwargs"] == {"split": "train", "streaming": True}
     assert result["dataset_name"] == "c4/en"
 
+
 ###############################################################################
 def test_download_and_persist_maps_arxiv_to_canonical_hf_repo(
     monkeypatch: pytest.MonkeyPatch,
@@ -628,6 +643,7 @@ def test_download_and_persist_maps_arxiv_to_canonical_hf_repo(
     assert captured["corpus"] == "ccdv/arxiv-summarization"
     assert captured["config"] is None
     assert result["dataset_name"] == "arxiv"
+
 
 ###############################################################################
 def test_download_and_persist_success_triggers_source_cleanup(
@@ -665,6 +681,7 @@ def test_download_and_persist_success_triggers_source_cleanup(
     assert result["dataset_name"] == "wikitext/wikitext-2-v1"
     assert len(cleanup_calls) == 1
     assert cleanup_calls[0][1] == "wikitext/wikitext-2-v1"
+
 
 ###############################################################################
 def test_download_and_persist_failed_import_does_not_cleanup_sources(
@@ -719,6 +736,7 @@ def test_download_and_persist_failed_import_does_not_cleanup_sources(
 
     assert cleanup_calls == []
 
+
 ###############################################################################
 def test_download_and_persist_uses_database_for_existence_not_filesystem(
     monkeypatch: pytest.MonkeyPatch,
@@ -753,6 +771,7 @@ def test_download_and_persist_uses_database_for_existence_not_filesystem(
     assert result["dataset_name"] == "wikitext/wikitext-2-v1"
     assert database_checks == ["wikitext/wikitext-2-v1"]
 
+
 ###############################################################################
 def test_download_and_persist_classifies_invalid_dataset_or_config(
     monkeypatch: pytest.MonkeyPatch,
@@ -776,6 +795,7 @@ def test_download_and_persist_classifies_invalid_dataset_or_config(
     assert "job=job00001" in message
     assert "'unknown_dataset_name'" in message
 
+
 ###############################################################################
 def test_download_and_persist_classifies_unsupported_dataset_script(
     monkeypatch: pytest.MonkeyPatch,
@@ -798,6 +818,7 @@ def test_download_and_persist_classifies_unsupported_dataset_script(
     assert "requires a legacy dataset script" in message
     assert "job=job00004" in message
     assert "'EleutherAI/pile/all'" in message
+
 
 ###############################################################################
 def test_download_and_persist_classifies_gated_or_auth_errors(
@@ -827,6 +848,7 @@ def test_download_and_persist_classifies_gated_or_auth_errors(
     assert "job=job00002" in message
     assert "'oscar-corpus/OSCAR-2201/en'" in message
     assert "No valid decryptable Hugging Face token is currently configured." in message
+
 
 ###############################################################################
 def test_load_dataset_with_progress_reports_stage_progress(
@@ -858,6 +880,7 @@ def test_load_dataset_with_progress_reports_stage_progress(
     assert progress_values
     assert progress_values[0] == 5.0
     assert progress_values[-1] == 15.0
+
 
 ###############################################################################
 def test_load_dataset_with_progress_limits_streaming_datasets(
@@ -891,6 +914,7 @@ def test_load_dataset_with_progress_limits_streaming_datasets(
     streaming_dataset.take.assert_called_once_with(2)
     assert limited_dataset is limited_streaming_dataset
 
+
 ###############################################################################
 def test_download_and_persist_stops_before_retry_when_cancelled(
     monkeypatch: pytest.MonkeyPatch,
@@ -923,6 +947,7 @@ def test_download_and_persist_stops_before_retry_when_cancelled(
     assert state["attempts"] == 1
     assert cleanup_calls == ["wikitext/wikitext-2-v1"]
 
+
 ###############################################################################
 def test_download_and_persist_classifies_network_errors(
     monkeypatch: pytest.MonkeyPatch,
@@ -944,6 +969,7 @@ def test_download_and_persist_classifies_network_errors(
     message = str(exc_info.value)
     assert "network/transient error" in message
     assert "job=job00003" in message
+
 
 ###############################################################################
 def test_download_and_persist_retries_transient_failures_with_backoff(
@@ -977,6 +1003,7 @@ def test_download_and_persist_retries_transient_failures_with_backoff(
     assert attempts["count"] == 3
     assert sleep_calls == [0.25, 0.5]
 
+
 ###############################################################################
 def test_download_and_persist_does_not_retry_non_transient_failures(
     monkeypatch: pytest.MonkeyPatch,
@@ -1008,6 +1035,7 @@ def test_download_and_persist_does_not_retry_non_transient_failures(
     assert attempts["count"] == 1
     assert sleep_calls == []
 
+
 ###############################################################################
 def test_download_and_persist_timeout_is_reported_as_provider_timeout(
     monkeypatch: pytest.MonkeyPatch,
@@ -1034,6 +1062,7 @@ def test_download_and_persist_timeout_is_reported_as_provider_timeout(
     assert "did not finish loading" in message
     assert "job=job-timeout" in message
 
+
 ###############################################################################
 def test_upload_and_persist_hides_internal_parser_errors(
     monkeypatch: pytest.MonkeyPatch,
@@ -1053,8 +1082,6 @@ def test_upload_and_persist_hides_internal_parser_errors(
         "Could not read the uploaded file. Check the file format and try again."
     )
 
-###############################################################################
-
 
 ###############################################################################
 def test_build_analysis_payload_preserves_contract() -> None:
@@ -1072,6 +1099,7 @@ def test_build_analysis_payload_preserves_contract() -> None:
     assert payload["dataset_name"] == "custom/demo"
     assert payload["report_id"] == 1
 
+
 ###############################################################################
 def test_extract_configuration_handles_missing() -> None:
     service = DatasetJobService()
@@ -1079,8 +1107,6 @@ def test_extract_configuration_handles_missing() -> None:
     assert (
         service.extract_configuration({"configs": {"configuration": " abc "}}) == "abc"
     )
-
-###############################################################################
 
 
 ###############################################################################
@@ -1099,6 +1125,7 @@ def _build_service(monkeypatch: pytest.MonkeyPatch) -> tuple[DatasetService, Eng
     service.streaming_batch_size = 1
     service.log_interval = 1
     return service, engine
+
 
 ###############################################################################
 def test_near_limit_csv_import_persists_large_text(monkeypatch) -> None:
@@ -1133,6 +1160,7 @@ def test_near_limit_csv_import_persists_large_text(monkeypatch) -> None:
     finally:
         engine.dispose()
 
+
 ###############################################################################
 @pytest.mark.parametrize("import_kind", ["upload", "download"])
 def test_sqlite_full_cleans_partial_import_and_retry_succeeds(
@@ -1152,7 +1180,9 @@ def test_sqlite_full_cleans_partial_import_and_retry_succeeds(
         saved_batches += 1
         if saved_batches == 1:
             with engine.connect() as connection:
-                page_count = connection.exec_driver_sql("PRAGMA page_count").scalar_one()
+                page_count = connection.exec_driver_sql(
+                    "PRAGMA page_count"
+                ).scalar_one()
                 connection.exec_driver_sql(f"PRAGMA max_page_count={page_count}")
                 connection.commit()
 
@@ -1170,9 +1200,7 @@ def test_sqlite_full_cleans_partial_import_and_retry_succeeds(
             )
             return result["saved_count"]
 
-        dataset = HuggingFaceDataset.from_dict(
-            {"text": ["first", "x" * 100_000]}
-        )
+        dataset = HuggingFaceDataset.from_dict({"text": ["first", "x" * 100_000]})
         stats = service.collect_length_statistics(
             service.dataset_length_stream(dataset, "text", remove_invalid=True)
         )
@@ -1194,9 +1222,7 @@ def test_sqlite_full_cleans_partial_import_and_retry_succeeds(
             leftover = session.scalar(
                 select(Dataset).where(Dataset.name == dataset_name)
             )
-            leftover_documents = session.scalar(
-                select(func.count(DatasetDocument.id))
-            )
+            leftover_documents = session.scalar(select(func.count(DatasetDocument.id)))
         assert leftover is None
         assert leftover_documents == 0
 
@@ -1225,8 +1251,6 @@ def test_sqlite_full_cleans_partial_import_and_retry_succeeds(
         assert document_count == 2
     finally:
         engine.dispose()
-
-###############################################################################
 
 
 ###############################################################################
@@ -1262,6 +1286,7 @@ def test_streaming_preserves_empty_and_unicode_rows(monkeypatch) -> None:
         repository.iterate_dataset_rows_for_benchmarks("custom/stream", batch_size=2)
     )
     assert [text for _, text in rows] == ["", " ", "emoji 😀", "CJK 漢字"]
+
 
 ###############################################################################
 def test_validation_preview_reports_filtered_and_sampled_counts(monkeypatch) -> None:
@@ -1306,8 +1331,6 @@ def test_validation_preview_reports_filtered_and_sampled_counts(monkeypatch) -> 
     )
     assert long_only["matching_documents"] == 1
     assert long_only["sampled_documents"] == 1
-
-###############################################################################
 
 
 ###############################################################################

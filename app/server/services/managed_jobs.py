@@ -11,17 +11,21 @@ from server.configurations import get_server_settings
 from server.contracts.jobs import JobStartResponse
 from server.services.jobs import JobManager
 
+
 ###############################################################################
 class ManagedJobError(Exception):
     """Base error for managed-job initialization decisions."""
+
 
 ###############################################################################
 class ManagedJobConflictError(ManagedJobError):
     """Raised when another job of the same type is active."""
 
+
 ###############################################################################
 class ManagedJobInitializationError(ManagedJobError):
     """Raised when a started job cannot be observed immediately."""
+
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -33,13 +37,16 @@ class ManagedJobSpec:
     message: str
     conflict_detail: str | None = None
 
+
 ###############################################################################
 class ManagedJobService:
     """Owns shared conflict, start, and initialization handling for jobs."""
 
     # -------------------------------------------------------------------------
     def start(self, job_manager: JobManager, spec: ManagedJobSpec) -> JobStartResponse:
-        if spec.conflict_detail is not None and job_manager.is_job_running(spec.job_type):
+        if spec.conflict_detail is not None and job_manager.is_job_running(
+            spec.job_type
+        ):
             raise ManagedJobConflictError(spec.conflict_detail)
 
         job_id = job_manager.start_job(

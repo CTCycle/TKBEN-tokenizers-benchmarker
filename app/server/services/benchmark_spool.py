@@ -8,6 +8,7 @@ import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 
+
 ###############################################################################
 class BenchmarkTextSpool:
 

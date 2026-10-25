@@ -14,6 +14,7 @@ logger = logging.getLogger("app")
 _LOGGING_LOCK = RLock()
 _configured_log_directory: Path | None = None
 
+
 ###############################################################################
 def configure_logging(log_directory: str | Path) -> Path:
     global _configured_log_directory

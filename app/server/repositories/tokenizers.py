@@ -15,6 +15,7 @@ from server.repositories.schemas.models import (
     TokenizerVocabulary,
 )
 
+
 ###############################################################################
 class TokenizerRepository:
 

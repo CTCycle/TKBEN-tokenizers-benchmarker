@@ -23,6 +23,7 @@ from server.repositories.tokenizer_reports import TokenizerReportRepository
 from server.services.keys import HFAccessKeyService, HFAccessKeyValidationError
 from server.services.tokenizer_storage import TokenizerStorageMixin
 
+
 ###############################################################################
 class TokenizerReportingService(TokenizerStorageMixin):
     REPORT_VERSION = 1

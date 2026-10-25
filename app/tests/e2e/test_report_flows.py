@@ -329,6 +329,7 @@ def _route_dashboard_api(page: Page) -> None:
         ),
     )
 
+
 ###############################################################################
 def test_cross_benchmark_dashboard_customization_and_accessible_data(
     page: Page, base_url: str
@@ -385,8 +386,10 @@ def test_cross_benchmark_dashboard_customization_and_accessible_data(
     assert max(bar_widths) <= 45
 
     with page.expect_response(
-        lambda response: response.request.method == "PUT"
-        and response.url.endswith("/api/settings/dashboard")
+        lambda response: (
+            response.request.method == "PUT"
+            and response.url.endswith("/api/settings/dashboard")
+        )
     ) as visualization_save:
         page.get_by_role(
             "button", name="Use Horizontal bar chart for Vocabulary size"
@@ -404,6 +407,7 @@ def test_cross_benchmark_dashboard_customization_and_accessible_data(
     expect(tables).to_have_count(4)
     tables.first.click()
     expect(page.get_by_text("Tokenization speed values by tokenizer")).to_be_visible()
+
 
 ###############################################################################
 def test_cross_benchmark_baseline_clone_and_report_tags(
@@ -474,8 +478,9 @@ def test_cross_benchmark_baseline_clone_and_report_tags(
     tags_input = dialog.locator("#report-tags-101")
     tags_input.fill("nightly, release")
     with page.expect_request(
-        lambda request: request.method == "PATCH"
-        and request.url.endswith("/reports/101/tags")
+        lambda request: (
+            request.method == "PATCH" and request.url.endswith("/reports/101/tags")
+        )
     ):
         dialog.get_by_role("button", name="Save tags").click()
     expect(dialog.get_by_text("release", exact=True)).to_be_visible()
@@ -484,10 +489,9 @@ def test_cross_benchmark_baseline_clone_and_report_tags(
     page.get_by_role("button", name="Clone benchmark").click()
     clone_dialog = page.get_by_role("dialog", name="Clone benchmark")
     expect(clone_dialog).to_be_visible()
-    expect(clone_dialog.get_by_label("Run Name")).to_have_value(
-        "Clone of Dashboard QA"
-    )
+    expect(clone_dialog.get_by_label("Run Name")).to_have_value("Clone of Dashboard QA")
     expect(clone_dialog.get_by_label("Max length")).to_have_value("")
+
 
 ###############################################################################
 def test_cross_benchmark_report_manager_search_pagination_and_inline_delete(
@@ -586,13 +590,13 @@ def test_cross_benchmark_report_manager_search_pagination_and_inline_delete(
 
     customize = page.get_by_role("button", name="Customize benchmark dashboard")
     customize.click()
-    customize_dialog = page.get_by_role(
-        "dialog", name="Customize benchmark dashboard"
-    )
+    customize_dialog = page.get_by_role("dialog", name="Customize benchmark dashboard")
     expect(customize_dialog).to_be_visible()
     with page.expect_response(
-        lambda response: response.request.method == "PUT"
-        and response.url.endswith("/api/settings/dashboard")
+        lambda response: (
+            response.request.method == "PUT"
+            and response.url.endswith("/api/settings/dashboard")
+        )
     ) as visibility_save:
         page.get_by_role(
             "checkbox", name="Vocabulary size — Vocabulary entries (tokens, bar)"
@@ -604,8 +608,10 @@ def test_cross_benchmark_report_manager_search_pagination_and_inline_delete(
     restore = page.get_by_role("button", name="Restore default layout")
     expect(restore).to_be_enabled()
     with page.expect_response(
-        lambda response: response.request.method == "PUT"
-        and response.url.endswith("/api/settings/dashboard")
+        lambda response: (
+            response.request.method == "PUT"
+            and response.url.endswith("/api/settings/dashboard")
+        )
     ) as reset_save:
         restore.click()
     assert reset_save.value.ok, reset_save.value.text()
@@ -621,14 +627,17 @@ def test_cross_benchmark_report_manager_search_pagination_and_inline_delete(
     expect(page.get_by_role("alert")).to_contain_text("Export unavailable")
 
 
+###############################################################################
 def test_cross_benchmark_dashboard_pointer_drag_reorders_and_persists(
     page: Page, base_url: str
 ) -> None:
     _route_dashboard_api(page)
     page.set_viewport_size({"width": 1440, "height": 900})
     with page.expect_response(
-        lambda response: response.request.method == "GET"
-        and response.url.endswith("/api/settings/dashboard")
+        lambda response: (
+            response.request.method == "GET"
+            and response.url.endswith("/api/settings/dashboard")
+        )
     ) as initial_preferences:
         page.goto(f"{base_url}/cross-benchmark")
     assert initial_preferences.value.ok, initial_preferences.value.text()
@@ -646,8 +655,10 @@ def test_cross_benchmark_dashboard_pointer_drag_reorders_and_persists(
     assert desktop_positions[0]["x"] != desktop_positions[1]["x"]
 
     with page.expect_response(
-        lambda response: response.request.method == "PUT"
-        and response.url.endswith("/api/settings/dashboard")
+        lambda response: (
+            response.request.method == "PUT"
+            and response.url.endswith("/api/settings/dashboard")
+        )
     ) as layout_save:
         widgets.nth(0).drag_to(widgets.nth(1), steps=10)
     assert layout_save.value.ok, layout_save.value.text()
@@ -658,8 +669,10 @@ def test_cross_benchmark_dashboard_pointer_drag_reorders_and_persists(
     assert reordered != original_order
 
     with page.expect_response(
-        lambda response: response.request.method == "GET"
-        and response.url.endswith("/api/settings/dashboard")
+        lambda response: (
+            response.request.method == "GET"
+            and response.url.endswith("/api/settings/dashboard")
+        )
     ) as reloaded_preferences:
         page.reload()
     assert reloaded_preferences.value.ok, reloaded_preferences.value.text()
@@ -668,14 +681,19 @@ def test_cross_benchmark_dashboard_pointer_drag_reorders_and_persists(
         'section[aria-label="Benchmark metric widgets"] article[role="listitem"]'
     )
     expect(widgets).to_have_count(len(reordered))
-    assert widgets.evaluate_all(
-        "elements => elements.map(element => element.getAttribute('aria-label'))"
-    ) == reordered
+    assert (
+        widgets.evaluate_all(
+            "elements => elements.map(element => element.getAttribute('aria-label'))"
+        )
+        == reordered
+    )
 
     page.set_viewport_size({"width": 390, "height": 1200})
     with page.expect_response(
-        lambda response: response.request.method == "GET"
-        and response.url.endswith("/api/settings/dashboard")
+        lambda response: (
+            response.request.method == "GET"
+            and response.url.endswith("/api/settings/dashboard")
+        )
     ) as mobile_preferences:
         page.reload()
     assert mobile_preferences.value.ok, mobile_preferences.value.text()
@@ -692,12 +710,12 @@ def test_cross_benchmark_dashboard_pointer_drag_reorders_and_persists(
     )
     assert abs(mobile_positions[0]["x"] - mobile_positions[1]["x"]) <= 1
     assert mobile_positions[0]["y"] != mobile_positions[1]["y"]
-    assert page.evaluate(
-        "document.documentElement.scrollWidth <= window.innerWidth"
-    )
+    assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
     with page.expect_response(
-        lambda response: response.request.method == "PUT"
-        and response.url.endswith("/api/settings/dashboard")
+        lambda response: (
+            response.request.method == "PUT"
+            and response.url.endswith("/api/settings/dashboard")
+        )
     ) as mobile_layout_save:
         widgets.nth(0).drag_to(widgets.nth(1), steps=10)
     assert mobile_layout_save.value.ok, mobile_layout_save.value.text()
@@ -707,8 +725,10 @@ def test_cross_benchmark_dashboard_pointer_drag_reorders_and_persists(
     assert mobile_reordered != mobile_order
 
     with page.expect_response(
-        lambda response: response.request.method == "GET"
-        and response.url.endswith("/api/settings/dashboard")
+        lambda response: (
+            response.request.method == "GET"
+            and response.url.endswith("/api/settings/dashboard")
+        )
     ) as persisted_mobile_preferences:
         page.reload()
     assert persisted_mobile_preferences.value.ok, (
@@ -719,9 +739,12 @@ def test_cross_benchmark_dashboard_pointer_drag_reorders_and_persists(
         'section[aria-label="Benchmark metric widgets"] article[role="listitem"]'
     )
     expect(widgets).to_have_count(len(mobile_reordered))
-    assert widgets.evaluate_all(
-        "elements => elements.map(element => element.getAttribute('aria-label'))"
-    ) == mobile_reordered
+    assert (
+        widgets.evaluate_all(
+            "elements => elements.map(element => element.getAttribute('aria-label'))"
+        )
+        == mobile_reordered
+    )
 
 
 ###############################################################################
@@ -733,6 +756,7 @@ RUN_BENCHMARKS = os.getenv("E2E_RUN_BENCHMARKS", "").lower() in {
     "true",
     "yes",
 }
+
 
 ###############################################################################
 def _create_report_in_wizard(
@@ -755,7 +779,11 @@ def _create_report_in_wizard(
     ]
     metric_key = "eff.encode_tokens_per_second_mean"
     selected_metric_index = next(
-        (index for index, metric in enumerate(metric_options) if metric.get("key") == metric_key),
+        (
+            index
+            for index, metric in enumerate(metric_options)
+            if metric.get("key") == metric_key
+        ),
         None,
     )
     assert selected_metric_index is not None, f"Metric {metric_key} is missing"
@@ -794,8 +822,10 @@ def _create_report_in_wizard(
     dialog.get_by_label("Timed trials").fill("1")
     dialog.get_by_label("Batch size").fill("1")
     with page.expect_response(
-        lambda response: response.request.method == "POST"
-        and response.url.endswith("/api/benchmarks/run"),
+        lambda response: (
+            response.request.method == "POST"
+            and response.url.endswith("/api/benchmarks/run")
+        ),
         timeout=30_000,
     ) as run_response_info:
         dialog.get_by_role("button", name="Start benchmark").click()
@@ -836,6 +866,7 @@ def _create_report_in_wizard(
     ).to_be_visible(timeout=30_000)
     return report
 
+
 ###############################################################################
 def _seed_manager_reports(
     source_report: dict[str, Any], stem: str, count: int
@@ -866,6 +897,7 @@ def _seed_manager_reports(
         raise
     return created
 
+
 ###############################################################################
 def _assert_live_announcement_is_visually_hidden(page: Page) -> None:
     announcer = page.locator(".cdk-live-announcer-element")
@@ -875,6 +907,7 @@ def _assert_live_announcement_is_visually_hidden(page: Page) -> None:
     assert box["width"] <= 1 and box["height"] <= 1, (
         f"The accessibility announcement is rendered visibly: {box}"
     )
+
 
 ###############################################################################
 @pytest.mark.skipif(
@@ -944,15 +977,17 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
         page.on("pageerror", lambda error: browser_errors.append(str(error)))
         page.on(
             "console",
-            lambda message: browser_errors.append(message.text)
-            if message.type == "error"
-            else None,
+            lambda message: (
+                browser_errors.append(message.text) if message.type == "error" else None
+            ),
         )
         page.on(
             "response",
-            lambda response: browser_http_errors.append((response.status, response.url))
-            if response.status >= 400
-            else None,
+            lambda response: (
+                browser_http_errors.append((response.status, response.url))
+                if response.status >= 400
+                else None
+            ),
         )
         page.set_viewport_size({"width": 1440, "height": 900})
 
@@ -1038,19 +1073,21 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
 
         baseline = page.get_by_label("Baseline")
         with page.expect_response(
-            lambda response: response.request.method == "PUT"
-            and response.url.endswith("/api/settings/dashboard")
+            lambda response: (
+                response.request.method == "PUT"
+                and response.url.endswith("/api/settings/dashboard")
+            )
         ) as baseline_save:
             baseline.select_option(tokenizer_names[0])
         assert baseline_save.value.ok, baseline_save.value.text()
         comparison_labels = page.locator(".benchmark-comparison-strip__label")
         expect(comparison_labels).to_have_count(3)
-        expect(comparison_labels.first).to_have_text(
-            f"Baseline: {tokenizer_names[0]}"
-        )
+        expect(comparison_labels.first).to_have_text(f"Baseline: {tokenizer_names[0]}")
         page.get_by_text("View data table").first.click()
         comparison_table = page.locator("table.benchmark-data-table").first
-        expect(comparison_table.get_by_role("columnheader", name="Δ vs baseline")).to_be_visible()
+        expect(
+            comparison_table.get_by_role("columnheader", name="Δ vs baseline")
+        ).to_be_visible()
         baseline_row = comparison_table.get_by_role(
             "rowheader", name=tokenizer_names[0]
         ).locator("xpath=..")
@@ -1065,14 +1102,15 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
         stored_preferences_response = api_context.get("/api/settings/dashboard")
         assert stored_preferences_response.ok, stored_preferences_response.text()
         stored_preferences = stored_preferences_response.json()["preferences"]
-        assert stored_preferences["baseline_by_report_id"].get(
-            str(two_tokenizer_id)
-        ) == tokenizer_names[0]
+        assert (
+            stored_preferences["baseline_by_report_id"].get(str(two_tokenizer_id))
+            == tokenizer_names[0]
+        )
 
         with page.expect_response(
-            lambda response: response.request.method == "GET"
-            and response.url.endswith(
-                f"/api/benchmarks/reports/{two_tokenizer_id}"
+            lambda response: (
+                response.request.method == "GET"
+                and response.url.endswith(f"/api/benchmarks/reports/{two_tokenizer_id}")
             )
         ) as reloaded_report_response_info:
             page.reload()
@@ -1087,9 +1125,10 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
         restored_preferences_response = api_context.get("/api/settings/dashboard")
         assert restored_preferences_response.ok, restored_preferences_response.text()
         restored_preferences = restored_preferences_response.json()["preferences"]
-        assert restored_preferences["baseline_by_report_id"].get(
-            str(two_tokenizer_id)
-        ) == tokenizer_names[0]
+        assert (
+            restored_preferences["baseline_by_report_id"].get(str(two_tokenizer_id))
+            == tokenizer_names[0]
+        )
         reloaded_baseline_value = page.get_by_label("Baseline").input_value()
         reloaded_comparison_count = page.locator(
             ".benchmark-comparison-strip__label"
@@ -1110,17 +1149,21 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
         expect(manager.locator(".benchmark-report-row")).to_have_count(25)
         expect(manager.get_by_text("Showing 1–25 of 26", exact=True)).to_be_visible()
         with page.expect_response(
-            lambda response: response.request.method == "GET"
-            and "/api/benchmarks/reports?" in response.url
-            and "offset=25" in response.url
+            lambda response: (
+                response.request.method == "GET"
+                and "/api/benchmarks/reports?" in response.url
+                and "offset=25" in response.url
+            )
         ):
             manager.get_by_role("button", name="Next").click()
         expect(manager.locator(".benchmark-report-row")).to_have_count(1)
         expect(manager.get_by_text("Showing 26–26 of 26", exact=True)).to_be_visible()
         with page.expect_response(
-            lambda response: response.request.method == "GET"
-            and "/api/benchmarks/reports?" in response.url
-            and "offset=0" in response.url
+            lambda response: (
+                response.request.method == "GET"
+                and "/api/benchmarks/reports?" in response.url
+                and "offset=0" in response.url
+            )
         ):
             manager.get_by_role("button", name="Previous").click()
         expect(manager.locator(".benchmark-report-row")).to_have_count(25)
@@ -1133,19 +1176,21 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
         tag_input = tag_row.locator(f"#report-tags-{two_tokenizer_id}")
         tag_input.fill(f"live, {stem}")
         with page.expect_response(
-            lambda response: response.request.method == "PATCH"
-            and response.url.endswith(f"/reports/{two_tokenizer_id}/tags")
+            lambda response: (
+                response.request.method == "PATCH"
+                and response.url.endswith(f"/reports/{two_tokenizer_id}/tags")
+            )
         ) as tag_response_info:
             tag_row.get_by_role("button", name="Save tags").click()
         assert tag_response_info.value.ok
-        persisted_tags = api_context.get(
-            f"/api/benchmarks/reports/{two_tokenizer_id}"
-        ).json().get("tags")
+        persisted_tags = (
+            api_context.get(f"/api/benchmarks/reports/{two_tokenizer_id}")
+            .json()
+            .get("tags")
+        )
         assert persisted_tags == ["live", stem]
         expect(tag_row.get_by_text("live", exact=True)).to_be_visible()
-        manager.get_by_role(
-            "button", name="Close benchmark report manager"
-        ).click()
+        manager.get_by_role("button", name="Close benchmark report manager").click()
         page.reload()
         page.locator(".cross-benchmark-report-selector").click()
         manager = page.get_by_role("dialog", name="Benchmark Reports")
@@ -1198,8 +1243,14 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
             manager_box = manager.evaluate(
                 "element => { const { x, y, width, height } = element.getBoundingClientRect(); return { x, y, width, height }; }"
             )
-            assert manager_box["x"] >= 0 and manager_box["x"] + manager_box["width"] <= width
-            assert manager_box["y"] >= 0 and manager_box["y"] + manager_box["height"] <= height
+            assert (
+                manager_box["x"] >= 0
+                and manager_box["x"] + manager_box["width"] <= width
+            )
+            assert (
+                manager_box["y"] >= 0
+                and manager_box["y"] + manager_box["height"] <= height
+            )
             page.keyboard.press("Escape")
             expect(page.locator(".cross-benchmark-report-selector")).to_be_focused()
             _assert_live_announcement_is_visually_hidden(page)
@@ -1211,7 +1262,9 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
                 "element => { const { x, y, width, height } = element.getBoundingClientRect(); return { x, y, width, height }; }"
             )
             assert clone_box["x"] >= 0 and clone_box["x"] + clone_box["width"] <= width
-            assert clone_box["y"] >= 0 and clone_box["y"] + clone_box["height"] <= height
+            assert (
+                clone_box["y"] >= 0 and clone_box["y"] + clone_box["height"] <= height
+            )
             page.keyboard.press("Escape")
             expect(clone_button).to_be_focused()
             _assert_live_announcement_is_visually_hidden(page)
@@ -1226,8 +1279,14 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
             customize_box = customize_dialog.evaluate(
                 "element => { const { x, y, width, height } = element.getBoundingClientRect(); return { x, y, width, height }; }"
             )
-            assert customize_box["x"] >= 0 and customize_box["x"] + customize_box["width"] <= width
-            assert customize_box["y"] >= 0 and customize_box["y"] + customize_box["height"] <= height
+            assert (
+                customize_box["x"] >= 0
+                and customize_box["x"] + customize_box["width"] <= width
+            )
+            assert (
+                customize_box["y"] >= 0
+                and customize_box["y"] + customize_box["height"] <= height
+            )
             page.keyboard.press("Escape")
             expect(customize_button).to_be_focused()
             _assert_live_announcement_is_visually_hidden(page)
@@ -1244,8 +1303,10 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
         assert len(original_order) >= 2
         widgets.nth(0).focus()
         with page.expect_response(
-            lambda response: response.request.method == "PUT"
-            and response.url.endswith("/api/settings/dashboard")
+            lambda response: (
+                response.request.method == "PUT"
+                and response.url.endswith("/api/settings/dashboard")
+            )
         ) as layout_save:
             widgets.nth(0).press("Space")
             widgets.nth(0).press("ArrowDown")
@@ -1260,17 +1321,22 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
             'section[aria-label="Benchmark metric widgets"] article[role="listitem"]'
         )
         expect(widgets).to_have_count(len(reordered))
-        assert widgets.evaluate_all(
-            "elements => elements.map(element => element.getAttribute('aria-label'))"
-        ) == reordered
+        assert (
+            widgets.evaluate_all(
+                "elements => elements.map(element => element.getAttribute('aria-label'))"
+            )
+            == reordered
+        )
 
         horizontal_bar = page.get_by_role(
             "button", name="Use Horizontal bar chart for Vocabulary size"
         )
         expect(horizontal_bar).to_be_visible()
         with page.expect_response(
-            lambda response: response.request.method == "PUT"
-            and response.url.endswith("/api/settings/dashboard")
+            lambda response: (
+                response.request.method == "PUT"
+                and response.url.endswith("/api/settings/dashboard")
+            )
         ) as visualization_save:
             horizontal_bar.click()
         assert visualization_save.value.ok, visualization_save.value.text()
@@ -1282,9 +1348,7 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
             )
         ).to_have_attribute("aria-pressed", "true")
 
-        customize = page.get_by_role(
-            "button", name="Customize benchmark dashboard"
-        )
+        customize = page.get_by_role("button", name="Customize benchmark dashboard")
         customize.click()
         customize_dialog = page.get_by_role(
             "dialog", name="Customize benchmark dashboard"
@@ -1303,8 +1367,10 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
         expect(vocabulary_widget_row).to_have_count(1)
         vocabulary_widget = vocabulary_widget_row.get_by_role("checkbox")
         with page.expect_response(
-            lambda response: response.request.method == "PUT"
-            and response.url.endswith("/api/settings/dashboard")
+            lambda response: (
+                response.request.method == "PUT"
+                and response.url.endswith("/api/settings/dashboard")
+            )
         ) as visibility_save:
             vocabulary_widget.uncheck()
         assert visibility_save.value.ok, visibility_save.value.text()
@@ -1316,13 +1382,17 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
             page.locator('article[aria-label="Vocabulary size widget"]')
         ).to_have_count(0)
         with page.expect_response(
-            lambda response: response.request.method == "PUT"
-            and response.url.endswith("/api/settings/dashboard")
+            lambda response: (
+                response.request.method == "PUT"
+                and response.url.endswith("/api/settings/dashboard")
+            )
         ) as reset_save:
             page.get_by_role("button", name="Restore default layout").click()
         assert reset_save.value.ok, reset_save.value.text()
         expect(
-            page.get_by_role("button", name="Use Vertical bar chart for Vocabulary size")
+            page.get_by_role(
+                "button", name="Use Vertical bar chart for Vocabulary size"
+            )
         ).to_have_attribute("aria-pressed", "true")
 
         page.locator(".cross-benchmark-report-selector").click()
@@ -1344,8 +1414,10 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
         ).to_have_count(0)
         delete_row.get_by_role("button", name="Delete report").click()
         with page.expect_response(
-            lambda response: response.request.method == "DELETE"
-            and response.url.endswith(f"/reports/{delete_id}")
+            lambda response: (
+                response.request.method == "DELETE"
+                and response.url.endswith(f"/reports/{delete_id}")
+            )
         ) as delete_response_info:
             delete_row.get_by_role("button", name="Delete", exact=True).click()
         assert delete_response_info.value.status == 204
@@ -1357,16 +1429,17 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
         assert browser_http_errors == [], browser_http_errors
     finally:
         for report_id in sorted(report_ids, reverse=True):
-            delete_report = api_context.delete(
-                f"/api/benchmarks/reports/{report_id}"
-            )
+            delete_report = api_context.delete(f"/api/benchmarks/reports/{report_id}")
             assert delete_report.status in {204, 404}, delete_report.text()
             assert api_context.get(f"/api/benchmarks/reports/{report_id}").status == 404
 
         current_dashboard_response = api_context.get("/api/settings/dashboard")
         assert current_dashboard_response.ok, current_dashboard_response.text()
         current_dashboard_state = current_dashboard_response.json()
-        if current_dashboard_state["preferences"] != original_dashboard_state["preferences"]:
+        if (
+            current_dashboard_state["preferences"]
+            != original_dashboard_state["preferences"]
+        ):
             restored_dashboard_response = api_context.put(
                 "/api/settings/dashboard",
                 data={

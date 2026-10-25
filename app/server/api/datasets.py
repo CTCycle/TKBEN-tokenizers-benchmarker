@@ -51,6 +51,7 @@ from server.services.managed_jobs import (
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_DATASETS, tags=["datasets"])
 
+
 ###############################################################################
 @router.get(
     API_ROUTE_DATASETS_LIST,
@@ -78,6 +79,7 @@ async def list_datasets(
         count=len(datasets),
     )
 
+
 ###############################################################################
 @router.get(
     API_ROUTE_DATASETS_METRICS_CATALOG,
@@ -93,6 +95,7 @@ async def get_dataset_metrics_catalog() -> DatasetMetricCatalogResponse:
             for category in categories
         ]
     )
+
 
 ###############################################################################
 @router.post(
@@ -121,6 +124,7 @@ async def download_dataset(
             message="Dataset download job started.",
         ),
     )
+
 
 ###############################################################################
 @router.post(
@@ -173,6 +177,7 @@ async def upload_custom_dataset(
         ),
     )
 
+
 ###############################################################################
 @router.post(
     API_ROUTE_DATASETS_ANALYZE,
@@ -208,6 +213,7 @@ async def analyze_dataset(
         ),
     )
 
+
 ###############################################################################
 @router.post(
     API_ROUTE_DATASETS_VALIDATION_PREVIEW,
@@ -233,6 +239,7 @@ async def preview_dataset_validation(
         payload.filters,
     )
     return DatasetValidationPreviewResponse.model_validate(preview)
+
 
 ###############################################################################
 @router.get(
@@ -260,6 +267,7 @@ async def get_latest_dataset_report(dataset_name: str) -> DatasetAnalysisRespons
         )
     return DatasetAnalysisResponse(status="success", **report)
 
+
 ###############################################################################
 @router.get(
     API_ROUTE_DATASETS_REPORT_BY_ID,
@@ -275,6 +283,7 @@ async def get_dataset_report_by_id(report_id: int) -> DatasetAnalysisResponse:
             detail=f"Dataset validation report '{report_id}' not found.",
         )
     return DatasetAnalysisResponse(status="success", **report)
+
 
 ###############################################################################
 @router.delete(

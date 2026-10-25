@@ -17,6 +17,7 @@ from server.repositories.schemas.models import (
     Tokenizer,
 )
 
+
 ###############################################################################
 @dataclass(frozen=True)
 class BenchmarkReportPage:
@@ -24,6 +25,7 @@ class BenchmarkReportPage:
     total: int
     offset: int
     limit: int
+
 
 ###############################################################################
 class BenchmarkRepository:

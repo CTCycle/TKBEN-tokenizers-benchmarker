@@ -49,13 +49,16 @@ from server.services.benchmark_spool import BenchmarkTextSpool
 from server.services.benchmark_streams import iter_limited_rows
 from server.services.tokenizer_adapters import UniversalTokenizerAdapter
 
+
 ###############################################################################
 class BenchmarkCancelledError(RuntimeError):
     pass
 
+
 ###############################################################################
 def _as_float(value: object, default: float = 0.0) -> float:
     return float(value) if isinstance(value, int | float) else default
+
 
 ###############################################################################
 def normalize_vocabulary_token(token: object) -> str:
@@ -63,6 +66,7 @@ def normalize_vocabulary_token(token: object) -> str:
     for prefix in ("##", "▁", "Ġ"):
         normalized = normalized.removeprefix(prefix)
     return normalized
+
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -74,6 +78,7 @@ class SpooledTextBatchFactory:
     def __call__(self) -> Any:
         return self.spool.iter_text_batches(self.batch_size)
 
+
 ###############################################################################
 @dataclass(frozen=True)
 class _TokenizerExecutionResult:
@@ -84,6 +89,7 @@ class _TokenizerExecutionResult:
     raw_observations: list[dict[str, object]]
     success: bool
     cancelled: bool
+
 
 ###############################################################################
 class _TokenizerProgressTracker:
@@ -122,6 +128,7 @@ class _TokenizerProgressTracker:
     def reporter(self, index: int) -> Callable[[float], None]:
         return lambda fraction: self.update(index, fraction)
 
+
 ###############################################################################
 @dataclass
 class _TokenizerConcurrencyTracker:
@@ -133,9 +140,7 @@ class _TokenizerConcurrencyTracker:
     def enter(self) -> None:
         with self.lock:
             self.active_workers += 1
-            self.max_active_workers = max(
-                self.max_active_workers, self.active_workers
-            )
+            self.max_active_workers = max(self.max_active_workers, self.active_workers)
 
     # -------------------------------------------------------------------------
     def exit(self) -> None:
@@ -146,6 +151,7 @@ class _TokenizerConcurrencyTracker:
     def maximum(self) -> int:
         with self.lock:
             return self.max_active_workers
+
 
 ###############################################################################
 class BenchmarkServiceExecutionMixin:
@@ -277,13 +283,9 @@ class BenchmarkServiceExecutionMixin:
         requested_parallelism = BenchmarkRunConfig.model_validate(
             {"parallelism": config_payload.get("parallelism", 1)}
         ).parallelism
-        effective_parallelism = min(
-            requested_parallelism, len(tokenizers)
-        )
+        effective_parallelism = min(requested_parallelism, len(tokenizers))
         concurrency_tracker = _TokenizerConcurrencyTracker()
-        progress_tracker = _TokenizerProgressTracker(
-            len(tokenizers), progress_callback
-        )
+        progress_tracker = _TokenizerProgressTracker(len(tokenizers), progress_callback)
         indexed_tokenizers = list(tokenizers.items())
         worker_results: dict[int, _TokenizerExecutionResult] = {}
         pending: dict[Future[_TokenizerExecutionResult], tuple[int, str]] = {}
@@ -603,9 +605,7 @@ class BenchmarkServiceExecutionMixin:
         logger.info("Processing tokenizer: %s", name)
         try:
             tokenizer_started_at = time.perf_counter()
-            adapter = UniversalTokenizerAdapter(
-                tokenizer_id=name, tokenizer=tokenizer
-            )
+            adapter = UniversalTokenizerAdapter(tokenizer_id=name, tokenizer=tokenizer)
             observations = run_tokenizer_trials(
                 tokenizer=adapter,
                 text_batches_factory=SpooledTextBatchFactory(spool, batch_size),
@@ -723,9 +723,7 @@ class BenchmarkServiceExecutionMixin:
                     rt_token_ids = self.tools.extract_token_ids(
                         tokenizer.encode(decoded_text)
                     )
-                    round_trip_token_fidelity.append(
-                        float(rt_token_ids == encoded_ids)
-                    )
+                    round_trip_token_fidelity.append(float(rt_token_ids == encoded_ids))
                     round_trip_text_fidelity.append(
                         float(
                             unicodedata.normalize("NFC", decoded_text)
@@ -749,9 +747,7 @@ class BenchmarkServiceExecutionMixin:
                         }
                     )
 
-            elapsed = max(
-                _as_float(observation_summary["total_time_seconds"]), 1e-9
-            )
+            elapsed = max(_as_float(observation_summary["total_time_seconds"]), 1e-9)
             throughput_chars_per_sec = _as_float(
                 observation_summary["documents_per_second"]
             ) * ((total_chars / num_docs) if num_docs else 0.0)
@@ -862,18 +858,12 @@ class BenchmarkServiceExecutionMixin:
                     status="success",
                     trial_tokenization_speeds_tps=trial_tokenization_speeds_tps,
                     throughput_chars_per_sec=float(throughput_chars_per_sec),
-                    encode_only_wall_time_seconds=float(
-                        encode_only_wall_time_seconds
-                    ),
+                    encode_only_wall_time_seconds=float(encode_only_wall_time_seconds),
                     dataset_stream_wall_time_seconds=float(
                         dataset_stream_wall_time_seconds
                     ),
-                    postprocess_wall_time_seconds=float(
-                        postprocess_wall_time_seconds
-                    ),
-                    total_processing_time_seconds=float(
-                        tokenizer_wall_time_seconds
-                    ),
+                    postprocess_wall_time_seconds=float(postprocess_wall_time_seconds),
+                    total_processing_time_seconds=float(tokenizer_wall_time_seconds),
                     observed_latency_ms=[
                         (obs.elapsed_ns / 1_000_000.0) / max(1, obs.documents)
                         for obs in observations
@@ -932,8 +922,7 @@ class BenchmarkServiceExecutionMixin:
                         data=sampled_data,
                         per_document_latency_ms=(
                             [
-                                (obs.elapsed_ns / 1_000_000.0)
-                                / max(1, obs.documents)
+                                (obs.elapsed_ns / 1_000_000.0) / max(1, obs.documents)
                                 for obs in observations[: len(sampled_data)]
                             ]
                             if metric_plan.needs_per_document_latency
@@ -1016,8 +1005,7 @@ class BenchmarkServiceExecutionMixin:
             per_document_stats=per_doc_result,
             raw_observations=worker_raw_observations.get(name, []),
             success=(
-                tokenizer_result is not None
-                and tokenizer_result.status == "success"
+                tokenizer_result is not None and tokenizer_result.status == "success"
             ),
             cancelled=False,
         )

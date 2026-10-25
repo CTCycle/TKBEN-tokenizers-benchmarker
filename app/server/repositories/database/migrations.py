@@ -23,9 +23,11 @@ POSTGRES_LOCK_NAME = "tkben:alembic:migrations"
 RELEASED_SCHEMA_REVISION = "0007_dashboard_ui_preferences"
 POST_BASELINE_INDEXES = frozenset({"ix_managed_job_created_at"})
 
+
 ###############################################################################
 class DatabaseMigrationError(RuntimeError):
     """Raised when the application cannot make its database current."""
+
 
 ###############################################################################
 def build_alembic_config() -> Config:
@@ -34,6 +36,7 @@ def build_alembic_config() -> Config:
     config.set_main_option("version_table", ALEMBIC_VERSION_TABLE)
     config.set_main_option("version_table_pk", "true")
     return config
+
 
 ###############################################################################
 def _migration_directory(config: Config) -> script.ScriptDirectory:
@@ -45,6 +48,7 @@ def _migration_directory(config: Config) -> script.ScriptDirectory:
         )
     return directory
 
+
 ###############################################################################
 def _current_heads(connection: Connection) -> tuple[str, ...]:
     migration_context = MigrationContext.configure(
@@ -52,6 +56,7 @@ def _current_heads(connection: Connection) -> tuple[str, ...]:
         opts={"version_table": ALEMBIC_VERSION_TABLE},
     )
     return tuple(migration_context.get_current_heads())
+
 
 ###############################################################################
 def _rebase_released_schema_revision(connection: Connection) -> tuple[str, ...]:
@@ -66,8 +71,7 @@ def _rebase_released_schema_revision(connection: Connection) -> tuple[str, ...]:
         difference
         for difference in compare_metadata(context, Base.metadata)
         if not (
-            difference[0] == "add_index"
-            and difference[1].name in POST_BASELINE_INDEXES
+            difference[0] == "add_index" and difference[1].name in POST_BASELINE_INDEXES
         )
     ]
     if differences:
@@ -86,9 +90,11 @@ def _rebase_released_schema_revision(connection: Connection) -> tuple[str, ...]:
     )
     return _current_heads(connection)
 
+
 ###############################################################################
 def _domain_tables(connection: Connection) -> set[str]:
     return set(inspect(connection).get_table_names()) - {ALEMBIC_VERSION_TABLE}
+
 
 ###############################################################################
 def _synchronize_schema(
@@ -139,6 +145,7 @@ def _synchronize_schema(
         )
     logger.info("Alembic migration verification succeeded at %s.", expected_heads)
 
+
 ###############################################################################
 def _acquire_postgres_lock(
     connection: Connection,
@@ -163,11 +170,13 @@ def _acquire_postgres_lock(
             )
         time.sleep(0.1)
 
+
 ###############################################################################
 def _foreign_key_violations(connection: Connection) -> list[tuple[Any, ...]]:
     return [
         tuple(row) for row in connection.execute(text("PRAGMA foreign_key_check")).all()
     ]
+
 
 ###############################################################################
 def run_locked_migrations(

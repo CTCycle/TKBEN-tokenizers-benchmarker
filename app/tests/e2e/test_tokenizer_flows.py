@@ -57,6 +57,7 @@ RUN_TOKENIZER_UI_LIFECYCLE = os.getenv(
 TOKENIZER_RESTART_EXPECTED_NAME = os.getenv("E2E_TOKENIZER_EXPECTED_NAME", "").strip()
 TOKENIZER_RESTART_STEM = "qa_t2_04_restart_long_identifier_0123456789abcdef"
 
+
 ###############################################################################
 def _build_wordlevel_tokenizer_json(
     vocabulary_size: int = 3,
@@ -68,7 +69,10 @@ def _build_wordlevel_tokenizer_json(
 
     vocab = {"[UNK]": 0}
     vocab.update(
-        {f"{token_prefix}{token_id:04d}": token_id for token_id in range(1, vocabulary_size)}
+        {
+            f"{token_prefix}{token_id:04d}": token_id
+            for token_id in range(1, vocabulary_size)
+        }
     )
     tokenizer = Tokenizer(WordLevel(vocab=vocab, unk_token="[UNK]"))
     tokenizer.pre_tokenizer = Whitespace()
@@ -81,6 +85,7 @@ def _build_wordlevel_tokenizer_json(
     if isinstance(payload, dict):
         payload = json.dumps(payload)
     return str(payload).encode("utf-8")
+
 
 ###############################################################################
 def _build_playground_tokenizer_json() -> bytes:
@@ -102,6 +107,7 @@ def _build_playground_tokenizer_json() -> bytes:
     )
     return tokenizer.to_str().encode("utf-8")
 
+
 ###############################################################################
 def _assert_tokenizer_artifact_matches_vocabulary(
     artifact_path: Path,
@@ -110,6 +116,7 @@ def _assert_tokenizer_artifact_matches_vocabulary(
     stored = json.loads(artifact_path.read_text(encoding="utf-8"))
     expected = json.loads(expected_payload)
     assert stored["model"]["vocab"] == expected["model"]["vocab"]
+
 
 ###############################################################################
 @pytest.mark.skipif(
@@ -133,6 +140,7 @@ def test_discover_tokenizers_returns_bounded_structured_catalog(
     )
     assert all("vocabulary_size" in item for item in items)
 
+
 ###############################################################################
 @pytest.mark.skipif(
     not RUN_HF_DISCOVERY, reason="Set E2E_RUN_HF_DISCOVERY=1 to enable."
@@ -146,6 +154,7 @@ def test_discover_tokenizers_supports_empty_result(
     assert response.ok
     assert response.json().get("items") == []
 
+
 ###############################################################################
 def _ensure_key_encryption(api_context: APIRequestContext) -> None:
     status = api_context.get("/api/keys/encryption")
@@ -153,6 +162,7 @@ def _ensure_key_encryption(api_context: APIRequestContext) -> None:
     if not status.json().get("initialized"):
         response = api_context.post("/api/keys/encryption/initialize")
         assert response.status == 201
+
 
 ###############################################################################
 @pytest.fixture
@@ -191,7 +201,9 @@ def active_hf_test_key(api_context: APIRequestContext) -> Generator[int, None, N
     if not key_value.startswith("hf_") or any(
         character.isspace() for character in key_value
     ):
-        pytest.fail(f"{TEST_HF_KEY_ENV} is not a valid Hugging Face key; value withheld.")
+        pytest.fail(
+            f"{TEST_HF_KEY_ENV} is not a valid Hugging Face key; value withheld."
+        )
     if baseline_keys:
         pytest.fail(
             "HF provider E2E requires an empty disposable key store; no key changes were made."
@@ -220,22 +232,19 @@ def active_hf_test_key(api_context: APIRequestContext) -> Generator[int, None, N
     finally:
         try:
             if active:
-                deactivate_response = api_context.post(
-                    f"/api/keys/{key_id}/deactivate"
-                )
+                deactivate_response = api_context.post(f"/api/keys/{key_id}/deactivate")
                 assert deactivate_response.status == 200, (
                     "Cleanup could not deactivate the validation-created key."
                 )
         finally:
-            delete_response = api_context.delete(
-                f"/api/keys/{key_id}?confirm=true"
-            )
+            delete_response = api_context.delete(f"/api/keys/{key_id}?confirm=true")
             assert delete_response.status == 200, (
                 "Cleanup could not delete the validation-created key."
             )
             after_cleanup = api_context.get("/api/keys")
             assert after_cleanup.status == 200
             assert after_cleanup.json().get("keys", []) == []
+
 
 ###############################################################################
 def _run_tokenizer_job(
@@ -259,6 +268,7 @@ def _run_tokenizer_job(
     assert isinstance(result, dict), f"The {route} job returned no result."
     return result
 
+
 ###############################################################################
 def _download_hf_tokenizer(
     api_context: APIRequestContext,
@@ -276,18 +286,19 @@ def _download_hf_tokenizer(
     )
     return succeeded and result.get("failed_count", 0) == 0
 
+
 ###############################################################################
 def _delete_hf_tokenizer(
     api_context: APIRequestContext, tokenizer_id: str, *, may_be_absent: bool
 ) -> None:
     response = api_context.delete(
-        "/api/tokenizers/delete?tokenizer_name="
-        f"{quote(tokenizer_id, safe='')}"
+        f"/api/tokenizers/delete?tokenizer_name={quote(tokenizer_id, safe='')}"
     )
     allowed_statuses = (200, 404) if may_be_absent else (200,)
     assert response.status in allowed_statuses, (
         "Cleanup could not delete a validation-created provider tokenizer."
     )
+
 
 ###############################################################################
 def _try_download_hf_tokenizer(
@@ -315,6 +326,7 @@ def _try_download_hf_tokenizer(
         return True, "downloaded"
     return False, "provider_denied_or_download_failed"
 
+
 ###############################################################################
 def _generate_hf_tokenizer_report(
     api_context: APIRequestContext,
@@ -333,8 +345,7 @@ def _generate_hf_tokenizer_report(
     assert isinstance(vocabulary_size, int) and vocabulary_size > 0
 
     latest = api_context.get(
-        "/api/tokenizers/reports/latest?tokenizer_name="
-        f"{quote(tokenizer_id, safe='')}"
+        f"/api/tokenizers/reports/latest?tokenizer_name={quote(tokenizer_id, safe='')}"
     )
     assert latest.status == 200, (
         f"The latest report for the downloaded tokenizer returned HTTP {latest.status}."
@@ -353,6 +364,7 @@ def _generate_hf_tokenizer_report(
     assert vocabulary_payload.get("total") == vocabulary_size
     assert vocabulary_payload.get("items")
     return report_id, vocabulary_size
+
 
 ###############################################################################
 def _assert_hf_report_renders(
@@ -387,9 +399,7 @@ def _assert_hf_report_renders(
             timeout=30_000,
         )
         expect(dashboard.get_by_role("table").first).to_be_visible()
-        vocabulary_panel = page.get_by_role(
-            "complementary", name="Vocabulary Preview"
-        )
+        vocabulary_panel = page.get_by_role("complementary", name="Vocabulary Preview")
         expect(vocabulary_panel).to_be_visible()
         expect(
             vocabulary_panel.locator(".tokenizer-vocabulary-footer .panel-description")
@@ -402,6 +412,7 @@ def _assert_hf_report_renders(
     assert_report_visible()
     assert browser_errors == [], browser_errors
     assert browser_http_errors == [], browser_http_errors
+
 
 ###############################################################################
 @pytest.mark.skipif(
@@ -434,9 +445,8 @@ def test_hf_active_credential_authenticates_with_hub(
     assert status == 200 and isinstance(payload, dict), (
         f"Hugging Face credential authentication returned HTTP {status}."
     )
-    print(
-        "HF_PROVIDER_AUTH status=authenticated endpoint=whoami identity=withheld"
-    )
+    print("HF_PROVIDER_AUTH status=authenticated endpoint=whoami identity=withheld")
+
 
 ###############################################################################
 @pytest.mark.skipif(
@@ -473,7 +483,9 @@ def test_hf_public_tokenizer_download_report_flow(
         item.get("identifier") == tokenizer_id
         or item.get("identifier", "").endswith(f"/{tokenizer_id}")
         for item in discovery_items
-    ), f"{tokenizer_id} (including a canonical owner-qualified ID) was not present in public discovery."
+    ), (
+        f"{tokenizer_id} (including a canonical owner-qualified ID) was not present in public discovery."
+    )
 
     downloaded = False
     try:
@@ -505,6 +517,7 @@ def test_hf_public_tokenizer_download_report_flow(
         "tokenizer_cleanup=pass"
     )
 
+
 ###############################################################################
 @pytest.mark.skipif(
     not RUN_HF_PROVIDER_FLOW,
@@ -522,9 +535,7 @@ def test_hf_gated_tokenizer_download_report_flow(
     gated_query = "/api/tokenizers/discover?access=gated&limit=10&sort=downloads"
     if GATED_HF_TOKENIZER_ID:
         gated_query += f"&search={quote(GATED_HF_TOKENIZER_ID, safe='')}"
-    gated_discovery = api_context.get(
-        gated_query
-    )
+    gated_discovery = api_context.get(gated_query)
     assert gated_discovery.status == 200, (
         f"Gated Hugging Face discovery returned HTTP {gated_discovery.status}."
     )
@@ -543,9 +554,9 @@ def test_hf_gated_tokenizer_download_report_flow(
             )
         candidates = [GATED_HF_TOKENIZER_ID]
     else:
-        candidates = [
-            identifier for identifier in discovered_ids
-        ][:MAX_GATED_HF_CANDIDATES]
+        candidates = [identifier for identifier in discovered_ids][
+            :MAX_GATED_HF_CANDIDATES
+        ]
     if not candidates:
         pytest.skip(
             "Gated discovery returned no tokenizer candidates; T4-03 remains BLOCKED."
@@ -592,6 +603,7 @@ def test_hf_gated_tokenizer_download_report_flow(
         "tokenizer_cleanup=pass"
     )
 
+
 ###############################################################################
 def test_upload_rejects_invalid_extension(api_context: APIRequestContext) -> None:
     """POST /api/tokenizers/upload should reject non-json files."""
@@ -609,6 +621,7 @@ def test_upload_rejects_invalid_extension(api_context: APIRequestContext) -> Non
     data = response.json()
     assert "File must be a .json file" in data.get("detail", "")
 
+
 ###############################################################################
 def test_upload_rejects_invalid_json(api_context: APIRequestContext) -> None:
     """POST /api/tokenizers/upload should reject invalid tokenizer JSON."""
@@ -625,6 +638,7 @@ def test_upload_rejects_invalid_json(api_context: APIRequestContext) -> None:
     assert response.status == 400
     data = response.json()
     assert "Failed to load tokenizer" in data.get("detail", "")
+
 
 ###############################################################################
 def test_upload_accepts_valid_tokenizer_json(api_context: APIRequestContext) -> None:
@@ -653,6 +667,7 @@ def test_upload_accepts_valid_tokenizer_json(api_context: APIRequestContext) -> 
                 f"/api/tokenizers/delete?tokenizer_name={tokenizer_name}"
             )
             assert deleted.status == 200, deleted.text()
+
 
 ###############################################################################
 def test_custom_tokenizer_can_be_deleted_and_repeated_delete_is_not_found(
@@ -696,6 +711,7 @@ def test_custom_tokenizer_can_be_deleted_and_repeated_delete_is_not_found(
         f"/api/tokenizers/delete?tokenizer_name={tokenizer_name}"
     )
     assert repeated.status == 404
+
 
 ###############################################################################
 def test_tokenizer_playground_full_browser_flow(
@@ -833,13 +849,13 @@ def test_tokenizer_playground_full_browser_flow(
             expect(
                 card.locator(".tokenizer-playground-token-text").nth(1)
             ).to_have_text("world")
-            assert card.locator(".tokenizer-playground-token-id").all_text_contents() == [
+            assert card.locator(
+                ".tokenizer-playground-token-id"
+            ).all_text_contents() == [
                 "1",
                 "2",
             ]
-            expect(card.locator(".tokenizer-playground-metric-value")).to_have_text(
-                "2"
-            )
+            expect(card.locator(".tokenizer-playground-metric-value")).to_have_text("2")
             expect(card.locator(".tokenizer-playground-metric-unit")).to_have_text(
                 "tokens"
             )
@@ -873,7 +889,9 @@ def test_tokenizer_playground_full_browser_flow(
             expect(
                 card.locator(".tokenizer-playground-token-text").nth(3)
             ).to_have_text("[SEP]")
-            assert card.locator(".tokenizer-playground-token-id").all_text_contents() == [
+            assert card.locator(
+                ".tokenizer-playground-token-id"
+            ).all_text_contents() == [
                 "3",
                 "1",
                 "2",
@@ -942,6 +960,7 @@ def test_tokenizer_playground_full_browser_flow(
                 "/api/tokenizers/delete", params={"tokenizer_name": tokenizer_name}
             )
             assert cleanup.status in (200, 404), cleanup.text()
+
 
 ###############################################################################
 @pytest.mark.skipif(
@@ -1027,9 +1046,9 @@ def test_tokenizer_report_flow_supports_paged_vocabulary(
             .get_by_role("row")
             .filter(has_text=tokenizer_name)
         )
-        expect(
-            tokenizer_row.locator(".tokenizer-preview-vocabulary")
-        ).to_have_text("1207", timeout=30_000)
+        expect(tokenizer_row.locator(".tokenizer-preview-vocabulary")).to_have_text(
+            "1207", timeout=30_000
+        )
 
         latest_response = api_context.get(latest_url)
         assert latest_response.ok, latest_response.text()
@@ -1171,6 +1190,7 @@ def test_tokenizer_report_flow_supports_paged_vocabulary(
             == 404
         )
 
+
 ###############################################################################
 @pytest.mark.skipif(
     not RUN_TOKENIZER_UI_LIFECYCLE,
@@ -1306,9 +1326,9 @@ def test_custom_tokenizer_ui_lifecycle_and_responsive_states(
 
         discover_tab = page.get_by_role("tab", name="Discover", exact=True)
         discover_tab.press("ArrowRight")
-        expect(page.get_by_role("tab", name="Add by name", exact=True)).to_have_attribute(
-            "aria-selected", "true"
-        )
+        expect(
+            page.get_by_role("tab", name="Add by name", exact=True)
+        ).to_have_attribute("aria-selected", "true")
         page.get_by_role("tab", name="Add by name", exact=True).press("End")
         upload_tab = page.get_by_role("tab", name="Upload JSON", exact=True)
         expect(upload_tab).to_have_attribute("aria-selected", "true")
@@ -1323,7 +1343,9 @@ def test_custom_tokenizer_ui_lifecycle_and_responsive_states(
         timeout=10_000
     )
     filename = f"{TOKENIZER_RESTART_STEM}.json"
-    artifact_path = Path(TOKENIZERS_PATH) / tokenizer_name.replace("/", "__") / "tokenizer.json"
+    artifact_path = (
+        Path(TOKENIZERS_PATH) / tokenizer_name.replace("/", "__") / "tokenizer.json"
+    )
     keep_for_restart = os.getenv("E2E_TOKENIZER_KEEP_FOR_RESTART", "").lower() in (
         "1",
         "true",
@@ -1399,6 +1421,7 @@ def test_custom_tokenizer_ui_lifecycle_and_responsive_states(
 
     page.set_viewport_size({"width": 1280, "height": 720})
 
+
 ###############################################################################
 @pytest.mark.skipif(
     not TOKENIZER_RESTART_EXPECTED_NAME,
@@ -1413,7 +1436,9 @@ def test_custom_tokenizer_survives_restart_and_ui_deletion(
     """Verify a custom upload survives restart, runs, and deletes from the UI."""
     tokenizer_name = TOKENIZER_RESTART_EXPECTED_NAME
     assert tokenizer_name == f"CUSTOM_{TOKENIZER_RESTART_STEM}"
-    artifact_path = Path(TOKENIZERS_PATH) / tokenizer_name.replace("/", "__") / "tokenizer.json"
+    artifact_path = (
+        Path(TOKENIZERS_PATH) / tokenizer_name.replace("/", "__") / "tokenizer.json"
+    )
 
     listed = api_context.get("/api/tokenizers/list")
     assert listed.ok, listed.text()
@@ -1471,26 +1496,31 @@ def test_custom_tokenizer_survives_restart_and_ui_deletion(
     expect(vocabulary).to_contain_text("qa_t2_04_replacement_0001", timeout=30_000)
 
     page.on("dialog", lambda dialog: dialog.accept())
-    page.get_by_role(
-        "button", name=f"Remove {tokenizer_name}", exact=True
-    ).click()
-    expect(page.get_by_text(tokenizer_name, exact=True)).to_have_count(0, timeout=30_000)
+    page.get_by_role("button", name=f"Remove {tokenizer_name}", exact=True).click()
+    expect(page.get_by_text(tokenizer_name, exact=True)).to_have_count(
+        0, timeout=30_000
+    )
     refreshed = api_context.get("/api/tokenizers/list")
     assert refreshed.ok, refreshed.text()
     assert tokenizer_name not in {
         str(item.get("tokenizer_name"))
         for item in refreshed.json().get("tokenizers", [])
     }
-    assert api_context.get(
-        f"/api/tokenizers/reports/latest?tokenizer_name={tokenizer_name}"
-    ).status == 404
+    assert (
+        api_context.get(
+            f"/api/tokenizers/reports/latest?tokenizer_name={tokenizer_name}"
+        ).status
+        == 404
+    )
     assert not artifact_path.exists()
+
 
 ###############################################################################
 # Rendered coverage for Settings key management and SQLite protection.
 
 
 TEST_KEY_ENV = "TKBEN_TEST_HF_KEY"
+
 
 ###############################################################################
 def _read_keys(api_context: APIRequestContext) -> list[dict[str, Any]]:
@@ -1502,6 +1532,7 @@ def _read_keys(api_context: APIRequestContext) -> list[dict[str, Any]]:
     if not isinstance(keys, list):
         pytest.fail("GET /api/keys did not return a key list.")
     return keys
+
 
 ###############################################################################
 def _assert_public_list(
@@ -1515,6 +1546,7 @@ def _assert_public_list(
         pytest.fail("The key list response included a key_value field.")
     return keys
 
+
 ###############################################################################
 def _key_row(panel: Locator, keys: list[dict[str, Any]], key_id: int) -> Locator:
     try:
@@ -1527,11 +1559,13 @@ def _key_row(panel: Locator, keys: list[dict[str, Any]], key_id: int) -> Locator
     expect(rows).to_have_count(len(keys))
     return rows.nth(index)
 
+
 ###############################################################################
 def _expect_key_response(response: Any, method: str, path_suffix: str) -> bool:
     return response.request.method == method and urlparse(response.url).path.endswith(
         path_suffix
     )
+
 
 ###############################################################################
 def _add_key(page: Page, key_value: str) -> dict[str, Any]:
@@ -1552,6 +1586,7 @@ def _add_key(page: Page, key_value: str) -> dict[str, Any]:
         pytest.fail("The create response did not include a key ID.")
     return item
 
+
 ###############################################################################
 def _sqlite_paths() -> tuple[Path, Path, Path]:
     settings = build_server_settings()
@@ -1564,6 +1599,7 @@ def _sqlite_paths() -> tuple[Path, Path, Path]:
         settings.security.hf_keys_encryption_material_file,
         settings.paths.logs,
     )
+
 
 ###############################################################################
 def _assert_ciphertext(key_id: int, plaintext: str) -> None:
@@ -1584,6 +1620,7 @@ def _assert_ciphertext(key_id: int, plaintext: str) -> None:
     if stored_value == plaintext or plaintext in stored_value:
         pytest.fail("The database contains the plaintext key instead of ciphertext.")
 
+
 ###############################################################################
 def _assert_active_count(expected: int) -> None:
     database_path, _, _ = _sqlite_paths()
@@ -1593,6 +1630,7 @@ def _assert_active_count(expected: int) -> None:
         ).fetchone()
     if row is None or row[0] != expected:
         pytest.fail("The SQLite active-key count did not match the expected state.")
+
 
 ###############################################################################
 def _assert_database_key_state(
@@ -1606,6 +1644,7 @@ def _assert_database_key_state(
     if {row[0] for row in rows if row[1]} != expected_active_ids:
         pytest.fail("The SQLite active-key state did not return to its pre-test state.")
 
+
 ###############################################################################
 def _assert_plaintext_absent_from_logs(plaintext_values: tuple[str, ...]) -> None:
     _, _, log_directory = _sqlite_paths()
@@ -1618,6 +1657,7 @@ def _assert_plaintext_absent_from_logs(plaintext_values: tuple[str, ...]) -> Non
                     pytest.fail("A plaintext test key appeared in an application log.")
         except OSError:
             pytest.fail("An application log could not be checked for plaintext keys.")
+
 
 ###############################################################################
 def _cleanup_created_keys(
@@ -1643,6 +1683,7 @@ def _cleanup_created_keys(
         if response.status != 200:
             pytest.fail("Cleanup could not restore the original active key.")
 
+
 ###############################################################################
 def _settings_keys_panel(page: Page, base_url: str) -> Locator:
     page.goto(f"{base_url}/settings")
@@ -1652,6 +1693,7 @@ def _settings_keys_panel(page: Page, base_url: str) -> Locator:
     panel = page.get_by_role("tabpanel", name="Keys")
     expect(panel).to_be_visible()
     return panel
+
 
 ###############################################################################
 def test_settings_keys_rendered_lifecycle_and_sqlite_ciphertext(
@@ -1872,6 +1914,7 @@ def test_settings_keys_rendered_lifecycle_and_sqlite_ciphertext(
         } != original_active_ids:
             pytest.fail("Cleanup did not restore the original active-key state.")
         _assert_database_key_state(baseline_ids, original_active_ids)
+
 
 ###############################################################################
 @pytest.mark.skipif(

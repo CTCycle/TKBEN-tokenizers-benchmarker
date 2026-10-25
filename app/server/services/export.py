@@ -38,12 +38,14 @@ CHART_SERIES_COLORS = (
     "#2dd4bf",
 )
 
+
 ###############################################################################
 @dataclass(frozen=True)
 class DashboardPdfDocument:
     file_name: str
     page_count: int
     pdf_bytes: bytes
+
 
 ###############################################################################
 class DashboardExportService(DashboardExportFormatting):
@@ -877,7 +879,11 @@ class DashboardExportService(DashboardExportFormatting):
             ax.set_xlabel("Tokenizer")
             ax.set_ylabel(unit)
         elif visualization in {"box_plot", "dot_whisker", "horizontal_bar"}:
-            x_label = f"{unit} (log scale)" if visualization == "box_plot" and ax.get_xscale() == "log" else unit
+            x_label = (
+                f"{unit} (log scale)"
+                if visualization == "box_plot" and ax.get_xscale() == "log"
+                else unit
+            )
             ax.set_xlabel(x_label)
             ax.set_ylabel("Tokenizer")
         elif visualization == "grouped_bar":

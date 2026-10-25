@@ -23,8 +23,6 @@ from server.repositories.database.initializer import initialize_database
 from server.repositories.jobs import JobRepository
 from server.services.jobs import JobManager
 
-###############################################################################
-
 
 ###############################################################################
 def _settings(
@@ -154,6 +152,7 @@ def test_frontend_remains_available_in_database_repair_mode(
     assert unknown_api.status_code == 404
     assert missing_asset.status_code == 404
 
+
 ###############################################################################
 def test_build_cors_origins_normalizes_local_hosts(tmp_path: Path) -> None:
     settings = _settings(
@@ -168,6 +167,7 @@ def test_build_cors_origins_normalizes_local_hosts(tmp_path: Path) -> None:
     origins = startup_validation.build_cors_origins(settings)
 
     assert origins == ["http://127.0.0.1:8000", "http://localhost:8000"]
+
 
 ###############################################################################
 def test_build_cors_origins_uses_explicit_environment_origins(tmp_path: Path) -> None:
@@ -184,6 +184,7 @@ def test_build_cors_origins_uses_explicit_environment_origins(tmp_path: Path) ->
     origins = startup_validation.build_cors_origins(settings)
 
     assert origins == ["https://bench.example", "http://localhost:3000"]
+
 
 ###############################################################################
 def test_run_startup_validations_creates_runtime_directories(tmp_path: Path) -> None:
@@ -204,6 +205,7 @@ def test_run_startup_validations_creates_runtime_directories(tmp_path: Path) -> 
     assert datasets_path.is_dir()
     assert tokenizers_path.is_dir()
     assert templates_path.is_dir()
+
 
 ###############################################################################
 def test_create_app_initializes_startup_state(
@@ -255,6 +257,7 @@ def test_create_app_initializes_startup_state(
     repository = object()
     monkeypatch.setattr(app_module, "JobRepository", lambda: repository)
 
+
     ###############################################################################
     class StubJobManager:
 
@@ -295,6 +298,7 @@ def test_create_app_initializes_startup_state(
     assert application.state.job_repository is repository
     assert application.state.job_manager.repository is repository
 
+
 ###############################################################################
 
 
@@ -329,6 +333,7 @@ REMOVED_COMPATIBILITY_PATHS = (
     SERVER_ROOT / "common" / "utils" / "types.py",
 )
 
+
 ###############################################################################
 def _imported_modules(path: Path) -> list[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -340,6 +345,7 @@ def _imported_modules(path: Path) -> list[str]:
             modules.append(node.module)
     return modules
 
+
 ###############################################################################
 def _production_python_files() -> list[Path]:
     return sorted(
@@ -348,9 +354,11 @@ def _production_python_files() -> list[Path]:
         if not any(part in {".venv", "__pycache__"} for part in path.parts)
     )
 
+
 ###############################################################################
 def _starts_with_module(module: str, prefix: str) -> bool:
     return module == prefix or module.startswith(f"{prefix}.")
+
 
 ###############################################################################
 def test_configuration_bootstraps_before_sensitive_imports() -> None:
@@ -386,6 +394,7 @@ def test_configuration_bootstraps_before_sensitive_imports() -> None:
     assert sensitive_import_indices
     assert bootstrap_index < min(sensitive_import_indices)
 
+
 ###############################################################################
 def test_production_layers_respect_dependency_boundaries() -> None:
     violations: list[str] = []
@@ -400,6 +409,7 @@ def test_production_layers_respect_dependency_boundaries() -> None:
 
     assert not violations, "\n".join(violations)
 
+
 ###############################################################################
 def test_production_code_has_no_legacy_architecture_imports() -> None:
     violations: list[str] = []
@@ -411,10 +421,18 @@ def test_production_code_has_no_legacy_architecture_imports() -> None:
 
     assert not violations, "\n".join(violations)
 
+
 ###############################################################################
 def test_removed_compatibility_paths_do_not_return() -> None:
-    existing = [str(path.relative_to(REPOSITORY_ROOT)) for path in REMOVED_COMPATIBILITY_PATHS if path.exists()]
-    assert not existing, "Removed compatibility paths were recreated:\n" + "\n".join(existing)
+    existing = [
+        str(path.relative_to(REPOSITORY_ROOT))
+        for path in REMOVED_COMPATIBILITY_PATHS
+        if path.exists()
+    ]
+    assert not existing, "Removed compatibility paths were recreated:\n" + "\n".join(
+        existing
+    )
+
 
 ###############################################################################
 
@@ -473,6 +491,7 @@ JSON_ROUTE_EXPECTATIONS = [
     ("/api/keys/{key_id}/reveal", "post", 200, "HFAccessKeyRevealResponse"),
 ]
 
+
 ###############################################################################
 def test_openapi_generation_and_response_models() -> None:
     schema = app.openapi()
@@ -495,16 +514,16 @@ def test_openapi_generation_and_response_models() -> None:
     assert "RuntimeSettingsResetRequest" in components
     assert components["RuntimeSettingsPatchRequest"]["additionalProperties"] is False
 
-###############################################################################
-
 
 ###############################################################################
 def test_normalize_upload_stem_handles_windows_style_names() -> None:
     assert normalize_upload_stem(r"nested\folder\Sample File.csv") == "Sample_File"
 
+
 ###############################################################################
 def test_normalize_upload_stem_handles_posix_style_names() -> None:
     assert normalize_upload_stem("nested/folder/report.final.xlsx") == "report.final"
+
 
 ###############################################################################
 def test_ensure_path_is_within_accepts_str_and_path_inputs(tmp_path: Path) -> None:
@@ -515,6 +534,7 @@ def test_ensure_path_is_within_accepts_str_and_path_inputs(tmp_path: Path) -> No
 
     assert resolved == str(candidate_path.resolve())
 
+
 ###############################################################################
 def test_ensure_path_is_within_rejects_escape_attempts(tmp_path: Path) -> None:
     base_path = tmp_path / "datasets"
@@ -522,8 +542,6 @@ def test_ensure_path_is_within_rejects_escape_attempts(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="escapes the allowed base directory"):
         ensure_path_is_within(base_path, candidate_path)
-
-###############################################################################
 
 
 ###############################################################################
@@ -543,6 +561,7 @@ def _wait_for_status(
     status = manager.get_job_status(job_id)
     raise AssertionError(f"Expected {expected_status}, got {status}")
 
+
 ###############################################################################
 def test_completed_job_remains_visible() -> None:
     manager = JobManager()
@@ -553,6 +572,7 @@ def test_completed_job_remains_visible() -> None:
 
     assert status["result"] == {"value": 1}
     assert manager.get_job_status(job_id) is not None
+
 
 ###############################################################################
 def test_oldest_finished_jobs_are_pruned_beyond_the_job_limit() -> None:
@@ -571,6 +591,7 @@ def test_oldest_finished_jobs_are_pruned_beyond_the_job_limit() -> None:
     assert manager.get_job_status(job_ids[1]) is None
     assert manager.get_job_status(job_ids[2]) is not None
     assert len(manager.list_jobs()) == 2
+
 
 ###############################################################################
 def test_running_job_can_be_stopped_cooperatively() -> None:
@@ -591,6 +612,7 @@ def test_running_job_can_be_stopped_cooperatively() -> None:
     status = _wait_for_status(manager, job_id, "cancelled")
     assert status["result"] is None
 
+
 ###############################################################################
 def test_progress_updates_are_ignored_after_a_job_finishes() -> None:
     manager = JobManager()
@@ -603,9 +625,11 @@ def test_progress_updates_are_ignored_after_a_job_finishes() -> None:
     assert status is not None
     assert status["progress"] == 100.0
 
+
 ###############################################################################
 def test_stopping_unknown_job_returns_none() -> None:
     assert JobManager().request_stop("missing") is None
+
 
 ###############################################################################
 def _job_repository(tmp_path: Path) -> tuple[JobRepository, TKBENDatabase]:
@@ -625,6 +649,7 @@ def _job_repository(tmp_path: Path) -> tuple[JobRepository, TKBENDatabase]:
     database = TKBENDatabase(settings)
     initialize_database(settings=settings)
     return JobRepository(database), database
+
 
 ###############################################################################
 def test_terminal_job_history_survives_manager_recreation(tmp_path: Path) -> None:
@@ -670,6 +695,7 @@ def test_terminal_job_history_survives_manager_recreation(tmp_path: Path) -> Non
     finally:
         database.backend.engine.dispose()
 
+
 ###############################################################################
 def test_restart_reconciliation_fails_pending_and_running_jobs(tmp_path: Path) -> None:
     repository, database = _job_repository(tmp_path)
@@ -711,6 +737,7 @@ def test_restart_reconciliation_fails_pending_and_running_jobs(tmp_path: Path) -
             assert stored["failure_reason"] == "application_restart"
     finally:
         database.backend.engine.dispose()
+
 
 ###############################################################################
 def test_restart_prunes_expired_persisted_terminal_jobs(tmp_path: Path) -> None:

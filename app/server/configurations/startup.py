@@ -21,6 +21,7 @@ _default_settings: ServerSettings | None = None
 _runtime_settings_store: RuntimeSettingsStore | None = None
 _database_configuration_store: DatabaseConfigurationStore | None = None
 
+
 ###############################################################################
 def _initialize_settings_locked() -> None:
     global _default_settings, _runtime_settings_store, _database_configuration_store
@@ -58,13 +59,16 @@ def build_database_runtime_settings_store(
 
 
 ###############################################################################
-def activate_runtime_settings_store(store: RuntimeSettingsStore) -> RuntimeSettingsState:
+def activate_runtime_settings_store(
+    store: RuntimeSettingsStore,
+) -> RuntimeSettingsState:
     global _default_settings, _runtime_settings_store
     with _DEFAULT_SETTINGS_LOCK:
         _runtime_settings_store = store
         state = store.get_state()
         _default_settings = state.settings
         return state
+
 
 ###############################################################################
 def get_server_settings() -> ServerSettings:
@@ -77,6 +81,7 @@ def get_server_settings() -> ServerSettings:
         assert _default_settings is not None
         return _default_settings
 
+
 ###############################################################################
 def get_runtime_settings_store() -> RuntimeSettingsStore:
     with _DEFAULT_SETTINGS_LOCK:
@@ -85,9 +90,11 @@ def get_runtime_settings_store() -> RuntimeSettingsStore:
         assert _runtime_settings_store is not None
         return _runtime_settings_store
 
+
 ###############################################################################
 def get_runtime_settings_state() -> RuntimeSettingsState:
     return get_runtime_settings_store().get_state()
+
 
 ###############################################################################
 def apply_runtime_settings_patch(
@@ -101,6 +108,7 @@ def apply_runtime_settings_patch(
         state = store.apply_patch(patch, expected_revision=expected_revision)
         _default_settings = state.settings
     return state
+
 
 ###############################################################################
 def reset_runtime_settings(
@@ -120,9 +128,11 @@ def reset_runtime_settings(
         _default_settings = state.settings
     return state
 
+
 ###############################################################################
 def is_key_reveal_enabled() -> bool:
     return get_server_settings().security.allow_key_reveal
+
 
 ###############################################################################
 def reset_settings_cache_for_tests() -> None:

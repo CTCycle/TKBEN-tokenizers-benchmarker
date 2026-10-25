@@ -26,6 +26,7 @@ from server.common.utils.security import (
 from server.services.benchmark_execution import BenchmarkServiceExecutionMixin
 from server.services.benchmark_result_builder import BenchmarkResultBuilder
 
+
 ###############################################################################
 class BenchmarkTools:
 
@@ -189,6 +190,7 @@ class BenchmarkTools:
 
         call_method = getattr(tokenizer, "__call__", None)
         return callable(call_method)
+
 
 ###############################################################################
 class BenchmarkService(BenchmarkServiceExecutionMixin):

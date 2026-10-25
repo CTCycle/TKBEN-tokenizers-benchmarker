@@ -9,6 +9,7 @@ from typing import Any
 from sqlalchemy import DateTime, JSON
 from sqlalchemy.types import TypeDecorator
 
+
 ###############################################################################
 class UTCDateTime(TypeDecorator[datetime]):
     impl = DateTime
@@ -34,6 +35,7 @@ class UTCDateTime(TypeDecorator[datetime]):
             return value.replace(tzinfo=timezone.utc)
         return value.astimezone(timezone.utc)
 
+
 ###############################################################################
 class JSONObject(TypeDecorator[dict[str, Any]]):
     impl = JSON
@@ -44,6 +46,7 @@ class JSONObject(TypeDecorator[dict[str, Any]]):
         if value is not None and not isinstance(value, dict):
             raise ValueError("Expected a JSON object")
         return value
+
 
 ###############################################################################
 class JSONArray(TypeDecorator[list[Any]]):

@@ -25,8 +25,6 @@ import pytest
 from server.contracts.benchmarks import BenchmarkRunRequest
 from server.services.benchmarks import BENCHMARK_METRIC_CATALOG
 
-###############################################################################
-
 
 ###############################################################################
 class DummyTokenizer:
@@ -75,6 +73,7 @@ class DummyTokenizer:
     def get_vocab(self) -> dict[str, int]:
         return dict(self._vocab)
 
+
 ###############################################################################
 class UnknownAwareTokenizer(DummyTokenizer):
     unk_token_id = 0
@@ -85,6 +84,7 @@ class UnknownAwareTokenizer(DummyTokenizer):
         self._vocab = {"known": 1}
         self._id_to_token = {1: "known", 0: "[UNK]"}
 
+
 ###############################################################################
 def test_normalize_vocabulary_token_removes_only_top_level_markers() -> None:
     assert normalize_vocabulary_token("##tail") == "tail"
@@ -92,6 +92,7 @@ def test_normalize_vocabulary_token_removes_only_top_level_markers() -> None:
     assert normalize_vocabulary_token("Ġworld") == "world"
     assert normalize_vocabulary_token("Garden") == "Garden"
     assert normalize_vocabulary_token("word▁pieceĠtail##") == "word▁pieceĠtail##"
+
 
 ###############################################################################
 def test_run_benchmarks_returns_contract() -> None:
@@ -151,6 +152,7 @@ def test_run_benchmarks_returns_contract() -> None:
     assert result.tokenizer_results[0].efficiency.postprocess_wall_time_seconds >= 0.0
     assert result.tokenizer_results[0].fidelity.unknown_token_rate is None
 
+
 ###############################################################################
 def test_run_benchmarks_enforces_max_documents_limit() -> None:
     service = BenchmarkService(max_documents=2)
@@ -175,6 +177,7 @@ def test_run_benchmarks_enforces_max_documents_limit() -> None:
     assert result.documents_processed == 2
     assert len(result.per_document_stats[0].tokens_count) == 2
 
+
 ###############################################################################
 def test_run_benchmarks_isolates_tokenizer_failure(monkeypatch) -> None:
     service = BenchmarkService()
@@ -182,6 +185,7 @@ def test_run_benchmarks_isolates_tokenizer_failure(monkeypatch) -> None:
         (10, "alpha beta"),
         (11, "gamma"),
     ]
+
 
     ###############################################################################
     class BrokenTokenizer(DummyTokenizer):
@@ -232,6 +236,7 @@ def test_run_benchmarks_isolates_tokenizer_failure(monkeypatch) -> None:
     assert "ok/tokenizer" in chart_tokenizers
     assert "broken/tokenizer" not in chart_tokenizers
 
+
 ###############################################################################
 def _service_with_tokenizers(tokenizers: dict[str, Any]) -> BenchmarkService:
     service = BenchmarkService()
@@ -240,6 +245,7 @@ def _service_with_tokenizers(tokenizers: dict[str, Any]) -> BenchmarkService:
     service.stream_dataset_rows_from_database = lambda dataset_name: iter(rows)  # type: ignore[method-assign]
     service.load_tokenizers = lambda tokenizer_ids: tokenizers  # type: ignore[method-assign]
     return service
+
 
 ###############################################################################
 def test_run_benchmarks_parallelism_one_processes_tokenizers_serially() -> None:
@@ -263,6 +269,7 @@ def test_run_benchmarks_parallelism_one_processes_tokenizers_serially() -> None:
     assert execution["effective_parallelism"] == 1
     assert execution["tokenizer_count"] == 2
     assert execution["max_concurrent_workers_observed"] == 1
+
 
 ###############################################################################
 def test_run_benchmarks_parallelism_two_overlaps_tokenizer_workloads(
@@ -288,12 +295,17 @@ def test_run_benchmarks_parallelism_two_overlaps_tokenizer_workloads(
     )
 
     assert result.status == "success"
-    assert result.runtime_metadata["benchmark_execution"][
-        "max_concurrent_workers_observed"
-    ] == 2
+    assert (
+        result.runtime_metadata["benchmark_execution"][
+            "max_concurrent_workers_observed"
+        ]
+        == 2
+    )
+
 
 ###############################################################################
 def test_run_benchmarks_caps_workers_and_preserves_input_order(monkeypatch) -> None:
+
 
     ###############################################################################
     class DoubleTokenCountTokenizer(DummyTokenizer):
@@ -353,12 +365,10 @@ def test_run_benchmarks_caps_workers_and_preserves_input_order(monkeypatch) -> N
     ]
     assert list(result.raw_observations) == ["first/tokenizer", "second/tokenizer"]
     first_tokens = sum(
-        int(item["token_count"])
-        for item in result.raw_observations["first/tokenizer"]
+        int(item["token_count"]) for item in result.raw_observations["first/tokenizer"]
     )
     second_tokens = sum(
-        int(item["token_count"])
-        for item in result.raw_observations["second/tokenizer"]
+        int(item["token_count"]) for item in result.raw_observations["second/tokenizer"]
     )
     assert second_tokens == first_tokens * 2
     assert result.per_document_stats[0].tokens_count == [2, 1]
@@ -383,6 +393,7 @@ def test_run_benchmarks_caps_workers_and_preserves_input_order(monkeypatch) -> N
         "first/tokenizer",
         "second/tokenizer",
     ]
+
 
 ###############################################################################
 def test_run_benchmarks_cancellation_stops_scheduling_parallel_work(
@@ -424,9 +435,8 @@ def test_run_benchmarks_cancellation_stops_scheduling_parallel_work(
     assert result.status == "cancelled"
     assert len(run_calls) == 2
     assert set(run_calls) == {"first/tokenizer", "second/tokenizer"}
-    assert result.runtime_metadata["benchmark_execution"][
-        "effective_parallelism"
-    ] == 2
+    assert result.runtime_metadata["benchmark_execution"]["effective_parallelism"] == 2
+
 
 ###############################################################################
 def test_run_benchmarks_uses_trial_level_speeds_for_ci() -> None:
@@ -464,6 +474,7 @@ def test_run_benchmarks_uses_trial_level_speeds_for_ci() -> None:
         metrics.encode_tokens_per_second_ci95_high
         > metrics.encode_tokens_per_second_ci95_low
     )
+
 
 ###############################################################################
 def test_run_benchmarks_uses_true_latency_distribution_five_number_summary() -> None:
@@ -512,6 +523,7 @@ def test_run_benchmarks_uses_true_latency_distribution_five_number_summary() -> 
     assert dist.sample_count == 3
     assert result.tokenizer_results[0].latency.sample_count == 3
 
+
 ###############################################################################
 def test_run_benchmarks_reports_utf8_bytes_throughput_and_unknown_rate() -> None:
     service = BenchmarkService()
@@ -539,6 +551,7 @@ def test_run_benchmarks_reports_utf8_bytes_throughput_and_unknown_rate() -> None
         >= tokenizer_result.fragmentation.characters_per_token
     )
     assert tokenizer_result.resources.peak_rss_mb > 0.0
+
 
 ###############################################################################
 def test_run_benchmarks_uses_all_timed_trials_for_latency_summary() -> None:
@@ -572,10 +585,12 @@ def test_run_benchmarks_uses_all_timed_trials_for_latency_summary() -> None:
     assert latency.encode_latency_p95_ms > 1.0
     assert latency.sample_count == 2
 
+
 ###############################################################################
 def test_run_benchmarks_computes_real_fragmentation_buckets() -> None:
     service = BenchmarkService()
     rows = [(1, "a alpha alphabetic")]
+
 
     ###############################################################################
     class LengthSensitiveTokenizer(DummyTokenizer):
@@ -613,6 +628,7 @@ def test_run_benchmarks_computes_real_fragmentation_buckets() -> None:
     assert set(buckets) == {"short_1_4", "medium_5_8", "long_9_plus"}
     assert len(set(round(value, 6) for value in buckets.values())) > 1
 
+
 ###############################################################################
 def test_run_benchmarks_uses_utf8_bytes_per_token_for_per_doc_stats() -> None:
     service = BenchmarkService()
@@ -629,6 +645,7 @@ def test_run_benchmarks_uses_utf8_bytes_per_token_for_per_doc_stats() -> None:
     )
     # "known é" => 8 UTF-8 bytes, 2 tokens
     assert result.per_document_stats[0].bytes_per_token[0] == 4.0
+
 
 ###############################################################################
 def test_run_benchmarks_can_disable_per_document_stats_and_persist_config() -> None:
@@ -651,6 +668,7 @@ def test_run_benchmarks_can_disable_per_document_stats_and_persist_config() -> N
 
     assert len(result.per_document_stats) == 1
     assert result.config.store_per_document_stats is False
+
 
 ###############################################################################
 def test_run_benchmarks_returns_cancelled_status_when_stopped() -> None:
@@ -677,10 +695,12 @@ def test_run_benchmarks_returns_cancelled_status_when_stopped() -> None:
 
     assert result.status == "cancelled"
 
+
 ###############################################################################
 def test_run_benchmarks_all_failed_tokenizers_report_unavailable_metrics() -> None:
     service = BenchmarkService()
     rows = [(1, "alpha"), (2, "beta")]
+
 
     ###############################################################################
     class BrokenTokenizer(DummyTokenizer):
@@ -705,8 +725,6 @@ def test_run_benchmarks_all_failed_tokenizers_report_unavailable_metrics() -> No
     assert result.tokenizer_results[0].status == "failed"
     assert result.dashboard.widgets == []
 
-###############################################################################
-
 
 ###############################################################################
 class CountingAdapter:
@@ -726,6 +744,7 @@ class CountingAdapter:
             input_ids_by_doc=[[1 for _ in text] for text in texts],
         )
 
+
 ###############################################################################
 def test_warmup_excluded_and_timed_trials_control_observations() -> None:
     adapter = CountingAdapter()
@@ -739,6 +758,7 @@ def test_warmup_excluded_and_timed_trials_control_observations() -> None:
     )
     assert len(observations) == 6
     assert adapter.calls == (2 * 2) + (3 * 2)
+
 
 ###############################################################################
 def test_run_tokenizer_trials_respects_cancellation() -> None:
@@ -760,8 +780,6 @@ def test_run_tokenizer_trials_respects_cancellation() -> None:
     )
     assert len(observations) <= 1
 
-###############################################################################
-
 
 ###############################################################################
 def test_latency_percentiles_come_from_samples() -> None:
@@ -777,8 +795,6 @@ def test_latency_percentiles_come_from_samples() -> None:
         summary["latency_batch_p95_ms"]
     )
 
-###############################################################################
-
 
 ###############################################################################
 class MemoryAdapter:
@@ -793,6 +809,7 @@ class MemoryAdapter:
             input_ids_by_doc=[[ord(character) for character in text] for text in texts],
         )
 
+
 ###############################################################################
 def test_memory_peak_is_measured_not_placeholder() -> None:
     observations = run_tokenizer_trials(
@@ -805,8 +822,6 @@ def test_memory_peak_is_measured_not_placeholder() -> None:
     assert observations
     assert observations[0].peak_rss_mb is not None
     assert float(observations[0].peak_rss_mb or 0.0) > 0.0
-
-###############################################################################
 
 
 ###############################################################################
@@ -825,8 +840,6 @@ def test_metric_plan_flags_selected_metrics() -> None:
     assert plan.needs_unknown_rate is True
     assert plan.needs_per_document_stats is False
 
-###############################################################################
-
 
 ###############################################################################
 def test_normalize_benchmark_text_handles_none_and_coercion() -> None:
@@ -834,19 +847,19 @@ def test_normalize_benchmark_text_handles_none_and_coercion() -> None:
     assert normalize_benchmark_text("abc") == "abc"
     assert normalize_benchmark_text(123) == "123"
 
+
 ###############################################################################
 def test_iter_limited_rows_respects_limit_and_skips_none() -> None:
     rows = [(1, "a"), (2, None), (3, "b"), (4, "c")]
     limited = list(iter_limited_rows(rows, 3))
     assert limited == [(1, "a"), (3, "b")]
 
+
 ###############################################################################
 def test_iter_text_batches_groups_rows_by_batch_size() -> None:
     rows = [(1, "a"), (2, "b"), (3, "c")]
     batches = list(iter_text_batches(rows, 2))
     assert batches == [[(1, "a"), (2, "b")], [(3, "c")]]
-
-###############################################################################
 
 
 ###############################################################################
@@ -861,6 +874,7 @@ def test_benchmark_text_spool_replays_rows_and_batches() -> None:
     assert list(spool.iter_text_batches(2)) == [["alpha", "beta"], ["gamma"]]
     spool.cleanup()
 
+
 ###############################################################################
 def test_benchmark_text_spool_cleanup_removes_file() -> None:
     spool = BenchmarkTextSpool()
@@ -870,8 +884,6 @@ def test_benchmark_text_spool_cleanup_removes_file() -> None:
     assert path.exists()
     spool.cleanup()
     assert not path.exists()
-
-###############################################################################
 
 
 ###############################################################################
@@ -890,8 +902,10 @@ class DummyJobManager:
     def update_progress(self, job_id: str, value: float) -> None:
         del job_id, value
 
+
 ###############################################################################
 def test_run_benchmark_job_builds_and_saves_report(monkeypatch) -> None:
+
 
     ###############################################################################
     class FakeBenchmarkService:
@@ -945,6 +959,7 @@ def test_run_benchmark_job_builds_and_saves_report(monkeypatch) -> None:
             assert payload["dataset_name"] == "custom/sample"
             return 11
 
+
     ###############################################################################
     class FakeBenchmarkReportService:
 
@@ -975,10 +990,12 @@ def test_run_benchmark_job_builds_and_saves_report(monkeypatch) -> None:
     assert result["report_id"] == 11
     assert result["report_version"] == 5
 
+
 ###############################################################################
 def test_run_benchmark_job_returns_cancelled_payload_without_persist(
     monkeypatch,
 ) -> None:
+
 
     ###############################################################################
     class FakeBenchmarkService:
@@ -1051,8 +1068,6 @@ def test_run_benchmark_job_returns_cancelled_payload_without_persist(
     assert result["status"] == "cancelled"
     assert result["report_id"] is None
 
-###############################################################################
-
 
 ###############################################################################
 class FakeBenchmarkRepository:
@@ -1071,6 +1086,7 @@ class FakeBenchmarkRepository:
             name: "huggingface" for name in tokenizer_ids if name == "bert-base-uncased"
         }
 
+
 ###############################################################################
 def test_benchmark_service_uses_repository_for_dataset_and_tokenizer_checks() -> None:
     service = BenchmarkService()
@@ -1081,6 +1097,7 @@ def test_benchmark_service_uses_repository_for_dataset_and_tokenizer_checks() ->
 
     missing = service.get_missing_persisted_tokenizers(["bert-base-uncased", "missing"])
     assert "missing" in missing
+
 
 ###############################################################################
 def test_benchmark_service_preserves_repository_missing_with_cached_files(
@@ -1098,6 +1115,7 @@ def test_benchmark_service_preserves_repository_missing_with_cached_files(
     missing = service.get_missing_persisted_tokenizers(["missing"])
 
     assert missing == ["missing"]
+
 
 ###############################################################################
 def test_prepare_run_owns_admission_checks_and_normalizes_job_payload(
@@ -1119,6 +1137,7 @@ def test_prepare_run_owns_admission_checks_and_normalizes_job_payload(
     assert prepared["dataset_name"] == "custom/sample"
     assert prepared["config"]["max_documents"] == 2
 
+
 ###############################################################################
 
 
@@ -1132,9 +1151,11 @@ CORE_TOKENIZER_BENCHMARK_METRIC_KEYS = {
 }
 
 
+###############################################################################
 class DummyTokenizer__tokenizer_benchmark_metrics:
     name_or_path = "dummy/tokenizer"
 
+    # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self._vocab = {
             "alpha": 1,
@@ -1145,32 +1166,40 @@ class DummyTokenizer__tokenizer_benchmark_metrics:
         }
         self._id_to_token = {value: key for key, value in self._vocab.items()}
 
+    # -------------------------------------------------------------------------
     def tokenize(self, text: str) -> list[str]:
         return str(text).split()
 
+    # -------------------------------------------------------------------------
     def _encode_one(self, text: str) -> list[int]:
         return [self._vocab.get(token, 0) for token in str(text).split()]
 
+    # -------------------------------------------------------------------------
     def encode(self, text: str) -> list[int]:
         return self._encode_one(text)
 
+    # -------------------------------------------------------------------------
     def __call__(self, texts: list[str], **kwargs: Any) -> dict[str, list[list[int]]]:
         del kwargs
         return {"input_ids": [self._encode_one(text) for text in texts]}
 
+    # -------------------------------------------------------------------------
     def decode(self, token_ids: Any) -> str:
         ids = token_ids.ids if hasattr(token_ids, "ids") else token_ids
         return " ".join(
             self._id_to_token.get(int(token_id), "[UNK]") for token_id in ids
         )
 
+    # -------------------------------------------------------------------------
     def convert_ids_to_tokens(self, token_ids: list[int]) -> list[str]:
         return [self._id_to_token.get(int(token_id), "[UNK]") for token_id in token_ids]
 
+    # -------------------------------------------------------------------------
     def get_vocab(self) -> dict[str, int]:
         return dict(self._vocab)
 
 
+###############################################################################
 def run_deterministic_benchmark() -> dict[str, Any]:
     service = BenchmarkService()
     rows = [
@@ -1193,6 +1222,7 @@ def run_deterministic_benchmark() -> dict[str, Any]:
     return result
 
 
+###############################################################################
 def build_benchmark_metric_value_map(result: dict[str, Any]) -> dict[str, Any]:
     tokenizer_result = result["tokenizer_results"][0]
     widgets = result["dashboard"]["widgets"]
@@ -1244,11 +1274,13 @@ def build_benchmark_metric_value_map(result: dict[str, Any]) -> dict[str, Any]:
         )
     return metric_values
 
+
 ###############################################################################
 @pytest.fixture(scope="module")
 def benchmark_metric_values() -> dict[str, object]:
     result = run_deterministic_benchmark()
     return build_benchmark_metric_value_map(result)
+
 
 ###############################################################################
 def test_tokenizer_benchmark_metrics_are_observed_and_non_synthetic(

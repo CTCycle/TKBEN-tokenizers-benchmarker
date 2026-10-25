@@ -9,10 +9,12 @@ from dataclasses import dataclass
 from enum import StrEnum
 from server.contracts.benchmarks import BenchmarkVisualizationKind
 
+
 ###############################################################################
 class BenchmarkWidgetWidth(StrEnum):
     STANDARD = "standard"
     WIDE = "wide"
+
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -37,6 +39,7 @@ class BenchmarkMetricDefinition:
     interval_low_path: str | None = None
     interval_high_path: str | None = None
     distribution_source: str | None = None
+
 
 ###############################################################################
 def _definition(
@@ -348,6 +351,7 @@ BENCHMARK_DEFINITION_BY_KEY = {
 BENCHMARK_DEFINITION_BY_WIDGET_ID = {
     definition.widget_id: definition for definition in BENCHMARK_METRIC_DEFINITIONS
 }
+
 
 ###############################################################################
 def benchmark_metric_catalog() -> list[dict[str, object]]:

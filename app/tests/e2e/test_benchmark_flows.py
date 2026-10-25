@@ -25,6 +25,7 @@ from playwright.sync_api import expect
 
 RUN_BENCHMARKS = os.getenv("E2E_RUN_BENCHMARKS", "").lower() in ("1", "true", "yes")
 
+
 ###############################################################################
 @pytest.mark.parametrize(
     ("payload", "message"),
@@ -53,6 +54,7 @@ def test_run_benchmarks_rejects_missing_required_inputs(
     data = response.json()
     assert message in data.get("detail", "")
 
+
 ###############################################################################
 def test_run_benchmarks_missing_dataset_returns_400(
     api_context: APIRequestContext,
@@ -69,6 +71,7 @@ def test_run_benchmarks_missing_dataset_returns_400(
     data = response.json()
     assert "not found or empty" in data.get("detail", "").lower()
 
+
 ###############################################################################
 def test_get_benchmark_metrics_catalog_returns_categories(
     api_context: APIRequestContext,
@@ -83,6 +86,7 @@ def test_get_benchmark_metrics_catalog_returns_categories(
     first = categories[0]
     assert isinstance(first.get("category_key"), str)
     assert isinstance(first.get("metrics"), list)
+
 
 ###############################################################################
 @pytest.mark.skipif(
@@ -196,11 +200,14 @@ def test_benchmark_report_round_trip_includes_reproducibility_metadata(
         for item in remaining.json().get("reports", [])
     )
 
+
 ###############################################################################
 # Opt-in live evidence for benchmark measurement and run configuration gates.
 
 
-RUN_BENCHMARKS__benchmark_validation_campaign = os.getenv("E2E_RUN_BENCHMARKS", "").lower() in {"1", "true", "yes"}
+RUN_BENCHMARKS__benchmark_validation_campaign = os.getenv(
+    "E2E_RUN_BENCHMARKS", ""
+).lower() in {"1", "true", "yes"}
 REPO_ROOT = Path(__file__).resolve().parents[3]
 QA_OUTPUT_DIR = Path(
     os.getenv(
@@ -229,6 +236,7 @@ CONFIG_FIELDS = {
     "per_document_sample_size",
 }
 
+
 ###############################################################################
 def _tokenizer_json() -> bytes:
     tokenizer = Tokenizer(
@@ -254,6 +262,7 @@ def _tokenizer_json() -> bytes:
         special_tokens=[("[CLS]", 2), ("[SEP]", 3)],
     )
     return tokenizer.to_str().encode("utf-8")
+
 
 ###############################################################################
 def _config(
@@ -286,17 +295,20 @@ def _config(
         "per_document_sample_size": per_document_sample_size,
     }
 
+
 ###############################################################################
 def _total_observed_tokens(report: dict[str, Any], tokenizer_name: str) -> int:
     observations = report.get("raw_observations", {}).get(tokenizer_name, [])
     assert observations and all("token_count" in row for row in observations)
     return sum(int(row["token_count"]) for row in observations)
 
+
 ###############################################################################
 def _assert_config_shape(report: dict[str, Any], expected: dict[str, Any]) -> None:
     actual = report.get("config", {})
     assert set(actual) == CONFIG_FIELDS
     assert actual == expected
+
 
 ###############################################################################
 @pytest.mark.skipif(
@@ -343,7 +355,11 @@ def test_live_benchmark_measurements_and_run_options(
                 "dataset_name": dataset_name,
                 "run_name": run_name,
                 "selected_metric_keys": PERFORMANCE_METRICS
-                + (["doc.tokens_count_distribution"] if include_document_distribution else []),
+                + (
+                    ["doc.tokens_count_distribution"]
+                    if include_document_distribution
+                    else []
+                ),
                 "config": config,
             },
         )
@@ -374,7 +390,9 @@ def test_live_benchmark_measurements_and_run_options(
     try:
         words = ["validation", "sample", "repeat", "dataset", "document", "benchmark"]
         rows = [
-            " ".join(words[(index + offset) % len(words)] for offset in range(1 + index % 6))
+            " ".join(
+                words[(index + offset) % len(words)] for offset in range(1 + index % 6)
+            )
             for index in range(1_000)
         ]
         dataset_response = api_context.post(
@@ -528,9 +546,12 @@ def test_live_benchmark_measurements_and_run_options(
         per_document = configured_report.get("per_document_stats", [])
         assert len(per_document) == 1
         assert len(per_document[0].get("tokens_count", [])) == 23
-        assert configured_report.get("runtime_metadata", {}).get(
-            "benchmark_config", {}
-        ).get("parallelism") == 2
+        assert (
+            configured_report.get("runtime_metadata", {})
+            .get("benchmark_config", {})
+            .get("parallelism")
+            == 2
+        )
 
         parallel_tokenizer_stem = f"t3_parallel_{uuid4().hex[:8]}"
         parallel_tokenizer_response = api_context.post(
@@ -545,9 +566,7 @@ def test_live_benchmark_measurements_and_run_options(
         )
         assert parallel_tokenizer_response.ok, parallel_tokenizer_response.text()
         parallel_tokenizer = parallel_tokenizer_response.json()
-        parallel_tokenizer_name = str(
-            parallel_tokenizer.get("tokenizer_name", "")
-        )
+        parallel_tokenizer_name = str(parallel_tokenizer.get("tokenizer_name", ""))
         assert parallel_tokenizer_name == f"CUSTOM_{parallel_tokenizer_stem}"
         assert parallel_tokenizer.get("is_compatible") is True
         tokenizer_names_to_delete.append(parallel_tokenizer_name)
@@ -612,9 +631,7 @@ def test_live_benchmark_measurements_and_run_options(
             assert [item.get("tokenizer") for item in per_document] == (
                 parallel_tokenizer_names
             )
-            assert all(
-                len(item.get("tokens_count", [])) == 23 for item in per_document
-            )
+            assert all(len(item.get("tokens_count", [])) == 23 for item in per_document)
             assert report.get("dashboard", {}).get("widgets")
 
         parallelism_evidence = {
@@ -713,11 +730,14 @@ def test_live_benchmark_measurements_and_run_options(
             json.dumps(evidence, indent=2), encoding="utf-8"
         )
 
+
 ###############################################################################
 # Opt-in live coverage for cancelling and immediately rerunning a benchmark.
 
 
-RUN_BENCHMARKS__benchmark_cancellation = os.getenv("E2E_RUN_BENCHMARKS", "").lower() in {
+RUN_BENCHMARKS__benchmark_cancellation = os.getenv(
+    "E2E_RUN_BENCHMARKS", ""
+).lower() in {
     "1",
     "true",
     "yes",
@@ -729,6 +749,7 @@ METRIC_KEYS = {
     "res.memory_delta_mb",
 }
 DOCUMENT_DISTRIBUTION_METRIC_KEY = "doc.tokens_count_distribution"
+
 
 ###############################################################################
 def _campaign_tokenizer_json() -> bytes:
@@ -753,6 +774,7 @@ def _campaign_tokenizer_json() -> bytes:
         special_tokens=[("[CLS]", 2), ("[SEP]", 3)],
     )
     return tokenizer.to_str().encode("utf-8")
+
 
 ###############################################################################
 def _select_metric(
@@ -793,6 +815,7 @@ def _select_metric(
             checkbox.check()
     dialog.get_by_role("button", name="Next").click()
 
+
 ###############################################################################
 def _set_document_limit(dialog: Locator, value: int) -> None:
     slider = dialog.locator("#benchmark-documents")
@@ -810,6 +833,7 @@ def _set_document_limit(dialog: Locator, value: int) -> None:
         value,
     )
     expect(slider).to_have_value(str(value))
+
 
 ###############################################################################
 def _start_benchmark(
@@ -864,9 +888,12 @@ def _start_benchmark(
             "Per-document sample size",
         ):
             expect(dialog.get_by_text(label, exact=True)).to_be_visible()
-        assert dialog.locator(
-            ".benchmark-wizard-advanced-settings input[type='checkbox']"
-        ).count() == 4
+        assert (
+            dialog.locator(
+                ".benchmark-wizard-advanced-settings input[type='checkbox']"
+            ).count()
+            == 4
+        )
     with page.expect_response(
         lambda response: (
             response.request.method == "POST"
@@ -881,6 +908,7 @@ def _start_benchmark(
     job_id = str(payload.get("job_id", ""))
     assert job_id, "Missing benchmark job ID"
     return job_id, payload
+
 
 ###############################################################################
 def _wait_for_running_progress(
@@ -904,6 +932,7 @@ def _wait_for_running_progress(
     raise AssertionError(
         f"Job {job_id} did not remain active at {minimum_progress}% progress"
     )
+
 
 ###############################################################################
 @pytest.mark.skipif(
@@ -1071,7 +1100,9 @@ def test_benchmark_can_be_cancelled_and_immediately_rerun(
         cancelled_report_found = any(
             report.get("run_name") == cancelled_run_name for report in cancelled_reports
         )
-        assert not cancelled_report_found, "A cancelled benchmark unexpectedly persisted a report"
+        assert not cancelled_report_found, (
+            "A cancelled benchmark unexpectedly persisted a report"
+        )
 
         second_job_id, second_job = _start_benchmark(
             page=page,
@@ -1116,8 +1147,12 @@ def test_benchmark_can_be_cancelled_and_immediately_rerun(
             "per_document_sample_size": 2,
         }
         rerun_result = rerun_report.get("tokenizer_results", [{}])[0]
-        assert isinstance(rerun_result.get("resources", {}).get("peak_rss_mb"), (int, float))
-        assert isinstance(rerun_result.get("resources", {}).get("memory_delta_mb"), (int, float))
+        assert isinstance(
+            rerun_result.get("resources", {}).get("peak_rss_mb"), (int, float)
+        )
+        assert isinstance(
+            rerun_result.get("resources", {}).get("memory_delta_mb"), (int, float)
+        )
         assert DOCUMENT_DISTRIBUTION_METRIC_KEY in rerun_report.get(
             "selected_metric_keys", []
         )

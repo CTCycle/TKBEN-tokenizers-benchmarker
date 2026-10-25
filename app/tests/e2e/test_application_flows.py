@@ -59,16 +59,21 @@ def _upload_dataset_for_ui_test(
     assert job_status.get("status") == "completed", job_status.get("error")
     return dataset_name
 
+
 ###############################################################################
 def _request_query(url: str) -> dict[str, list[str]]:
     return parse_qs(urlparse(url).query, keep_blank_values=True)
 
+
 ###############################################################################
-def _matches_catalog_request(request, endpoint: str, expected: dict[str, list[str]]) -> bool:
+def _matches_catalog_request(
+    request, endpoint: str, expected: dict[str, list[str]]
+) -> bool:
     return (
         urlparse(request.url).path.endswith(endpoint)
         and _request_query(request.url) == expected
     )
+
 
 ###############################################################################
 def _expect_catalog_request(
@@ -82,6 +87,7 @@ def _expect_catalog_request(
     ):
         action()
 
+
 ###############################################################################
 def _seed_dataset_catalog_fixture(rows: list[tuple[str, int]]) -> None:
     repository = DatasetRepository()
@@ -89,11 +95,13 @@ def _seed_dataset_catalog_fixture(rows: list[tuple[str, int]]) -> None:
         dataset_id = repository.begin_dataset_import(dataset_name)
         repository.finalize_dataset_import(dataset_id, document_count)
 
+
 ###############################################################################
 def _cleanup_dataset_catalog_fixture(dataset_names: list[str]) -> None:
     repository = DatasetRepository()
     for dataset_name in dataset_names:
         repository.delete_dataset(dataset_name)
+
 
 ###############################################################################
 def _seed_tokenizer_catalog_fixture(
@@ -119,11 +127,13 @@ def _seed_tokenizer_catalog_fixture(
             )
             session.commit()
 
+
 ###############################################################################
 def _cleanup_tokenizer_catalog_fixture(tokenizer_names: list[str]) -> None:
     service = TokenizersService()
     for tokenizer_name in tokenizer_names:
         service.remove_tokenizer(tokenizer_name)
+
 
 ###############################################################################
 def _expected_dataset_names(
@@ -154,6 +164,7 @@ def _expected_dataset_names(
         expected.append(name)
     return sorted(expected)
 
+
 ###############################################################################
 def _expected_tokenizer_names(
     catalog: list[dict],
@@ -183,12 +194,14 @@ def _expected_tokenizer_names(
         expected.append(name)
     return sorted(expected)
 
+
 ###############################################################################
 def _assert_rendered_catalog_names(locator, expected: list[str]) -> None:
     expect(locator).to_have_count(len(expected))
     for name in expected:
         expect(locator.filter(has_text=name)).to_have_count(1)
     assert sorted(text.strip() for text in locator.all_text_contents()) == expected
+
 
 ###############################################################################
 class TestAppShell:
@@ -203,6 +216,7 @@ class TestAppShell:
         page.goto(f"{base_url}{path}")
         expect(page).to_have_url(re.compile(r".*/dataset/?$"))
         expect(page.get_by_text("Dataset Usage")).to_be_visible()
+
 
 ###############################################################################
 class TestDatasetPage:
@@ -296,14 +310,16 @@ class TestDatasetPage:
 
             page.on(
                 "console",
-                lambda message: browser_errors.append(message.text)
-                if message.type == "error"
-                else None,
+                lambda message: (
+                    browser_errors.append(message.text)
+                    if message.type == "error"
+                    else None
+                ),
             )
             page.goto(f"{base_url}/dataset")
-            dataset_row = page.locator(".dataset-preview-row").filter(
-                has_text=dataset_name
-            ).first
+            dataset_row = (
+                page.locator(".dataset-preview-row").filter(has_text=dataset_name).first
+            )
             expect(dataset_row).to_be_visible()
             dataset_row.get_by_role(
                 "button", name=f"Run validation pipeline for {dataset_name}"
@@ -333,19 +349,22 @@ class TestDatasetPage:
             )
 
             with page.expect_request(
-                lambda request: request.method == "POST"
-                and urlparse(request.url).path == "/api/datasets/analyze"
+                lambda request: (
+                    request.method == "POST"
+                    and urlparse(request.url).path == "/api/datasets/analyze"
+                )
             ) as analyze_request:
                 page.get_by_role("button", name="Run Validation", exact=True).click()
             request_payload = analyze_request.value.post_data_json
             assert request_payload.get("dataset_name") == dataset_name
-            assert set(request_payload.get("selected_metric_keys", [])) == target_metric_keys
+            assert (
+                set(request_payload.get("selected_metric_keys", []))
+                == target_metric_keys
+            )
             assert request_payload.get("filters", {}).get("exclude_empty") is False
 
             dashboard = page.locator(".dataset-dashboard")
-            expect(
-                dashboard.locator(".panel-description").first
-            ).to_contain_text(
+            expect(dashboard.locator(".panel-description").first).to_contain_text(
                 f"Latest persisted session for {dataset_name}", timeout=300_000
             )
 
@@ -366,14 +385,10 @@ class TestDatasetPage:
 
             expect(dashboard.get_by_text("Aggregate Stats", exact=True)).to_be_visible()
             expect(
-                dashboard.locator(".dataset-table tr").filter(
-                    has_text="Num documents"
-                )
+                dashboard.locator(".dataset-table tr").filter(has_text="Num documents")
             ).to_contain_text("4")
             expect(
-                dashboard.locator(".dataset-table tr").filter(
-                    has_text="Empty count"
-                )
+                dashboard.locator(".dataset-table tr").filter(has_text="Empty count")
             ).to_contain_text("1")
             duplicate_panel = dashboard.locator(".dataset-extras-item").filter(
                 has_text="Duplicate Indicators"
@@ -387,30 +402,31 @@ class TestDatasetPage:
             expect(exact_duplicate_row).not_to_contain_text("—")
 
             page.reload()
-            dataset_row = page.locator(".dataset-preview-row").filter(
-                has_text=dataset_name
-            ).first
+            dataset_row = (
+                page.locator(".dataset-preview-row").filter(has_text=dataset_name).first
+            )
             with page.expect_response(
-                lambda response: response.request.method == "GET"
-                and "/api/datasets/reports/latest" in response.url
-                and dataset_stem in response.url
+                lambda response: (
+                    response.request.method == "GET"
+                    and "/api/datasets/reports/latest" in response.url
+                    and dataset_stem in response.url
+                )
             ):
                 dataset_row.click(position={"x": 20, "y": 20})
             dashboard = page.locator(".dataset-dashboard")
-            expect(
-                dashboard.locator(".panel-description").first
-            ).to_contain_text(f"Latest persisted session for {dataset_name}")
+            expect(dashboard.locator(".panel-description").first).to_contain_text(
+                f"Latest persisted session for {dataset_name}"
+            )
             expect(dashboard.get_by_text("Aggregate Stats", exact=True)).to_be_visible()
             expect(
-                dashboard.locator(".dataset-table tr").filter(
-                    has_text="Num documents"
-                )
+                dashboard.locator(".dataset-table tr").filter(has_text="Num documents")
             ).to_contain_text("4")
-            exact_duplicate_row = dashboard.locator(
-                ".dataset-extras-item"
-            ).filter(has_text="Duplicate Indicators").locator(
-                ".dataset-indicator-row"
-            ).filter(has_text="Exact duplicate rate")
+            exact_duplicate_row = (
+                dashboard.locator(".dataset-extras-item")
+                .filter(has_text="Duplicate Indicators")
+                .locator(".dataset-indicator-row")
+                .filter(has_text="Exact duplicate rate")
+            )
             expect(exact_duplicate_row).to_contain_text("%")
             persisted_report = api_context.get(
                 "/api/datasets/reports/latest",
@@ -506,19 +522,25 @@ class TestDatasetPage:
                 poll_interval=upload_job.get("poll_interval", 1.0),
                 timeout_seconds=300.0,
             )
-            assert upload_status.get("status") == "completed", upload_status.get("error")
-            assert upload_status.get("result", {}).get("document_count") == len(documents)
+            assert upload_status.get("status") == "completed", upload_status.get(
+                "error"
+            )
+            assert upload_status.get("result", {}).get("document_count") == len(
+                documents
+            )
 
             page.on(
                 "console",
-                lambda message: browser_errors.append(message.text)
-                if message.type == "error"
-                else None,
+                lambda message: (
+                    browser_errors.append(message.text)
+                    if message.type == "error"
+                    else None
+                ),
             )
             page.goto(f"{base_url}/dataset")
-            dataset_row = page.locator(".dataset-preview-row").filter(
-                has_text=dataset_name
-            ).first
+            dataset_row = (
+                page.locator(".dataset-preview-row").filter(has_text=dataset_name).first
+            )
             expect(dataset_row).to_be_visible()
             dataset_row.get_by_role(
                 "button", name=f"Run validation pipeline for {dataset_name}"
@@ -532,18 +554,21 @@ class TestDatasetPage:
                 ).to_be_checked()
 
             page.get_by_role("button", name="Next", exact=True).click()
-            expect(page.get_by_role("radio", name="Fraction", exact=True)).to_be_checked()
             expect(
-                page.get_by_role(
-                    "checkbox", name="Exclude empty documents", exact=True
-                )
+                page.get_by_role("radio", name="Fraction", exact=True)
+            ).to_be_checked()
+            expect(
+                page.get_by_role("checkbox", name="Exclude empty documents", exact=True)
             ).to_be_checked()
 
             preview = page.locator(".validation-preview")
             expect(preview.locator(".validation-preview-stats")).to_be_visible()
             with page.expect_response(
-                lambda response: response.request.method == "POST"
-                and urlparse(response.url).path == "/api/datasets/validation/preview"
+                lambda response: (
+                    response.request.method == "POST"
+                    and urlparse(response.url).path
+                    == "/api/datasets/validation/preview"
+                )
             ) as filtered_preview_info:
                 page.get_by_label("Max Length", exact=True).fill("80")
             filtered_preview = filtered_preview_info.value
@@ -557,8 +582,11 @@ class TestDatasetPage:
             )
 
             with page.expect_response(
-                lambda response: response.request.method == "POST"
-                and urlparse(response.url).path == "/api/datasets/validation/preview"
+                lambda response: (
+                    response.request.method == "POST"
+                    and urlparse(response.url).path
+                    == "/api/datasets/validation/preview"
+                )
             ) as empty_preview_info:
                 page.get_by_label("Max Length", exact=True).fill("0")
             empty_preview = empty_preview_info.value
@@ -571,8 +599,11 @@ class TestDatasetPage:
             expect(page.get_by_role("button", name="Next", exact=True)).to_be_disabled()
 
             with page.expect_response(
-                lambda response: response.request.method == "POST"
-                and urlparse(response.url).path == "/api/datasets/validation/preview"
+                lambda response: (
+                    response.request.method == "POST"
+                    and urlparse(response.url).path
+                    == "/api/datasets/validation/preview"
+                )
             ) as recovered_preview_info:
                 page.get_by_label("Max Length", exact=True).fill("80")
             recovered_preview = recovered_preview_info.value
@@ -581,16 +612,18 @@ class TestDatasetPage:
             expect(page.get_by_role("button", name="Next", exact=True)).to_be_enabled()
 
             page.get_by_role("button", name="Next", exact=True).click()
-            expect(
-                page.locator(".validation-summary")
-            ).to_contain_text(f"Selected metrics: {len(metric_keys)}")
+            expect(page.locator(".validation-summary")).to_contain_text(
+                f"Selected metrics: {len(metric_keys)}"
+            )
             expect(page.locator(".validation-summary")).to_contain_text(
                 "Expected analyzed documents: 3 of 4"
             )
 
             with page.expect_request(
-                lambda request: request.method == "POST"
-                and urlparse(request.url).path == "/api/datasets/analyze"
+                lambda request: (
+                    request.method == "POST"
+                    and urlparse(request.url).path == "/api/datasets/analyze"
+                )
             ) as analyze_request:
                 page.get_by_role("button", name="Run Validation", exact=True).click()
             request_payload = analyze_request.value.post_data_json
@@ -604,9 +637,7 @@ class TestDatasetPage:
             }
 
             dashboard = page.locator(".dataset-dashboard")
-            expect(
-                dashboard.locator(".panel-description").first
-            ).to_contain_text(
+            expect(dashboard.locator(".panel-description").first).to_contain_text(
                 f"Latest persisted session for {dataset_name}", timeout=300_000
             )
 
@@ -680,15 +711,15 @@ class TestDatasetPage:
                 )
             ).to_be_visible()
             histogram_charts = dashboard.locator(".dataset-histogram-chart")
-            for index, histogram_name in enumerate((
-                "Document length histogram",
-                "Word length histogram",
-            )):
+            for index, histogram_name in enumerate(
+                (
+                    "Document length histogram",
+                    "Word length histogram",
+                )
+            ):
                 histogram_chart = histogram_charts.nth(index)
                 expect(
-                    histogram_chart.get_by_role(
-                        "img", name=re.compile(histogram_name)
-                    )
+                    histogram_chart.get_by_role("img", name=re.compile(histogram_name))
                 ).to_be_visible()
                 assert histogram_chart.locator(".dataset-histogram-bar").count() > 0
             expect(dashboard.locator(".dataset-zipf-chart")).to_be_visible()
@@ -699,7 +730,12 @@ class TestDatasetPage:
             expect(dashboard.get_by_text("Concentration", exact=True)).to_be_visible()
             expect(dashboard.locator(".dataset-word-cloud-term").first).to_be_visible()
 
-            for metric_label in ("Mean length", "Length CV", "Vocabulary size", "Entropy"):
+            for metric_label in (
+                "Mean length",
+                "Length CV",
+                "Vocabulary size",
+                "Entropy",
+            ):
                 metric_row = dashboard.locator(".dataset-table tr").filter(
                     has_text=metric_label
                 )
@@ -710,19 +746,21 @@ class TestDatasetPage:
             ).to_contain_text("0")
 
             page.reload()
-            dataset_row = page.locator(".dataset-preview-row").filter(
-                has_text=dataset_name
-            ).first
+            dataset_row = (
+                page.locator(".dataset-preview-row").filter(has_text=dataset_name).first
+            )
             with page.expect_response(
-                lambda response: response.request.method == "GET"
-                and "/api/datasets/reports/latest" in response.url
-                and dataset_stem in response.url
+                lambda response: (
+                    response.request.method == "GET"
+                    and "/api/datasets/reports/latest" in response.url
+                    and dataset_stem in response.url
+                )
             ):
                 dataset_row.click(position={"x": 20, "y": 20})
             dashboard = page.locator(".dataset-dashboard")
-            expect(
-                dashboard.locator(".panel-description").first
-            ).to_contain_text(f"Latest persisted session for {dataset_name}")
+            expect(dashboard.locator(".panel-description").first).to_contain_text(
+                f"Latest persisted session for {dataset_name}"
+            )
             expect(dashboard.get_by_text("Aggregate Stats", exact=True)).to_be_visible()
             expect(dashboard.locator(".dataset-word-cloud-term").first).to_be_visible()
             assert not browser_errors, f"Browser console errors: {browser_errors}"
@@ -760,18 +798,23 @@ class TestDatasetPage:
         ]
         fixture_names = [name for name, _ in fixture_rows]
         _seed_dataset_catalog_fixture(fixture_rows)
-        catalog = [*baseline_catalog, *(
-            {"dataset_name": name, "document_count": count}
-            for name, count in fixture_rows
-        )]
+        catalog = [
+            *baseline_catalog,
+            *(
+                {"dataset_name": name, "document_count": count}
+                for name, count in fixture_rows
+            ),
+        ]
 
         try:
             request_urls: list[str] = []
             page.on(
                 "request",
-                lambda request: request_urls.append(request.url)
-                if urlparse(request.url).path.endswith("/api/datasets/list")
-                else None,
+                lambda request: (
+                    request_urls.append(request.url)
+                    if urlparse(request.url).path.endswith("/api/datasets/list")
+                    else None
+                ),
             )
             page.goto(f"{base_url}/dataset")
 
@@ -780,10 +823,7 @@ class TestDatasetPage:
             )
             expected_all = _expected_dataset_names(catalog)
             _assert_rendered_catalog_names(dataset_names, expected_all)
-            assert any(
-                _request_query(url) == {}
-                for url in request_urls
-            )
+            assert any(_request_query(url) == {} for url in request_urls)
 
             search = page.get_by_label("Search datasets")
             source = page.get_by_label("Source")
@@ -843,9 +883,7 @@ class TestDatasetPage:
                 },
                 select_all_and_set_at_least_boundary,
             )
-            at_least_expected = _expected_dataset_names(
-                catalog, document_count=5
-            )
+            at_least_expected = _expected_dataset_names(catalog, document_count=5)
             _assert_rendered_catalog_names(dataset_names, at_least_expected)
 
             _expect_catalog_request(
@@ -1126,6 +1164,7 @@ class TestDatasetPage:
             for item in refreshed.json().get("datasets", [])
         }
 
+
 ###############################################################################
 class TestTokenizersPage:
     """Tests for tokenizers page UI elements."""
@@ -1168,19 +1207,18 @@ class TestTokenizersPage:
             request_urls: list[str] = []
             page.on(
                 "request",
-                lambda request: request_urls.append(request.url)
-                if urlparse(request.url).path.endswith("/api/tokenizers/list")
-                else None,
+                lambda request: (
+                    request_urls.append(request.url)
+                    if urlparse(request.url).path.endswith("/api/tokenizers/list")
+                    else None
+                ),
             )
             page.goto(f"{base_url}/tokenizers")
 
             tokenizer_names = page.locator(".tokenizer-preview-name")
             expected_all = _expected_tokenizer_names(catalog)
             _assert_rendered_catalog_names(tokenizer_names, expected_all)
-            assert any(
-                _request_query(url) == {}
-                for url in request_urls
-            )
+            assert any(_request_query(url) == {} for url in request_urls)
 
             search = page.get_by_label("Search tokenizers")
             source = page.get_by_label("Source")
@@ -1242,9 +1280,7 @@ class TestTokenizersPage:
                 },
                 select_all_and_set_at_least_boundary,
             )
-            at_least_expected = _expected_tokenizer_names(
-                catalog, vocabulary_size=5
-            )
+            at_least_expected = _expected_tokenizer_names(catalog, vocabulary_size=5)
             _assert_rendered_catalog_names(tokenizer_names, at_least_expected)
 
             _expect_catalog_request(
@@ -1594,6 +1630,7 @@ class TestTokenizersPage:
             for item in refreshed.json().get("tokenizers", [])
         }
 
+
 ###############################################################################
 class TestCrossBenchmarkPage:
     """Tests for cross benchmark page UI elements."""
@@ -1783,6 +1820,7 @@ class TestCrossBenchmarkPage:
             page.get_by_text("broken/tokenizer: RuntimeError", exact=False)
         ).to_be_visible()
 
+
 ###############################################################################
 # Browser coverage for frontend-first startup and readiness polling.
 
@@ -1800,6 +1838,7 @@ def _route_health(page: Page, failures: int | None) -> dict[str, int]:
 
     page.route("**/api/health", handle_health)
     return calls
+
 
 ###############################################################################
 def test_startup_screen_recovers_after_transient_backend_unavailability(
@@ -1831,6 +1870,7 @@ def test_startup_screen_recovers_after_transient_backend_unavailability(
     expect(page.get_by_text("Dataset Usage")).to_be_visible(timeout=10_000)
     expect(page.locator(".startup-screen")).to_have_count(0)
     assert calls["count"] >= 3
+
 
 ###############################################################################
 def test_startup_screen_supports_reduced_motion_and_narrow_viewport(

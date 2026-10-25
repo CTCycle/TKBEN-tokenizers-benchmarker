@@ -6,6 +6,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+
 ###############################################################################
 @dataclass(frozen=True)
 class TokenizerRunConfig:
@@ -14,6 +15,7 @@ class TokenizerRunConfig:
     truncation: bool = False
     max_length: int | None = None
     batch_size: int = 64
+
 
 ###############################################################################
 @dataclass(frozen=True)
@@ -30,6 +32,7 @@ class BatchObservation:
     error_count: int = 0
     rss_before_mb: float | None = None
     rss_after_mb: float | None = None
+
 
 ###############################################################################
 @dataclass(frozen=True)

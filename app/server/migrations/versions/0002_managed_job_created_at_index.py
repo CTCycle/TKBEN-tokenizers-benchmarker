@@ -18,11 +18,13 @@ branch_labels = None
 depends_on = None
 
 
+###############################################################################
 def upgrade() -> None:
     with op.batch_alter_table("managed_job", schema=None) as batch_op:
         batch_op.create_index("ix_managed_job_created_at", ["created_at"], unique=False)
 
 
+###############################################################################
 def downgrade() -> None:
     with op.batch_alter_table("managed_job", schema=None) as batch_op:
         batch_op.drop_index("ix_managed_job_created_at")

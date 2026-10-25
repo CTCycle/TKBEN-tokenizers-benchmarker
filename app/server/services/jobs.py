@@ -24,6 +24,7 @@ RESTART_INTERRUPTION_REASON = "application_restart"
 PROGRESS_PERSIST_INTERVAL_SECONDS = 1.0
 PROGRESS_PERSIST_STEP = 1.0
 
+
 ###############################################################################
 @dataclass
 class JobState:
@@ -68,6 +69,7 @@ class JobState:
                 "completed_at": self.completed_at,
             }
 
+
 ###############################################################################
 class JobProgressReporter:
 
@@ -80,6 +82,7 @@ class JobProgressReporter:
     def __call__(self, value: float) -> None:
         self.job_manager.update_progress(self.job_id, value)
 
+
 ###############################################################################
 class JobStopChecker:
 
@@ -91,6 +94,7 @@ class JobStopChecker:
     # -------------------------------------------------------------------------
     def __call__(self) -> bool:
         return self.job_manager.should_stop(self.job_id)
+
 
 ###############################################################################
 class JobManager:
@@ -284,7 +288,11 @@ class JobManager:
         if excess <= 0:
             return
         finished = sorted(
-            (state for state in self.jobs.values() if state.status in TERMINAL_STATUSES),
+            (
+                state
+                for state in self.jobs.values()
+                if state.status in TERMINAL_STATUSES
+            ),
             key=lambda state: state.created_at,
         )
         for state in finished[:excess]:
@@ -332,7 +340,9 @@ class JobManager:
                 state.persisted_progress = state.progress
                 state.last_progress_persisted_at = self.clock()
             except Exception:
-                logger.exception("Unable to persist terminal state for job %s", state.job_id)
+                logger.exception(
+                    "Unable to persist terminal state for job %s", state.job_id
+                )
 
     # -------------------------------------------------------------------------
     def _run_job(
@@ -350,9 +360,7 @@ class JobManager:
         try:
             result = runner(*args, **kwargs)
             if state.stop_requested:
-                self._finish_job(
-                    state, status="cancelled", completed_at=self.clock()
-                )
+                self._finish_job(state, status="cancelled", completed_at=self.clock())
             else:
                 result_payload = result or {}
                 with state.lock:
@@ -367,9 +375,7 @@ class JobManager:
                 logger.info("Job %s completed successfully", job_id)
         except Exception as exc:  # noqa: BLE001
             if state.stop_requested:
-                self._finish_job(
-                    state, status="cancelled", completed_at=self.clock()
-                )
+                self._finish_job(state, status="cancelled", completed_at=self.clock())
                 logger.info("Job %s cancelled during execution", job_id)
             else:
                 error_msg = str(exc).split("\n")[0][:200]
@@ -387,7 +393,7 @@ class JobManager:
     def _runner_accepts_job_id(self, runner: Callable[..., dict[str, Any]]) -> bool:
         try:
             signature = inspect.signature(runner)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return False
         for param in signature.parameters.values():
             if param.kind == param.VAR_KEYWORD:

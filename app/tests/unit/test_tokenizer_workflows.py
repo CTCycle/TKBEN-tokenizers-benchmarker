@@ -37,8 +37,6 @@ from tokenizers import pre_tokenizers
 from tokenizers import processors
 from server.services.tokenizer_adapters import UniversalTokenizerAdapter
 
-###############################################################################
-
 
 ###############################################################################
 def test_frequency_store_flush_batches_large_token_lookups() -> None:
@@ -64,8 +62,6 @@ def test_frequency_store_flush_batches_large_token_lookups() -> None:
     finally:
         store.close()
 
-###############################################################################
-
 
 ###############################################################################
 @pytest.fixture
@@ -79,12 +75,14 @@ def isolated_engine(monkeypatch: pytest.MonkeyPatch):
     finally:
         engine.dispose()
 
+
 ###############################################################################
 def test_get_active_key_raises_validation_error_on_invalid_decryption(
     isolated_engine,
 ) -> None:
     del isolated_engine
     service = HFAccessKeyService()
+
 
     ###############################################################################
     class FailingCipher:
@@ -108,12 +106,14 @@ def test_get_active_key_raises_validation_error_on_invalid_decryption(
     with pytest.raises(HFAccessKeyValidationError, match="cannot be decrypted"):
         service.get_active_key()
 
+
 ###############################################################################
 def test_add_key_skips_undecryptable_rows_during_duplicate_check(
     isolated_engine,
 ) -> None:
     del isolated_engine
     service = HFAccessKeyService()
+
 
     ###############################################################################
     class RecoveringCipher:
@@ -153,12 +153,14 @@ def test_add_key_skips_undecryptable_rows_during_duplicate_check(
     assert len(rows) == 2
     assert rows[1].key_value == "enc:hf_test_key"
 
+
 ###############################################################################
 def test_add_key_detects_duplicate_raw_key_across_encryption(
     isolated_engine,
 ) -> None:
     del isolated_engine
     service = HFAccessKeyService()
+
 
     ###############################################################################
     class NonDeterministicCipher:
@@ -185,6 +187,7 @@ def test_add_key_detects_duplicate_raw_key_across_encryption(
     with Session(bind=get_database().backend.engine) as session:
         rows = session.execute(select(HFAccessKey)).scalars().all()
     assert len(rows) == 1
+
 
 ###############################################################################
 def test_set_active_key_is_idempotent_for_already_active_key(
@@ -225,6 +228,7 @@ def test_set_active_key_is_idempotent_for_already_active_key(
         )
     assert any(row.id == key_id and row.is_active for row in rows)
     assert all(row.is_active is (row.id == key_id) for row in rows)
+
 
 ###############################################################################
 def test_activating_second_key_deactivates_first(
@@ -267,6 +271,7 @@ def test_activating_second_key_deactivates_first(
     assert rows[0].is_active is False
     assert rows[1].is_active is True
 
+
 ###############################################################################
 def test_unknown_activation_does_not_clear_existing_active_key(
     isolated_engine,
@@ -292,8 +297,6 @@ def test_unknown_activation_does_not_clear_existing_active_key(
         row = session.get(HFAccessKey, key_id)
     assert row is not None
     assert row.is_active is True
-
-###############################################################################
 
 
 ###############################################################################
@@ -325,6 +328,7 @@ def test_compute_subword_word_stats_excludes_special_tokens_and_classifies_marke
     assert stats["subword_percentage"] == pytest.approx(55.5555, rel=1e-3)
     assert stats["word_percentage"] == pytest.approx(44.4444, rel=1e-3)
 
+
 ###############################################################################
 @pytest.mark.parametrize("field", ["metadata", "token_length_histogram"])
 def test_tokenizer_report_response_rejects_json_encoded_storage(field: str) -> None:
@@ -341,6 +345,7 @@ def test_tokenizer_report_response_rejects_json_encoded_storage(field: str) -> N
 
     with pytest.raises(ValueError, match="native JSON object"):
         repository._build_tokenizer_report_response(storage)
+
 
 ###############################################################################
 def test_resolve_hf_repo_metadata_returns_link_when_description_unavailable(
@@ -368,9 +373,11 @@ def test_resolve_hf_repo_metadata_returns_link_when_description_unavailable(
     assert description is None
     assert huggingface_url == "https://huggingface.co/bert-base-uncased"
 
+
 ###############################################################################
 class DummyBackendTokenizerModel:
     pass
+
 
 ###############################################################################
 class DummyBackendTokenizer:
@@ -378,6 +385,7 @@ class DummyBackendTokenizer:
     # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.model = DummyBackendTokenizerModel()
+
 
 ###############################################################################
 class DummyTokenizer:
@@ -406,6 +414,7 @@ class DummyTokenizer:
             "Ġtoken": 5,
             "wordĠpiece": 6,
         }
+
 
 ###############################################################################
 def test_generate_report_payload_includes_hf_url_and_subword_stats(
@@ -463,7 +472,8 @@ def test_generate_report_payload_includes_hf_url_and_subword_stats(
     assert shape_metric_keys <= vocabulary_stats.keys()
     assert shape_metric_keys <= report["token_length_histogram"].keys()
     assert all(
-        vocabulary_stats[key] == captured_report["global_stats"]["vocabulary_stats"][key]
+        vocabulary_stats[key]
+        == captured_report["global_stats"]["vocabulary_stats"][key]
         for key in shape_metric_keys
     )
     assert (
@@ -475,6 +485,7 @@ def test_generate_report_payload_includes_hf_url_and_subword_stats(
     assert (
         captured_report["global_stats"]["vocabulary_stats"]["unique_token_lengths"] == 3
     )
+
 
 ###############################################################################
 def test_tokenizer_report_repository_roundtrip_preserves_huggingface_url() -> None:
@@ -556,6 +567,7 @@ def test_tokenizer_report_repository_roundtrip_preserves_huggingface_url() -> No
     assert loaded["global_stats"]["model_max_length"] == 512
     assert loaded["global_stats"]["vocabulary_stats"]["subword_like_count"] == 1
 
+
 ###############################################################################
 def test_tokenizer_report_repository_does_not_create_missing_tokenizer() -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
@@ -570,8 +582,6 @@ def test_tokenizer_report_repository_does_not_create_missing_tokenizer() -> None
             {"report_version": 1, "global_stats": {}, "token_length_histogram": {}},
             [],
         )
-
-###############################################################################
 
 
 ###############################################################################
@@ -589,6 +599,7 @@ def test_compute_vocabulary_shape_metrics_vectorized_summary() -> None:
     assert metrics["token_length_p90"] == pytest.approx(3.7)
     assert metrics["token_length_cv"] == pytest.approx(0.4472135955)
     assert metrics["single_character_token_percentage"] == pytest.approx(25.0)
+
 
 ###############################################################################
 def test_repository_persists_vocabulary_shape_metrics_in_report_json() -> None:
@@ -654,8 +665,6 @@ def test_repository_persists_vocabulary_shape_metrics_in_report_json() -> None:
     assert histogram["token_length_p90"] == pytest.approx(3.7)
     assert histogram["single_character_token_percentage"] == pytest.approx(25.0)
 
-###############################################################################
-
 
 ###############################################################################
 class FakeTokenizerRepository:
@@ -668,9 +677,11 @@ class FakeTokenizerRepository:
     def get_tokenizer_report_by_id(self, report_id: int):
         return object() if report_id == 1 else None
 
+
 ###############################################################################
 def tokenizer_siblings(*filenames: str) -> list[dict[str, str]]:
     return [{"rfilename": filename} for filename in filenames]
+
 
 ###############################################################################
 def test_tokenizers_service_report_prechecks(monkeypatch) -> None:
@@ -707,11 +718,13 @@ def test_tokenizers_service_report_prechecks(monkeypatch) -> None:
     assert service.get_tokenizer_report_vocabulary(1, 0, 10) is not None
     assert service.get_tokenizer_report_vocabulary(2, 0, 10) is None
 
+
 ###############################################################################
 def test_tokenizer_discovery_passes_native_filters_and_returns_structured_items(
     monkeypatch,
 ) -> None:
     service = TokenizersService()
+
 
     ###############################################################################
     class FakeModel:
@@ -728,6 +741,7 @@ def test_tokenizer_discovery_passes_native_filters_and_returns_structured_items(
             self.tags = ["core-model"]
             self.config = None
             self.siblings = tokenizer_siblings("tokenizer.json", "config.json")
+
 
     ###############################################################################
     class FakeApi:
@@ -792,6 +806,7 @@ def test_tokenizer_discovery_passes_native_filters_and_returns_structured_items(
         "vocabulary_size": None,
     }
 
+
 ###############################################################################
 def test_custom_tokenizer_survives_service_recreation_and_is_benchmarkable(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -805,6 +820,7 @@ def test_custom_tokenizer_survives_service_recreation_and_is_benchmarkable(
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     Base.metadata.create_all(engine)
     database = SimpleNamespace(backend=SimpleNamespace(engine=engine))
+
 
     ###############################################################################
     class FakeFastTokenizer:
@@ -860,6 +876,7 @@ def test_custom_tokenizer_survives_service_recreation_and_is_benchmarkable(
     finally:
         engine.dispose()
 
+
 ###############################################################################
 def test_remove_tokenizer_cleans_cache_before_database_delete(
     tmp_path, monkeypatch
@@ -871,6 +888,7 @@ def test_remove_tokenizer_cleans_cache_before_database_delete(
     monkeypatch.setattr(service, "get_tokenizer_cache_dir", lambda name: str(cache_dir))
 
     calls: list[str] = []
+
 
     ###############################################################################
     class FakeRepository:
@@ -886,6 +904,7 @@ def test_remove_tokenizer_cleans_cache_before_database_delete(
     assert service.remove_tokenizer("google-bert/bert-base-uncased") is True
     assert calls == ["google-bert/bert-base-uncased"]
 
+
 ###############################################################################
 def test_remove_tokenizer_keeps_database_row_when_cache_cleanup_fails(
     monkeypatch,
@@ -899,6 +918,7 @@ def test_remove_tokenizer_keeps_database_row_when_cache_cleanup_fails(
     )
 
     deleted = False
+
 
     ###############################################################################
     class FakeRepository:
@@ -915,11 +935,13 @@ def test_remove_tokenizer_keeps_database_row_when_cache_cleanup_fails(
         service.remove_tokenizer("google-bert/bert-base-uncased")
     assert deleted is False
 
+
 ###############################################################################
 def test_tokenizer_discovery_uses_bounded_overfetch_and_candidate_cap(
     monkeypatch,
 ) -> None:
     service = TokenizersService()
+
 
     ###############################################################################
     class FakeApi:
@@ -954,9 +976,11 @@ def test_tokenizer_discovery_uses_bounded_overfetch_and_candidate_cap(
     assert fake_api.captured["limit"] == 750
     assert fake_api.captured["expand"][0] == "siblings"
 
+
 ###############################################################################
 def test_tokenizer_discovery_accepts_supported_root_artifacts_only(monkeypatch) -> None:
     service = TokenizersService()
+
 
     ###############################################################################
     class FakeModel:
@@ -967,6 +991,7 @@ def test_tokenizer_discovery_accepts_supported_root_artifacts_only(monkeypatch) 
             self.pipeline_tag = "text-generation"
             self.tags = []
             self.siblings = tokenizer_siblings(*filenames)
+
 
     ###############################################################################
     class FakeApi:
@@ -1006,11 +1031,13 @@ def test_tokenizer_discovery_accepts_supported_root_artifacts_only(monkeypatch) 
     assert response.count == 5
     assert response.fetched_count == 10
 
+
 ###############################################################################
 def test_tokenizer_discovery_filters_excluded_and_unsupported_models(
     monkeypatch,
 ) -> None:
     service = TokenizersService()
+
 
     ###############################################################################
     class FakeModel:
@@ -1021,6 +1048,7 @@ def test_tokenizer_discovery_filters_excluded_and_unsupported_models(
             self.pipeline_tag = pipeline_tag
             self.tags = tags
             self.siblings = tokenizer_siblings("tokenizer.json", "config.json")
+
 
     ###############################################################################
     class FakeApi:
@@ -1045,11 +1073,13 @@ def test_tokenizer_discovery_filters_excluded_and_unsupported_models(
     )
     assert [item.identifier for item in response.items] == ["text/model"]
 
+
 ###############################################################################
 def test_tokenizer_discovery_extracts_and_filters_vocabulary_metadata(
     monkeypatch,
 ) -> None:
     service = TokenizersService()
+
 
     ###############################################################################
     class FakeModel:
@@ -1062,6 +1092,7 @@ def test_tokenizer_discovery_extracts_and_filters_vocabulary_metadata(
                 {"vocab_size": vocabulary_size} if vocabulary_size is not None else None
             )
             self.siblings = tokenizer_siblings("vocab.txt", "config.json")
+
 
     ###############################################################################
     class FakeApi:
@@ -1100,11 +1131,13 @@ def test_tokenizer_discovery_extracts_and_filters_vocabulary_metadata(
         ("small/model", 4)
     ]
 
+
 ###############################################################################
 def test_tokenizer_discovery_orders_known_vocabulary_before_unknown(
     monkeypatch,
 ) -> None:
     service = TokenizersService()
+
 
     ###############################################################################
     class FakeModel:
@@ -1117,6 +1150,7 @@ def test_tokenizer_discovery_orders_known_vocabulary_before_unknown(
                 {"vocab_size": vocabulary_size} if vocabulary_size is not None else None
             )
             self.siblings = tokenizer_siblings("vocab.json", "merges.txt")
+
 
     ###############################################################################
     class FakeApi:
@@ -1150,9 +1184,11 @@ def test_tokenizer_discovery_orders_known_vocabulary_before_unknown(
         "unknown/model",
     ]
 
+
 ###############################################################################
 def test_tokenizer_discovery_propagates_upstream_failure(monkeypatch) -> None:
     service = TokenizersService()
+
 
     ###############################################################################
     class FailingApi:
@@ -1169,6 +1205,7 @@ def test_tokenizer_discovery_propagates_upstream_failure(monkeypatch) -> None:
 
     with pytest.raises(RuntimeError, match="upstream outage details"):
         service.discover_tokenizers(TokenizerDiscoveryQuery(limit=5))
+
 
 ###############################################################################
 def test_failed_tokenizer_download_cleans_partial_cache_and_returns_reason(
@@ -1204,6 +1241,7 @@ def test_failed_tokenizer_download_cleans_partial_cache_and_returns_reason(
     assert result["failed_count"] == 1
     assert "ValueError: Unrecognized model configuration" in result["failed_details"][0]
     assert removed == [str(Path(cache_dir))]
+
 
 ###############################################################################
 def test_tokenizer_download_timeout_returns_failure_without_blocking_job(
@@ -1243,6 +1281,7 @@ def test_tokenizer_download_timeout_returns_failure_without_blocking_job(
 
     assert result["failed"] == ["slow/model"]
     assert "TokenizerDownloadTimeoutError" in result["failed_details"][0]
+
 
 ###############################################################################
 def test_tokenizer_catalog_filters_cached_sources_search_and_vocabulary(
@@ -1301,8 +1340,6 @@ def test_tokenizer_catalog_filters_cached_sources_search_and_vocabulary(
         )
     ] == ["zeta/model"]
 
-###############################################################################
-
 
 ###############################################################################
 class DummyTokenizer__tokenizer_adapter_contract:
@@ -1313,6 +1350,7 @@ class DummyTokenizer__tokenizer_adapter_contract:
         del kwargs
         return {"input_ids": [[1, 2], [0]]}
 
+
 ###############################################################################
 class EncodeOnlyTokenizer:
     unk_token_id = 0
@@ -1321,6 +1359,7 @@ class EncodeOnlyTokenizer:
     def encode(self, text: str, *, add_special_tokens: bool = True) -> list[int]:
         del add_special_tokens
         return [1, 0] if text == "unknown" else [1, 2, 3]
+
 
 ###############################################################################
 class PaddingTokenizer:
@@ -1333,6 +1372,7 @@ class PaddingTokenizer:
         assert kwargs["padding"] is True
         assert self.pad_token == self.eos_token
         return {"input_ids": [[1] for _ in texts]}
+
 
 ###############################################################################
 def test_raw_tokenizer_honors_special_padding_and_truncation_options() -> None:
@@ -1410,9 +1450,12 @@ def test_raw_tokenizer_honors_special_padding_and_truncation_options() -> None:
     assert tokenizer.padding == original_padding
     assert tokenizer.truncation == original_truncation
 
+
 ###############################################################################
 def test_adapter_returns_normalized_structure() -> None:
-    adapter = UniversalTokenizerAdapter("x", DummyTokenizer__tokenizer_adapter_contract())
+    adapter = UniversalTokenizerAdapter(
+        "x", DummyTokenizer__tokenizer_adapter_contract()
+    )
     encoded = adapter.encode_batch(
         ["a", "b"],
         add_special_tokens=False,
@@ -1422,6 +1465,7 @@ def test_adapter_returns_normalized_structure() -> None:
     )
     assert encoded.token_counts == [2, 1]
     assert encoded.unknown_counts == [0, 1]
+
 
 ###############################################################################
 def test_adapter_rejects_encode_only_tokenizers() -> None:
@@ -1435,6 +1479,7 @@ def test_adapter_rejects_encode_only_tokenizers() -> None:
             truncation=False,
             max_length=None,
         )
+
 
 ###############################################################################
 def test_adapter_uses_eos_token_for_padding_when_pad_token_is_missing() -> None:
@@ -1452,8 +1497,6 @@ def test_adapter_uses_eos_token_for_padding_when_pad_token_is_missing() -> None:
     assert tokenizer.pad_token == tokenizer.eos_token
     assert encoded.token_counts == [1]
 
-###############################################################################
-
 
 ###############################################################################
 class CapturingTokenizer:
@@ -1467,6 +1510,7 @@ class CapturingTokenizer:
         del texts
         self.last_kwargs = dict(kwargs)
         return {"input_ids": [[1], [2]]}
+
 
 ###############################################################################
 def test_adapter_uses_explicit_tokenizer_settings() -> None:
@@ -1484,6 +1528,7 @@ def test_adapter_uses_explicit_tokenizer_settings() -> None:
     assert tokenizer.last_kwargs["truncation"] is False
     assert tokenizer.last_kwargs["max_length"] == 128
 
+
 ###############################################################################
 def test_tokenizer_preview_returns_tokens_per_tokenizer_and_isolates_failures(
     monkeypatch: pytest.MonkeyPatch,
@@ -1496,29 +1541,30 @@ def test_tokenizer_preview_returns_tokens_per_tokenizer_and_isolates_failures(
     )
     raw.pre_tokenizer = pre_tokenizers.Whitespace()
 
-    ###########################################################################
+
+    ###############################################################################
     class FakeHFTokenizer:
         unk_token_id = 0
         vocab = {"[UNK]": 0, "alpha": 1, "beta": 2}
 
-        # ---------------------------------------------------------------------
+        # -------------------------------------------------------------------------
         def __call__(self, texts: list[str], **_kwargs: Any) -> dict[str, Any]:
             return {
                 "input_ids": [
-                    [self.vocab.get(word, 0) for word in text.split()]
-                    for text in texts
+                    [self.vocab.get(word, 0) for word in text.split()] for text in texts
                 ]
             }
 
-        # ---------------------------------------------------------------------
+        # -------------------------------------------------------------------------
         def convert_ids_to_tokens(self, ids: list[int]) -> list[str]:
             reverse = {value: key for key, value in self.vocab.items()}
             return [reverse[token_id] for token_id in ids]
 
-    ###########################################################################
+
+    ###############################################################################
     class BrokenTokenizer:
 
-        # ---------------------------------------------------------------------
+        # -------------------------------------------------------------------------
         def __call__(self, *_args: Any, **_kwargs: Any) -> dict[str, Any]:
             raise RuntimeError("encode failed")
 
@@ -1543,7 +1589,9 @@ def test_tokenizer_preview_returns_tokens_per_tokenizer_and_isolates_failures(
     )
 
     first = service.preview(
-        TokenizerPreviewRequest(text="alpha gamma beta", tokenizers=["raw", "hf", "raw"])
+        TokenizerPreviewRequest(
+            text="alpha gamma beta", tokenizers=["raw", "hf", "raw"]
+        )
     )
     second = service.preview(
         TokenizerPreviewRequest(text="alpha", tokenizers=["missing", "broken"])

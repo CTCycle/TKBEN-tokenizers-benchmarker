@@ -28,6 +28,7 @@ def test_list_datasets_includes_uploaded_dataset(
         if isinstance(item, dict)
     )
 
+
 ###############################################################################
 def test_upload_rejects_invalid_extension(api_context: APIRequestContext) -> None:
     """POST /api/datasets/upload with a non-CSV/XLSX file should return 400."""
@@ -45,6 +46,7 @@ def test_upload_rejects_invalid_extension(api_context: APIRequestContext) -> Non
     data = response.json()
     assert "Unsupported file type" in data.get("detail", "")
 
+
 ###############################################################################
 def test_upload_rejects_legacy_xls_file(api_context: APIRequestContext) -> None:
     """The upload contract is limited to supported CSV and XLSX formats."""
@@ -61,6 +63,7 @@ def test_upload_rejects_legacy_xls_file(api_context: APIRequestContext) -> None:
     assert response.status == 400
     assert "Use .csv or .xlsx" in response.json().get("detail", "")
 
+
 ###############################################################################
 def test_upload_accepts_csv_and_returns_histogram(
     uploaded_dataset: dict,
@@ -75,6 +78,7 @@ def test_upload_accepts_csv_and_returns_histogram(
     assert "counts" in histogram
     assert "min_length" in histogram
     assert "max_length" in histogram
+
 
 ###############################################################################
 def test_upload_accepts_xlsx_and_returns_histogram(
@@ -123,6 +127,7 @@ def test_upload_accepts_xlsx_and_returns_histogram(
     assert histogram.get("min_length") is not None
     assert histogram.get("max_length") is not None
 
+
 ###############################################################################
 def test_analyze_missing_dataset_returns_404(
     api_context: APIRequestContext,
@@ -133,6 +138,7 @@ def test_analyze_missing_dataset_returns_404(
         data={"dataset_name": "missing_dataset"},
     )
     assert response.status == 404
+
 
 ###############################################################################
 def test_analyze_uploaded_dataset_returns_stats(

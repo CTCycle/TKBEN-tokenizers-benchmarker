@@ -12,6 +12,7 @@ IDENTIFIER_PATTERN = re.compile(
 SAFE_FILENAME_CHARS_PATTERN = re.compile(r"[^A-Za-z0-9._-]+")
 CONTROL_CHAR_PATTERN = re.compile(r"[\x00-\x1f\x7f]")
 
+
 ###############################################################################
 def normalize_identifier(
     value: str,
@@ -35,6 +36,7 @@ def normalize_identifier(
         )
     return normalized
 
+
 ###############################################################################
 def normalize_optional_identifier(
     value: str | None,
@@ -46,9 +48,11 @@ def normalize_optional_identifier(
         return None
     return normalize_identifier(value, field_name, max_length=max_length)
 
+
 ###############################################################################
 def contains_control_chars(value: str) -> bool:
     return bool(CONTROL_CHAR_PATTERN.search(value))
+
 
 ###############################################################################
 def normalize_upload_stem(filename: str, *, max_length: int = 120) -> str:
@@ -65,6 +69,7 @@ def normalize_upload_stem(filename: str, *, max_length: int = 120) -> str:
     if not cleaned:
         raise ValueError("Uploaded filename stem is not valid.")
     return cleaned[:max_length]
+
 
 ###############################################################################
 def ensure_path_is_within(base_path: str | Path, candidate_path: str | Path) -> str:

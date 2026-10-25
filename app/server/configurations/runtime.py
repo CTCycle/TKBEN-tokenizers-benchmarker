@@ -8,7 +8,15 @@ from dataclasses import dataclass
 from threading import RLock
 from typing import ClassVar, Protocol, cast
 
-from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, StrictInt, ValidationError, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    FiniteFloat,
+    StrictInt,
+    ValidationError,
+    model_validator,
+)
 
 from server.common.utils.logger import logger
 from server.configurations.settings import (
@@ -37,17 +45,21 @@ class RuntimeSettingsPersistence(Protocol):
     # -------------------------------------------------------------------------
     def save(self, payload: dict[str, object]) -> None: ...
 
+
 ###############################################################################
 class RuntimeSettingsError(RuntimeError):
     """Base error for application-managed runtime settings operations."""
+
 
 ###############################################################################
 class RuntimeSettingsValidationError(RuntimeSettingsError):
     """Raised when a runtime override cannot produce a valid settings snapshot."""
 
+
 ###############################################################################
 class RuntimeSettingsPersistenceError(RuntimeSettingsError):
     """Raised when a validated runtime settings document cannot be persisted."""
+
 
 ###############################################################################
 class RuntimeSettingsConflictError(RuntimeSettingsError):
@@ -62,6 +74,7 @@ class RuntimeSettingsConflictError(RuntimeSettingsError):
             "Reload the settings and try again."
         )
 
+
 ###############################################################################
 class _StrictOverrideModel(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
@@ -73,6 +86,7 @@ class _StrictOverrideModel(BaseModel):
             if getattr(self, field_name) is None:
                 raise ValueError(f"{field_name} must be provided as a value.")
         return self
+
 
 ###############################################################################
 class _TokenizerOverrides(_StrictOverrideModel):
@@ -89,6 +103,7 @@ class _TokenizerOverrides(_StrictOverrideModel):
         le=10,
     )
     max_upload_bytes: StrictInt | None = Field(default=None, ge=1)
+
 
 ###############################################################################
 class _DatasetOverrides(_StrictOverrideModel):
@@ -107,6 +122,7 @@ class _DatasetOverrides(_StrictOverrideModel):
         le=60.0,
     )
 
+
 ###############################################################################
 class _BenchmarkOverrides(_StrictOverrideModel):
     default_max_documents: StrictInt | None = Field(default=None, ge=1, le=100_000)
@@ -114,10 +130,12 @@ class _BenchmarkOverrides(_StrictOverrideModel):
     default_parallelism: StrictInt | None = Field(default=None, ge=1, le=128)
     streaming_batch_size: StrictInt | None = Field(default=None, ge=100)
 
+
 ###############################################################################
 class _JobsOverrides(_StrictOverrideModel):
     polling_interval: FiniteFloat | None = Field(default=None, ge=0.25)
     max_stored_jobs: StrictInt | None = Field(default=None, ge=1)
+
 
 ###############################################################################
 class _RuntimeOverrides(_StrictOverrideModel):
@@ -126,6 +144,7 @@ class _RuntimeOverrides(_StrictOverrideModel):
     benchmarks: _BenchmarkOverrides | None = None
     jobs: _JobsOverrides | None = None
 
+
 ###############################################################################
 class _RuntimeOverrideDocument(_StrictOverrideModel):
     schema_version: StrictInt
@@ -133,6 +152,7 @@ class _RuntimeOverrideDocument(_StrictOverrideModel):
     dashboard_revision: StrictInt = Field(ge=0)
     overrides: _RuntimeOverrides = Field(default_factory=_RuntimeOverrides)
     dashboard_preferences: DashboardUiPreferences
+
 
 ###############################################################################
 @dataclass(frozen=True, slots=True)
@@ -149,6 +169,7 @@ class RuntimeSettingsState:
 class DashboardUiPreferencesState:
     preferences: DashboardUiPreferences
     revision: int
+
 
 ###############################################################################
 class RuntimeSettingsStore:
@@ -326,9 +347,7 @@ class RuntimeSettingsStore:
     def _load_from_persistence(self) -> None:
         try:
             payload = (
-                self._persistence.load()
-                if self._persistence is not None
-                else None
+                self._persistence.load() if self._persistence is not None else None
             )
             if payload is None:
                 return
@@ -347,7 +366,7 @@ class RuntimeSettingsStore:
             self._revision = document.revision
             self._dashboard_revision = document.dashboard_revision
             self._dashboard_preferences = document.dashboard_preferences
-        except (OSError, TypeError, ValueError, ValidationError, RuntimeSettingsError):
+        except OSError, TypeError, ValueError, ValidationError, RuntimeSettingsError:
             self._effective = self._defaults
             self._overrides = {}
             self._revision = 0
@@ -364,10 +383,7 @@ class RuntimeSettingsStore:
     # -------------------------------------------------------------------------
     def _commit(self, overrides: dict[str, dict[str, object]]) -> RuntimeSettingsState:
         effective = self._build_effective(overrides)
-        if (
-            overrides == self._overrides
-            and self._warning is None
-        ):
+        if overrides == self._overrides and self._warning is None:
             return self._state()
 
         next_revision = self._revision + 1
@@ -385,7 +401,10 @@ class RuntimeSettingsStore:
     ) -> ServerSettings:
         try:
             datasets = DatasetSettings.model_validate(
-                {**self._defaults.datasets.model_dump(), **overrides.get("datasets", {})}
+                {
+                    **self._defaults.datasets.model_dump(),
+                    **overrides.get("datasets", {}),
+                }
             )
             tokenizers = TokenizerSettings.model_validate(
                 {
@@ -466,15 +485,18 @@ class RuntimeSettingsStore:
                 {
                     "schema_version": RUNTIME_SETTINGS_SCHEMA_VERSION,
                     "revision": revision,
-                    "overrides": {group: dict(values) for group, values in overrides.items()},
+                    "overrides": {
+                        group: dict(values) for group, values in overrides.items()
+                    },
                     "dashboard_revision": (
                         self._dashboard_revision
                         if dashboard_revision is None
                         else dashboard_revision
                     ),
                     "dashboard_preferences": (
-                        (dashboard_preferences or self._dashboard_preferences)
-                        .model_dump(mode="json")
+                        (
+                            dashboard_preferences or self._dashboard_preferences
+                        ).model_dump(mode="json")
                     ),
                 }
             )
@@ -512,7 +534,9 @@ class RuntimeSettingsStore:
         elif isinstance(patch, Mapping):
             raw_patch = dict(patch)
         else:
-            raise RuntimeSettingsValidationError("Runtime settings patch must be an object.")
+            raise RuntimeSettingsValidationError(
+                "Runtime settings patch must be an object."
+            )
         return cast(Mapping[str, object], raw_patch)
 
     # -------------------------------------------------------------------------

@@ -6,11 +6,21 @@ from __future__ import annotations
 import re
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, StrictInt, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    FiniteFloat,
+    StrictInt,
+    field_validator,
+    model_validator,
+)
+
 
 ###############################################################################
 class _SettingsContract(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
+
 
 ###############################################################################
 class _SettingsPatchContract(_SettingsContract):
@@ -23,12 +33,15 @@ class _SettingsPatchContract(_SettingsContract):
                 raise ValueError(f"{field_name} must be provided as a value.")
         return self
 
+
 ###############################################################################
 class RuntimeTokenizerSettingsResponse(_SettingsContract):
     default_discovery_limit: int = Field(
         description="Default tokenizer discovery result count"
     )
-    max_discovery_limit: int = Field(description="Maximum tokenizer discovery result count")
+    max_discovery_limit: int = Field(
+        description="Maximum tokenizer discovery result count"
+    )
     max_discovery_candidates: int = Field(
         description="Maximum tokenizer repositories considered during discovery"
     )
@@ -36,6 +49,7 @@ class RuntimeTokenizerSettingsResponse(_SettingsContract):
         description="Tokenizer discovery metadata over-fetch multiplier"
     )
     max_upload_bytes: int = Field(description="Maximum tokenizer upload size in bytes")
+
 
 ###############################################################################
 class RuntimeDatasetSettingsResponse(_SettingsContract):
@@ -46,11 +60,14 @@ class RuntimeDatasetSettingsResponse(_SettingsContract):
         description="Dataset processing batch size for new operations"
     )
     max_upload_bytes: int = Field(description="Maximum dataset upload size in bytes")
-    download_timeout_seconds: float = Field(description="Dataset download timeout in seconds")
+    download_timeout_seconds: float = Field(
+        description="Dataset download timeout in seconds"
+    )
     download_retry_attempts: int = Field(description="Dataset download retry attempts")
     download_retry_backoff_seconds: float = Field(
         description="Delay between dataset download retries in seconds"
     )
+
 
 ###############################################################################
 class RuntimeBenchmarkSettingsResponse(_SettingsContract):
@@ -67,6 +84,7 @@ class RuntimeBenchmarkSettingsResponse(_SettingsContract):
         description="Benchmark processing batch size for new runs"
     )
 
+
 ###############################################################################
 class RuntimeJobSettingsResponse(_SettingsContract):
     polling_interval: float = Field(
@@ -75,6 +93,7 @@ class RuntimeJobSettingsResponse(_SettingsContract):
     max_stored_jobs: int = Field(
         description="Maximum number of jobs kept in the database before the oldest finished jobs are removed"
     )
+
 
 ###############################################################################
 class RuntimeSettingsValues(_SettingsContract):
@@ -105,6 +124,7 @@ RuntimeSettingKey = Literal[
     "jobs.max_stored_jobs",
 ]
 
+
 ###############################################################################
 class RuntimeSettingsResponse(_SettingsContract):
     revision: int = Field(ge=0)
@@ -112,6 +132,7 @@ class RuntimeSettingsResponse(_SettingsContract):
     defaults: RuntimeSettingsValues
     overridden_keys: list[RuntimeSettingKey] = Field(default_factory=list)
     warning: str | None = None
+
 
 ###############################################################################
 DashboardVisualization = Literal[
@@ -149,9 +170,7 @@ class DashboardUiPreferences(_SettingsContract):
     @classmethod
     def valid_baseline_preferences(cls, value: dict[str, str]) -> dict[str, str]:
         if any(
-            not report_id.isdecimal()
-            or int(report_id) <= 0
-            or not tokenizer.strip()
+            not report_id.isdecimal() or int(report_id) <= 0 or not tokenizer.strip()
             for report_id, tokenizer in value.items()
         ):
             raise ValueError("Baseline preferences require a report ID and tokenizer.")
@@ -180,6 +199,7 @@ class DashboardUiPreferencesResponse(_SettingsContract):
     revision: int = Field(ge=0)
     preferences: DashboardUiPreferences
 
+
 ###############################################################################
 class RuntimeTokenizerSettingsPatch(_SettingsPatchContract):
     default_discovery_limit: StrictInt | None = Field(default=None, ge=1, le=250)
@@ -191,6 +211,7 @@ class RuntimeTokenizerSettingsPatch(_SettingsPatchContract):
         le=10,
     )
     max_upload_bytes: StrictInt | None = Field(default=None, ge=1)
+
 
 ###############################################################################
 class RuntimeDatasetSettingsPatch(_SettingsPatchContract):
@@ -205,6 +226,7 @@ class RuntimeDatasetSettingsPatch(_SettingsPatchContract):
         le=60.0,
     )
 
+
 ###############################################################################
 class RuntimeBenchmarkSettingsPatch(_SettingsPatchContract):
     default_max_documents: StrictInt | None = Field(default=None, ge=1, le=100_000)
@@ -212,10 +234,12 @@ class RuntimeBenchmarkSettingsPatch(_SettingsPatchContract):
     default_parallelism: StrictInt | None = Field(default=None, ge=1, le=128)
     streaming_batch_size: StrictInt | None = Field(default=None, ge=100)
 
+
 ###############################################################################
 class RuntimeJobSettingsPatch(_SettingsPatchContract):
     polling_interval: FiniteFloat | None = Field(default=None, ge=0.25)
     max_stored_jobs: StrictInt | None = Field(default=None, ge=1)
+
 
 ###############################################################################
 class RuntimeSettingsPatchRequest(_SettingsPatchContract):
@@ -224,6 +248,7 @@ class RuntimeSettingsPatchRequest(_SettingsPatchContract):
     datasets: RuntimeDatasetSettingsPatch | None = None
     benchmarks: RuntimeBenchmarkSettingsPatch | None = None
     jobs: RuntimeJobSettingsPatch | None = None
+
 
 ###############################################################################
 class RuntimeSettingsResetRequest(_SettingsContract):
@@ -275,11 +300,14 @@ class PathSettingsRequest(_SettingsContract):
     data_dir: str = Field(min_length=1, max_length=1024)
     log_dir: str = Field(min_length=1, max_length=1024)
 
+
 ###############################################################################
 class PathSettingsResponse(_SettingsContract):
     data_dir: str = Field(description="Configured data directory")
     log_dir: str = Field(description="Configured log directory")
-    active_data_dir: str = Field(description="Data directory used by the running backend")
+    active_data_dir: str = Field(
+        description="Data directory used by the running backend"
+    )
     active_log_dir: str = Field(description="Log directory used by the running backend")
     restart_required: bool = Field(
         description="Whether a backend restart is needed to apply the configured paths"

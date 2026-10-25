@@ -73,6 +73,7 @@ from server.services.managed_jobs import (
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_TOKENIZERS, tags=["tokenizers"])
 
+
 ###############################################################################
 def _build_tokenizer_discovery_query(
     search: Annotated[str | None, Query(max_length=160)] = None,
@@ -121,6 +122,7 @@ def _build_tokenizer_discovery_query(
             detail=str(exc),
         ) from exc
 
+
 ###############################################################################
 @router.get(
     API_ROUTE_TOKENIZERS_DISCOVER,
@@ -152,6 +154,7 @@ async def discover_tokenizers(
 
     return response
 
+
 ###############################################################################
 @router.get(
     API_ROUTE_TOKENIZERS_LIST,
@@ -179,6 +182,7 @@ async def list_tokenizers(
         count=len(tokenizers),
     )
 
+
 ###############################################################################
 @router.post(
     API_ROUTE_TOKENIZERS_PREVIEW,
@@ -196,6 +200,7 @@ async def preview_tokenizers(
             detail=str(exc),
         ) from exc
     return TokenizerPreviewResponse(results=results)
+
 
 ###############################################################################
 @router.post(
@@ -233,6 +238,7 @@ async def download_tokenizers(
             message="Tokenizer download job started.",
         ),
     )
+
 
 ###############################################################################
 @router.post(
@@ -276,6 +282,7 @@ async def generate_tokenizer_report(
         ),
     )
 
+
 ###############################################################################
 @router.get(
     API_ROUTE_TOKENIZERS_REPORT_LATEST,
@@ -306,6 +313,7 @@ async def get_latest_tokenizer_report(tokenizer_name: str) -> TokenizerReportRes
         )
     return TokenizerReportResponse(status="success", **report)
 
+
 ###############################################################################
 @router.get(
     API_ROUTE_TOKENIZERS_REPORT_BY_ID,
@@ -321,6 +329,7 @@ async def get_tokenizer_report_by_id(report_id: int) -> TokenizerReportResponse:
             detail=f"Tokenizer report '{report_id}' not found.",
         )
     return TokenizerReportResponse(status="success", **report)
+
 
 ###############################################################################
 @router.get(
@@ -346,6 +355,7 @@ async def get_tokenizer_report_vocabulary(
             detail=f"Tokenizer report '{report_id}' not found.",
         )
     return TokenizerVocabularyPageResponse(status="success", **page)
+
 
 ###############################################################################
 @router.post(
@@ -395,6 +405,7 @@ async def upload_custom_tokenizer(
         ) from exc
 
     return TokenizerUploadResponse(**result)
+
 
 ###############################################################################
 @router.delete(

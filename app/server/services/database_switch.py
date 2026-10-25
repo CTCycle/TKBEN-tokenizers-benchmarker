@@ -25,6 +25,7 @@ from server.repositories.jobs import JobRepository
 from server.repositories.runtime_settings import DatabaseRuntimeSettingsPersistence
 from server.services.jobs import JobManager
 
+
 ###############################################################################
 class DatabaseSwitchGate:
     """Drain ordinary API calls while a validated database is activated."""
@@ -64,6 +65,7 @@ class DatabaseSwitchGate:
                     self._switching = False
                     self._condition.notify_all()
 
+
 ###############################################################################
 class DatabaseSwitchApplicationState(Protocol):
     database_switch_gate: DatabaseSwitchGate
@@ -73,13 +75,16 @@ class DatabaseSwitchApplicationState(Protocol):
     job_repository: JobRepository | None
     settings: ServerSettings
 
+
 ###############################################################################
 class DatabaseSwitchBusyError(RuntimeError):
     """Raised when a database switch would interrupt a managed job."""
 
+
 ###############################################################################
 class DatabaseSwitchActivationError(RuntimeError):
     """Raised when a validated database cannot be activated safely."""
+
 
 ###############################################################################
 def _test_engine(database: TKBENDatabase) -> None:
@@ -87,14 +92,18 @@ def _test_engine(database: TKBENDatabase) -> None:
         if connection.execute(text("SELECT 1")).scalar_one() != 1:
             raise RuntimeError("Database health query returned an unexpected value.")
 
+
 ###############################################################################
-async def read_active_database_configuration() -> tuple[StoredDatabaseConfiguration, bool]:
+async def read_active_database_configuration() -> tuple[
+    StoredDatabaseConfiguration, bool
+]:
     configuration = get_database_configuration_store().load()
     try:
         await asyncio.to_thread(_test_engine, get_database())
     except Exception:
         return configuration, False
     return configuration, True
+
 
 ###############################################################################
 async def test_database_configuration(
@@ -111,6 +120,7 @@ async def test_database_configuration(
         return candidate, False
     candidate_database.backend.engine.dispose()
     return candidate, True
+
 
 ###############################################################################
 async def activate_database_configuration(

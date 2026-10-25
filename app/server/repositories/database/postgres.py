@@ -12,6 +12,7 @@ from sqlalchemy.dialects.postgresql import insert
 from server.configurations import DatabaseSettings
 from server.repositories.database.base import RepositoryBase
 
+
 ###############################################################################
 class PostgresRepository(RepositoryBase):
 

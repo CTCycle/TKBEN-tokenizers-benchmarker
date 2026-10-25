@@ -7,6 +7,7 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
+
 ###############################################################################
 @dataclass
 class LengthStatistics:
@@ -37,6 +38,7 @@ class LengthStatistics:
         if self.document_count == 0:
             return 0.0
         return self.total_length / self.document_count
+
 
 ###############################################################################
 class HistogramBuilder:

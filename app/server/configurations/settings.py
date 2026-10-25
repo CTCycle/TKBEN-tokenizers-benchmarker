@@ -14,9 +14,11 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from server.common.path import ROOT_DIR, read_path_configuration, resolve_runtime_path
 
+
 ###############################################################################
 class _FrozenSettingsModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
+
 
 ###############################################################################
 class DatabaseSettings(_FrozenSettingsModel):
@@ -32,6 +34,7 @@ class DatabaseSettings(_FrozenSettingsModel):
     connect_timeout: int
     insert_batch_size: int
 
+
 ###############################################################################
 class PathSettings(_FrozenSettingsModel):
     data: Path
@@ -40,6 +43,7 @@ class PathSettings(_FrozenSettingsModel):
     tokenizers: Path
     logs: Path
     templates: Path
+
 
 ###############################################################################
 class NetworkSettings(_FrozenSettingsModel):
@@ -50,10 +54,12 @@ class NetworkSettings(_FrozenSettingsModel):
     api_base_url: str
     cors_origins: tuple[str, ...] | None = None
 
+
 ###############################################################################
 class SecuritySettings(_FrozenSettingsModel):
     allow_key_reveal: bool
     hf_keys_encryption_material_file: Path
+
 
 ###############################################################################
 class DatasetSettings(_FrozenSettingsModel):
@@ -69,6 +75,7 @@ class DatasetSettings(_FrozenSettingsModel):
         ge=0.0,
         le=60.0,
     )
+
 
 ###############################################################################
 class TokenizerSettings(_FrozenSettingsModel):
@@ -91,6 +98,7 @@ class TokenizerSettings(_FrozenSettingsModel):
             )
         return self
 
+
 ###############################################################################
 class BenchmarkSettings(_FrozenSettingsModel):
     default_max_documents: int = Field(default=1000, ge=1, le=100_000)
@@ -99,10 +107,12 @@ class BenchmarkSettings(_FrozenSettingsModel):
     streaming_batch_size: int = Field(default=1000, ge=100)
     log_interval: int = Field(default=10_000, ge=100)
 
+
 ###############################################################################
 class JobsSettings(_FrozenSettingsModel):
     polling_interval: float = Field(default=1.0, ge=0.25)
     max_stored_jobs: int = Field(default=1000, ge=1)
+
 
 ###############################################################################
 class ServerSettings(_FrozenSettingsModel):
@@ -115,6 +125,7 @@ class ServerSettings(_FrozenSettingsModel):
     benchmarks: BenchmarkSettings
     jobs: JobsSettings
 
+
 ###############################################################################
 def _normalize_optional_text(value: Any) -> str | None:
     if value is None:
@@ -122,10 +133,12 @@ def _normalize_optional_text(value: Any) -> str | None:
     text = str(value).strip()
     return text or None
 
+
 ###############################################################################
 def _read_env_text(name: str, default: str) -> str:
     value = _normalize_optional_text(os.getenv(name))
     return value if value is not None else default
+
 
 ###############################################################################
 def _read_env_bool(name: str, default: bool) -> bool:
@@ -138,9 +151,8 @@ def _read_env_bool(name: str, default: bool) -> bool:
         return True
     if normalized == "false":
         return False
-    raise RuntimeError(
-        f"{name} must be either 'true' or 'false', got: {raw_value}"
-    )
+    raise RuntimeError(f"{name} must be either 'true' or 'false', got: {raw_value}")
+
 
 ###############################################################################
 def _read_env_int(
@@ -167,6 +179,7 @@ def _read_env_int(
         raise RuntimeError(f"{name} must be <= {maximum}, got: {value}")
     return value
 
+
 ###############################################################################
 def _read_env_origins(name: str) -> tuple[str, ...] | None:
     raw_value = os.getenv(name)
@@ -184,6 +197,7 @@ def _read_env_origins(name: str) -> tuple[str, ...] | None:
         if normalized_origin not in origins:
             origins.append(normalized_origin)
     return tuple(origins)
+
 
 ###############################################################################
 def _normalize_cors_origin(name: str, origin: str) -> str:
@@ -227,24 +241,21 @@ def _normalize_cors_origin(name: str, origin: str) -> str:
         except UnicodeError as exc:
             raise RuntimeError(f"{name} contains an invalid hostname.") from exc
         hostname_labels = normalized_host.removesuffix(".").split(".")
-        if (
-            not normalized_host
-            or any(
-                not label
-                or len(label) > 63
-                or re.fullmatch(r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?", label) is None
-                for label in hostname_labels
-            )
+        if not normalized_host or any(
+            not label
+            or len(label) > 63
+            or re.fullmatch(r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?", label) is None
+            for label in hostname_labels
         ):
             raise RuntimeError(f"{name} contains an invalid hostname.")
 
     port_suffix = ""
     if port is not None and not (
-        (scheme == "http" and port == 80)
-        or (scheme == "https" and port == 443)
+        (scheme == "http" and port == 80) or (scheme == "https" and port == 443)
     ):
         port_suffix = f":{port}"
     return f"{scheme}://{normalized_host}{port_suffix}"
+
 
 ###############################################################################
 def _load_path_settings() -> PathSettings:
@@ -259,6 +270,7 @@ def _load_path_settings() -> PathSettings:
         logs=resolve_runtime_path(configured_logs, data / "logs"),
         templates=data / "templates",
     )
+
 
 ###############################################################################
 def _load_database_settings(paths: PathSettings) -> DatabaseSettings:
@@ -276,6 +288,7 @@ def _load_database_settings(paths: PathSettings) -> DatabaseSettings:
         insert_batch_size=1000,
     )
 
+
 ###############################################################################
 def _load_network_settings() -> NetworkSettings:
     return NetworkSettings(
@@ -287,12 +300,14 @@ def _load_network_settings() -> NetworkSettings:
         cors_origins=_read_env_origins("CORS_ORIGINS"),
     )
 
+
 ###############################################################################
 def _load_security_settings(paths: PathSettings) -> SecuritySettings:
     return SecuritySettings(
         allow_key_reveal=_read_env_bool("ALLOW_KEY_REVEAL", False),
         hf_keys_encryption_material_file=paths.data / "hf-key-material.json",
     )
+
 
 ###############################################################################
 def build_server_settings(
