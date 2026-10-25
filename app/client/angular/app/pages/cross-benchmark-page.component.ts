@@ -9,6 +9,7 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { BenchmarkStore } from '../core/state/benchmark.store';
 import { SettingsStore } from '../core/state/settings.store';
 import { BenchmarkMetricChartComponent } from '../components/benchmark-metric-chart.component';
+import { TokenizerColorMenuComponent } from '../components/tokenizer-color-menu.component';
 import { ExportApiService } from '../core/api/export-api.service';
 import type {
   BenchmarkDashboardWidgetData,
@@ -29,7 +30,7 @@ import { ModalA11yDirective } from '../core/ui/modal-a11y.directive';
 
 @Component({
   selector: 'app-cross-benchmark-page',
-  imports: [ReactiveFormsModule, DecimalPipe, CdkDropList, CdkDrag, BenchmarkMetricChartComponent, ModalA11yDirective],
+  imports: [ReactiveFormsModule, DecimalPipe, CdkDropList, CdkDrag, BenchmarkMetricChartComponent, TokenizerColorMenuComponent, ModalA11yDirective],
   templateUrl: './cross-benchmark-page.component.html',
 })
 export class CrossBenchmarkPageComponent {
@@ -43,6 +44,7 @@ export class CrossBenchmarkPageComponent {
   protected readonly runStep = signal<1 | 2 | 3>(1);
   protected readonly runMode = signal<'new' | 'clone'>('new');
   protected readonly customizeOpen = signal(false);
+  protected readonly colorMenu = signal<{ tokenizer: string; x: number; y: number } | null>(null);
   protected readonly reportManagerOpen = signal(false);
   protected readonly reportDeleteConfirmId = signal<number | null>(null);
   protected readonly editingTagsReportId = signal<number | null>(null);
@@ -206,6 +208,12 @@ export class CrossBenchmarkPageComponent {
   private cloneRunName(report: { report_id: number | null; run_name: string | null }): string {
     const source = report.run_name?.trim() || `benchmark ${report.report_id ?? 'unknown'}`;
     return Array.from(`Clone of ${source}`).slice(0, 120).join('');
+  }
+
+  protected setTokenizerColor(color: string | null): void {
+    const menu = this.colorMenu();
+    if (menu) this.store.setTokenizerColor(menu.tokenizer, color);
+    this.colorMenu.set(null);
   }
 
   protected runBenchmark(): void {

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, StrictInt, field_validator, model_validator
@@ -133,6 +134,7 @@ class DashboardUiPreferences(_SettingsContract):
         default_factory=dict
     )
     baseline_by_report_id: dict[str, str] = Field(default_factory=dict)
+    tokenizer_colors: dict[str, str] = Field(default_factory=dict)
 
     # -------------------------------------------------------------------------
     @field_validator("ordered_widget_ids", "hidden_widget_ids")
@@ -153,6 +155,17 @@ class DashboardUiPreferences(_SettingsContract):
             for report_id, tokenizer in value.items()
         ):
             raise ValueError("Baseline preferences require a report ID and tokenizer.")
+        return value
+
+    # -------------------------------------------------------------------------
+    @field_validator("tokenizer_colors")
+    @classmethod
+    def valid_tokenizer_colors(cls, value: dict[str, str]) -> dict[str, str]:
+        if any(
+            not tokenizer.strip() or not re.fullmatch(r"#[0-9a-fA-F]{6}", color)
+            for tokenizer, color in value.items()
+        ):
+            raise ValueError("Tokenizer colors require a tokenizer and #rrggbb color.")
         return value
 
 

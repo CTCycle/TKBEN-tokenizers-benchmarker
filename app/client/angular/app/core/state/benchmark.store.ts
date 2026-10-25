@@ -1,7 +1,7 @@
 // Copyright © 2023 Thomas Virdis
 // Licensed under the MIT License.
 
-import { DestroyRef, Injectable, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, catchError, debounceTime, forkJoin, of, switchMap } from 'rxjs';
 import { BenchmarksApiService } from '../api/benchmarks-api.service';
@@ -19,7 +19,7 @@ import type {
   BenchmarkRunRequest,
   BenchmarkRunResponse,
 } from '../api/api.models';
-import { benchmarkComparisonTokenizers } from '../utils/benchmark-dashboard-data';
+import { benchmarkComparisonTokenizers, benchmarkTokenizerColors } from '../utils/benchmark-dashboard-data';
 
 @Injectable({ providedIn: 'root' })
 export class BenchmarkStore {
@@ -49,6 +49,12 @@ export class BenchmarkStore {
   readonly hiddenWidgetIds = signal<readonly string[]>([]);
   readonly visualizations = signal<Record<string, BenchmarkVisualizationKind>>({});
   readonly baselineTokenizer = signal<string | null>(null);
+  readonly tokenizerColorOverrides = signal<Record<string, string>>({});
+  readonly tokenizerColors = computed(() => {
+    const report = this.report();
+    const overrides = this.tokenizerColorOverrides();
+    return report ? benchmarkTokenizerColors(report.dashboard, overrides) : overrides;
+  });
   readonly preferencesSaving = signal(false);
   readonly preferencesSaved = signal(false);
   readonly preferencesError = signal<string | null>(null);
@@ -259,6 +265,7 @@ export class BenchmarkStore {
     this.hiddenWidgetIds.set([...preferences.hidden_widget_ids]);
     this.visualizations.set({ ...preferences.visualization_by_widget_id });
     this.baselinePreferences = { ...preferences.baseline_by_report_id };
+    this.tokenizerColorOverrides.set({ ...preferences.tokenizer_colors });
   }
 
   private restoreBaselineForReport(report: BenchmarkRunResponse): void {
@@ -291,6 +298,7 @@ export class BenchmarkStore {
       hidden_widget_ids: [...this.hiddenWidgetIds()],
       visualization_by_widget_id: { ...this.visualizations() },
       baseline_by_report_id: { ...this.baselinePreferences },
+      tokenizer_colors: { ...this.tokenizerColorOverrides() },
     };
   }
 
@@ -341,6 +349,16 @@ export class BenchmarkStore {
 
   setVisualization(widgetId: string, visualization: BenchmarkVisualizationKind): void {
     this.visualizations.update((current) => ({ ...current, [widgetId]: visualization }));
+    this.persistDashboardPreferences();
+  }
+
+  setTokenizerColor(tokenizer: string, color: string | null): void {
+    this.tokenizerColorOverrides.update((current) => {
+      const next = { ...current };
+      if (color) next[tokenizer] = color;
+      else delete next[tokenizer];
+      return next;
+    });
     this.persistDashboardPreferences();
   }
 

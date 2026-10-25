@@ -2,8 +2,8 @@
 // Licensed under the MIT License.
 
 import { describe, expect, it } from 'vitest';
-import type { BenchmarkDashboardWidgetData } from '../api/api.models';
-import { benchmarkComparisonRows, benchmarkComparisonTokenizers, benchmarkDistributionMedian, benchmarkPointValue, classifyBenchmarkDataShape, distributionViews, formatBenchmarkAxisValue, formatBenchmarkTooltipValue, formatBenchmarkValue, pointViews, relativeBenchmarkDelta, uniqueTokenizers } from './benchmark-dashboard-data';
+import type { BenchmarkDashboardData, BenchmarkDashboardWidgetData } from '../api/api.models';
+import { benchmarkComparisonRows, benchmarkComparisonTokenizers, benchmarkDistributionMedian, benchmarkPointValue, benchmarkTokenizerColors, classifyBenchmarkDataShape, distributionViews, formatBenchmarkAxisValue, formatBenchmarkTooltipValue, formatBenchmarkValue, pointViews, relativeBenchmarkDelta, uniqueTokenizers } from './benchmark-dashboard-data';
 import { buildWordCloudFromWordFrequencies, buildZipfCurveFromWordFrequencies, metricDisplayValue, parseWordCloudTerms, parseWordFrequencyItems, parseZipfCurve, toHistogramSeries } from './dataset-dashboard-data';
 import { dashboardFileName } from './dashboard-file-name';
 
@@ -14,6 +14,13 @@ const pointWidget: BenchmarkDashboardWidgetData = {
 };
 
 describe('benchmark dashboard chart data', () => {
+  it('assigns distinct default colors per tokenizer and lets overrides win', () => {
+    const dashboard = { widgets: [{ ...pointWidget, points: ['a', 'b', 'c'].map((tokenizer) => ({ tokenizer, value: 1, interval_low: null, interval_high: null })) }] } as unknown as BenchmarkDashboardData;
+    const defaults = benchmarkTokenizerColors(dashboard, {});
+    expect(new Set(Object.values(defaults)).size).toBe(3);
+    expect(benchmarkTokenizerColors(dashboard, { b: '#123456' })['b']).toBe('#123456');
+  });
+
   it('classifies payload shapes and preserves intervals', () => {
     expect(classifyBenchmarkDataShape(pointWidget)).toBe('point');
     expect(pointViews(pointWidget)[0]?.low).toBe(8);

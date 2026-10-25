@@ -1,7 +1,8 @@
 // Copyright © 2023 Thomas Virdis
 // Licensed under the MIT License.
 
-import { AfterViewInit, Component, ElementRef, HostListener, OnDestroy, computed, inject, input, signal } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, HostListener, OnDestroy, computed, inject, input, output, signal } from '@angular/core';
+import { BenchmarkStore } from '../core/state/benchmark.store';
 import type { BenchmarkDashboardWidgetData, BenchmarkVisualizationKind } from '../core/api/api.models';
 import {
   type BenchmarkBucketView,
@@ -23,17 +24,19 @@ import {
 })
 export class BenchmarkMetricChartComponent implements AfterViewInit, OnDestroy {
   private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly store = inject(BenchmarkStore);
   private resizeObserver?: ResizeObserver;
   readonly widget = input.required<BenchmarkDashboardWidgetData>();
   readonly visualization = input<BenchmarkVisualizationKind>('bar');
+  readonly tokenizerColorMenu = output<{ tokenizer: string; x: number; y: number }>();
   protected readonly chartWidth = signal(640);
   protected readonly compact = signal(false);
   protected readonly math = Math;
   protected readonly shape = computed(() => classifyBenchmarkDataShape(this.widget()));
-  protected readonly points = computed(() => pointViews(this.widget()));
-  protected readonly distributions = computed(() => distributionViews(this.widget()));
-  protected readonly buckets = computed(() => bucketViews(this.widget()));
-  protected readonly histogramBins = computed(() => histogramViews(this.widget()));
+  protected readonly points = computed(() => pointViews(this.widget(), this.store.tokenizerColors()));
+  protected readonly distributions = computed(() => distributionViews(this.widget(), this.store.tokenizerColors()));
+  protected readonly buckets = computed(() => bucketViews(this.widget(), this.store.tokenizerColors()));
+  protected readonly histogramBins = computed(() => histogramViews(this.widget(), this.store.tokenizerColors()));
   protected readonly tokenizers = computed(() => uniqueTokenizers(this.widget()));
   protected readonly widePlot = computed(() => this.widget().width === 'wide' && !this.compact());
   protected readonly axisFractions = [0, 0.25, 0.5, 0.75, 1] as const;
@@ -307,11 +310,12 @@ export class BenchmarkMetricChartComponent implements AfterViewInit, OnDestroy {
   }
 
   protected tokenizerColor(tokenizer: string): string {
-    return this.points().find((item) => item.tokenizer === tokenizer)?.color
-      ?? this.distributions().find((item) => item.tokenizer === tokenizer)?.color
-      ?? this.buckets().find((item) => item.tokenizer === tokenizer)?.color
-      ?? this.histogramBins().find((item) => item.tokenizer === tokenizer)?.color
-      ?? '#4fc3f7';
+    return this.store.tokenizerColors()[tokenizer] ?? '#4fc3f7';
+  }
+
+  protected openColorMenu(event: MouseEvent, tokenizer: string): void {
+    event.preventDefault();
+    this.tokenizerColorMenu.emit({ tokenizer, x: event.clientX, y: event.clientY });
   }
 
   protected histogramBin(tokenizer: string, low: number): { count: number; proportion: number; bin_high: number } | null {

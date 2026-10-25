@@ -49,6 +49,7 @@ describe('BenchmarkStore', () => {
           hidden_widget_ids: [],
           visualization_by_widget_id: {},
           baseline_by_report_id: {},
+          tokenizer_colors: {},
         },
       })),
       saveDashboardPreferences: vi.fn((request: DashboardUiPreferencesUpdate) => of({
@@ -134,6 +135,7 @@ describe('BenchmarkStore', () => {
         hidden_widget_ids: ['hidden'],
         visualization_by_widget_id: { visible: 'bar' },
         baseline_by_report_id: {},
+        tokenizer_colors: {},
       },
     });
   });
@@ -148,6 +150,7 @@ describe('BenchmarkStore', () => {
         hidden_widget_ids: ['hidden'],
         visualization_by_widget_id: { visible: 'horizontal_bar' as const },
         baseline_by_report_id: {},
+        tokenizer_colors: {},
       },
     }));
     const { api: storeApi, store } = createStore(api);
@@ -164,6 +167,7 @@ describe('BenchmarkStore', () => {
         hidden_widget_ids: [],
         visualization_by_widget_id: { visible: 'bar' },
         baseline_by_report_id: {},
+        tokenizer_colors: {},
       },
     });
 
@@ -175,6 +179,7 @@ describe('BenchmarkStore', () => {
         hidden_widget_ids: ['hidden'],
         visualization_by_widget_id: { visible: 'horizontal_bar' },
         baseline_by_report_id: {},
+        tokenizer_colors: {},
       },
     });
     expect(store.preferencesSaving()).toBe(false);
@@ -206,6 +211,7 @@ describe('BenchmarkStore', () => {
         hidden_widget_ids: ['visible'],
         visualization_by_widget_id: { visible: 'horizontal_bar' },
         baseline_by_report_id: {},
+        tokenizer_colors: {},
       },
     }));
     const { store } = createStore(api);
@@ -281,6 +287,7 @@ describe('BenchmarkStore', () => {
         hidden_widget_ids: [],
         visualization_by_widget_id: {},
         baseline_by_report_id: { '5': 'alpha' },
+        tokenizer_colors: {},
       },
     }));
     const { store } = createStore(api);
@@ -297,6 +304,7 @@ describe('BenchmarkStore', () => {
         hidden_widget_ids: [],
         visualization_by_widget_id: {},
         baseline_by_report_id: { '5': 'unavailable' },
+        tokenizer_colors: {},
       },
     }));
     const { store } = createStore(api);

@@ -1008,6 +1008,7 @@ def test_dashboard_preferences_are_database_scoped_and_revisioned(
             "hidden_widget_ids": [],
             "visualization_by_widget_id": {},
             "baseline_by_report_id": {},
+            "tokenizer_colors": {},
         },
     }
 
@@ -1020,10 +1021,12 @@ def test_dashboard_preferences_are_database_scoped_and_revisioned(
                 "hidden_widget_ids": [],
                 "visualization_by_widget_id": {"speed": "horizontal_bar"},
                 "baseline_by_report_id": {"12": "alpha"},
+                "tokenizer_colors": {"alpha": "#f06292"},
             },
         },
     )
     assert saved.status_code == 200, saved.text
+    assert saved.json()["preferences"]["tokenizer_colors"] == {"alpha": "#f06292"}
     assert saved.json()["revision"] == 1
     assert saved.json()["preferences"]["visualization_by_widget_id"] == {
         "speed": "horizontal_bar"
@@ -1038,6 +1041,20 @@ def test_dashboard_preferences_are_database_scoped_and_revisioned(
         },
     )
     assert stale.status_code == 409
+
+###############################################################################
+def test_dashboard_preferences_reject_invalid_tokenizer_colors(
+    settings_client: TestClient,
+) -> None:
+    response = settings_client.put(
+        "/api/settings/dashboard",
+        json={
+            "expected_revision": 0,
+            "preferences": {"tokenizer_colors": {"alpha": "red"}},
+        },
+    )
+
+    assert response.status_code == 422
 
 ###############################################################################
 def test_dashboard_preferences_reject_invalid_visualizations(

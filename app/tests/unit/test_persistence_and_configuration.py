@@ -1300,6 +1300,7 @@ def test_valid_partial_overrides_merge_and_persist_sparsely(tmp_path: Path) -> N
     assert json.loads(path.read_text(encoding="utf-8")) == {
         "dashboard_preferences": {
             "baseline_by_report_id": {},
+            "tokenizer_colors": {},
             "hidden_widget_ids": [],
             "ordered_widget_ids": [],
             "visualization_by_widget_id": {},
@@ -1450,6 +1451,7 @@ def test_successful_save_replaces_corrupt_stored_document(tmp_path: Path) -> Non
     assert json.loads(path.read_text(encoding="utf-8")) == {
         "dashboard_preferences": {
             "baseline_by_report_id": {},
+            "tokenizer_colors": {},
             "hidden_widget_ids": [],
             "ordered_widget_ids": [],
             "visualization_by_widget_id": {},
@@ -1520,6 +1522,7 @@ def test_reset_all_persists_an_empty_database_document(tmp_path: Path) -> None:
     assert json.loads(path.read_text(encoding="utf-8")) == {
         "dashboard_preferences": {
             "baseline_by_report_id": {},
+            "tokenizer_colors": {},
             "hidden_widget_ids": [],
             "ordered_widget_ids": [],
             "visualization_by_widget_id": {},

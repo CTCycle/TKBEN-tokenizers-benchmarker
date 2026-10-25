@@ -21,11 +21,11 @@
             <line [attr.x1]="forestScale(item.low)" [attr.x2]="forestScale(item.high)" [attr.y1]="54 + index * 72" [attr.y2]="54 + index * 72" stroke="#facc15" stroke-width="4" />
             <line [attr.x1]="forestScale(item.low)" [attr.x2]="forestScale(item.low)" [attr.y1]="44 + index * 72" [attr.y2]="64 + index * 72" stroke="#facc15" stroke-width="2" />
             <line [attr.x1]="forestScale(item.high)" [attr.x2]="forestScale(item.high)" [attr.y1]="44 + index * 72" [attr.y2]="64 + index * 72" stroke="#facc15" stroke-width="2" />
-            <circle [attr.cx]="forestScale(item.value)" [attr.cy]="54 + index * 72" r="8" [attr.fill]="item.color" />
+            <circle [attr.cx]="forestScale(item.value)" [attr.cy]="54 + index * 72" r="8" [attr.fill]="item.color" (contextmenu)="openColorMenu($event, item.tokenizer)" />
           </g>
         }
       </svg>
-      <div class="benchmark-chart-legend" aria-label="Tokenizer legend">@for (item of points(); track item.tokenizer) { <span><i [style.background]="item.color"></i>{{ item.tokenizer }}</span> }</div>
+      <div class="benchmark-chart-legend" aria-label="Tokenizer legend">@for (item of points(); track item.tokenizer) { <span (contextmenu)="openColorMenu($event, item.tokenizer)"><i [style.background]="item.color"></i>{{ item.tokenizer }}</span> }</div>
     }
     @case ('box_plot') {
       <svg class="benchmark-custom-chart benchmark-box-chart" [attr.viewBox]="boxViewBox()" preserveAspectRatio="xMidYMid meet" role="img" [attr.aria-label]="widget().label + ' box plot in ' + widget().unit + ', x axis ' + widget().unit + ', y axis Tokenizer'">
@@ -36,7 +36,7 @@
             <line [attr.x1]="boxScaleX(item.min)" [attr.x2]="boxScaleX(item.max)" [attr.y1]="boxRowY(index)" [attr.y2]="boxRowY(index)" stroke="#9ea7b3" stroke-width="3" />
             <line [attr.x1]="boxScaleX(item.min)" [attr.x2]="boxScaleX(item.min)" [attr.y1]="boxRowY(index) - boxHeight() / 2 - 2" [attr.y2]="boxRowY(index) + boxHeight() / 2 + 2" stroke="#9ea7b3" stroke-width="2" />
             <line [attr.x1]="boxScaleX(item.max)" [attr.x2]="boxScaleX(item.max)" [attr.y1]="boxRowY(index) - boxHeight() / 2 - 2" [attr.y2]="boxRowY(index) + boxHeight() / 2 + 2" stroke="#9ea7b3" stroke-width="2" />
-            <rect [attr.x]="boxScaleX(item.q1)" [attr.y]="boxRowY(index) - boxHeight() / 2" [attr.width]="math.max(boxScaleX(item.q3) - boxScaleX(item.q1), 14)" [attr.height]="boxHeight()" rx="5" [attr.fill]="item.color" fill-opacity=".78" />
+            <rect [attr.x]="boxScaleX(item.q1)" [attr.y]="boxRowY(index) - boxHeight() / 2" [attr.width]="math.max(boxScaleX(item.q3) - boxScaleX(item.q1), 14)" [attr.height]="boxHeight()" rx="5" [attr.fill]="item.color" fill-opacity=".78" (contextmenu)="openColorMenu($event, item.tokenizer)" />
             <line [attr.x1]="boxScaleX(item.median)" [attr.x2]="boxScaleX(item.median)" [attr.y1]="boxRowY(index) - boxHeight() / 2 - 2" [attr.y2]="boxRowY(index) + boxHeight() / 2 + 2" stroke="#facc15" stroke-width="4" />
           </g>
         }
@@ -48,7 +48,7 @@
         <text x="18" [attr.y]="boxAxisLabelY()" class="benchmark-axis-label" text-anchor="middle" [attr.transform]="'rotate(-90 18 ' + boxAxisLabelY() + ')'">Tokenizer</text>
         <text [attr.x]="(boxPlotStart() + boxPlotEnd()) / 2" [attr.y]="boxViewBoxHeight() - 8" class="benchmark-axis-label" text-anchor="middle">{{ boxScale().logarithmic ? 'Log scale · ' : '' }}{{ widget().unit }}</text>
       </svg>
-      <div class="benchmark-chart-legend" aria-label="Tokenizer legend">@for (item of distributions(); track item.tokenizer) { <span><i [style.background]="item.color"></i>{{ item.tokenizer }} · n={{ item.sample_count }}</span> }</div>
+      <div class="benchmark-chart-legend" aria-label="Tokenizer legend">@for (item of distributions(); track item.tokenizer) { <span (contextmenu)="openColorMenu($event, item.tokenizer)"><i [style.background]="item.color"></i>{{ item.tokenizer }} · n={{ item.sample_count }}</span> }</div>
     }
     @case ('histogram') {
       <div class="benchmark-histogram-grid" [attr.aria-label]="widget().label + ' histogram small multiples'">
@@ -63,7 +63,7 @@
               }
               @for (low of histogramEdges().slice(0, -1); track low; let index = $index) {
                 @if (histogramBin(tokenizer, low); as bin) {
-                  <rect [attr.x]="histogramX(index)" [attr.y]="histogramPlotBottom() - histogramHeight(bin.count)" [attr.width]="histogramBarWidth()" [attr.height]="histogramHeight(bin.count)" [attr.fill]="tokenizerColor(tokenizer)" class="benchmark-histogram-bar"><title>{{ tokenizer }}: {{ low }}–{{ bin.bin_high }}, {{ bin.count }} observations ({{ (bin.proportion * 100).toFixed(1) }}%)</title></rect>
+                  <rect [attr.x]="histogramX(index)" [attr.y]="histogramPlotBottom() - histogramHeight(bin.count)" [attr.width]="histogramBarWidth()" [attr.height]="histogramHeight(bin.count)" [attr.fill]="tokenizerColor(tokenizer)" class="benchmark-histogram-bar" (contextmenu)="openColorMenu($event, tokenizer)"><title>{{ tokenizer }}: {{ low }}–{{ bin.bin_high }}, {{ bin.count }} observations ({{ (bin.proportion * 100).toFixed(1) }}%)</title></rect>
                 }
               }
               <line [attr.x1]="histogramPlotStart()" [attr.x2]="histogramPlotEnd()" [attr.y1]="histogramPlotBottom()" [attr.y2]="histogramPlotBottom()" stroke="#9ea7b3" />
@@ -89,13 +89,13 @@
           <text [attr.x]="bucketGroupCenter(bucketIndex)" y="220" class="benchmark-axis-tick" text-anchor="middle">{{ bucketLabel(bucket) }}</text>
           @for (tokenizer of tokenizers(); track tokenizer; let tokenizerIndex = $index) {
             @if (bucketItem(tokenizer, bucket); as item) {
-              <rect [attr.x]="bucketX(bucketIndex, tokenizerIndex)" [attr.y]="bucketY(item.value)" [attr.width]="bucketBarWidth()" [attr.height]="198 - bucketY(item.value)" rx="3" [attr.fill]="tokenizerColor(tokenizer)" class="benchmark-svg-bar"><title>{{ tokenizer }} · {{ bucket }}: {{ formatTooltip(item.value, widget().display_format, widget().unit) }}</title></rect>
+              <rect [attr.x]="bucketX(bucketIndex, tokenizerIndex)" [attr.y]="bucketY(item.value)" [attr.width]="bucketBarWidth()" [attr.height]="198 - bucketY(item.value)" rx="3" [attr.fill]="tokenizerColor(tokenizer)" class="benchmark-svg-bar" (contextmenu)="openColorMenu($event, tokenizer)"><title>{{ tokenizer }} · {{ bucket }}: {{ formatTooltip(item.value, widget().display_format, widget().unit) }}</title></rect>
             }
           }
         }
         <text [attr.x]="(bucketPlotLeft() + bucketPlotRight()) / 2" y="252" class="benchmark-axis-label" text-anchor="middle">Bucket</text>
       </svg>
-      <div class="benchmark-chart-legend" aria-label="Tokenizer legend">@for (tokenizer of tokenizers(); track tokenizer) { <span><i [style.background]="tokenizerColor(tokenizer)"></i>{{ tokenizer }}</span> }</div>
+      <div class="benchmark-chart-legend" aria-label="Tokenizer legend">@for (tokenizer of tokenizers(); track tokenizer) { <span (contextmenu)="openColorMenu($event, tokenizer)"><i [style.background]="tokenizerColor(tokenizer)"></i>{{ tokenizer }}</span> }</div>
     }
     @case ('heatmap') {
       <div class="benchmark-heatmap-wrap">
@@ -142,11 +142,11 @@
         @if (visualization() === 'horizontal_bar') {
           @for (item of points(); track item.tokenizer; let index = $index) {
             <text [attr.x]="horizontalLabelX() - 8" [attr.y]="horizontalY(index) + 4" class="benchmark-axis-tick" text-anchor="end">{{ item.label }}</text>
-            <rect [attr.x]="horizontalPlotLeft()" [attr.y]="horizontalY(index) - horizontalBarHeight() / 2" [attr.width]="horizontalWidth(item.value)" [attr.height]="horizontalBarHeight()" rx="4" [attr.fill]="item.color" class="benchmark-svg-bar recharts-bar-rectangle"><title>{{ item.tokenizer }}: {{ formatTooltip(item.value, widget().display_format, widget().unit) }}</title></rect>
+            <rect [attr.x]="horizontalPlotLeft()" [attr.y]="horizontalY(index) - horizontalBarHeight() / 2" [attr.width]="horizontalWidth(item.value)" [attr.height]="horizontalBarHeight()" rx="4" [attr.fill]="item.color" class="benchmark-svg-bar recharts-bar-rectangle" (contextmenu)="openColorMenu($event, item.tokenizer)"><title>{{ item.tokenizer }}: {{ formatTooltip(item.value, widget().display_format, widget().unit) }}</title></rect>
           }
         } @else {
           @for (item of points(); track item.tokenizer; let index = $index) {
-            <rect [attr.x]="pointX(index) - pointBarWidth() / 2" [attr.y]="pointY(item.value)" [attr.width]="pointBarWidth()" [attr.height]="pointPlotBottom() - pointY(item.value)" rx="4" [attr.fill]="item.color" class="benchmark-svg-bar recharts-bar-rectangle"><title>{{ item.tokenizer }}: {{ formatTooltip(item.value, widget().display_format, widget().unit) }}</title></rect>
+            <rect [attr.x]="pointX(index) - pointBarWidth() / 2" [attr.y]="pointY(item.value)" [attr.width]="pointBarWidth()" [attr.height]="pointPlotBottom() - pointY(item.value)" rx="4" [attr.fill]="item.color" class="benchmark-svg-bar recharts-bar-rectangle" (contextmenu)="openColorMenu($event, item.tokenizer)"><title>{{ item.tokenizer }}: {{ formatTooltip(item.value, widget().display_format, widget().unit) }}</title></rect>
             @if (visualization() === 'interval_bar' && item.interval_low !== null && item.interval_high !== null) {
               <line [attr.x1]="pointX(index)" [attr.x2]="pointX(index)" [attr.y1]="pointY(item.high)" [attr.y2]="pointY(item.low)" stroke="#facc15" stroke-width="3" />
               <line [attr.x1]="pointX(index) - 6" [attr.x2]="pointX(index) + 6" [attr.y1]="pointY(item.high)" [attr.y2]="pointY(item.high)" stroke="#facc15" stroke-width="2" />
@@ -155,9 +155,11 @@
             <text [attr.x]="pointX(index)" y="218" class="benchmark-axis-tick" [attr.text-anchor]="points().length === 1 ? 'middle' : 'end'" [attr.aria-label]="item.tokenizer" [attr.transform]="points().length === 1 ? null : 'rotate(-30 ' + pointX(index) + ' 218)'">{{ item.label }}</text>
           }
         }
-        <text [attr.x]="chartWidth() / 2" y="274" class="benchmark-axis-label" text-anchor="middle">{{ visualization() === 'horizontal_bar' ? widget().unit : 'Tokenizer' }}</text>
+        @if (visualization() === 'horizontal_bar') {
+          <text [attr.x]="chartWidth() / 2" y="274" class="benchmark-axis-label" text-anchor="middle">{{ widget().unit }}</text>
+        }
       </svg>
-      <div class="benchmark-chart-legend" aria-label="Tokenizer legend">@for (item of points(); track item.tokenizer) { <span><i [style.background]="item.color"></i>{{ item.tokenizer }}</span> }</div>
+      <div class="benchmark-chart-legend" aria-label="Tokenizer legend">@for (item of points(); track item.tokenizer) { <span (contextmenu)="openColorMenu($event, item.tokenizer)"><i [style.background]="item.color"></i>{{ item.tokenizer }}</span> }</div>
     }
   }
 }

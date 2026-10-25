@@ -599,6 +599,7 @@ export interface DashboardUiPreferences {
   hidden_widget_ids: string[];
   visualization_by_widget_id: Record<string, BenchmarkVisualizationKind>;
   baseline_by_report_id: Record<string, string>;
+  tokenizer_colors: Record<string, string>;
 }
 export interface DashboardUiPreferencesResponse {
   revision: number;

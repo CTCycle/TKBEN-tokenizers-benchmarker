@@ -1,0 +1,12 @@
+<div class="tokenizer-color-menu" role="dialog" aria-label="Choose tokenizer color" [style.left.px]="left()" [style.top.px]="top()">
+  <p class="tokenizer-color-menu__title" [title]="tokenizer()">{{ tokenizer() }}</p>
+  <div class="tokenizer-color-menu__swatches">
+    @for (swatch of palette; track swatch) {
+      <button type="button" class="tokenizer-color-menu__swatch" [class.is-selected]="swatch === color()" [style.background]="swatch" [attr.aria-label]="'Use color ' + swatch" (click)="colorPicked.emit(swatch)"></button>
+    }
+  </div>
+  <div class="tokenizer-color-menu__footer">
+    <label class="tokenizer-color-menu__custom">Custom<input type="color" [value]="color()" (change)="colorPicked.emit($any($event.target).value)" /></label>
+    <button type="button" class="tokenizer-color-menu__reset" (click)="colorReset.emit()">Reset</button>
+  </div>
+</div>

@@ -475,7 +475,7 @@ describe('CrossBenchmarkPageComponent workflow', () => {
       batchSize: 32,
       parallelism: 4,
     });
-    page.runForm.patchValue({ dataset: '  custom/default  ', runName: '  quick run  ' });
+    page.runForm.patchValue({ dataset: '  custom/default  ', tokenizers: 'alpha,beta', runName: '  quick run  ' });
     page.runSelectedTokenizers.set(['alpha', 'beta']);
     page.runSelectedMetricKeys.set(['eff.speed']);
     page.runBenchmark();

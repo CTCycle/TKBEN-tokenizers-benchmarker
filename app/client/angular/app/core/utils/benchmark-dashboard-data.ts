@@ -50,10 +50,29 @@ export const formatBenchmarkTooltipValue = (value: number, kind: string, unit: s
 
 export const shortBenchmarkLabel = (value: string): string => value.length > 16 ? `${value.slice(0, 14)}…` : value;
 
-const SERIES_COLORS = ['#4fc3f7', '#81c784', '#ffb74d', '#f06292', '#ba68c8', '#4db6ac'] as const;
+export const BENCHMARK_SERIES_COLORS = [
+  '#4fc3f7', '#ffb74d', '#81c784', '#f06292', '#ba68c8',
+  '#4db6ac', '#fff176', '#e57373', '#7986cb', '#a1887f',
+] as const;
 
-export const benchmarkColorFor = (value: string): string =>
-  SERIES_COLORS[[...value].reduce((sum, char) => sum + char.charCodeAt(0), 0) % SERIES_COLORS.length];
+export type BenchmarkTokenizerColors = Readonly<Record<string, string>>;
+
+const DEFAULT_SERIES_COLOR = BENCHMARK_SERIES_COLORS[0];
+
+/** Assigns each tokenizer a distinct palette color by sorted position; overrides win. */
+export const benchmarkTokenizerColors = (
+  dashboard: BenchmarkDashboardData,
+  overrides: BenchmarkTokenizerColors,
+): Record<string, string> => {
+  const names = [...new Set(dashboard.widgets.flatMap(uniqueTokenizers))].sort();
+  return Object.fromEntries(names.map((name, index) => [
+    name,
+    overrides[name] ?? BENCHMARK_SERIES_COLORS[index % BENCHMARK_SERIES_COLORS.length],
+  ]));
+};
+
+const colorOf = (colors: BenchmarkTokenizerColors, tokenizer: string): string =>
+  colors[tokenizer] ?? DEFAULT_SERIES_COLOR;
 
 export interface BenchmarkPointView extends BenchmarkDashboardPoint {
   low: number;
@@ -77,29 +96,29 @@ export interface BenchmarkHistogramView extends BenchmarkDashboardHistogramBin {
   label: string;
 }
 
-export const pointViews = (widget: BenchmarkDashboardWidgetData): BenchmarkPointView[] => widget.points.map((item) => ({
+export const pointViews = (widget: BenchmarkDashboardWidgetData, colors: BenchmarkTokenizerColors = {}): BenchmarkPointView[] => widget.points.map((item) => ({
   ...item,
   low: item.interval_low ?? item.value,
   high: item.interval_high ?? item.value,
-  color: benchmarkColorFor(item.tokenizer),
+  color: colorOf(colors, item.tokenizer),
   label: shortBenchmarkLabel(item.tokenizer),
 }));
 
-export const distributionViews = (widget: BenchmarkDashboardWidgetData): BenchmarkDistributionView[] => widget.distributions.map((item) => ({
+export const distributionViews = (widget: BenchmarkDashboardWidgetData, colors: BenchmarkTokenizerColors = {}): BenchmarkDistributionView[] => widget.distributions.map((item) => ({
   ...item,
-  color: benchmarkColorFor(item.tokenizer),
+  color: colorOf(colors, item.tokenizer),
   label: shortBenchmarkLabel(item.tokenizer),
 }));
 
-export const bucketViews = (widget: BenchmarkDashboardWidgetData): BenchmarkBucketView[] => widget.buckets.map((item) => ({
+export const bucketViews = (widget: BenchmarkDashboardWidgetData, colors: BenchmarkTokenizerColors = {}): BenchmarkBucketView[] => widget.buckets.map((item) => ({
   ...item,
-  color: benchmarkColorFor(item.tokenizer),
+  color: colorOf(colors, item.tokenizer),
   label: shortBenchmarkLabel(item.tokenizer),
 }));
 
-export const histogramViews = (widget: BenchmarkDashboardWidgetData): BenchmarkHistogramView[] => widget.histogram_bins.map((item) => ({
+export const histogramViews = (widget: BenchmarkDashboardWidgetData, colors: BenchmarkTokenizerColors = {}): BenchmarkHistogramView[] => widget.histogram_bins.map((item) => ({
   ...item,
-  color: benchmarkColorFor(item.tokenizer),
+  color: colorOf(colors, item.tokenizer),
   label: shortBenchmarkLabel(item.tokenizer),
 }));
 

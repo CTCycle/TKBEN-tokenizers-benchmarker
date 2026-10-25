@@ -57,7 +57,7 @@
             </div>
           </header>
           <div class="benchmark-chart-stage benchmark-chart-stage--data-{{ dataShape(widget) }} benchmark-chart-stage--{{ visualizationFor(widget) }}">
-            <div class="benchmark-chart-stage__content"><app-benchmark-metric-chart [widget]="widget" [visualization]="visualizationFor(widget)" /></div>
+            <div class="benchmark-chart-stage__content"><app-benchmark-metric-chart [widget]="widget" [visualization]="visualizationFor(widget)" (tokenizerColorMenu)="colorMenu.set($event)" /></div>
           </div>
           @if (store.baselineTokenizer() && hasComparisonData(widget)) {
             <div class="benchmark-comparison-strip" aria-label="Benchmark comparison"><span class="benchmark-comparison-strip__label">Baseline: {{ store.baselineTokenizer() }}</span>@for (row of comparisonStripRows(widget); track row.tokenizer) { <span class="benchmark-comparison-strip__item"><strong>{{ row.tokenizer }}</strong><span>{{ row.formattedDelta }}</span></span> }</div>
@@ -129,9 +129,51 @@
       <div #benchmarkWizardBody class="benchmark-wizard-body">
       @if (runStep() === 1) { @if (!store.metricCategories().length) { <div class="chart-placeholder"><p>No metrics catalog available.</p><button class="secondary-button" type="button" (click)="store.loadWorkspaceMeta()">Retry catalog load</button></div> } @else { <div class="validation-tree-container">@for (category of store.metricCategories(); track category.category_key) { <fieldset class="benchmark-wizard-tree-category"><legend><label class="checkbox"><input type="checkbox" [checked]="runMetricCategorySelected(category)" (change)="toggleRunMetricCategory(category, $any($event.target).checked)" /><span>{{ category.category_label }}</span></label></legend><div class="benchmark-wizard-tree-children">@for (metric of category.metrics; track metric.key) { <label class="checkbox"><input type="checkbox" [checked]="runSelectedMetricKeys().includes(metric.key)" (change)="toggleRunMetric(metric.key, $any($event.target).checked)" /><span><strong>{{ metric.label }}</strong>@if (metric.unit) { <small>({{ metric.unit }})</small> }</span></label> }</div></fieldset> }</div> } }
       @if (runStep() === 2) { <div class="benchmark-wizard-inputs"><label class="field-label" for="benchmark-tokenizer-search">Tokenizers (select up to 5)</label><input id="benchmark-tokenizer-search" class="text-input" [value]="tokenizerQuery()" (input)="tokenizerQuery.set($any($event.target).value)" placeholder="Search tokenizers" /><p class="panel-description">Selected {{ runSelectedTokenizers().length }} of 5</p><div class="benchmark-wizard-tokenizer-list">@for (tokenizer of filteredRunTokenizers(); track tokenizer) { <label class="benchmark-wizard-tokenizer-option" [class.selected]="runSelectedTokenizers().includes(tokenizer)"><input type="checkbox" [checked]="runSelectedTokenizers().includes(tokenizer)" [disabled]="!runSelectedTokenizers().includes(tokenizer) && runSelectedTokenizers().length >= 5" (change)="toggleRunTokenizer(tokenizer, $any($event.target).checked)" /><span>{{ tokenizer }}</span></label> } @empty { <div class="chart-placeholder"><p>No tokenizers match your search.</p></div> }</div><label class="field-label" for="benchmark-dataset">Dataset</label><select id="benchmark-dataset" class="text-input" formControlName="dataset">@for (dataset of store.availableDatasets(); track dataset) { <option [value]="dataset">{{ dataset }}</option> } @empty { <option value="">No datasets available</option> }</select><label class="field-label" for="benchmark-documents">Documents processed ({{ runForm.controls.maxDocuments.value }})</label><input id="benchmark-documents" class="benchmark-wizard-range" type="range" min="0" max="100000" formControlName="maxDocuments" /></div> }
-      @if (runStep() === 3) { <label class="field-label" for="benchmark-run-name">Run Name</label><input id="benchmark-run-name" class="text-input" formControlName="runName" placeholder="e.g. production-tokenizer-comparison" maxlength="120" required /><p class="panel-description">dataset_name: <strong>{{ runForm.controls.dataset.value || 'N/A' }}</strong></p><p class="panel-description">documents_processed: <strong>{{ runForm.controls.maxDocuments.value }}</strong></p><p class="panel-description">tokenizers_count: <strong>{{ runSelectedTokenizers().length }}</strong></p><p class="panel-description">selected metrics: <strong>{{ runSelectedMetricKeys().length }}</strong></p><div class="benchmark-wizard-advanced-settings"><section class="benchmark-wizard-advanced-group"><h3 class="benchmark-wizard-advanced-group-title">Execution</h3><div class="benchmark-wizard-advanced-fields"><label class="field-label">Warmup trials<input class="text-input" type="number" formControlName="warmupTrials" min="0" max="100" /></label><label class="field-label">Timed trials<input class="text-input" type="number" formControlName="timedTrials" min="1" max="200" /></label><label class="field-label">Batch size<input class="text-input" type="number" formControlName="batchSize" min="1" max="4096" /></label><label class="field-label">Seed<input class="text-input" type="number" formControlName="seed" /></label><label class="field-label">Parallelism<input class="text-input" type="number" formControlName="parallelism" min="1" max="128" /></label></div></section><section class="benchmark-wizard-advanced-group"><h3 class="benchmark-wizard-advanced-group-title">Token processing</h3><div class="benchmark-wizard-advanced-fields"><label class="checkbox"><input type="checkbox" formControlName="addSpecialTokens" /><span>Add special tokens</span></label><label class="checkbox"><input type="checkbox" formControlName="padding" /><span>Enable padding</span></label><label class="checkbox"><input type="checkbox" formControlName="truncation" /><span>Enable truncation</span></label><label class="field-label">Max length<input class="text-input" type="number" formControlName="maxLength" min="1" /></label></div></section><section class="benchmark-wizard-advanced-group"><h3 class="benchmark-wizard-advanced-group-title">Document statistics</h3><div class="benchmark-wizard-advanced-fields"><label class="checkbox"><input type="checkbox" formControlName="storePerDocumentStats" /><span>Store per-document stats</span></label><label class="field-label">Per-document sample size<input class="text-input" type="number" formControlName="perDocumentSampleSize" min="1" max="10000" /></label></div></section></div> }
+      @if (runStep() === 3) {
+        <div class="benchmark-wizard-summary">
+          <label class="field-label" for="benchmark-run-name">Run Name</label>
+          <input id="benchmark-run-name" class="text-input" formControlName="runName" placeholder="e.g. production-tokenizer-comparison" maxlength="120" required />
+          <dl class="benchmark-wizard-stats">
+            <div class="benchmark-wizard-stat benchmark-wizard-stat--wide"><dt>Dataset</dt><dd [title]="runForm.controls.dataset.value">{{ runForm.controls.dataset.value || 'N/A' }}</dd></div>
+            <div class="benchmark-wizard-stat"><dt>Documents</dt><dd>{{ runForm.controls.maxDocuments.value }}</dd></div>
+            <div class="benchmark-wizard-stat"><dt>Tokenizers</dt><dd>{{ runSelectedTokenizers().length }}</dd></div>
+            <div class="benchmark-wizard-stat"><dt>Metrics</dt><dd>{{ runSelectedMetricKeys().length }}</dd></div>
+          </dl>
+        </div>
+        <div class="benchmark-wizard-advanced-settings">
+          <section class="benchmark-wizard-advanced-group benchmark-wizard-advanced-group--execution">
+            <h3 class="benchmark-wizard-advanced-group-title">Execution</h3>
+            <div class="benchmark-wizard-advanced-fields benchmark-wizard-advanced-fields--execution">
+              <label class="field-label">Warmup trials<input class="text-input" type="number" formControlName="warmupTrials" min="0" max="100" /></label>
+              <label class="field-label">Timed trials<input class="text-input" type="number" formControlName="timedTrials" min="1" max="200" /></label>
+              <label class="field-label">Batch size<input class="text-input" type="number" formControlName="batchSize" min="1" max="4096" /></label>
+              <label class="field-label">Seed<input class="text-input" type="number" formControlName="seed" /></label>
+              <label class="field-label">Parallelism<input class="text-input" type="number" formControlName="parallelism" min="1" max="128" /></label>
+            </div>
+          </section>
+          <section class="benchmark-wizard-advanced-group">
+            <h3 class="benchmark-wizard-advanced-group-title">Token processing</h3>
+            <div class="benchmark-wizard-advanced-fields benchmark-wizard-advanced-fields--toggles">
+              <label class="checkbox"><input type="checkbox" formControlName="addSpecialTokens" /><span>Add special tokens</span></label>
+              <label class="checkbox"><input type="checkbox" formControlName="padding" /><span>Enable padding</span></label>
+              <label class="checkbox"><input type="checkbox" formControlName="truncation" /><span>Enable truncation</span></label>
+              <label class="field-label">Max length<input class="text-input" type="number" formControlName="maxLength" min="1" placeholder="No limit" [readOnly]="!runForm.controls.truncation.value" [class.is-inactive]="!runForm.controls.truncation.value" /></label>
+            </div>
+          </section>
+          <section class="benchmark-wizard-advanced-group">
+            <h3 class="benchmark-wizard-advanced-group-title">Document statistics</h3>
+            <div class="benchmark-wizard-advanced-fields">
+              <label class="checkbox"><input type="checkbox" formControlName="storePerDocumentStats" /><span>Store per-document stats</span></label>
+              <label class="field-label">Per-document sample size<input class="text-input" type="number" formControlName="perDocumentSampleSize" min="1" max="10000" /></label>
+            </div>
+          </section>
+        </div>
+      }
       </div>
       <div class="modal-actions"><button class="secondary-button" type="button" (click)="runOpen.set(false)">Cancel</button><button class="secondary-button" type="button" (click)="previousStep()" [disabled]="runStep() === 1">Back</button>@if (runStep() < 3) { <button class="primary-button" type="button" (click)="nextStep()" [disabled]="(runStep() === 1 && !runSelectedMetricKeys().length) || (runStep() === 2 && (!runSelectedTokenizers().length || runForm.controls.dataset.invalid))">Next</button> } @else { <button class="primary-button" type="submit" [disabled]="runForm.invalid || !runForm.controls.runName.value.trim() || !runSelectedTokenizers().length || !runSelectedMetricKeys().length">Start benchmark</button> }</div>
     </form>
   </section>
+}
+@if (colorMenu(); as menu) {
+  <app-tokenizer-color-menu [tokenizer]="menu.tokenizer" [color]="store.tokenizerColors()[menu.tokenizer]" [x]="menu.x" [y]="menu.y" (colorPicked)="setTokenizerColor($event)" (colorReset)="setTokenizerColor(null)" (closed)="colorMenu.set(null)" />
 }
