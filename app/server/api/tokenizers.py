@@ -271,7 +271,6 @@ async def generate_tokenizer_report(
             job_type="tokenizer_report",
             runner=TokenizerJobService().run_report_job,
             kwargs={"request_payload": payload.model_dump()},
-            conflict_detail="Tokenizer report generation is already in progress.",
             initialization_detail="Failed to initialize tokenizer report job.",
             message="Tokenizer report job started.",
         ),

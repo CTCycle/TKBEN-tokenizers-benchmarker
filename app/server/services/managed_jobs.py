@@ -29,10 +29,9 @@ class ManagedJobSpec:
     job_type: str
     runner: Callable[..., dict[str, Any]]
     kwargs: dict[str, Any]
-    conflict_detail: str
     initialization_detail: str
     message: str
-    check_conflict: bool = True
+    conflict_detail: str | None = None
 
 ###############################################################################
 class ManagedJobService:
@@ -40,7 +39,7 @@ class ManagedJobService:
 
     # -------------------------------------------------------------------------
     def start(self, job_manager: JobManager, spec: ManagedJobSpec) -> JobStartResponse:
-        if spec.check_conflict and job_manager.is_job_running(spec.job_type):
+        if spec.conflict_detail is not None and job_manager.is_job_running(spec.job_type):
             raise ManagedJobConflictError(spec.conflict_detail)
 
         job_id = job_manager.start_job(

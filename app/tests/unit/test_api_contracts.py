@@ -1420,12 +1420,61 @@ def test_new_workflows_use_saved_runtime_settings(
             job_type="settings-workflow",
             runner=lambda **_kwargs: {},
             kwargs={},
-            conflict_detail="already running",
             initialization_detail="failed to initialize",
             message="started",
         ),
     )
     assert job.poll_interval == target_poll_interval
+
+###############################################################################
+def test_managed_jobs_allow_concurrent_starts_unless_conflict_detail_is_set() -> None:
+    from server.services.managed_jobs import (
+        ManagedJobConflictError,
+        ManagedJobService,
+        ManagedJobSpec,
+    )
+
+    class RunningJobManager:
+        started = 0
+
+        # ---------------------------------------------------------------------
+        def is_job_running(self, _job_type: str | None = None) -> bool:
+            return True
+
+        # ---------------------------------------------------------------------
+        def start_job(self, job_type, runner, args=(), kwargs=None):
+            del job_type, runner, args, kwargs
+            self.started += 1
+            return f"job-{self.started}"
+
+        # ---------------------------------------------------------------------
+        def get_job_status(self, _job_id: str):
+            return {"job_type": "tokenizer_report", "status": "running"}
+
+    manager = RunningJobManager()
+    spec = ManagedJobSpec(
+        job_type="tokenizer_report",
+        runner=lambda **_kwargs: {},
+        kwargs={},
+        initialization_detail="failed to initialize",
+        message="started",
+    )
+    first = ManagedJobService().start(manager, spec)
+    second = ManagedJobService().start(manager, spec)
+    assert first.job_id != second.job_id
+
+    with pytest.raises(ManagedJobConflictError):
+        ManagedJobService().start(
+            manager,
+            ManagedJobSpec(
+                job_type="dataset_download",
+                runner=lambda **_kwargs: {},
+                kwargs={},
+                initialization_detail="failed to initialize",
+                message="started",
+                conflict_detail="already running",
+            ),
+        )
 
 ###############################################################################
 def test_patch_updates_multiple_fields_and_keeps_partial_overrides(

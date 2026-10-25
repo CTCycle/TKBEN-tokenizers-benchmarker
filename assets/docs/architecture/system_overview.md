@@ -1,5 +1,5 @@
 # System Overview
-Last updated: 2026-10-21
+Last updated: 2026-10-25
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
@@ -106,7 +106,7 @@ section remains reachable.
 - `server.repositories.DatasetRepository` owns dataset, analysis-session, metric, and histogram persistence.
 - `server.repositories.TokenizerReportRepository` owns tokenizer report and vocabulary persistence; `TokenizerRepository` owns tokenizer identity/catalog storage.
 - `server.services.dataset_statistics` owns the focused `LengthStatistics` and `HistogramBuilder` components used by dataset analysis.
-- `server.services.ManagedJobService`, exposed to API handlers through `ManagedJobHttpAdapter`, centralizes job conflict checks, start-up, and initial status validation.
+- `server.services.ManagedJobService`, exposed to API handlers through `ManagedJobHttpAdapter`, centralizes optional job conflict checks, start-up, and initial status validation. Dataset validation, benchmark runs, and tokenizer reports set no `conflict_detail`, so any number run concurrently with independent progress and cancellation; the frontend result panels show the report of the job that completed most recently. Downloads and uploads still reject a second concurrent job with HTTP 409.
 - There are no legacy service aliases, registry-only tokenizer rows, or
   compatibility forwarding methods between these boundaries.
 

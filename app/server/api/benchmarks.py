@@ -91,7 +91,6 @@ async def run_benchmarks(
             job_type="benchmark_run",
             runner=BenchmarkJobService().run_benchmark_job,
             kwargs={"request_payload": request_payload},
-            conflict_detail="Benchmark run is already in progress.",
             initialization_detail="Failed to initialize benchmark job.",
             message="Benchmark job started.",
         ),
