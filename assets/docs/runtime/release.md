@@ -1,5 +1,5 @@
 # Release Procedure
-Last updated: 2026-10-22
+Last updated: 2026-10-25
 
 ## Release model
 
@@ -10,13 +10,13 @@ add packaging as part of a source release.
 The public release version and component versions use the existing repository
 convention:
 
-| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` | `v4.5.0` | `v4.5.1` | `v4.6.0` | `v4.6.1` | `v4.7.0` | `v4.7.1` |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` | `4.4.0` | `4.5.0` | `4.5.1` | `4.6.0` | `4.6.1` | `4.7.0` | `4.7.1` |
-| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` | `3.4.0` | `3.5.0` | `3.5.1` | `3.6.0` | `3.6.1` | `3.7.0` | `3.7.1` |
-| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` | `2.4.0` | `2.5.0` | `2.5.1` | `2.6.0` | `2.6.1` | `2.7.0` | `2.7.1` |
+| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` | `v4.5.0` | `v4.5.1` | `v4.6.0` | `v4.6.1` | `v4.7.0` | `v4.7.1` | `v4.8.0` |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` | `4.4.0` | `4.5.0` | `4.5.1` | `4.6.0` | `4.6.1` | `4.7.0` | `4.7.1` | `4.8.0` |
+| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` | `3.4.0` | `3.5.0` | `3.5.1` | `3.6.0` | `3.6.1` | `3.7.0` | `3.7.1` | `3.8.0` |
+| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` | `2.4.0` | `2.5.0` | `2.5.1` | `2.6.0` | `2.6.1` | `2.7.0` | `2.7.1` | `2.8.0` |
 
-The latest published release is `v4.7.1` (backend `3.7.1`, frontend `2.7.1`);
+The latest published release is `v4.8.0` (backend `3.8.0`, frontend `2.8.0`);
 its publication record is in the [project status ledger](../project_status_ledger.md#release-gate).
 `v4.7.0` (backend `3.7.0`, frontend `2.7.0`) was published on 2026-10-22 from
 annotated tag `v4.7.0` on `main` commit `7dc3d7e372bcc60cb7a75b7d12c07a4d51d42840`
@@ -38,6 +38,32 @@ The v4.6.0 delta is based on verified repository changes after `v4.5.1`:
 API version `1.2.0`, benchmark schema version `3`, and report version `5`
 remain unchanged. The public release status and final commit are recorded in
 the [project status ledger](../project_status_ledger.md#release-gate).
+
+## v4.8.0 release notes
+
+The v4.8.0 delta is based on verified repository changes after `v4.7.1`:
+
+- add the Tokenizer Playground for comparing how up to three local tokenizers
+  split the same text, with search, virtual scrolling, and special-token
+  toggling;
+- add a dataset preview to the validation wizard's sampling step and a
+  scrollable Cross Benchmark wizard with tokenizer preview vocabulary size,
+  consistent step indicators, and a run-name/form guard on Start benchmark;
+- support concurrent dataset validation, benchmark, and tokenizer report jobs
+  with independent tracking, restoration after reload, and the last completed
+  result shown per job type; polling no longer times out client-side, benchmark
+  progress advances per trial, and terminal jobs ignore late progress;
+- persist data and log directories in `settings/paths-config.json` (Settings ->
+  Storage, restart required), remove the matching environment variables, and
+  require the explicit Settings -> Keys action before Hugging Face keys can be
+  added;
+- add mixed-orientation drag-and-drop ordering to the Cross Benchmark
+  dashboard and tokenizer color customization; and
+- refresh the README screenshots from the running application.
+
+API version, benchmark schema version `3`, and report version `5` are
+unchanged. Validation evidence is recorded as `V-20261025`; remaining launcher
+validation debt is listed in the [project status ledger](../project_status_ledger.md#open-issues-and-validation-debt).
 
 ## v4.7.1 patch release notes
 

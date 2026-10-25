@@ -17,6 +17,7 @@ TKBEN is a local web workbench for inspecting text datasets, exploring tokenizer
 - Add predefined or Hugging Face datasets, or upload local CSV and XLSX files, then review dataset and lexical statistics.
 - Search for tokenizer assets, download them, or upload a custom `tokenizer.json`; inspect vocabulary, token lengths, and special tokens.
 - Compare up to five prepared tokenizers on the same saved dataset using selected performance, vocabulary, and fidelity measures.
+- Preview how up to three local tokenizers split the same text in the Tokenizer Playground, and run dataset validation, tokenizer reports, and benchmarks concurrently with independent progress in the Jobs panel.
 - Review cross-benchmark reports, compare tokenizer metrics against a report-scoped baseline, clone eligible configurations, and edit report tags.
 - Save and reopen reports, customize dashboard views, inspect run diagnostics, and export completed reports as PDFs.
 - Search, filter, and manage dataset and tokenizer catalogs by source and numeric thresholds.

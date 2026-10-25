@@ -1,5 +1,5 @@
 # Project Overview
-Last updated: 2026-10-21
+Last updated: 2026-10-25
 
 ## Purpose
 This file is the root index for `assets/docs`. Read it first to find the narrowest topic file for the task at hand.
@@ -14,9 +14,9 @@ fields; incompatible historical rows are rejected rather than silently
 adapted. Managed job lifecycle metadata is durable, with interrupted work
 reconciled as failed after restart rather than automatically resumed.
 
-The latest published release is `v4.7.1` with backend package `3.7.1` and
-frontend package `2.7.1`. Its source-only GitHub release was published from
-annotated tag `v4.7.1` on `main` (commit recorded in the status ledger); `main` and `develop` are
+The latest published release is `v4.8.0` with backend package `3.8.0` and
+frontend package `2.8.0`. Its source-only GitHub release was published from
+annotated tag `v4.8.0` on `main` (commit recorded in the status ledger); `main` and `develop` are
 synchronized after the publication record update. Configuration ownership is
 canonical: `settings/.env` and the process environment own
 bootstrap-only values,
