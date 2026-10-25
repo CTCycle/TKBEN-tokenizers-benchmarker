@@ -55,11 +55,11 @@ Future coding and validation agents must:
   Ctrl+C lifecycle returned launcher exit code 0, stopped its owned backend,
   and freed its port; interactive occupied-port confirmation and redirected
   launch were not re-exercised, so the complete launcher gate remains PARTIAL.
-- `v4.7.1` (backend `3.7.1`, frontend `2.7.1`) is the latest published
-  release. Hosted CI run `39800902959` passed the frontend, backend, and
-  Windows launcher jobs on the release commit; `main` and `develop` were
-  synchronized after publication. This release evidence does not cover the
-  current unpushed working tree.
+- `v4.8.0` (backend `3.8.0`, frontend `2.8.0`) is the latest published
+  release. Hosted CI run `40225854600` passed the frontend, backend, and
+  Windows launcher jobs on release commit
+  `955a151847db2af066d6f0ef2016ab8522b10115`; `main` and `develop` were
+  aligned before tagging.
 - Public Hugging Face discovery, download, report persistence, rendered
   reload, and cleanup are VALIDATED. Authorized gated-repository access is
   still BLOCKED; no gated report was produced.
@@ -417,6 +417,15 @@ The previous gate record remains historical: the v4.5.0 release commit
 and the post-release data-root rename and bytecode-cache hardening delta that
 had been recorded as unvalidated code/documentation changes at `a84b9c1` was
 closed by the V-20261017 campaign.
+
+The MINOR release `v4.8.0` (backend `3.8.0`, frontend `2.8.0`) was published
+as a source-only GitHub Release on 2026-10-25:
+[v4.8.0](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases/tag/v4.8.0).
+Annotated tag `v4.8.0` was created on `main` after a fast-forward from
+`develop` and peels to `955a151847db2af066d6f0ef2016ab8522b10115`. Hosted CI
+run `40225854600` passed all three jobs. The release has no uploaded binary
+assets. Validation evidence is V-20261025; launcher validation debt remains
+listed under open issues.
 
 ## Resolved and historical findings
 
