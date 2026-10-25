@@ -675,9 +675,8 @@ def test_reconciled_job_remains_addressable_and_rejects_cancellation(
             }
 
         # -------------------------------------------------------------------------
-        def delete_expired_jobs(self, now: float, retention_seconds: float) -> int:
-            del now, retention_seconds
-            return 0
+        def prune_jobs(self, max_jobs: int) -> None:
+            del max_jobs
 
         # -------------------------------------------------------------------------
         def list_jobs(self) -> list[dict[str, object]]:
@@ -988,7 +987,7 @@ def test_get_settings_returns_only_typed_runtime_fields(
         "default_parallelism",
         "streaming_batch_size",
     }
-    assert set(payload["settings"]["jobs"]) == {"polling_interval"}
+    assert set(payload["settings"]["jobs"]) == {"polling_interval", "max_stored_jobs"}
     assert payload["overridden_keys"] == []
     assert payload["warning"] is None
     assert "DATABASE_PASSWORD" not in response.text
@@ -1064,7 +1063,7 @@ def test_public_runtime_matrix_matches_typed_backend_schema() -> None:
     fields = list(_runtime_setting_fields())
     api_keys = {f"{group}.{name}" for group, name, _, _ in fields}
 
-    assert len(api_keys) == 16
+    assert len(api_keys) == 17
     assert api_keys == set(RuntimeSettingsStore._EDITABLE_KEYS)
     for _group, _name, request_field, settings_field in fields:
         assert _constraint(request_field, "ge") == _constraint(settings_field, "ge")

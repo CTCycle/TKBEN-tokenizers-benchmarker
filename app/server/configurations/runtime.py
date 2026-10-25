@@ -117,6 +117,7 @@ class _BenchmarkOverrides(_StrictOverrideModel):
 ###############################################################################
 class _JobsOverrides(_StrictOverrideModel):
     polling_interval: FiniteFloat | None = Field(default=None, ge=0.25)
+    max_stored_jobs: StrictInt | None = Field(default=None, ge=1)
 
 ###############################################################################
 class _RuntimeOverrides(_StrictOverrideModel):
@@ -176,6 +177,7 @@ class RuntimeSettingsStore:
         "benchmarks.default_parallelism",
         "benchmarks.streaming_batch_size",
         "jobs.polling_interval",
+        "jobs.max_stored_jobs",
     )
 
     # -------------------------------------------------------------------------

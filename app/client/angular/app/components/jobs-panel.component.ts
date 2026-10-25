@@ -18,6 +18,15 @@ export class JobsPanelComponent {
   private readonly destroyRef = inject(DestroyRef);
   protected readonly open = signal(false);
 
+  constructor() {
+    this.jobsApi.restore().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => this.jobsStore.jobs()
+        .filter((job) => job.state === 'running')
+        .forEach((job) => this.jobsApi.watch(job.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ error: () => undefined })),
+      error: () => undefined,
+    });
+  }
+
   protected toggle(): void {
     this.open.update((value) => !value);
   }

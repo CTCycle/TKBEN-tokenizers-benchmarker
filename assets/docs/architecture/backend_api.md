@@ -1,5 +1,5 @@
 # Backend API
-Last updated: 2026-10-23
+Last updated: 2026-10-25
 
 ## API Prefix
 All routers are included with `prefix="/api"` during backend startup.
@@ -68,6 +68,7 @@ through the manual Hugging Face dataset-ID workflow.
   - dashboard widgets use report-v5/schema-3 `default_visualization`, ordered `compatible_visualizations`, and persisted `histogram_bins`; older reports are not listed or loaded
 
 ## Jobs
+- `GET /api/jobs` — lists persisted jobs (id, type, status, progress, error, creation time) so the job queue survives page refreshes.
 - `GET /api/jobs/{job_id}`
 - `POST /api/jobs/{job_id}/cancel` — requests cooperative cancellation for an active job; status polling reports `cancelled` once the runner exits.
 

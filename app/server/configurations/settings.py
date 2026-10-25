@@ -102,7 +102,7 @@ class BenchmarkSettings(_FrozenSettingsModel):
 ###############################################################################
 class JobsSettings(_FrozenSettingsModel):
     polling_interval: float = Field(default=1.0, ge=0.25)
-    terminal_retention_seconds: float = Field(default=3600.0, ge=0.0)
+    max_stored_jobs: int = Field(default=1000, ge=1)
 
 ###############################################################################
 class ServerSettings(_FrozenSettingsModel):

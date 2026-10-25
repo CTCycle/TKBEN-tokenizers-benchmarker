@@ -389,6 +389,7 @@ class ManagedJob(Base):
         ),
         Index("ix_managed_job_status_created_at", "status", "created_at"),
         Index("ix_managed_job_completed_at", "completed_at"),
+        Index("ix_managed_job_created_at", "created_at"),
     )
 
 ###############################################################################

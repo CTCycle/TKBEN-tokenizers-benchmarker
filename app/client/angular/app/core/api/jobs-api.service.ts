@@ -4,7 +4,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, concatMap, exhaustMap, filter, map, retry, takeWhile, tap, timer, throwError } from 'rxjs';
-import type { JobStartResponse, JobStatusResponse } from './api.models';
+import type { JobStartResponse, JobStatusResponse, JobSummaryResponse } from './api.models';
 import { errorMessage } from './error-utils';
 import { JobsStore } from '../state/jobs.store';
 
@@ -12,6 +12,21 @@ import { JobsStore } from '../state/jobs.store';
 export class JobsApiService {
   private readonly http = inject(HttpClient);
   private readonly tracker = inject(JobsStore);
+
+  restore(): Observable<void> {
+    return this.http.get<JobSummaryResponse[]>('/api/jobs').pipe(
+      tap((jobs) => this.tracker.restore(jobs)),
+      map(() => undefined),
+    );
+  }
+
+  watch(jobId: string, intervalMs = 1000): Observable<JobStatusResponse> {
+    return timer(0, intervalMs).pipe(
+      exhaustMap(() => this.status(jobId)),
+      tap((status) => this.tracker.update(status)),
+      takeWhile((status) => status.status === 'pending' || status.status === 'running', true),
+    );
+  }
 
   status(jobId: string): Observable<JobStatusResponse> {
     return this.http.get<JobStatusResponse>(`/api/jobs/${encodeURIComponent(jobId)}`);

@@ -21,7 +21,6 @@ RESTART_INTERRUPTION_ERROR = (
     "Job interrupted because the application restarted while it was running."
 )
 RESTART_INTERRUPTION_REASON = "application_restart"
-REPOSITORY_PRUNE_INTERVAL_SECONDS = 60.0
 PROGRESS_PERSIST_INTERVAL_SECONDS = 1.0
 PROGRESS_PERSIST_STEP = 1.0
 
@@ -99,17 +98,16 @@ class JobManager:
     # -------------------------------------------------------------------------
     def __init__(
         self,
-        terminal_retention_seconds: float = 3600.0,
+        max_stored_jobs: int = 1000,
         repository: JobRepository | None = None,
         clock: Callable[[], float] | None = None,
     ) -> None:
         self.jobs: dict[str, JobState] = {}
         self.threads: dict[str, threading.Thread] = {}
         self.lock = threading.Lock()
-        self.terminal_retention_seconds = max(0.0, float(terminal_retention_seconds))
+        self.max_stored_jobs = max(1, int(max_stored_jobs))
         self.repository = repository
         self.clock = clock or wall_time
-        self._last_repository_prune_at: float | None = None
 
     # -------------------------------------------------------------------------
     def restore_persisted_jobs(self) -> None:
@@ -118,7 +116,7 @@ class JobManager:
             return
 
         now = self.clock()
-        self.repository.delete_expired_jobs(now, self.terminal_retention_seconds)
+        self.repository.prune_jobs(self.max_stored_jobs)
         restored_jobs: dict[str, JobState] = {}
         for snapshot in self.repository.list_jobs():
             state = JobState(
@@ -146,7 +144,6 @@ class JobManager:
 
         with self.lock:
             self.jobs.update(restored_jobs)
-            self._last_repository_prune_at = now
 
     # -------------------------------------------------------------------------
     def start_job(
@@ -176,8 +173,8 @@ class JobManager:
             runner_kwargs["job_id"] = job_id
 
         with self.lock:
-            self._prune_terminal_jobs_locked(self.clock())
             self.jobs[job_id] = state
+            self._prune_terminal_jobs_locked()
 
         try:
             self._persist_state(state)
@@ -204,9 +201,14 @@ class JobManager:
         return job_id
 
     # -------------------------------------------------------------------------
+    def list_jobs(self) -> list[dict[str, Any]]:
+        with self.lock:
+            states = sorted(self.jobs.values(), key=lambda state: state.created_at)
+        return [state.snapshot() for state in states]
+
+    # -------------------------------------------------------------------------
     def get_job_status(self, job_id: str) -> dict[str, Any] | None:
         with self.lock:
-            self._prune_terminal_jobs_locked(self.clock())
             state = self.jobs.get(job_id)
         if state is None:
             return None
@@ -215,7 +217,6 @@ class JobManager:
     # -------------------------------------------------------------------------
     def is_job_running(self, job_type: str | None = None) -> bool:
         with self.lock:
-            self._prune_terminal_jobs_locked(self.clock())
             for state in self.jobs.values():
                 if state.status in ("pending", "running"):
                     if job_type is None or state.job_type == job_type:
@@ -278,31 +279,19 @@ class JobManager:
             self._persist_state_locked(state)
 
     # -------------------------------------------------------------------------
-    def _prune_terminal_jobs_locked(self, now: float) -> None:
-        expired_job_ids: list[str] = []
-        for job_id, state in self.jobs.items():
-            completed_at = state.completed_at
-            if (
-                state.status in TERMINAL_STATUSES
-                and completed_at is not None
-                and now - completed_at > self.terminal_retention_seconds
-            ):
-                expired_job_ids.append(job_id)
-
-        for job_id in expired_job_ids:
-            self.jobs.pop(job_id, None)
-            self.threads.pop(job_id, None)
-
-        if (
-            self.repository is not None
-            and (
-                self._last_repository_prune_at is None
-                or now - self._last_repository_prune_at
-                >= REPOSITORY_PRUNE_INTERVAL_SECONDS
-            )
-        ):
-            self.repository.delete_expired_jobs(now, self.terminal_retention_seconds)
-            self._last_repository_prune_at = now
+    def _prune_terminal_jobs_locked(self) -> None:
+        excess = len(self.jobs) - self.max_stored_jobs
+        if excess <= 0:
+            return
+        finished = sorted(
+            (state for state in self.jobs.values() if state.status in TERMINAL_STATUSES),
+            key=lambda state: state.created_at,
+        )
+        for state in finished[:excess]:
+            self.jobs.pop(state.job_id, None)
+            self.threads.pop(state.job_id, None)
+        if self.repository is not None:
+            self.repository.prune_jobs(self.max_stored_jobs)
 
     # -------------------------------------------------------------------------
     def _persist_state(self, state: JobState) -> None:

@@ -241,6 +241,17 @@ _FIELD_BLUEPRINTS = (
         1.25,
         0.75,
     ),
+    (
+        "Runtime",
+        "Maximum stored jobs",
+        "maxStoredJobs",
+        "jobs",
+        "max_stored_jobs",
+        True,
+        1,
+        1200,
+        None,
+    ),
 )
 
 ###############################################################################
@@ -383,6 +394,7 @@ assert set(ALL_RUNTIME_SETTING_KEYS) == {
     "benchmarks.streaming_batch_size",
     "datasets.streaming_batch_size",
     "jobs.polling_interval",
+    "jobs.max_stored_jobs",
 }
 
 ###############################################################################

@@ -62,8 +62,8 @@ already-open operations. Benchmark methodology choices such as warmup trials,
 timed trials, seed, tokenization flags, and per-document statistics remain
 explicit per-run controls rather than global application settings.
 
-`datasets.log_interval`, `benchmarks.log_interval`, and
-`jobs.terminal_retention_seconds` remain backend-only operational settings.
+`datasets.log_interval` and `benchmarks.log_interval` remain backend-only
+operational settings.
 Dataset capability values such as allowed file extensions remain outside the
 runtime Settings surface.
 
@@ -99,7 +99,7 @@ without changing the current snapshot.
 
 ### Job Lifecycle
 - `jobs.polling_interval` controls frontend polling guidance for async job status for newly created jobs. Existing jobs keep their captured interval.
-- `jobs.terminal_retention_seconds` controls how long completed, failed, and cancelled in-memory jobs remain visible before pruning.
+- `jobs.max_stored_jobs` (default 1000) caps the persisted job history. When the table exceeds it, the oldest completed, failed, and cancelled jobs are removed.
 
 ### Upload Limits
 - `datasets.max_upload_bytes` and `tokenizers.max_upload_bytes` are enforced while reading upload streams.

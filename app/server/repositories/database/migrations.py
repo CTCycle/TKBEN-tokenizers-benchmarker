@@ -21,6 +21,7 @@ ALEMBIC_CONFIG_PATH = SERVER_DIR / "pyproject.toml"
 ALEMBIC_VERSION_TABLE = "alembic_version"
 POSTGRES_LOCK_NAME = "tkben:alembic:migrations"
 RELEASED_SCHEMA_REVISION = "0007_dashboard_ui_preferences"
+POST_BASELINE_INDEXES = frozenset({"ix_managed_job_created_at"})
 
 ###############################################################################
 class DatabaseMigrationError(RuntimeError):
@@ -59,7 +60,16 @@ def _rebase_released_schema_revision(connection: Connection) -> tuple[str, ...]:
         connection,
         opts={"version_table": ALEMBIC_VERSION_TABLE},
     )
-    differences = compare_metadata(context, Base.metadata)
+    # Later revisions add schema objects that the rebased database receives
+    # through the normal upgrade to head.
+    differences = [
+        difference
+        for difference in compare_metadata(context, Base.metadata)
+        if not (
+            difference[0] == "add_index"
+            and difference[1].name in POST_BASELINE_INDEXES
+        )
+    ]
     if differences:
         raise DatabaseMigrationError(
             "Database stamped with the published v4.6.0 revision does not match "

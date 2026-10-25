@@ -5059,7 +5059,7 @@ select:focus-visible {
 
 .wizard-step-indicator {
   display: flex;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   width: 100%;
   align-items: stretch;
   --step-tip: 10px;
@@ -5068,6 +5068,7 @@ select:focus-visible {
 .wizard-step-indicator span {
   display: flex;
   flex: 1 1 0;
+  min-height: 40px;
   min-width: 0;
   align-items: center;
   justify-content: center;

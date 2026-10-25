@@ -23,3 +23,12 @@ class JobStatusResponse(BaseModel):
     progress: float
     result: dict[str, Any] | None = None
     error: str | None = None
+
+###############################################################################
+class JobSummaryResponse(BaseModel):
+    job_id: str
+    job_type: str
+    status: str
+    progress: float
+    error: str | None = None
+    created_at: float

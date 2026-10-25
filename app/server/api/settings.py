@@ -86,6 +86,7 @@ def _runtime_values(settings: ServerSettings) -> RuntimeSettingsValues:
         ),
         jobs=RuntimeJobSettingsResponse(
             polling_interval=settings.jobs.polling_interval,
+            max_stored_jobs=settings.jobs.max_stored_jobs,
         ),
     )
 

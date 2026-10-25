@@ -32,4 +32,19 @@ describe('JobsStore', () => {
     store.clearFinished();
     expect(store.jobs()).toEqual([]);
   });
+
+  it('restores persisted jobs without duplicating tracked ones', () => {
+    const store = TestBed.inject(JobsStore);
+    store.track(start('live'));
+    store.restore([
+      { job_id: 'live', job_type: 'benchmark_run', status: 'running', progress: 5, created_at: 1 },
+      { job_id: 'old', job_type: 'tokenizer_report', status: 'completed', progress: 100, created_at: 2 },
+      { job_id: 'bad', job_type: 'dataset_validation', status: 'failed', progress: 30, error: 'boom', created_at: 3 },
+    ]);
+
+    expect(store.jobs().map((job) => job.id)).toEqual(['live', 'bad', 'old']);
+    expect(store.jobs().find((job) => job.id === 'old')).toMatchObject({ state: 'completed', label: 'Tokenizer report', startedAt: 2000 });
+    expect(store.jobs().find((job) => job.id === 'bad')).toMatchObject({ state: 'failed', error: 'boom' });
+    expect(store.activeCount()).toBe(1);
+  });
 });

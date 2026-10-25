@@ -39,7 +39,8 @@ the singleton runtime-settings row with dashboard layout, chart, and baseline
 preferences. The exact schema head published with v4.6.0,
 `0007_dashboard_ui_preferences`, is the sole rebaseline exception: startup
 compares its database schema with current metadata before changing only its
-Alembic marker to `0001_current_schema`. A mismatch is rejected without
+Alembic marker to `0001_current_schema` and then upgrading to head (the only
+schema difference tolerated by the comparison is the later `created_at` index). A mismatch is rejected without
 changing the marker. Other unknown or pre-baseline revisions, multiple heads,
 and unversioned databases are rejected and must be recreated; no general
 compatibility migration adopts or upgrades them.
@@ -157,7 +158,7 @@ At application startup, `JobManager` restores retained job rows after Alembic
 initialization. Pending or running rows are terminalized as `failed` with an
 application-restart error and an internal `failure_reason`; the public job API
 keeps its existing response shape. Completed, failed, and cancelled results
-remain queryable until terminal-job retention prunes them. No runner is
+remain queryable until the `jobs.max_stored_jobs` cap prunes the oldest finished jobs. No runner is
 automatically restarted.
 
 ## Runtime database switching
@@ -231,7 +232,8 @@ Use the application initializer (launcher option 4 or
 unversioned database is intentionally a hard failure and must be restored from a
 versioned backup or recreated.
 
-The current repository head is `0001_current_schema`. Managed-job rows,
+The current repository head is `0002_managed_job_created_at_index`, which adds the
+`managed_job.created_at` index used to list and prune job history. Managed-job rows,
 ready dataset rows, tokenizer rows, reports, and canonical tokenizer artifacts
 are stored under the configured data root and are retained across
 application restarts unless explicitly deleted. Dataset files and tokenizer

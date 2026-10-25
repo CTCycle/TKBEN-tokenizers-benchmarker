@@ -51,7 +51,7 @@ def _settings(
             cors_origins=cors_origins,
         ),
         database=SimpleNamespace(embedded_database=True),
-        jobs=SimpleNamespace(terminal_retention_seconds=3600.0),
+        jobs=SimpleNamespace(max_stored_jobs=1000),
     )
 
 
@@ -259,7 +259,7 @@ def test_create_app_initializes_startup_state(
     class StubJobManager:
 
         # -------------------------------------------------------------------------
-        def __init__(self, terminal_retention_seconds, repository=None) -> None:
+        def __init__(self, max_stored_jobs, repository=None) -> None:
             self.repository = repository
 
         # -------------------------------------------------------------------------
@@ -544,8 +544,8 @@ def _wait_for_status(
     raise AssertionError(f"Expected {expected_status}, got {status}")
 
 ###############################################################################
-def test_completed_job_remains_visible_within_retention() -> None:
-    manager = JobManager(terminal_retention_seconds=60.0)
+def test_completed_job_remains_visible() -> None:
+    manager = JobManager()
 
     job_id = manager.start_job("sample", lambda: {"value": 1})
 
@@ -555,24 +555,26 @@ def test_completed_job_remains_visible_within_retention() -> None:
     assert manager.get_job_status(job_id) is not None
 
 ###############################################################################
-def test_terminal_jobs_are_pruned_after_retention() -> None:
+def test_oldest_finished_jobs_are_pruned_beyond_the_job_limit() -> None:
     current_time = {"value": 100.0}
-    manager = JobManager(
-        terminal_retention_seconds=5.0,
-        clock=lambda: current_time["value"],
-    )
+    manager = JobManager(max_stored_jobs=2, clock=lambda: current_time["value"])
 
-    job_id = manager.start_job("sample", lambda: {"value": 1})
-    status = _wait_for_status(manager, job_id, "completed")
-    assert status["completed_at"] == 100.0
+    job_ids = []
+    for _ in range(3):
+        job_id = manager.start_job("sample", lambda: {"value": 1})
+        _wait_for_status(manager, job_id, "completed")
+        job_ids.append(job_id)
+        current_time["value"] += 1.0
+    manager.start_job("sample", lambda: {"value": 1})
 
-    current_time["value"] = 106.0
-
-    assert manager.get_job_status(job_id) is None
+    assert manager.get_job_status(job_ids[0]) is None
+    assert manager.get_job_status(job_ids[1]) is None
+    assert manager.get_job_status(job_ids[2]) is not None
+    assert len(manager.list_jobs()) == 2
 
 ###############################################################################
 def test_running_job_can_be_stopped_cooperatively() -> None:
-    manager = JobManager(terminal_retention_seconds=60.0)
+    manager = JobManager()
 
     def runner(job_id: str) -> dict[str, object]:
         while not manager.should_stop(job_id):
@@ -591,7 +593,7 @@ def test_running_job_can_be_stopped_cooperatively() -> None:
 
 ###############################################################################
 def test_progress_updates_are_ignored_after_a_job_finishes() -> None:
-    manager = JobManager(terminal_retention_seconds=60.0)
+    manager = JobManager()
     job_id = manager.start_job("sample", lambda job_id: {"done": True})
     _wait_for_status(manager, job_id, "completed")
 
@@ -743,7 +745,7 @@ def test_restart_prunes_expired_persisted_terminal_jobs(tmp_path: Path) -> None:
         )
 
         manager = JobManager(
-            terminal_retention_seconds=5.0,
+            max_stored_jobs=1,
             repository=repository,
             clock=lambda: now,
         )

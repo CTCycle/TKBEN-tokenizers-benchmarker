@@ -623,7 +623,7 @@ def test_repeated_initialization_is_current_and_idempotent(
 
     assert _revision(path) == _head()
     assert path.stat().st_size == first_size
-    assert _head() == "0001_current_schema"
+    assert _head() == "0002_managed_job_created_at_index"
 
 ###############################################################################
 def test_nonempty_unversioned_database_is_rejected_untouched(
@@ -694,6 +694,7 @@ def test_published_v460_schema_is_rebased_without_losing_settings(
     persistence.save(expected)
     try:
         with database.backend.engine.begin() as connection:
+            connection.execute(text("DROP INDEX ix_managed_job_created_at"))
             connection.execute(
                 text("UPDATE alembic_version SET version_num=:revision"),
                 {"revision": "0007_dashboard_ui_preferences"},
@@ -708,7 +709,7 @@ def test_published_v460_schema_is_rebased_without_losing_settings(
         with database.backend.engine.connect() as connection:
             assert connection.execute(
                 text("SELECT version_num FROM alembic_version")
-            ).scalar_one() == "0001_current_schema"
+            ).scalar_one() == "0002_managed_job_created_at_index"
         assert DatabaseRuntimeSettingsPersistence(database).load() == expected
     finally:
         database.backend.engine.dispose()

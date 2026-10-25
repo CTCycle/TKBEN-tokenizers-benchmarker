@@ -106,6 +106,9 @@ export class SettingsPageComponent implements OnDestroy {
     jobPollingInterval: new FormControl<number | null>(null, {
       validators: [Validators.required, Validators.min(0.25)],
     }),
+    maxStoredJobs: new FormControl<number | null>(null, {
+      validators: [Validators.required, wholeNumber, Validators.min(1)],
+    }),
   }, { validators: tokenizerLimits });
 
   constructor() {
@@ -190,6 +193,7 @@ export class SettingsPageComponent implements OnDestroy {
       },
       jobs: {
         polling_interval: this.requiredNumber(value.jobPollingInterval),
+        max_stored_jobs: this.requiredNumber(value.maxStoredJobs),
       },
     });
   }
@@ -214,6 +218,7 @@ export class SettingsPageComponent implements OnDestroy {
       case 'benchmarks.default_parallelism': this.form.controls.benchmarkDefaultParallelism.setValue(defaults.benchmarks.default_parallelism); break;
       case 'benchmarks.streaming_batch_size': this.form.controls.benchmarkStreamingBatchSize.setValue(defaults.benchmarks.streaming_batch_size); break;
       case 'jobs.polling_interval': this.form.controls.jobPollingInterval.setValue(defaults.jobs.polling_interval); break;
+      case 'jobs.max_stored_jobs': this.form.controls.maxStoredJobs.setValue(defaults.jobs.max_stored_jobs); break;
     }
     this.form.markAsDirty();
     this.persistenceRequests.next(true);
@@ -301,6 +306,7 @@ export class SettingsPageComponent implements OnDestroy {
       case 'benchmarks.default_parallelism': return `${defaults.benchmarks.default_parallelism}`;
       case 'benchmarks.streaming_batch_size': return `${defaults.benchmarks.streaming_batch_size}`;
       case 'jobs.polling_interval': return `${defaults.jobs.polling_interval} seconds`;
+      case 'jobs.max_stored_jobs': return `${defaults.jobs.max_stored_jobs}`;
     }
   }
 
@@ -329,6 +335,7 @@ export class SettingsPageComponent implements OnDestroy {
       datasetStreamingBatchSize: settings.datasets.streaming_batch_size,
       benchmarkStreamingBatchSize: settings.benchmarks.streaming_batch_size,
       jobPollingInterval: settings.jobs.polling_interval,
+      maxStoredJobs: settings.jobs.max_stored_jobs,
     };
   }
 

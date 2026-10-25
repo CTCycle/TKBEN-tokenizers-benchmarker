@@ -71,6 +71,9 @@ class RuntimeJobSettingsResponse(_SettingsContract):
     polling_interval: float = Field(
         description="Polling interval for newly created asynchronous jobs in seconds"
     )
+    max_stored_jobs: int = Field(
+        description="Maximum number of jobs kept in the database before the oldest finished jobs are removed"
+    )
 
 ###############################################################################
 class RuntimeSettingsValues(_SettingsContract):
@@ -98,6 +101,7 @@ RuntimeSettingKey = Literal[
     "benchmarks.default_parallelism",
     "benchmarks.streaming_batch_size",
     "jobs.polling_interval",
+    "jobs.max_stored_jobs",
 ]
 
 ###############################################################################
@@ -198,6 +202,7 @@ class RuntimeBenchmarkSettingsPatch(_SettingsPatchContract):
 ###############################################################################
 class RuntimeJobSettingsPatch(_SettingsPatchContract):
     polling_interval: FiniteFloat | None = Field(default=None, ge=0.25)
+    max_stored_jobs: StrictInt | None = Field(default=None, ge=1)
 
 ###############################################################################
 class RuntimeSettingsPatchRequest(_SettingsPatchContract):

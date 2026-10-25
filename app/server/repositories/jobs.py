@@ -7,11 +7,13 @@ from datetime import datetime, timezone
 import threading
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from server.repositories.database.backend import TKBENDatabase, get_database
 from server.repositories.schemas.models import ManagedJob
+
+TERMINAL_STATUSES = ("completed", "failed", "cancelled")
 
 ###############################################################################
 class JobRepository:
@@ -92,15 +94,18 @@ class JobRepository:
             return self._snapshot(row) if row is not None else None
 
     # -------------------------------------------------------------------------
-    def delete_expired_jobs(self, now: float, retention_seconds: float) -> None:
-        cutoff = self._datetime(now - max(0.0, retention_seconds))
-        assert cutoff is not None
+    def prune_jobs(self, max_jobs: int) -> None:
+        """Delete the oldest finished jobs once the table exceeds `max_jobs`."""
         with self.write_lock:
             with self._session() as session:
-                session.execute(
-                    delete(ManagedJob).where(
-                        ManagedJob.status.in_(("completed", "failed", "cancelled")),
-                        ManagedJob.completed_at < cutoff,
-                    )
+                excess = (session.scalar(select(func.count(ManagedJob.job_id))) or 0) - max_jobs
+                if excess <= 0:
+                    return
+                oldest = (
+                    select(ManagedJob.job_id)
+                    .where(ManagedJob.status.in_(TERMINAL_STATUSES))
+                    .order_by(ManagedJob.created_at, ManagedJob.job_id)
+                    .limit(excess)
                 )
+                session.execute(delete(ManagedJob).where(ManagedJob.job_id.in_(oldest)))
                 session.commit()

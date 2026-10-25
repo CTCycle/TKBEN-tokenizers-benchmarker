@@ -129,7 +129,7 @@ async def app_lifespan(application: FastAPI) -> AsyncIterator[None]:
         )
         application.state.job_repository = None
         application.state.job_manager = JobManager(
-            terminal_retention_seconds=settings.jobs.terminal_retention_seconds
+            max_stored_jobs=settings.jobs.max_stored_jobs
         )
         application.state.settings = settings
         yield
@@ -146,7 +146,7 @@ async def app_lifespan(application: FastAPI) -> AsyncIterator[None]:
 
     job_repository = JobRepository()
     job_manager = JobManager(
-        terminal_retention_seconds=settings.jobs.terminal_retention_seconds,
+        max_stored_jobs=settings.jobs.max_stored_jobs,
         repository=job_repository,
     )
     job_manager.restore_persisted_jobs()
@@ -178,7 +178,7 @@ def create_app() -> FastAPI:
     application.state.database_startup_error = None
     application.state.database_switch_gate = DatabaseSwitchGate()
     application.state.job_manager = JobManager(
-        terminal_retention_seconds=settings.jobs.terminal_retention_seconds
+        max_stored_jobs=settings.jobs.max_stored_jobs
     )
 
     @application.middleware("http")

@@ -158,8 +158,8 @@ async def activate_database_configuration(
             )
             candidate_job_repository = JobRepository(candidate_database)
             candidate_job_manager = JobManager(
-                terminal_retention_seconds=(
-                    candidate_runtime_store.get_state().settings.jobs.terminal_retention_seconds
+                max_stored_jobs=(
+                    candidate_runtime_store.get_state().settings.jobs.max_stored_jobs
                 ),
                 repository=candidate_job_repository,
             )

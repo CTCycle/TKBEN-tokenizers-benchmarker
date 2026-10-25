@@ -69,7 +69,8 @@ export type RuntimeSettingKey =
     | 'benchmarks.default_batch_size'
     | 'benchmarks.default_parallelism'
     | 'benchmarks.streaming_batch_size'
-    | 'jobs.polling_interval';
+    | 'jobs.polling_interval'
+    | 'jobs.max_stored_jobs';
 
 export interface RuntimeTokenizerSettings {
     default_discovery_limit: number;
@@ -97,6 +98,7 @@ export interface RuntimeBenchmarkSettings {
 
 export interface RuntimeJobSettings {
     polling_interval: number;
+    max_stored_jobs: number;
 }
 
 export interface RuntimeSettingsValues {
@@ -140,6 +142,7 @@ export interface RuntimeBenchmarkSettingsPatch {
 
 export interface RuntimeJobSettingsPatch {
     polling_interval?: number;
+    max_stored_jobs?: number;
 }
 
 export interface RuntimeSettingsPatchRequest {
@@ -287,6 +290,15 @@ export interface JobStartResponse {
 /**
  * Response for job status polling
  */
+export interface JobSummaryResponse {
+    job_id: string;
+    job_type: string;
+    status: string;
+    progress: number;
+    error?: string | null;
+    created_at: number;
+}
+
 export interface JobStatusResponse {
     job_id: string;
     job_type: string;

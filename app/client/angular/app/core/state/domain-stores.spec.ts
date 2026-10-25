@@ -508,7 +508,7 @@ const response: RuntimeSettingsResponse = {
       default_parallelism: 2,
       streaming_batch_size: 1000,
     },
-    jobs: { polling_interval: 2 },
+    jobs: { polling_interval: 2, max_stored_jobs: 1000 },
   },
   defaults: {
     tokenizers: {
@@ -532,7 +532,7 @@ const response: RuntimeSettingsResponse = {
       default_parallelism: 1,
       streaming_batch_size: 1000,
     },
-    jobs: { polling_interval: 1 },
+    jobs: { polling_interval: 1, max_stored_jobs: 1000 },
   },
   overridden_keys: [
     'datasets.histogram_bins',
@@ -541,6 +541,7 @@ const response: RuntimeSettingsResponse = {
     'benchmarks.default_batch_size',
     'benchmarks.default_parallelism',
     'jobs.polling_interval',
+    'jobs.max_stored_jobs',
   ],
   warning: null,
 };
@@ -583,7 +584,7 @@ describe('SettingsStore', () => {
     const api = createApi();
     const serverResponse = { ...response, revision: 3, settings: {
       ...response.settings,
-      jobs: { polling_interval: 4 },
+      jobs: { polling_interval: 4, max_stored_jobs: 1000 },
     }, overridden_keys: ['jobs.polling_interval'] as const };
     api.get.mockReturnValue(of(response));
     api.patch.mockReturnValue(of(serverResponse));
@@ -608,7 +609,7 @@ describe('SettingsStore', () => {
     const secondResponse: RuntimeSettingsResponse = {
       ...response,
       revision: 4,
-      settings: { ...response.settings, jobs: { polling_interval: 3.5 } },
+      settings: { ...response.settings, jobs: { polling_interval: 3.5, max_stored_jobs: 1000 } },
     };
     api.patch.mockReturnValueOnce(firstWrite).mockReturnValueOnce(of(secondResponse));
     const { store } = createStore(api);
@@ -621,7 +622,7 @@ describe('SettingsStore', () => {
     firstWrite.next({
       ...response,
       revision: 3,
-      settings: { ...response.settings, jobs: { polling_interval: 2.5 } },
+      settings: { ...response.settings, jobs: { polling_interval: 2.5, max_stored_jobs: 1000 } },
     });
 
     expect(api.patch).toHaveBeenCalledTimes(2);

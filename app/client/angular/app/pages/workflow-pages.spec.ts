@@ -659,14 +659,14 @@ const defaults: RuntimeSettingsValues = {
     default_parallelism: 1,
     streaming_batch_size: 1000,
   },
-  jobs: { polling_interval: 1 },
+  jobs: { polling_interval: 1, max_stored_jobs: 1000 },
 };
 
 const current: RuntimeSettingsValues = {
   ...defaults,
   datasets: { ...defaults.datasets, histogram_bins: 30, max_upload_bytes: 32 * 1024 * 1024 },
   benchmarks: { ...defaults.benchmarks, default_max_documents: 2500, default_batch_size: 32, default_parallelism: 2 },
-  jobs: { polling_interval: 2 },
+  jobs: { polling_interval: 2, max_stored_jobs: 1000 },
 };
 
 afterEach(() => {

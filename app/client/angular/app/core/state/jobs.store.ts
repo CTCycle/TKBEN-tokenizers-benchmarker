@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 import { Injectable, computed, signal } from '@angular/core';
-import type { JobStartResponse, JobStatusResponse } from '../api/api.models';
+import type { JobStartResponse, JobStatusResponse, JobSummaryResponse } from '../api/api.models';
 
 export type TrackedJobState = 'running' | 'completed' | 'failed' | 'cancelled';
 
@@ -25,8 +25,6 @@ const JOB_LABELS: Readonly<Record<string, string>> = {
   tokenizer_report: 'Tokenizer report',
   benchmark_run: 'Cross benchmark',
 };
-
-const MAX_FINISHED_JOBS = 20;
 
 function jobState(status: string): TrackedJobState {
   return status === 'completed' || status === 'failed' || status === 'cancelled' ? status : 'running';
@@ -58,7 +56,25 @@ export class JobsStore {
       progress: status.status === 'completed' ? 100 : status.progress,
       error: status.error ?? null,
     });
-    this.trimFinished();
+  }
+
+  restore(summaries: readonly JobSummaryResponse[]): void {
+    this.jobs.update((current) => {
+      const known = new Set(current.map((job) => job.id));
+      const restored = summaries
+        .filter((summary) => !known.has(summary.job_id))
+        .map((summary): TrackedJob => ({
+          id: summary.job_id,
+          type: summary.job_type,
+          label: JOB_LABELS[summary.job_type] ?? summary.job_type,
+          state: jobState(summary.status),
+          progress: summary.status === 'completed' ? 100 : summary.progress,
+          error: summary.error ?? null,
+          cancelRequested: false,
+          startedAt: summary.created_at * 1000,
+        }));
+      return [...current, ...restored].sort((a, b) => b.startedAt - a.startedAt);
+    });
   }
 
   fail(jobId: string, message: string): void {
@@ -75,12 +91,5 @@ export class JobsStore {
 
   private patch(jobId: string, changes: Partial<TrackedJob>): void {
     this.jobs.update((jobs) => jobs.map((job) => (job.id === jobId && job.state === 'running' ? { ...job, ...changes } : job)));
-  }
-
-  private trimFinished(): void {
-    this.jobs.update((jobs) => {
-      let finished = 0;
-      return jobs.filter((job) => job.state === 'running' || ++finished <= MAX_FINISHED_JOBS);
-    });
   }
 }

@@ -5,14 +5,27 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request, status
 
-from server.contracts.jobs import JobStatusResponse
+from server.contracts.jobs import JobStatusResponse, JobSummaryResponse
 from server.common.constants import (
     API_ROUTE_JOBS_CANCEL,
+    API_ROUTE_JOBS_LIST,
     API_ROUTE_JOBS_STATUS,
     API_ROUTER_PREFIX_JOBS,
 )
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_JOBS, tags=["jobs"])
+
+###############################################################################
+@router.get(
+    API_ROUTE_JOBS_LIST,
+    response_model=list[JobSummaryResponse],
+    status_code=status.HTTP_200_OK,
+)
+def list_jobs(request: Request) -> list[JobSummaryResponse]:
+    return [
+        JobSummaryResponse(**job)
+        for job in request.app.state.job_manager.list_jobs()
+    ]
 
 ###############################################################################
 @router.get(
