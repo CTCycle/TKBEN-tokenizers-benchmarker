@@ -115,8 +115,9 @@ if exist "%TESTS_DIR%\e2e" set "HAS_E2E=1"
 if /i "%STANDARD_TEST_SKIP_LIVE_SERVERS%"=="false" if "%HAS_E2E%"=="1" (
   set "LIVE_SERVER_PHASE=PASS"
   set "TEST_DATA_ACTIVE=1"
-  set "TKBEN_DATA_DIR=!TEST_DATA_DIR!"
-  set "TKBEN_LOG_DIR=!TEST_DATA_DIR!\logs"
+  set "TKBEN_PATHS_CONFIG=%CANONICAL_CACHE_DIR%\test-paths-%RANDOM%-%RANDOM%.json"
+  set "TEST_DATA_DIR_JSON=!TEST_DATA_DIR:\=/!"
+  echo {"data_dir": "!TEST_DATA_DIR_JSON!", "log_dir": "!TEST_DATA_DIR_JSON!/logs"}> "!TKBEN_PATHS_CONFIG!"
 
   curl -fsS --max-time 2 "%APP_TEST_BACKEND_URL%/api/health" >nul 2>&1
   if not errorlevel 1 (

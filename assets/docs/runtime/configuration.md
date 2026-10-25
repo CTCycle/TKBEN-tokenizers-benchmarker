@@ -1,5 +1,5 @@
 # Configuration
-Last updated: 2026-10-22
+Last updated: 2026-10-25
 
 ## Environment File
 Primary launcher runtime env file:
@@ -23,9 +23,8 @@ Primary launcher runtime env file:
   credentials; blank uses origins derived from `UI_HOST` and `UI_PORT` for
   direct cross-origin development or API access)
 - `ALLOW_KEY_REVEAL`
-- `HF_KEYS_ENCRYPTION_MATERIAL_FILE`
-- `TKBEN_DATA_DIR` (persistent application data root and default SQLite database directory; downloads, tokenizer artifacts, and exports also use it; defaults to `data`; set it to a repository-relative or absolute path to use a different root; it is separate from the disposable `runtimes/cache` root)
-- `TKBEN_LOG_DIR` (runtime logs)
+
+The data directory and log directory are not environment variables. Settings → Storage persists them in `settings/paths-config.json` (`data_dir`, default `data`; `log_dir`, default `data/logs`; relative paths resolve from the repository root). The file is read at process start, so changes apply after a backend restart, and existing data is not moved. `TKBEN_PATHS_CONFIG` overrides the file location for test isolation only. In this documentation `<TKBEN_DATA_DIR>` denotes the configured data directory, which is separate from the disposable `runtimes/cache` root.
 
 These values are startup and infrastructure configuration. Database
 connection settings are managed separately in
@@ -108,7 +107,7 @@ without changing the current snapshot.
 
 ### Security Controls
 - `ALLOW_KEY_REVEAL=false` keeps plaintext Hugging Face key reveal disabled by default.
-- Hugging Face access-key encryption material is generated and persisted in the external JSON file configured by `HF_KEYS_ENCRYPTION_MATERIAL_FILE` (default `data/hf-key-material.json`). Keep this file private and do not copy it into database backups.
+- Hugging Face access-key encryption material lives in `<data directory>/hf-key-material.json`. It is created only when the user selects **Generate encryption key** in Settings → Keys; adding Hugging Face keys (and storing a PostgreSQL password) is refused until it exists. Keep this file private and do not copy it into database backups.
 - `FASTAPI_HOST` controls the interface on which the backend listens. Network exposure requires appropriate deployment-level access controls.
 
 Boolean launcher settings are validated as `true` or `false`; invalid values

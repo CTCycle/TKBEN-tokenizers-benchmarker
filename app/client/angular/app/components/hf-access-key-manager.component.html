@@ -8,9 +8,15 @@
       <p class="panel-description">Store access keys for gated Hugging Face downloads.</p>
     </div>
   </header>
+  @if (encryptionReady() === false) {
+    <div class="key-manager-init" role="status">
+      <p class="panel-description">Keys are stored encrypted. Generate the encryption key once before adding Hugging Face keys.</p>
+      <button class="primary-button" type="button" [disabled]="initializing()" (click)="initializeEncryption()">{{ initializing() ? 'Generating…' : 'Generate encryption key' }}</button>
+    </div>
+  }
   <div class="key-manager-add-row">
     <input id="hf-key-input" class="text-input" type="password" placeholder="Enter Hugging Face key" [formControl]="key" aria-label="Hugging Face key" />
-    <button class="primary-button" type="button" [disabled]="submitting()" (click)="addKey()">{{ submitting() ? 'Adding…' : 'Add' }}</button>
+    <button class="primary-button" type="button" [disabled]="submitting() || !encryptionReady()"(click)="addKey()">{{ submitting() ? 'Adding…' : 'Add' }}</button>
   </div>
   @if (error()) { <p class="error-banner" role="alert">{{ error() }}</p> }
   @if (key.invalid && key.touched) {

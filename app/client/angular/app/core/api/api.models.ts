@@ -190,6 +190,18 @@ export interface DatabaseConfigurationRequest {
     insert_batch_size: number;
 }
 
+export interface PathSettings {
+  data_dir: string;
+  log_dir: string;
+  active_data_dir: string;
+  active_log_dir: string;
+  restart_required: boolean;
+}
+
+export interface KeyEncryptionStatus {
+  initialized: boolean;
+}
+
 export interface DatabaseConnectionTestResponse {
     backend: DatabaseBackend;
     success: boolean;

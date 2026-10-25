@@ -7,7 +7,17 @@ from typing import cast
 
 from fastapi import APIRouter, HTTPException, Request, status
 
-from server.common.constants import API_ROUTE_SETTINGS_RESET, API_ROUTER_PREFIX_SETTINGS
+from server.common.constants import (
+    API_ROUTE_SETTINGS_PATHS,
+    API_ROUTE_SETTINGS_RESET,
+    API_ROUTER_PREFIX_SETTINGS,
+)
+from server.common.path import (
+    ROOT_DIR,
+    read_path_configuration,
+    resolve_runtime_path,
+    write_path_configuration,
+)
 from server.configurations import (
     apply_runtime_settings_patch,
     get_runtime_settings_state,
@@ -23,6 +33,8 @@ from server.configurations.settings import ServerSettings
 from server.contracts.settings import (
     DashboardUiPreferencesRequest,
     DashboardUiPreferencesResponse,
+    PathSettingsRequest,
+    PathSettingsResponse,
     RuntimeBenchmarkSettingsResponse,
     RuntimeDatasetSettingsResponse,
     RuntimeJobSettingsResponse,
@@ -87,6 +99,69 @@ def _raise_settings_error(exc: RuntimeSettingsValidationError) -> None:
 ###############################################################################
 def _replace_application_snapshot(request: Request) -> None:
     request.app.state.settings = get_runtime_settings_state().settings
+
+###############################################################################
+def _build_path_response(request: Request) -> PathSettingsResponse:
+    configured_data, configured_logs = read_path_configuration()
+    data_dir = configured_data or "data"
+    log_dir = configured_logs or "data/logs"
+    active = cast(ServerSettings, request.app.state.settings).paths
+    restart_required = (
+        resolve_runtime_path(data_dir, ROOT_DIR / "data") != active.data
+        or resolve_runtime_path(log_dir, ROOT_DIR / "data" / "logs") != active.logs
+    )
+    return PathSettingsResponse(
+        data_dir=data_dir,
+        log_dir=log_dir,
+        active_data_dir=str(active.data),
+        active_log_dir=str(active.logs),
+        restart_required=restart_required,
+    )
+
+###############################################################################
+@router.get(
+    API_ROUTE_SETTINGS_PATHS,
+    response_model=PathSettingsResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_path_settings(request: Request) -> PathSettingsResponse:
+    return _build_path_response(request)
+
+###############################################################################
+@router.put(
+    API_ROUTE_SETTINGS_PATHS,
+    response_model=PathSettingsResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def put_path_settings(
+    request: Request, payload: PathSettingsRequest
+) -> PathSettingsResponse:
+    data_dir = payload.data_dir.strip()
+    log_dir = payload.log_dir.strip()
+    if not data_dir or not log_dir:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Directories cannot be blank.",
+        )
+    for directory in (
+        resolve_runtime_path(data_dir, ROOT_DIR / "data"),
+        resolve_runtime_path(log_dir, ROOT_DIR / "data" / "logs"),
+    ):
+        try:
+            directory.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Directory cannot be created: {directory}",
+            ) from exc
+    try:
+        write_path_configuration(data_dir, log_dir)
+    except OSError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to persist directory settings.",
+        ) from exc
+    return _build_path_response(request)
 
 ###############################################################################
 @router.get(

@@ -1,5 +1,5 @@
 # Project Status Ledger
-Last updated: 2026-10-24
+Last updated: 2026-10-25
 
 This is the canonical source of truth for current implementation status,
 validation gates, unresolved limitations, and validation history. The
@@ -73,6 +73,22 @@ Future coding and validation agents must:
   is not required to claim the local source-only quality gate.
 - Containerized deployment and binary packaging are NOT_IMPLEMENTED. The
   supported release model is source-only Windows x64.
+
+## 2026-10-25 storage settings, key initialization, job reliability (pending full validation)
+- Removed `KERAS_BACKEND`, `MPLBACKEND`, `TKBEN_DATA_DIR`, `TKBEN_LOG_DIR` and
+  `HF_KEYS_ENCRYPTION_MATERIAL_FILE` from the environment template. Data and log
+  directories persist in `settings/paths-config.json` (Settings → Storage,
+  restart required); HF/database encryption keys are created only by the
+  explicit Settings → Keys action and are required before adding keys.
+- Wizard breadcrumb is a full-width chevron strip; page-level job spinners were
+  removed so progress shows only in the Jobs panel.
+- Job fixes: frontend polling uses `exhaustMap` with retry and no client-side
+  timeout; benchmark progress advances per trial; terminal jobs ignore late
+  progress; status reads no longer wait on persistence writes.
+- Validation: backend unit suite and Angular lint pass; one Angular spec
+  (`workflow-pages.spec.ts` run-request test) was already failing before this
+  change. E2E suites and rehydrating in-flight jobs after a page reload are not
+  yet done.
 
 ## 2026-10-23 Cross Benchmark wizard and tokenizer preview (VALIDATED 2026-10-24)
 

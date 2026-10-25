@@ -69,4 +69,5 @@ Thumbs.db
 # Local configuration
 ruff.toml
 settings/.env
+settings/paths-config.json
 data/hf-key-material.json

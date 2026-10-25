@@ -1,0 +1,36 @@
+<!-- Copyright © 2026 Thomas Virdis -->
+<!-- Licensed under the MIT License. -->
+
+<section id="settings-panel-storage" class="settings-section" role="tabpanel" aria-labelledby="settings-tab-storage">
+  <header class="settings-section-header">
+    <p class="panel-label">Storage</p>
+    <p class="panel-description">Directories for application data and logs. Relative paths resolve from the repository root. Changes apply after the backend restarts.</p>
+  </header>
+
+  @if (loading()) {
+    <div class="loading-container settings-loading" role="status"><span class="spinner" aria-hidden="true"></span><p>Loading storage settings…</p></div>
+  } @else {
+    <form class="database-form" [formGroup]="form" (ngSubmit)="save()">
+      <div class="database-form-grid">
+        <div class="database-field database-field--wide">
+          <label class="settings-label" for="storage-data-dir">Data directory</label>
+          <input id="storage-data-dir" class="text-input" type="text" formControlName="dataDir" autocomplete="off" />
+        </div>
+        <div class="database-field database-field--wide">
+          <label class="settings-label" for="storage-log-dir">Log directory</label>
+          <input id="storage-log-dir" class="text-input" type="text" formControlName="logDir" autocomplete="off" />
+        </div>
+      </div>
+      @if (paths(); as current) {
+        <p class="database-switch-note">Active: data <code>{{ current.active_data_dir }}</code>, logs <code>{{ current.active_log_dir }}</code></p>
+        @if (current.restart_required) {
+          <p class="settings-warning" role="status">Restart the backend to apply the saved directories. Existing data is not moved.</p>
+        }
+      }
+      @if (error(); as message) { <p class="settings-inline-error" role="alert">{{ message }}</p> }
+      <footer class="database-actions">
+        <button class="primary-button" type="submit" [disabled]="saving() || form.invalid || form.pristine">{{ saving() ? 'Saving…' : 'Save directories' }}</button>
+      </footer>
+    </form>
+  }
+</section>

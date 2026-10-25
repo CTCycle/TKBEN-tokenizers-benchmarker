@@ -181,26 +181,40 @@ function Resolve-ConfiguredPath {
     return [IO.Path]::GetFullPath((Join-Path $RepoRoot $expandedPath))
 }
 
+function Get-PathConfiguration {
+    $configPath = [Environment]::GetEnvironmentVariable('TKBEN_PATHS_CONFIG')
+    if ([string]::IsNullOrWhiteSpace($configPath)) {
+        $configPath = Join-Path $SettingsDir 'paths-config.json'
+    }
+    if (-not (Test-Path -LiteralPath $configPath)) { return $null }
+    try {
+        return Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
+    }
+    catch {
+        throw "Invalid path configuration file: $configPath"
+    }
+}
+
 function Get-ApplicationDataRoot {
+    $configuration = Get-PathConfiguration
     return Resolve-ConfiguredPath `
-        -ConfiguredPath (Get-EnvironmentSetting -Key 'TKBEN_DATA_DIR') `
+        -ConfiguredPath ($configuration.data_dir) `
         -DefaultPath (Join-Path $RepoRoot 'data')
 }
 
 function Get-ApplicationLogRoot {
     param([Parameter(Mandatory)][string]$DataRoot)
 
+    $configuration = Get-PathConfiguration
     return Resolve-ConfiguredPath `
-        -ConfiguredPath (Get-EnvironmentSetting -Key 'TKBEN_LOG_DIR') `
+        -ConfiguredPath ($configuration.log_dir) `
         -DefaultPath (Join-Path $DataRoot 'logs')
 }
 
 function Get-HuggingFaceMaterialPath {
     param([Parameter(Mandatory)][string]$DataRoot)
 
-    return Resolve-ConfiguredPath `
-        -ConfiguredPath (Get-EnvironmentSetting -Key 'HF_KEYS_ENCRYPTION_MATERIAL_FILE') `
-        -DefaultPath (Join-Path $DataRoot 'hf-key-material.json')
+    return [IO.Path]::GetFullPath((Join-Path $DataRoot 'hf-key-material.json'))
 }
 
 function Invoke-DownloadAndExtract {

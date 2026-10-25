@@ -1,12 +1,12 @@
 # Persistence
-Last updated: 2026-10-21
+Last updated: 2026-10-25
 
 ## Storage selection
 
 The database connection is configured by Settings → Database and persisted
 outside the database in `<TKBEN_DATA_DIR>/database-config.json`. This file is
 the independent source of truth required to open the selected backend.
-`TKBEN_DATA_DIR` remains a bootstrap environment value; SQLite defaults to
+The data directory is a bootstrap value persisted in `settings/paths-config.json` (Settings → Storage); SQLite defaults to
 `<TKBEN_DATA_DIR>/database.db`. PostgreSQL uses the fixed
 `postgresql+psycopg` driver. Database access is injected through the shared
 repository backend, which can be replaced after requests drain.

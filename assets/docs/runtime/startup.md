@@ -38,8 +38,8 @@ The launcher:
 - starts FastAPI, waits for `/api/health` and `/`, then opens the backend URL
   in the browser. A wildcard bind address maps to a loopback URL for local use
 - keeps the backend attached to the launcher console for visible logs. The app
-  also writes its normal `TKBEN_*.log` under `<TKBEN_LOG_DIR>` (default
-  `data/logs`); redirected launches save stdout and stderr there as well
+  also writes its normal `TKBEN_*.log` under the configured log directory (default
+  `data/logs`, set in Settings → Storage); redirected launches save stdout and stderr there as well
 - remains open as the lifecycle owner after readiness. Press Ctrl+C in that
   window to request FastAPI's normal shutdown. It waits up to 10 seconds, then
   stops only the FastAPI process tree it started if necessary. Startup errors,

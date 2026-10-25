@@ -12,7 +12,7 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from server.common.path import ROOT_DIR, resolve_runtime_path
+from server.common.path import ROOT_DIR, read_path_configuration, resolve_runtime_path
 
 ###############################################################################
 class _FrozenSettingsModel(BaseModel):
@@ -248,14 +248,15 @@ def _normalize_cors_origin(name: str, origin: str) -> str:
 
 ###############################################################################
 def _load_path_settings() -> PathSettings:
-    data = resolve_runtime_path(os.getenv("TKBEN_DATA_DIR"), ROOT_DIR / "data")
+    configured_data, configured_logs = read_path_configuration()
+    data = resolve_runtime_path(configured_data, ROOT_DIR / "data")
     sources = data / "sources"
     return PathSettings(
         data=data,
         sources=sources,
         datasets=sources / "datasets",
         tokenizers=sources / "tokenizers",
-        logs=resolve_runtime_path(os.getenv("TKBEN_LOG_DIR"), data / "logs"),
+        logs=resolve_runtime_path(configured_logs, data / "logs"),
         templates=data / "templates",
     )
 
@@ -290,10 +291,7 @@ def _load_network_settings() -> NetworkSettings:
 def _load_security_settings(paths: PathSettings) -> SecuritySettings:
     return SecuritySettings(
         allow_key_reveal=_read_env_bool("ALLOW_KEY_REVEAL", False),
-        hf_keys_encryption_material_file=resolve_runtime_path(
-            os.getenv("HF_KEYS_ENCRYPTION_MATERIAL_FILE"),
-            paths.data / "hf-key-material.json",
-        ),
+        hf_keys_encryption_material_file=paths.data / "hf-key-material.json",
     )
 
 ###############################################################################

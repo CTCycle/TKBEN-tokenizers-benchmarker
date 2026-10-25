@@ -210,8 +210,7 @@ class JobManager:
             state = self.jobs.get(job_id)
         if state is None:
             return None
-        with state.persistence_lock:
-            return state.snapshot()
+        return state.snapshot()
 
     # -------------------------------------------------------------------------
     def is_job_running(self, job_type: str | None = None) -> bool:
@@ -250,6 +249,8 @@ class JobManager:
             state = self.jobs.get(job_id)
         if state:
             with state.persistence_lock:
+                if state.status in TERMINAL_STATUSES:
+                    return
                 normalized = min(100.0, max(0.0, progress))
                 state.update(progress=normalized)
                 now = self.clock()

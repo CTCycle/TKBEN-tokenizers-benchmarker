@@ -61,6 +61,6 @@ export class BenchmarksApiService {
 
   run(request: BenchmarkRunRequest): Observable<BenchmarkRunResponse> {
     const start$ = this.http.post<JobStartResponse>('/api/benchmarks/run', request);
-    return this.jobs.startAndPoll<BenchmarkRunResponse>(start$, { timeoutMs: 30 * 60 * 1000 });
+    return this.jobs.startAndPoll<BenchmarkRunResponse>(start$);
   }
 }

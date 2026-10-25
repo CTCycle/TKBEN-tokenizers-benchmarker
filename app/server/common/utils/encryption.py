@@ -4,16 +4,15 @@
 from __future__ import annotations
 
 import json
-from importlib import import_module
-import os
 from datetime import UTC, datetime
 from pathlib import Path
 
 from cryptography.fernet import Fernet, InvalidToken
 
-from server.common.path import ROOT_DIR, resolve_runtime_path
+from server.common.path import DATA_PATH
 
 MATERIAL_PURPOSE = "hugging_face_access_keys"
+DATABASE_PURPOSE = "database_connection_password"
 
 ###############################################################################
 class SymmetricCipher:
@@ -39,13 +38,12 @@ class SymmetricCipher:
             raise ValueError("Unable to decrypt stored Hugging Face key.") from exc
 
 ###############################################################################
+class KeyMaterialNotInitializedError(RuntimeError):
+    pass
+
+###############################################################################
 def _material_path() -> Path:
-    import_module("server.configurations.environment").ensure_environment_loaded()
-    data_directory = resolve_runtime_path(os.getenv("TKBEN_DATA_DIR"), ROOT_DIR / "data")
-    return resolve_runtime_path(
-        os.getenv("HF_KEYS_ENCRYPTION_MATERIAL_FILE"),
-        data_directory / "hf-key-material.json",
-    )
+    return DATA_PATH / "hf-key-material.json"
 
 ###############################################################################
 def _read_material_store(path: Path) -> dict[str, object]:
@@ -85,33 +83,50 @@ def _get_active_material(payload: dict[str, object], purpose: str) -> str | None
 
 ###############################################################################
 def get_purpose_cipher(path: Path, purpose: str) -> SymmetricCipher:
-    """Return an encryption key scoped to a purpose in the shared key store."""
+    """Return the active encryption key scoped to a purpose in the shared key store."""
 
-    payload = _read_material_store(path)
-    existing = _get_active_material(payload, purpose)
-    if existing is not None:
-        return SymmetricCipher(existing)
+    existing = _get_active_material(_read_material_store(path), purpose)
+    if existing is None:
+        raise KeyMaterialNotInitializedError(
+            "Encryption key is not initialized. Generate it in Settings > Keys first."
+        )
+    return SymmetricCipher(existing)
 
+###############################################################################
+def is_key_material_initialized(path: Path | None = None) -> bool:
+    payload = _read_material_store(path or _material_path())
+    return all(
+        _get_active_material(payload, purpose) is not None
+        for purpose in (MATERIAL_PURPOSE, DATABASE_PURPOSE)
+    )
+
+###############################################################################
+def initialize_key_material(path: Path | None = None) -> None:
+    """Create missing key material per purpose; never replace an existing key."""
+
+    target = path or _material_path()
+    payload = _read_material_store(target)
+    missing = [
+        purpose
+        for purpose in (MATERIAL_PURPOSE, DATABASE_PURPOSE)
+        if _get_active_material(payload, purpose) is None
+    ]
+    if not missing:
+        raise FileExistsError("Encryption key material already exists.")
     now = datetime.now(UTC).replace(tzinfo=None).isoformat()
-    payload[purpose] = {
-        "active_version": 1,
-        "versions": {
-            "1": {
-                "key_material": Fernet.generate_key().decode("utf-8"),
-                "is_active": True,
-                "seeded_at": now,
-                "activated_at": now,
-            }
-        },
-    }
-    _write_material_store(path, payload)
-    purpose_store = payload[purpose]
-    assert isinstance(purpose_store, dict)
-    versions = purpose_store["versions"]
-    assert isinstance(versions, dict)
-    record = versions["1"]
-    assert isinstance(record, dict)
-    return SymmetricCipher(str(record["key_material"]))
+    for purpose in missing:
+        payload[purpose] = {
+            "active_version": 1,
+            "versions": {
+                "1": {
+                    "key_material": Fernet.generate_key().decode("utf-8"),
+                    "is_active": True,
+                    "seeded_at": now,
+                    "activated_at": now,
+                }
+            },
+        }
+    _write_material_store(target, payload)
 
 ###############################################################################
 def get_hf_key_cipher() -> SymmetricCipher:

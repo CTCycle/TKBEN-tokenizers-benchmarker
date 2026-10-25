@@ -39,6 +39,7 @@ def run_tokenizer_trials(
     warmup_trials: int,
     timed_trials: int,
     should_stop: Callable[[], bool] | None = None,
+    trial_progress: Callable[[float], None] | None = None,
 ) -> list[BatchObservation]:
     if warmup_trials < 0:
         raise ValueError("warmup_trials must be non-negative")
@@ -47,6 +48,8 @@ def run_tokenizer_trials(
     if config.batch_size <= 0:
         raise ValueError("batch_size must be positive")
 
+    total_trials = warmup_trials + timed_trials
+    completed_trials = 0
     for _ in range(warmup_trials):
         if should_stop and should_stop():
             return []
@@ -60,6 +63,9 @@ def run_tokenizer_trials(
                 truncation=config.truncation,
                 max_length=config.max_length,
             )
+        completed_trials += 1
+        if trial_progress:
+            trial_progress(completed_trials / total_trials)
 
     observations: list[BatchObservation] = []
     for trial_index in range(timed_trials):
@@ -102,6 +108,9 @@ def run_tokenizer_trials(
                     rss_after_mb=float(rss_after / (1024 * 1024)),
                 )
             )
+        completed_trials += 1
+        if trial_progress:
+            trial_progress(completed_trials / total_trials)
     return observations
 
 ###############################################################################

@@ -137,7 +137,7 @@
           </div>
         </section>
 
-        <footer class="settings-footer" [hidden]="activeTab() === 'keys' || activeTab() === 'database'">
+        <footer class="settings-footer" [hidden]="activeTab() === 'keys' || activeTab() === 'database' || activeTab() === 'storage'">
           <button class="secondary-button" type="button" [disabled]="!store.overriddenKeys().length" (click)="resetAll()">Reset all</button>
         </footer>
       </form>
@@ -146,6 +146,7 @@
         <app-hf-access-key-manager />
       </section>
     }
+      <app-directory-settings [hidden]="activeTab() !== 'storage'" />
       <app-database-settings [hidden]="activeTab() !== 'database'" />
     </div>
   </div>

@@ -11,12 +11,12 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, model_validator
 
-from server.common.utils.encryption import get_purpose_cipher
+from server.common.utils.encryption import DATABASE_PURPOSE, get_purpose_cipher
 from server.configurations.settings import DatabaseSettings
 
 DATABASE_CONFIGURATION_FILENAME = "database-config.json"
 DATABASE_CONFIGURATION_SCHEMA_VERSION = 1
-DATABASE_PASSWORD_PURPOSE = "database_connection_password"
+DATABASE_PASSWORD_PURPOSE = DATABASE_PURPOSE
 
 
 ###############################################################################

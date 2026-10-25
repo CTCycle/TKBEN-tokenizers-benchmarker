@@ -147,10 +147,19 @@ def test_discover_tokenizers_supports_empty_result(
     assert response.json().get("items") == []
 
 ###############################################################################
+def _ensure_key_encryption(api_context: APIRequestContext) -> None:
+    status = api_context.get("/api/keys/encryption")
+    assert status.ok
+    if not status.json().get("initialized"):
+        response = api_context.post("/api/keys/encryption/initialize")
+        assert response.status == 201
+
+###############################################################################
 @pytest.fixture
 def active_hf_test_key(api_context: APIRequestContext) -> Generator[int, None, None]:
     """Use a supplied key or one explicitly opted-in stored test key."""
     key_value = os.getenv(TEST_HF_KEY_ENV, "")
+    _ensure_key_encryption(api_context)
     baseline_response = api_context.get("/api/keys")
     assert baseline_response.status == 200
     baseline_keys = baseline_response.json().get("keys", [])
@@ -1648,6 +1657,7 @@ def _settings_keys_panel(page: Page, base_url: str) -> Locator:
 def test_settings_keys_rendered_lifecycle_and_sqlite_ciphertext(
     page: Page, base_url: str, api_context: APIRequestContext
 ) -> None:
+    _ensure_key_encryption(api_context)
     baseline = _read_keys(api_context)
     baseline_ids = {item["id"] for item in baseline}
     original_active_ids = {item["id"] for item in baseline if item.get("is_active")}

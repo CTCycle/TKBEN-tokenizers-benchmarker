@@ -79,11 +79,10 @@ For another backend address, set `FASTAPI_HOST` and `FASTAPI_PORT` in the fronte
 
 ## Configuration
 
-The launcher creates `settings/.env` from `settings/.env.example` when the file is missing. Set `TKBEN_DATA_DIR` to choose a persistent data root other than the default `data` directory. Use **Settings -> Database** to configure and test a SQLite or PostgreSQL connection, **Settings** for application options, and **Settings -> Keys** for Hugging Face access keys.
+The launcher creates `settings/.env` from `settings/.env.example` when the file is missing. Use **Settings -> Storage** to choose the data and log directories (default `data` and `data/logs`; applied after a backend restart), **Settings -> Database** to configure and test a SQLite or PostgreSQL connection, **Settings** for application options, and **Settings -> Keys** for Hugging Face access keys. Generate the encryption key there once before adding keys.
 
 | Variable | Purpose | Default |
 |---|---|---|
-| `TKBEN_DATA_DIR` | Persistent data root | `data` |
 | `FASTAPI_HOST` | Backend host for the frontend proxy | `127.0.0.1` |
 | `FASTAPI_PORT` | Backend port for the frontend proxy | `5000` |
 | `UI_HOST` | Development server host | `127.0.0.1` |

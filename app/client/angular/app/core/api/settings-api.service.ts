@@ -8,6 +8,7 @@ import type {
   DatabaseConfiguration,
   DatabaseConfigurationRequest,
   DatabaseConnectionTestResponse,
+  PathSettings,
   RuntimeSettingsPatchRequest,
   RuntimeSettingsResetRequest,
   RuntimeSettingsResponse,
@@ -29,7 +30,15 @@ export class SettingsApiService {
     return this.http.post<RuntimeSettingsResponse>('/api/settings/reset', request);
   }
 
-  getDatabase(): Observable<DatabaseConfiguration> {
+  getPaths(): Observable<PathSettings> {
+    return this.http.get<PathSettings>('/api/settings/paths');
+  }
+
+  putPaths(request: Pick<PathSettings, 'data_dir' | 'log_dir'>): Observable<PathSettings> {
+    return this.http.put<PathSettings>('/api/settings/paths', request);
+  }
+
+  getDatabase():Observable<DatabaseConfiguration> {
     return this.http.get<DatabaseConfiguration>('/api/database');
   }
 

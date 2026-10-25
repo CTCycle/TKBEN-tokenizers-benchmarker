@@ -57,3 +57,8 @@ class HFAccessKeyDeleteResponse(BaseModel):
 class HFAccessKeyActivateResponse(BaseModel):
     status: str = Field(default="success")
     message: str = Field(default="Active key updated.")
+
+
+###############################################################################
+class KeyEncryptionStatusResponse(BaseModel):
+    initialized: bool = Field(description="Whether encryption key material exists.")

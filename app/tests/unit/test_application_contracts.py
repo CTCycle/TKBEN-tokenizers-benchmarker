@@ -590,6 +590,18 @@ def test_running_job_can_be_stopped_cooperatively() -> None:
     assert status["result"] is None
 
 ###############################################################################
+def test_progress_updates_are_ignored_after_a_job_finishes() -> None:
+    manager = JobManager(terminal_retention_seconds=60.0)
+    job_id = manager.start_job("sample", lambda job_id: {"done": True})
+    _wait_for_status(manager, job_id, "completed")
+
+    manager.update_progress(job_id, 10.0)
+
+    status = manager.get_job_status(job_id)
+    assert status is not None
+    assert status["progress"] == 100.0
+
+###############################################################################
 def test_stopping_unknown_job_returns_none() -> None:
     assert JobManager().request_stop("missing") is None
 

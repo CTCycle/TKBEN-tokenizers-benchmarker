@@ -250,3 +250,19 @@ __all__ = [
     "RuntimeTokenizerSettingsPatch",
     "RuntimeTokenizerSettingsResponse",
 ]
+
+
+###############################################################################
+class PathSettingsRequest(_SettingsContract):
+    data_dir: str = Field(min_length=1, max_length=1024)
+    log_dir: str = Field(min_length=1, max_length=1024)
+
+###############################################################################
+class PathSettingsResponse(_SettingsContract):
+    data_dir: str = Field(description="Configured data directory")
+    log_dir: str = Field(description="Configured log directory")
+    active_data_dir: str = Field(description="Data directory used by the running backend")
+    active_log_dir: str = Field(description="Log directory used by the running backend")
+    restart_required: bool = Field(
+        description="Whether a backend restart is needed to apply the configured paths"
+    )

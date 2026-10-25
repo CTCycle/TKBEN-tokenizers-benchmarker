@@ -2025,3 +2025,39 @@ def test_tokenizer_list_passes_catalog_filters_to_service(monkeypatch) -> None:
         "vocabulary_size_operator": "at_most",
         "vocabulary_size": 5,
     }
+
+###############################################################################
+def test_key_encryption_must_be_initialized_before_adding_keys(
+    tmp_path: Path, monkeypatch
+) -> None:
+    from server.common.utils import encryption
+
+    monkeypatch.setattr(encryption, "DATA_PATH", tmp_path)
+    client = TestClient(app)
+
+    assert client.get("/api/keys/encryption").json() == {"initialized": False}
+    blocked = client.post("/api/keys", json={"key_value": "hf_example_key"})
+    assert blocked.status_code == 409
+    assert client.post("/api/keys/encryption/initialize").status_code == 201
+    assert client.get("/api/keys/encryption").json() == {"initialized": True}
+    assert client.post("/api/keys/encryption/initialize").status_code == 409
+
+###############################################################################
+def test_path_settings_persist_and_flag_restart(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setenv("TKBEN_PATHS_CONFIG", str(tmp_path / "paths-config.json"))
+    client = TestClient(app)
+    new_data = tmp_path / "new-data"
+
+    response = client.put(
+        "/api/settings/paths",
+        json={"data_dir": str(new_data), "log_dir": str(new_data / "logs")},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["data_dir"] == str(new_data)
+    assert body["restart_required"] is True
+    assert (new_data / "logs").is_dir()
+    assert client.get("/api/settings/paths").json()["log_dir"] == str(new_data / "logs")

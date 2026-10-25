@@ -42,19 +42,19 @@ export class DatasetsApiService {
 
   download(request: DatasetDownloadRequest): Observable<DatasetDownloadResponse> {
     const start$ = this.http.post<JobStartResponse>('/api/datasets/download', request);
-    return this.jobs.startAndPoll<DatasetDownloadResponse>(start$, { timeoutMs: 10 * 60 * 1000 });
+    return this.jobs.startAndPoll<DatasetDownloadResponse>(start$);
   }
 
   upload(file: File): Observable<CustomDatasetUploadResponse> {
     const body = new FormData();
     body.append('file', file);
     const start$ = this.http.post<JobStartResponse>('/api/datasets/upload', body);
-    return this.jobs.startAndPoll<CustomDatasetUploadResponse>(start$, { timeoutMs: 10 * 60 * 1000 });
+    return this.jobs.startAndPoll<CustomDatasetUploadResponse>(start$);
   }
 
   analyze(request: DatasetAnalysisRequest): Observable<DatasetAnalysisResponse> {
     const start$ = this.http.post<JobStartResponse>('/api/datasets/analyze', request);
-    return this.jobs.startAndPoll<DatasetAnalysisResponse>(start$, { timeoutMs: 10 * 60 * 1000 });
+    return this.jobs.startAndPoll<DatasetAnalysisResponse>(start$);
   }
 
   validationPreview(request: DatasetValidationPreviewRequest): Observable<DatasetValidationPreviewResponse> {

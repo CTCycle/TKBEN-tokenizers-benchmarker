@@ -86,6 +86,43 @@ class _TokenizerExecutionResult:
     cancelled: bool
 
 ###############################################################################
+class _TokenizerProgressTracker:
+
+    # -------------------------------------------------------------------------
+    def __init__(
+        self,
+        total: int,
+        callback: Callable[[float], None] | None,
+        start: float = 20.0,
+        span: float = 79.0,
+    ) -> None:
+        self._fractions = [0.0] * total
+        self._callback = callback
+        self._start = start
+        self._span = span
+        self._lock = threading.Lock()
+
+    # -------------------------------------------------------------------------
+    def update(self, index: int, fraction: float) -> None:
+        with self._lock:
+            self._fractions[index] = max(
+                self._fractions[index], min(1.0, max(0.0, fraction))
+            )
+
+    # -------------------------------------------------------------------------
+    def report(self) -> None:
+        """Forward overall progress; called only from the coordinating thread."""
+        if self._callback is None or not self._fractions:
+            return
+        with self._lock:
+            overall = sum(self._fractions) / len(self._fractions)
+        self._callback(min(99.0, self._start + overall * self._span))
+
+    # -------------------------------------------------------------------------
+    def reporter(self, index: int) -> Callable[[float], None]:
+        return lambda fraction: self.update(index, fraction)
+
+###############################################################################
 @dataclass
 class _TokenizerConcurrencyTracker:
     lock: threading.Lock = field(default_factory=threading.Lock)
@@ -244,11 +281,13 @@ class BenchmarkServiceExecutionMixin:
             requested_parallelism, len(tokenizers)
         )
         concurrency_tracker = _TokenizerConcurrencyTracker()
+        progress_tracker = _TokenizerProgressTracker(
+            len(tokenizers), progress_callback
+        )
         indexed_tokenizers = list(tokenizers.items())
         worker_results: dict[int, _TokenizerExecutionResult] = {}
         pending: dict[Future[_TokenizerExecutionResult], tuple[int, str]] = {}
         next_tokenizer_index = 0
-        completed_tokenizer_count = 0
         cancelled = False
 
         with ThreadPoolExecutor(max_workers=effective_parallelism) as executor:
@@ -279,12 +318,13 @@ class BenchmarkServiceExecutionMixin:
                     per_document_sample_size=per_document_sample_size,
                     should_stop=should_stop,
                     concurrency_tracker=concurrency_tracker,
+                    trial_progress=progress_tracker.reporter(next_tokenizer_index),
                 )
                 pending[future] = (next_tokenizer_index, name)
                 next_tokenizer_index += 1
 
             while pending:
-                done, _ = wait(pending, return_when=FIRST_COMPLETED)
+                done, _ = wait(pending, timeout=1.0, return_when=FIRST_COMPLETED)
                 for future in sorted(done, key=lambda item: pending[item][0]):
                     index, name = pending.pop(future)
                     try:
@@ -300,17 +340,10 @@ class BenchmarkServiceExecutionMixin:
                             cancelled=True,
                         )
                     worker_results[index] = worker_result
-                    completed_tokenizer_count += 1
                     if worker_result.cancelled:
                         cancelled = True
-                    if progress_callback:
-                        progress_callback(
-                            min(
-                                99.0,
-                                20.0
-                                + (completed_tokenizer_count / len(tokenizers)) * 79.0,
-                            )
-                        )
+                    progress_tracker.update(index, 1.0)
+                progress_tracker.report()
 
                 if should_stop and should_stop():
                     cancelled = True
@@ -346,6 +379,7 @@ class BenchmarkServiceExecutionMixin:
                         per_document_sample_size=per_document_sample_size,
                         should_stop=should_stop,
                         concurrency_tracker=concurrency_tracker,
+                        trial_progress=progress_tracker.reporter(next_tokenizer_index),
                     )
                     pending[future] = (next_tokenizer_index, name)
                     next_tokenizer_index += 1
@@ -504,6 +538,7 @@ class BenchmarkServiceExecutionMixin:
         per_document_sample_size: int,
         should_stop: Callable[[], bool] | None,
         concurrency_tracker: _TokenizerConcurrencyTracker,
+        trial_progress: Callable[[float], None] | None = None,
     ) -> _TokenizerExecutionResult:
         concurrency_tracker.enter()
         try:
@@ -524,6 +559,7 @@ class BenchmarkServiceExecutionMixin:
                 max_length=max_length,
                 per_document_sample_size=per_document_sample_size,
                 should_stop=should_stop,
+                trial_progress=trial_progress,
             )
         finally:
             concurrency_tracker.exit()
@@ -548,6 +584,7 @@ class BenchmarkServiceExecutionMixin:
         max_length: int | None,
         per_document_sample_size: int,
         should_stop: Callable[[], bool] | None,
+        trial_progress: Callable[[float], None] | None = None,
     ) -> _TokenizerExecutionResult:
         name = tokenizer_name
         worker_tokenizer_results: list[BenchmarkTokenizerResult] = []
@@ -582,6 +619,7 @@ class BenchmarkServiceExecutionMixin:
                 warmup_trials=warmup_trials,
                 timed_trials=timed_trials,
                 should_stop=should_stop,
+                trial_progress=trial_progress,
             )
             if not observations:
                 if should_stop and should_stop():

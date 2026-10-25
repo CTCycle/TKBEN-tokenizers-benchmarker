@@ -4,13 +4,15 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import type { HFAccessKeyListItem, HFAccessKeyListResponse, HFAccessKeyRevealResponse } from './api.models';
+import type { HFAccessKeyListItem, KeyEncryptionStatus,HFAccessKeyListResponse, HFAccessKeyRevealResponse } from './api.models';
 
 @Injectable({ providedIn: 'root' })
 export class KeysApiService {
   private readonly http = inject(HttpClient);
 
-  list(): Observable<HFAccessKeyListResponse> { return this.http.get<HFAccessKeyListResponse>('/api/keys'); }
+  encryptionStatus(): Observable<KeyEncryptionStatus> { return this.http.get<KeyEncryptionStatus>('/api/keys/encryption'); }
+  initializeEncryption(): Observable<KeyEncryptionStatus> { return this.http.post<KeyEncryptionStatus>('/api/keys/encryption/initialize', {}); }
+  list():Observable<HFAccessKeyListResponse> { return this.http.get<HFAccessKeyListResponse>('/api/keys'); }
   add(keyValue: string): Observable<HFAccessKeyListItem> { return this.http.post<HFAccessKeyListItem>('/api/keys', { key_value: keyValue }); }
   activate(id: number): Observable<void> { return this.http.post<void>(`/api/keys/${id}/activate`, {}); }
   deactivate(id: number): Observable<void> { return this.http.post<void>(`/api/keys/${id}/deactivate`, {}); }

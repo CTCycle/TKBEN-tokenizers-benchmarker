@@ -24,8 +24,23 @@ export class HfAccessKeyManagerComponent {
   protected readonly submitting = signal(false);
   protected readonly actionKeyId = signal<number | null>(null);
   protected readonly error = signal<string | null>(null);
+  protected readonly encryptionReady = signal<boolean | null>(null);
+  protected readonly initializing = signal(false);
 
-  constructor() { this.load(); }
+  constructor() {
+    this.loadEncryptionStatus();
+    this.load();
+  }
+
+  private loadEncryptionStatus(): void {
+    this.api.encryptionStatus().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ next: (status) => this.encryptionReady.set(status.initialized), error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to read encryption status.')); this.encryptionReady.set(false); } });
+  }
+
+  protected initializeEncryption(): void {
+    this.error.set(null);
+    this.initializing.set(true);
+    this.api.initializeEncryption().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ next: (status) => { this.encryptionReady.set(status.initialized); this.initializing.set(false); }, error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to generate encryption key.')); this.initializing.set(false); } });
+  }
 
   private load(): void {
     this.loading.set(true);
@@ -33,6 +48,7 @@ export class HfAccessKeyManagerComponent {
   }
 
   protected addKey(): void {
+    if (!this.encryptionReady()) return;
     if (this.key.invalid) {
       this.key.markAsTouched();
       return;

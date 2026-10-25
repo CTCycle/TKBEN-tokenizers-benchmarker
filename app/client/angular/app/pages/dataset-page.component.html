@@ -11,7 +11,6 @@
     </div></section>
   </div></section>
 
-  @if (store.busyAction()?.startsWith('analyze:')) { <div class="loading-container" role="status"><span class="spinner" aria-hidden="true"></span><p>Running validation pipeline…</p><span>Streaming documents and persisting metrics.</span></div> }
   @if (banner()) { <p class="error-banner" role="alert">{{ banner() }}</p> } @if (store.error()) { <p class="error-banner" role="alert">{{ store.error() }}</p> }
 
   <section class="panel dashboard-panel dashboard-plain dataset-dashboard" aria-label="Dataset Dashboard"><header class="panel-header"><div><p class="panel-label">Dataset Dashboard</p><p class="panel-description">{{ dashboardDescription() }}</p></div><div class="dashboard-export-header-actions"><div class="dashboard-export-control"><button class="icon-button subtle dashboard-export-trigger" type="button" aria-label="Export dashboard report as PDF" title="Export dashboard report as PDF" [disabled]="!store.report()" (click)="exportDashboard()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v10" stroke-width="2" stroke-linecap="round" /><path d="M8 9l4 4 4-4" stroke-width="2" stroke-linecap="round" /><path d="M5 16.5V20h14v-3.5" stroke-width="2" stroke-linecap="round" /></svg></button></div></div></header>
@@ -72,7 +71,7 @@
                       </button>
                       @if (selectedPreset() === preset.id) {
                         <button class="icon-button subtle dataset-preset-download" type="button" [disabled]="store.busyAction() !== null" [attr.aria-label]="'Download ' + preset.label" [title]="'Download ' + preset.label" (click)="downloadPreset(preset)">
-                          @if (store.busyAction() === 'download') { <span class="action-spinner" aria-hidden="true"></span> } @else { <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12" stroke-width="2" stroke-linecap="round" /><path d="m7 10 5 5 5-5" stroke-width="2" stroke-linecap="round" /><path d="M5 19h14" stroke-width="2" stroke-linecap="round" /></svg> }
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12" stroke-width="2" stroke-linecap="round" /><path d="m7 10 5 5 5-5" stroke-width="2" stroke-linecap="round" /><path d="M5 19h14" stroke-width="2" stroke-linecap="round" /></svg>
                         </button>
                       }
                     </div>

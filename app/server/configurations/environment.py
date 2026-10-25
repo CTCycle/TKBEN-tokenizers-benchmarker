@@ -24,12 +24,7 @@ _BOOTSTRAP_ENVIRONMENT_KEYS = frozenset(
         "UI_PORT",
         "VITE_API_BASE_URL",
         "CORS_ORIGINS",
-        "TKBEN_DATA_DIR",
-        "TKBEN_LOG_DIR",
-        "KERAS_BACKEND",
-        "MPLBACKEND",
         "ALLOW_KEY_REVEAL",
-        "HF_KEYS_ENCRYPTION_MATERIAL_FILE",
     }
 )
 

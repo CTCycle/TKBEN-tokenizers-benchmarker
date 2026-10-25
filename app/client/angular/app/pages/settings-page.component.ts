@@ -16,14 +16,15 @@ import {
 import { SettingsStore } from '../core/state/settings.store';
 import { HfAccessKeyManagerComponent } from '../components/hf-access-key-manager.component';
 import { DatabaseSettingsComponent } from '../components/database-settings.component';
+import { DirectorySettingsComponent } from '../components/directory-settings.component';
 import type {
   RuntimeSettingKey,
   RuntimeSettingsValues,
 } from '../core/api/api.models';
 
-type SettingsTab = 'data' | 'tokenizers' | 'benchmarks' | 'runtime' | 'database' | 'keys';
+type SettingsTab = 'data' | 'tokenizers' | 'benchmarks' | 'runtime' | 'storage' | 'database' | 'keys';
 
-const SETTINGS_TABS: readonly SettingsTab[] = ['data', 'tokenizers', 'benchmarks', 'runtime', 'database', 'keys'];
+const SETTINGS_TABS: readonly SettingsTab[] = ['data', 'tokenizers', 'benchmarks', 'runtime', 'storage', 'database', 'keys'];
 
 const BYTES_PER_MIB = 1024 * 1024;
 
@@ -46,7 +47,7 @@ const tokenizerLimits: ValidatorFn = (control: AbstractControl): ValidationError
 
 @Component({
   selector: 'app-settings-page',
-  imports: [ReactiveFormsModule, HfAccessKeyManagerComponent, DatabaseSettingsComponent],
+  imports: [ReactiveFormsModule, HfAccessKeyManagerComponent, DatabaseSettingsComponent, DirectorySettingsComponent],
   templateUrl: './settings-page.component.html',
 })
 export class SettingsPageComponent implements OnDestroy {

@@ -72,7 +72,13 @@ from server.configurations.settings import ServerSettings
 from server.configurations.settings import TokenizerSettings
 from server.contracts.settings import RuntimeSettingsPatchRequest
 from server.common.path import ROOT_DIR
-from server.common.utils.encryption import get_hf_key_cipher
+from server.common.utils import encryption
+from server.common.utils.encryption import (
+    KeyMaterialNotInitializedError,
+    get_hf_key_cipher,
+    initialize_key_material,
+    is_key_material_initialized,
+)
 from server.configurations import environment as bootstrap
 from server.configurations.startup import get_server_settings
 from server.configurations.startup import is_key_reveal_enabled
@@ -1012,15 +1018,13 @@ def test_runtime_settings_survive_restart_in_their_own_database(tmp_path: Path) 
 
 
 _RUNTIME_ENV_NAMES = (
-    "TKBEN_DATA_DIR",
-    "TKBEN_LOG_DIR",
+    "TKBEN_PATHS_CONFIG",
     "FASTAPI_HOST",
     "FASTAPI_PORT",
     "UI_HOST",
     "UI_PORT",
     "VITE_API_BASE_URL",
     "ALLOW_KEY_REVEAL",
-    "HF_KEYS_ENCRYPTION_MATERIAL_FILE",
 )
 _BASE_ENVIRONMENT = {name: os.environ.get(name) for name in _RUNTIME_ENV_NAMES}
 
@@ -1047,10 +1051,9 @@ def restore_runtime_environment() -> Iterator[None]:
 
 ###############################################################################
 def _store(tmp_path: Path) -> DatabaseConfigurationStore:
-    return DatabaseConfigurationStore(
-        tmp_path / "data",
-        tmp_path / "data" / "hf-key-material.json",
-    )
+    material_path = tmp_path / "data" / "hf-key-material.json"
+    initialize_key_material(material_path)
+    return DatabaseConfigurationStore(tmp_path / "data", material_path)
 
 
 ###############################################################################
@@ -1707,13 +1710,29 @@ def _write_env(path: Path, lines: list[str]) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 ###############################################################################
+def _configure_paths(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    data_dir: str | Path,
+    log_dir: str | Path | None = None,
+) -> None:
+    config_path = tmp_path / "paths-config.json"
+    payload = {"data_dir": str(data_dir)}
+    if log_dir is not None:
+        payload["log_dir"] = str(log_dir)
+    config_path.write_text(json.dumps(payload), encoding="utf-8")
+    monkeypatch.setenv("TKBEN_PATHS_CONFIG", str(config_path))
+
+###############################################################################
 def _configure_environment(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     env_lines: list[str],
+    *,
+    data_dir: str | Path | None = None,
+    log_dir: str | Path | None = None,
 ) -> None:
-    if not any(line.startswith("TKBEN_DATA_DIR=") for line in env_lines):
-        env_lines = [*env_lines, f"TKBEN_DATA_DIR={tmp_path / 'runtime-data'}"]
+    _configure_paths(tmp_path, monkeypatch, data_dir or tmp_path / "runtime-data", log_dir)
     env_path = tmp_path / ".env"
     _write_env(env_path, env_lines)
     monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
@@ -1727,16 +1746,16 @@ def test_bootstrap_preserves_existing_process_values(
     env_path = tmp_path / ".env"
     _write_env(
         env_path,
-        ["FASTAPI_HOST=from_dotenv", "TKBEN_DATA_DIR=from-dotenv-data"],
+        ["FASTAPI_HOST=from_dotenv", "UI_HOST=from-dotenv-ui"],
     )
     monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
     monkeypatch.setenv("FASTAPI_HOST", "from_process")
-    monkeypatch.setenv("TKBEN_DATA_DIR", "from-process-data")
+    monkeypatch.setenv("UI_HOST", "from-process-ui")
 
     bootstrap.ensure_environment_loaded()
 
     assert os.getenv("FASTAPI_HOST") == "from_process"
-    assert os.getenv("TKBEN_DATA_DIR") == "from-process-data"
+    assert os.getenv("UI_HOST") == "from-process-ui"
 
 ###############################################################################
 def test_missing_environment_is_created_from_example(
@@ -1757,8 +1776,14 @@ def test_missing_environment_is_created_from_example(
 def test_environment_template_exposes_canonical_runtime_inputs() -> None:
     example = (ROOT_DIR / "settings/.env.example").read_text(encoding="utf-8")
 
-    assert "TKBEN_DATA_DIR=data" in example
-    assert "TKBEN_LOG_DIR=data/logs" in example
+    for removed in (
+        "TKBEN_DATA_DIR",
+        "TKBEN_LOG_DIR",
+        "HF_KEYS_ENCRYPTION_MATERIAL_FILE",
+        "KERAS_BACKEND",
+        "MPLBACKEND",
+    ):
+        assert removed not in example
     assert "UI_HOST=127.0.0.1" in example
     assert "CORS_ORIGINS=\n" in example
     assert "DATABASE_" not in example
@@ -1771,6 +1796,7 @@ def test_default_runtime_paths_use_repository_data(
     env_path = tmp_path / ".env"
     _write_env(env_path, [])
     monkeypatch.setattr(bootstrap, "ENV_FILE_PATH", env_path)
+    monkeypatch.setenv("TKBEN_PATHS_CONFIG", str(tmp_path / "missing-paths.json"))
     reset_settings_cache_for_tests()
     bootstrap.reset_environment_bootstrap_for_tests()
 
@@ -1823,11 +1849,7 @@ def test_typed_defaults_resolve_without_structured_json(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     data_root = tmp_path / "runtime-data"
-    _configure_environment(
-        tmp_path,
-        monkeypatch,
-        [f"TKBEN_DATA_DIR={data_root}"],
-    )
+    _configure_environment(tmp_path, monkeypatch, [], data_dir=data_root)
 
     settings = get_server_settings()
 
@@ -1851,13 +1873,10 @@ def test_runtime_environment_resolves_into_one_settings_tree(
 ) -> None:
     data_root = tmp_path / "runtime-data"
     log_root = tmp_path / "runtime-logs"
-    material_path = tmp_path / "secrets" / "hf-material.json"
     _configure_environment(
         tmp_path,
         monkeypatch,
         [
-            f"TKBEN_DATA_DIR={data_root}",
-            f"TKBEN_LOG_DIR={log_root}",
             "FASTAPI_HOST=0.0.0.0",
             "FASTAPI_PORT=5100",
             "UI_HOST=localhost",
@@ -1865,8 +1884,9 @@ def test_runtime_environment_resolves_into_one_settings_tree(
             "VITE_API_BASE_URL=/api",
             "CORS_ORIGINS= https://Example.com, http://localhost:8000,https://example.com ",
             "ALLOW_KEY_REVEAL=true",
-            f"HF_KEYS_ENCRYPTION_MATERIAL_FILE={material_path}",
         ],
+        data_dir=data_root,
+        log_dir=log_root,
     )
 
     settings = get_server_settings()
@@ -1886,7 +1906,9 @@ def test_runtime_environment_resolves_into_one_settings_tree(
         "http://localhost:8000",
     )
     assert settings.security.allow_key_reveal is True
-    assert settings.security.hf_keys_encryption_material_file == material_path.resolve()
+    assert settings.security.hf_keys_encryption_material_file == (
+        data_root / "hf-key-material.json"
+    ).resolve()
     saved = (data_root / "database-config.json").read_text(encoding="utf-8")
     assert "secret" not in saved
     assert "DATABASE_" not in (tmp_path / ".env").read_text(encoding="utf-8")
@@ -1937,10 +1959,9 @@ def test_relative_runtime_paths_are_repository_relative(
     _configure_environment(
         tmp_path,
         monkeypatch,
-        [
-            "TKBEN_DATA_DIR=custom/runtime-data",
-            "TKBEN_LOG_DIR=custom/runtime-logs",
-        ],
+        [],
+        data_dir="custom/runtime-data",
+        log_dir="custom/runtime-logs",
     )
 
     bootstrap.ensure_environment_loaded()
@@ -1997,20 +2018,21 @@ def test_key_reveal_policy_uses_canonical_settings(
     assert is_key_reveal_enabled() is True
 
 ###############################################################################
-def test_hf_key_cipher_uses_configured_material_path(
+def test_hf_key_cipher_requires_explicit_initialization(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     material_path = tmp_path / "hf-key-material.json"
-    _configure_environment(
-        tmp_path,
-        monkeypatch,
-        [
-            f"HF_KEYS_ENCRYPTION_MATERIAL_FILE={material_path}",
-        ],
-    )
+    monkeypatch.setattr(encryption, "DATA_PATH", tmp_path)
 
+    assert is_key_material_initialized() is False
+    with pytest.raises(KeyMaterialNotInitializedError):
+        get_hf_key_cipher()
+    assert not material_path.exists()
+
+    initialize_key_material()
     cipher = get_hf_key_cipher()
-    encrypted = cipher.encrypt("hf_test")
 
-    assert cipher.decrypt(encrypted) == "hf_test"
-    assert material_path.is_file()
+    assert is_key_material_initialized() is True
+    assert cipher.decrypt(cipher.encrypt("hf_test")) == "hf_test"
+    with pytest.raises(FileExistsError):
+        initialize_key_material()

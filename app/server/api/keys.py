@@ -12,9 +12,16 @@ from server.common.constants import (
     API_ROUTE_KEYS_CREATE,
     API_ROUTE_KEYS_DEACTIVATE,
     API_ROUTE_KEYS_DELETE,
+    API_ROUTE_KEYS_ENCRYPTION,
+    API_ROUTE_KEYS_ENCRYPTION_INITIALIZE,
     API_ROUTE_KEYS_LIST,
     API_ROUTE_KEYS_REVEAL,
     API_ROUTER_PREFIX_KEYS,
+)
+from server.common.utils.encryption import (
+    KeyMaterialNotInitializedError,
+    initialize_key_material,
+    is_key_material_initialized,
 )
 from server.configurations import is_key_reveal_enabled
 from server.contracts.keys import (
@@ -24,6 +31,7 @@ from server.contracts.keys import (
     HFAccessKeyListItem,
     HFAccessKeyListResponse,
     HFAccessKeyRevealResponse,
+    KeyEncryptionStatusResponse,
 )
 from server.services.keys import (
     HFAccessKeyConflictError,
@@ -36,6 +44,27 @@ from server.services.keys import (
 router = APIRouter(prefix=API_ROUTER_PREFIX_KEYS, tags=["keys"])
 
 ###############################################################################
+@router.get(API_ROUTE_KEYS_ENCRYPTION, response_model=KeyEncryptionStatusResponse)
+async def get_encryption_status() -> KeyEncryptionStatusResponse:
+    initialized = await asyncio.to_thread(is_key_material_initialized)
+    return KeyEncryptionStatusResponse(initialized=initialized)
+
+###############################################################################
+@router.post(
+    API_ROUTE_KEYS_ENCRYPTION_INITIALIZE,
+    response_model=KeyEncryptionStatusResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def initialize_encryption() -> KeyEncryptionStatusResponse:
+    try:
+        await asyncio.to_thread(initialize_key_material)
+    except FileExistsError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
+    return KeyEncryptionStatusResponse(initialized=True)
+
+###############################################################################
 @router.post(
     API_ROUTE_KEYS_CREATE,
     response_model=HFAccessKeyListItem,
@@ -45,6 +74,10 @@ async def create_key(request: HFAccessKeyCreateRequest) -> HFAccessKeyListItem:
     service = HFAccessKeyService()
     try:
         created_key = await asyncio.to_thread(service.add_key, request.key_value)
+    except KeyMaterialNotInitializedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
     except HFAccessKeyValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
