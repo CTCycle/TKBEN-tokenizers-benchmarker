@@ -452,6 +452,14 @@ run `40225854600` passed all three jobs. The release has no uploaded binary
 assets. Validation evidence is V-20261025; launcher validation debt remains
 listed under open issues.
 
+The PATCH release `v4.8.1` (backend `3.8.1`, frontend `2.8.1`) was published
+as a source-only GitHub Release on 2026-10-26:
+[v4.8.1](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases/tag/v4.8.1).
+Annotated tag `v4.8.1` was created on `main` after a fast-forward from
+`develop` and peels to `45b7b0fc7db94a84b0b587526e4f21842a5e228b`. Hosted CI
+run `40308567067` passed all three jobs on that commit. The release has no
+uploaded binary assets. Validation evidence is V-20261026.
+
 ## Resolved and historical findings
 
 | Finding | Current state | Durable provenance |
