@@ -8,14 +8,14 @@
         <div class="tokenizer-top-row">
           <section class="tokenizer-intro-panel">
             <header class="panel-header"><div><p class="panel-label">Tokenizer Selection</p><p class="panel-description">Manage tokenizer identifiers and custom JSON tokenizers from a single popup window.</p></div></header>
-            <form class="catalog-filter-toolbar" [formGroup]="filters" aria-label="Tokenizer filters">
+            <form data-tour="tokenizer-filters" class="catalog-filter-toolbar" [formGroup]="filters" aria-label="Tokenizer filters">
               <label class="catalog-filter-field catalog-filter-field--search"><span class="field-label">Search tokenizers</span><input class="text-input" type="search" formControlName="search" placeholder="Name or namespace" aria-label="Search tokenizers" /></label>
               <label class="catalog-filter-field"><span class="field-label">Source</span><select formControlName="source" aria-label="Source"><option value="">All tokenizers</option><option value="hugging_face">Hugging Face</option><option value="custom">Custom</option></select></label>
               <label class="catalog-filter-field"><span class="field-label">Vocabulary</span><div class="catalog-number-filter-control"><select formControlName="vocabularyOperator" aria-label="Vocabulary comparison"><option value="at_least">At least</option><option value="at_most">At most</option></select><input class="text-input" type="number" min="0" formControlName="vocabulary" placeholder="Any size" aria-label="Vocabulary size" /></div></label>
               <button class="catalog-add-button" type="button" aria-label="Add tokenizer" title="Open Tokenizer Manager" (click)="openAddTokenizer()"><span aria-hidden="true">+</span><span class="sr-only">Add tokenizer</span></button>
             </form>
           </section>
-          <section class="tokenizer-preview-panel">
+          <section data-tour="tokenizer-preview" class="tokenizer-preview-panel">
             <header class="panel-header"><div><p class="panel-label">Tokenizer Preview</p><p class="panel-description">Review selected tokenizers and open persisted reports.</p></div></header>
             <div class="tokenizer-preview-body">
               @if (store.loading() && store.tokenizers().length === 0) { <p class="tokenizer-preview-empty-label">Loading tokenizers...</p> }
@@ -48,7 +48,7 @@
     @if (exportError()) { <p class="error-banner" role="alert">{{ exportError() }}</p> }
 
     <div class="tokenizer-report-split">
-      <section class="panel dashboard-panel dashboard-plain tokenizer-report-left" aria-label="Tokenizers Dashboard">
+      <section data-tour="tokenizer-dashboard" class="panel dashboard-panel dashboard-plain tokenizer-report-left" aria-label="Tokenizers Dashboard">
         <header class="panel-header"><div><p class="panel-label">Tokenizers Dashboard</p><p class="panel-description">{{ dashboardDescription() }}</p></div></header>
         @if (!store.report()) {
           <div class="tokenizer-report-grid">
@@ -80,7 +80,7 @@
       </aside>
     </div>
 
-    <section class="panel dashboard-panel dashboard-plain tokenizer-playground" aria-labelledby="tokenizer-playground-title">
+    <section data-tour="tokenizer-playground" class="panel dashboard-panel dashboard-plain tokenizer-playground" aria-labelledby="tokenizer-playground-title">
       <header class="panel-header">
         <div><p id="tokenizer-playground-title" class="panel-label">Tokenizer Playground <span class="tokenizer-playground-badge" title="Single-pass preview, not a benchmark measurement.">Preview only</span></p><p class="panel-description">Compare how up to {{ playgroundMaxTokenizers }} local tokenizers split the same text.</p></div>
         <button class="tokenizer-discovery-advanced-toggle tokenizer-playground-toggle" type="button" [attr.aria-expanded]="playgroundOpen()" aria-controls="tokenizer-playground-body" (click)="togglePlayground()"><span class="tokenizer-discovery-advanced-toggle-icon" aria-hidden="true">^</span><span>{{ playgroundOpen() ? 'Hide' : 'Show' }}</span></button>

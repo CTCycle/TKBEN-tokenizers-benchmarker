@@ -1,0 +1,32 @@
+<!-- Copyright © 2023 Thomas Virdis -->
+<!-- Licensed under the MIT License. -->
+
+<button class="modal-overlay" type="button" aria-label="Close help" tabindex="-1" (click)="closed.emit()"></button>
+<section class="modal-card help-dialog" role="dialog" aria-modal="true" aria-labelledby="help-title" [appModalA11y]="true" (modalEscape)="closed.emit()">
+  <header class="help-header">
+    <div>
+      <p id="help-title" class="panel-label">Help &amp; Tips</p>
+      <p class="panel-description">Take a short guided tour of a page, or skim the reminders below.</p>
+    </div>
+    <button class="icon-button subtle" type="button" aria-label="Close help" (click)="closed.emit()">×</button>
+  </header>
+
+  <div class="help-body">
+    <h3 class="help-heading">Guided walkthroughs</h3>
+    <div class="help-tours">
+      @for (tour of tours; track tour.id) {
+        <button class="help-tour" [class.help-tour--current]="isCurrent(tour.route)" type="button" (click)="start(tour.id)">
+          <span class="help-tour-name">{{ tour.label }}</span>
+          <span class="help-tour-meta">{{ tour.steps.length }} steps{{ isCurrent(tour.route) ? ' · this page' : '' }}</span>
+        </button>
+      }
+    </div>
+
+    <h3 class="help-heading">Quick tips</h3>
+    <ul class="help-tips">
+      @for (tip of tips; track tip.title) {
+        <li class="help-tip"><strong>{{ tip.title }}</strong><span>{{ tip.body }}</span></li>
+      }
+    </ul>
+  </div>
+</section>

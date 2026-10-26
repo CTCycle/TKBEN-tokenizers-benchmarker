@@ -1,0 +1,33 @@
+<!-- Copyright © 2023 Thomas Virdis -->
+<!-- Licensed under the MIT License. -->
+
+<div class="tour-layer">
+  <button class="tour-backdrop" [class.tour-backdrop--dim]="!spot()" type="button" tabindex="-1" aria-label="Close walkthrough" (click)="closed.emit()"></button>
+  @if (spot(); as box) {
+    <div class="tour-spotlight" aria-hidden="true" [style.top.px]="box.top - 6" [style.left.px]="box.left - 6" [style.width.px]="box.width + 12" [style.height.px]="box.height + 12"></div>
+  }
+  <section
+    class="tour-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="tour-title"
+    aria-describedby="tour-body"
+    [appModalA11y]="true"
+    (modalEscape)="closed.emit()"
+    [style.top.px]="panel().top"
+    [style.left.px]="panel().left"
+  >
+    <header class="tour-header">
+      <div>
+        <p class="tour-progress" aria-live="polite">Step {{ index() + 1 }} of {{ tour().steps.length }}</p>
+        <h2 id="tour-title">{{ step.title }}</h2>
+      </div>
+      <button class="icon-button subtle" type="button" aria-label="Close walkthrough" (click)="closed.emit()">×</button>
+    </header>
+    <p id="tour-body" class="tour-body">{{ step.body }}</p>
+    <footer class="tour-footer">
+      <button class="secondary-button" type="button" [disabled]="index() === 0" (click)="back()">Back</button>
+      <button class="primary-button" type="button" (click)="next()">{{ isLast ? 'Finish' : 'Next' }}</button>
+    </footer>
+  </section>
+</div>

@@ -12,6 +12,13 @@ Last updated: 2026-10-25
   only application-level icon action. Settings is an application-level route,
   not a primary workflow tab, and owns provider credentials under its Keys
   section.
+- The header also exposes a Help (`?`) icon button. It opens `HelpDialogComponent`
+  with a short list of quick tips and one guided walkthrough per primary page
+  (current page listed first). `GuidanceService` starts a walkthrough
+  (navigating to its page if needed) and `GuidedTourComponent` spotlights the
+  `data-tour="..."` anchors on that page; tours, tips, and anchors are defined
+  in `core/guidance/guidance.ts`. Walkthroughs are user-initiated only, store
+  no state, and fall back to a centered card when an anchor is not rendered.
 - The header also exposes a Jobs icon button beside Settings. It opens
   `JobsPanelComponent`, a popover listing every tracked job (dataset
   download/upload/benchmark, tokenizer download/report, cross benchmark) with a

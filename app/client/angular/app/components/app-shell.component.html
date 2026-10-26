@@ -55,6 +55,13 @@
 
     <div class="app-header-actions">
       <app-jobs-panel />
+      <button class="icon-button subtle app-header-help-button" type="button" aria-label="Help and tips" aria-haspopup="dialog" title="Help and tips" (click)="helpOpen.set(true)">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8" />
+          <path d="M9.5 9.5a2.5 2.5 0 114 2c-.9.6-1.5 1.1-1.5 2.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+          <circle cx="12" cy="16.8" r="1" fill="currentColor" />
+        </svg>
+      </button>
       <a
         class="icon-button subtle app-header-settings-button"
         routerLink="/settings"
@@ -82,4 +89,10 @@
     </section>
   </div>
 
+  @if (helpOpen()) {
+    <app-help-dialog (closed)="helpOpen.set(false)" />
+  }
+  @if (guidance.activeTour(); as tour) {
+    <app-guided-tour [tour]="tour" (closed)="guidance.stop()" />
+  }
 </div>
