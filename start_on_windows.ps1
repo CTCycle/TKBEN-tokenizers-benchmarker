@@ -55,6 +55,14 @@ function Write-Step([string]$Message) { Clear-LauncherProgress; Write-Host "[STE
 function Write-Ok([string]$Message) { Clear-LauncherProgress; Write-Host "[OK] $Message" -ForegroundColor Green }
 function Write-Fatal([string]$Message) { Clear-LauncherProgress; Write-Host "[FATAL] $Message" -ForegroundColor Red }
 
+function Write-LaunchTiming {
+    param(
+        [Parameter(Mandatory)][string]$Phase,
+        [Parameter(Mandatory)][long]$ElapsedMilliseconds
+    )
+    Write-Host ('[TIME] {0,-42} {1,8} ms' -f "$($Phase):", $ElapsedMilliseconds) -ForegroundColor Gray
+}
+
 function Start-LauncherProgress {
     param([Parameter(Mandatory)][string]$Activity, [Parameter(Mandatory)][string]$Status)
     $id = $script:NextProgressId++
@@ -1173,108 +1181,154 @@ function Write-BackendDiagnostics {
 }
 
 function Launch-Application {
-    Import-Environment
-    $launchPorts = @(Get-ConfiguredLaunchPorts)
-    if (-not (Confirm-ReleaseLaunchPorts -Ports $launchPorts)) { return $false }
+    $launchStopwatch = [Diagnostics.Stopwatch]::StartNew()
+    $portPreflightStarted = $launchStopwatch.ElapsedMilliseconds
+    try {
+        Import-Environment
+        $launchPorts = @(Get-ConfiguredLaunchPorts)
+        $portPreflightReady = Confirm-ReleaseLaunchPorts -Ports $launchPorts
+    } finally {
+        Write-LaunchTiming -Phase 'Environment and port preflight' -ElapsedMilliseconds ($launchStopwatch.ElapsedMilliseconds - $portPreflightStarted)
+    }
+    if (-not $portPreflightReady) { return $false }
 
     $runtimesReady = $false
-    if (-not (Test-BackendDependenciesReady)) {
-        Write-Step 'Backend environment is missing or stale; synchronizing backend dependencies.'
-        Install-Runtimes
-        $runtimesReady = $true
-        Sync-BackendDependencies -RuntimesReady -InstallationType 'Standard'
-    }
-
-    if (-not (Test-FrontendDependenciesReady)) {
-        Write-Step 'Frontend dependencies are missing or stale; installing them without rebuilding yet.'
-        if (-not $runtimesReady) {
+    $backendDependenciesStarted = $launchStopwatch.ElapsedMilliseconds
+    try {
+        if (-not (Test-BackendDependenciesReady)) {
+            Write-Step 'Backend environment is missing or stale; synchronizing backend dependencies.'
             Install-Runtimes
             $runtimesReady = $true
+            Sync-BackendDependencies -RuntimesReady -InstallationType 'Standard'
         }
-        Sync-Frontend -UseCachedFrontendDependencies
+    } finally {
+        Write-LaunchTiming -Phase 'Backend dependency check and setup' -ElapsedMilliseconds ($launchStopwatch.ElapsedMilliseconds - $backendDependenciesStarted)
     }
 
-    if (-not (Test-FrontendBuildReady)) {
-        Write-Step 'Angular production output is missing or stale; building the frontend.'
-        Sync-Frontend -BuildFrontend -UseCachedFrontendDependencies
-    }
-    else {
-        Write-Ok 'Application environments and frontend output are ready; skipped setup.'
+    $frontendDependenciesStarted = $launchStopwatch.ElapsedMilliseconds
+    try {
+        if (-not (Test-FrontendDependenciesReady)) {
+            Write-Step 'Frontend dependencies are missing or stale; installing them without rebuilding yet.'
+            if (-not $runtimesReady) {
+                Install-Runtimes
+                $runtimesReady = $true
+            }
+            Sync-Frontend -UseCachedFrontendDependencies
+        }
+    } finally {
+        Write-LaunchTiming -Phase 'Frontend dependency check and setup' -ElapsedMilliseconds ($launchStopwatch.ElapsedMilliseconds - $frontendDependenciesStarted)
     }
 
-    if (-not (Test-FrontendBuildReady)) {
-        throw 'The Angular production build is incomplete after setup. Check the emitted index and assets.'
-    }
-    if (-not (Confirm-ReleaseLaunchPorts -Ports $launchPorts)) { return $false }
+    $frontendBuildStarted = $launchStopwatch.ElapsedMilliseconds
+    try {
+        if (-not (Test-FrontendBuildReady)) {
+            Write-Step 'Angular production output is missing or stale; building the frontend.'
+            Sync-Frontend -BuildFrontend -UseCachedFrontendDependencies
+        }
+        else {
+            Write-Ok 'Application environments and frontend output are ready; skipped setup.'
+        }
 
-    $backendPort = [int]$launchPorts[0]
-    $backendAppPath = Join-Path $RepoRoot 'app'
-    $backendArgs = "-m uvicorn server.app:app --app-dir `"$backendAppPath`" --host `"$($env:FASTAPI_HOST)`" --port $backendPort"
-    $backendLogDir = Get-ApplicationLogRoot -DataRoot (Get-ApplicationDataRoot)
-    Ensure-Directory -Path $backendLogDir
-    $backendStartedAt = Get-Date
-    $backendLogStem = Join-Path $backendLogDir ('TKBEN_backend_' + (Get-Date -Format 'yyyyMMdd_HHmmss_fff'))
-    $backendStdoutLog = "$backendLogStem.out.log"
-    $backendStderrLog = "$backendLogStem.err.log"
-    $backendBaseUrl = Get-BackendBaseUrl -Port $backendPort
-    $backendProcess = $null
-    $script:LaunchStopRequested = $false
+        if (-not (Test-FrontendBuildReady)) {
+            throw 'The Angular production build is incomplete after setup. Check the emitted index and assets.'
+        }
+    } finally {
+        Write-LaunchTiming -Phase 'Frontend production build check' -ElapsedMilliseconds ($launchStopwatch.ElapsedMilliseconds - $frontendBuildStarted)
+    }
+
+    $finalPortCheckStarted = $launchStopwatch.ElapsedMilliseconds
+    try {
+        $finalPortsReady = Confirm-ReleaseLaunchPorts -Ports $launchPorts
+    } finally {
+        Write-LaunchTiming -Phase 'Final port check' -ElapsedMilliseconds ($launchStopwatch.ElapsedMilliseconds - $finalPortCheckStarted)
+    }
+    if (-not $finalPortsReady) { return $false }
+
+    $backendPreparationStarted = $launchStopwatch.ElapsedMilliseconds
+    try {
+        $backendPort = [int]$launchPorts[0]
+        $backendAppPath = Join-Path $RepoRoot 'app'
+        $backendArgs = "-m uvicorn server.app:app --app-dir `"$backendAppPath`" --host `"$($env:FASTAPI_HOST)`" --port $backendPort"
+        $backendLogDir = Get-ApplicationLogRoot -DataRoot (Get-ApplicationDataRoot)
+        Ensure-Directory -Path $backendLogDir
+        $backendStartedAt = Get-Date
+        $backendLogStem = Join-Path $backendLogDir ('TKBEN_backend_' + (Get-Date -Format 'yyyyMMdd_HHmmss_fff'))
+        $backendStdoutLog = "$backendLogStem.out.log"
+        $backendStderrLog = "$backendLogStem.err.log"
+        $backendBaseUrl = Get-BackendBaseUrl -Port $backendPort
+        $backendProcess = $null
+        $script:LaunchStopRequested = $false
+    } finally {
+        Write-LaunchTiming -Phase 'Backend launch preparation' -ElapsedMilliseconds ($launchStopwatch.ElapsedMilliseconds - $backendPreparationStarted)
+    }
 
     try {
-        Write-Step 'Starting FastAPI (serves the production SPA and API on one port).'
-        if ($script:LauncherInteractive) {
-            $backendProcess = Start-Process -FilePath $VenvPython `
-                -ArgumentList $backendArgs `
-                -WorkingDirectory $RepoRoot `
-                -NoNewWindow `
-                -PassThru
-        } else {
-            $backendProcess = Start-Process -FilePath $VenvPython `
-                -ArgumentList $backendArgs `
-                -WorkingDirectory $RepoRoot `
-                -WindowStyle Hidden `
-                -RedirectStandardOutput $backendStdoutLog `
-                -RedirectStandardError $backendStderrLog `
-                -PassThru
+        $backendProcessStartStarted = $launchStopwatch.ElapsedMilliseconds
+        try {
+            Write-Step 'Starting FastAPI (serves the production SPA and API on one port).'
+            if ($script:LauncherInteractive) {
+                $backendProcess = Start-Process -FilePath $VenvPython `
+                    -ArgumentList $backendArgs `
+                    -WorkingDirectory $RepoRoot `
+                    -NoNewWindow `
+                    -PassThru
+            } else {
+                $backendProcess = Start-Process -FilePath $VenvPython `
+                    -ArgumentList $backendArgs `
+                    -WorkingDirectory $RepoRoot `
+                    -WindowStyle Hidden `
+                    -RedirectStandardOutput $backendStdoutLog `
+                    -RedirectStandardError $backendStderrLog `
+                    -PassThru
+            }
+            if (-not $backendProcess) { throw 'FastAPI process could not be started.' }
+        } finally {
+            Write-LaunchTiming -Phase 'Backend process start' -ElapsedMilliseconds ($launchStopwatch.ElapsedMilliseconds - $backendProcessStartStarted)
         }
-        if (-not $backendProcess) { throw 'FastAPI process could not be started.' }
 
-        Invoke-HealthCheck `
-            -Uri "$backendBaseUrl/api/health" `
-            -Description 'FastAPI API' `
-            -ProcessToMonitor $backendProcess `
-            -FailureLogPath $backendStderrLog `
-            -Attempts 60 `
-            -IntervalSeconds 1
-        if (-not $script:LaunchStopRequested) {
+        $backendReadinessStarted = $launchStopwatch.ElapsedMilliseconds
+        try {
             Invoke-HealthCheck `
-                -Uri "$backendBaseUrl/" `
-                -Description 'production frontend' `
-                -RequireHtml `
+                -Uri "$backendBaseUrl/api/health" `
+                -Description 'FastAPI API' `
                 -ProcessToMonitor $backendProcess `
                 -FailureLogPath $backendStderrLog `
                 -Attempts 60 `
                 -IntervalSeconds 1
-        }
+            if (-not $script:LaunchStopRequested) {
+                Invoke-HealthCheck `
+                    -Uri "$backendBaseUrl/" `
+                    -Description 'production frontend' `
+                    -RequireHtml `
+                    -ProcessToMonitor $backendProcess `
+                    -FailureLogPath $backendStderrLog `
+                    -Attempts 60 `
+                    -IntervalSeconds 1
+            }
 
-        if (-not $script:LaunchStopRequested) {
-            $backendProcess.Refresh()
-            if ($backendProcess.HasExited) {
-                throw "FastAPI exited with code $($backendProcess.ExitCode) before startup completed."
+            if (-not $script:LaunchStopRequested) {
+                $backendProcess.Refresh()
+                if ($backendProcess.HasExited) {
+                    throw "FastAPI exited with code $($backendProcess.ExitCode) before startup completed."
+                }
+                $ownedListeners = @(Get-PortListenerRecords -Ports $launchPorts)
+                if ($ownedListeners.Count -eq 0 -or
+                    @($ownedListeners | Where-Object { [int]$_.ProcessId -ne $backendProcess.Id }).Count -gt 0) {
+                    throw "The backend port is not exclusively owned by the started FastAPI PID $($backendProcess.Id)."
+                }
+                Write-Ok 'FastAPI API and production frontend are ready.'
+                $launchStopwatch.Stop()
+                Write-LaunchTiming -Phase 'Total time to application readiness' -ElapsedMilliseconds $launchStopwatch.ElapsedMilliseconds
+                Write-Host "Application: $backendBaseUrl (PID $($backendProcess.Id))"
+                try {
+                    Start-Process -FilePath $backendBaseUrl -ErrorAction Stop | Out-Null
+                } catch {
+                    Write-Host "[WARN] Could not open the browser automatically. Open $backendBaseUrl manually." -ForegroundColor Yellow
+                }
+                Write-Host 'Press Ctrl+C in this window to stop TKBEN.' -ForegroundColor DarkGray
             }
-            $ownedListeners = @(Get-PortListenerRecords -Ports $launchPorts)
-            if ($ownedListeners.Count -eq 0 -or
-                @($ownedListeners | Where-Object { [int]$_.ProcessId -ne $backendProcess.Id }).Count -gt 0) {
-                throw "The backend port is not exclusively owned by the started FastAPI PID $($backendProcess.Id)."
-            }
-            Write-Ok 'FastAPI API and production frontend are ready.'
-            Write-Host "Application: $backendBaseUrl (PID $($backendProcess.Id))"
-            try {
-                Start-Process -FilePath $backendBaseUrl -ErrorAction Stop | Out-Null
-            } catch {
-                Write-Host "[WARN] Could not open the browser automatically. Open $backendBaseUrl manually." -ForegroundColor Yellow
-            }
-            Write-Host 'Press Ctrl+C in this window to stop TKBEN.' -ForegroundColor DarkGray
+        } finally {
+            Write-LaunchTiming -Phase 'API and frontend readiness checks' -ElapsedMilliseconds ($launchStopwatch.ElapsedMilliseconds - $backendReadinessStarted)
         }
 
         while (-not $script:LaunchStopRequested) {
