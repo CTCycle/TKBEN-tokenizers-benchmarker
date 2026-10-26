@@ -468,6 +468,30 @@ def test_sqlite_backend_does_not_validate_existing_database(tmp_path: Path) -> N
 
 
 ###############################################################################
+def test_sqlite_backend_serializes_concurrent_read_then_write(tmp_path: Path) -> None:
+    database_path = tmp_path / "database.db"
+    seed_engine = create_engine(f"sqlite:///{database_path}", future=True)
+    Base.metadata.create_all(seed_engine)
+    seed_engine.dispose()
+    backend = build_sqlite_backend(_sqlite_settings(database_path))
+
+    def read_then_write(name: str) -> None:
+        with Session(backend.engine) as session:
+            session.execute(select(Tokenizer.id)).all()
+            session.add(Tokenizer(name=name, created_at=datetime.now(timezone.utc)))
+            session.commit()
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = [executor.submit(read_then_write, f"tok-{i}") for i in range(16)]
+        for future in futures:
+            future.result()
+
+    with Session(backend.engine) as session:
+        assert len(session.execute(select(Tokenizer.id)).all()) == 16
+    backend.engine.dispose()
+
+
+###############################################################################
 def test_postgres_startup_runs_the_same_migration_workflow(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

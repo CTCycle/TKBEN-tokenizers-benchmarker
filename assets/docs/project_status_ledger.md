@@ -1,5 +1,5 @@
 # Project Status Ledger
-Last updated: 2026-10-25
+Last updated: 2026-10-26
 
 This is the canonical source of truth for current implementation status,
 validation gates, unresolved limitations, and validation history. The
@@ -55,11 +55,9 @@ Future coding and validation agents must:
   Ctrl+C lifecycle returned launcher exit code 0, stopped its owned backend,
   and freed its port; interactive occupied-port confirmation and redirected
   launch were not re-exercised, so the complete launcher gate remains PARTIAL.
-- `v4.8.0` (backend `3.8.0`, frontend `2.8.0`) is the latest published
-  release. Hosted CI run `40225854600` passed the frontend, backend, and
-  Windows launcher jobs on release commit
-  `955a151847db2af066d6f0ef2016ab8522b10115`; `main` and `develop` were
-  aligned before tagging.
+- `v4.8.1` (backend `3.8.1`, frontend `2.8.1`) is the latest published
+  release; see the release gate for its record. `v4.8.0` passed hosted CI run
+  `40225854600` on release commit `955a151847db2af066d6f0ef2016ab8522b10115`.
 - Public Hugging Face discovery, download, report persistence, rendered
   reload, and cleanup are VALIDATED. Authorized gated-repository access is
   still BLOCKED; no gated report was produced.
@@ -73,6 +71,33 @@ Future coding and validation agents must:
   is not required to claim the local source-only quality gate.
 - Containerized deployment and binary packaging are NOT_IMPLEMENTED. The
   supported release model is source-only Windows x64.
+
+## 2026-10-26 v4.8.1 patch smoke (V-20261026)
+- Defect found and fixed: starting a dataset validation and tokenizer reports
+  together failed one or more jobs with `sqlite3.OperationalError: database is
+  locked` (reproduced in three of three attempts on v4.8.0 code). Cause: SQLite
+  sessions began deferred, so a transaction that read and then wrote could not
+  upgrade its lock while another job held the writer lock, and SQLite fails
+  that upgrade immediately instead of honoring the 30 s timeout. The runtime
+  SQLite backend now begins every transaction with `BEGIN IMMEDIATE`; the
+  regression test `test_sqlite_backend_serializes_concurrent_read_then_write`
+  fails without the change. After the fix, two rounds of one dataset validation
+  plus three tokenizer reports started together all completed. Switching the
+  database to WAL was tried and rejected: it broke the migration-concurrency
+  and untouched-database unit tests.
+- Validation: backend unit suite (508), Ruff, BasedPyright (0 errors), OpenAPI
+  smoke, Angular lint, unit suite (77) and production build passed; the
+  launcher started the production SPA, public Wikitext-2 download, custom
+  tokenizer upload, dataset validation, tokenizer reports, a 2,000-document
+  three-tokenizer benchmark, and the Help dialog on all three pages ran
+  without browser console errors. README screenshots were retaken from this
+  running application.
+- Not re-run: live Playwright E2E suites, Settings -> Database switching,
+  Hugging Face keyed tokenizer download (no key available; tokenizers were
+  uploaded as `tokenizer.json` files), and the interactive launcher Ctrl+C
+  confirmation. The two earlier-failed jobs in the smoke database were
+  disposable. The launcher timing output (b567adc) was observed only through
+  successful launches.
 
 ## 2026-10-25 storage settings, key initialization, job reliability (unit and build validated; live E2E pending)
 - Removed `KERAS_BACKEND`, `MPLBACKEND`, `TKBEN_DATA_DIR`, `TKBEN_LOG_DIR` and

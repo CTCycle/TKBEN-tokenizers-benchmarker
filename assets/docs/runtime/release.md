@@ -1,5 +1,5 @@
 # Release Procedure
-Last updated: 2026-10-25
+Last updated: 2026-10-26
 
 ## Release model
 
@@ -10,13 +10,13 @@ add packaging as part of a source release.
 The public release version and component versions use the existing repository
 convention:
 
-| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` | `v4.5.0` | `v4.5.1` | `v4.6.0` | `v4.6.1` | `v4.7.0` | `v4.7.1` | `v4.8.0` |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` | `4.4.0` | `4.5.0` | `4.5.1` | `4.6.0` | `4.6.1` | `4.7.0` | `4.7.1` | `4.8.0` |
-| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` | `3.4.0` | `3.5.0` | `3.5.1` | `3.6.0` | `3.6.1` | `3.7.0` | `3.7.1` | `3.8.0` |
-| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` | `2.4.0` | `2.5.0` | `2.5.1` | `2.6.0` | `2.6.1` | `2.7.0` | `2.7.1` | `2.8.0` |
+| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` | `v4.5.0` | `v4.5.1` | `v4.6.0` | `v4.6.1` | `v4.7.0` | `v4.7.1` | `v4.8.0` | `v4.8.1` |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` | `4.4.0` | `4.5.0` | `4.5.1` | `4.6.0` | `4.6.1` | `4.7.0` | `4.7.1` | `4.8.0` | `4.8.1` |
+| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` | `3.4.0` | `3.5.0` | `3.5.1` | `3.6.0` | `3.6.1` | `3.7.0` | `3.7.1` | `3.8.0` | `3.8.1` |
+| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` | `2.4.0` | `2.5.0` | `2.5.1` | `2.6.0` | `2.6.1` | `2.7.0` | `2.7.1` | `2.8.0` | `2.8.1` |
 
-The latest published release is `v4.8.0` (backend `3.8.0`, frontend `2.8.0`);
+The latest published release is `v4.8.1` (backend `3.8.1`, frontend `2.8.1`);
 its publication record is in the [project status ledger](../project_status_ledger.md#release-gate).
 `v4.7.0` (backend `3.7.0`, frontend `2.7.0`) was published on 2026-10-22 from
 annotated tag `v4.7.0` on `main` commit `7dc3d7e372bcc60cb7a75b7d12c07a4d51d42840`
@@ -38,6 +38,27 @@ The v4.6.0 delta is based on verified repository changes after `v4.5.1`:
 API version `1.2.0`, benchmark schema version `3`, and report version `5`
 remain unchanged. The public release status and final commit are recorded in
 the [project status ledger](../project_status_ledger.md#release-gate).
+
+## v4.8.1 patch release notes
+
+The v4.8.1 release increments the public release, backend, and frontend patch
+versions to `4.8.1`, `3.8.1`, and `2.8.1`. The verified changes since v4.8.0
+include:
+
+- fix concurrent managed jobs failing with SQLite `database is locked`: the
+  runtime SQLite backend now opens every transaction with `BEGIN IMMEDIATE`, so
+  a read-then-write job (tokenizer report replace, dataset validation) waits for
+  the writer lock instead of failing at once on lock upgrade. Found during the
+  release smoke (a dataset validation and two tokenizer reports started
+  together); a focused regression test covers it;
+- add the header Help dialog and guided page walkthroughs (already merged to
+  `develop` before the release was prepared);
+- make the Windows launcher report per-phase launch timings; and
+- refresh the README screenshots from the running application so they show the
+  new Help button.
+
+API version, benchmark schema version `3`, and report version `5` are
+unchanged. Validation evidence is recorded as `V-20261026`.
 
 ## v4.8.0 release notes
 

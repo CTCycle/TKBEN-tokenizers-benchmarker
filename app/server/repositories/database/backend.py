@@ -39,7 +39,7 @@ class DatabaseBackend(Protocol):
 
 ###############################################################################
 def build_sqlite_backend(settings: DatabaseSettings) -> DatabaseBackend:
-    return SQLiteRepository(settings)
+    return SQLiteRepository(settings, begin_immediate=True)
 
 
 ###############################################################################

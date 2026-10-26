@@ -20,6 +20,7 @@ TKBEN is a local web workbench for inspecting text datasets, exploring tokenizer
 - Preview how up to three local tokenizers split the same text in the Tokenizer Playground, and run dataset validation, tokenizer reports, and benchmarks concurrently with independent progress in the Jobs panel.
 - Review cross-benchmark reports, compare tokenizer metrics against a report-scoped baseline, clone eligible configurations, and edit report tags.
 - Save and reopen reports, customize dashboard views, inspect run diagnostics, and export completed reports as PDFs.
+- Open the header Help dialog for tips and a guided walkthrough of each page.
 - Search, filter, and manage dataset and tokenizer catalogs by source and numeric thresholds.
 - Configure, test, and switch SQLite or PostgreSQL connections from Settings -> Database; runtime settings and dashboard preferences save automatically to, and remain scoped to, the active database.
 
