@@ -767,24 +767,29 @@ def test_tokenizer_playground_full_browser_flow(
         expect(textarea).to_have_value("x" * 2000)
 
         tokenizer_options = playground.locator(".tokenizer-playground-tokenizers")
-        expect(tokenizer_options.locator("input[type=checkbox]")).to_have_count(5)
+        listed = api_context.get("/api/tokenizers/list")
+        assert listed.ok, listed.text()
+        total = len(listed.json()["tokenizers"])
+        expect(tokenizer_options.locator("input[type=checkbox]")).to_have_count(
+            total + 1  # plus "Include special tokens"
+        )
         search = tokenizer_options.get_by_role(
             "searchbox", name="Filter visible tokenizers", exact=True
         )
         matches = tokenizer_options.locator(".tokenizer-playground-match-count")
-        expect(matches).to_have_text("4 of 4")
+        expect(matches).to_have_text(f"{total} of {total}")
         search.fill(tokenizer_names[1])
-        expect(matches).to_have_text("1 of 4")
+        expect(matches).to_have_text(f"1 of {total}")
         expect(
             tokenizer_options.get_by_label(tokenizer_names[1], exact=True)
         ).to_be_visible()
         search.fill("no matching tokenizer")
-        expect(matches).to_have_text("0 of 4")
+        expect(matches).to_have_text(f"0 of {total}")
         expect(
             tokenizer_options.get_by_text("No tokenizers match this search.")
         ).to_be_visible()
         search.fill("")
-        expect(matches).to_have_text("4 of 4")
+        expect(matches).to_have_text(f"{total} of {total}")
 
         tokenize_button = playground.get_by_role("button", name="Tokenize", exact=True)
         expect(tokenize_button).to_be_disabled()

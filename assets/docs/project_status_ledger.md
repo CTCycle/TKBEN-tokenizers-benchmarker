@@ -1,5 +1,5 @@
 # Project Status Ledger
-Last updated: 2026-10-26
+Last updated: 2026-10-27
 
 This is the canonical source of truth for current implementation status,
 validation gates, unresolved limitations, and validation history. The
@@ -71,6 +71,157 @@ Future coding and validation agents must:
   is not required to claim the local source-only quality gate.
 - Containerized deployment and binary packaging are NOT_IMPLEMENTED. The
   supported release model is source-only Windows x64.
+
+## 2026-10-27 E2E audit (V-20261027, incomplete)
+
+### Follow-up on the current uncommitted working tree
+
+The existing working-tree edits add the Storage tab and update the settings
+test inventory assertion; this audit did not change application or test code.
+The launcher rebuilt the current frontend and reached readiness in 24.48 s;
+a warm restart took 7.62 s. In the in-app browser, pointer selection of Storage
+and Down from Runtime both selected and focused Storage and exposed its panel.
+The former AUD-20261027-01 is **resolved at this navigation scope** on this
+working tree; saving storage paths and restart behavior are not established by
+that observation. The former AUD-20261027-02 is **resolved at collection and
+settings-suite scope**: all three settings E2Es passed in 33.57 s against
+isolated SQLite using installed Chrome. These cover settings boundaries,
+persistence and effects on new operations, an SQLite switch, and refusal of
+an unavailable PostgreSQL connection. They do not prove a working PostgreSQL
+deployment or the complete E2E suite.
+
+The five previously failing independent tests were rerun, all still failed in
+117.18 s. Report-tag editing expects `Save tags`, while the rendered template
+uses `Save`; benchmark cancellation expects removed page-local progress and
+cancellation controls, while the actual controls are in the shared Jobs panel.
+The tokenizer lifecycle locator resolves to two matching elements. The
+dashboard checkbox and chart-axis expectations remain unresolved. The
+benchmark test's cleanup also recorded a socket hang-up, so the rerun does not
+establish its full cancellation/rerun workflow. No product failure is inferred
+solely from these test failures.
+
+As a separate live observation, a second browser session reloaded the shared
+Jobs panel and displayed a running isolated benchmark. Clicking Cancel showed
+Cancelling then Cancelled; SQLite recorded job `f9736218` as `cancelled`, no
+report with that test run's name existed, and `integrity_check` returned `ok`.
+After a backend restart the browser again displayed the cancelled job. This
+validates one cancellation and persistence path, not immediate rerun,
+interrupted-job reconciliation, or general concurrency. Relevant backend log
+warnings were limited to deliberately invalid inputs in the earlier campaign;
+the observed socket error has not been reproduced or attributed.
+
+The overall recommendation remains **NO-GO for the requested comprehensive
+gate**: the complete suite has not passed, the remaining failures need
+diagnosis, and the untested areas below remain open. Re-run the full suite
+after test issues are addressed and validate populated chart labels, restart
+recovery, concurrency, supported database backends and authorized provider
+flows. No application fixes were made during this follow-up.
+
+The subsequent complete Chrome E2E run on a fresh isolated SQLite database
+collected successfully and returned **45 passed, six failed, seven skipped**
+in 274.67 s, with synthetic benchmark and tokenizer lifecycle opt-ins enabled.
+The five failures described above persisted; the playground additionally saw
+six tokenizer choices where its test expected five. Whether fixture residue or
+application behavior caused the extra choice is unconfirmed. The benchmark
+test again reported a socket hang-up in cleanup. Provider/credential and
+restart-specific cases were among the seven skips. After the run the isolated
+database had no pending/running jobs and no tokenizer rows. A direct invalid
+SPA route redirected to Dataset, `/settings` returned HTML, and an unknown
+API path and missing JavaScript asset returned 404. These observations do not
+replace the missing workflow and environment coverage.
+
+This is an initial, incomplete current-checkout audit, not a full release
+certification. Windows 11 Pro 10.0.26300, checkout `3af63a9`, Python 3.14.7,
+Node 22.23.1. The production launcher used an isolated `TKBEN_PATHS_CONFIG`
+and SQLite data root under `assets/QA/audit-20261027`; it reached health and
+SPA readiness in 13.94 seconds. Do not treat older validation as evidence of
+the current checkout without revalidation. Ctrl+C through the automated shell
+ended the launcher with exit code 1; its backend process exited and ports 5000
+and 8000 were no longer listening. This does not verify graceful shutdown in a
+normal interactive Windows console.
+
+### Coverage inventory and current results
+
+The four routed feature areas below are the functional denominator: Dataset,
+Tokenizers, Cross Benchmark, and Settings. All four rendered, but **0/4 are
+fully validated** by this audit. Rendering is not an end-to-end workflow pass.
+For the five specifically observed browser scenarios below, four passed and
+one failed (4/5); this denominator excludes all unexecuted scenarios and does
+not imply coverage of every control or workflow.
+
+| Feature, route, API/data boundary | Executed scenario and result | Remaining coverage |
+| --- | --- | --- |
+| Dataset `/dataset`; `/api/datasets`, managed jobs, SQLite and source files | PASS: empty catalog renders; add-dataset dialog and custom-upload tab open. | Browser upload, validation, reports, exports, filtering, persistence, failure/recovery and concurrency not manually completed. |
+| Tokenizers `/tokenizers`; `/api/tokenizers`, jobs, SQLite and tokenizer artifacts, Hugging Face | PASS: empty catalog and playground entry render. | Browser upload, report, preview, deletion, persistence, external discovery/download and error/recovery not manually completed. |
+| Cross Benchmark `/cross-benchmark`; `/api/benchmarks`, jobs, report DB, PDF export | PASS: empty report page and wizard render; Next is disabled without dataset/tokenizer. | Real benchmark, cancellation, reports, dashboard persistence, export, concurrent jobs and restart not manually completed. |
+| Settings `/settings`; `/api/settings`, `/api/database`, `/api/keys`, path config and DB | FAIL: Storage has no visible navigation tab; keyboard navigation opens its panel with no selected tab (AUD-20261027-01). | Runtime-setting effects, database switching, key operations, storage save/restart and concurrent edits not manually completed. |
+| Lifecycle and jobs; `/api/health`, `/api/jobs` | PASS at startup only; isolated SQLite `integrity_check` returned `ok` and Alembic head `0002_managed_job_created_at_index`. | Deep links, back/forward, shutdown, restart reconciliation, multiple sessions, cancellation and resource cleanup remain unvalidated. |
+| API/security/integrations | Independent API-oriented E2E tests ran against isolated backend; details and limitations below. No intrusive exploitation performed. | Authentication boundaries, CORS, dependency advisories, PostgreSQL, failure injection and external services are not comprehensively tested. |
+| Visual/performance | Desktop in-app browser inspected empty pages, wizard and settings; no browser console warnings/errors observed in that session. Startup readiness measured above. | Responsive populated states, accessibility, latency, memory, polling and prolonged-load profiling not completed. |
+
+### Findings and remediation
+
+**AUD-20261027-01 — Medium: Storage settings lack a navigation tab.** Open
+Settings: Data, Tokenizers, Benchmarks, Runtime, Database and Keys are shown,
+but no Storage tab. Click Runtime and press Down: the Storage panel appears,
+while Runtime retains focus and no tab is selected. Expected: a visible,
+keyboard-accessible Storage tab selects and labels its panel. Actual: pointer
+users cannot select Storage and keyboard users enter an unrepresented tab.
+The tab array contains `storage` in
+`app/client/angular/app/pages/settings-page.component.ts:27`, but the tab
+buttons in `settings-page.component.html:9` omit it while the panel exists at
+line 154. Add the tab with matching ARIA linkage and test mouse and arrow-key
+navigation, selected state, and storage save/restart behavior. Evidence:
+`assets/QA/audit-20261027/settings-storage-keyboard.png` while retained.
+
+**AUD-20261027-02 — High: E2E collection aborts before any test runs.** Run
+`python -m pytest app/tests/e2e -q` with the locked test dependencies. The
+collection of `test_settings_flows.py` fails at line 387: generated
+`SETTINGS_FIELDS` contains 17 entries but the hard-coded assertion expects 16.
+Expected: the standard E2E suite collects and runs all settings scenarios.
+Actual: the entire suite stops at collection. Reconcile the inventory with the
+current 17-field contract and add a meaningful contract-driven check; rerun
+the full suite including settings. This is a test-gate failure, not evidence
+that all 17 UI controls work.
+
+### Checks, limitations and release decision
+
+Backend unit tests: 508 passed, eight deprecation warnings; Ruff passed.
+Frontend lint passed, 77 unit tests passed, and production build passed.
+BasedPyright reported zero errors and 2,173 warnings. The initial E2E
+collection failed as above. With the settings file excluded, the first run
+reported 17 passed, seven skipped and 31 setup errors because the locked
+Playwright version's Chromium headless executable was missing. Those setup
+errors are environment limitations, not confirmed product failures. An
+installed Chrome-channel rerun with the backend and test process using the same
+isolated paths completed with **43 passed, five failed, seven skipped** in
+218 seconds, excluding the uncollectable settings file. The five failures
+were: benchmark cancellation test did not observe its progress indicator;
+report tag save button locator timed out; dashboard customization checkbox
+locator timed out; live report axis-label locator timed out; and tokenizer UI
+lifecycle text locator matched two elements. These are unresolved test or
+product discrepancies, not independently confirmed defects. Investigate each
+against actual rendered state and make fixtures/selectors deterministic before
+claiming the affected workflow passes. The first Chrome attempt used a
+different test-process path from the isolated backend, yielding ten failures;
+its results are not comparable. It created one uniquely named dataset in the
+default database; that exact test-owned dataset was removed through the
+repository and its document count checked afterward. Provider
+and gated Hugging Face cases require credentials/authorization and remain
+unverified. SQLite integrity and schema-head checks do not prove transaction
+rollback, migration compatibility, or persistence across restart. Browser
+console observation covered only the manually visited states.
+
+**NO-GO for the requested comprehensive pre-release gate:** the visible
+Settings defect and broken E2E collection require correction, and critical
+cross-layer workflows, recovery, security, concurrency and responsive states
+remain incompletely validated. Recommended order: (1) repair E2E collection
+and Storage navigation (small, independent); (2) rerun all isolated browser
+workflows and repair confirmed correctness failures; (3) verify SQLite and
+PostgreSQL recovery/concurrency and authorized integrations (larger,
+environment-dependent); (4) profile and address evidenced usability and
+performance issues. This decision is specific to this audit scope and does
+not retroactively change an already published release.
 
 ## 2026-10-26 v4.8.1 patch smoke (V-20261026)
 - Defect found and fixed: starting a dataset validation and tokenizer reports

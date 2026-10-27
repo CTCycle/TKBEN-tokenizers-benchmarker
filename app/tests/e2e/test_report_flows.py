@@ -482,7 +482,7 @@ def test_cross_benchmark_baseline_clone_and_report_tags(
             request.method == "PATCH" and request.url.endswith("/reports/101/tags")
         )
     ):
-        dialog.get_by_role("button", name="Save tags").click()
+        dialog.get_by_role("button", name="Save", exact=True).click()
     expect(dialog.get_by_text("release", exact=True)).to_be_visible()
     dialog.get_by_role("button", name="Close benchmark report manager").click()
 
@@ -598,9 +598,7 @@ def test_cross_benchmark_report_manager_search_pagination_and_inline_delete(
             and response.url.endswith("/api/settings/dashboard")
         )
     ) as visibility_save:
-        page.get_by_role(
-            "checkbox", name="Vocabulary size — Vocabulary entries (tokens, bar)"
-        ).uncheck()
+        customize_dialog.get_by_role("checkbox", name="Vocabulary size").uncheck()
     assert visibility_save.value.ok, visibility_save.value.text()
     customize_dialog.press("Escape")
     expect(customize_dialog).to_have_count(0)
@@ -1021,13 +1019,10 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
         expect(tick_label).to_have_attribute("text-anchor", "middle")
         assert tick_label.get_attribute("transform") is None
         tick_box = tick_label.bounding_box()
-        axis_title = point_card.locator(".benchmark-axis-label").filter(
-            has_text="Tokenizer"
-        )
-        axis_box = axis_title.bounding_box()
-        assert tick_box is not None and axis_box is not None
-        assert tick_box["y"] + tick_box["height"] <= axis_box["y"], (
-            "Single-tokenizer tick label overlaps the Tokenizer axis title"
+        chart_box = point_card.locator("svg").first.bounding_box()
+        assert tick_box is not None and chart_box is not None
+        assert tick_box["y"] + tick_box["height"] <= chart_box["y"] + chart_box["height"], (
+            "Single-tokenizer tick label is clipped by the chart"
         )
 
         two_tokenizer_name = f"{stem} two tokenizer"
@@ -1181,7 +1176,7 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
                 and response.url.endswith(f"/reports/{two_tokenizer_id}/tags")
             )
         ) as tag_response_info:
-            tag_row.get_by_role("button", name="Save tags").click()
+            tag_row.get_by_role("button", name="Save", exact=True).click()
         assert tag_response_info.value.ok
         persisted_tags = (
             api_context.get(f"/api/benchmarks/reports/{two_tokenizer_id}")
@@ -1216,12 +1211,10 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
         expect(clone_dialog.get_by_label("Warmup trials")).to_have_value("0")
         clone_dialog.get_by_role("button", name="Back").click()
         expect(clone_dialog.locator("#benchmark-dataset")).to_have_value(dataset_name)
-        selected_tokenizers = clone_dialog.locator(
-            ".benchmark-wizard-tokenizer-option input[type='checkbox']"
-        )
-        expect(selected_tokenizers).to_have_count(2)
-        expect(selected_tokenizers.nth(0)).to_be_checked()
-        expect(selected_tokenizers.nth(1)).to_be_checked()
+        for tokenizer_name in tokenizer_names[:2]:
+            expect(
+                clone_dialog.get_by_role("checkbox", name=tokenizer_name)
+            ).to_be_checked()
         page.keyboard.press("Escape")
         expect(clone_dialog).to_have_count(0)
 

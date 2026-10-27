@@ -1042,13 +1042,14 @@ def test_benchmark_can_be_cancelled_and_immediately_rerun(
         progress_status = _wait_for_running_progress(
             api_context, first_job_id, minimum_progress=20.0
         )
-        progress_indicator = page.locator(".benchmark-job-progress")
-        expect(progress_indicator).to_be_visible()
-        expect(progress_indicator).to_contain_text(
-            f"{float(progress_status['progress']):g}%", timeout=30_000
+        page.get_by_role("button", name="Toggle jobs panel").click()
+        jobs_panel = page.get_by_role("dialog", name="Jobs")
+        cancel_button = jobs_panel.get_by_role("button", name="Cancel", exact=True)
+        running_item = jobs_panel.locator(".jobs-item").filter(
+            has=page.get_by_role("button", name="Cancel", exact=True)
         )
-        progress_text = progress_indicator.inner_text()
-        cancel_button = page.get_by_role("button", name="Cancel benchmark")
+        expect(running_item).to_be_visible()
+        progress_text = running_item.locator(".jobs-item-percent").inner_text()
         expect(cancel_button).to_be_enabled()
         backend_pid = os.getenv("TKBEN_BACKEND_PID")
         if backend_pid:
@@ -1088,7 +1089,10 @@ def test_benchmark_can_be_cancelled_and_immediately_rerun(
             timeout_seconds=300.0,
         )
         assert cancellation_status.get("status") == "cancelled", cancellation_status
-        expect(page.locator(".benchmark-job-progress")).to_have_count(0, timeout=30_000)
+        expect(
+            jobs_panel.locator(".jobs-item-state", has_text="Cancelled").first
+        ).to_be_visible(timeout=30_000)
+        page.get_by_role("button", name="Close jobs panel").click()
         expect(run_button).to_be_enabled()
 
         cancelled_reports_response = api_context.get(

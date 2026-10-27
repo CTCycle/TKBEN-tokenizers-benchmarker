@@ -384,7 +384,7 @@ TOKENIZER_RELATION_KEYS = frozenset(
         "tokenizers.max_discovery_candidates",
     }
 )
-assert len(SETTINGS_FIELDS) == 16
+assert len(SETTINGS_FIELDS) == 17
 assert set(ALL_RUNTIME_SETTING_KEYS) == {
     "datasets.histogram_bins",
     "datasets.max_upload_bytes",
