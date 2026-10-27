@@ -13,6 +13,29 @@ from threading import RLock
 logger = logging.getLogger("app")
 _LOGGING_LOCK = RLock()
 _configured_log_directory: Path | None = None
+_NOISY_LIBRARY_LOGGERS = (
+    "httpx",
+    "httpcore",
+    "urllib3",
+    "filelock",
+    "fsspec",
+    "huggingface_hub",
+    "datasets",
+    "asyncio",
+    "multipart",
+    "alembic",
+    "sqlalchemy.engine",
+)
+
+
+###############################################################################
+class FailedRequestAccessFilter(logging.Filter):
+    # uvicorn access records carry (client, method, path, http_version, status)
+    def filter(self, record: logging.LogRecord) -> bool:
+        args = record.args
+        if isinstance(args, tuple) and args and isinstance(args[-1], int):
+            return args[-1] >= 400
+        return True
 
 
 ###############################################################################
@@ -40,6 +63,16 @@ def configure_logging(log_directory: str | Path) -> Path:
                     "minimal": {
                         "format": "%(levelname)s - %(message)s",
                     },
+                },
+                "filters": {
+                    "failed_requests_only": {
+                        "()": f"{__name__}.FailedRequestAccessFilter"
+                    },
+                },
+                "loggers": {
+                    # Successful requests (polling, uploads) are noise; 4xx/5xx remain.
+                    "uvicorn.access": {"filters": ["failed_requests_only"]},
+                    **{name: {"level": "WARNING"} for name in _NOISY_LIBRARY_LOGGERS},
                 },
                 "handlers": {
                     "console": {
