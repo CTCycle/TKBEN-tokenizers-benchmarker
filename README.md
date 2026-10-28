@@ -1,27 +1,30 @@
-# TKBEN Tokenizer Benchmarker
+<p align="center"><img src="app/client/public/tkben-logo.png" alt="" width="80"></p>
 
-TKBEN is a local web application for inspecting text datasets and comparing tokenizers on the same data. It combines dataset analysis, tokenizer reports, and benchmark dashboards in one place. The supported launcher runs on Windows; the interface opens in your browser.
+<h1 align="center">TKBEN Tokenizer Benchmarker</h1>
 
-![Dataset dashboard showing corpus statistics, character composition, and length distributions](assets/figures/dataset-dashboard.jpg)
+<p align="center">A local workspace for analyzing text datasets and comparing tokenizers.</p>
 
-*Dataset dashboard for a saved WikiText analysis.*
+<p align="center">
+  <a href="#dataset-analysis">Dataset analysis</a> ·
+  <a href="#tokenizer-reports">Tokenizer reports</a> ·
+  <a href="#cross-benchmark">Cross Benchmark</a> ·
+  <a href="#configuration">Configuration</a> ·
+  <a href="assets/docs/project_index.md">Documentation</a>
+</p>
 
-![Tokenizer report with vocabulary statistics and preview](assets/figures/tokenizer-dashboard.jpg)
+<p align="center"><img src="assets/figures/dataset-dashboard.jpg" alt="TKBEN dataset page with corpus statistics, character composition, and length distributions" width="760"></p>
 
-*Tokenizer report and vocabulary preview.*
+TKBEN is a local web application for inspecting text datasets, reviewing tokenizer reports, and comparing tokenizers on the same data. The supported launcher runs on Windows and opens the interface in your browser.
 
-![Cross-benchmark dashboard comparing tokenizer metrics](assets/figures/cross-benchmark.png)
+| Workflow | What it does |
+| --- | --- |
+| **Dataset analysis** | Import CSV or XLSX files, add predefined or Hugging Face datasets, and inspect corpus statistics. |
+| **Tokenizer reports** | Download or upload tokenizer assets, review vocabulary details, and compare local tokenizers in the playground. |
+| **Cross Benchmark** | Compare up to five prepared tokenizers on a saved dataset, review performance and text-fidelity metrics, and export dashboards. |
 
-*Cross-benchmark dashboard comparing three tokenizers.*
+The Jobs panel tracks concurrent dataset validation, tokenizer-report, and benchmark jobs. You can also filter the dataset and tokenizer catalogs and manage application settings in the interface.
 
-## What you can do
-
-- Import CSV or XLSX data, or add a predefined or Hugging Face dataset. Run validation to inspect document lengths, vocabulary, character composition, and other corpus statistics.
-- Download tokenizer assets or upload a `tokenizer.json`. Inspect vocabulary and tokenizer reports, or compare how up to three local tokenizers split text in the playground.
-- Run a cross-benchmark on a saved dataset with up to five prepared tokenizers. Compare performance, vocabulary, and fidelity metrics; reopen reports, select a baseline, and export dashboards to PDF.
-- Track concurrent dataset validation, tokenizer report, and benchmark jobs in the Jobs panel. Filter the dataset and tokenizer catalogs and manage application settings in the interface.
-
-Benchmark results depend on the dataset, selected metrics, run settings, and machine. They should be interpreted in that context rather than as a universal tokenizer ranking.
+> Benchmark results depend on the dataset, selected metrics, run settings, and machine. Interpret them in that context rather than as a universal tokenizer ranking.
 
 ## Get started
 
@@ -35,20 +38,38 @@ Choose **Launch application**. On first launch, the launcher may download its po
 
 To start directly without the menu, run `.\start_on_windows.ps1 -Launch`. The launcher serves the Angular frontend and FastAPI API from the same local address. See [startup](assets/docs/runtime/startup.md) for maintenance options and troubleshooting.
 
-## Run a comparison
+## Dataset analysis
 
-1. In **Datasets**, add a dataset and run its validation pipeline to inspect its contents.
+In **Datasets**, add a CSV or XLSX file, select a predefined dataset, or download one from Hugging Face. Run validation to inspect document lengths, vocabulary, character composition, and other corpus statistics. Saved analyses can be reopened from the dataset dashboard.
+
+Hugging Face downloads need network access; gated datasets also need suitable credentials.
+
+## Tokenizer reports
+
+In **Tokenizers**, download tokenizer assets or upload a `tokenizer.json` file. Open a report to inspect vocabulary details and token-length statistics, or use the playground to compare how up to three local tokenizers split the same text.
+
+<p align="center"><img src="assets/figures/tokenizer-dashboard.jpg" alt="TKBEN tokenizer report with vocabulary statistics, token-length histogram, and vocabulary preview" width="760"></p>
+
+## Cross Benchmark
+
+Run a benchmark on a saved dataset with up to five prepared tokenizers. Compare performance, vocabulary, and fidelity metrics; saved reports can be reopened, tagged, and compared with a selected baseline.
+
+<p align="center"><img src="assets/figures/cross-benchmark.png" alt="TKBEN cross-benchmark dashboard comparing tokenizer metrics" width="760"></p>
+
+To run a comparison:
+
+1. In **Datasets**, add a dataset and run its validation pipeline.
 2. In **Tokenizers**, add the tokenizer assets you want to compare and open their reports.
 3. In **Cross Benchmark**, choose **Run**, select a saved dataset and tokenizers, and configure the metrics and run settings.
-4. Review the resulting dashboard. Saved reports can be reopened, tagged, compared with a baseline, and exported.
+4. Review the dashboard. Saved reports can be reopened, tagged, compared with a baseline, and exported to PDF.
 
-Use the Help button in the application for page-specific guidance. Hugging Face downloads need network access; gated assets also need suitable credentials.
+Use the Help button in the application for page-specific guidance.
 
-## Data and configuration
+## Configuration
 
-SQLite is the default database; PostgreSQL can be configured under **Settings → Database**. Dataset and tokenizer artifacts are stored in the configured data directory, which defaults to `data`. Settings → Storage controls data and log paths; path changes take effect after a backend restart and do not move existing data. Application settings and dashboard preferences are stored in the active database. Hugging Face keys are managed under **Settings → Keys**.
+SQLite is the default database; PostgreSQL can be configured under **Settings → Database**. Dataset and tokenizer artifacts are stored in the configured data directory, which defaults to `data`. **Settings → Storage** controls data and log paths; path changes take effect after a backend restart and do not move existing data. Application settings and dashboard preferences are stored in the active database. Hugging Face keys are managed under **Settings → Keys**.
 
-The launcher creates `settings/.env` from `settings/.env.example` if needed. See [configuration](assets/docs/runtime/configuration.md) for listener settings, storage, and database details.
+The launcher creates `settings/.env` from `settings/.env.example` if needed. See [runtime configuration](assets/docs/runtime/configuration.md) for listener settings, storage, and database details.
 
 ## Development
 
@@ -72,7 +93,7 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The development server prox
 
 ## Contributing
 
-Issues and focused pull requests are welcome. Describe the problem or change and include relevant validation.
+Issues and focused pull requests are welcome. Describe the problem or change and include relevant validation. The [testing and quality guide](assets/docs/coding/testing_and_quality.md) covers project conventions.
 
 ## License
 
