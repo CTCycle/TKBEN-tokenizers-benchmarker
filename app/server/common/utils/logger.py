@@ -31,6 +31,8 @@ _NOISY_LIBRARY_LOGGERS = (
 ###############################################################################
 class FailedRequestAccessFilter(logging.Filter):
     # uvicorn access records carry (client, method, path, http_version, status)
+
+    # -------------------------------------------------------------------------
     def filter(self, record: logging.LogRecord) -> bool:
         args = record.args
         if isinstance(args, tuple) and args and isinstance(args[-1], int):
