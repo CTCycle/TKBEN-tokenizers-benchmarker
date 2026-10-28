@@ -1058,7 +1058,7 @@ def test_benchmark_can_be_cancelled_and_immediately_rerun(
 
                 backend_process = psutil.Process(int(backend_pid))
                 backend_command = " ".join(backend_process.cmdline())
-                assert "uvicorn server.app:app" in backend_command, (
+                assert "server.entry" in backend_command, (
                     "Configured backend PID does not belong to the benchmark server"
                 )
                 for _ in range(8):

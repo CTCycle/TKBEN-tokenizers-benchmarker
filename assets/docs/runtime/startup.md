@@ -41,7 +41,9 @@ The launcher:
   also writes its normal `TKBEN_*.log` under the configured log directory (default
   `data/logs`, set in Settings → Storage); redirected launches save stdout and stderr there as well
 - remains open as the lifecycle owner after readiness. Press Ctrl+C in that
-  window to request FastAPI's normal shutdown. It waits up to 10 seconds, then
+  window: the backend (`server.entry`) ignores Ctrl+C, and the launcher stops it
+  through the per-launch-token `POST /__tkben/shutdown` endpoint. It waits up to
+  10 seconds, then
   stops only the FastAPI process tree it started if necessary. Startup errors,
   unexpected process exits, and cleanup failures include diagnostics. If the
   launcher exits unexpectedly, its cleanup also targets only that owned

@@ -3,11 +3,13 @@
 
 from __future__ import annotations
 
+import hmac
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from starlette.routing import Match
@@ -31,7 +33,7 @@ from server.configurations.startup import (
     activate_runtime_settings_store,
     build_database_runtime_settings_store,
 )
-from server.contracts.health import HealthResponse
+from server.contracts.health import HealthResponse, ShutdownResponse
 from server.repositories.database.initializer import initialize_database
 from server.repositories.database.migrations import DatabaseMigrationError
 from server.repositories.jobs import JobRepository
@@ -62,6 +64,35 @@ def redirect_to_docs() -> RedirectResponse:
 ###############################################################################
 def backend_healthcheck() -> HealthResponse:
     return HealthResponse(status="ok")
+
+
+###############################################################################
+def source_shutdown(
+    request: Request,
+    launch_token: str | None = Header(default=None, alias="X-TKBEN-Launch-Token"),
+) -> ShutdownResponse:
+    expected_token = request.app.state.source_launch_token
+    if not launch_token or not hmac.compare_digest(launch_token, expected_token):
+        raise HTTPException(status_code=403, detail="Invalid launcher token")
+    server = getattr(request.app.state, "launcher_server", None)
+    if server is not None:
+        server.should_exit = True
+    return ShutdownResponse(status="shutting_down")
+
+
+###############################################################################
+def register_shutdown_route(application: FastAPI) -> None:
+    launch_token = os.getenv("TKBEN_LAUNCH_TOKEN", "")
+    if not launch_token:
+        return
+    application.state.source_launch_token = launch_token
+    application.add_api_route(
+        "/__tkben/shutdown",
+        source_shutdown,
+        methods=["POST"],
+        include_in_schema=False,
+        response_model=ShutdownResponse,
+    )
 
 
 ###############################################################################
@@ -220,6 +251,7 @@ def create_app() -> FastAPI:
             return await call_next(request)
 
     register_api_routers(application)
+    register_shutdown_route(application)
     register_frontend_routes(application)
     return application
 

@@ -1083,7 +1083,7 @@ function Get-ApplicationProcessIds {
             continue
         }
 
-        $isBackend = $commandLine -match '(?i)\buvicorn(?:\.exe)?\s+server\.app:app\b'
+        $isBackend = $commandLine -match '(?i)(?:\buvicorn(?:\.exe)?\s+server\.app:app|-m\s+server\.entry)\b'
         if ($isBackend) { $processIds += $processId }
     }
 
@@ -1103,6 +1103,30 @@ function Get-ApplicationProcessIds {
         if (-not $hasMatchedAncestor) { $rootProcessIds += [int]$candidateProcessId }
     }
     return @($rootProcessIds | Sort-Object -Unique)
+}
+
+function New-LauncherToken {
+    $bytes = New-Object byte[] 32
+    $generator = [Security.Cryptography.RandomNumberGenerator]::Create()
+    try { $generator.GetBytes($bytes) } finally { $generator.Dispose() }
+    return [Convert]::ToBase64String($bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_')
+}
+
+function Request-BackendShutdown {
+    param(
+        [Diagnostics.Process]$Process,
+        [string]$BaseUrl,
+        [string]$LaunchToken
+    )
+    try {
+        Invoke-WebRequest -UseBasicParsing -Method Post `
+            -Uri "$BaseUrl/__tkben/shutdown" `
+            -Headers @{ 'X-TKBEN-Launch-Token' = $LaunchToken } -TimeoutSec 3 | Out-Null
+    } catch {
+        if (-not $Process.HasExited) {
+            Write-Host "[WARN] Graceful shutdown request failed: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    }
 }
 
 function Stop-ApplicationProcesses {
@@ -1248,7 +1272,9 @@ function Launch-Application {
     try {
         $backendPort = [int]$launchPorts[0]
         $backendAppPath = Join-Path $RepoRoot 'app'
-        $backendArgs = "-m uvicorn server.app:app --app-dir `"$backendAppPath`" --host `"$($env:FASTAPI_HOST)`" --port $backendPort"
+        $backendArgs = "-m server.entry --host `"$($env:FASTAPI_HOST)`" --port $backendPort"
+        $launchToken = New-LauncherToken
+        $previousLaunchToken = [Environment]::GetEnvironmentVariable('TKBEN_LAUNCH_TOKEN', 'Process')
         $backendLogDir = Get-ApplicationLogRoot -DataRoot (Get-ApplicationDataRoot)
         Ensure-Directory -Path $backendLogDir
         $backendStartedAt = Get-Date
@@ -1266,16 +1292,17 @@ function Launch-Application {
         $backendProcessStartStarted = $launchStopwatch.ElapsedMilliseconds
         try {
             Write-Step 'Starting FastAPI (serves the production SPA and API on one port).'
+            $env:TKBEN_LAUNCH_TOKEN = $launchToken
             if ($script:LauncherInteractive) {
                 $backendProcess = Start-Process -FilePath $VenvPython `
                     -ArgumentList $backendArgs `
-                    -WorkingDirectory $RepoRoot `
+                    -WorkingDirectory $backendAppPath `
                     -NoNewWindow `
                     -PassThru
             } else {
                 $backendProcess = Start-Process -FilePath $VenvPython `
                     -ArgumentList $backendArgs `
-                    -WorkingDirectory $RepoRoot `
+                    -WorkingDirectory $backendAppPath `
                     -WindowStyle Hidden `
                     -RedirectStandardOutput $backendStdoutLog `
                     -RedirectStandardError $backendStderrLog `
@@ -1340,7 +1367,7 @@ function Launch-Application {
         }
     } catch [System.Management.Automation.PipelineStoppedException] {
         $script:LaunchStopRequested = $true
-        Write-Step 'Ctrl+C received. Waiting for FastAPI lifespan shutdown.'
+        Write-Step 'Ctrl+C received. Requesting FastAPI shutdown.'
     } catch {
         Write-Fatal "Application startup or supervision failed: $($_.Exception.Message)"
         Write-BackendDiagnostics `
@@ -1349,10 +1376,13 @@ function Launch-Application {
             -StartedAt $backendStartedAt
         throw
     } finally {
+        if ($null -eq $previousLaunchToken) { Remove-Item Env:TKBEN_LAUNCH_TOKEN -ErrorAction SilentlyContinue }
+        else { $env:TKBEN_LAUNCH_TOKEN = $previousLaunchToken }
         if ($backendProcess) {
             try {
                 $backendProcess.Refresh()
                 if (-not $backendProcess.HasExited) {
+                    Request-BackendShutdown -Process $backendProcess -BaseUrl $backendBaseUrl -LaunchToken $launchToken
                     if ($script:LaunchStopRequested) {
                         Write-Step 'Waiting up to 10 seconds for FastAPI to shut down gracefully.'
                         if (-not $backendProcess.WaitForExit(10000)) {
@@ -1367,6 +1397,7 @@ function Launch-Application {
                         Write-Ok 'TKBEN stopped.'
                     } else {
                         Write-Host '[WARN] Cleaning up the FastAPI process tree after launcher exit or failure.' -ForegroundColor Yellow
+                        $null = $backendProcess.WaitForExit(10000)
                         if (-not (Stop-ProcessTree -ProcessId $backendProcess.Id)) {
                             throw "Could not clean up FastAPI process tree rooted at PID $($backendProcess.Id)."
                         }

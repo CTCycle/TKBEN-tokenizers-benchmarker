@@ -65,6 +65,7 @@ Source-level structure, with generated and environment-specific folders omitted:
 - Backend app factory/module:
   - `server.app:create_app` constructs the FastAPI app and registers API and frontend routes.
   - `server.app:app` is the canonical ASGI entry point.
+  - `server.entry` is the launcher-owned source-mode runner (ignores Ctrl+C).
 - Frontend entry:
   - `app/client/angular/main.ts`
 - Frontend routing root:
@@ -155,5 +156,6 @@ flowchart LR
     only when its deterministic production-input stamp is missing or stale. It
     checks the backend port before setup and immediately before startup;
     `UI_PORT` is used by manual development only and does not block production
-    launch. Ctrl+C requests graceful FastAPI shutdown, with bounded cleanup
+    launch. Ctrl+C makes the launcher request graceful FastAPI shutdown through the
+    token-protected `/__tkben/shutdown` endpoint of `server.entry`, with bounded cleanup
     limited to the process tree the launcher started.
