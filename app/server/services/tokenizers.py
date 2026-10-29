@@ -14,8 +14,9 @@ from huggingface_hub import HfApi
 from tokenizers import Tokenizer as FastTokenizer
 from transformers import AutoTokenizer
 
-from server.configurations import get_server_settings
+from server.common.path import CACHE_PATH
 from server.common.utils.logger import logger
+from server.configurations import get_server_settings
 from server.contracts.tokenizers import (
     SupportedTokenizerPipeline,
     TokenizerDiscoveryItem,
@@ -69,8 +70,11 @@ class TokenizersService(TokenizerStorageMixin):
 
         temp_path = ""
         try:
+            CACHE_PATH.mkdir(parents=True, exist_ok=True)
             with tempfile.NamedTemporaryFile(
                 mode="wb",
+                dir=CACHE_PATH,
+                prefix="tkben-tokenizer-upload-",
                 suffix=".json",
                 delete=False,
             ) as temp_file:

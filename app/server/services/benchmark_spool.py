@@ -8,16 +8,21 @@ import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 
+from server.common.path import CACHE_PATH
+
 
 ###############################################################################
 class BenchmarkTextSpool:
 
     # -------------------------------------------------------------------------
     def __init__(self) -> None:
+        CACHE_PATH.mkdir(parents=True, exist_ok=True)
         temp = tempfile.NamedTemporaryFile(
             mode="w",
             encoding="utf-8",
             newline="\n",
+            dir=CACHE_PATH,
+            prefix="tkben-benchmark-spool-",
             suffix=".ndjson",
             delete=False,
         )

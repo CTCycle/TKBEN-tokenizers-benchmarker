@@ -1,5 +1,5 @@
 # Startup
-Last updated: 2026-10-25
+Last updated: 2026-10-29
 
 ## Production Local Webapp
 
@@ -124,6 +124,45 @@ infer ownership from a port; they ask before releasing the exact listener PID
 on the configured backend port. Process cleanup matches TKBEN's backend
 command rooted in this checkout and does not stop unrelated services.
 
+The filesystem maintenance actions show every full path they plan to affect
+before asking for confirmation. To inspect a cleanup without changing files,
+run the launcher with `-DryRun` and select **Remove logs**, **Clear cache**,
+**Remove all data**, or **Uninstall application**. Dry-run handles one selected
+action, skips confirmation, and exits without modifying files. The launcher
+resolves repository paths from its own location, so it can be called from any
+working directory.
+
+- **Remove logs** deletes only `TKBEN_*.log` files from the configured log
+  directory; other logs in that directory are preserved.
+- **Clear cache** removes the managed `runtimes/cache` contents, discovered
+  nested Python and frontend caches, coverage and test artifacts, stale
+  launcher staging directories, Python package build output, generated
+  frontend build output, interrupted
+  application writes, recognized TKBEN temporary runtime files, and leftover
+  Hugging Face dataset download files under the configured data root. Python
+  spool, frequency, and tokenizer-upload temporary files are routed through
+  `runtimes/cache`; cleanup also recognizes TKBEN-prefixed temporary spill
+  files in the current user's Windows temporary directory. It keeps installed
+  dependencies, the database, durable tokenizer artifacts, settings, and
+  unrecognized data files.
+- **Uninstall application** removes managed portable runtimes, virtual
+  environments, frontend dependencies and build output, caches, and TKBEN log
+  files, recognized TKBEN temporary spill files, and interrupted generated
+  writes. It preserves the database and persisted user data, durable tokenizer
+  artifacts, and configuration. The disposable Hugging Face dataset download
+  cache is included in cache cleanup.
+- **Remove all data** is the complete local application-data removal. It lists
+  and removes the configured SQLite database and sidecars, source and tokenizer
+  artifacts, TKBEN logs, database/path configuration, `settings/.env`, caches,
+  build output, and temporary files after confirmation. It preserves unrecognized
+  files and `.env.example`. If PostgreSQL is configured, the external database
+  and local encryption key material needed to access it are preserved.
+
+Actual cleanup is refused while a TKBEN backend or checkout-owned frontend,
+test, or build process is using application files. Stop it separately and
+retry. Locked or inaccessible paths are reported individually for a later
+retry.
+
 ### Application updates
 
 - `Update` updates source only from a non-detached, clean checkout of `main`
@@ -133,9 +172,6 @@ command rooted in this checkout and does not stop unrelated services.
 - `Check for Updates` reads the remote `origin/main` revision with `git
   ls-remote` and reports the status without fetching, pulling, or applying
   source changes.
-- `Remove All Data` requires an affirmative response at a `[y/N]` confirmation
-  prompt and removes mutable local data while preserving tracked application
-  files and templates. It does not drop an external PostgreSQL database.
 
 ## Test Mode
 

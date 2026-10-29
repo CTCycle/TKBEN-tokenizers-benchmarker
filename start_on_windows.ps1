@@ -1,10 +1,11 @@
-# Copyright © 2023 Thomas Virdis
+﻿# Copyright © 2023 Thomas Virdis
 # Licensed under the MIT License.
 
 [CmdletBinding()]
 param(
     [switch]$Launch,
-    [switch]$KillAll
+    [switch]$KillAll,
+    [switch]$DryRun
 )
 
 $ErrorActionPreference = 'Stop'
@@ -43,6 +44,8 @@ $UvCacheDir = Join-Path $RuntimeCacheDir 'uv'
 $UvVersion = '0.12.17'
 $PythonVersion = '3.14.7'
 $NodeVersion = '22.23.1'
+$CleanupModulePath = Join-Path $AppDir 'scripts\maintenance_cleanup.psm1'
+Import-Module -Name $CleanupModulePath -Force -ErrorAction Stop
 $script:NextProgressId = 1
 $script:ActiveProgressActivities = [Collections.Generic.Dictionary[int, string]]::new()
 $script:LauncherProgressEnabled = -not [Console]::IsOutputRedirected
@@ -190,10 +193,7 @@ function Resolve-ConfiguredPath {
 }
 
 function Get-PathConfiguration {
-    $configPath = [Environment]::GetEnvironmentVariable('TKBEN_PATHS_CONFIG')
-    if ([string]::IsNullOrWhiteSpace($configPath)) {
-        $configPath = Join-Path $SettingsDir 'paths-config.json'
-    }
+    $configPath = Get-PathConfigurationPath
     if (-not (Test-Path -LiteralPath $configPath)) { return $null }
     try {
         return Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
@@ -201,6 +201,14 @@ function Get-PathConfiguration {
     catch {
         throw "Invalid path configuration file: $configPath"
     }
+}
+
+function Get-PathConfigurationPath {
+    $configuredPath = [Environment]::GetEnvironmentVariable('TKBEN_PATHS_CONFIG')
+    if ([string]::IsNullOrWhiteSpace($configuredPath)) {
+        return [IO.Path]::GetFullPath((Join-Path $SettingsDir 'paths-config.json'))
+    }
+    return Resolve-ConfiguredPath -ConfiguredPath $configuredPath -DefaultPath (Join-Path $SettingsDir 'paths-config.json')
 }
 
 function Get-ApplicationDataRoot {
@@ -1488,250 +1496,28 @@ function Confirm-DestructiveAction([string]$Description) {
     return $true
 }
 
-function Remove-Logs {
-    if (-not (Confirm-DestructiveAction 'remove application log files')) { return }
-    $logDir = Get-ApplicationLogRoot -DataRoot (Get-ApplicationDataRoot)
-    $logs = @(Get-ChildItem -LiteralPath $logDir -Filter '*.log' -File -ErrorAction SilentlyContinue |
-        Sort-Object @{ Expression = { $_.FullName.ToUpperInvariant() }; Descending = $false })
-    $summary = @($logs | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
-    $removed = [int](($summary | Measure-Object -Property RemovedCount -Sum).Sum)
-    $skipped = [int](($summary | Measure-Object -Property SkippedCount -Sum).Sum)
-    Write-Ok "Removed $removed log file(s); skipped $skipped locked or inaccessible file(s)."
-}
-
-function Remove-LauncherPath {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][string]$Path,
-        [switch]$KeepRoot,
-        [string[]]$PreserveNames = @('.gitkeep'),
-        [switch]$Strict,
-        [switch]$WhatIf,
-        [string]$Activity = 'TKBEN: remove files'
-    )
-
-    if ([string]::IsNullOrWhiteSpace($Path)) {
-        throw 'Refusing to remove an empty path.'
-    }
-    $fullPath = [IO.Path]::GetFullPath($Path)
-    $normalizedPath = $fullPath.TrimEnd('\')
-    $filesystemRoot = [IO.Path]::GetPathRoot($fullPath).TrimEnd('\')
-    $repositoryRoot = if ($script:RepoRoot) { [IO.Path]::GetFullPath([string]$script:RepoRoot).TrimEnd('\') } else { $null }
-    if ($normalizedPath -eq $filesystemRoot -or
-        ($repositoryRoot -and
-        ($normalizedPath -eq $repositoryRoot -or
-        $repositoryRoot.StartsWith("$normalizedPath\", [StringComparison]::OrdinalIgnoreCase)))) {
-        throw "Refusing to remove a filesystem or repository root: $fullPath"
-    }
-
-    $plannedPaths = [Collections.Generic.List[string]]::new()
-    $preservedPaths = [Collections.Generic.List[string]]::new()
-    $removedPaths = [Collections.Generic.List[string]]::new()
-    $skippedPaths = [Collections.Generic.List[string]]::new()
-    $enumerationErrorPaths = [Collections.Generic.List[string]]::new()
-    $warningMessages = [Collections.Generic.List[string]]::new()
-    $result = [ordered]@{
-        Target = $fullPath
-        Path = $fullPath
-        Planned = 0
-        PlannedCount = 0
-        PlannedPaths = @()
-        Preserved = 0
-        PreservedCount = 0
-        PreservedEntries = @()
-        PreservedPaths = @()
-        Removed = 0
-        RemovedCount = 0
-        RemovedPaths = @()
-        Skipped = 0
-        SkippedCount = 0
-        SkippedPaths = @()
-        EnumerationErrors = @()
-        EnumerationErrorCount = 0
-        EnumerationErrorPaths = @()
-        WhatIf = [bool]$WhatIf
-    }
-
-    try {
-        $root = Get-Item -LiteralPath $fullPath -Force -ErrorAction Stop
-    }
-    catch {
-        if ($_.CategoryInfo.Category -eq [System.Management.Automation.ErrorCategory]::ObjectNotFound) {
-            Clear-LauncherProgress
-            return [pscustomobject]$result
-        }
-        $message = [string]$_.Exception.Message
-        [void]$skippedPaths.Add($fullPath)
-        $result.Skipped = $skippedPaths.Count
-        $result.SkippedCount = $skippedPaths.Count
-        $result.SkippedPaths = @($skippedPaths.ToArray())
-        Clear-LauncherProgress
-        Write-Host "[WARN] Skipped inaccessible path: $fullPath ($message)" -ForegroundColor Yellow
-        if ($Strict) { throw }
-        return [pscustomobject]$result
-    }
-
-    $enumerationErrors = @()
-    $entries = if ($root.PSIsContainer) {
-        @(Get-ChildItem -LiteralPath $root.FullName -Force -Recurse -ErrorAction SilentlyContinue -ErrorVariable enumerationErrors)
-    } else {
-        @($root)
-    }
-    foreach ($enumerationError in @($enumerationErrors)) {
-        $errorPath = [string]$enumerationError.TargetObject
-        if ([string]::IsNullOrWhiteSpace($errorPath)) { $errorPath = $fullPath }
-        [void]$enumerationErrorPaths.Add($errorPath)
-        [void]$warningMessages.Add(("Skipped inaccessible path below {0}: {1}" -f $fullPath, $enumerationError.Exception.Message))
-    }
-
-    $protectedDirectories = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-    foreach ($entry in @($entries)) {
-        if ($entry.Name -in $PreserveNames) {
-            [void]$preservedPaths.Add($entry.FullName)
-            [void]$protectedDirectories.Add($root.FullName)
-            $ancestor = [IO.Path]::GetDirectoryName($entry.FullName)
-            while ($ancestor -and $ancestor.StartsWith($root.FullName.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) {
-                [void]$protectedDirectories.Add($ancestor)
-                $ancestor = [IO.Path]::GetDirectoryName($ancestor)
-            }
-        }
-    }
-
-    $candidates = @($entries |
-        Where-Object { -not $preservedPaths.Contains($_.FullName) -and -not $protectedDirectories.Contains($_.FullName) } |
-        Sort-Object @{ Expression = { $_.FullName.Length }; Descending = $true }, @{ Expression = { $_.FullName.ToUpperInvariant() }; Descending = $false })
-    if ($root.PSIsContainer -and -not $KeepRoot -and $preservedPaths.Count -eq 0) {
-        $candidates += $root
-    }
-    foreach ($candidate in @($candidates)) { [void]$plannedPaths.Add($candidate.FullName) }
-    $result.Planned = $plannedPaths.Count
-    $result.PlannedCount = $plannedPaths.Count
-    $result.PlannedPaths = @($plannedPaths.ToArray())
-    $result.Preserved = $preservedPaths.Count
-    $result.PreservedCount = $preservedPaths.Count
-    $result.PreservedEntries = @($preservedPaths.ToArray())
-    $result.PreservedPaths = @($preservedPaths.ToArray() | Sort-Object { $_.ToUpperInvariant() })
-    $result.EnumerationErrors = @($enumerationErrors | ForEach-Object { [string]$_ })
-    $result.EnumerationErrorCount = $enumerationErrorPaths.Count
-    $result.EnumerationErrorPaths = @($enumerationErrorPaths.ToArray() | Sort-Object { $_.ToUpperInvariant() })
-
-    $progressId = $null
-    try {
-        if ($plannedPaths.Count -gt 0) {
-            $progressId = Start-LauncherProgress -Activity $Activity -Status "0 of $($plannedPaths.Count) items"
-        }
-        for ($index = 0; $index -lt $plannedPaths.Count; $index++) {
-            $candidatePath = $plannedPaths[$index]
-            if ($null -ne $progressId) {
-                Update-LauncherProgress -Id $progressId -Activity $Activity -Status "$($index + 1) of $($plannedPaths.Count): $([IO.Path]::GetFileName($candidatePath))" -PercentComplete ([int](($index + 1) * 100 / [Math]::Max(1, $plannedPaths.Count)))
-            }
-            if ($WhatIf) { continue }
-            try {
-                Remove-Item -LiteralPath $candidatePath -Force -Confirm:$false -ErrorAction Stop
-                [void]$removedPaths.Add($candidatePath)
-            }
-            catch {
-                [void]$skippedPaths.Add($candidatePath)
-                [void]$warningMessages.Add("Skipped locked or protected path: $candidatePath ($($_.Exception.Message))")
-            }
-        }
-    }
-    finally {
-        if ($null -ne $progressId) { Complete-LauncherProgress -Id $progressId }
-    }
-
-    $result.Removed = $removedPaths.Count
-    $result.RemovedCount = $removedPaths.Count
-    $result.RemovedPaths = @($removedPaths.ToArray())
-    $result.Skipped = $skippedPaths.Count
-    $result.SkippedCount = $skippedPaths.Count
-    $result.SkippedPaths = @($skippedPaths.ToArray())
-    foreach ($message in $warningMessages.ToArray()) { Write-Host "[WARN] $message" -ForegroundColor Yellow }
-    Clear-LauncherProgress
-    if ($Strict -and ($result.SkippedCount -gt 0 -or $result.EnumerationErrorCount -gt 0)) {
-        throw "Removal of '$fullPath' was incomplete. Skipped $($result.SkippedCount) item(s) and encountered $($result.EnumerationErrorCount) enumeration error(s)."
-    }
-    return [pscustomobject]$result
-}
-
-function Remove-PathBestEffort {
+function Assert-SafeLogRoot {
     param([Parameter(Mandatory)][string]$Path)
-    return Remove-LauncherPath -Path $Path -Activity "TKBEN: remove $([IO.Path]::GetFileName($Path))"
-}
-
-function Assert-SafeCleanupDirectory {
-    param(
-        [Parameter(Mandatory)][string]$Path,
-        [Parameter(Mandatory)][string]$Description
-    )
 
     $candidate = [IO.Path]::GetFullPath($Path).TrimEnd('\')
     $repository = [IO.Path]::GetFullPath($RepoRoot).TrimEnd('\')
-    $protectedDirectories = @(
-        $repository,
-        [IO.Path]::GetFullPath($AppDir).TrimEnd('\'),
-        [IO.Path]::GetFullPath($AssetsDir).TrimEnd('\'),
-        [IO.Path]::GetFullPath($SettingsDir).TrimEnd('\'),
-        [IO.Path]::GetFullPath($ServerDir).TrimEnd('\'),
-        [IO.Path]::GetFullPath($ClientDir).TrimEnd('\'),
-        [IO.Path]::GetFullPath($RuntimeDir).TrimEnd('\'),
-        [IO.Path]::GetFullPath($TestsDir).TrimEnd('\')
-    )
-
     $filesystemRoot = [IO.Path]::GetPathRoot($candidate).TrimEnd('\')
-    if ($candidate -eq $filesystemRoot -or
-        $protectedDirectories -contains $candidate -or
+    if (-not $candidate -or $candidate -eq $filesystemRoot -or
+        $candidate -eq $repository -or
         $repository.StartsWith("$candidate\", [StringComparison]::OrdinalIgnoreCase)) {
-        throw "Refusing to remove application files through $Description at $Path."
+        throw "Refusing to inspect or remove logs through unsafe configured log directory: $Path"
     }
 }
 
-function Remove-DirectoryContents {
-    param([Parameter(Mandatory)][string]$Path)
-
-    if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
-        Clear-LauncherProgress
-        return [pscustomobject]@{
-            Path = [IO.Path]::GetFullPath($Path)
-            PlannedCount = 0
-            PlannedPaths = @()
-            PreservedCount = 0
-            PreservedPaths = @()
-            RemovedCount = 0
-            RemovedPaths = @()
-            SkippedCount = 0
-            SkippedPaths = @()
-            EnumerationErrorCount = 0
-            EnumerationErrorPaths = @()
-            WhatIf = $false
-        }
-    }
-    $result = Remove-LauncherPath -Path $Path -KeepRoot -PreserveNames @('.gitkeep') -Activity "TKBEN: clear $Path"
-    return [pscustomobject]@{
-        Path = $result.Path
-        PlannedCount = $result.PlannedCount
-        PlannedPaths = $result.PlannedPaths
-        PreservedCount = $result.PreservedCount
-        PreservedPaths = $result.PreservedPaths
-        RemovedCount = $result.RemovedCount
-        RemovedPaths = $result.RemovedPaths
-        SkippedCount = $result.SkippedCount
-        SkippedPaths = $result.SkippedPaths
-        EnumerationErrorCount = $result.EnumerationErrorCount
-        EnumerationErrorPaths = $result.EnumerationErrorPaths
-        WhatIf = $result.WhatIf
-    }
-}
-
-function Remove-AllData {
-    if (-not (Confirm-DestructiveAction 'remove all user data')) { return }
+function Get-MaintenanceCleanupPlan {
+    param([Parameter(Mandatory)][ValidateSet('Cache', 'Logs', 'Uninstall', 'AllData')][string]$Action)
 
     $dataRoot = Get-ApplicationDataRoot
     $logRoot = Get-ApplicationLogRoot -DataRoot $dataRoot
+    Assert-SafeLogRoot -Path $logRoot
     if ([IO.Path]::GetFullPath($logRoot).TrimEnd('\') -eq [IO.Path]::GetFullPath($dataRoot).TrimEnd('\')) {
         throw 'The configured log directory cannot be the application data directory.'
     }
-    Assert-SafeCleanupDirectory -Path $logRoot -Description 'the configured log directory'
 
     $databaseConfigurationPath = Join-Path $dataRoot 'database-config.json'
     $externalDatabase = $false
@@ -1750,132 +1536,137 @@ function Remove-AllData {
             $configuredSqlitePath = [Environment]::ExpandEnvironmentVariables([string]$databaseConfiguration.sqlite_path)
             if ([IO.Path]::IsPathRooted($configuredSqlitePath)) {
                 $sqliteDatabasePath = [IO.Path]::GetFullPath($configuredSqlitePath)
-            } else {
+            }
+            else {
                 $sqliteDatabasePath = [IO.Path]::GetFullPath((Join-Path $dataRoot $configuredSqlitePath))
             }
-            Assert-SafeCleanupDirectory -Path (Split-Path -Parent $sqliteDatabasePath) -Description 'the configured SQLite database directory'
-        } elseif ($databaseConfiguration.backend -eq 'postgresql') {
+        }
+        elseif ($databaseConfiguration.backend -eq 'postgresql') {
             $externalDatabase = $true
-        } else {
+        }
+        else {
             throw "Unsupported database backend in $databaseConfigurationPath."
         }
     }
 
-    Write-Step "Removing user data from $dataRoot."
-    $summaries = @()
-    $databaseFiles = @()
-    if (-not $externalDatabase) {
-        $databaseFiles = @(
-            $sqliteDatabasePath,
-            "$sqliteDatabasePath-wal",
-            "$sqliteDatabasePath-shm",
-            "$sqliteDatabasePath-journal"
-        )
+    $planArguments = @{
+        Action = $Action
+        RepositoryRoot = $RepoRoot
+        RuntimeRoot = $RuntimeDir
+        RuntimeCacheRoot = $RuntimeCacheDir
+        ApplicationRoot = $AppDir
+        ClientRoot = $ClientDir
+        ServerRoot = $ServerDir
+        DataRoot = $dataRoot
+        DatasetCacheRoot = Join-Path $dataRoot 'sources\datasets'
+        TokenizerDataRoot = Join-Path $dataRoot 'sources\tokenizers'
+        LogRoot = $logRoot
+        TempRoot = [IO.Path]::GetTempPath()
+        SettingsRoot = $SettingsDir
+        PathsConfigPath = Get-PathConfigurationPath
+        EnvironmentFilePath = $EnvFile
+        DatabaseConfigPath = $databaseConfigurationPath
+        SqliteDatabasePath = $sqliteDatabasePath
+        EncryptionKeyPath = Get-HuggingFaceMaterialPath -DataRoot $dataRoot
+        ExternalDatabase = [bool]$externalDatabase
     }
-    $dataFiles = @($databaseFiles)
-    if (-not $externalDatabase) {
-        $dataFiles += Get-HuggingFaceMaterialPath -DataRoot $dataRoot
-    }
-    foreach ($dataFile in ($dataFiles | Select-Object -Unique)) {
-        if (Test-Path -LiteralPath $dataFile) {
-            $summaries += @(Remove-PathBestEffort -Path $dataFile)
-        }
-    }
+    return Get-TkbenCleanupPlan @planArguments
+}
 
-    foreach ($dataDirectory in @(
-        (Join-Path $dataRoot 'sources\datasets'),
-        (Join-Path $dataRoot 'sources\tokenizers'),
-        $logRoot
-    ) | Select-Object -Unique) {
-        $summaries += @(Remove-DirectoryContents -Path $dataDirectory)
-    }
+function Remove-LauncherPath {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [switch]$KeepRoot,
+        [string[]]$PreserveNames = @('.gitkeep'),
+        [switch]$Strict,
+        [switch]$WhatIf,
+        [string]$Activity = 'TKBEN: remove files'
+    )
+    return Remove-TkbenOwnedPath -Path $Path -Boundary $RuntimeDir -KeepRoot:$KeepRoot -Strict:$Strict -DryRun:$WhatIf
+}
 
-    $removed = [int](($summaries | Measure-Object -Property RemovedCount -Sum).Sum)
-    $skipped = [int](($summaries | Measure-Object -Property SkippedCount -Sum).Sum) +
-        [int](($summaries | Measure-Object -Property EnumerationErrorCount -Sum).Sum)
-    if ($externalDatabase) {
-        Write-Host '[WARN] PostgreSQL is configured; the external database and its encryption key material were not modified.' -ForegroundColor Yellow
+function Remove-PathBestEffort {
+    param([Parameter(Mandatory)][string]$Path)
+    return Remove-TkbenOwnedPath -Path $Path -Boundary $RuntimeDir
+}
+
+function Get-MaintenanceBlockingProcessIds {
+    return @(Get-TkbenMaintenanceProcessIds -RepositoryRoot $RepoRoot -BackendProcessIds @(Get-ApplicationProcessIds))
+}
+
+function Write-CleanupPlan {
+    param([Parameter(Mandatory)][pscustomobject]$Plan)
+
+    Write-Host
+    Write-Host ("[PLAN] {0}: {1} target path(s)" -f $Plan.Action, $Plan.Targets.Count) -ForegroundColor Cyan
+    Write-Host ("  [DATA] Configured application data root: {0}" -f $Plan.DataRoot) -ForegroundColor DarkCyan
+    foreach ($target in $Plan.Targets) {
+        Write-Host ("  [TARGET] {0} — {1}" -f $target.Path, $target.Reason) -ForegroundColor Yellow
     }
-    if ($skipped -gt 0) {
-        Write-Ok "Removed $removed user-data file(s); skipped $skipped locked or inaccessible path(s)."
-    } else {
-        Write-Ok "Removed $removed user-data file(s). Application files, templates, and .gitkeep files were preserved."
+    foreach ($missing in $Plan.Missing) {
+        Write-Host "  [MISSING] $missing" -ForegroundColor DarkGray
+    }
+    foreach ($skipped in $Plan.Skipped) {
+        Write-Host ("  [SKIP] {0} — {1}" -f $skipped.Path, $skipped.Reason) -ForegroundColor Yellow
+    }
+    if ($Plan.Action -eq 'AllData' -and $Plan.ExternalDatabase) {
+        Write-Host '[PRESERVED] External PostgreSQL data and its local encryption key material.' -ForegroundColor DarkGray
+    }
+    Write-Host
+}
+
+function Write-CleanupResult {
+    param([Parameter(Mandatory)][pscustomobject]$Result)
+
+    if ($Result.DryRun) {
+        Write-Ok "Dry run complete: $($Result.Planned.Count) path(s) would be removed; no files were changed."
+    }
+    else {
+        foreach ($path in $Result.Removed) { Write-Host "  [REMOVED] $path" -ForegroundColor Green }
+        foreach ($path in $Result.Missing) { Write-Host "  [SKIP] Missing: $path" -ForegroundColor DarkGray }
+        foreach ($entry in $Result.Skipped) { Write-Host ("  [SKIP] {0} — {1}" -f $entry.Path, $entry.Reason) -ForegroundColor Yellow }
+        foreach ($entry in $Result.Failed) { Write-Host ("  [FAILED] {0} — {1}" -f $entry.Path, $entry.Reason) -ForegroundColor Red }
+        Write-Ok ("Removed {0} path(s); skipped {1}; failed {2}." -f $Result.Removed.Count, ($Result.Skipped.Count + $Result.Missing.Count), $Result.Failed.Count)
     }
 }
 
-function Remove-PythonCaches {
-    $venvPrefix = if (Test-Path -LiteralPath $VenvDir) {
-        ((Resolve-Path -LiteralPath $VenvDir).Path).TrimEnd('\') + '\'
-    } else {
-        $null
+function Invoke-MaintenanceCleanup {
+    param(
+        [Parameter(Mandatory)][ValidateSet('Cache', 'Logs', 'Uninstall', 'AllData')][string]$Action,
+        [Parameter(Mandatory)][string]$Description
+    )
+
+    $plan = Get-MaintenanceCleanupPlan -Action $Action
+    Write-CleanupPlan -Plan $plan
+    if ($DryRun) {
+        Write-CleanupResult -Result (Invoke-TkbenCleanupPlan -Plan $plan -DryRun)
+        return
     }
-    $cacheRoots = @($ServerDir, $AppDir) | Select-Object -Unique
-    $cacheDirectories = @(
-        foreach ($cacheRoot in $cacheRoots) {
-            if (Test-Path -LiteralPath $cacheRoot -PathType Container) {
-                Get-ChildItem -LiteralPath $cacheRoot -Directory -Filter '__pycache__' -Recurse -Force -ErrorAction SilentlyContinue
-            }
-        }
-    ) |
-        Sort-Object -Property FullName -Unique |
-        Where-Object { [string]::IsNullOrEmpty($venvPrefix) -or -not $_.FullName.StartsWith($venvPrefix, [StringComparison]::OrdinalIgnoreCase) } |
-        Sort-Object @{ Expression = { $_.FullName.Length }; Descending = $true }, @{ Expression = { $_.FullName.ToUpperInvariant() }; Descending = $false }
-    @($cacheDirectories | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
+
+    $activeProcessIds = @(Get-MaintenanceBlockingProcessIds)
+    Assert-TkbenNoActiveProcesses -ProcessIds $activeProcessIds
+    if (-not (Confirm-DestructiveAction $Description)) { return }
+    Write-Step "Applying $Action cleanup."
+    $result = Invoke-TkbenCleanupPlan -Plan $plan
+    Write-CleanupResult -Result $result
 }
 
-function Clear-ManagedCache {
-    $summaries = @()
-    Ensure-Directory $RuntimeCacheDir
-    $entries = @(Get-ChildItem -LiteralPath $RuntimeCacheDir -Force -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -ne '.gitkeep' } |
-        Sort-Object @{ Expression = { $_.FullName.ToUpperInvariant() }; Descending = $false })
-    $summaries += @($entries | ForEach-Object { Remove-PathBestEffort -Path $_.FullName })
-
-    $summaries
+function Remove-Logs {
+    Invoke-MaintenanceCleanup -Action Logs -Description 'remove TKBEN application log files'
 }
 
 function Clear-Cache {
-    if (-not (Confirm-DestructiveAction 'clear development caches and temporary artifacts')) { return }
-    Write-Step 'Removing development caches and temporary artifacts.'
-    $summaries = @(
-        Remove-PythonCaches
-        Clear-ManagedCache
-    )
-    $skipped = [int](($summaries | Measure-Object -Property SkippedCount -Sum).Sum) +
-        [int](($summaries | Measure-Object -Property EnumerationErrorCount -Sum).Sum)
-    if ($skipped -gt 0) {
-        Write-Ok "Caches cleared where permitted; skipped $skipped locked or inaccessible path(s)."
-    } else {
-        Write-Ok 'Caches cleared.'
-    }
+    Invoke-MaintenanceCleanup -Action Cache -Description 'clear disposable application caches, temporary files, and frontend build output'
+}
+
+function Remove-AllData {
+    Invoke-MaintenanceCleanup -Action AllData -Description 'remove all listed local TKBEN application data and settings'
 }
 
 function Uninstall-Application {
-    if (-not (Confirm-DestructiveAction 'remove downloaded runtimes, dependencies, build output, and Python caches')) { return }
-    Write-Step 'Removing downloaded runtimes, dependencies, build output, and Python caches.'
-    $summaries = @()
-    $summaries += @(Remove-PythonCaches)
-    $directories = @(
-        $RuntimeDir,
-        $VenvDir,
-        (Join-Path $RepoRoot '.venv'),
-        (Join-Path $ClientDir 'node_modules'),
-        (Join-Path $ClientDir 'dist')
-    )
-    foreach ($directory in $directories) {
-        if (Test-Path -LiteralPath $directory) { $summaries += @(Remove-PathBestEffort -Path $directory) }
-    }
-    # Project manifests, dependency lockfiles, and tool configuration remain intact.
-    $removed = [int](($summaries | Measure-Object -Property RemovedCount -Sum).Sum)
-    $skipped = [int](($summaries | Measure-Object -Property SkippedCount -Sum).Sum) +
-        [int](($summaries | Measure-Object -Property EnumerationErrorCount -Sum).Sum)
-    if ($skipped -gt 0) {
-        Write-Ok "Removed $removed application path item(s) where permitted; skipped $skipped locked or inaccessible path(s). Dependency lockfiles and user data were preserved."
-    } else {
-        Write-Ok "Removed $removed application path item(s). Dependency lockfiles and user data were preserved."
-    }
+    Invoke-MaintenanceCleanup -Action Uninstall -Description 'uninstall local TKBEN runtimes, dependencies, build output, caches, and logs'
 }
-
 # =============================================================================
 # Source update management
 # =============================================================================
@@ -1960,10 +1751,10 @@ function Get-LauncherMenuEntries {
         [pscustomobject]@{ Section = 'SETUP & VALIDATION'; Label = 'Run test suite'; Description = 'Validate backend and frontend checks'; Key = 'Tests'; Destructive = $false }
         [pscustomobject]@{ Section = 'SOURCE CONTROL'; Label = 'Check for updates'; Description = 'Report whether origin/main has a newer revision'; Key = 'Check'; Destructive = $false }
         [pscustomobject]@{ Section = 'SOURCE CONTROL'; Label = 'Update application'; Description = 'Pull the application from the main branch'; Key = 'Update'; Destructive = $false }
-        [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Remove logs'; Description = 'Clear generated application logs'; Key = 'Logs'; Destructive = $true }
-        [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Clear cache'; Description = 'Remove disposable tooling caches'; Key = 'Cache'; Destructive = $true }
-        [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Remove all data'; Description = 'Delete the database and user-created files'; Key = 'AllData'; Destructive = $true }
-        [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Uninstall application'; Description = 'Remove local runtimes and dependencies'; Key = 'Uninstall'; Destructive = $true }
+        [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Remove logs'; Description = 'Clear TKBEN-generated log files only'; Key = 'Logs'; Destructive = $true }
+        [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Clear cache'; Description = 'Remove disposable caches, temporary files, and frontend build output'; Key = 'Cache'; Destructive = $true }
+        [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Remove all data'; Description = 'Delete listed local data and settings; external PostgreSQL is preserved'; Key = 'AllData'; Destructive = $true }
+        [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Uninstall application'; Description = 'Remove runtimes, dependencies, caches, builds, and logs; keep data'; Key = 'Uninstall'; Destructive = $true }
         [pscustomobject]@{ Section = 'DATA & MAINTENANCE'; Label = 'Kill all application processes'; Description = 'Stop TKBEN backend process trees'; Key = 'KillAll'; Destructive = $true }
         [pscustomobject]@{ Section = 'EXIT'; Label = 'Exit'; Description = 'Close this launcher'; Key = 'Exit'; Destructive = $false }
     )
@@ -2021,17 +1812,22 @@ function Show-Menu {
         Write-Host '  +----------------------------------------------------------+' -ForegroundColor DarkCyan
         Write-Host
         $maxOption = $entries.Count
-        if (-not $script:LauncherInteractive) { return }
+        if (-not $script:LauncherInteractive -and -not $DryRun) { return }
         Clear-LauncherProgress
         $selection = (Read-Host "  Select an option (1-$maxOption)").Trim()
 
         if ($selection -notmatch '^[1-9][0-9]*$' -or [int]$selection -lt 1 -or [int]$selection -gt $maxOption) {
             Write-Fatal "Invalid option. Enter a number from 1 through $maxOption."
+            if ($DryRun -and -not $script:LauncherInteractive) { break }
             Wait-ForMenu
             continue
         }
         $entry = $entries[[int]$selection - 1]
         if ($entry.Key -eq 'Exit') { break }
+        if ($DryRun -and $entry.Key -notin @('Logs', 'Cache', 'AllData', 'Uninstall')) {
+            Write-Fatal '-DryRun can be used only with filesystem maintenance actions.'
+            break
+        }
 
         try {
             Invoke-TrackedLauncherAction -Name $entry.Label -Action {
@@ -2060,12 +1856,17 @@ function Show-Menu {
         } catch {
             Write-Fatal $_.Exception.Message
         }
+        if ($DryRun) { break }
         Wait-ForMenu
     }
 }
 
 if ($Launch -and $KillAll) {
     throw 'Use either -Launch or -KillAll, not both.'
+}
+
+if ($DryRun -and ($Launch -or $KillAll)) {
+    throw 'Use -DryRun only with the maintenance menu, not with -Launch or -KillAll.'
 }
 
 if ($KillAll) {

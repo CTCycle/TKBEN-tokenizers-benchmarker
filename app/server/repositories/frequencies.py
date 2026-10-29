@@ -13,6 +13,8 @@ from sqlalchemy import Integer, String, create_engine, func, select
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session, declarative_base, mapped_column, sessionmaker
 
+from server.common.path import CACHE_PATH
+
 Base = declarative_base()
 
 
@@ -31,7 +33,10 @@ class DiskBackedFrequencyStore:
     def __init__(self, memory_limit: int = 250_000) -> None:
         self.memory_limit = max(10_000, int(memory_limit))
         self.memory: Counter[str] = Counter()
-        fd, raw_path = tempfile.mkstemp(prefix="tkben_freq_", suffix=".sqlite3")
+        CACHE_PATH.mkdir(parents=True, exist_ok=True)
+        fd, raw_path = tempfile.mkstemp(
+            prefix="tkben_freq_", suffix=".sqlite3", dir=CACHE_PATH
+        )
         self.path = Path(raw_path)
         os.close(fd)
         self.engine = create_engine(f"sqlite:///{self.path}", future=True)

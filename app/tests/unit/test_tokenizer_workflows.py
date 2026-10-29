@@ -39,8 +39,15 @@ from server.services.tokenizer_adapters import UniversalTokenizerAdapter
 
 
 ###############################################################################
-def test_frequency_store_flush_batches_large_token_lookups() -> None:
+def test_frequency_store_flush_batches_large_token_lookups(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from server.repositories import frequencies as frequencies_module
+
+    cache_root = tmp_path / "runtime-cache"
+    monkeypatch.setattr(frequencies_module, "CACHE_PATH", cache_root)
     store = DiskBackedFrequencyStore(memory_limit=50_000)
+    assert store.path.parent == cache_root
     try:
         total_tokens = 2_500
         for index in range(total_tokens):
@@ -61,6 +68,7 @@ def test_frequency_store_flush_batches_large_token_lookups() -> None:
         assert token_counts["token-2499"] == 2
     finally:
         store.close()
+    assert not store.path.exists()
 
 
 ###############################################################################
@@ -813,9 +821,12 @@ def test_custom_tokenizer_survives_service_recreation_and_is_benchmarkable(
 ) -> None:
     from server.services import benchmarks as benchmark_module
     from server.services import tokenizer_storage
+    from server.services import tokenizers as tokenizers_module
 
     monkeypatch.setattr(tokenizer_storage, "TOKENIZERS_PATH", tmp_path)
     monkeypatch.setattr(benchmark_module, "TOKENIZERS_PATH", tmp_path)
+    cache_root = tmp_path / "runtime-cache"
+    monkeypatch.setattr(tokenizers_module, "CACHE_PATH", cache_root)
 
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     Base.metadata.create_all(engine)
@@ -829,9 +840,14 @@ def test_custom_tokenizer_survives_service_recreation_and_is_benchmarkable(
         def get_vocab_size(self) -> int:
             return 3
 
+    uploaded_paths: list[Path] = []
+
+    def load_uploaded_tokenizer(path: str) -> FakeFastTokenizer:
+        uploaded_paths.append(Path(path))
+        return FakeFastTokenizer()
+
     monkeypatch.setattr(
-        "server.services.tokenizers.FastTokenizer.from_file",
-        lambda _path: FakeFastTokenizer(),
+        "server.services.tokenizers.FastTokenizer.from_file", load_uploaded_tokenizer
     )
     try:
         service = TokenizersService()
@@ -849,6 +865,9 @@ def test_custom_tokenizer_survives_service_recreation_and_is_benchmarkable(
         )
         tokenizer_name = result["tokenizer_name"]
         assert result["is_compatible"] is True
+        assert uploaded_paths[0].parent == cache_root
+        assert uploaded_paths[0].name.startswith("tkben-tokenizer-upload-")
+        assert not uploaded_paths[0].exists()
         artifact = tmp_path / "CUSTOM_sample" / "tokenizer.json"
         assert artifact.read_bytes() == b"canonical tokenizer artifact"
 

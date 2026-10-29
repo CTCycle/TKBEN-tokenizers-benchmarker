@@ -113,10 +113,10 @@ jobs:
           npm ci --no-audit --no-fund
           npm run build -- --progress=false
 
-      - name: Parse Windows PowerShell launcher and process helper
+      - name: Parse Windows PowerShell launcher and cleanup helpers
         shell: powershell
         run: |
-          foreach ($path in @('start_on_windows.ps1', 'app/tests/integration/windows/manage_test_process.ps1')) {
+          foreach ($path in @('start_on_windows.ps1', 'app/scripts/maintenance_cleanup.psm1', 'app/tests/integration/windows/test_launcher_cleanup.ps1', 'app/tests/integration/windows/manage_test_process.ps1')) {
             $tokens = $null
             $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile(
@@ -127,6 +127,12 @@ jobs:
               throw "PowerShell parsing failed for $path."
             }
           }
+
+      - name: Test isolated Windows launcher cleanup behavior
+        shell: powershell
+        run: |
+          & .\app\tests\integration\windows\test_launcher_cleanup.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Launcher cleanup integration checks failed.' }
 
       - name: Smoke test owned Windows preview startup and cleanup
         shell: powershell

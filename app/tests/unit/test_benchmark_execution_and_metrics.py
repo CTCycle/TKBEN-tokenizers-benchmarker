@@ -876,9 +876,17 @@ def test_benchmark_text_spool_replays_rows_and_batches() -> None:
 
 
 ###############################################################################
-def test_benchmark_text_spool_cleanup_removes_file() -> None:
+def test_benchmark_text_spool_cleanup_removes_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from server.services import benchmark_spool as spool_module
+
+    cache_root = tmp_path / "runtime-cache"
+    monkeypatch.setattr(spool_module, "CACHE_PATH", cache_root)
     spool = BenchmarkTextSpool()
     path = spool.path
+    assert path.parent == cache_root
+    assert path.name.startswith("tkben-benchmark-spool-")
     spool.append(1, "x")
     spool.finalize()
     assert path.exists()
