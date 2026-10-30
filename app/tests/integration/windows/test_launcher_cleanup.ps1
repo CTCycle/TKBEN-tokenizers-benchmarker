@@ -103,7 +103,10 @@ function Invoke-LauncherDryRunFromOtherDirectory {
     try {
         $outputRead = $process.StandardOutput.ReadToEndAsync()
         $errorRead = $process.StandardError.ReadToEndAsync()
-        $process.StandardInput.WriteLine([string]$Selection)
+        # Avoid a StreamWriter encoding preamble before the numeric menu selection.
+        $inputBytes = [Text.Encoding]::ASCII.GetBytes("$Selection`r`n")
+        $process.StandardInput.BaseStream.Write($inputBytes, 0, $inputBytes.Length)
+        $process.StandardInput.BaseStream.Flush()
         $process.StandardInput.Close()
         if (-not $process.WaitForExit(120000)) {
             $process.Kill()
