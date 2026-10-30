@@ -7,9 +7,6 @@
 <p align="center">
   <a href="https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/CTCycle/TKBEN-tokenizers-benchmarker?style=flat-square"></a>
   <a href="https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/commits"><img alt="Last commit" src="https://img.shields.io/github/last-commit/CTCycle/TKBEN-tokenizers-benchmarker?style=flat-square"></a>
-</p>
-
-<p align="center">
   <a href="https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases"><img alt="Release" src="https://img.shields.io/github/v/release/CTCycle/TKBEN-tokenizers-benchmarker?display_name=tag&style=flat-square"></a>
   <a href="https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/workflows/ci.yml?query=branch%3Adevelop"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/CTCycle/TKBEN-tokenizers-benchmarker/ci.yml?branch=develop&label=CI&style=flat-square"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/CTCycle/TKBEN-tokenizers-benchmarker?style=flat-square"></a>
