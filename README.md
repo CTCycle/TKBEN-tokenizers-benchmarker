@@ -5,6 +5,23 @@
 <p align="center">A local workspace for analyzing text datasets and comparing tokenizers.</p>
 
 <p align="center">
+  <a href="https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/CTCycle/TKBEN-tokenizers-benchmarker?style=flat-square"></a>
+  <a href="https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/commits"><img alt="Last commit" src="https://img.shields.io/github/last-commit/CTCycle/TKBEN-tokenizers-benchmarker?style=flat-square"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases"><img alt="Release" src="https://img.shields.io/github/v/release/CTCycle/TKBEN-tokenizers-benchmarker?display_name=tag&style=flat-square"></a>
+  <a href="https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/actions/workflows/ci.yml?query=branch%3Adevelop"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/CTCycle/TKBEN-tokenizers-benchmarker/ci.yml?branch=develop&label=CI&style=flat-square"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/CTCycle/TKBEN-tokenizers-benchmarker?style=flat-square"></a>
+</p>
+
+<p align="center">
+  <a href="https://www.python.org/"><img alt="Python 3.14.7" src="https://img.shields.io/badge/Python-3.14.7-3776AB?logo=python&logoColor=white&style=flat-square"></a>
+  <a href="https://angular.dev/"><img alt="Angular 22" src="https://img.shields.io/badge/Angular-22-DD0031?logo=angular&logoColor=white&style=flat-square"></a>
+  <a href="https://www.microsoft.com/windows"><img alt="Platform: Windows" src="https://img.shields.io/badge/Platform-Windows-0078D4?logo=windows&logoColor=white&style=flat-square"></a>
+</p>
+
+<p align="center">
   <a href="#dataset-analysis">Dataset analysis</a> ·
   <a href="#tokenizer-reports">Tokenizer reports</a> ·
   <a href="#cross-benchmark">Cross Benchmark</a> ·
