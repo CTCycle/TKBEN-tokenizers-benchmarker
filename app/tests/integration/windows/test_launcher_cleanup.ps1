@@ -89,25 +89,23 @@ function Invoke-LauncherDryRunFromOtherDirectory {
     param([int]$Selection, [string]$ExpectedTarget)
     $launcher = Join-Path $repoRoot 'start_on_windows.ps1'
     $powershellExe = Get-TestPowerShellPath
+    $command = 'function Read-Host { param([string]$Prompt); return $env:TKBEN_TEST_MENU_SELECTION }; & $env:TKBEN_TEST_LAUNCHER_PATH -DryRun'
+    $encodedCommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
     $startInfo = New-Object Diagnostics.ProcessStartInfo
     $startInfo.FileName = $powershellExe
-    $startInfo.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$launcher`" -DryRun"
+    $startInfo.Arguments = "-NoProfile -ExecutionPolicy Bypass -EncodedCommand $encodedCommand"
     $startInfo.WorkingDirectory = $fixtureRoot
-    $startInfo.RedirectStandardInput = $true
     $startInfo.RedirectStandardOutput = $true
     $startInfo.RedirectStandardError = $true
     $startInfo.UseShellExecute = $false
     $startInfo.CreateNoWindow = $true
+    $startInfo.EnvironmentVariables['TKBEN_TEST_LAUNCHER_PATH'] = $launcher
+    $startInfo.EnvironmentVariables['TKBEN_TEST_MENU_SELECTION'] = [string]$Selection
     $startInfo.EnvironmentVariables['TKBEN_PATHS_CONFIG'] = Join-Path $repoRoot 'settings\paths-config.json'
     $process = [Diagnostics.Process]::Start($startInfo)
     try {
         $outputRead = $process.StandardOutput.ReadToEndAsync()
         $errorRead = $process.StandardError.ReadToEndAsync()
-        # Avoid a StreamWriter encoding preamble before the numeric menu selection.
-        $inputBytes = [Text.Encoding]::ASCII.GetBytes("$Selection`r`n")
-        $process.StandardInput.BaseStream.Write($inputBytes, 0, $inputBytes.Length)
-        $process.StandardInput.BaseStream.Flush()
-        $process.StandardInput.Close()
         if (-not $process.WaitForExit(120000)) {
             $process.Kill()
             $process.WaitForExit()
@@ -487,3 +485,4 @@ finally {
     }
     Remove-Module maintenance_cleanup -ErrorAction SilentlyContinue
 }
+
