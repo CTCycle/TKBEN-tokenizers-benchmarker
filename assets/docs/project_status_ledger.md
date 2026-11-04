@@ -1,5 +1,5 @@
 # Project Status Ledger
-Last updated: 2026-10-30
+Last updated: 2026-11-04
 
 This is the canonical source of truth for current implementation status,
 validation gates, unresolved limitations, and validation history. The
@@ -55,6 +55,10 @@ Future coding and validation agents must:
   Ctrl+C lifecycle returned launcher exit code 0, stopped its owned backend,
   and freed its port; interactive occupied-port confirmation and redirected
   launch were not re-exercised, so the complete launcher gate remains PARTIAL.
+  The current install-path update leaves the managed `uv` download cache in
+  place after successful setup; only the explicit Clear cache action removes
+  it. This avoids a recursive cache scan and deletion after initialization;
+  this delta has not yet been run through the launcher validation harness.
 - `v4.8.1` (backend `3.8.1`, frontend `2.8.1`) is the latest published
   release; see the release gate for its record. `v4.8.0` passed hosted CI run
   `40225854600` on release commit `955a151847db2af066d6f0ef2016ab8522b10115`.

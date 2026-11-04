@@ -1434,7 +1434,6 @@ function Install-Dependencies {
     Install-Runtimes
     Sync-Dependencies -BuildFrontend -InstallationType $InstallationType -RuntimesReady
     Invoke-DatabaseInitialization
-    if (Test-Path -LiteralPath $UvCacheDir) { Remove-PathBestEffort -Path $UvCacheDir | Out-Null }
     Write-Ok 'Dependencies installed, frontend built, and database synchronized.'
 }
 
