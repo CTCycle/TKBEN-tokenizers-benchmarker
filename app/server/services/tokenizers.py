@@ -436,6 +436,24 @@ class TokenizersService(TokenizerStorageMixin):
         shutil.rmtree(cache_dir, ignore_errors=True)
 
     # -------------------------------------------------------------------------
+    @staticmethod
+    def _load_tokenizer_worker(
+        tokenizer_id: str,
+        cache_dir: str,
+        hf_access_token: str | None,
+        result_holder: dict[str, Any],
+        error_holder: dict[str, BaseException],
+    ) -> None:
+        try:
+            result_holder["tokenizer"] = AutoTokenizer.from_pretrained(
+                tokenizer_id,
+                cache_dir=cache_dir,
+                token=hf_access_token,
+            )
+        except BaseException as exc:  # noqa: BLE001
+            error_holder["error"] = exc
+
+    # -------------------------------------------------------------------------
     def _load_tokenizer_with_timeout(
         self,
         tokenizer_id: str,
@@ -445,17 +463,17 @@ class TokenizersService(TokenizerStorageMixin):
         result_holder: dict[str, Any] = {}
         error_holder: dict[str, BaseException] = {}
 
-        def load() -> None:
-            try:
-                result_holder["tokenizer"] = AutoTokenizer.from_pretrained(
-                    tokenizer_id,
-                    cache_dir=cache_dir,
-                    token=hf_access_token,
-                )
-            except BaseException as exc:  # noqa: BLE001
-                error_holder["error"] = exc
-
-        worker_thread = threading.Thread(target=load, daemon=True)
+        worker_thread = threading.Thread(
+            target=self._load_tokenizer_worker,
+            args=(
+                tokenizer_id,
+                cache_dir,
+                hf_access_token,
+                result_holder,
+                error_holder,
+            ),
+            daemon=True,
+        )
         worker_thread.start()
         worker_thread.join(timeout=self.TOKENIZER_DOWNLOAD_TIMEOUT_SECONDS)
         if worker_thread.is_alive():

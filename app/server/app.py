@@ -12,6 +12,8 @@ from pathlib import Path
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from starlette.middleware.base import RequestResponseEndpoint
+from starlette.responses import Response
 from starlette.routing import Match
 
 from server.api.benchmarks import router as benchmarks_router
@@ -117,29 +119,34 @@ def register_api_routers(application: FastAPI) -> None:
 
 
 ###############################################################################
+def serve_index(request: Request) -> FileResponse:
+    return FileResponse(request.app.state.frontend_root / "index.html")
+
+
+###############################################################################
+def serve_frontend_path(path: str, request: Request) -> FileResponse:
+    if path == "api" or path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    frontend_root: Path = request.app.state.frontend_root
+    requested_path = (frontend_root / path).resolve()
+    if not requested_path.is_relative_to(frontend_root):
+        raise HTTPException(status_code=404, detail="Not Found")
+    if requested_path.is_file():
+        return FileResponse(requested_path)
+    if Path(path).suffix:
+        raise HTTPException(status_code=404, detail="Not Found")
+    return FileResponse(frontend_root / "index.html")
+
+
+###############################################################################
 def register_frontend_routes(application: FastAPI) -> None:
     frontend_root = FRONTEND_BUILD_DIR.resolve()
-    index_path = frontend_root / "index.html"
-    if not index_path.is_file():
+    if not (frontend_root / "index.html").is_file():
         application.add_api_route("/", redirect_to_docs, methods=["GET"])
         return
 
-    def serve_index() -> FileResponse:
-        return FileResponse(index_path)
-
-    def serve_frontend_path(path: str) -> FileResponse:
-        if path == "api" or path.startswith("api/"):
-            raise HTTPException(status_code=404, detail="Not Found")
-
-        requested_path = (frontend_root / path).resolve()
-        if not requested_path.is_relative_to(frontend_root):
-            raise HTTPException(status_code=404, detail="Not Found")
-        if requested_path.is_file():
-            return FileResponse(requested_path)
-        if Path(path).suffix:
-            raise HTTPException(status_code=404, detail="Not Found")
-        return FileResponse(index_path)
-
+    application.state.frontend_root = frontend_root
     application.add_api_route(
         "/", serve_index, methods=["GET", "HEAD"], include_in_schema=False
     )
@@ -196,6 +203,38 @@ async def app_lifespan(application: FastAPI) -> AsyncIterator[None]:
 
 
 ###############################################################################
+async def database_switch_request_gate(
+    request: Request, call_next: RequestResponseEndpoint
+) -> Response:
+    gate = request.app.state.database_switch_gate
+    path = request.url.path.rstrip("/")
+    if (
+        not request.app.state.database_available
+        and path != "/api/database"
+        and not path.startswith("/api/database/")
+        and path != "/api/health"
+        and (path == "/api" or path.startswith("/api/"))
+    ):
+        matches_database_api_route = any(
+            getattr(route, "path", "").startswith("/api/")
+            and route.matches(request.scope)[0] is Match.FULL
+            for route in request.app.router.routes
+        )
+        if matches_database_api_route:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "detail": request.app.state.database_startup_error
+                    or "The database is unavailable."
+                },
+            )
+    if path == "/api/database/switch":
+        return await call_next(request)
+    async with gate.request():
+        return await call_next(request)
+
+
+###############################################################################
 def create_app() -> FastAPI:
     settings = get_server_settings()
     configure_logging(settings.paths.logs)
@@ -221,34 +260,7 @@ def create_app() -> FastAPI:
         max_stored_jobs=settings.jobs.max_stored_jobs
     )
 
-    @application.middleware("http")
-    async def database_switch_request_gate(request, call_next):
-        gate = request.app.state.database_switch_gate
-        path = request.url.path.rstrip("/")
-        if (
-            not request.app.state.database_available
-            and path != "/api/database"
-            and not path.startswith("/api/database/")
-            and path != "/api/health"
-            and (path == "/api" or path.startswith("/api/"))
-        ):
-            matches_database_api_route = any(
-                getattr(route, "path", "").startswith("/api/")
-                and route.matches(request.scope)[0] is Match.FULL
-                for route in request.app.router.routes
-            )
-            if matches_database_api_route:
-                return JSONResponse(
-                    status_code=503,
-                    content={
-                        "detail": request.app.state.database_startup_error
-                        or "The database is unavailable."
-                    },
-                )
-        if path == "/api/database/switch":
-            return await call_next(request)
-        async with gate.request():
-            return await call_next(request)
+    application.middleware("http")(database_switch_request_gate)
 
     register_api_routers(application)
     register_shutdown_route(application)
