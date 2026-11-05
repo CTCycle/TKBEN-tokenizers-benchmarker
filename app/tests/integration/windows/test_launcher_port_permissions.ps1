@@ -366,7 +366,7 @@ function Write-EvidenceRecord {
         "Selected FASTAPI_PORT: $protectedPort"
         "Protected synthetic PID: $($protectedRecord.ProcessId)"
         "Sentinel port/PID: $($sentinelRecord.Port) / $($sentinelRecord.ProcessId)"
-        'Launcher invocation: powershell.exe -NoProfile -ExecutionPolicy Bypass -File start_on_windows.ps1 -Launch'
+        'Launcher invocation: powershell.exe -NoProfile -ExecutionPolicy Bypass -File setup_and_maintenance.ps1 -Launch'
         'Confirmation: yes supplied through the shared interactive console input buffer.'
         "Launcher exit code: $launcherExitCode"
         "Access-denied proof: $terminationDenied"
@@ -386,13 +386,13 @@ try {
     Assert-Harness $AllowDisposableEnvironment.IsPresent 'Refusing to run without -AllowDisposableEnvironment. Use a disposable Windows VM, Windows Sandbox, or equivalent privilege-isolated boundary.'
     Assert-Harness (-not [Console]::IsInputRedirected -and -not [Console]::IsOutputRedirected) 'Run this harness from a real interactive console; redirected input/output cannot prove the normal launcher prompt path.'
     Assert-Harness (-not (Get-IsElevated)) 'The launcher harness must run with a non-elevated token so the protected listener can produce a genuine access-denied result.'
-    Assert-Harness (Test-Path -LiteralPath (Join-Path $sourceRootFull 'start_on_windows.ps1')) "Source checkout does not contain start_on_windows.ps1: $sourceRootFull"
+    Assert-Harness (Test-Path -LiteralPath (Join-Path $sourceRootFull 'setup_and_maintenance.ps1')) "Source checkout does not contain setup_and_maintenance.ps1: $sourceRootFull"
 
     Write-HarnessStep 'Creating the disposable checkout and synthetic helper scripts.'
     New-Item -ItemType Directory -Path $helperRoot -Force | Out-Null
     & git clone --local --no-hardlinks --branch develop --single-branch --no-tags $sourceRootFull $checkoutRoot | Out-Host
     Assert-Harness ($LASTEXITCODE -eq 0) 'Could not create the disposable checkout.'
-    Copy-Item -LiteralPath (Join-Path $sourceRootFull 'start_on_windows.ps1') -Destination (Join-Path $checkoutRoot 'start_on_windows.ps1') -Force
+    Copy-Item -LiteralPath (Join-Path $sourceRootFull 'setup_and_maintenance.ps1') -Destination (Join-Path $checkoutRoot 'setup_and_maintenance.ps1') -Force
 
     $envExamplePath = Join-Path $checkoutRoot 'settings\.env.example'
     $envPath = Join-Path $checkoutRoot 'settings\.env'
@@ -448,7 +448,7 @@ finally {
 
     Add-ConsoleInputWriter
     $beforeProcesses = @(Get-ProcessCommandLines)
-    $launcherPath = Join-Path $checkoutRoot 'start_on_windows.ps1'
+    $launcherPath = Join-Path $checkoutRoot 'setup_and_maintenance.ps1'
     Write-HarnessStep 'Running the normal interactive launcher path and supplying yes to its termination prompt. Do not type into the launcher prompt.'
     $launcherProcess = Start-InteractiveLauncher -LauncherPath $launcherPath -WorkingDirectory $checkoutRoot -LogPath $launcherLogPath
 

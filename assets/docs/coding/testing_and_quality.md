@@ -33,7 +33,7 @@ a strict port.
 
 Hosted CI also includes a Windows PowerShell syntax check and focused
 test-owned preview startup/deep-link/cleanup smoke. These checks are not a
-substitute for interactive `start_on_windows.ps1 -Launch` verification of
+substitute for interactive `setup_and_maintenance.ps1 -Launch` verification of
 Ctrl+C and Uvicorn shutdown on a standard Windows console.
 
 Provider and external-database checks are conditional: run them only when a

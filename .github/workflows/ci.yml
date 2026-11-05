@@ -116,7 +116,7 @@ jobs:
       - name: Parse Windows PowerShell launcher and cleanup helpers
         shell: powershell
         run: |
-          foreach ($path in @('start_on_windows.ps1', 'app/scripts/maintenance_cleanup.psm1', 'app/tests/integration/windows/test_launcher_cleanup.ps1', 'app/tests/integration/windows/manage_test_process.ps1')) {
+          foreach ($path in @('setup_and_maintenance.ps1', 'app/scripts/maintenance_cleanup.psm1', 'app/tests/integration/windows/test_launcher_cleanup.ps1', 'app/tests/integration/windows/manage_test_process.ps1')) {
             $tokens = $null
             $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile(

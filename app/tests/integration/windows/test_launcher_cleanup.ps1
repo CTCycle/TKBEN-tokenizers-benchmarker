@@ -87,7 +87,7 @@ function Assert-NotContainsPath {
 
 function Invoke-LauncherDryRunFromOtherDirectory {
     param([int]$Selection, [string]$ExpectedTarget)
-    $launcher = Join-Path $repoRoot 'start_on_windows.ps1'
+    $launcher = Join-Path $repoRoot 'setup_and_maintenance.ps1'
     $powershellExe = Get-TestPowerShellPath
     $command = 'function Read-Host { param([string]$Prompt); return $env:TKBEN_TEST_MENU_SELECTION }; & $env:TKBEN_TEST_LAUNCHER_PATH -DryRun'
     $encodedCommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
@@ -126,7 +126,7 @@ function Invoke-LauncherDryRunFromOtherDirectory {
 
 function Assert-LauncherRejectsDryRunFlags {
     param([Parameter(Mandatory)][string[]]$Arguments, [Parameter(Mandatory)][string]$ExpectedMessage)
-    $launcher = Join-Path $repoRoot 'start_on_windows.ps1'
+    $launcher = Join-Path $repoRoot 'setup_and_maintenance.ps1'
     $startInfo = New-Object Diagnostics.ProcessStartInfo
     $startInfo.FileName = Get-TestPowerShellPath
     $startInfo.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$launcher`" $($Arguments -join ' ')"
@@ -157,7 +157,7 @@ function Assert-LauncherRejectsDryRunFlags {
 
 try {
     $moduleSource = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..\..\scripts\maintenance_cleanup.psm1')).Path
-    $launcherSource = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..\..\..\start_on_windows.ps1')).Path
+    $launcherSource = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..\..\..\setup_and_maintenance.ps1')).Path
     $modulePath = Join-Path $repoRoot 'app\scripts\maintenance_cleanup.psm1'
     [void][IO.Directory]::CreateDirectory((Join-Path $repoRoot 'app\scripts'))
     [void][IO.Directory]::CreateDirectory((Join-Path $repoRoot 'app\client'))
@@ -172,16 +172,16 @@ try {
     [void][IO.Directory]::CreateDirectory((Join-Path $dataRoot 'logs'))
     [void][IO.Directory]::CreateDirectory($outsideRoot)
     Copy-Item -LiteralPath $moduleSource -Destination $modulePath
-    Copy-Item -LiteralPath $launcherSource -Destination (Join-Path $repoRoot 'start_on_windows.ps1')
+    Copy-Item -LiteralPath $launcherSource -Destination (Join-Path $repoRoot 'setup_and_maintenance.ps1')
     Import-Module -Name $modulePath -Force
     New-TestFile (Join-Path $repoRoot 'settings\paths-config.json') '{"data_dir":"../external-data","log_dir":"../external-data/logs"}'
 
     # Confirm every filesystem action supports -DryRun from a different working directory.
     $dryRunTargets = @(
-        [pscustomobject]@{ Selection = 8; Path = Join-Path $dataRoot 'logs\TKBEN_dry-run.log' },
-        [pscustomobject]@{ Selection = 9; Path = Join-Path $repoRoot 'runtimes\cache\dry-run-sentinel.tmp' },
-        [pscustomobject]@{ Selection = 10; Path = Join-Path $dataRoot 'database.db' },
-        [pscustomobject]@{ Selection = 11; Path = Join-Path $repoRoot 'runtimes\python\python.exe' }
+        [pscustomobject]@{ Selection = 7; Path = Join-Path $dataRoot 'logs\TKBEN_dry-run.log' },
+        [pscustomobject]@{ Selection = 8; Path = Join-Path $repoRoot 'runtimes\cache\dry-run-sentinel.tmp' },
+        [pscustomobject]@{ Selection = 9; Path = Join-Path $dataRoot 'database.db' },
+        [pscustomobject]@{ Selection = 10; Path = Join-Path $repoRoot 'runtimes\python\python.exe' }
     )
     foreach ($target in $dryRunTargets) {
         New-TestFile $target.Path
@@ -446,7 +446,7 @@ try {
     $syntheticProcess = [pscustomobject]@{ ProcessId = $blockingProcess.Id; CommandLine = $command }
     $syntheticLauncher = [pscustomobject]@{
         ProcessId = $blockingProcess.Id + 100000
-        CommandLine = "powershell.exe $repoRoot\start_on_windows.ps1 -Launch"
+        CommandLine = "powershell.exe $repoRoot\setup_and_maintenance.ps1 -Launch"
     }
     $activeIds = @(Get-TkbenProcessIdsFromSnapshot -RepositoryRoot $repoRoot -Processes @($syntheticProcess, $syntheticLauncher))
     Assert-Test ($activeIds -contains $blockingProcess.Id) 'Active application-process detection missed the checkout-owned server-like process.'
@@ -486,3 +486,11 @@ finally {
     Remove-Module maintenance_cleanup -ErrorAction SilentlyContinue
 }
 
+    $launcherText = [IO.File]::ReadAllText($launcherSource)
+    $menuStart = $launcherText.IndexOf('function Get-LauncherMenuEntries')
+    $menuEnd = $launcherText.IndexOf('function Write-MenuItem', $menuStart)
+    $menuEntries = $launcherText.Substring($menuStart, $menuEnd - $menuStart)
+    Assert-Test (-not $menuEntries.Contains("Label = 'Launch application'")) 'Maintenance menu still includes an application launch entry.'
+    Assert-Test ($menuEntries.IndexOf("Key = 'Install'") -ge 0 -and $menuEntries.IndexOf("Key = 'Install'") -lt $menuEntries.IndexOf("Key = 'Rebuild'")) 'Install is no longer the first maintenance menu action.'
+    $startBatch = [IO.File]::ReadAllText((Join-Path (Split-Path -Parent $launcherSource) 'start_on_windows.bat'))
+    Assert-Test ($startBatch.Contains('powershell.exe') -and $startBatch.Contains('setup_and_maintenance.ps1') -and $startBatch.Contains('-Launch')) 'Batch entry point does not invoke the supported PowerShell launch action.'

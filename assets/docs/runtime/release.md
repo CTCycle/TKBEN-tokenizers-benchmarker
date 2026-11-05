@@ -247,7 +247,7 @@ ledger](../project_status_ledger.md#resolved-and-historical-findings).
 3. Run the CI-equivalent checks for the intended release surfaces: backend
    compileall, Ruff, BasedPyright, unit tests, and OpenAPI smoke; frontend
    `npm run lint`, `npm run test:unit`, and `npm run build` from `app/client`.
-4. Launch with `start_on_windows.ps1 -Launch`, verify the backend health
+4. Launch with `setup_and_maintenance.ps1 -Launch`, verify the backend health
    endpoint and frontend production entry, then exercise Dataset, Tokenizers,
    Settings → Database, and Cross Benchmark routes. Prioritize the changed
    database test/switch/rollback behavior, per-database runtime settings,

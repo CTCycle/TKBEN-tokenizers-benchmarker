@@ -768,7 +768,7 @@ function Get-TkbenProcessIdsFromSnapshot {
     $repoMarker = (Get-TkbenFullPath $RepositoryRoot).TrimEnd('\')
     $processIds = [Collections.Generic.List[int]]::new()
     foreach ($processId in $BackendProcessIds) { [void]$processIds.Add([int]$processId) }
-    $blockingPattern = '(?i)(?:start_on_windows\.ps1|@angular[\\/]+cli|ng(?:\.js)?\s+(?:serve|build|test)|vite(?:\.js)?|vitest|uvicorn|server\.app:app|scripts[\\/]+preview\.mjs|npm(?:\.cmd)?\s+(?:ci|install|run\s+(?:dev|build|test:unit|preview))|pytest|ruff|basedpyright|compileall|uv(?:\.exe)?\s+(?:run|sync|venv|python|tool))'
+    $blockingPattern = '(?i)(?:setup_and_maintenance\.ps1|@angular[\\/]+cli|ng(?:\.js)?\s+(?:serve|build|test)|vite(?:\.js)?|vitest|uvicorn|server\.app:app|scripts[\\/]+preview\.mjs|npm(?:\.cmd)?\s+(?:ci|install|run\s+(?:dev|build|test:unit|preview))|pytest|ruff|basedpyright|compileall|uv(?:\.exe)?\s+(?:run|sync|venv|python|tool))'
     foreach ($process in $processes) {
         $processId = [int]$process.ProcessId
         if ($processId -eq $PID) { continue }

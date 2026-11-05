@@ -1,5 +1,5 @@
 # Project Overview
-Last updated: 2026-10-26
+Last updated: 2026-11-05
 
 ## Purpose
 This file is the root index for `assets/docs`. Read it first to find the narrowest topic file for the task at hand.
@@ -126,5 +126,5 @@ documentation source of truth.
 ## Environment Rules
 - Windows is the default operating environment for this project.
 - Document and support both PowerShell and CMD usage patterns where commands differ.
-- Keep environment guidance aligned with `start_on_windows.ps1`, its root-level helper scripts, and `app/tests/run_tests.bat`.
+- Keep environment guidance aligned with the root launch wrapper `start_on_windows.bat`, the maintenance script `setup_and_maintenance.ps1`, their helper scripts, and `app/tests/run_tests.bat`.
 - Update this section when new environment-specific constraints or solutions are introduced.

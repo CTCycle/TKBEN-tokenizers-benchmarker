@@ -1,5 +1,5 @@
 # Runtime Modes
-Last updated: 2026-10-21
+Last updated: 2026-11-05
 
 ## Supported Modes
 
@@ -7,7 +7,9 @@ Last updated: 2026-10-21
 
 - FastAPI (`server.app:app` from `app/`) serves both the built Angular SPA and
   API routes under `/api/*` from `FASTAPI_HOST:FASTAPI_PORT`.
-- The canonical Windows launcher is `start_on_windows.ps1`. It reuses or
+- `start_on_windows.bat` is the application launch entry point and invokes
+  `setup_and_maintenance.ps1 -Launch`. The PowerShell script also provides
+  the maintenance menu and reuses or
   rebuilds the production Angular output at
   `app/client/dist/tkben-angular/browser`, starts one FastAPI process, waits
   for API and SPA readiness, opens the same-origin URL, and supervises that

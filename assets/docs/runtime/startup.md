@@ -1,18 +1,18 @@
 # Startup
-Last updated: 2026-10-29
+Last updated: 2026-11-05
 
 ## Production Local Webapp
 
 The supported Windows release path uses the root launcher:
 
 ```powershell
-.\start_on_windows.ps1
+.\start_on_windows.bat
 ```
 
-Choose **Launch application**. For direct or automated startup, run:
+The batch entry point launches the application directly. For PowerShell scripts or automated startup, run:
 
 ```powershell
-.\start_on_windows.ps1 -Launch
+.\setup_and_maintenance.ps1 -Launch
 ```
 
 Both launch paths use one FastAPI process. It serves the production Angular
@@ -54,9 +54,7 @@ The launcher:
   engines and disables Angular's build progress renderer for non-interactive
   builds, where the portable console renderer can fail
 
-`-Launch` stays in the foreground until Ctrl+C or FastAPI exits. The menu's
-**Launch application** option returns to the maintenance menu after the app is
-stopped. `-KillAll` and menu option 12 remain explicit cleanup actions for
+`-Launch` stays in the foreground until Ctrl+C or FastAPI exits. `-KillAll` and menu option 11 remain explicit cleanup actions for
 TKBEN backend process trees rooted in this repository; they do not stop
 unrelated Python or Node processes.
 
@@ -75,7 +73,7 @@ IDs. Interrupted dataset analyses, downloads, and benchmarks are not resumed.
 Every application start checks the Alembic schema and applies pending
 migrations before database-backed state is exposed. SQLite serializes migration
 writers; PostgreSQL uses an advisory lock. A failed database initialization
-keeps FastAPI available in repair mode. Menu options 2 and 4 use the same
+keeps FastAPI available in repair mode. Menu options 1 and 3 use the same
 initializer.
 
 ## Manual Development Workflow
@@ -111,14 +109,14 @@ used by the production launcher.
 
 ## Maintenance Menu
 
-Use `.\start_on_windows.ps1` for dependency installation, application updates,
+Use `.\setup_and_maintenance.ps1` for dependency installation, application updates,
 update checks, database initialization, tests, log removal, cache cleanup,
 user-data removal, process cleanup, and uninstall operations.
 
-Use menu option 12, **Kill all application processes**, or run:
+Use menu option 11, **Kill all application processes**, or run:
 
 ```powershell
-.\start_on_windows.ps1 -KillAll
+.\setup_and_maintenance.ps1 -KillAll
 ```
 
 This explicit cleanup action is separate from launch. Launch port checks never

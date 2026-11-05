@@ -65,13 +65,13 @@ if exist "%VENV_PYTHON%" (
   set "PYTHON_CMD=%VENV_PYTHON%"
 ) else (
   echo [ERROR] Missing backend venv: "%VENV_PYTHON%"
-  echo [ERROR] Run start_on_windows.ps1 first.
+  echo [ERROR] Run setup_and_maintenance.ps1 first.
   exit /b 1
 )
 
 if not exist "%RUNTIME_NPM%" (
   echo [ERROR] Bundled npm runtime not found: "%RUNTIME_NPM%"
-  echo [ERROR] Run start_on_windows.ps1 first.
+  echo [ERROR] Run setup_and_maintenance.ps1 first.
   exit /b 1
 )
 set "NPM_CMD=%RUNTIME_NPM%"

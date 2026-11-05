@@ -1,5 +1,5 @@
 # Deployment
-Last updated: 2026-10-21
+Last updated: 2026-11-05
 
 ## Dependency Prerequisites
 
@@ -15,8 +15,9 @@ Last updated: 2026-10-21
 
 ## Local Distribution Strategy
 
-- The repository plus `start_on_windows.ps1` is the supported Windows
-  operational path. It remains a source-only folder distribution.
+- Run `start_on_windows.bat` to launch on Windows and use
+  `setup_and_maintenance.ps1` for maintenance. The repository remains a source-only
+  folder distribution.
 - The launcher records backend dependency state from `pyproject.toml` and
   `uv.lock`, uses `uv sync --locked` only when that state is missing or stale,
   and repairs frontend dependencies with `npm ci` independently. Application
@@ -49,4 +50,4 @@ Last updated: 2026-10-21
   validation is planned or required for the Windows release.
 - Releases contain source files only, with no installer, executable, or other
   binary artifact. Extract or clone the application folder and run
-  `start_on_windows.ps1` from its root.
+  `start_on_windows.bat` from its root.

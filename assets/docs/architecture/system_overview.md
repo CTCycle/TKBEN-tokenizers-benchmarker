@@ -1,5 +1,5 @@
 # System Overview
-Last updated: 2026-10-25
+Last updated: 2026-11-05
 
 ## System Summary
 TKBEN is a tokenizer benchmarking platform with:
@@ -11,7 +11,7 @@ TKBEN is a tokenizer benchmarking platform with:
 
 The current public release is `v4.5.1` with backend `3.5.1` and frontend
 `2.5.1`. It remains a source-only folder distribution launched with
-`start_on_windows.ps1` on Windows.
+`start_on_windows.bat` on Windows.
 
 Backend APIs are mounted under `/api/*`. Frontend code uses relative `/api`
 requests. Angular CLI proxies those requests during development; FastAPI serves
@@ -25,7 +25,8 @@ Source-level structure, with generated and environment-specific folders omitted:
 ├─ assets/
 │  ├─ docs/
 │  └─ figures/
-├─ start_on_windows.ps1
+├─ start_on_windows.bat
+├─ setup_and_maintenance.ps1
 ├─ settings/
 │  ├─ .env
 │  └─ .env.example
@@ -78,7 +79,7 @@ Source-level structure, with generated and environment-specific folders omitted:
     persisted dashboard preferences and report-scoped baseline preferences.
   - Pure normalization helpers under `app/client/angular/app/core/utils/` own dataset and chart payload shaping.
 - Windows launcher:
-  - `start_on_windows.ps1` is the single user-facing root entry point for the combined launch and maintenance menu.
+  - `start_on_windows.bat` is the user-facing application launch entry point; `setup_and_maintenance.ps1` provides the maintenance menu and scripted maintenance actions.
 
 Startup loads `settings/.env` bootstrap values and the database-only
 `<TKBEN_DATA_DIR>/database-config.json` before opening the selected database.

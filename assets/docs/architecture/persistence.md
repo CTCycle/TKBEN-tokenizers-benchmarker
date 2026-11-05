@@ -1,5 +1,5 @@
 # Persistence
-Last updated: 2026-10-25
+Last updated: 2026-11-05
 
 ## Storage selection
 
@@ -227,7 +227,7 @@ not application runtime configuration. Alembic uses the pyproject
 configuration and the application settings loader; no `alembic.ini` is
 maintained. Database credentials are read from the independent
 `database-config.json` file, not from `.env` or the active database.
-Use the application initializer (launcher option 4 or
+Use the application initializer (launcher option 3 or
 `app/scripts/initialize_database.py`) for an existing database. A non-empty
 unversioned database is intentionally a hard failure and must be restored from a
 versioned backup or recreated.

@@ -698,10 +698,10 @@ function Sync-BackendDependencies {
             $venvExitCode = $LASTEXITCODE
         }
         catch {
-            throw "Could not recreate the backend environment. Files may be locked by a running application process. Use .\start_on_windows.ps1 -KillAll, then retry. Details: $($_.Exception.Message)"
+            throw "Could not recreate the backend environment. Files may be locked by a running application process. Use .\setup_and_maintenance.ps1 -KillAll, then retry. Details: $($_.Exception.Message)"
         }
         if ($venvExitCode -ne 0) {
-            throw "Could not recreate the backend environment (uv venv exit code $venvExitCode). Files may be locked by a running application process. Use .\start_on_windows.ps1 -KillAll, then retry."
+            throw "Could not recreate the backend environment (uv venv exit code $venvExitCode). Files may be locked by a running application process. Use .\setup_and_maintenance.ps1 -KillAll, then retry."
         }
     }
 
@@ -1743,7 +1743,6 @@ function Clear-MenuScreen {
 
 function Get-LauncherMenuEntries {
     return @(
-        [pscustomobject]@{ Section = 'APPLICATION'; Label = 'Launch application'; Description = 'Start the local benchmark workspace'; Key = 'Launch'; Destructive = $false }
         [pscustomobject]@{ Section = 'SETUP & VALIDATION'; Label = 'Install / update dependencies'; Description = 'Sync tooling and the database'; Key = 'Install'; Destructive = $false }
         [pscustomobject]@{ Section = 'SETUP & VALIDATION'; Label = 'Rebuild frontend'; Description = 'Build the Angular production output only'; Key = 'Rebuild'; Destructive = $false }
         [pscustomobject]@{ Section = 'SETUP & VALIDATION'; Label = 'Initialize database'; Description = 'Create or update the local database'; Key = 'Database'; Destructive = $false }
@@ -1831,7 +1830,7 @@ function Show-Menu {
         try {
             Invoke-TrackedLauncherAction -Name $entry.Label -Action {
                 switch ($entry.Key) {
-                    'Launch' { [void](Launch-Application) }
+
                     'Install' {
                         $installationType = Read-InstallationType
                         Install-Dependencies -InstallationType $installationType

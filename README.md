@@ -45,12 +45,12 @@ The Jobs panel tracks concurrent dataset validation, tokenizer-report, and bench
 On Windows, clone or download the repository and open PowerShell in its root directory:
 
 ```powershell
-.\start_on_windows.ps1
+.\start_on_windows.bat
 ```
 
-Choose **Launch application**. On first launch, the launcher may download its portable Python, Node.js, and uv runtimes, install dependencies, initialize the database, and build the frontend. It opens the application once the API and frontend are ready. Keep the launcher window open and press **Ctrl+C** there to stop the app.
+The batch entry point launches the application directly. On first launch, the launcher may download its portable Python, Node.js, and uv runtimes, install dependencies, initialize the database, and build the frontend. It opens the application once the API and frontend are ready. Keep the launcher window open and press **Ctrl+C** there to stop the app.
 
-To start directly without the menu, run `.\start_on_windows.ps1 -Launch`. The launcher serves the Angular frontend and FastAPI API from the same local address. See [startup](assets/docs/runtime/startup.md) for maintenance options and troubleshooting.
+For PowerShell scripts or automated startup, run `.\setup_and_maintenance.ps1 -Launch`. The launcher serves the Angular frontend and FastAPI API from the same local address. See [startup](assets/docs/runtime/startup.md) for maintenance options and troubleshooting.
 
 ## Dataset analysis
 
