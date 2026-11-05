@@ -35,6 +35,7 @@ class PostgresRepository(RepositoryBase):
             future=True,
             connect_args=connect_args,
             pool_pre_ping=True,
+            pool_recycle=1800,
         )
         super().__init__(engine, settings.insert_batch_size)
 

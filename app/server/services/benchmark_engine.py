@@ -71,6 +71,7 @@ def run_tokenizer_trials(
             trial_progress(completed_trials / total_trials)
 
     observations: list[BatchObservation] = []
+    process = psutil.Process()
     for trial_index in range(timed_trials):
         if should_stop and should_stop():
             break
@@ -79,7 +80,6 @@ def run_tokenizer_trials(
             if should_stop and should_stop():
                 break
             input_bytes = sum(len(text.encode("utf-8")) for text in texts)
-            process = psutil.Process()
             rss_before = process.memory_info().rss
             start_ns = time.perf_counter_ns()
             encoded = tokenizer.encode_batch(

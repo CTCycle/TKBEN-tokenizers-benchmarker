@@ -105,14 +105,6 @@ class DiskBackedFrequencyStore:
         return int(value)
 
     # -------------------------------------------------------------------------
-    def token_counts(self) -> list[tuple[str, int]]:
-        self.flush()
-        stmt = select(FrequencyEntry.token, FrequencyEntry.count)
-        with self._session() as session:
-            rows = session.execute(stmt).all()
-        return [(str(token), int(count)) for token, count in rows]
-
-    # -------------------------------------------------------------------------
     def iter_counts(self, batch_size: int = 10_000):
         self.flush()
         stmt = select(FrequencyEntry.token, FrequencyEntry.count)

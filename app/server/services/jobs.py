@@ -107,7 +107,6 @@ class JobManager:
         clock: Callable[[], float] | None = None,
     ) -> None:
         self.jobs: dict[str, JobState] = {}
-        self.threads: dict[str, threading.Thread] = {}
         self.lock = threading.Lock()
         self.max_stored_jobs = max(1, int(max_stored_jobs))
         self.repository = repository
@@ -195,9 +194,6 @@ class JobManager:
             args=(job_id, runner, args, runner_kwargs),
             daemon=True,
         )
-
-        with self.lock:
-            self.threads[job_id] = thread
 
         thread.start()
 
@@ -297,7 +293,6 @@ class JobManager:
         )
         for state in finished[:excess]:
             self.jobs.pop(state.job_id, None)
-            self.threads.pop(state.job_id, None)
         if self.repository is not None:
             self.repository.prune_jobs(self.max_stored_jobs)
 

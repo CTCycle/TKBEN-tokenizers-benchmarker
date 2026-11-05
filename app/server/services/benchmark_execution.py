@@ -194,12 +194,8 @@ class BenchmarkServiceExecutionMixin:
         if progress_callback:
             progress_callback(5.0)
 
-        tokenizers = self.load_tokenizers(tokenizer_ids)
-
-        if not tokenizers:
+        if not tokenizer_ids:
             raise ValueError("No valid tokenizers could be loaded")
-
-        logger.info("Loaded %d tokenizers", len(tokenizers))
         if progress_callback:
             progress_callback(10.0)
 
@@ -283,27 +279,50 @@ class BenchmarkServiceExecutionMixin:
         requested_parallelism = BenchmarkRunConfig.model_validate(
             {"parallelism": config_payload.get("parallelism", 1)}
         ).parallelism
-        effective_parallelism = min(requested_parallelism, len(tokenizers))
+        effective_parallelism = min(requested_parallelism, len(tokenizer_ids))
         concurrency_tracker = _TokenizerConcurrencyTracker()
-        progress_tracker = _TokenizerProgressTracker(len(tokenizers), progress_callback)
-        indexed_tokenizers = list(tokenizers.items())
+        progress_tracker = _TokenizerProgressTracker(
+            len(tokenizer_ids), progress_callback
+        )
         worker_results: dict[int, _TokenizerExecutionResult] = {}
         pending: dict[Future[_TokenizerExecutionResult], tuple[int, str]] = {}
+        loaded_names: list[str] = []
+        tokenizer_metadata: list[dict[str, Any]] = []
         next_tokenizer_index = 0
         cancelled = False
 
-        with ThreadPoolExecutor(max_workers=effective_parallelism) as executor:
+        def submit_pending(executor: ThreadPoolExecutor) -> bool:
+            # Tokenizers are loaded just before they run and released when the
+            # worker finishes, so memory scales with parallelism, not run size.
+            nonlocal next_tokenizer_index
             while (
-                next_tokenizer_index < len(indexed_tokenizers)
+                next_tokenizer_index < len(tokenizer_ids)
                 and len(pending) < effective_parallelism
             ):
                 if should_stop and should_stop():
-                    cancelled = True
-                    break
-                name, tokenizer = indexed_tokenizers[next_tokenizer_index]
+                    return True
+                index = next_tokenizer_index
+                next_tokenizer_index += 1
+                name = tokenizer_ids[index]
+                tokenizer = self.load_tokenizers([name]).get(name)
+                if tokenizer is None:
+                    progress_tracker.update(index, 1.0)
+                    continue
+                loaded_names.append(name)
+                tokenizer_metadata.append(
+                    {
+                        "tokenizer_name": name,
+                        "tokenizer_class": type(tokenizer).__name__,
+                        "is_fast": bool(getattr(tokenizer, "is_fast", False)),
+                        "name_or_path": getattr(tokenizer, "name_or_path", None),
+                        "model_max_length": getattr(tokenizer, "model_max_length", None),
+                        "special_tokens_map": getattr(tokenizer, "special_tokens_map", {})
+                        or {},
+                    }
+                )
                 future = executor.submit(
                     self._run_tokenizer_worker,
-                    index=next_tokenizer_index,
+                    index=index,
                     tokenizer_name=name,
                     tokenizer=tokenizer,
                     spool=spool,
@@ -320,10 +339,14 @@ class BenchmarkServiceExecutionMixin:
                     per_document_sample_size=per_document_sample_size,
                     should_stop=should_stop,
                     concurrency_tracker=concurrency_tracker,
-                    trial_progress=progress_tracker.reporter(next_tokenizer_index),
+                    trial_progress=progress_tracker.reporter(index),
                 )
-                pending[future] = (next_tokenizer_index, name)
-                next_tokenizer_index += 1
+                pending[future] = (index, name)
+            return False
+
+        with ThreadPoolExecutor(max_workers=effective_parallelism) as executor:
+            if submit_pending(executor):
+                cancelled = True
 
             while pending:
                 done, _ = wait(pending, timeout=1.0, return_when=FIRST_COMPLETED)
@@ -354,41 +377,16 @@ class BenchmarkServiceExecutionMixin:
                         _ = future.cancel()
                     continue
 
-                while (
-                    next_tokenizer_index < len(indexed_tokenizers)
-                    and len(pending) < effective_parallelism
-                ):
-                    if should_stop and should_stop():
-                        cancelled = True
-                        break
-                    name, tokenizer = indexed_tokenizers[next_tokenizer_index]
-                    future = executor.submit(
-                        self._run_tokenizer_worker,
-                        index=next_tokenizer_index,
-                        tokenizer_name=name,
-                        tokenizer=tokenizer,
-                        spool=spool,
-                        batch_size=batch_size,
-                        num_docs=num_docs,
-                        dataset_stream_wall_time_seconds=dataset_stream_wall_time_seconds,
-                        metric_plan=metric_plan,
-                        warmup_trials=warmup_trials,
-                        timed_trials=timed_trials,
-                        add_special_tokens=add_special_tokens,
-                        padding=padding,
-                        truncation=truncation,
-                        max_length=max_length,
-                        per_document_sample_size=per_document_sample_size,
-                        should_stop=should_stop,
-                        concurrency_tracker=concurrency_tracker,
-                        trial_progress=progress_tracker.reporter(next_tokenizer_index),
-                    )
-                    pending[future] = (next_tokenizer_index, name)
-                    next_tokenizer_index += 1
+                if submit_pending(executor):
+                    cancelled = True
+
+        if not loaded_names and not cancelled:
+            spool.cleanup()
+            raise ValueError("No valid tokenizers could be loaded")
 
         ordered_worker_results = [
             worker_results[index]
-            for index in range(len(indexed_tokenizers))
+            for index in range(len(tokenizer_ids))
             if index in worker_results
         ]
         tokenizer_results = [
@@ -455,7 +453,7 @@ class BenchmarkServiceExecutionMixin:
         runtime_metadata["benchmark_execution"] = {
             "requested_parallelism": requested_parallelism,
             "effective_parallelism": effective_parallelism,
-            "tokenizer_count": len(tokenizers),
+            "tokenizer_count": len(loaded_names),
             "max_concurrent_workers_observed": concurrency_tracker.maximum(),
         }
         runtime_metadata["benchmark_config"] = {
@@ -472,18 +470,7 @@ class BenchmarkServiceExecutionMixin:
             "store_per_document_stats": store_per_document_stats,
             "per_document_sample_size": per_document_sample_size,
         }
-        runtime_metadata["tokenizer_metadata"] = [
-            {
-                "tokenizer_name": tokenizer_name,
-                "tokenizer_class": type(tokenizer_obj).__name__,
-                "is_fast": bool(getattr(tokenizer_obj, "is_fast", False)),
-                "name_or_path": getattr(tokenizer_obj, "name_or_path", None),
-                "model_max_length": getattr(tokenizer_obj, "model_max_length", None),
-                "special_tokens_map": getattr(tokenizer_obj, "special_tokens_map", {})
-                or {},
-            }
-            for tokenizer_name, tokenizer_obj in tokenizers.items()
-        ]
+        runtime_metadata["tokenizer_metadata"] = tokenizer_metadata
         runtime_metadata["benchmark_timing_boundaries"] = {
             "encode_only_definition": "Timed tokenizer encode trials only; warmup excluded.",
             "dataset_stream_definition": "Time spent streaming and spooling dataset rows before tokenizer trials.",
@@ -504,8 +491,8 @@ class BenchmarkServiceExecutionMixin:
             selected_metric_keys=resolved_metric_keys,
             dataset_name=dataset_name,
             documents_processed=num_docs,
-            tokenizers_processed=list(tokenizers.keys()),
-            tokenizers_count=len(tokenizers),
+            tokenizers_processed=loaded_names,
+            tokenizers_count=len(loaded_names),
             config=config,
             hardware_profile=hardware_profile,
             trial_summary=BenchmarkTrialSummary(

@@ -83,12 +83,14 @@ def configure_logging(log_directory: str | Path) -> Path:
                         "formatter": "minimal",
                     },
                     "file": {
-                        "class": "logging.FileHandler",
+                        "class": "logging.handlers.RotatingFileHandler",
                         "level": "DEBUG",
                         "formatter": "default",
                         "filename": str(log_filename),
                         "mode": "a",
                         "encoding": "utf-8",
+                        "maxBytes": 10 * 1024 * 1024,
+                        "backupCount": 3,
                     },
                 },
                 "root": {

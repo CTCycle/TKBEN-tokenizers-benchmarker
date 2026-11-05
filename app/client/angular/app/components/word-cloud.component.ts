@@ -26,6 +26,11 @@ export class WordCloudComponent implements AfterViewInit, OnDestroy {
   private measurementRetryTimer: ReturnType<typeof setTimeout> | null = null;
   private measurementRetryCount = 0;
   private initialized = false;
+  private pendingLayouts = 0;
+  private latestSource: readonly WordCloudTerm[] = [];
+  private latestWidth = 0;
+  private latestHeight = 0;
+  private resizeFrame: number | null = null;
 
   constructor() {
     effect(() => {
@@ -36,7 +41,7 @@ export class WordCloudComponent implements AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     this.initialized = true;
-    this.resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => this.layoutTerms());
+    this.resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => this.scheduleResizeLayout());
     if (this.canvas?.nativeElement) this.resizeObserver?.observe(this.canvas.nativeElement);
     this.layoutTerms();
     if (typeof requestAnimationFrame !== 'undefined') {
@@ -52,6 +57,9 @@ export class WordCloudComponent implements AfterViewInit, OnDestroy {
     this.worker?.terminate();
     if (this.fitFrame !== null && typeof cancelAnimationFrame !== 'undefined') {
       cancelAnimationFrame(this.fitFrame);
+    }
+    if (this.resizeFrame !== null && typeof cancelAnimationFrame !== 'undefined') {
+      cancelAnimationFrame(this.resizeFrame);
     }
     if (this.initialLayoutFrame !== null && typeof cancelAnimationFrame !== 'undefined') {
       cancelAnimationFrame(this.initialLayoutFrame);
@@ -87,21 +95,44 @@ export class WordCloudComponent implements AfterViewInit, OnDestroy {
       return;
     }
     try {
-      this.worker?.terminate();
-      this.worker = new Worker(new URL('../core/workers/word-cloud.worker.ts', import.meta.url), { type: 'module' });
-      this.worker.onmessage = (event: MessageEvent<{ terms: WordCloudLayoutTerm[] }>) => {
-        this.layout.set(event.data.terms);
-        this.scheduleFitToCanvas();
-      };
-      this.worker.onerror = () => {
-        this.layout.set(this.fallbackLayout(source, width, height));
-        this.scheduleFitToCanvas();
-      };
+      if (!this.worker) {
+        this.worker = new Worker(new URL('../core/workers/word-cloud.worker.ts', import.meta.url), { type: 'module' });
+        this.worker.onmessage = (event: MessageEvent<{ terms: WordCloudLayoutTerm[] }>) => {
+          // The worker answers in order, so only the reply to the latest request is applied.
+          this.pendingLayouts = Math.max(0, this.pendingLayouts - 1);
+          if (this.pendingLayouts > 0) return;
+          this.layout.set(event.data.terms);
+          this.scheduleFitToCanvas();
+        };
+        this.worker.onerror = () => {
+          this.pendingLayouts = 0;
+          this.worker?.terminate();
+          this.worker = null;
+          this.layout.set(this.fallbackLayout(this.latestSource, this.latestWidth, this.latestHeight));
+          this.scheduleFitToCanvas();
+        };
+      }
+      this.latestSource = source;
+      this.latestWidth = width;
+      this.latestHeight = height;
+      this.pendingLayouts += 1;
       this.worker.postMessage({ terms: source, width, height });
     } catch {
       this.layout.set(this.fallbackLayout(source, width, height));
       this.scheduleFitToCanvas();
     }
+  }
+
+  private scheduleResizeLayout(): void {
+    if (typeof requestAnimationFrame === 'undefined') {
+      this.layoutTerms();
+      return;
+    }
+    if (this.resizeFrame !== null) return;
+    this.resizeFrame = requestAnimationFrame(() => {
+      this.resizeFrame = null;
+      if (this.initialized) this.layoutTerms();
+    });
   }
 
   private scheduleMeasurementRetry(): void {

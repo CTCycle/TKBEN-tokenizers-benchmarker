@@ -22,7 +22,7 @@ export class JobsApiService {
 
   watch(jobId: string, intervalMs = 1000): Observable<JobStatusResponse> {
     return timer(0, intervalMs).pipe(
-      exhaustMap(() => this.status(jobId)),
+      exhaustMap(() => this.status(jobId).pipe(retry({ count: 3, delay: intervalMs }))),
       tap((status) => this.tracker.update(status)),
       takeWhile((status) => status.status === 'pending' || status.status === 'running', true),
     );

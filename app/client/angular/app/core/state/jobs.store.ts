@@ -17,7 +17,9 @@ export interface TrackedJob {
   readonly startedAt: number;
 }
 
-const JOB_LABELS: Readonly<Record<string, string>> = {
+const MAX_RESTORED_JOBS = 50;
+
+const JOB_LABELS:Readonly<Record<string, string>> = {
   dataset_download: 'Dataset download',
   dataset_upload: 'Dataset upload',
   dataset_validation: 'Dataset benchmark',
@@ -72,7 +74,9 @@ export class JobsStore {
           error: summary.error ?? null,
           cancelRequested: false,
           startedAt: summary.created_at * 1000,
-        }));
+        }))
+        .sort((a, b) => b.startedAt - a.startedAt)
+        .slice(0, MAX_RESTORED_JOBS);
       return [...current, ...restored].sort((a, b) => b.startedAt - a.startedAt);
     });
   }
