@@ -1,5 +1,5 @@
 # Project Status Ledger
-Last updated: 2026-11-04
+Last updated: 2026-11-09
 
 This is the canonical source of truth for current implementation status,
 validation gates, unresolved limitations, and validation history. The
@@ -59,7 +59,7 @@ Future coding and validation agents must:
   place after successful setup; only the explicit Clear cache action removes
   it. This avoids a recursive cache scan and deletion after initialization;
   this delta has not yet been run through the launcher validation harness.
-- `v4.8.1` (backend `3.8.1`, frontend `2.8.1`) is the latest published
+- `v4.8.2` (backend `3.8.2`, frontend `2.8.2`) is the latest published
   release; see the release gate for its record. `v4.8.0` passed hosted CI run
   `40225854600` on release commit `955a151847db2af066d6f0ef2016ab8522b10115`.
 - Public Hugging Face discovery, download, report persistence, rendered
@@ -75,6 +75,17 @@ Future coding and validation agents must:
   is not required to claim the local source-only quality gate.
 - Containerized deployment and binary packaging are NOT_IMPLEMENTED. The
   supported release model is source-only Windows x64.
+
+## 2026-11-09 v4.8.2 patch validation (V-20261109)
+- Scope: tokenizer just-in-time loading, log rotation, word-cloud worker reuse,
+  job-state trimming, blank-record and special-token normalization, launcher split.
+- PASS: backend compileall, Ruff, 510 unit tests, OpenAPI smoke (43 paths),
+  BasedPyright (0 errors, 2,191 warnings); frontend lint, 77 unit tests, and
+  production build. Hosted CI on `develop` (run `42600116214`) succeeded.
+- Not re-run for this patch: the live browser E2E suite, the interactive
+  launcher lifecycle, and gated Hugging Face access. The five E2E discrepancies
+  recorded under V-20261027 are not re-verified here and stay open as test-gate
+  debt; they do not affect the unit-level patch scope.
 
 ## 2026-10-27 E2E audit (V-20261027, incomplete)
 
