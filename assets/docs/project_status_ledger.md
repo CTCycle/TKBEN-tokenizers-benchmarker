@@ -627,6 +627,14 @@ Annotated tag `v4.8.1` was created on `main` after a fast-forward from
 run `40308567067` passed all three jobs on that commit. The release has no
 uploaded binary assets. Validation evidence is V-20261026.
 
+The PATCH release `v4.8.2` (backend `3.8.2`, frontend `2.8.2`) was published
+as a source-only GitHub Release on 2026-11-09:
+[v4.8.2](https://github.com/CTCycle/TKBEN-tokenizers-benchmarker/releases/tag/v4.8.2).
+Annotated tag `v4.8.2` was created on `main` after a fast-forward from
+`develop` and peels to `3234603f0452ac8ca4f94f6a4933058efe658702`. Hosted CI
+run `42679384962` (main) passed. The release has no uploaded binary assets.
+Validation evidence is V-20261109.
+
 ## Resolved and historical findings
 
 | Finding | Current state | Durable provenance |
