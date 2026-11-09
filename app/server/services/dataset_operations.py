@@ -382,7 +382,10 @@ class DatasetServiceOperationsMixin:
                 progress_callback(5.0)
             file_buffer = io.BytesIO(file_content)
             if extension == ".csv":
-                df = pd.read_csv(file_buffer)
+                # Keep blank records as empty documents so counts match the file.
+                df = pd.read_csv(
+                    file_buffer, skip_blank_lines=False, keep_default_na=False
+                )
             else:
                 df = pd.read_excel(file_buffer)
         except (

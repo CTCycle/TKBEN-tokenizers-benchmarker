@@ -220,7 +220,9 @@ class TokenizerReportingService(TokenizerStorageMixin):
         return None
 
     # -------------------------------------------------------------------------
-    def normalize_special_tokens(self, tokenizer: Any) -> list[str]:
+    def normalize_special_tokens(
+        self, tokenizer: Any, tokenizer_json: dict[str, Any] | None = None
+    ) -> list[str]:
         token_map = getattr(tokenizer, "special_tokens_map", {})
         normalized: list[str] = []
         if isinstance(token_map, dict):
@@ -236,7 +238,36 @@ class TokenizerReportingService(TokenizerStorageMixin):
                 str(item) for item in all_special_tokens if item is not None
             )
 
+        if isinstance(tokenizer_json, dict):
+            normalized.extend(self.declared_special_tokens(tokenizer_json))
+
         return sorted({token for token in normalized if token})
+
+    # -------------------------------------------------------------------------
+    @staticmethod
+    def declared_special_tokens(tokenizer_json: dict[str, Any]) -> list[str]:
+        declared: list[str] = []
+        added = tokenizer_json.get("added_tokens")
+        if isinstance(added, list):
+            declared.extend(
+                str(item["content"])
+                for item in added
+                if isinstance(item, dict)
+                and item.get("special")
+                and isinstance(item.get("content"), str)
+            )
+        stack: list[Any] = [tokenizer_json.get("post_processor")]
+        while stack:
+            node = stack.pop()
+            if not isinstance(node, dict):
+                continue
+            specials = node.get("special_tokens")
+            if isinstance(specials, dict):
+                declared.extend(str(key) for key in specials)
+            processors = node.get("processors")
+            if isinstance(processors, list):
+                stack.extend(processors)
+        return declared
 
     # -------------------------------------------------------------------------
     def normalize_special_token_ids(self, tokenizer: Any) -> list[int]:
@@ -680,7 +711,7 @@ class TokenizerReportingService(TokenizerStorageMixin):
         if progress_callback:
             progress_callback(55.0)
 
-        special_tokens = self.normalize_special_tokens(tokenizer)
+        special_tokens = self.normalize_special_tokens(tokenizer, tokenizer_json)
         special_token_ids = self.normalize_special_token_ids(tokenizer)
         special_token_set = set(special_tokens)
         subword_word_stats = self.compute_subword_word_stats(

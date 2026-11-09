@@ -74,6 +74,12 @@ export class CrossBenchmarkPageComponent {
     storePerDocumentStats: new FormControl(true, { nonNullable: true }),
     perDocumentSampleSize: new FormControl(500, { nonNullable: true, validators: [Validators.min(1), Validators.max(10000)] }),
   });
+  protected plannedDocuments(): string {
+    const cap = this.runForm.controls.maxDocuments.value;
+    const available = this.store.datasetDocumentCounts()[this.runForm.controls.dataset.value];
+    if (available === undefined) return cap > 0 ? `Up to ${cap}` : 'All';
+    return String(cap > 0 ? Math.min(cap, available) : available);
+  }
   protected readonly allOrderedWidgets = computed(() => {
     const report = this.store.report();
     const layout = this.store.layout();

@@ -308,6 +308,22 @@ def test_unknown_activation_does_not_clear_existing_active_key(
 
 
 ###############################################################################
+def test_normalize_special_tokens_includes_postprocessor_declarations() -> None:
+    service = TokenizerReportingService()
+    tokenizer_json = {
+        "added_tokens": [{"content": "[PAD]", "special": True}],
+        "post_processor": {
+            "type": "TemplateProcessing",
+            "special_tokens": {"[CLS]": {}, "[SEP]": {}},
+        },
+    }
+
+    tokens = service.normalize_special_tokens(object(), tokenizer_json)
+
+    assert tokens == ["[CLS]", "[PAD]", "[SEP]"]
+
+
+###############################################################################
 def test_compute_subword_word_stats_excludes_special_tokens_and_classifies_markers() -> (
     None
 ):

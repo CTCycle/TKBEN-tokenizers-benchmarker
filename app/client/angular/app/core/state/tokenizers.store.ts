@@ -192,8 +192,9 @@ export class TokenizersStore {
 
   upload(file: File): void {
     this.busyAction.set('upload');
+    this.error.set(null);
     this.api.upload(file).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: () => { this.refreshAfterMutation(); this.busyAction.set(null); },
+      next: () => { this.error.set(null); this.refreshAfterMutation(); this.busyAction.set(null); },
       error: (error: unknown) => { this.error.set(errorMessage(error, 'Failed to upload tokenizer.')); this.busyAction.set(null); },
     });
   }

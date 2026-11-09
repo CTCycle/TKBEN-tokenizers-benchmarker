@@ -110,7 +110,8 @@ class DatasetJobService:
         result = service.upload_and_persist(
             file_content=file_content,
             filename=filename,
-            remove_invalid=True,
+            # Keep blank records; exclusion is a validation-stage choice.
+            remove_invalid=False,
             progress_callback=progress_callback,
             should_stop=should_stop,
         )

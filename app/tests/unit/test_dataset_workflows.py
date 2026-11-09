@@ -1162,6 +1162,22 @@ def test_near_limit_csv_import_persists_large_text(monkeypatch) -> None:
 
 
 ###############################################################################
+def test_csv_import_preserves_blank_records(monkeypatch) -> None:
+    service, engine = _build_service(monkeypatch)
+    try:
+        content = b"text\nalpha\n\nbeta\n"
+
+        result = service.upload_and_persist(
+            file_content=content, filename="blank.csv", remove_invalid=False
+        )
+
+        assert result["document_count"] == 3
+        assert result["saved_count"] == 3
+    finally:
+        engine.dispose()
+
+
+###############################################################################
 @pytest.mark.parametrize("import_kind", ["upload", "download"])
 def test_sqlite_full_cleans_partial_import_and_retry_succeeds(
     monkeypatch,

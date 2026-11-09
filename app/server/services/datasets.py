@@ -784,7 +784,7 @@ class DatasetService(DatasetServiceOperationsMixin):
                 value is None or not isinstance(value, str) or not value.strip()
             ):
                 continue
-            yield str(value)
+            yield value if isinstance(value, str) else ""
 
     # -------------------------------------------------------------------------
     def _dataframe_length_stream(

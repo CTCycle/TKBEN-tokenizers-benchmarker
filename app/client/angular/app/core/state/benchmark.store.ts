@@ -44,6 +44,7 @@ export class BenchmarkStore {
   readonly metricCategories = signal<readonly BenchmarkMetricCatalogCategory[]>([]);
   readonly availableTokenizers = signal<readonly string[]>([]);
   readonly availableDatasets = signal<readonly string[]>([]);
+  readonly datasetDocumentCounts = signal<Readonly<Record<string, number>>>({});
   readonly loadingWorkspace = signal(true);
   readonly layout = signal<readonly string[]>([]);
   readonly hiddenWidgetIds = signal<readonly string[]>([]);
@@ -124,6 +125,7 @@ export class BenchmarkStore {
       this.metricCategories.set(metrics.categories ?? []);
       this.availableTokenizers.set((tokenizers.tokenizers ?? []).map((item) => item.tokenizer_name));
       this.availableDatasets.set((datasets.datasets ?? []).map((item) => item.dataset_name));
+      this.datasetDocumentCounts.set(Object.fromEntries((datasets.datasets ?? []).map((item) => [item.dataset_name, item.document_count])));
       this.loadingWorkspace.set(false);
     });
   }
