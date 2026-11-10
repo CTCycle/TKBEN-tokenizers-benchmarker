@@ -640,98 +640,102 @@ class DatasetServiceOperationsMixin:
         normalized_fraction, normalized_count = self.normalize_sampling(sampling_config)
 
         engine = DatasetMetricsEngine(parameters=parameters)
-        per_doc_buffer: list[dict[str, Any]] = []
-        matching_total = self.dataset_repository.preview_dataset_filters(
-            dataset_name,
-            min_length=min_length,
-            max_length=max_length,
-            exclude_empty=exclude_empty,
-            bin_count=0,
-        )["matching_documents"]
-        expected_total = self.expected_sample_size(
-            matching_total, normalized_fraction, normalized_count
-        )
+        try:
+            per_doc_buffer: list[dict[str, Any]] = []
+            matching_total = self.dataset_repository.preview_dataset_filters(
+                dataset_name,
+                min_length=min_length,
+                max_length=max_length,
+                exclude_empty=exclude_empty,
+                bin_count=0,
+            )["matching_documents"]
+            expected_total = self.expected_sample_size(
+                matching_total, normalized_fraction, normalized_count
+            )
 
-        analyzed = 0
-        persisted = 0
-        for batch in self.dataset_repository.iterate_dataset_rows(
-            dataset_name=dataset_name,
-            batch_size=self.streaming_batch_size,
-            min_length=min_length,
-            max_length=max_length,
-            exclude_empty=exclude_empty,
-        ):
-            if self.stop_requested(should_stop):
-                self.dataset_repository.complete_analysis_session(
-                    session_id, status="cancelled"
-                )
-                return {}
-
-            for row in batch:
-                text_id = row.get("id")
-                text = row.get("text")
-                if text_id is None or not isinstance(text, str):
-                    continue
-                if normalized_fraction is not None:
-                    sample_key = f"{dataset_name}:{text_id}".encode(
-                        "utf-8", errors="ignore"
+            analyzed = 0
+            persisted = 0
+            for batch in self.dataset_repository.iterate_dataset_rows(
+                dataset_name=dataset_name,
+                batch_size=self.streaming_batch_size,
+                min_length=min_length,
+                max_length=max_length,
+                exclude_empty=exclude_empty,
+            ):
+                if self.stop_requested(should_stop):
+                    self.dataset_repository.complete_analysis_session(
+                        session_id, status="cancelled"
                     )
-                    gate = int.from_bytes(
-                        hashlib.blake2b(sample_key, digest_size=8).digest(),
-                        byteorder="big",
-                    ) / float(2**64)
-                    if gate > normalized_fraction:
+                    return {}
+
+                for row in batch:
+                    text_id = row.get("id")
+                    text = row.get("text")
+                    if text_id is None or not isinstance(text, str):
                         continue
-                per_doc_metrics = engine.process_document(int(text_id), text)
-                for metric_row in per_doc_metrics:
-                    if metric_row.get("metric_key") in selected_key_set:
-                        per_doc_buffer.append(metric_row)
-                analyzed += 1
-                if normalized_count is not None and analyzed >= normalized_count:
-                    break
-                if len(per_doc_buffer) >= self.streaming_batch_size:
+                    if normalized_fraction is not None:
+                        sample_key = f"{dataset_name}:{text_id}".encode(
+                            "utf-8", errors="ignore"
+                        )
+                        gate = int.from_bytes(
+                            hashlib.blake2b(sample_key, digest_size=8).digest(),
+                            byteorder="big",
+                        ) / float(2**64)
+                        if gate > normalized_fraction:
+                            continue
+                    per_doc_metrics = engine.process_document(int(text_id), text)
+                    for metric_row in per_doc_metrics:
+                        if metric_row.get("metric_key") in selected_key_set:
+                            per_doc_buffer.append(metric_row)
+                    analyzed += 1
+                    if normalized_count is not None and analyzed >= normalized_count:
+                        break
+                    if len(per_doc_buffer) >= self.streaming_batch_size:
+                        self.dataset_repository.save_metric_values_batch(
+                            session_id, per_doc_buffer
+                        )
+                        persisted += len(per_doc_buffer)
+                        per_doc_buffer.clear()
+
+                if per_doc_buffer and len(per_doc_buffer) >= self.streaming_batch_size:
                     self.dataset_repository.save_metric_values_batch(
                         session_id, per_doc_buffer
                     )
                     persisted += len(per_doc_buffer)
                     per_doc_buffer.clear()
 
-            if per_doc_buffer and len(per_doc_buffer) >= self.streaming_batch_size:
-                self.dataset_repository.save_metric_values_batch(
-                    session_id, per_doc_buffer
-                )
+                if normalized_count is not None and analyzed >= normalized_count:
+                    break
+                if progress_callback and expected_total > 0:
+                    progress_callback(min(95.0, (analyzed / float(expected_total)) * 95.0))
+
+            if per_doc_buffer:
+                self.dataset_repository.save_metric_values_batch(session_id, per_doc_buffer)
                 persisted += len(per_doc_buffer)
-                per_doc_buffer.clear()
 
-            if normalized_count is not None and analyzed >= normalized_count:
-                break
-            if progress_callback and expected_total > 0:
-                progress_callback(min(95.0, (analyzed / float(expected_total)) * 95.0))
+            finalized = engine.finalize(histogram_bins=self.histogram_bins)
+            aggregate_rows = [
+                row
+                for row in finalized.get("metric_rows", [])
+                if row.get("metric_key") in selected_key_set
+            ]
+            self.dataset_repository.save_metric_values_batch(session_id, aggregate_rows)
+            self.dataset_repository.save_histogram_artifact(
+                session_id=session_id,
+                metric_key="hist.document_length",
+                histogram=finalized.get("document_histogram", {}),
+            )
+            self.dataset_repository.save_histogram_artifact(
+                session_id=session_id,
+                metric_key="hist.word_length",
+                histogram=finalized.get("word_histogram", {}),
+            )
+            self.dataset_repository.complete_analysis_session(
+                session_id, status="completed"
+            )
 
-        if per_doc_buffer:
-            self.dataset_repository.save_metric_values_batch(session_id, per_doc_buffer)
-            persisted += len(per_doc_buffer)
-
-        finalized = engine.finalize(histogram_bins=self.histogram_bins)
-        aggregate_rows = [
-            row
-            for row in finalized.get("metric_rows", [])
-            if row.get("metric_key") in selected_key_set
-        ]
-        self.dataset_repository.save_metric_values_batch(session_id, aggregate_rows)
-        self.dataset_repository.save_histogram_artifact(
-            session_id=session_id,
-            metric_key="hist.document_length",
-            histogram=finalized.get("document_histogram", {}),
-        )
-        self.dataset_repository.save_histogram_artifact(
-            session_id=session_id,
-            metric_key="hist.word_length",
-            histogram=finalized.get("word_histogram", {}),
-        )
-        self.dataset_repository.complete_analysis_session(
-            session_id, status="completed"
-        )
+        finally:
+            engine.close()
 
         report = self.dataset_repository.load_analysis_report_by_session_id(session_id)
         if report is None:

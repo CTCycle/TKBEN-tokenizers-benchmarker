@@ -9,7 +9,11 @@ from typing import Any
 
 from server.configurations import get_server_settings
 from server.contracts.jobs import JobStartResponse
-from server.services.jobs import JobManager
+from server.services.jobs import (
+    ActiveJobConflictError,
+    JobManager,
+    JobWorkerStartError,
+)
 
 
 ###############################################################################
@@ -49,11 +53,27 @@ class ManagedJobService:
         ):
             raise ManagedJobConflictError(spec.conflict_detail)
 
-        job_id = job_manager.start_job(
-            job_type=spec.job_type,
-            runner=spec.runner,
-            kwargs={**spec.kwargs, "job_manager": job_manager},
-        )
+        try:
+            runner_kwargs = {**spec.kwargs, "job_manager": job_manager}
+            if spec.conflict_detail is not None:
+                job_id = job_manager.start_job(
+                    job_type=spec.job_type,
+                    runner=spec.runner,
+                    kwargs=runner_kwargs,
+                    reject_if_running=True,
+                )
+            else:
+                job_id = job_manager.start_job(
+                    job_type=spec.job_type,
+                    runner=spec.runner,
+                    kwargs=runner_kwargs,
+                )
+        except ActiveJobConflictError as exc:
+            raise ManagedJobConflictError(
+                spec.conflict_detail or "A job of this type is already running."
+            ) from exc
+        except JobWorkerStartError as exc:
+            raise ManagedJobInitializationError(spec.initialization_detail) from exc
         job_status = job_manager.get_job_status(job_id)
         if job_status is None:
             raise ManagedJobInitializationError(spec.initialization_detail)

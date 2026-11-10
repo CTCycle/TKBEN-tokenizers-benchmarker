@@ -10,6 +10,7 @@ from server.common.metric_catalog import DATASET_METRIC_CATALOG
 from server.services.metrics.engine import DatasetMetricsEngine
 import time
 from unittest.mock import MagicMock
+from pathlib import Path
 import pandas as pd
 from datasets import IterableDataset
 from datasets.exceptions import DataFilesNotFoundError
@@ -35,6 +36,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from server.repositories.database.backend import get_database
 from server.repositories.database.sqlite import SQLiteRepository
+from server.repositories import frequencies as frequency_module
 from server.repositories.schemas.models import Base
 from server.repositories.schemas.models import Dataset
 from server.repositories.schemas.models import DatasetDocument
@@ -1384,3 +1386,48 @@ def test_large_dataset_streaming_batches_do_not_materialize_all_rows(
     )
     assert len(batches) >= 10
     assert sum(len(batch) for batch in batches) == 2000
+
+
+###############################################################################
+@pytest.mark.parametrize("failure_mode", ["cancelled", "error"])
+def test_validate_dataset_closes_frequency_store_on_early_exit(
+    failure_mode: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(frequency_module, "CACHE_PATH", tmp_path)
+    repository = MagicMock()
+    repository.load_latest_analysis_report.return_value = None
+    repository.dataset_exists.return_value = True
+    repository.create_analysis_session.return_value = 1
+    repository.preview_dataset_filters.return_value = {"matching_documents": 1}
+    repository.iterate_dataset_rows.return_value = [[{"id": 1, "text": "sample"}]]
+    if failure_mode == "error":
+        repository.iterate_dataset_rows.side_effect = RuntimeError(
+            "simulated dataset read failure"
+        )
+
+    service = DatasetService()
+    service.dataset_repository = repository
+    service.get_default_analysis_parameters = lambda: dict(DATASET_ENGINE_PARAMETERS)
+
+    if failure_mode == "error":
+        with pytest.raises(RuntimeError, match="simulated dataset read failure"):
+            service.validate_dataset(
+                "custom/store-cleanup",
+                session_name="store-cleanup",
+                selected_metric_keys=["docs.length"],
+            )
+    else:
+        result = service.validate_dataset(
+            "custom/store-cleanup",
+            session_name="store-cleanup",
+            selected_metric_keys=["docs.length"],
+            should_stop=lambda: True,
+        )
+        assert result == {}
+        repository.complete_analysis_session.assert_called_once_with(
+            1, status="cancelled"
+        )
+
+    assert list(tmp_path.glob("tkben_freq_*.sqlite3")) == []

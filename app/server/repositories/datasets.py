@@ -27,6 +27,11 @@ K_ERROR = "k error"
 
 
 ###############################################################################
+class DatasetImportInProgressError(RuntimeError):
+    """Raised when another worker owns the dataset's loading row."""
+
+
+###############################################################################
 def _parse_timestamp(value: object) -> pd.Timestamp | None:
     if value is None:
         return None
@@ -135,6 +140,10 @@ class DatasetRepository:
             dataset_id = dataset_row[0] if dataset_row is not None else None
             if dataset_row is not None:
                 dataset_status = dataset_row[1]
+                if dataset_status == "loading":
+                    raise DatasetImportInProgressError(
+                        f"Dataset '{dataset_name}' is already being imported."
+                    )
                 if dataset_status == "ready":
                     assert dataset_id is not None
                     session.execute(
@@ -153,14 +162,33 @@ class DatasetRepository:
                 )
                 try:
                     session.commit()
-                except IntegrityError:
+                except IntegrityError as exc:
                     session.rollback()
+                    existing = session.execute(
+                        select(Dataset.name)
+                        .where(Dataset.name == dataset_name)
+                        .limit(1)
+                    ).scalar_one_or_none()
+                    if existing is not None:
+                        raise DatasetImportInProgressError(
+                            f"Another import already owns or completed dataset '{dataset_name}'."
+                        ) from exc
+                    raise
                 dataset_id = session.execute(
-                    select(Dataset.id).where(Dataset.name == dataset_name).limit(1)
+                    select(Dataset.id)
+                    .where(Dataset.name == dataset_name, Dataset.status == "loading")
+                    .limit(1)
                 ).scalar_one_or_none()
         if dataset_id is None:
             raise ValueError(f"Failed to resolve dataset id for '{dataset_name}'")
         return int(dataset_id)
+
+    # -------------------------------------------------------------------------
+    def delete_incomplete_dataset_imports(self) -> None:
+        """Remove abandoned loading datasets when no import workers are active."""
+        with self._session() as session:
+            _ = session.execute(delete(Dataset).where(Dataset.status == "loading"))
+            session.commit()
 
     # -------------------------------------------------------------------------
     def finalize_dataset_import(self, dataset_id: int, document_count: int) -> None:

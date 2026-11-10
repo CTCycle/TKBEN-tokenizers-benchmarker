@@ -21,7 +21,9 @@ from server.configurations.startup import (
 from server.contracts.database import DatabaseConfigurationRequest
 from server.repositories.database.backend import TKBENDatabase, get_database
 from server.repositories.database.initializer import initialize_database
+from server.repositories.datasets import DatasetRepository
 from server.repositories.jobs import JobRepository
+from server.repositories.queries.data import DataRepositoryQueries
 from server.repositories.runtime_settings import DatabaseRuntimeSettingsPersistence
 from server.services.jobs import JobManager
 
@@ -174,6 +176,12 @@ async def activate_database_configuration(
                 repository=candidate_job_repository,
             )
             await asyncio.to_thread(candidate_job_manager.restore_persisted_jobs)
+            candidate_dataset_repository = DatasetRepository(
+                DataRepositoryQueries(candidate_database)
+            )
+            await asyncio.to_thread(
+                candidate_dataset_repository.delete_incomplete_dataset_imports
+            )
 
             configuration_store.save(candidate_configuration)
             config_saved = True

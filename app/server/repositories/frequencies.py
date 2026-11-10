@@ -39,6 +39,7 @@ class DiskBackedFrequencyStore:
         )
         self.path = Path(raw_path)
         os.close(fd)
+        self._closed: bool = False
         self.engine = create_engine(f"sqlite:///{self.path}", future=True)
         self._session_factory = sessionmaker(bind=self.engine, future=True)
         self._initialize()
@@ -232,6 +233,9 @@ class DiskBackedFrequencyStore:
 
     # -------------------------------------------------------------------------
     def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
         try:
             self.engine.dispose()
         finally:

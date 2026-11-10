@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path, PurePosixPath
 from collections.abc import Callable
 
@@ -26,9 +27,11 @@ class ManagedJobHttpAdapter:
 
     # -------------------------------------------------------------------------
     @staticmethod
-    def start(request: Request, spec: ManagedJobSpec) -> JobStartResponse:
+    async def start(request: Request, spec: ManagedJobSpec) -> JobStartResponse:
         try:
-            return ManagedJobService().start(request.app.state.job_manager, spec)
+            return await asyncio.to_thread(
+                ManagedJobService().start, request.app.state.job_manager, spec
+            )
         except ManagedJobConflictError as exc:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT, detail=str(exc)

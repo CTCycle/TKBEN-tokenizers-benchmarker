@@ -113,7 +113,7 @@ async def download_dataset(
         payload.configs.configuration,
     )
 
-    return ManagedJobHttpAdapter.start(
+    return await ManagedJobHttpAdapter.start(
         request,
         ManagedJobSpec(
             job_type="dataset_download",
@@ -165,7 +165,7 @@ async def upload_custom_dataset(
             detail="Uploaded file is empty.",
         )
 
-    return ManagedJobHttpAdapter.start(
+    return await ManagedJobHttpAdapter.start(
         request,
         ManagedJobSpec(
             job_type="dataset_upload",
@@ -202,7 +202,7 @@ async def analyze_dataset(
             detail=f"Dataset '{payload.dataset_name}' not found. Please load it first.",
         )
 
-    return ManagedJobHttpAdapter.start(
+    return await ManagedJobHttpAdapter.start(
         request,
         ManagedJobSpec(
             job_type="dataset_validation",

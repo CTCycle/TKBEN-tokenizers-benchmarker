@@ -17,6 +17,7 @@ from concurrent.futures import (
 )
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
+from functools import partial
 from typing import Any, ClassVar, cast
 
 import numpy as np
@@ -154,6 +155,59 @@ class _TokenizerConcurrencyTracker:
 
 
 ###############################################################################
+@dataclass
+class _PendingTokenizerSubmitter:
+    tokenizer_ids: list[str]
+    effective_parallelism: int
+    load_tokenizers: Callable[[list[str]], dict[str, Any]]
+    worker_runner: Callable[..., _TokenizerExecutionResult]
+    should_stop: Callable[[], bool] | None
+    progress_tracker: _TokenizerProgressTracker
+    pending: dict[Future[_TokenizerExecutionResult], tuple[int, str]]
+    loaded_names: list[str]
+    tokenizer_metadata: list[dict[str, Any]]
+    next_tokenizer_index: int = 0
+
+    # -------------------------------------------------------------------------
+    def submit_pending(self, executor: ThreadPoolExecutor) -> bool:
+        """Fill available worker slots, returning whether cancellation was requested."""
+        while (
+            self.next_tokenizer_index < len(self.tokenizer_ids)
+            and len(self.pending) < self.effective_parallelism
+        ):
+            if self.should_stop and self.should_stop():
+                return True
+            index = self.next_tokenizer_index
+            self.next_tokenizer_index += 1
+            name = self.tokenizer_ids[index]
+            tokenizer = self.load_tokenizers([name]).get(name)
+            if tokenizer is None:
+                self.progress_tracker.update(index, 1.0)
+                continue
+            self.loaded_names.append(name)
+            self.tokenizer_metadata.append(
+                {
+                    "tokenizer_name": name,
+                    "tokenizer_class": type(tokenizer).__name__,
+                    "is_fast": bool(getattr(tokenizer, "is_fast", False)),
+                    "name_or_path": getattr(tokenizer, "name_or_path", None),
+                    "model_max_length": getattr(tokenizer, "model_max_length", None),
+                    "special_tokens_map": getattr(tokenizer, "special_tokens_map", {})
+                    or {},
+                }
+            )
+            future = executor.submit(
+                self.worker_runner,
+                index=index,
+                tokenizer_name=name,
+                tokenizer=tokenizer,
+                trial_progress=self.progress_tracker.reporter(index),
+            )
+            self.pending[future] = (index, name)
+        return False
+
+
+###############################################################################
 class BenchmarkServiceExecutionMixin:
     _raw_observations: dict[str, list[dict[str, object]]] = cast(
         dict[str, list[dict[str, object]]], cast(object, None)
@@ -288,64 +342,37 @@ class BenchmarkServiceExecutionMixin:
         pending: dict[Future[_TokenizerExecutionResult], tuple[int, str]] = {}
         loaded_names: list[str] = []
         tokenizer_metadata: list[dict[str, Any]] = []
-        next_tokenizer_index = 0
         cancelled = False
-
-        def submit_pending(executor: ThreadPoolExecutor) -> bool:
-            # Tokenizers are loaded just before they run and released when the
-            # worker finishes, so memory scales with parallelism, not run size.
-            nonlocal next_tokenizer_index
-            while (
-                next_tokenizer_index < len(tokenizer_ids)
-                and len(pending) < effective_parallelism
-            ):
-                if should_stop and should_stop():
-                    return True
-                index = next_tokenizer_index
-                next_tokenizer_index += 1
-                name = tokenizer_ids[index]
-                tokenizer = self.load_tokenizers([name]).get(name)
-                if tokenizer is None:
-                    progress_tracker.update(index, 1.0)
-                    continue
-                loaded_names.append(name)
-                tokenizer_metadata.append(
-                    {
-                        "tokenizer_name": name,
-                        "tokenizer_class": type(tokenizer).__name__,
-                        "is_fast": bool(getattr(tokenizer, "is_fast", False)),
-                        "name_or_path": getattr(tokenizer, "name_or_path", None),
-                        "model_max_length": getattr(tokenizer, "model_max_length", None),
-                        "special_tokens_map": getattr(tokenizer, "special_tokens_map", {})
-                        or {},
-                    }
-                )
-                future = executor.submit(
-                    self._run_tokenizer_worker,
-                    index=index,
-                    tokenizer_name=name,
-                    tokenizer=tokenizer,
-                    spool=spool,
-                    batch_size=batch_size,
-                    num_docs=num_docs,
-                    dataset_stream_wall_time_seconds=dataset_stream_wall_time_seconds,
-                    metric_plan=metric_plan,
-                    warmup_trials=warmup_trials,
-                    timed_trials=timed_trials,
-                    add_special_tokens=add_special_tokens,
-                    padding=padding,
-                    truncation=truncation,
-                    max_length=max_length,
-                    per_document_sample_size=per_document_sample_size,
-                    should_stop=should_stop,
-                    concurrency_tracker=concurrency_tracker,
-                    trial_progress=progress_tracker.reporter(index),
-                )
-                pending[future] = (index, name)
-            return False
+        submitter = _PendingTokenizerSubmitter(
+            tokenizer_ids=tokenizer_ids,
+            effective_parallelism=effective_parallelism,
+            load_tokenizers=self.load_tokenizers,
+            worker_runner=partial(
+                self._run_tokenizer_worker,
+                spool=spool,
+                batch_size=batch_size,
+                num_docs=num_docs,
+                dataset_stream_wall_time_seconds=dataset_stream_wall_time_seconds,
+                metric_plan=metric_plan,
+                warmup_trials=warmup_trials,
+                timed_trials=timed_trials,
+                add_special_tokens=add_special_tokens,
+                padding=padding,
+                truncation=truncation,
+                max_length=max_length,
+                per_document_sample_size=per_document_sample_size,
+                should_stop=should_stop,
+                concurrency_tracker=concurrency_tracker,
+            ),
+            should_stop=should_stop,
+            progress_tracker=progress_tracker,
+            pending=pending,
+            loaded_names=loaded_names,
+            tokenizer_metadata=tokenizer_metadata,
+        )
 
         with ThreadPoolExecutor(max_workers=effective_parallelism) as executor:
-            if submit_pending(executor):
+            if submitter.submit_pending(executor):
                 cancelled = True
 
             while pending:
@@ -377,7 +404,7 @@ class BenchmarkServiceExecutionMixin:
                         _ = future.cancel()
                     continue
 
-                if submit_pending(executor):
+                if submitter.submit_pending(executor):
                     cancelled = True
 
         if not loaded_names and not cancelled:

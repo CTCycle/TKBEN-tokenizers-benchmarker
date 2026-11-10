@@ -217,6 +217,10 @@ class DatasetMetricsEngine:
         self.other_chars = 0
 
     # -------------------------------------------------------------------------
+    def close(self) -> None:
+        self.word_frequency.close()
+
+    # -------------------------------------------------------------------------
     def _detect_language_tag(self, tokens: list[str], text: str) -> str:
         sample = [token.lower() for token in tokens[:250]]
         lang_scores: dict[str, int] = {}
@@ -923,7 +927,7 @@ class DatasetMetricsEngine:
             {"metric_key": "words.zipf_curve", "json_value": zipf_curve},
         ]
 
-        self.word_frequency.close()
+        self.close()
         return {
             "metric_rows": metric_rows,
             "document_histogram": doc_hist,

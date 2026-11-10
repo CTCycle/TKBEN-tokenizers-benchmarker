@@ -3,6 +3,9 @@
 
 from __future__ import annotations
 
+import threading
+from collections.abc import Callable
+from functools import partial
 from pathlib import Path
 from types import SimpleNamespace
 from fastapi import FastAPI
@@ -21,7 +24,12 @@ from server.configurations import DatabaseSettings
 from server.repositories.database.backend import TKBENDatabase
 from server.repositories.database.initializer import initialize_database
 from server.repositories.jobs import JobRepository
-from server.services.jobs import JobManager
+from server.services.jobs import ActiveJobConflictError, JobManager
+from server.services.managed_jobs import (
+    ManagedJobInitializationError,
+    ManagedJobService,
+    ManagedJobSpec,
+)
 
 
 ###############################################################################
@@ -423,6 +431,34 @@ def test_production_code_has_no_legacy_architecture_imports() -> None:
 
 
 ###############################################################################
+def test_production_functions_are_not_nested() -> None:
+    violations: list[str] = []
+    for path in _production_python_files():
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        parents = {
+            child: parent
+            for parent in ast.walk(tree)
+            for child in ast.iter_child_nodes(parent)
+        }
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                continue
+            parent = parents.get(node)
+            while parent is not None:
+                if isinstance(parent, ast.FunctionDef | ast.AsyncFunctionDef):
+                    relative = path.relative_to(SERVER_ROOT)
+                    violations.append(
+                        f"{relative}:{node.lineno}: nested function {node.name}"
+                    )
+                    break
+                parent = parents.get(parent)
+
+    assert not violations, "Nested production functions remain:\n" + "\n".join(
+        violations
+    )
+
+
+###############################################################################
 def test_removed_compatibility_paths_do_not_return() -> None:
     existing = [
         str(path.relative_to(REPOSITORY_ROOT))
@@ -629,6 +665,111 @@ def test_progress_updates_are_ignored_after_a_job_finishes() -> None:
 ###############################################################################
 def test_stopping_unknown_job_returns_none() -> None:
     assert JobManager().request_stop("missing") is None
+
+
+###############################################################################
+def _job_runner_wait_for_release(release_worker: threading.Event) -> dict[str, object]:
+    release_worker.wait(timeout=2.0)
+    return {"done": True}
+
+
+###############################################################################
+def _start_exclusive_job(
+    manager: JobManager,
+    ready: threading.Barrier,
+    runner: Callable[[], dict[str, object]],
+    job_ids: list[str],
+    conflicts: list[ActiveJobConflictError],
+) -> None:
+    ready.wait(timeout=2.0)
+    try:
+        job_ids.append(
+            manager.start_job(
+                "exclusive",
+                runner,
+                reject_if_running=True,
+            )
+        )
+    except ActiveJobConflictError as exc:
+        conflicts.append(exc)
+
+
+###############################################################################
+def _fail_thread_start(_thread: threading.Thread) -> None:
+    raise RuntimeError("simulated thread startup failure")
+
+
+###############################################################################
+def _unreachable_job_runner() -> dict[str, object]:
+    return {"unreachable": True}
+
+
+###############################################################################
+def test_conflicting_job_reservation_is_atomic() -> None:
+    manager = JobManager()
+    ready = threading.Barrier(2)
+    release_worker = threading.Event()
+    runner = partial(_job_runner_wait_for_release, release_worker)
+    job_ids: list[str] = []
+    conflicts: list[ActiveJobConflictError] = []
+
+    callers = [
+        threading.Thread(
+            target=_start_exclusive_job,
+            args=(manager, ready, runner, job_ids, conflicts),
+        )
+        for _ in range(2)
+    ]
+    for caller in callers:
+        caller.start()
+    for caller in callers:
+        caller.join(timeout=3.0)
+    release_worker.set()
+
+    assert all(not caller.is_alive() for caller in callers)
+    assert len(job_ids) == 1
+    assert len(conflicts) == 1
+    assert _wait_for_status(manager, job_ids[0], "completed")["result"] == {
+        "done": True
+    }
+
+
+###############################################################################
+def test_worker_start_failure_is_terminal_and_reported(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository, database = _job_repository(tmp_path)
+    manager = JobManager(repository=repository)
+
+    monkeypatch.setattr(threading.Thread, "start", _fail_thread_start)
+    spec = ManagedJobSpec(
+        job_type="sample",
+        runner=_unreachable_job_runner,
+        kwargs={},
+        initialization_detail="Failed to initialize sample job.",
+        message="Sample job started.",
+    )
+
+    try:
+        with pytest.raises(
+            ManagedJobInitializationError,
+            match="Failed to initialize sample job",
+        ):
+            ManagedJobService().start(manager, spec)
+
+        status = manager.list_jobs()[0]
+        persisted = repository.get_job(status["job_id"])
+        assert status["status"] == "failed"
+        assert status["failure_reason"] == "worker_start_error"
+        assert persisted is not None
+        assert persisted["status"] == "failed"
+        assert persisted["failure_reason"] == "worker_start_error"
+
+        restored = JobManager(repository=repository)
+        restored.restore_persisted_jobs()
+        assert restored.get_job_status(status["job_id"])["status"] == "failed"
+    finally:
+        database.backend.engine.dispose()
 
 
 ###############################################################################

@@ -3,7 +3,8 @@
 
 from __future__ import annotations
 
-from typing import cast
+import asyncio
+from typing import NoReturn, cast
 
 from fastapi import APIRouter, HTTPException, Request, status
 
@@ -25,6 +26,8 @@ from server.configurations import (
     reset_runtime_settings,
 )
 from server.configurations.runtime import (
+    DashboardUiPreferencesState,
+    RuntimeSettingsState,
     RuntimeSettingsConflictError,
     RuntimeSettingsPersistenceError,
     RuntimeSettingsValidationError,
@@ -51,8 +54,7 @@ router = APIRouter(prefix=API_ROUTER_PREFIX_SETTINGS, tags=["settings"])
 
 
 ###############################################################################
-def _build_response() -> RuntimeSettingsResponse:
-    state = get_runtime_settings_state()
+def _build_response(state: RuntimeSettingsState) -> RuntimeSettingsResponse:
     return RuntimeSettingsResponse(
         revision=state.revision,
         settings=_runtime_values(state.settings),
@@ -94,7 +96,7 @@ def _runtime_values(settings: ServerSettings) -> RuntimeSettingsValues:
 
 
 ###############################################################################
-def _raise_settings_error(exc: RuntimeSettingsValidationError) -> None:
+def _raise_settings_error(exc: RuntimeSettingsValidationError) -> NoReturn:
     raise HTTPException(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         detail=str(exc),
@@ -104,6 +106,16 @@ def _raise_settings_error(exc: RuntimeSettingsValidationError) -> None:
 ###############################################################################
 def _replace_application_snapshot(request: Request) -> None:
     request.app.state.settings = get_runtime_settings_state().settings
+
+
+###############################################################################
+def _persist_dashboard_preferences(
+    payload: DashboardUiPreferencesRequest,
+) -> DashboardUiPreferencesState:
+    return get_runtime_settings_store().set_dashboard_preferences(
+        payload.preferences,
+        expected_revision=payload.expected_revision,
+    )
 
 
 ###############################################################################
@@ -132,7 +144,7 @@ def _build_path_response(request: Request) -> PathSettingsResponse:
     status_code=status.HTTP_200_OK,
 )
 async def get_path_settings(request: Request) -> PathSettingsResponse:
-    return _build_path_response(request)
+    return await asyncio.to_thread(_build_path_response, request)
 
 
 ###############################################################################
@@ -156,20 +168,20 @@ async def put_path_settings(
         resolve_runtime_path(log_dir, ROOT_DIR / "data" / "logs"),
     ):
         try:
-            directory.mkdir(parents=True, exist_ok=True)
+            await asyncio.to_thread(directory.mkdir, parents=True, exist_ok=True)
         except OSError as exc:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"Directory cannot be created: {directory}",
             ) from exc
     try:
-        write_path_configuration(data_dir, log_dir)
+        await asyncio.to_thread(write_path_configuration, data_dir, log_dir)
     except OSError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to persist directory settings.",
         ) from exc
-    return _build_path_response(request)
+    return await asyncio.to_thread(_build_path_response, request)
 
 
 ###############################################################################
@@ -179,7 +191,7 @@ async def put_path_settings(
     status_code=status.HTTP_200_OK,
 )
 async def get_settings() -> RuntimeSettingsResponse:
-    return _build_response()
+    return _build_response(get_runtime_settings_state())
 
 
 ###############################################################################
@@ -206,10 +218,7 @@ async def put_dashboard_preferences(
     payload: DashboardUiPreferencesRequest,
 ) -> DashboardUiPreferencesResponse:
     try:
-        state = get_runtime_settings_store().set_dashboard_preferences(
-            payload.preferences,
-            expected_revision=payload.expected_revision,
-        )
+        state = await asyncio.to_thread(_persist_dashboard_preferences, payload)
     except RuntimeSettingsConflictError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -242,7 +251,8 @@ async def patch_settings(
         exclude_none=True,
     )
     try:
-        apply_runtime_settings_patch(
+        state = await asyncio.to_thread(
+            apply_runtime_settings_patch,
             patch,
             expected_revision=payload.expected_revision,
         )
@@ -259,7 +269,7 @@ async def patch_settings(
     except RuntimeSettingsValidationError as exc:
         _raise_settings_error(exc)
 
-    response = _build_response()
+    response = _build_response(state)
     _replace_application_snapshot(request)
     return response
 
@@ -275,7 +285,8 @@ async def reset_settings(
     payload: RuntimeSettingsResetRequest,
 ) -> RuntimeSettingsResponse:
     try:
-        reset_runtime_settings(
+        state = await asyncio.to_thread(
+            reset_runtime_settings,
             expected_revision=payload.expected_revision,
             keys=payload.keys,
             reset_all=payload.all,
@@ -293,7 +304,7 @@ async def reset_settings(
     except RuntimeSettingsValidationError as exc:
         _raise_settings_error(exc)
 
-    response = _build_response()
+    response = _build_response(state)
     _replace_application_snapshot(request)
     return response
 

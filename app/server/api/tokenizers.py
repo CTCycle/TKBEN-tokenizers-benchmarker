@@ -227,7 +227,7 @@ async def download_tokenizers(
             detail=str(exc),
         ) from exc
 
-    return ManagedJobHttpAdapter.start(
+    return await ManagedJobHttpAdapter.start(
         request,
         ManagedJobSpec(
             job_type="tokenizer_download",
@@ -271,7 +271,7 @@ async def generate_tokenizer_report(
             ),
         )
 
-    return ManagedJobHttpAdapter.start(
+    return await ManagedJobHttpAdapter.start(
         request,
         ManagedJobSpec(
             job_type="tokenizer_report",

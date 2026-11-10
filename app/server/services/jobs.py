@@ -26,6 +26,16 @@ PROGRESS_PERSIST_STEP = 1.0
 
 
 ###############################################################################
+class ActiveJobConflictError(RuntimeError):
+    """Raised when a conflicting job is already active."""
+
+
+###############################################################################
+class JobWorkerStartError(RuntimeError):
+    """Raised when the background thread for a persisted job cannot start."""
+
+
+###############################################################################
 @dataclass
 class JobState:
     job_id: str
@@ -155,6 +165,8 @@ class JobManager:
         runner: Callable[..., dict[str, Any]],
         args: tuple[Any, ...] = (),
         kwargs: dict[str, Any] | None = None,
+        *,
+        reject_if_running: bool = False,
     ) -> str:
         while True:
             job_id = str(uuid.uuid4())[:8]
@@ -176,6 +188,11 @@ class JobManager:
             runner_kwargs["job_id"] = job_id
 
         with self.lock:
+            if reject_if_running and any(
+                state.job_type == job_type and state.status in ACTIVE_STATUSES
+                for state in self.jobs.values()
+            ):
+                raise ActiveJobConflictError(job_type)
             self.jobs[job_id] = state
             self._prune_terminal_jobs_locked()
 
@@ -195,7 +212,19 @@ class JobManager:
             daemon=True,
         )
 
-        thread.start()
+        try:
+            thread.start()
+        except Exception as exc:
+            self._finish_job(
+                state,
+                status="failed",
+                completed_at=self.clock(),
+                error="The background job worker could not be started.",
+                failure_reason="worker_start_error",
+            )
+            raise JobWorkerStartError(
+                "The background job worker could not be started."
+            ) from exc
 
         logger.info("Started job %s (type=%s)", job_id, job_type)
         return job_id

@@ -87,7 +87,7 @@ async def run_benchmarks(
             detail=str(exc),
         ) from exc
 
-    return ManagedJobHttpAdapter.start(
+    return await ManagedJobHttpAdapter.start(
         request,
         ManagedJobSpec(
             job_type="benchmark_run",

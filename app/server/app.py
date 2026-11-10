@@ -38,6 +38,7 @@ from server.configurations.startup import (
 from server.contracts.health import HealthResponse, ShutdownResponse
 from server.repositories.database.initializer import initialize_database
 from server.repositories.database.migrations import DatabaseMigrationError
+from server.repositories.datasets import DatasetRepository
 from server.repositories.jobs import JobRepository
 from server.repositories.runtime_settings import DatabaseRuntimeSettingsPersistence
 from server.repositories.database.backend import get_database
@@ -196,6 +197,7 @@ async def app_lifespan(application: FastAPI) -> AsyncIterator[None]:
         repository=job_repository,
     )
     job_manager.restore_persisted_jobs()
+    DatasetRepository().delete_incomplete_dataset_imports()
     application.state.job_repository = job_repository
     application.state.job_manager = job_manager
 
