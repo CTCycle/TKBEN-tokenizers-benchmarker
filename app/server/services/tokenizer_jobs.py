@@ -12,7 +12,6 @@ from server.services.tokenizers import TokenizersService
 
 ###############################################################################
 class TokenizerJobService:
-
     # -------------------------------------------------------------------------
     def run_download_job(
         self,

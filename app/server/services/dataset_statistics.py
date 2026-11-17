@@ -42,7 +42,6 @@ class LengthStatistics:
 
 ###############################################################################
 class HistogramBuilder:
-
     # -------------------------------------------------------------------------
     def __init__(self, stats: LengthStatistics, bins: int) -> None:
         self.stats = stats

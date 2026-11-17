@@ -34,7 +34,6 @@ class TokenizerAdapter(Protocol):
 
 ###############################################################################
 class UniversalTokenizerAdapter:
-
     # -------------------------------------------------------------------------
     def __init__(self, tokenizer_id: str, tokenizer: Any) -> None:
         self.tokenizer_id = tokenizer_id

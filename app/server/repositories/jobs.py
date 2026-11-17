@@ -18,7 +18,6 @@ TERMINAL_STATUSES = ("completed", "failed", "cancelled")
 
 ###############################################################################
 class JobRepository:
-
     # -------------------------------------------------------------------------
     def __init__(self, database: TKBENDatabase | None = None) -> None:
         self.database = database or get_database()

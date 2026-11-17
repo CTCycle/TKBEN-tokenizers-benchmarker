@@ -13,7 +13,6 @@ from server.common.path import CACHE_PATH
 
 ###############################################################################
 class BenchmarkTextSpool:
-
     # -------------------------------------------------------------------------
     def __init__(self) -> None:
         CACHE_PATH.mkdir(parents=True, exist_ok=True)

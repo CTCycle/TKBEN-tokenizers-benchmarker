@@ -15,7 +15,6 @@ from server.services.jobs import JobManager, JobProgressReporter, JobStopChecker
 
 ###############################################################################
 class BenchmarkJobService:
-
     # -------------------------------------------------------------------------
     def run_benchmark_job(
         self,

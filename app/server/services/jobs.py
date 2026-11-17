@@ -82,7 +82,6 @@ class JobState:
 
 ###############################################################################
 class JobProgressReporter:
-
     # -------------------------------------------------------------------------
     def __init__(self, job_manager: JobManager, job_id: str) -> None:
         self.job_manager = job_manager
@@ -95,7 +94,6 @@ class JobProgressReporter:
 
 ###############################################################################
 class JobStopChecker:
-
     # -------------------------------------------------------------------------
     def __init__(self, job_manager: JobManager, job_id: str) -> None:
         self.job_manager = job_manager
@@ -108,7 +106,6 @@ class JobStopChecker:
 
 ###############################################################################
 class JobManager:
-
     # -------------------------------------------------------------------------
     def __init__(
         self,

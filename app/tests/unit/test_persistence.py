@@ -49,7 +49,6 @@ from server.repositories.queries.data import DataRepositoryQueries
 
 ###############################################################################
 class FakeQueries:
-
     # -------------------------------------------------------------------------
     def __init__(self, engine: sqlalchemy.Engine) -> None:
         self.engine = engine
@@ -549,10 +548,8 @@ def test_postgres_startup_runs_the_same_migration_workflow(
         lambda received: calls.append(f"ensure:{received.database_name}"),
     )
 
-
     ###############################################################################
     class FakeEngine:
-
         # -------------------------------------------------------------------------
         def dispose(self) -> None:
             calls.append("dispose")
@@ -581,10 +578,8 @@ def test_postgres_connection_check_executes_select_one(
 ) -> None:
     statements: list[str] = []
 
-
     ###############################################################################
     class FakeConnection:
-
         # -------------------------------------------------------------------------
         def __enter__(self):
             return self
@@ -597,10 +592,8 @@ def test_postgres_connection_check_executes_select_one(
         def execute(self, statement):
             statements.append(str(statement))
 
-
     ###############################################################################
     class FakeEngine:
-
         # -------------------------------------------------------------------------
         def connect(self):
             return FakeConnection()

@@ -49,7 +49,6 @@ class DashboardPdfDocument:
 
 ###############################################################################
 class DashboardExportService(DashboardExportFormatting):
-
     # -------------------------------------------------------------------------
     def export_dashboard_pdf(
         self,

@@ -29,7 +29,6 @@ def _parse_timestamp(value: object) -> pd.Timestamp | None:
 
 ###############################################################################
 class BenchmarkReportService:
-
     # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.repository = BenchmarkRepository()

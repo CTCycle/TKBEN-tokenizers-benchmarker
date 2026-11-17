@@ -24,7 +24,6 @@ class _SettingsContract(BaseModel):
 
 ###############################################################################
 class _SettingsPatchContract(_SettingsContract):
-
     # -------------------------------------------------------------------------
     @model_validator(mode="after")
     def reject_explicit_nulls(self) -> "_SettingsPatchContract":

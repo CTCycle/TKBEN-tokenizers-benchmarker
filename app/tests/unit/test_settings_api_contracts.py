@@ -23,7 +23,6 @@ from server.contracts.settings import RuntimeSettingsPatchRequest
 
 ###############################################################################
 class _MemoryPersistence:
-
     # -------------------------------------------------------------------------
     def __init__(self, document: dict[str, object] | None = None) -> None:
         self.document = document
@@ -563,10 +562,8 @@ def test_new_workflows_use_saved_runtime_settings(
 
     joined_timeouts: list[float | None] = []
 
-
     ###############################################################################
     class CapturingThread(threading.Thread):
-
         # -------------------------------------------------------------------------
         def join(self, timeout: float | None = None) -> None:
             joined_timeouts.append(timeout)
@@ -601,10 +598,8 @@ def test_new_workflows_use_saved_runtime_settings(
 
     captured_candidate_limits: list[int] = []
 
-
     ###############################################################################
     class FakeHfApi:
-
         # -------------------------------------------------------------------------
         def __init__(self, token: str | None) -> None:
             del token
@@ -670,10 +665,8 @@ def test_new_workflows_use_saved_runtime_settings(
     ]
     assert observed_benchmark_batches == [target_benchmark_batch]
 
-
     ###############################################################################
     class NewJobManager:
-
         # -------------------------------------------------------------------------
         def is_job_running(self, _job_type: str | None = None) -> bool:
             return False
@@ -708,7 +701,6 @@ def test_managed_jobs_allow_concurrent_starts_unless_conflict_detail_is_set() ->
         ManagedJobService,
         ManagedJobSpec,
     )
-
 
     ###############################################################################
     class RunningJobManager:

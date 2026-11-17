@@ -29,7 +29,6 @@ class BenchmarkReportPage:
 
 ###############################################################################
 class BenchmarkRepository:
-
     # -------------------------------------------------------------------------
     def __init__(self, database: TKBENDatabase | None = None) -> None:
         self.database = database or get_database()

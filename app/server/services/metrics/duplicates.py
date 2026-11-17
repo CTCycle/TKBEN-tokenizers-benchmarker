@@ -40,7 +40,6 @@ def jaccard_like_similarity_from_hamming(a: int, b: int, bits: int = 64) -> floa
 
 ###############################################################################
 class SimHashNearDuplicateAnalyzer:
-
     # -------------------------------------------------------------------------
     def __init__(
         self, similarity_threshold: float = 0.9, bands: int = 4, bits: int = 64

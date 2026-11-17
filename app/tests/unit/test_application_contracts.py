@@ -265,10 +265,8 @@ def test_create_app_initializes_startup_state(
     repository = object()
     monkeypatch.setattr(app_module, "JobRepository", lambda: repository)
 
-
     ###############################################################################
     class StubJobManager:
-
         # -------------------------------------------------------------------------
         def __init__(self, max_stored_jobs, repository=None) -> None:
             self.repository = repository

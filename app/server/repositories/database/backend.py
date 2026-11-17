@@ -49,7 +49,6 @@ def build_postgres_backend(settings: DatabaseSettings) -> DatabaseBackend:
 
 ###############################################################################
 class TKBENDatabase:
-
     # -------------------------------------------------------------------------
     def __init__(
         self, settings: DatabaseSettings | ServerSettings | None = None

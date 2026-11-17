@@ -38,7 +38,6 @@ RUNTIME_SETTINGS_WARNING = (
 
 ###############################################################################
 class RuntimeSettingsPersistence(Protocol):
-
     # -------------------------------------------------------------------------
     def load(self) -> dict[str, object] | None: ...
 

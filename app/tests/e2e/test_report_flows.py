@@ -1021,9 +1021,9 @@ def test_live_cross_benchmark_report_manager_and_dashboard_workflows(
         tick_box = tick_label.bounding_box()
         chart_box = point_card.locator("svg").first.bounding_box()
         assert tick_box is not None and chart_box is not None
-        assert tick_box["y"] + tick_box["height"] <= chart_box["y"] + chart_box["height"], (
-            "Single-tokenizer tick label is clipped by the chart"
-        )
+        assert (
+            tick_box["y"] + tick_box["height"] <= chart_box["y"] + chart_box["height"]
+        ), "Single-tokenizer tick label is clipped by the chart"
 
         two_tokenizer_name = f"{stem} two tokenizer"
         two_tokenizer_report = _create_report_in_wizard(

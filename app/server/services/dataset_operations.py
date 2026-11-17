@@ -707,10 +707,14 @@ class DatasetServiceOperationsMixin:
                 if normalized_count is not None and analyzed >= normalized_count:
                     break
                 if progress_callback and expected_total > 0:
-                    progress_callback(min(95.0, (analyzed / float(expected_total)) * 95.0))
+                    progress_callback(
+                        min(95.0, (analyzed / float(expected_total)) * 95.0)
+                    )
 
             if per_doc_buffer:
-                self.dataset_repository.save_metric_values_batch(session_id, per_doc_buffer)
+                self.dataset_repository.save_metric_values_batch(
+                    session_id, per_doc_buffer
+                )
                 persisted += len(per_doc_buffer)
 
             finalized = engine.finalize(histogram_bins=self.histogram_bins)

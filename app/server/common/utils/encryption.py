@@ -17,7 +17,6 @@ DATABASE_PURPOSE = "database_connection_password"
 
 ###############################################################################
 class SymmetricCipher:
-
     # -------------------------------------------------------------------------
     def __init__(self, key_value: str) -> None:
         try:

@@ -133,7 +133,6 @@ class RunningMoments:
 
 ###############################################################################
 class RollingMattr:
-
     # -------------------------------------------------------------------------
     def __init__(self, window_size: int) -> None:
         self.window_size = max(10, int(window_size))
@@ -164,7 +163,6 @@ class RollingMattr:
 
 ###############################################################################
 class DatasetMetricsEngine:
-
     # -------------------------------------------------------------------------
     def __init__(self, parameters: dict[str, Any]) -> None:
         self.parameters = parameters

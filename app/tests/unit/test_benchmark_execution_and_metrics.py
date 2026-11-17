@@ -186,10 +186,8 @@ def test_run_benchmarks_isolates_tokenizer_failure(monkeypatch) -> None:
         (11, "gamma"),
     ]
 
-
     ###############################################################################
     class BrokenTokenizer(DummyTokenizer):
-
         # -------------------------------------------------------------------------
         def _encode_one(self, text: str) -> list[int]:
             raise RuntimeError("broken tokenizer")
@@ -306,10 +304,8 @@ def test_run_benchmarks_parallelism_two_overlaps_tokenizer_workloads(
 ###############################################################################
 def test_run_benchmarks_caps_workers_and_preserves_input_order(monkeypatch) -> None:
 
-
     ###############################################################################
     class DoubleTokenCountTokenizer(DummyTokenizer):
-
         # -------------------------------------------------------------------------
         def _encode_one(self, text: str) -> list[int]:
             encoded = super()._encode_one(text)
@@ -591,10 +587,8 @@ def test_run_benchmarks_computes_real_fragmentation_buckets() -> None:
     service = BenchmarkService()
     rows = [(1, "a alpha alphabetic")]
 
-
     ###############################################################################
     class LengthSensitiveTokenizer(DummyTokenizer):
-
         # -------------------------------------------------------------------------
         def _encode_one(self, text: str) -> list[int]:
             token = str(text)
@@ -701,10 +695,8 @@ def test_run_benchmarks_all_failed_tokenizers_report_unavailable_metrics() -> No
     service = BenchmarkService()
     rows = [(1, "alpha"), (2, "beta")]
 
-
     ###############################################################################
     class BrokenTokenizer(DummyTokenizer):
-
         # -------------------------------------------------------------------------
         def _encode_one(self, text: str) -> list[int]:
             raise RuntimeError("always broken")
@@ -896,7 +888,6 @@ def test_benchmark_text_spool_cleanup_removes_file(
 
 ###############################################################################
 class DummyJobManager:
-
     # -------------------------------------------------------------------------
     def __init__(self, *, stopped: bool = False) -> None:
         self.stopped = stopped
@@ -914,10 +905,8 @@ class DummyJobManager:
 ###############################################################################
 def test_run_benchmark_job_builds_and_saves_report(monkeypatch) -> None:
 
-
     ###############################################################################
     class FakeBenchmarkService:
-
         # -------------------------------------------------------------------------
         def __init__(self, max_documents: int = 0):
             self.max_documents = max_documents
@@ -967,10 +956,8 @@ def test_run_benchmark_job_builds_and_saves_report(monkeypatch) -> None:
             assert payload["dataset_name"] == "custom/sample"
             return 11
 
-
     ###############################################################################
     class FakeBenchmarkReportService:
-
         # -------------------------------------------------------------------------
         def save_benchmark_report(self, payload):
             assert payload["dataset_name"] == "custom/sample"
@@ -1004,10 +991,8 @@ def test_run_benchmark_job_returns_cancelled_payload_without_persist(
     monkeypatch,
 ) -> None:
 
-
     ###############################################################################
     class FakeBenchmarkService:
-
         # -------------------------------------------------------------------------
         def __init__(self, max_documents: int = 0):
             self.max_documents = max_documents
@@ -1079,7 +1064,6 @@ def test_run_benchmark_job_returns_cancelled_payload_without_persist(
 
 ###############################################################################
 class FakeBenchmarkRepository:
-
     # -------------------------------------------------------------------------
     def get_dataset_document_count(self, dataset_name: str) -> int:
         return 7 if dataset_name == "custom/sample" else 0

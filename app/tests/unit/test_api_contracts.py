@@ -14,7 +14,6 @@ from datetime import timezone
 
 ###############################################################################
 class DummyJobManager:
-
     # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.last_job_type = ""
@@ -316,7 +315,6 @@ def test_benchmark_by_id_accepts_cancelled_contract(monkeypatch) -> None:
 
 ###############################################################################
 class DummyJobManager__datasets_routes:
-
     # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.last_job_type = ""
@@ -431,12 +429,10 @@ def test_dataset_upload_accepts_limit_and_rejects_one_byte_over(monkeypatch) -> 
 
     from server.api import datasets as datasets_api
 
-
     ###############################################################################
     class _DatasetCfg:
         allowed_extensions = (".csv", ".xlsx")
         max_upload_bytes = limit
-
 
     ###############################################################################
     class _Settings:
@@ -551,10 +547,8 @@ def _export_payload() -> dict[str, object]:
 def test_export_route_returns_pdf_headers_and_bytes(monkeypatch) -> None:
     from server.api import exports as exports_api
 
-
     ###############################################################################
     class FakeExportService:
-
         # -------------------------------------------------------------------------
         def export_dashboard_pdf(self, **kwargs):
             assert kwargs["dashboard_type"] == "benchmark"
@@ -583,10 +577,8 @@ def test_export_route_maps_expected_and_unexpected_service_failures(
 ) -> None:
     from server.api import exports as exports_api
 
-
     ###############################################################################
     class ValueErrorService:
-
         # -------------------------------------------------------------------------
         def export_dashboard_pdf(self, **kwargs):
             del kwargs
@@ -597,10 +589,8 @@ def test_export_route_maps_expected_and_unexpected_service_failures(
     assert invalid.status_code == 400
     assert invalid.json()["detail"] == "unsupported visualization"
 
-
     ###############################################################################
     class FailingService:
-
         # -------------------------------------------------------------------------
         def export_dashboard_pdf(self, **kwargs):
             del kwargs
@@ -628,10 +618,8 @@ def _job_status(job_id: str, status: str) -> dict[str, object]:
 ###############################################################################
 def test_job_routes_distinguish_missing_terminal_and_running_jobs(monkeypatch) -> None:
 
-
     ###############################################################################
     class FakeJobManager:
-
         # -------------------------------------------------------------------------
         def get_job_status(self, job_id: str):
             if job_id == "missing":
@@ -664,10 +652,8 @@ def test_reconciled_job_remains_addressable_and_rejects_cancellation(
     monkeypatch,
 ) -> None:
 
-
     ###############################################################################
     class MemoryJobRepository:
-
         # -------------------------------------------------------------------------
         def __init__(self) -> None:
             now = time()
@@ -735,10 +721,8 @@ def test_key_routes_keep_raw_values_out_of_list_and_map_lifecycle_calls(
 
     calls: list[tuple[str, object]] = []
 
-
     ###############################################################################
     class FakeKeyService:
-
         # -------------------------------------------------------------------------
         def add_key(self, raw_key: str):
             calls.append(("add", raw_key))

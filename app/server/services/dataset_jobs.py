@@ -11,7 +11,6 @@ from server.services.jobs import JobManager, JobProgressReporter, JobStopChecker
 
 ###############################################################################
 class DatasetJobService:
-
     # -------------------------------------------------------------------------
     def build_histogram_payload(self, histogram_data: dict[str, Any]) -> dict[str, Any]:
         return {

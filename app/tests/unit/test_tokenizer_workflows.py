@@ -91,10 +91,8 @@ def test_get_active_key_raises_validation_error_on_invalid_decryption(
     del isolated_engine
     service = HFAccessKeyService()
 
-
     ###############################################################################
     class FailingCipher:
-
         # -------------------------------------------------------------------------
         def decrypt(self, encrypted_value: str) -> str:
             del encrypted_value
@@ -122,10 +120,8 @@ def test_add_key_skips_undecryptable_rows_during_duplicate_check(
     del isolated_engine
     service = HFAccessKeyService()
 
-
     ###############################################################################
     class RecoveringCipher:
-
         # -------------------------------------------------------------------------
         def encrypt(self, plaintext: str) -> str:
             return f"enc:{plaintext}"
@@ -169,10 +165,8 @@ def test_add_key_detects_duplicate_raw_key_across_encryption(
     del isolated_engine
     service = HFAccessKeyService()
 
-
     ###############################################################################
     class NonDeterministicCipher:
-
         # -------------------------------------------------------------------------
         def __init__(self) -> None:
             self.encryptions = 0
@@ -405,7 +399,6 @@ class DummyBackendTokenizerModel:
 
 ###############################################################################
 class DummyBackendTokenizer:
-
     # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.model = DummyBackendTokenizerModel()
@@ -692,7 +685,6 @@ def test_repository_persists_vocabulary_shape_metrics_in_report_json() -> None:
 
 ###############################################################################
 class FakeTokenizerRepository:
-
     # -------------------------------------------------------------------------
     def get_latest_tokenizer_report(self, tokenizer_name: str):
         return object() if tokenizer_name == "exists" else None
@@ -749,10 +741,8 @@ def test_tokenizer_discovery_passes_native_filters_and_returns_structured_items(
 ) -> None:
     service = TokenizersService()
 
-
     ###############################################################################
     class FakeModel:
-
         # -------------------------------------------------------------------------
         def __init__(self, model_id: str, pipeline_tag: str | None) -> None:
             self.modelId = model_id
@@ -765,7 +755,6 @@ def test_tokenizer_discovery_passes_native_filters_and_returns_structured_items(
             self.tags = ["core-model"]
             self.config = None
             self.siblings = tokenizer_siblings("tokenizer.json", "config.json")
-
 
     ###############################################################################
     class FakeApi:
@@ -848,10 +837,8 @@ def test_custom_tokenizer_survives_service_recreation_and_is_benchmarkable(
     Base.metadata.create_all(engine)
     database = SimpleNamespace(backend=SimpleNamespace(engine=engine))
 
-
     ###############################################################################
     class FakeFastTokenizer:
-
         # -------------------------------------------------------------------------
         def get_vocab_size(self) -> int:
             return 3
@@ -924,10 +911,8 @@ def test_remove_tokenizer_cleans_cache_before_database_delete(
 
     calls: list[str] = []
 
-
     ###############################################################################
     class FakeRepository:
-
         # -------------------------------------------------------------------------
         def delete_tokenizer(self, name: str) -> bool:
             assert not cache_dir.exists()
@@ -954,10 +939,8 @@ def test_remove_tokenizer_keeps_database_row_when_cache_cleanup_fails(
 
     deleted = False
 
-
     ###############################################################################
     class FakeRepository:
-
         # -------------------------------------------------------------------------
         def delete_tokenizer(self, name: str) -> bool:
             nonlocal deleted
@@ -976,7 +959,6 @@ def test_tokenizer_discovery_uses_bounded_overfetch_and_candidate_cap(
     monkeypatch,
 ) -> None:
     service = TokenizersService()
-
 
     ###############################################################################
     class FakeApi:
@@ -1016,10 +998,8 @@ def test_tokenizer_discovery_uses_bounded_overfetch_and_candidate_cap(
 def test_tokenizer_discovery_accepts_supported_root_artifacts_only(monkeypatch) -> None:
     service = TokenizersService()
 
-
     ###############################################################################
     class FakeModel:
-
         # -------------------------------------------------------------------------
         def __init__(self, model_id: str, filenames: tuple[str, ...]) -> None:
             self.modelId = model_id
@@ -1027,10 +1007,8 @@ def test_tokenizer_discovery_accepts_supported_root_artifacts_only(monkeypatch) 
             self.tags = []
             self.siblings = tokenizer_siblings(*filenames)
 
-
     ###############################################################################
     class FakeApi:
-
         # -------------------------------------------------------------------------
         def list_models(self, **kwargs):
             assert kwargs["expand"][0] == "siblings"
@@ -1073,10 +1051,8 @@ def test_tokenizer_discovery_filters_excluded_and_unsupported_models(
 ) -> None:
     service = TokenizersService()
 
-
     ###############################################################################
     class FakeModel:
-
         # -------------------------------------------------------------------------
         def __init__(self, model_id: str, pipeline_tag: str, tags: list[str]) -> None:
             self.modelId = model_id
@@ -1084,10 +1060,8 @@ def test_tokenizer_discovery_filters_excluded_and_unsupported_models(
             self.tags = tags
             self.siblings = tokenizer_siblings("tokenizer.json", "config.json")
 
-
     ###############################################################################
     class FakeApi:
-
         # -------------------------------------------------------------------------
         def list_models(self, **kwargs):
             del kwargs
@@ -1115,10 +1089,8 @@ def test_tokenizer_discovery_extracts_and_filters_vocabulary_metadata(
 ) -> None:
     service = TokenizersService()
 
-
     ###############################################################################
     class FakeModel:
-
         # -------------------------------------------------------------------------
         def __init__(self, model_id: str, vocabulary_size: object) -> None:
             self.modelId = model_id
@@ -1128,10 +1100,8 @@ def test_tokenizer_discovery_extracts_and_filters_vocabulary_metadata(
             )
             self.siblings = tokenizer_siblings("vocab.txt", "config.json")
 
-
     ###############################################################################
     class FakeApi:
-
         # -------------------------------------------------------------------------
         def list_models(self, **kwargs):
             assert "config" in kwargs["expand"]
@@ -1173,10 +1143,8 @@ def test_tokenizer_discovery_orders_known_vocabulary_before_unknown(
 ) -> None:
     service = TokenizersService()
 
-
     ###############################################################################
     class FakeModel:
-
         # -------------------------------------------------------------------------
         def __init__(self, model_id: str, vocabulary_size: int | None) -> None:
             self.modelId = model_id
@@ -1186,10 +1154,8 @@ def test_tokenizer_discovery_orders_known_vocabulary_before_unknown(
             )
             self.siblings = tokenizer_siblings("vocab.json", "merges.txt")
 
-
     ###############################################################################
     class FakeApi:
-
         # -------------------------------------------------------------------------
         def list_models(self, **kwargs):
             del kwargs
@@ -1224,10 +1190,8 @@ def test_tokenizer_discovery_orders_known_vocabulary_before_unknown(
 def test_tokenizer_discovery_propagates_upstream_failure(monkeypatch) -> None:
     service = TokenizersService()
 
-
     ###############################################################################
     class FailingApi:
-
         # -------------------------------------------------------------------------
         def list_models(self, **kwargs):
             del kwargs
@@ -1535,7 +1499,6 @@ def test_adapter_uses_eos_token_for_padding_when_pad_token_is_missing() -> None:
 
 ###############################################################################
 class CapturingTokenizer:
-
     # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.last_kwargs = {}
@@ -1576,7 +1539,6 @@ def test_tokenizer_preview_returns_tokens_per_tokenizer_and_isolates_failures(
     )
     raw.pre_tokenizer = pre_tokenizers.Whitespace()
 
-
     ###############################################################################
     class FakeHFTokenizer:
         unk_token_id = 0
@@ -1595,10 +1557,8 @@ def test_tokenizer_preview_returns_tokens_per_tokenizer_and_isolates_failures(
             reverse = {value: key for key, value in self.vocab.items()}
             return [reverse[token_id] for token_id in ids]
 
-
     ###############################################################################
     class BrokenTokenizer:
-
         # -------------------------------------------------------------------------
         def __call__(self, *_args: Any, **_kwargs: Any) -> dict[str, Any]:
             raise RuntimeError("encode failed")

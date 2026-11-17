@@ -10,7 +10,6 @@ from pathlib import Path
 
 ###############################################################################
 class DummyJobManager__tokenizers_routes:
-
     # -------------------------------------------------------------------------
     def __init__(self) -> None:
         self.last_job_type = ""
@@ -49,11 +48,9 @@ def test_tokenizer_upload_validation(monkeypatch) -> None:
 
     from server.api import tokenizers as tokenizers_api
 
-
     ###############################################################################
     class _TokenizerCfg:
         max_upload_bytes = 1
-
 
     ###############################################################################
     class _Settings:
@@ -261,14 +258,12 @@ def test_tokenizer_discovery_uses_runtime_default(monkeypatch) -> None:
     from server.contracts.tokenizers import TokenizerDiscoveryResponse
     from server.services.tokenizers import TokenizersService
 
-
     ###############################################################################
     class _TokenizerCfg:
         default_discovery_limit = 7
         max_discovery_limit = 9
         max_discovery_candidates = 30
         metadata_candidate_multiplier = 2
-
 
     ###############################################################################
     class _Settings:
@@ -295,12 +290,10 @@ def test_tokenizer_discovery_uses_runtime_default(monkeypatch) -> None:
 def test_tokenizer_discovery_enforces_runtime_maximum(monkeypatch) -> None:
     from server.api import tokenizers as tokenizers_api
 
-
     ###############################################################################
     class _TokenizerCfg:
         default_discovery_limit = 7
         max_discovery_limit = 9
-
 
     ###############################################################################
     class _Settings:

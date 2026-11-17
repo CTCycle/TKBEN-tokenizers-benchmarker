@@ -41,7 +41,6 @@ def _parse_timestamp(value: object) -> pd.Timestamp | None:
 
 ###############################################################################
 class DatasetRepository:
-
     # -------------------------------------------------------------------------
     def __init__(self, queries: DataRepositoryQueries | None = None) -> None:
         self.queries = queries or DataRepositoryQueries()

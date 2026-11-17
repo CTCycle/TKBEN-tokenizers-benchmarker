@@ -29,7 +29,6 @@ from server.services.benchmark_result_builder import BenchmarkResultBuilder
 
 ###############################################################################
 class BenchmarkTools:
-
     # -------------------------------------------------------------------------
     def process_tokens(self, text: str, tokenizer: Any) -> tuple[str, list[str]]:
         if not isinstance(text, str):

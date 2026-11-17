@@ -14,7 +14,6 @@ from server.repositories.schemas.models import HFAccessKey
 
 ###############################################################################
 class HFAccessKeyRepository:
-
     # -------------------------------------------------------------------------
     def __init__(self, database: TKBENDatabase | None = None) -> None:
         self.database = database or get_database()

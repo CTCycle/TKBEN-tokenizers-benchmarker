@@ -35,7 +35,6 @@ class HFAccessKeyNotFoundError(HFAccessKeyError):
 
 ###############################################################################
 class HFAccessKeyService:
-
     # -------------------------------------------------------------------------
     def __init__(self, repository: HFAccessKeyRepository | None = None) -> None:
         self._cipher: SymmetricCipher | None = None

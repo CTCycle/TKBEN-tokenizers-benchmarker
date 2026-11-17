@@ -299,7 +299,6 @@ class _FilePersistenceForStoreUnitTests:
 
 ###############################################################################
 class _PersistedRuntimeSettingsStore(RuntimeSettingsStore):
-
     # -------------------------------------------------------------------------
     def __init__(self, defaults: ServerSettings, path: Path) -> None:
         self.persistence = _FilePersistenceForStoreUnitTests(path)
