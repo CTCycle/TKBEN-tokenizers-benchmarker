@@ -9,6 +9,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from server.common.path import CACHE_PATH
+from server.common.utils.logger import logger
 
 
 ###############################################################################
@@ -69,7 +70,12 @@ class BenchmarkTextSpool:
     # -------------------------------------------------------------------------
     def cleanup(self) -> None:
         try:
-            if self._path.exists():
-                self._path.unlink()
+            self._handle.close()
         except OSError:
-            pass
+            logger.warning("Could not close benchmark spool writer", exc_info=True)
+        try:
+            self._path.unlink(missing_ok=True)
+        except OSError:
+            logger.warning(
+                "Could not remove benchmark spool %s", self._path, exc_info=True
+            )

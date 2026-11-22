@@ -814,15 +814,21 @@ def test_terminal_job_history_survives_manager_recreation(tmp_path: Path) -> Non
         _wait_for_status(manager, completed_id, "completed")
         _wait_for_status(manager, failed_id, "failed")
         _wait_for_status(manager, cancelled_id, "cancelled")
+        for job_id in (completed_id, failed_id, cancelled_id):
+            state = manager.jobs[job_id]
+            with state.persistence_lock:
+                assert state.result is None
+        manager.update_result(completed_id, {"phase": "finished"})
 
         restored_manager = JobManager(repository=repository)
         restored_manager.restore_persisted_jobs()
+        assert all(state.result is None for state in restored_manager.jobs.values())
 
         completed = restored_manager.get_job_status(completed_id)
         failed = restored_manager.get_job_status(failed_id)
         cancelled = restored_manager.get_job_status(cancelled_id)
         assert completed is not None
-        assert completed["result"] == {"value": "saved"}
+        assert completed["result"] == {"value": "saved", "phase": "finished"}
         assert completed["completed_at"] is not None
         assert failed is not None
         assert failed["error"] == "runner failed"
@@ -831,6 +837,35 @@ def test_terminal_job_history_survives_manager_recreation(tmp_path: Path) -> Non
         assert cancelled is not None
         assert cancelled["status"] == "cancelled"
         assert cancelled["result"] == {"phase": "waiting"}
+    finally:
+        database.backend.engine.dispose()
+
+
+###############################################################################
+def test_terminal_job_keeps_result_when_persistence_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository, database = _job_repository(tmp_path)
+    manager = JobManager(repository=repository)
+    original_save = repository.save_job
+
+    def save_job(snapshot: dict[str, object]) -> None:
+        if snapshot["status"] == "completed":
+            raise OSError("terminal write failed")
+        original_save(snapshot)
+
+    monkeypatch.setattr(repository, "save_job", save_job)
+    try:
+        job_id = manager.start_job("sample", lambda: {"value": "available"})
+        _wait_for_status(manager, job_id, "completed")
+        state = manager.jobs[job_id]
+        with state.persistence_lock:
+            assert state.result == {"value": "available"}
+
+        status = manager.get_job_status(job_id)
+        assert status is not None and status["result"] == {"value": "available"}
+        persisted = repository.get_job(job_id)
+        assert persisted is not None and persisted["status"] == "running"
     finally:
         database.backend.engine.dispose()
 

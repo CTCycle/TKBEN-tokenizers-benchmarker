@@ -15,6 +15,8 @@ from server.repositories.schemas.models import BenchmarkReport
 from server.repositories.schemas.models import Dataset
 from server.services.benchmark_reports import BenchmarkReportService
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.figure import Figure
 from server.contracts.benchmarks import BenchmarkVisualizationKind
 from server.services.benchmark_result_builder import BenchmarkResultBuilder
 from server.services.export import DashboardExportService
@@ -833,6 +835,26 @@ def test_export_benchmark_dashboard_pdf_generates_pdf_bytes() -> None:
     assert result.file_name == "benchmark-layout-export.pdf"
     assert result.page_count == 2
     assert result.pdf_bytes.startswith(b"%PDF")
+
+
+###############################################################################
+def test_pdf_export_failure_leaves_no_registered_figure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_save(_pdf: PdfPages, _figure: Figure) -> None:
+        raise OSError("PDF save failed")
+
+    open_figures = plt.get_fignums()
+    monkeypatch.setattr(PdfPages, "savefig", fail_save)
+    with pytest.raises(OSError, match="PDF save failed"):
+        DashboardExportService().export_dashboard_pdf(
+            dashboard_type="benchmark",
+            report_name="failed-export",
+            file_name="failed-export",
+            dashboard_payload=build_benchmark_payload(),
+        )
+
+    assert plt.get_fignums() == open_figures
 
 
 ###############################################################################

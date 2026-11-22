@@ -325,8 +325,11 @@ class DummyJobManager__datasets_routes:
         return False
 
     # -------------------------------------------------------------------------
-    def start_job(self, job_type, runner, args=(), kwargs=None):
+    def start_job(
+        self, job_type, runner, args=(), kwargs=None, *, reject_if_running=False
+    ):
         del runner, args, kwargs
+        assert reject_if_running == (job_type in {"dataset_download", "dataset_upload"})
         self.started_jobs += 1
         self.last_job_type = str(job_type)
         return "job-123"
@@ -419,10 +422,18 @@ def test_dataset_upload_accepts_limit_and_rejects_one_byte_over(monkeypatch) -> 
     captured_upload_sizes: list[int] = []
     original_start_job = manager.start_job
 
-    def capture_start_job(job_type, runner, args=(), kwargs=None):
+    def capture_start_job(
+        job_type, runner, args=(), kwargs=None, *, reject_if_running=False
+    ):
         if job_type == "dataset_upload" and kwargs is not None:
             captured_upload_sizes.append(len(kwargs["file_content"]))
-        return original_start_job(job_type, runner, args=args, kwargs=kwargs)
+        return original_start_job(
+            job_type,
+            runner,
+            args=args,
+            kwargs=kwargs,
+            reject_if_running=reject_if_running,
+        )
 
     monkeypatch.setattr(manager, "start_job", capture_start_job)
     monkeypatch.setattr(app.state, "job_manager", manager)
@@ -545,7 +556,7 @@ def _export_payload() -> dict[str, object]:
 
 ###############################################################################
 def test_export_route_returns_pdf_headers_and_bytes(monkeypatch) -> None:
-    from server.api import exports as exports_api
+    from server.services import export as export_service
 
     ###############################################################################
     class FakeExportService:
@@ -558,7 +569,7 @@ def test_export_route_returns_pdf_headers_and_bytes(monkeypatch) -> None:
                 pdf_bytes=b"%PDF-test",
             )
 
-    monkeypatch.setattr(exports_api, "DashboardExportService", FakeExportService)
+    monkeypatch.setattr(export_service, "DashboardExportService", FakeExportService)
 
     response = TestClient(app).post(
         "/api/exports/dashboard/pdf", json=_export_payload()
@@ -575,7 +586,7 @@ def test_export_route_returns_pdf_headers_and_bytes(monkeypatch) -> None:
 def test_export_route_maps_expected_and_unexpected_service_failures(
     monkeypatch,
 ) -> None:
-    from server.api import exports as exports_api
+    from server.services import export as export_service
 
     ###############################################################################
     class ValueErrorService:
@@ -584,7 +595,7 @@ def test_export_route_maps_expected_and_unexpected_service_failures(
             del kwargs
             raise ValueError("unsupported visualization")
 
-    monkeypatch.setattr(exports_api, "DashboardExportService", ValueErrorService)
+    monkeypatch.setattr(export_service, "DashboardExportService", ValueErrorService)
     invalid = TestClient(app).post("/api/exports/dashboard/pdf", json=_export_payload())
     assert invalid.status_code == 400
     assert invalid.json()["detail"] == "unsupported visualization"
@@ -596,7 +607,7 @@ def test_export_route_maps_expected_and_unexpected_service_failures(
             del kwargs
             raise RuntimeError("private rendering details")
 
-    monkeypatch.setattr(exports_api, "DashboardExportService", FailingService)
+    monkeypatch.setattr(export_service, "DashboardExportService", FailingService)
     failed = TestClient(app).post("/api/exports/dashboard/pdf", json=_export_payload())
     assert failed.status_code == 500
     assert failed.json()["detail"] == "Failed to export dashboard as PDF."
@@ -676,7 +687,7 @@ def test_reconciled_job_remains_addressable_and_rejects_cancellation(
             del max_jobs
 
         # -------------------------------------------------------------------------
-        def list_jobs(self) -> list[dict[str, object]]:
+        def list_jobs_for_restore(self) -> list[dict[str, object]]:
             return list(self.rows.values())
 
         # -------------------------------------------------------------------------

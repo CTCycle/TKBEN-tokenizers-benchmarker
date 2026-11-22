@@ -19,8 +19,11 @@ class DummyJobManager__tokenizers_routes:
         return False
 
     # -------------------------------------------------------------------------
-    def start_job(self, job_type, runner, args=(), kwargs=None):
+    def start_job(
+        self, job_type, runner, args=(), kwargs=None, *, reject_if_running=False
+    ):
         del runner, args, kwargs
+        assert reject_if_running == (job_type == "tokenizer_download")
         self.last_job_type = str(job_type)
         return "job-xyz"
 

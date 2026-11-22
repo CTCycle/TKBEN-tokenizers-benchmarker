@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from itertools import batched
 from typing import Any, cast
 
 import pandas as pd
@@ -70,19 +71,19 @@ class TokenizerReportRepository:
                     TokenizerVocabulary.tokenizer_id == int(tokenizer_id)
                 )
             )
-            records = [
-                {
-                    "tokenizer_id": int(tokenizer_id),
-                    "token_id": int(row["token_id"]),
-                    "token": str(row.get("token", "")),
-                    "decoded_token": row.get("decoded_token"),
-                }
-                for row in vocabulary_rows
-            ]
-            for start in range(0, len(records), 1000):
+            insert = cast(Any, TokenizerVocabulary.__table__).insert()
+            for batch in batched(vocabulary_rows, 1000):
                 session.execute(
-                    cast(Any, TokenizerVocabulary.__table__).insert(),
-                    records[start : start + 1000],
+                    insert,
+                    [
+                        {
+                            "tokenizer_id": int(tokenizer_id),
+                            "token_id": int(row["token_id"]),
+                            "token": str(row.get("token", "")),
+                            "decoded_token": row.get("decoded_token"),
+                        }
+                        for row in batch
+                    ],
                 )
             session.execute(
                 delete(TokenizerReport).where(

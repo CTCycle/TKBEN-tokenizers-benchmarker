@@ -48,6 +48,7 @@ class JobState:
     created_at: float = field(default_factory=wall_time)
     completed_at: float | None = None
     stop_requested: bool = False
+    result_on_disk: bool = field(default=False, init=False, repr=False)
     persisted_progress: float = field(default=0.0, init=False, repr=False)
     last_progress_persisted_at: float = field(
         default_factory=wall_time, init=False, repr=False
@@ -128,7 +129,7 @@ class JobManager:
         now = self.clock()
         self.repository.prune_jobs(self.max_stored_jobs)
         restored_jobs: dict[str, JobState] = {}
-        for snapshot in self.repository.list_jobs():
+        for snapshot in self.repository.list_jobs_for_restore():
             state = JobState(
                 job_id=snapshot["job_id"],
                 job_type=snapshot["job_type"],
@@ -149,7 +150,9 @@ class JobManager:
                     failure_reason=RESTART_INTERRUPTION_REASON,
                     completed_at=now,
                 )
-                self.repository.save_job(state.snapshot())
+                self._persist_state(state)
+            elif state.status in TERMINAL_STATUSES:
+                state.result_on_disk = True
             restored_jobs[state.job_id] = state
 
         with self.lock:
@@ -238,7 +241,14 @@ class JobManager:
             state = self.jobs.get(job_id)
         if state is None:
             return None
-        return state.snapshot()
+        snapshot = state.snapshot()
+        if (
+            snapshot["result"] is None
+            and state.result_on_disk
+            and self.repository is not None
+        ):
+            return self.repository.get_job(job_id)
+        return snapshot
 
     # -------------------------------------------------------------------------
     def is_job_running(self, job_type: str | None = None) -> bool:
@@ -298,10 +308,15 @@ class JobManager:
         if state is None:
             return
         with state.persistence_lock:
-            with state.lock:
-                existing = state.result or {}
-                merged = {**existing, **patch}
-                state.result = merged
+            existing = state.result
+            if (
+                existing is None
+                and state.result_on_disk
+                and self.repository is not None
+            ):
+                stored = self.repository.get_job(job_id)
+                existing = stored["result"] if stored is not None else None
+            state.update(result={**(existing or {}), **patch})
             self._persist_state_locked(state)
 
     # -------------------------------------------------------------------------
@@ -332,6 +347,8 @@ class JobManager:
     def _persist_state_locked(self, state: JobState) -> None:
         if self.repository is not None:
             self.repository.save_job(state.snapshot())
+            if state.status in TERMINAL_STATUSES and state.result is not None:
+                state.update(result=None, result_on_disk=True)
 
     # -------------------------------------------------------------------------
     def _finish_job(

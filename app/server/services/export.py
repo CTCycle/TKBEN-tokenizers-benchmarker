@@ -11,8 +11,8 @@ from typing import Any, cast, get_args
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.figure import Figure
 
 from server.common.utils.security import contains_control_chars
 from server.contracts.exports import DashboardType
@@ -130,7 +130,7 @@ class DashboardExportService(DashboardExportFormatting):
         if not isinstance(aggregate, dict):
             aggregate = {}
 
-        fig = plt.figure(figsize=(11.69, 8.27), constrained_layout=True)
+        fig = Figure(figsize=(11.69, 8.27), constrained_layout=True)
         grid = fig.add_gridspec(3, 2, height_ratios=[0.28, 0.36, 0.36])
 
         title_ax = fig.add_subplot(grid[0, :])
@@ -213,10 +213,9 @@ class DashboardExportService(DashboardExportFormatting):
         )
 
         pdf.savefig(fig)
-        plt.close(fig)
 
         # Page 2: pie + zipf + top words
-        fig2 = plt.figure(figsize=(11.69, 8.27), constrained_layout=True)
+        fig2 = Figure(figsize=(11.69, 8.27), constrained_layout=True)
         grid2 = fig2.add_gridspec(2, 2, height_ratios=[0.5, 0.5])
 
         composition_ax = fig2.add_subplot(grid2[0, 0])
@@ -314,7 +313,6 @@ class DashboardExportService(DashboardExportFormatting):
             )
 
         pdf.savefig(fig2)
-        plt.close(fig2)
         return 2
 
     # -------------------------------------------------------------------------
@@ -330,7 +328,7 @@ class DashboardExportService(DashboardExportFormatting):
         if not isinstance(global_stats, dict):
             global_stats = {}
 
-        fig = plt.figure(figsize=(11.69, 8.27), constrained_layout=True)
+        fig = Figure(figsize=(11.69, 8.27), constrained_layout=True)
         grid = fig.add_gridspec(2, 2, height_ratios=[0.42, 0.58])
 
         title_ax = fig.add_subplot(grid[0, :])
@@ -395,7 +393,6 @@ class DashboardExportService(DashboardExportFormatting):
             SECONDARY_COLOR,
         )
         pdf.savefig(fig)
-        plt.close(fig)
 
         vocabulary_items = payload.get("vocabulary_items")
         rows = self._parse_vocabulary_items(vocabulary_items)
@@ -406,7 +403,7 @@ class DashboardExportService(DashboardExportFormatting):
         chunk_size = 45
         for start in range(0, min(len(rows), 180), chunk_size):
             chunk = rows[start : start + chunk_size]
-            fig_page = plt.figure(figsize=(11.69, 8.27), constrained_layout=True)
+            fig_page = Figure(figsize=(11.69, 8.27), constrained_layout=True)
             ax = fig_page.add_subplot(111)
             ax.axis("off")
             ax.set_title(
@@ -432,7 +429,6 @@ class DashboardExportService(DashboardExportFormatting):
             table.auto_set_font_size(False)
             table.set_fontsize(8)
             pdf.savefig(fig_page)
-            plt.close(fig_page)
             pages += 1
         return 1 + pages
 
@@ -527,7 +523,7 @@ class DashboardExportService(DashboardExportFormatting):
         widgets: list[dict[str, Any]],
     ) -> int:
         if not widgets:
-            fig = plt.figure(figsize=(11.69, 8.27), constrained_layout=True)
+            fig = Figure(figsize=(11.69, 8.27), constrained_layout=True)
             ax = fig.add_subplot(111)
             ax.axis("off")
             ax.text(
@@ -554,7 +550,6 @@ class DashboardExportService(DashboardExportFormatting):
                 color=MUTED_TEXT,
             )
             pdf.savefig(fig)
-            plt.close(fig)
             return 1
 
         pages: list[list[dict[str, Any]]] = []
@@ -574,7 +569,7 @@ class DashboardExportService(DashboardExportFormatting):
             pages.append(current)
 
         for page_index, page_widgets in enumerate(pages, start=1):
-            fig = plt.figure(figsize=(11.69, 8.27))
+            fig = Figure(figsize=(11.69, 8.27))
             fig.text(
                 0.06,
                 0.94,
@@ -625,7 +620,6 @@ class DashboardExportService(DashboardExportFormatting):
             for axis, widget in zip(axes, page_widgets, strict=True):
                 self._render_normalized_benchmark_widget(axis, widget)
             pdf.savefig(fig)
-            plt.close(fig)
         return len(pages)
 
     # -------------------------------------------------------------------------

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, HTTPException, Response, status
 
@@ -12,9 +13,23 @@ from server.common.constants import (
     API_ROUTER_PREFIX_EXPORTS,
 )
 from server.contracts.exports import DashboardExportRequest
-from server.services.export import DashboardExportService
+
+if TYPE_CHECKING:
+    from server.services.export import DashboardPdfDocument
 
 router = APIRouter(prefix=API_ROUTER_PREFIX_EXPORTS, tags=["exports"])
+
+
+###############################################################################
+def _render_dashboard_pdf(request: DashboardExportRequest) -> DashboardPdfDocument:
+    from server.services.export import DashboardExportService
+
+    return DashboardExportService().export_dashboard_pdf(
+        dashboard_type=request.dashboard_type,
+        report_name=request.report_name,
+        file_name=request.file_name,
+        dashboard_payload=request.dashboard_payload,
+    )
 
 
 ###############################################################################
@@ -25,15 +40,8 @@ router = APIRouter(prefix=API_ROUTER_PREFIX_EXPORTS, tags=["exports"])
 async def export_dashboard_pdf(
     request: DashboardExportRequest,
 ) -> Response:
-    service = DashboardExportService()
     try:
-        result = await asyncio.to_thread(
-            service.export_dashboard_pdf,
-            dashboard_type=request.dashboard_type,
-            report_name=request.report_name,
-            file_name=request.file_name,
-            dashboard_payload=request.dashboard_payload,
-        )
+        result = await asyncio.to_thread(_render_dashboard_pdf, request)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

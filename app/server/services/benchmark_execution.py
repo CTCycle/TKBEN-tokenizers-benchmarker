@@ -16,6 +16,7 @@ from concurrent.futures import (
     wait,
 )
 from collections.abc import Callable, Mapping, Sequence
+from contextlib import closing
 from dataclasses import dataclass, field
 from functools import partial
 from typing import Any, ClassVar, cast
@@ -289,125 +290,127 @@ class BenchmarkServiceExecutionMixin:
             max_documents_limit,
         )
         spool = BenchmarkTextSpool()
-        num_docs = 0
-        dataset_total_chars = 0
-        dataset_total_utf8_bytes = 0
-        for row_id, text in limited_rows:
-            if should_stop and should_stop():
-                spool.cleanup()
-                return BenchmarkRunResponse(
-                    status="cancelled",
-                    schema_version=BENCHMARK_SCHEMA_VERSION,
-                    methodology_version="semantic_honesty",
-                    run_name=normalized_run_name or None,
-                    selected_metric_keys=resolved_metric_keys,
-                    dataset_name=dataset_name,
-                    documents_processed=num_docs,
-                    tokenizers_processed=[],
-                    tokenizers_count=0,
-                    config=BenchmarkRunConfig(),
-                    hardware_profile=BenchmarkHardwareProfile(),
-                    trial_summary=BenchmarkTrialSummary(),
-                    tokenizer_results=[],
-                    dashboard=BenchmarkDashboardData(),
-                    per_document_stats=[],
-                    runtime_metadata={},
-                    raw_observations={},
-                )
-            spool.append(row_id, text)
-            num_docs += 1
-            dataset_total_chars += len(text)
-            dataset_total_utf8_bytes += len(text.encode("utf-8"))
-        spool.finalize()
-        dataset_stream_wall_time_seconds = max(
-            0.0, time.perf_counter() - stream_started_at
-        )
-        metric_plan = build_metric_plan(
-            resolved_metric_keys,
-            store_per_document_stats=store_per_document_stats,
-        )
-        if progress_callback:
-            progress_callback(20.0)
-
-        requested_parallelism = BenchmarkRunConfig.model_validate(
-            {"parallelism": config_payload.get("parallelism", 1)}
-        ).parallelism
-        effective_parallelism = min(requested_parallelism, len(tokenizer_ids))
-        concurrency_tracker = _TokenizerConcurrencyTracker()
-        progress_tracker = _TokenizerProgressTracker(
-            len(tokenizer_ids), progress_callback
-        )
-        worker_results: dict[int, _TokenizerExecutionResult] = {}
-        pending: dict[Future[_TokenizerExecutionResult], tuple[int, str]] = {}
-        loaded_names: list[str] = []
-        tokenizer_metadata: list[dict[str, Any]] = []
-        cancelled = False
-        submitter = _PendingTokenizerSubmitter(
-            tokenizer_ids=tokenizer_ids,
-            effective_parallelism=effective_parallelism,
-            load_tokenizers=self.load_tokenizers,
-            worker_runner=partial(
-                self._run_tokenizer_worker,
-                spool=spool,
-                batch_size=batch_size,
-                num_docs=num_docs,
-                dataset_stream_wall_time_seconds=dataset_stream_wall_time_seconds,
-                metric_plan=metric_plan,
-                warmup_trials=warmup_trials,
-                timed_trials=timed_trials,
-                add_special_tokens=add_special_tokens,
-                padding=padding,
-                truncation=truncation,
-                max_length=max_length,
-                per_document_sample_size=per_document_sample_size,
-                should_stop=should_stop,
-                concurrency_tracker=concurrency_tracker,
-            ),
-            should_stop=should_stop,
-            progress_tracker=progress_tracker,
-            pending=pending,
-            loaded_names=loaded_names,
-            tokenizer_metadata=tokenizer_metadata,
-        )
-
-        with ThreadPoolExecutor(max_workers=effective_parallelism) as executor:
-            if submitter.submit_pending(executor):
-                cancelled = True
-
-            while pending:
-                done, _ = wait(pending, timeout=1.0, return_when=FIRST_COMPLETED)
-                for future in sorted(done, key=lambda item: pending[item][0]):
-                    index, name = pending.pop(future)
-                    try:
-                        worker_result = future.result()
-                    except CancelledError:
-                        worker_result = _TokenizerExecutionResult(
-                            index=index,
-                            tokenizer_name=name,
-                            tokenizer_result=None,
-                            per_document_stats=None,
-                            raw_observations=[],
-                            success=False,
-                            cancelled=True,
+        try:
+            num_docs = 0
+            dataset_total_chars = 0
+            dataset_total_utf8_bytes = 0
+            with closing(limited_rows):
+                for row_id, text in limited_rows:
+                    if should_stop and should_stop():
+                        return BenchmarkRunResponse(
+                            status="cancelled",
+                            schema_version=BENCHMARK_SCHEMA_VERSION,
+                            methodology_version="semantic_honesty",
+                            run_name=normalized_run_name or None,
+                            selected_metric_keys=resolved_metric_keys,
+                            dataset_name=dataset_name,
+                            documents_processed=num_docs,
+                            tokenizers_processed=[],
+                            tokenizers_count=0,
+                            config=BenchmarkRunConfig(),
+                            hardware_profile=BenchmarkHardwareProfile(),
+                            trial_summary=BenchmarkTrialSummary(),
+                            tokenizer_results=[],
+                            dashboard=BenchmarkDashboardData(),
+                            per_document_stats=[],
+                            runtime_metadata={},
+                            raw_observations={},
                         )
-                    worker_results[index] = worker_result
-                    if worker_result.cancelled:
-                        cancelled = True
-                    progress_tracker.update(index, 1.0)
-                progress_tracker.report()
+                    spool.append(row_id, text)
+                    num_docs += 1
+                    dataset_total_chars += len(text)
+                    dataset_total_utf8_bytes += len(text.encode("utf-8"))
+            spool.finalize()
+            dataset_stream_wall_time_seconds = max(
+                0.0, time.perf_counter() - stream_started_at
+            )
+            metric_plan = build_metric_plan(
+                resolved_metric_keys,
+                store_per_document_stats=store_per_document_stats,
+            )
+            if progress_callback:
+                progress_callback(20.0)
 
-                if should_stop and should_stop():
-                    cancelled = True
-                if cancelled:
-                    for future in pending:
-                        _ = future.cancel()
-                    continue
+            requested_parallelism = BenchmarkRunConfig.model_validate(
+                {"parallelism": config_payload.get("parallelism", 1)}
+            ).parallelism
+            effective_parallelism = min(requested_parallelism, len(tokenizer_ids))
+            concurrency_tracker = _TokenizerConcurrencyTracker()
+            progress_tracker = _TokenizerProgressTracker(
+                len(tokenizer_ids), progress_callback
+            )
+            worker_results: dict[int, _TokenizerExecutionResult] = {}
+            pending: dict[Future[_TokenizerExecutionResult], tuple[int, str]] = {}
+            loaded_names: list[str] = []
+            tokenizer_metadata: list[dict[str, Any]] = []
+            cancelled = False
+            submitter = _PendingTokenizerSubmitter(
+                tokenizer_ids=tokenizer_ids,
+                effective_parallelism=effective_parallelism,
+                load_tokenizers=self.load_tokenizers,
+                worker_runner=partial(
+                    self._run_tokenizer_worker,
+                    spool=spool,
+                    batch_size=batch_size,
+                    num_docs=num_docs,
+                    dataset_stream_wall_time_seconds=dataset_stream_wall_time_seconds,
+                    metric_plan=metric_plan,
+                    warmup_trials=warmup_trials,
+                    timed_trials=timed_trials,
+                    add_special_tokens=add_special_tokens,
+                    padding=padding,
+                    truncation=truncation,
+                    max_length=max_length,
+                    per_document_sample_size=per_document_sample_size,
+                    should_stop=should_stop,
+                    concurrency_tracker=concurrency_tracker,
+                ),
+                should_stop=should_stop,
+                progress_tracker=progress_tracker,
+                pending=pending,
+                loaded_names=loaded_names,
+                tokenizer_metadata=tokenizer_metadata,
+            )
 
+            with ThreadPoolExecutor(max_workers=effective_parallelism) as executor:
                 if submitter.submit_pending(executor):
                     cancelled = True
 
-        if not loaded_names and not cancelled:
+                while pending:
+                    done, _ = wait(pending, timeout=1.0, return_when=FIRST_COMPLETED)
+                    for future in sorted(done, key=lambda item: pending[item][0]):
+                        index, name = pending.pop(future)
+                        try:
+                            worker_result = future.result()
+                        except CancelledError:
+                            worker_result = _TokenizerExecutionResult(
+                                index=index,
+                                tokenizer_name=name,
+                                tokenizer_result=None,
+                                per_document_stats=None,
+                                raw_observations=[],
+                                success=False,
+                                cancelled=True,
+                            )
+                        worker_results[index] = worker_result
+                        if worker_result.cancelled:
+                            cancelled = True
+                        progress_tracker.update(index, 1.0)
+                    progress_tracker.report()
+
+                    if should_stop and should_stop():
+                        cancelled = True
+                    if cancelled:
+                        for future in pending:
+                            _ = future.cancel()
+                        continue
+
+                    if submitter.submit_pending(executor):
+                        cancelled = True
+        finally:
             spool.cleanup()
+
+        if not loaded_names and not cancelled:
             raise ValueError("No valid tokenizers could be loaded")
 
         ordered_worker_results = [
@@ -506,7 +509,6 @@ class BenchmarkServiceExecutionMixin:
         runtime_metadata["end_to_end_benchmark_seconds"] = max(
             0.0, time.perf_counter() - run_started_at
         )
-        spool.cleanup()
 
         return BenchmarkRunResponse(
             status="cancelled" if cancelled else "success",

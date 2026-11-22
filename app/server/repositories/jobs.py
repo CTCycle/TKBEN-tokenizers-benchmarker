@@ -8,7 +8,7 @@ import threading
 from typing import Any
 
 from sqlalchemy import delete, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 
 from server.repositories.database.backend import TKBENDatabase, get_database
 from server.repositories.schemas.models import ManagedJob
@@ -51,13 +51,13 @@ class JobRepository:
 
     # -------------------------------------------------------------------------
     @staticmethod
-    def _snapshot(row: ManagedJob) -> dict[str, Any]:
+    def _snapshot(row: ManagedJob, *, include_result: bool = True) -> dict[str, Any]:
         return {
             "job_id": row.job_id,
             "job_type": row.job_type,
             "status": row.status,
             "progress": row.progress,
-            "result": row.result,
+            "result": row.result if include_result else None,
             "error": row.error,
             "failure_reason": row.failure_reason,
             "created_at": row.created_at.timestamp(),
@@ -80,12 +80,18 @@ class JobRepository:
                 session.commit()
 
     # -------------------------------------------------------------------------
-    def list_jobs(self) -> list[dict[str, Any]]:
+    def list_jobs_for_restore(self) -> list[dict[str, Any]]:
+        """Load terminal metadata and the full state of interrupted jobs."""
         with self._session() as session:
             rows = session.execute(
-                select(ManagedJob).order_by(ManagedJob.created_at, ManagedJob.job_id)
+                select(ManagedJob)
+                .options(defer(ManagedJob.result))
+                .order_by(ManagedJob.created_at, ManagedJob.job_id)
             ).scalars()
-            return [self._snapshot(row) for row in rows]
+            return [
+                self._snapshot(row, include_result=row.status not in TERMINAL_STATUSES)
+                for row in rows
+            ]
 
     # -------------------------------------------------------------------------
     def get_job(self, job_id: str) -> dict[str, Any] | None:

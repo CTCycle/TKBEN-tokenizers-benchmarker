@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 import threading
 from typing import Any
 import server.services.benchmark_execution as benchmark_execution_module
@@ -665,7 +666,12 @@ def test_run_benchmarks_can_disable_per_document_stats_and_persist_config() -> N
 
 
 ###############################################################################
-def test_run_benchmarks_returns_cancelled_status_when_stopped() -> None:
+def test_run_benchmarks_returns_cancelled_status_when_stopped(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from server.services import benchmark_spool
+
+    monkeypatch.setattr(benchmark_spool, "CACHE_PATH", tmp_path)
     service = BenchmarkService()
     rows = [(1, "alpha"), (2, "beta")]
 
@@ -688,6 +694,28 @@ def test_run_benchmarks_returns_cancelled_status_when_stopped() -> None:
     )
 
     assert result.status == "cancelled"
+    assert not list(tmp_path.iterdir())
+
+
+###############################################################################
+def test_run_benchmarks_cleans_spool_when_dataset_stream_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from server.services import benchmark_spool
+
+    def failing_rows(_dataset_name: str) -> Iterator[tuple[int, str]]:
+        yield 1, "alpha"
+        raise RuntimeError("dataset stream failed")
+
+    monkeypatch.setattr(benchmark_spool, "CACHE_PATH", tmp_path)
+    service = BenchmarkService()
+    monkeypatch.setattr(service, "get_dataset_document_count", lambda _: 2)
+    monkeypatch.setattr(service, "stream_dataset_rows_from_database", failing_rows)
+
+    with pytest.raises(RuntimeError, match="dataset stream failed"):
+        service.run_benchmarks("custom/ds", ["dummy/tokenizer"])
+
+    assert not list(tmp_path.iterdir())
 
 
 ###############################################################################

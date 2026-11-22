@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Generator, Iterable, Iterator
 from itertools import islice
 
 
@@ -20,7 +20,7 @@ def normalize_benchmark_text(value: object) -> str | None:
 def iter_limited_rows(
     rows: Iterable[tuple[int, object]],
     max_documents: int | None,
-) -> Iterator[tuple[int, str]]:
+) -> Generator[tuple[int, str], None, None]:
     limited_rows: Iterable[tuple[int, object]] = rows
     if isinstance(max_documents, int) and max_documents > 0:
         limited_rows = islice(rows, max_documents)
