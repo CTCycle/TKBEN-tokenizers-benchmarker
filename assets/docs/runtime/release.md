@@ -1,5 +1,5 @@
 # Release Procedure
-Last updated: 2026-11-09
+Last updated: 2026-11-23
 
 ## Release model
 
@@ -10,13 +10,13 @@ add packaging as part of a source release.
 The public release version and component versions use the existing repository
 convention:
 
-| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` | `v4.5.0` | `v4.5.1` | `v4.6.0` | `v4.6.1` | `v4.7.0` | `v4.7.1` | `v4.8.0` | `v4.8.1` | `v4.8.2` |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` | `4.4.0` | `4.5.0` | `4.5.1` | `4.6.0` | `4.6.1` | `4.7.0` | `4.7.1` | `4.8.0` | `4.8.1` | `4.8.2` |
-| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` | `3.4.0` | `3.5.0` | `3.5.1` | `3.6.0` | `3.6.1` | `3.7.0` | `3.7.1` | `3.8.0` | `3.8.1` | `3.8.2` |
-| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` | `2.4.0` | `2.5.0` | `2.5.1` | `2.6.0` | `2.6.1` | `2.7.0` | `2.7.1` | `2.8.0` | `2.8.1` | `2.8.2` |
+| Surface | `v3.9.0` | `v4.0.0` | `v4.1.0` | `v4.2.0` | `v4.3.0` | `v4.4.0` | `v4.5.0` | `v4.5.1` | `v4.6.0` | `v4.6.1` | `v4.7.0` | `v4.7.1` | `v4.8.0` | `v4.8.1` | `v4.8.2` | `v4.8.3` |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Public Git tag and GitHub Release | `3.9.0` | `4.0.0` | `4.1.0` | `4.2.0` | `4.3.0` | `4.4.0` | `4.5.0` | `4.5.1` | `4.6.0` | `4.6.1` | `4.7.0` | `4.7.1` | `4.8.0` | `4.8.1` | `4.8.2` | `4.8.3` |
+| Backend package (`app/server/pyproject.toml`) | `2.4.0` | `3.0.0` | `3.1.0` | `3.2.0` | `3.3.0` | `3.4.0` | `3.5.0` | `3.5.1` | `3.6.0` | `3.6.1` | `3.7.0` | `3.7.1` | `3.8.0` | `3.8.1` | `3.8.2` | `3.8.3` |
+| Frontend package (`app/client/package.json`) | `1.4.0` | `2.0.0` | `2.1.0` | `2.2.0` | `2.3.0` | `2.4.0` | `2.5.0` | `2.5.1` | `2.6.0` | `2.6.1` | `2.7.0` | `2.7.1` | `2.8.0` | `2.8.1` | `2.8.2` | `2.8.3` |
 
-The latest published release is `v4.8.2` (backend `3.8.2`, frontend `2.8.2`);
+The latest published release is `v4.8.3` (backend `3.8.3`, frontend `2.8.3`);
 its publication record is in the [project status ledger](../project_status_ledger.md#release-gate).
 `v4.7.0` (backend `3.7.0`, frontend `2.7.0`) was published on 2026-10-22 from
 annotated tag `v4.7.0` on `main` commit `7dc3d7e372bcc60cb7a75b7d12c07a4d51d42840`
@@ -38,6 +38,24 @@ The v4.6.0 delta is based on verified repository changes after `v4.5.1`:
 API version `1.2.0`, benchmark schema version `3`, and report version `5`
 remain unchanged. The public release status and final commit are recorded in
 the [project status ledger](../project_status_ledger.md#release-gate).
+
+## v4.8.3 patch release notes
+
+The v4.8.3 release increments the public release, backend, and frontend patch
+versions to `4.8.3`, `3.8.3`, and `2.8.3`. The verified changes since v4.8.2
+include:
+
+- harden backend managed-job and persistence lifecycles;
+- reduce backend memory retention and release resources earlier (benchmark
+  spool and streams, dataset operations, exports, job state, and repository
+  sessions);
+- fix the minimum-width rule for responsive layouts and format Python code
+  with Ruff; and
+- reorganize the unit-test modules by area (persistence, settings, tokenizer
+  API contracts).
+
+API version, benchmark schema version `3`, and report version `5` are
+unchanged. Validation evidence is recorded as `V-20261123`.
 
 ## v4.8.2 patch release notes
 
