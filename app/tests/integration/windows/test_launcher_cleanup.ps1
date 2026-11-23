@@ -228,7 +228,15 @@ try {
     New-TestFile (Join-Path $repoRoot 'settings\paths-config.json') '{"data_dir":"../external-data","log_dir":"../external-data/logs"}'
     New-TestFile (Join-Path $dataRoot 'keep-user-file.txt')
     New-TestFile (Join-Path $dataRoot 'logs\other-app.log')
+    # Read-only cache files are still removed; virtual environments are not scanned.
+    $readOnlyCacheFile = Join-Path $repoRoot 'app\server\.pytest_cache\readonly.bin'
+    New-TestFile $readOnlyCacheFile
+    [IO.File]::SetAttributes($readOnlyCacheFile, [IO.FileAttributes]::ReadOnly)
+    $cacheFiles += $readOnlyCacheFile
+    $venvBytecode = Join-Path $repoRoot 'app\server\.venv\Lib\pkg\__pycache__\module.pyc'
+    New-TestFile $venvBytecode
     $cachePlan = Get-FixturePlan -Action Cache
+    Assert-NotContainsPath $cachePlan $venvBytecode 'Cache scan descended into a virtual environment.'
     foreach ($path in $cacheFiles) { Assert-ContainsPath $cachePlan $path "Cache target was not discovered: $path" }
     foreach ($path in @($temporaryRuntimeFiles | Where-Object { $_ -notmatch 'unrelated' })) {
         Assert-ContainsPath $cachePlan $path "Recognized application temporary file was not discovered: $path"

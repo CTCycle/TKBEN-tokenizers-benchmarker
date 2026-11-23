@@ -20,25 +20,52 @@ function Test-TkbenPathWithin {
         $candidate.StartsWith($boundary + '\', [StringComparison]::OrdinalIgnoreCase)
 }
 
-function Test-TkbenNoReparseAncestor {
+# Returns a FileSystemInfo for an existing path (attributes are not followed through
+# links), $null when it does not exist, and throws the underlying exception otherwise.
+function Get-TkbenEntry {
     param([Parameter(Mandatory)][string]$Path)
-    $candidate = Get-TkbenFullPath $Path
-    $current = $candidate
+    try { $attributes = [IO.File]::GetAttributes($Path) }
+    catch {
+        $inner = if ($_.Exception.InnerException) { $_.Exception.InnerException } else { $_.Exception }
+        if ($inner -is [IO.FileNotFoundException] -or $inner -is [IO.DirectoryNotFoundException]) { return $null }
+        throw $inner
+    }
+    if (($attributes -band [IO.FileAttributes]::Directory) -ne 0) { return [IO.DirectoryInfo]::new($Path) }
+    return [IO.FileInfo]::new($Path)
+}
+
+# $Cache (optional) memoizes results per path so a deep tree is validated once per
+# directory instead of once per file.
+function Test-TkbenNoReparseAncestor {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [hashtable]$Cache
+    )
+    $current = Get-TkbenFullPath $Path
+    $visited = [Collections.Generic.List[string]]::new()
+    $result = $true
     while ($current) {
+        if ($Cache -and $Cache.ContainsKey($current)) { $result = $Cache[$current]; break }
+        [void]$visited.Add($current)
         try {
-            $item = Get-Item -LiteralPath $current -Force -ErrorAction Stop
-            if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
-                return $false
+            if (([IO.File]::GetAttributes($current) -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                $result = $false
+                break
             }
         }
-        catch [System.Management.Automation.ItemNotFoundException] { }
-        catch [System.IO.FileNotFoundException] { }
-        catch { return $false }
+        catch {
+            $inner = if ($_.Exception.InnerException) { $_.Exception.InnerException } else { $_.Exception }
+            if ($inner -isnot [IO.FileNotFoundException] -and $inner -isnot [IO.DirectoryNotFoundException]) {
+                $result = $false
+                break
+            }
+        }
         $parent = [IO.Path]::GetDirectoryName($current)
         if (-not $parent -or $parent -eq $current) { break }
         $current = $parent
     }
-    return $true
+    if ($Cache) { foreach ($visitedPath in $visited) { $Cache[$visitedPath] = $result } }
+    return $result
 }
 
 function Add-TkbenPlanTarget {
@@ -48,6 +75,7 @@ function Add-TkbenPlanTarget {
         [Parameter(Mandatory)][string]$Kind,
         [Parameter(Mandatory)][string]$Reason,
         [string]$Boundary,
+        [IO.FileSystemInfo]$Entry,
         [switch]$ExplicitExternalFile
     )
 
@@ -72,36 +100,33 @@ function Add-TkbenPlanTarget {
     }
     if ($Plan.TargetIndex.ContainsKey($fullPath)) { return }
 
-    try {
-        $item = Get-Item -LiteralPath $fullPath -Force -ErrorAction Stop
-    }
-    catch {
-        if ($_.CategoryInfo.Category -eq [System.Management.Automation.ErrorCategory]::ObjectNotFound -or
-            $_.Exception -is [System.IO.FileNotFoundException] -or
-            $_.Exception -is [System.IO.DirectoryNotFoundException]) {
-            [void]$Plan.Missing.Add($fullPath)
-        }
-        else {
+    $item = $Entry
+    if ($null -eq $item) {
+        try { $item = Get-TkbenEntry -Path $fullPath }
+        catch {
             [void]$Plan.Skipped.Add([pscustomobject]@{ Path = $fullPath; Reason = $_.Exception.Message })
+            return
         }
+    }
+    if ($null -eq $item) {
+        [void]$Plan.Missing.Add($fullPath)
         return
     }
-    if ($Kind -eq 'File' -and $item.PSIsContainer) {
+    $isDirectory = $item -is [IO.DirectoryInfo]
+    $isLink = ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0
+    if ($Kind -eq 'File' -and $isDirectory) {
         [void]$Plan.Skipped.Add([pscustomobject]@{ Path = $fullPath; Reason = 'Expected a file but found a directory.' })
         return
     }
-    if (-not (Test-TkbenNoReparseAncestor -Path $fullPath)) {
-        $isLink = ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0
-        if (-not $isLink) {
-            [void]$Plan.Skipped.Add([pscustomobject]@{ Path = $fullPath; Reason = 'A parent path is a symbolic link or junction.' })
-            return
-        }
+    if (-not $isLink -and -not (Test-TkbenNoReparseAncestor -Path $fullPath -Cache $Plan.AncestorCache)) {
+        [void]$Plan.Skipped.Add([pscustomobject]@{ Path = $fullPath; Reason = 'A parent path is a symbolic link or junction.' })
+        return
     }
 
     $target = [pscustomobject]@{
         Path = $fullPath
-        Kind = if ($item.PSIsContainer) { 'Directory' } else { 'File' }
-        IsReparsePoint = (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)
+        Kind = if ($isDirectory) { 'Directory' } else { 'File' }
+        IsReparsePoint = $isLink
         Boundary = if ($Boundary) { Get-TkbenFullPath $Boundary } else { $null }
         AllowsExternalPath = [bool]$ExplicitExternalFile
         Reason = $Reason
@@ -117,7 +142,8 @@ function Add-TkbenTreeToPlan {
         [Parameter(Mandatory)][string]$Boundary,
         [Parameter(Mandatory)][string]$Reason,
         [switch]$RemoveRoot,
-        [switch]$PreserveGitKeep
+        [switch]$PreserveGitKeep,
+        [IO.FileSystemInfo]$Entry
     )
     try { $fullPath = Get-TkbenFullPath $Path }
     catch {
@@ -128,44 +154,62 @@ function Add-TkbenTreeToPlan {
         [void]$Plan.Skipped.Add([pscustomobject]@{ Path = $fullPath; Reason = "Outside approved application root '$Boundary'." })
         return
     }
-    try { $item = Get-Item -LiteralPath $fullPath -Force -ErrorAction Stop }
-    catch {
-        if ($_.CategoryInfo.Category -eq [System.Management.Automation.ErrorCategory]::ObjectNotFound -or
-            $_.Exception -is [System.IO.FileNotFoundException] -or
-            $_.Exception -is [System.IO.DirectoryNotFoundException]) {
-            [void]$Plan.Missing.Add($fullPath)
-        }
-        else {
+    $item = $Entry
+    if ($null -eq $item) {
+        try { $item = Get-TkbenEntry -Path $fullPath }
+        catch {
             [void]$Plan.Skipped.Add([pscustomobject]@{ Path = $fullPath; Reason = $_.Exception.Message })
+            return
         }
+    }
+    if ($null -eq $item) {
+        [void]$Plan.Missing.Add($fullPath)
         return
     }
-    if (-not (Test-TkbenNoReparseAncestor -Path $fullPath) -and
-        ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) {
+    $isLink = ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0
+    if (-not $isLink -and -not (Test-TkbenNoReparseAncestor -Path $fullPath -Cache $Plan.AncestorCache)) {
         [void]$Plan.Skipped.Add([pscustomobject]@{ Path = $fullPath; Reason = 'A parent path is a symbolic link or junction.' })
         return
     }
-    if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
-        Add-TkbenPlanTarget -Plan $Plan -Path $fullPath -Kind 'Any' -Reason $Reason -Boundary $Boundary
+    if ($isLink) {
+        Add-TkbenPlanTarget -Plan $Plan -Path $fullPath -Kind 'Any' -Reason $Reason -Boundary $Boundary -Entry $item
         return
     }
-    if (-not $item.PSIsContainer) {
-        Add-TkbenPlanTarget -Plan $Plan -Path $fullPath -Kind 'File' -Reason $Reason -Boundary $Boundary
+    if ($item -isnot [IO.DirectoryInfo]) {
+        Add-TkbenPlanTarget -Plan $Plan -Path $fullPath -Kind 'File' -Reason $Reason -Boundary $Boundary -Entry $item
         return
     }
 
+    $boundaryFull = Get-TkbenFullPath $Boundary
     try {
-        $children = @(Get-ChildItem -LiteralPath $fullPath -Force -ErrorAction Stop)
+        $children = $item.GetFileSystemInfos()
         foreach ($child in $children) {
             if ($PreserveGitKeep -and $child.Name -eq '.gitkeep') { continue }
-            Add-TkbenTreeToPlan -Plan $Plan -Path $child.FullName -Boundary $Boundary -Reason $Reason -RemoveRoot -PreserveGitKeep:$PreserveGitKeep
+            # Plain files directly inside this already-validated, non-link directory
+            # inherit its boundary and ancestry checks; skip the per-file revalidation.
+            if ($child -is [IO.FileInfo] -and ($child.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) {
+                $childPath = $child.FullName
+                if (-not $Plan.TargetIndex.ContainsKey($childPath)) {
+                    $Plan.TargetIndex[$childPath] = $true
+                    [void]$Plan.Targets.Add([pscustomobject]@{
+                        Path = $childPath
+                        Kind = 'File'
+                        IsReparsePoint = $false
+                        Boundary = $boundaryFull
+                        AllowsExternalPath = $false
+                        Reason = $Reason
+                    })
+                }
+                continue
+            }
+            Add-TkbenTreeToPlan -Plan $Plan -Path $child.FullName -Boundary $Boundary -Reason $Reason -RemoveRoot -PreserveGitKeep:$PreserveGitKeep -Entry $child
         }
     }
     catch {
         [void]$Plan.Skipped.Add([pscustomobject]@{ Path = $fullPath; Reason = "Could not enumerate directory: $($_.Exception.Message)" })
     }
     if ($RemoveRoot) {
-        Add-TkbenPlanTarget -Plan $Plan -Path $fullPath -Kind 'Directory' -Reason $Reason -Boundary $Boundary
+        Add-TkbenPlanTarget -Plan $Plan -Path $fullPath -Kind 'Directory' -Reason $Reason -Boundary $Boundary -Entry $item
     }
 }
 
@@ -213,43 +257,46 @@ function Add-TkbenCacheScan {
         [Parameter(Mandatory)][string]$Path,
         [Parameter(Mandatory)][string]$Boundary
     )
-    try { $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop }
+    try { $item = Get-TkbenEntry -Path $Path }
     catch {
-        if ($_.CategoryInfo.Category -eq [System.Management.Automation.ErrorCategory]::ObjectNotFound -or
-            $_.Exception -is [System.IO.FileNotFoundException] -or
-            $_.Exception -is [System.IO.DirectoryNotFoundException]) { return }
         [void]$Plan.Skipped.Add([pscustomobject]@{ Path = $Path; Reason = $_.Exception.Message })
         return
     }
+    if ($null -eq $item) { return }
     if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or
-        -not (Test-TkbenNoReparseAncestor -Path $Path)) {
+        -not (Test-TkbenNoReparseAncestor -Path $Path -Cache $Plan.AncestorCache)) {
         [void]$Plan.Skipped.Add([pscustomobject]@{ Path = $item.FullName; Reason = 'Cache scan did not follow a symbolic link or junction.' })
         return
     }
+    if ($item -isnot [IO.DirectoryInfo]) { return }
 
-    try { $children = @(Get-ChildItem -LiteralPath $Path -Force -ErrorAction Stop) }
+    try { $children = $item.GetFileSystemInfos() }
     catch {
         [void]$Plan.Skipped.Add([pscustomobject]@{ Path = $Path; Reason = "Could not inspect cache root: $($_.Exception.Message)" })
         return
     }
     $isNodeModulesRoot = $item.Name -eq 'node_modules'
     foreach ($child in $children) {
-        if ($child.PSIsContainer -and
+        $childIsDirectory = $child -is [IO.DirectoryInfo]
+        if ($childIsDirectory -and
             ($child.Name -in @('__pycache__', '.pytest_cache', '.ruff_cache', '.mypy_cache', '.angular', '.vite', '.cache', 'coverage', 'htmlcov') -or
                 $child.Name -like 'pytest-cache-files-*')) {
             Add-TkbenTreeToPlan -Plan $Plan -Path $child.FullName -Boundary $Boundary -Reason 'Recognized nested application cache' -RemoveRoot
             continue
         }
-        if (-not $child.PSIsContainer -and
+        if (-not $childIsDirectory -and
             ($child.Name -match '(?i)^(\.coverage.*|.*\.(pyc|pyo))$')) {
             Add-TkbenPlanTarget -Plan $Plan -Path $child.FullName -Kind 'File' -Reason 'Python bytecode or coverage artifact' -Boundary $Boundary
             continue
         }
         # The supported Node tool caches live directly in node_modules. Do not
         # crawl every installed package's shipped files or mistake package dist
-        # folders for application build output.
+        # folders for application build output. Virtual environments and git
+        # metadata are likewise never searched: they hold no application-owned
+        # caches and dominate scan time.
         if ($isNodeModulesRoot) { continue }
-        if ($child.PSIsContainer -and ($child.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) {
+        if ($childIsDirectory -and $child.Name -in @('.venv', 'venv', '.git')) { continue }
+        if ($childIsDirectory -and ($child.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) {
             Add-TkbenCacheScan -Plan $Plan -Path $child.FullName -Boundary $Boundary
         }
     }
@@ -590,6 +637,7 @@ function Get-TkbenCleanupPlan {
         Missing = [Collections.Generic.List[string]]::new()
         Skipped = [Collections.Generic.List[object]]::new()
         TargetIndex = @{}
+        AncestorCache = @{}
     }
 
     switch ($Action) {
@@ -691,15 +739,18 @@ function Invoke-TkbenCleanupPlan {
         }
     }
 
+    $ancestorCache = @{}
     foreach ($target in $Plan.Targets) {
         try {
-            $fullPath = Get-TkbenFullPath $target.Path
+            $fullPath = [IO.Path]::GetFullPath($target.Path)
             if (-not $fullPath -or $fullPath.TrimEnd('\') -eq [IO.Path]::GetPathRoot($fullPath).TrimEnd('\')) {
                 [void]$skipped.Add([pscustomobject]@{ Path = $target.Path; Reason = 'Filesystem roots are never valid cleanup targets.' })
                 continue
             }
             if ($target.Boundary) {
-                if (-not (Test-TkbenPathWithin -Path $fullPath -Root $target.Boundary)) {
+                $boundaryPath = $target.Boundary.TrimEnd('\')
+                if (-not $fullPath.Equals($boundaryPath, [StringComparison]::OrdinalIgnoreCase) -and
+                    -not $fullPath.StartsWith($boundaryPath + '\', [StringComparison]::OrdinalIgnoreCase)) {
                     [void]$skipped.Add([pscustomobject]@{ Path = $fullPath; Reason = 'Target moved outside its approved application boundary after preview.' })
                     continue
                 }
@@ -709,41 +760,44 @@ function Invoke-TkbenCleanupPlan {
                 continue
             }
             $parent = [IO.Path]::GetDirectoryName($fullPath)
-            if (-not $parent -or -not (Test-TkbenNoReparseAncestor -Path $parent)) {
+            if (-not $parent -or
+                (-not ($ancestorCache.ContainsKey($parent) -and $ancestorCache[$parent]) -and
+                    -not (Test-TkbenNoReparseAncestor -Path $parent -Cache $ancestorCache))) {
                 [void]$skipped.Add([pscustomobject]@{ Path = $fullPath; Reason = 'A parent path became a symbolic link or junction after preview.' })
                 continue
             }
-            $item = Get-Item -LiteralPath $target.Path -Force -ErrorAction Stop
+            $item = Get-TkbenEntry -Path $target.Path
+            if ($null -eq $item) {
+                [void]$Plan.Missing.Add($target.Path)
+                continue
+            }
             $currentIsReparsePoint = (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)
             if ([bool]$target.IsReparsePoint -ne $currentIsReparsePoint) {
                 [void]$skipped.Add([pscustomobject]@{ Path = $fullPath; Reason = 'Target type changed after preview; it was not removed.' })
                 continue
             }
-            $currentKind = if ($item.PSIsContainer) { 'Directory' } else { 'File' }
+            $isDirectory = $item -is [IO.DirectoryInfo]
+            $currentKind = if ($isDirectory) { 'Directory' } else { 'File' }
             if ($target.Kind -ne $currentKind) {
                 [void]$skipped.Add([pscustomobject]@{ Path = $fullPath; Reason = 'Target file type changed after preview; it was not removed.' })
                 continue
             }
-            if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
-                if ($item.PSIsContainer) { [IO.Directory]::Delete($target.Path, $false) }
-                else { [IO.File]::Delete($target.Path) }
+            # Read-only entries cannot be deleted until the flag is cleared.
+            if (($item.Attributes -band [IO.FileAttributes]::ReadOnly) -ne 0) {
+                [IO.File]::SetAttributes($target.Path, ($item.Attributes -band (-bnot [IO.FileAttributes]::ReadOnly)))
             }
-            elseif ($item.PSIsContainer) {
-                [IO.Directory]::Delete($target.Path, $false)
-            }
-            else {
-                [IO.File]::Delete($target.Path)
-            }
+            if ($isDirectory) { [IO.Directory]::Delete($target.Path, $false) }
+            else { [IO.File]::Delete($target.Path) }
             [void]$removed.Add($target.Path)
         }
         catch {
-            if ($_.CategoryInfo.Category -eq [System.Management.Automation.ErrorCategory]::ObjectNotFound -or
-                $_.Exception -is [System.IO.FileNotFoundException] -or
-                $_.Exception -is [System.IO.DirectoryNotFoundException]) {
+            $inner = if ($_.Exception.InnerException) { $_.Exception.InnerException } else { $_.Exception }
+            if ($inner -is [System.IO.FileNotFoundException] -or
+                $inner -is [System.IO.DirectoryNotFoundException]) {
                 [void]$Plan.Missing.Add($target.Path)
             }
             else {
-                [void]$failed.Add([pscustomobject]@{ Path = $target.Path; Reason = $_.Exception.Message })
+                [void]$failed.Add([pscustomobject]@{ Path = $target.Path; Reason = $inner.Message })
             }
         }
     }
@@ -819,6 +873,7 @@ function Remove-TkbenOwnedPath {
         Missing = [Collections.Generic.List[string]]::new()
         Skipped = [Collections.Generic.List[object]]::new()
         TargetIndex = @{}
+        AncestorCache = @{}
     }
     if ($KeepRoot) {
         Add-TkbenContentsToPlan -Plan $plan -Path $fullPath -Boundary $fullBoundary -Reason 'Managed runtime cache'
